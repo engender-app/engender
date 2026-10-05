@@ -748,27 +748,22 @@
 
       <p class="about-attribution">{m.about_attribution()}</p>
 
-      <nav class="about-links">
-        <a href={SITE_URL} target="_blank" rel="noreferrer">
-          <Icon name="globe" size={20} />
-          <span>{m.about_site_link()}</span>
-        </a>
-        <a href={guideUrl} target="_blank" rel="noreferrer">
-          <Icon name="book" size={20} />
-          <span>{m.about_guide_link()}</span>
-        </a>
-        <a href={privacyUrl} target="_blank" rel="noreferrer" data-about-link="privacy">
-          <Icon name="shield" size={20} />
-          <span>{m.about_privacy_link()}</span>
-        </a>
-        <a href={SOURCE_URL} target="_blank" rel="noreferrer" data-about-link="source">
-          <Icon name="code" size={20} />
-          <span>{m.about_source_link()}</span>
-        </a>
-        <a href="/settings/licences" data-about-link="licences">
-          <Icon name="note" size={20} />
-          <span>{m.about_licences_link()}</span>
-        </a>
+      <!-- A list rather than the two buttons it was: five ways out of a
+           sheet read as rows, the shape About screens settle on (Spotify's
+           Third-party licences, Shop's Licenses), and a grid of five leaves
+           one button alone on its last line. The four that leave the app
+           say so at their trailing edge, where the one that stays in it
+           keeps the chevron every Settings row carries (phase 15
+           release-blockers ticket 10). -->
+      {#snippet external()}<Icon name="external" size={20} />{/snippet}
+      <nav class="about-links" aria-label={m.about()}>
+        <ListCard>
+          <ListRow key="about-guide" icon="book" title={m.about_guide_link()} href={guideUrl} target="_blank" rel="noreferrer" chevron={false} trailing={external} />
+          <ListRow key="about-site" icon="globe" title={m.about_site_link()} href={SITE_URL} target="_blank" rel="noreferrer" chevron={false} trailing={external} />
+          <ListRow key="about-privacy" icon="shield" title={m.about_privacy_link()} href={privacyUrl} target="_blank" rel="noreferrer" chevron={false} trailing={external} data-about-link="privacy" />
+          <ListRow key="about-source" icon="code" title={m.about_source_link()} href={SOURCE_URL} target="_blank" rel="noreferrer" chevron={false} trailing={external} data-about-link="source" />
+          <ListRow key="about-licences" icon="note" title={m.about_licences_link()} href="/settings/licences" data-about-link="licences" />
+        </ListCard>
       </nav>
     </div>
   </Sheet>
@@ -886,33 +881,6 @@
     line-height: 1.55;
   }
 
-  .about-links {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-3);
-  }
-
-  .about-links a {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    color: var(--accent);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    text-align: center;
-    text-decoration: none;
-  }
-
-  .about-links a:focus-visible {
-    outline: 3px solid var(--accent);
-    outline-offset: 2px;
-  }
 
   /* The frame that travels between flags: the chosen block's own 3px
      --text frame (screens.css), lifted off the block and moved, so a pick

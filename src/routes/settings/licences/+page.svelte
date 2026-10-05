@@ -93,16 +93,19 @@
 
   /* A licence keeps its own line breaks: lists, numbered sections and the
      all-caps warranty paragraph read as written. Wrapped rather than
-     scrolled sideways, so nothing is ever off the edge of a phone. */
+     scrolled sideways, so nothing is ever off the edge of a phone. In the
+     body face at the reading size rather than a 12px monospace: these are
+     read, not compared column by column, and a narrow monospace column at
+     390px set the MIT text in 38-character lines. */
   .licence-text {
     margin: 0 0 var(--space-4);
-    padding: var(--space-3);
+    padding: var(--space-4);
     border-radius: var(--r-block);
     background: var(--surface-2);
-    color: var(--text-2);
-    font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: var(--text-xs);
-    line-height: 1.5;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: 1.55;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
