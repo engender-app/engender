@@ -181,6 +181,7 @@ async function captureStartupFailure(error) {
         ready: document.body.hasAttribute(readyAttribute),
         stage: document.body.getAttribute('data-long-journal-stage'),
         fixtureDays: document.body.getAttribute('data-long-journal-days'),
+        capturedAt: performance.now(), progress: window.__longJournalProgress ?? null,
         timeOrigin: performance.timeOrigin, userAgent: navigator.userAgent,
         hardwareConcurrency: navigator.hardwareConcurrency, deviceMemory: navigator.deviceMemory,
         crossOriginIsolated,
