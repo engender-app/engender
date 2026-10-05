@@ -19,14 +19,17 @@
      already answers disguise with `--surface-2` and `--text`, so a gate
      needs no disguised variant of its own to get wrong.
 
-     **What the title says, once, for all six.** A gate greets you if it knows
-     your name and shows the app's own name if it does not (rule 15). Only the
-     mid-session lock can do the first: everywhere else the display name lives
-     in the encrypted journal and the screen renders before it can be read,
-     which is what the three separate greetings this replaced were each
-     working around - "Hi" with nobody to say it to, "Welcome back" on a screen
-     that cannot know whether anybody has been here before. So an unlock's
-     title is the wordmark, whichever secret it asks for, and it is the same
+     **What the title says, once, for all six.** An unlock never says the
+     person's name. The mid-session lock used to greet by name because the
+     journal was open behind it, but a lock screen is the surface most likely
+     to be read by somebody other than its owner, and the chosen name can out
+     the person holding the phone, disguise or not (release-blockers ticket
+     12). Everywhere else the name lives in the encrypted journal and the
+     screen renders before it can be read anyway, which is what the three
+     separate greetings this replaced were each working around - "Hi" with
+     nobody to say it to, "Welcome back" on a screen that cannot know whether
+     anybody has been here before. So an unlock's title is the wordmark,
+     whichever secret it asks for, and it is the same
      object at the same size Home paints on its own field a frame later, which
      is what the handover closes around. Always through `appWordmark`, never
      `m.app_name()`: under disguise the name on a lock screen is the one that

@@ -59,6 +59,8 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
   import { wipe } from '$lib/motion/reveal';
@@ -144,6 +146,22 @@
       cleared the gate and still found no resonance to measure. */
   let extraVowelFormants = $state<Record<'i' | 'u', Formants | null>>({ i: null, u: null });
   let note = $state('');
+  let takeSaved = $state(false);
+
+  /* A recorded take lives only here until Save, so leaving the screen or
+     switching to another tab used to drop it without a word (audit
+     L05-02). Leaving asks first while a take is unsaved (leaveGuard.ts);
+     the page routes its tab switch through `leave`. */
+  const guard = leaveGuard({
+    holding: () => passageTake !== null && !takeSaved,
+    busy: () => saving
+  });
+
+  /** Run `after` now if no take would be lost, otherwise once the person
+      has chosen to discard it. */
+  export function leave(after: () => void) {
+    guard.request(after);
+  }
 
   /** The corner-vowel scaling factor, fitted across whichever of the three
       held vowels came back with a usable pair (audio/vowelScale.ts, ticket
@@ -428,6 +446,7 @@
         captureChain: vowelTake?.captureChain ?? passageTake.captureChain,
         resonanceScale
       });
+      takeSaved = true;
       toast(m.vb_saved());
       onSaved();
     } finally {
@@ -725,6 +744,8 @@
     </SaveBar>
   {/if}
 </div>
+
+<DiscardSheet {guard} body={m.vb_discard_body()} />
 
 <Sheet open={editingPassage} title={m.vb_passage_own_title()} onClose={() => (editingPassage = false)}>
   <p class="muted small">{m.vb_passage_own_hint()}</p>

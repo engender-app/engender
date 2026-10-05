@@ -178,7 +178,7 @@ for (const failure of ['star', 'debrief'] as const) {
     assert.equal(entry.starred, true);
     assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
     assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
-    assert.equal((await journal.stock.getEntries())[0].quantity, 28);
+    assert.equal((await journal.stock.getEntries())[0].quantity, 30);
   });
 }
 
@@ -1019,6 +1019,75 @@ test('the id-only bad-moment read answers the same entry, without hydrating it',
   assert.equal(await journal.entries.latestBadMomentEntryId(), undefined);
 });
 
+test('a contextual dose consumes one tablet in projection without rewriting the recorded count', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({
+    drug: 'Estradiol', quantity: 30, unit: 'tablets', recordedEpochDay: 100
+  });
+
+  await journal.entries.upsertEntry({
+    epochDay: 100, mood: 4,
+    doseLog: { dose: 2, doseUnit: 'mg', drug: 'Estradiol' }
+  });
+
+  assert.equal((await journal.stock.getEntries())[0].quantity, 30);
+  assert.equal((await journal.stock.getProjections(100))[0].projection.remaining, 29);
+  assert.equal((await journal.doses.getDoses(100, 100))[0].source, 'person');
+});
+
+for (const route of ['oral', 'sublingual', 'im', 'sc', 'patch', 'gel'] as const) {
+  test(`a contextual ${route} dose stores only metadata belonging to its route`, async () => {
+    const { journal } = await journalWithBuiltIns();
+    await journal.entries.upsertEntry({
+      epochDay: 100, mood: 4,
+      doseLog: {
+        dose: 2, doseUnit: 'mg', route,
+        injectionSite: 'ventrogluteal-left', vehicle: 'oil', applicationSite: 'abdomen'
+      }
+    });
+
+    const [dose] = await journal.doses.getDoses(100, 100);
+    assert.equal(dose.route, route);
+    assert.equal(dose.source, 'person');
+    assert.deepEqual(await journal.archive.snapshot().then((snapshot) => snapshot.journal.doseEvents.map((row) => ({
+      injectionSite: row.injectionSite, vehicle: row.vehicle, applicationSite: row.applicationSite
+    }))), [{
+      injectionSite: route === 'im' || route === 'sc' ? 'ventrogluteal-left' : null,
+      vehicle: route === 'im' || route === 'sc' ? 'oil' : null,
+      applicationSite: route === 'patch' || route === 'gel' ? 'abdomen' : null
+    }]);
+  });
+
+  test(`a contextual ${route} dose keeps uncollected sites unknown and remains person-authored`, async () => {
+    const { journal } = await journalWithBuiltIns();
+    await journal.entries.upsertEntry({
+      epochDay: 100, mood: 4,
+      doseLog: { dose: 2, doseUnit: 'mg', route }
+    });
+
+    const [dose] = await journal.doses.getDoses(100, 100);
+    assert.equal(dose.route, route);
+    assert.equal(dose.source, 'person');
+    assert.deepEqual(await journal.archive.snapshot().then((snapshot) => snapshot.journal.doseEvents.map((row) => ({
+      injectionSite: row.injectionSite, vehicle: row.vehicle, applicationSite: row.applicationSite
+    }))), [{ injectionSite: null, vehicle: null, applicationSite: null }]);
+  });
+}
+
+test('a skipped contextual dose leaves both recorded and projected stock unchanged', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({
+    drug: 'Estradiol', quantity: 30, unit: 'tablets', recordedEpochDay: 100
+  });
+  await journal.entries.upsertEntry({
+    epochDay: 100, mood: 4,
+    doseLog: { dose: 2, doseUnit: 'mg', drug: 'Estradiol', status: 'skipped' }
+  });
+
+  assert.equal((await journal.stock.getEntries())[0].quantity, 30);
+  assert.equal((await journal.stock.getProjections(100))[0].projection.remaining, 30);
+});
+
 test('upsertEntry commits contextual sub-records atomically across models', async () => {
   const { journal } = await journalWithBuiltIns();
 
@@ -1084,7 +1153,7 @@ test('upsertEntry commits contextual sub-records atomically across models', asyn
   assert.equal(feelings[0].mood, 5);
   assert.equal(feelings[0].note, 'Felt euphoric when introduced');
 
-  // 3. Dose event was logged and stock decremented
+  // 3. The dose event leaves the recorded stock count alone.
   const doses = await journal.doses.getDoses(100, 100);
   assert.equal(doses.length, 1);
   assert.equal(doses[0].dose, 2);
@@ -1092,7 +1161,7 @@ test('upsertEntry commits contextual sub-records atomically across models', asyn
 
   const stocks = await journal.stock.getEntries();
   const estradiolStock = stocks.find((s) => s.drug === 'Estradiol');
-  assert.equal(estradiolStock?.quantity, 28);
+  assert.equal(estradiolStock?.quantity, 30);
 
   // 4. Procedure recovery note was saved
   const procs = await journal.procedures.getProcedures();

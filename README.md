@@ -92,11 +92,12 @@ genderfluid, bisexual, lesbian, pansexual, rainbow, agender, gay men,
 genderqueer, intersex, asexual, demiboy, demigirl, trigender and Polish.
 On Android, the launcher icon follows your chosen palette.
 
-Disguise mode uses a neutral name and icon and hides pride motifs. Quick
-exit can cover the app with decoy notes without showing journal content.
-An app lock controls access to the journal, and lock screens show no entries
-or other journal data. Android reminders use a generic label by default;
-you can choose to show their titles instead.
+Disguise mode uses a neutral name and icon and hides pride motifs. An app
+lock controls access to the journal, and lock screens show no entries or
+other journal data. Lock timing decides when the lock comes back: as soon as
+you leave the app, after one or five minutes away, or only on a restart.
+Android reminders use a generic label by default; you can choose to show
+their titles instead.
 
 The layout adapts to the space available, with a bottom navigation bar on
 narrow screens and a rail on wider ones. The app uses bundled fonts and
@@ -134,6 +135,10 @@ another device. Android also supports scheduled encrypted backups.
 The import tools accept supported exports from Daylio, Day One, TransTracks,
 Track & Graph and Pixels. Plain CSV and JSON exports are available when you
 want to work with your own records outside the app.
+
+Daylio backups may be up to 1024 MiB on disk. ZIP imports from Daylio, Day One
+and TransTracks allow up to 1536 MiB of decompressed content. Large imports
+also need enough free memory on the device.
 
 An optional recovery key can unlock the journal on the device that still
 holds it. It cannot restore deleted data, move a journal to another device
@@ -290,6 +295,18 @@ container queries. User-facing strings live in
 [messages/en.json](messages/en.json) and
 [messages/pl.json](messages/pl.json). Native Android code is in
 [android](android), and verification scripts are in [tests](tests).
+
+For copy review, run `npm run strings` and open the local URL it prints.
+The editor shows English and Polish together, with theme and review filters.
+Save individual fields or use **Save all changes**, which includes edits
+hidden by filters. Review checkboxes work per key or for the shown keys in a
+group. Progress is saved in `.scratch/copy-review.json`; changing either
+language makes that key need review again. Unsaved edits stay in the browser
+until saved, and conflicting disk changes are reported without overwriting them.
+Find and replace matches literal, case-sensitive text in Polish, English, or
+both. Limit it to shown keys or choose **All keys (global)**. Preview lists
+every affected field, including plural forms. Applying replacements creates
+drafts; **Save all changes** writes them to the catalogues.
 
 ## Releases and hosting
 

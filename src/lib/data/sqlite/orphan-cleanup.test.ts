@@ -69,7 +69,7 @@ test('v85 repairs every foreign key and preserves valid rows and independently a
     assert.equal((await driver.query('PRAGMA foreign_key_check')).length, keys.length);
     await driver.setUserVersion(84);
 
-    await runMigrations(driver, noopFileOps(), migrations);
+    await runMigrations(driver, noopFileOps(), migrations.filter((m) => m.version <= 85));
 
     assert.equal(await driver.getUserVersion(), 85);
     assert.equal((await driver.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
@@ -115,7 +115,7 @@ test.each(optionalLinks)('v85 clears stale $name without deleting authored rows 
     assert.equal((await driver.query('PRAGMA foreign_key_check')).length, 1);
     await driver.setUserVersion(84);
 
-    await runMigrations(driver, noopFileOps(), migrations);
+    await runMigrations(driver, noopFileOps(), migrations.filter((m) => m.version <= 85));
 
     assert.equal(await driver.getUserVersion(), 85);
     assert.equal((await driver.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
@@ -123,7 +123,7 @@ test.each(optionalLinks)('v85 clears stale $name without deleting authored rows 
     for (const [name, rows] of expected) {
       assert.deepEqual((await driver.query(`SELECT * FROM "${name}"`)).map((row) => ({ ...row })), rows, name);
     }
-    await runMigrations(driver, noopFileOps(), migrations);
+    await runMigrations(driver, noopFileOps(), migrations.filter((m) => m.version <= 85));
     for (const [name, rows] of expected) {
       assert.deepEqual((await driver.query(`SELECT * FROM "${name}"`)).map((row) => ({ ...row })), rows, `clean boot: ${name}`);
     }

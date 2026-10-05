@@ -239,7 +239,12 @@ export function fieldPart(
 function sheetTravel(node: Element): number {
   const rect = node.getBoundingClientRect();
   const frame = node.closest('[data-sheet-scrim]')?.getBoundingClientRect();
-  return Math.max(rect.height, (frame?.bottom ?? rect.bottom) - rect.top);
+  /* The viewport's own bottom as well: on a screen whose scrim ends above
+     it, travelling to the scrim's edge left the top 12px of the sheet on
+     screen at the end of the exit, where it vanished in one frame (phase 15
+     ticket 04, the document screen). */
+  const viewportBottom = typeof window === 'undefined' ? 0 : window.innerHeight;
+  return Math.max(rect.height, (frame?.bottom ?? rect.bottom) - rect.top, viewportBottom - rect.top);
 }
 
 /** Let Android prepare the scrim and sheet layer before panel travel. */

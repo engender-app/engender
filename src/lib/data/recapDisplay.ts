@@ -35,8 +35,8 @@ export function recapDimChange(recap: Pick<Recap, 'biggestDimensionChange'>): Re
   };
 }
 
-export function recapTopTags(recap: Pick<Recap, 'topTags'>): { label: string; count: number }[] {
-  return recap.topTags.map((t) => ({ label: vocabulary.tag(t.id)?.label ?? t.id, count: t.count }));
+export function recapTopTags(recap: Pick<Recap, 'topTags'>): { id: string; label: string; count: number }[] {
+  return recap.topTags.map((t) => ({ id: t.id, label: vocabulary.tag(t.id)?.label ?? t.id, count: t.count }));
 }
 
 /** A wrapped's tag insights, with each tag's own wording on it.

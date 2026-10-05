@@ -45,6 +45,15 @@ const EXPECTED = [
 ];
 
 describe('android permissions', () => {
+  it('remains installable without camera, autofocus or microphone hardware', () => {
+    for (const feature of ['camera', 'camera.autofocus', 'microphone']) {
+      const declaration = [...manifest.matchAll(/<uses-feature\b[^>]*>/g)]
+        .find(([tag]) => tag.includes(`android:name="android.hardware.${feature}"`));
+      expect(declaration, feature).toBeDefined();
+      expect(declaration![0]).toContain('android:required="false"');
+    }
+  });
+
   it('does not ask for INTERNET, which is the claim a reader can check', () => {
     expect(declared()).not.toContain('INTERNET');
   });
@@ -61,6 +70,24 @@ describe('privacy policy names every permission the manifest declares (phase 12 
 
   it.each(EXPECTED)('%s appears in the Polish policy', (permission) => {
     expect(privacyPolicyPl).toContain(permission);
+  });
+
+  /* What ships is the merged manifest, and androidx.biometric adds these
+     two to it (the note at the top of this file). A reader of the installed
+     app sees them, so the policy has to name them too (phase 15
+     release-blockers ticket 10, audit findings S-09 and SEC-04). */
+  const MERGED_IN = ['USE_BIOMETRIC', 'USE_FINGERPRINT'];
+
+  it.each(MERGED_IN)('%s, merged in by androidx.biometric, appears in both policies', (permission) => {
+    expect(privacyPolicyEn).toContain(permission);
+    expect(privacyPolicyPl).toContain(permission);
+  });
+
+  it('both policies carry the two sections Play looks for: a contact and how to delete', () => {
+    expect(privacyPolicyEn).toMatch(/^## Contact$/m);
+    expect(privacyPolicyEn).toMatch(/^## Deleting your data$/m);
+    expect(privacyPolicyPl).toMatch(/^## Kontakt$/m);
+    expect(privacyPolicyPl).toMatch(/^## Usuwanie danych$/m);
   });
 
   it('both policies still say the app requests no INTERNET permission', () => {

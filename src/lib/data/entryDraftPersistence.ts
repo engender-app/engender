@@ -111,3 +111,21 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
      chip name this build no longer draws would open nothing forever. */
   draft.openSection = isEntrySection(persisted.openSection) ? persisted.openSection : null;
 }
+
+/** What the draft holds, as one comparable string, for telling whether
+    leaving the editor would lose anything (ticket 04, CONTEXT: "Draft").
+
+    The mirror's snapshot plus how many photos, recordings and videos were
+    added in this edit, which the snapshot leaves out because their bytes
+    are too large for it. Which section is open is left out: folding a
+    chip is not an edit. */
+export function entryDraftFingerprint(draft: EntryDraft): string {
+  const { openSection: _openSection, ...content } = serializeDraft(draft);
+  const added = (items: readonly { kind: string }[]) => items.filter((item) => item.kind !== 'stored').length;
+  return JSON.stringify({
+    ...content,
+    addedPhotos: added(draft.photos),
+    addedRecordings: added(draft.recordings),
+    addedVideos: added(draft.videos)
+  });
+}

@@ -87,7 +87,19 @@ export type DoseEventInput =
      DoseEvent's nullable site already admits on the way out (types.ts).
      Relaxing the three arms above would have let a person's own injection be
      saved with no site, which is what their strictness exists to stop. */
-  | (DoseInputFields & { route: DoseRoute; source: 'schedule' });
+  | (DoseInputFields & { route: DoseRoute; source: 'schedule' })
+  /* The entry chip records a dose the person confirms without opening the
+     site picker. Unknown sites stay unknown; this is still their own log,
+     not a schedule's standing instruction. The context is input-only and
+     leaves the detailed dose editor's required sites unchanged. */
+  | (DoseInputFields & {
+      route: DoseRoute;
+      source: 'person';
+      context: 'entry';
+      injectionSite?: InjectionSiteKey;
+      vehicle?: InjectionVehicle;
+      applicationSite?: ApplicationSiteKey;
+    });
 
 interface DoseScheduleInput {
   episodeId: string;

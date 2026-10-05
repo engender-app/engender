@@ -23,7 +23,7 @@
 
 import { open, seal, SEAL_OVERHEAD } from '../../crypto/aesGcm';
 import { ARCHIVE_ARGON2_PARAMS, type Argon2Params } from '../../crypto/params';
-import { currentArchiveFormatVersion } from './codec';
+import { ARCHIVE_FORMAT_VERSION } from './codec';
 import { CorruptArchiveError, u32 } from './wire';
 
 /** "GDIARY". Ahead of the version, so a file from a format that changes
@@ -43,7 +43,7 @@ const MAX_HEADER_JSON = 64 * 1024;
 const MAX_KDF_MEMORY_SIZE = ARCHIVE_ARGON2_PARAMS.memorySize * 8;
 const MAX_KDF_ITERATIONS = ARCHIVE_ARGON2_PARAMS.iterations * 8;
 
-export const ARCHIVE_FORMAT_VERSION = currentArchiveFormatVersion();
+export { ARCHIVE_FORMAT_VERSION } from './codec';
 
 /** Roughly 1 MB (ADR-0007). Small enough that peak memory stays bounded on
     a phone, large enough that the 28 bytes of nonce and tag per chunk are

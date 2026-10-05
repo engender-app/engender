@@ -91,6 +91,9 @@
     }
     let cancelled = false;
     requestAnimationFrame(async () => {
+      /* A screen left within a frame of its reads answering has already
+         unbound `members`, and reading it threw into the window. */
+      if (cancelled) return;
       const exits = members
         .getAnimations({ subtree: true })
         .filter(

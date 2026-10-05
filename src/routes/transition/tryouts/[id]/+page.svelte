@@ -11,7 +11,7 @@
      them, on the kit's split row, so a row is one control and the delete
      is another rather than a button floating inside a row that also opens
      something. */
-  import { beforeNavigate, goto } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -23,7 +23,7 @@
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
+  import ChoiceChips from '$lib/components/kit/ChoiceChips.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
@@ -48,7 +48,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
-  import Sheet from '$lib/components/Sheet.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import { OFFERS, answerOffer, type OfferAnswer, type TryoutAdoption } from '$lib/data/offers';
 
   /* Three areas below the form: how it has felt, what it looked like, and
@@ -80,7 +80,8 @@
       description: found.description ?? '',
       start: dateInputValueFromEpochDay(found.startEpochDay),
       end: found.endEpochDay == null ? '' : dateInputValueFromEpochDay(found.endEpochDay)
-    })
+    }),
+    saving: () => saving
   });
   let draft = $derived(detail.draft);
   let saving = $state(false);
@@ -89,7 +90,6 @@
   let creationId = $state<string | null>(null);
   let navigationFailed = $state(false);
   let outcome: HTMLParagraphElement | undefined = $state();
-  let pendingDismiss = $state<(() => void) | null>(null);
 
   $effect(() => {
     detail.id;
@@ -97,29 +97,11 @@
     navigationFailed = false;
     saved = false;
     saveFailed = false;
-    pendingDismiss = null;
   });
 
   $effect(() => {
     if (detail.changed) saved = false;
   });
-
-  beforeNavigate((navigation) => {
-    if (!saving && !detail.changed) return;
-    navigation.cancel();
-    if (saving || pendingDismiss || navigation.willUnload) return;
-    pendingDismiss = () => {
-      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
-      else if (navigation.to) void goto(navigation.to.url).catch(() => {});
-    };
-  });
-
-  function discard() {
-    const after = pendingDismiss;
-    pendingDismiss = null;
-    detail.discard();
-    after?.();
-  }
 
   async function focusOutcome() {
     await tick();
@@ -369,11 +351,12 @@
   <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
-        <Segmented
+        <ChoiceChips
           name={m.tryout_kind_label()}
           options={KIND_OPTIONS}
           value={draft.kind}
           onChange={(v) => (draft.kind = v as TryoutKind)}
+          key="tryout-kind"
         />
       {/snippet}
     </Field>
@@ -608,14 +591,7 @@
   {/if}
 </div>
 
-<Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
-  <h3>{m.record_discard_title()}</h3>
-  <p class="muted">{m.record_discard_body()}</p>
-  <div class="discard-actions">
-    <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}><span>{m.record_keep_editing()}</span></button>
-    <button class="btn btn-danger" data-discard-record onclick={discard}><span>{m.vb_practice_discard()}</span></button>
-  </div>
-</Sheet>
+<DiscardSheet guard={detail.guard} />
 
 <style>
   fieldset {
@@ -623,10 +599,5 @@
     padding: 0;
     margin: 0;
     min-width: 0;
-  }
-  .discard-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
   }
 </style>

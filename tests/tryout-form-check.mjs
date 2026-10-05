@@ -10,15 +10,9 @@
       front of it. The name and the description are separate elements now,
       so this reads both back off the DOM the way a screen reader would.
 
-   2. Whether the overflow affordance on the kind picker is legible, which
-      is not the same question as whether it is in the DOM. The chevron was
-      present, positioned, visible and painted on top of a clipped label, so
-      at 390px the control rendered "Garme>e" and the mark was mush. The
-      check is a pixel one: crop the chevron's own box twice, once as
-      shipped and once with every segment label hidden, and the two crops
-      have to match - which is exactly the promise the control's own comment
-      makes ("a fixed hint that never depends on how a neighbouring label
-      happens to break").
+   2. Whether the kind picker keeps every label readable at phone widths.
+      Phase 15 ticket 05 replaces the scrolling track with wrapping chips.
+      Labels must fit inside their chips and the group without clipping.
 
    3. That all six kinds are reachable at 320px by keyboard and by touch,
       that creating, saving and reopening a tryout still keeps what was
@@ -29,11 +23,10 @@
    Run: VITE_DEMO=1 npm run build && node tests/tryout-form-check.mjs
         (npm run test:tryout-form does both) */
 import assert from 'node:assert/strict';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
 import { launchChromium, settlePage, fillDate } from './browser-harness.mjs';
-import { decodePng } from './png-decode.mjs';
 
 const gallery = process.argv.includes('--gallery');
 const out = resolve(process.env.TRYOUT_FORM_SHOTS ?? '.claude/tryout-form-shots');
@@ -75,20 +68,6 @@ const fieldReading = (page, selector) =>
     return { name: label?.textContent?.trim() ?? null, described };
   }, selector);
 
-/** The pixels inside one element's own box. */
-async function crop(page, selector) {
-  const buffer = await page.locator(selector).first().screenshot();
-  const png = decodePng(buffer);
-  return { width: png.width, height: png.height, pixels: png.pixels };
-}
-
-const differingFraction = (a, b) => {
-  assert.equal(a.width, b.width, 'crops differ in width');
-  assert.equal(a.height, b.height, 'crops differ in height');
-  let differing = 0;
-  for (let i = 0; i < a.pixels.length; i++) if (a.pixels[i] !== b.pixels[i]) differing++;
-  return differing / a.pixels.length;
-};
 
 try {
   for (const language of ['en', 'pl']) {
@@ -122,29 +101,25 @@ try {
         assert.ok(read?.name, `${selector} has a label of its own`);
       }
 
-      // 2. Every kind reachable, and the overflow mark legible.
-      const track = page.locator('[role="radiogroup"]').first();
-      const overflow = await page.evaluate(() => {
-        const group = document.querySelector('[role="radiogroup"]');
-        return {
-          scrolls: group.scrollWidth > group.clientWidth + 1,
-          hint: Boolean(document.querySelector('.segmented-hint'))
-        };
+      // 2. Every kind stays readable inside the wrapping picker.
+      const track = page.locator('[data-choice-chips]').first();
+      assert.equal(await track.locator('[role="radio"]').count(), KINDS.length);
+      const labelsFit = await track.evaluate((group) => {
+        const bounds = group.getBoundingClientRect();
+        return group.scrollWidth <= group.clientWidth + 1 &&
+          [...group.querySelectorAll('[role="radio"]')].every((chip) => {
+            const box = chip.getBoundingClientRect();
+            const label = document.createRange();
+            label.selectNodeContents(chip);
+            const text = label.getBoundingClientRect();
+            return box.left >= bounds.left - 1 && box.right <= bounds.right + 1 &&
+              box.top >= bounds.top - 1 && box.bottom <= bounds.bottom + 1 &&
+              text.left >= box.left - 1 && text.right <= box.right + 1 &&
+              text.top >= box.top - 1 && text.bottom <= box.bottom + 1 &&
+              chip.scrollWidth <= chip.clientWidth + 1;
+          });
       });
-      assert.ok(overflow.scrolls, 'six kind labels overflow a phone-width track');
-      assert.ok(overflow.hint, 'an overflowing kind picker shows its chevron');
-
-      const shipped = await crop(page, '.segmented-hint svg');
-      await page.addStyleTag({ content: '.segmented .segment { visibility: hidden; }' });
-      const alone = await crop(page, '.segmented-hint svg');
-      const polluted = differingFraction(shipped, alone);
-      assert.ok(
-        polluted < 0.01,
-        `the chevron is drawn on the track, not on a clipped label (${(polluted * 100).toFixed(1)}% of its pixels change when the labels are hidden)`
-      );
-      await page.evaluate(() => document.querySelectorAll('style').forEach((s) => {
-        if (s.textContent.includes('.segmented .segment { visibility: hidden; }')) s.remove();
-      }));
+      assert.ok(labelsFit, 'all six kind labels fit without clipping or horizontal scrolling');
 
       // Touch: every segment clears the product's 48px floor, and a tap on
       // one selects that one rather than a neighbour.
@@ -152,7 +127,16 @@ try {
         const segment = page.locator(`[data-segment="${kind}"]`);
         await segment.scrollIntoViewIfNeeded();
         const box = await segment.boundingBox();
-        assert.ok(box.height >= 48, `${kind} is ${box.height}px tall`);
+        const overlay = await segment.evaluate((el) => {
+          const after = getComputedStyle(el, '::after');
+          return after.content !== 'none' && after.position === 'absolute'
+            ? { width: parseFloat(after.width) || 0, height: parseFloat(after.height) || 0 }
+            : { width: 0, height: 0 };
+        });
+        const targetWidth = Math.max(box.width, overlay.width);
+        const targetHeight = Math.max(box.height, overlay.height);
+        assert.ok(targetWidth >= 48 && targetHeight >= 48,
+          `${kind} touch target is ${targetWidth}x${targetHeight}px, requires 48px`);
         await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
         assert.equal(
           await segment.getAttribute('aria-checked'),
@@ -241,7 +225,7 @@ try {
       assert.ok(!names.some((n) => n.includes('Never saved')), 'leaving the form without saving writes nothing');
 
       await page.close();
-      console.log(`PASS ${language} ${width}px: one label and one help, six kinds reachable, chevron legible, record kept`);
+      console.log(`PASS ${language} ${width}px: one label and one help, six kinds readable and reachable, record kept`);
     }
   }
   assert.deepEqual(errors, [], 'no browser errors');
