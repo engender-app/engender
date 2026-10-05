@@ -46,6 +46,14 @@ export function recordHandles(slug: string): RecordHandles {
   };
 }
 
+/** The two buttons of the discard question (DiscardSheet.svelte). One
+    pair for every draft, so a flow that leaves changed work can answer
+    the question without knowing which screen asked it. */
+export const discardHandles = {
+  keep: 'data-keep-editing',
+  discard: 'data-discard-record'
+} as const;
+
 /** The slug behind a generated handle, or null if no record sheet could
     have produced it. */
 /* recordHandleSlug stays exported for its own test, and cross-checked in
