@@ -7,7 +7,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-import { timestampAtLocalTime } from '../epochDay.ts';
+import { timestampAtLocalTime, todayEpochDay } from '../epochDay.ts';
 import type { Journal } from './journal.ts';
 import type { LabResultInput } from './labs.ts';
 import type { LabResult } from '../types.ts';
@@ -1276,7 +1276,7 @@ test('every rule shape written by the journal passes the schema recurrence CHECK
     stored.map((r) => [r.recurrence, r.interval, r.anchorEpochDay, r.epochDay]),
     [
       ['DAILY', null, null, null],
-      ['WEEKLY', null, null, null],
+      ['EVERY_N_DAYS', 7, todayEpochDay(), null],
       ['EVERY_N_DAYS', 3, 100, null],
       [null, null, null, 200]
     ]
@@ -1479,4 +1479,19 @@ test("a procedure's checklist is an ordinary owned checklist, created on the fir
   assert.equal((await journal.procedures.getChecklist(id))?.items.length, 2, 'the second item joins the same checklist');
 
   await assert.rejects(journal.procedures.addChecklistItem('nope', 'x'), /unknown procedure/);
+});
+
+test('editing a legacy Weekly input preserves its existing seven-day anchor', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const base = { title: 'Injection', type: 'injection' as const, time: '20:00', enabled: true, epochDay: null };
+  const id = await journal.reminders.upsertReminder({
+    ...base, recurrence: 'EVERY_N_DAYS', interval: 7, anchorEpochDay: 20675
+  });
+  await journal.reminders.upsertReminder({
+    ...base, id, title: 'Renamed', recurrence: 'WEEKLY', interval: null, anchorEpochDay: null
+  });
+  const [stored] = await journal.reminders.getReminders();
+  assert.equal(stored.anchorEpochDay, 20675);
+  assert.equal(stored.recurrence, 'EVERY_N_DAYS');
+  assert.equal(stored.interval, 7);
 });
