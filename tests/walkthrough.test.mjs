@@ -1156,6 +1156,56 @@ try {
 } catch (e) { fail('day detail truthfulness', e); }
 });
 
+await flow('duplicate tag labels survive saving', async () => {
+try {
+  const errorOffset = errors.length;
+  await fresh('/');
+  const countBefore = Number((await page.locator('[data-home-count]').textContent()).match(/\d+/)[0]);
+  await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-new-tag-group]').click();
+  await page.locator('#newgroup-input').fill('Duplicate label regression');
+  await page.locator('[data-save-new-tag-group]').click();
+  const group = page.locator('[data-tag-group]').filter({ hasText: 'Duplicate label regression' }); // text-under-test: this flow's new group name
+  await group.locator('[data-add-tag]').click();
+  await page.locator('#newtag-input').fill('social dysphoria');
+  await page.locator('[data-save-new-tag]').click();
+  await group.locator('[data-managed-tag-label]').filter({ hasText: /^social dysphoria$/ }).waitFor(); // text-under-test: the custom label typed above
+
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
+  await page.locator('[data-mood="3"]').click();
+  await page.locator('[data-section-chip="tags"]').click();
+  const tags = page.locator('[data-tag]').filter({ hasText: /^social dysphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
+  if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
+  await tags.nth(0).click();
+  await tags.nth(1).click();
+  if (!(await tags.evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-pressed') === 'true')))) {
+    throw new Error('the editor did not select both equal tag labels');
+  }
+  await page.locator('[data-save]').click();
+  await page.waitForURL(BASE + '/');
+  await page.waitForSelector('[data-home-log]');
+  await page.waitForFunction((before) => {
+    const count = document.querySelector('[data-home-count]')?.textContent?.match(/\d+/);
+    return count && Number(count[0]) === before + 1;
+  }, countBefore);
+
+  for (const path of ['/calendar', '/day/today']) {
+    await page.goto(BASE + path, { waitUntil: 'networkidle' });
+    await booted();
+    const entry = page.locator('[data-entry-card]').filter({ hasText: 'Duplicate tag labels survive saving' }); // text-under-test: the note typed by this flow
+    await entry.waitFor();
+    if (await entry.locator('[data-entry-tag]').filter({ hasText: /^social dysphoria$/ }).count() !== 2) { // text-under-test: both saved equal labels
+      throw new Error(path + ' did not render both equal tag labels');
+    }
+  }
+  if (errors.length !== errorOffset) throw new Error(errors.slice(errorOffset).join('\n'));
+  ok('equal built-in and custom tag labels save, update Today, and both render on Journal and day detail without page errors');
+} catch (e) { fail('duplicate tag labels survive saving', e); }
+});
+
 /* 4c. a margin note: added, rendered as a layer, edited, deleted - and the
    entry's own note untouched by any of it (phase 8 features ticket 07).
    Grip handles only, per ADR-0029: data-margin-note-* rather than anything
@@ -6247,6 +6297,39 @@ try {
 } catch (e) { fail('daylio backup import', e); }
 });
 
+await flow('duplicate Daylio mood labels preview', async () => {
+try {
+  const errorOffset = errors.length;
+  const { daylioPayload, makeDaylioBackup } = await import('../src/lib/data/archive/test-support/daylio-backup.ts');
+  const payload = daylioPayload();
+  payload.customMoods[1].custom_name = 'Same mood label';
+  payload.customMoods[2].custom_name = 'Same mood label';
+  payload.customMoods.push({ id: 12, custom_name: 'built-in-0', mood_group_id: 4 });
+  const backup = await makeDaylioBackup(payload);
+
+  await fresh('/settings/export');
+  await page.locator('[data-daylio-backup]').click();
+  await page.waitForSelector('[data-pick-backup]');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('[data-pick-backup]').click();
+  await (await chooser).setFiles({ name: 'duplicate-moods.daylio', mimeType: 'application/octet-stream', buffer: Buffer.from(backup) });
+  const moods = page.locator('[data-backup-mood]').filter({ has: page.locator('[data-backup-mood-name]', { hasText: /^Same mood label$/ }) }); // text-under-test: the two fixture mood names
+  await moods.first().waitFor({ timeout: 15000 });
+  if (await moods.count() !== 2) throw new Error('the preview did not render both equal custom mood labels');
+  const positions = (await moods.locator('[data-backup-mood-position]').allTextContents()).map((value) => value.trim()[0]).sort();
+  if (JSON.stringify(positions) !== JSON.stringify(['1', '3'])) {
+    throw new Error('equal mood labels lost their distinct positions: ' + JSON.stringify(positions));
+  }
+  if (await page.locator('[data-backup-mood-name]').filter({ hasText: /^built-in-0$/ }).count() !== 1) { // text-under-test: the fixture name matching the former fallback key
+    throw new Error('the preview lost the custom name matching a built-in fallback');
+  }
+  if (errors.length !== errorOffset) throw new Error(errors.slice(errorOffset).join('\n'));
+  await page.locator('[data-sheet-scrim]').click({ position: { x: 4, y: 4 } });
+  await page.waitForSelector('[data-sheet-scrim]', { state: 'detached' });
+  ok('Daylio preview preserves equal custom mood labels, distinct positions, and a name matching a built-in fallback without page errors');
+} catch (e) { fail('duplicate Daylio mood labels preview', e); }
+});
+
 
 /* The rotation map's dots at the narrowest phone the app supports (phase 6
    ticket 13). Ticket 10 read the crowding on that figure as a reason to put
@@ -8578,6 +8661,38 @@ try {
 
   ok('a recovery key is made once, shown once, and removed from Settings');
 } catch (e) { fail('the recovery key', e); }
+});
+
+/* The licence notices (phase 15 release-blockers ticket 10): About links
+   to them, the build wrote one row per bundled package, and a row opens the
+   text its licence asks to travel with the app. Svelte is the package the
+   check names because every chunk carries its runtime, so a notices list
+   without it means the build read the wrong graph. Before the access-mode
+   flow for the reason the recovery key gives: after it, every screen is a
+   gate. */
+await flow('licence notices', async () => {
+try {
+  await fresh('/settings');
+  await page.locator('[data-list-row="about"]').click();
+  for (const link of ['privacy', 'source']) {
+    const href = await page.locator(`[data-about-link="${link}"]`).getAttribute('href');
+    if (!href?.startsWith('https://github.com/engender-app/engender')) {
+      throw new Error(`About's ${link} link goes to ${href}`);
+    }
+  }
+  await page.locator('[data-about-link="licences"]').click();
+  await page.waitForURL('**/settings/licences');
+  await page.waitForSelector('[data-licence="svelte"]');
+  const rows = await page.locator('[data-licence]').count();
+  if (rows < 20) throw new Error(`the notices list has ${rows} rows`);
+  await page.locator('[data-licence="svelte"]').click();
+  const text = page.locator('[data-licence-text]').first();
+  await text.waitFor();
+  if (!(await text.innerText()).includes('Permission is hereby granted')) {
+    throw new Error('svelte opens no MIT text');
+  }
+  ok(`About links to ${rows} licence notices, and a row opens its text`);
+} catch (e) { fail('licence notices', e); }
 });
 
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the

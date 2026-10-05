@@ -70,7 +70,7 @@
         say "scale" for it (CONTEXT: Gender dimension). Carries the signed
         movement as well as the two endpoints (spec 06). */
     dimChange: RecapDimChange | null;
-    topTags: { label: string; count: number }[];
+    topTags: { id: string; label: string; count: number }[];
     /** The journey anchor's duration (phase 5 ticket 25), already named and
         formatted. Optional and null by default so a caller with no anchor
         concept of its own does not have to pass one. */
@@ -200,7 +200,7 @@
 {#if topTags.length}
   <SectionHeading text={m.wrapped_tags()} />
   <div class="tag-row" data-wrapped-tags>
-    {#each topTags as t (t.label)}
+    {#each topTags as t (t.id)}
       <span class="tag-chip is-mini">{m.recap_tag_count({ label: t.label, count: String(t.count) })}</span>
     {/each}
   </div>
