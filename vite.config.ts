@@ -4,6 +4,8 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin } from 'vite';
 import sqlocal from 'sqlocal/vite';
 import { appVersion } from './scripts/app-version.mjs';
+import { lockfilePackages } from './scripts/check-licences.mjs';
+import { noticesFromDisk, packagePathOf } from './scripts/licence-notices.mjs';
 import capacitorConfig from './capacitor.config';
 
 /* What the client build actually emitted, written where src/service-worker.ts
@@ -147,6 +149,93 @@ function sharedWasmAssets() {
   };
 }
 
+/* The licence notices screen's data (phase 15 release-blockers ticket 10),
+   generated from what this build actually bundled.
+
+   /settings/licences imports `virtual:licence-notices`. Which packages
+   ship is only known once every module is in, and a module's own code
+   cannot wait for that, so the module is a placeholder string while the
+   graph builds, and the notices replace it as its chunk is rendered - by
+   which point the client graph is complete and every worker bundle, built
+   during the client's transform phase, has reported its modules through
+   the worker half of this plugin. Rendering happens before hashing, so the
+   chunk's name still follows its content.
+
+   A bundled package that cannot be given a complete notice fails the
+   client build: that is the check that every shipped package appears in
+   the notices. Under `vite dev` there is no bundle to read, so the screen
+   shows the lockfile's runtime dependencies instead. */
+const NOTICES_ID = 'virtual:licence-notices';
+const NOTICES_PLACEHOLDER = '__ENGENDER_LICENCE_NOTICES__';
+
+function licenceNotices() {
+  const workerModules = new Set<string>();
+  let serving = false;
+  let client = false;
+  let server = false;
+  let rendered: string | undefined;
+
+  const worker: Plugin = {
+    name: 'engender:licence-notices-worker',
+    generateBundle() {
+      for (const id of this.getModuleIds()) workerModules.add(id);
+    }
+  };
+
+  const main: Plugin = {
+    name: 'engender:licence-notices',
+    configResolved(config) {
+      serving = config.command === 'serve';
+      client = config.build.outDir.endsWith('/client');
+      server = config.build.outDir.endsWith('/server');
+    },
+    buildStart() {
+      rendered = undefined;
+    },
+    resolveId(id) {
+      return id === NOTICES_ID ? `\0${NOTICES_ID}` : undefined;
+    },
+    load(id) {
+      if (id !== `\0${NOTICES_ID}`) return;
+      if (serving) {
+        const runtime = lockfilePackages('.').filter((entry) => !entry.dev);
+        const { notices } = noticesFromDisk('.', runtime.map((entry) => entry.path));
+        return `export default ${JSON.stringify(notices)};`;
+      }
+      return `export default JSON.parse(${JSON.stringify(NOTICES_PLACEHOLDER)});`;
+    },
+    renderChunk(code) {
+      if (!code.includes(NOTICES_PLACEHOLDER)) return;
+      if (rendered === undefined) {
+        if (client) {
+          const shipped = [...this.getModuleIds(), ...workerModules].map(packagePathOf).filter((path) => path !== null);
+          const { notices, problems } = noticesFromDisk('.', shipped);
+          if (problems.length) this.error(`Licence notices are incomplete:\n${problems.join('\n')}`);
+          rendered = JSON.stringify(notices);
+        } else if (server) {
+          // The prerender's copy, which no browser ever loads.
+          rendered = JSON.stringify({ texts: [], sections: [] });
+        } else {
+          // A third kind of build would ship empty notices without a word.
+          this.error('Licence notices: a build that is neither the client nor the server renders them');
+        }
+      }
+      // Whatever quotes the minifier chose, the placeholder is one string
+      // literal. A function, so a `$&` inside a licence text stays literal.
+      const literal = new RegExp(`(["'\`])${NOTICES_PLACEHOLDER}\\1`, 'g');
+      const out = code.replace(literal, () => JSON.stringify(rendered));
+      if (out.includes(NOTICES_PLACEHOLDER)) this.error('Licence notices: the placeholder survived rendering');
+      return out;
+    }
+  };
+
+  return { main, worker };
+}
+
+/* One pair per build: each build loads this config afresh, so the worker
+   bundles of one client build report into that build's set and no other. */
+const notices = licenceNotices();
+
 /* The syntax floor, taken from the number the Android shell refuses to run
    below rather than written down twice.
 
@@ -166,6 +255,7 @@ const BUILD_TARGET = ['es2020', 'edge88', `chrome${minWebViewVersion}`, 'firefox
 
 export default defineConfig(({ command }) => ({
   build: { target: BUILD_TARGET },
+  worker: { plugins: () => [notices.worker] },
   // A literal, not an exported const, so Rollup can fold `if (__DEMO__)`
   // and drop the Alice persona and the demo bar from a production bundle
   // rather than shipping them behind a runtime flag. True while developing,
@@ -203,6 +293,7 @@ export default defineConfig(({ command }) => ({
     // Cross-Origin-Opener-Policy: same-origin itself.
     sqlocal(),
     sharedWasmAssets(),
+    notices.main,
     writeEmittedClientAssets(),
     // `vite preview` is what the walkthrough suite serves the built app
     // from, and it got neither header. Without them this Chromium has no

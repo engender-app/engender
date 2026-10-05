@@ -1261,7 +1261,7 @@ await block('U03 radio selection and disabled choices', 2, async () => {
   ok('MoodPicker: Space, arrows, Tab re-entry and disabled choices');
 });
 
-await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
+await block('phase 9 audit ticket 07 mood chips keyboard nav', 5, async () => {
   await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
 
@@ -1271,22 +1271,29 @@ await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
     ok('only the picked mood (4) is a tab stop');
   else fail('only the picked mood is a tab stop', JSON.stringify(tabindexes));
 
+  /* Release blockers 08 (audit A11Y-02): Today's pick opens the editor, so an
+     arrow moves focus and the one tab stop without picking anything, and
+     Enter or Space is the pick. */
   const four = faces.nth(3);
   const five = faces.nth(4);
   await four.focus();
   await page.keyboard.press('ArrowRight');
-  const movedChecked = await five.getAttribute('aria-checked');
-  const movedFocus = await five.evaluate((face) => document.activeElement === face);
-  if (movedFocus && movedChecked === 'false' && await four.getAttribute('aria-checked') === 'true')
-    ok('ArrowRight moves focus while keeping the picked mood');
-  else fail('ArrowRight moves focus while keeping the picked mood', JSON.stringify({ movedFocus, movedChecked }));
+  const arrowState = await faces.evaluateAll((els) => ({
+    checked: els.map((el) => el.getAttribute('aria-checked')),
+    focused: els.indexOf(document.activeElement),
+  }));
+  if (arrowState.focused === 4 && arrowState.checked[3] === 'true' && arrowState.checked[4] === 'false')
+    ok('ArrowRight moves focus to the next face and leaves the pick where it was');
+  else fail('ArrowRight moves focus without picking', JSON.stringify(arrowState));
 
   const movedTabindex = await five.getAttribute('tabindex');
+  if (movedTabindex === '0') ok('and the focused face becomes the one tab stop');
+  else fail('the focused face becomes the one tab stop', movedTabindex);
+
   await page.keyboard.press('Enter');
-  if (movedTabindex === '0' && await faces.evaluateAll((nodes) => nodes.filter((node) => node.getAttribute('tabindex') === '0').length) === 1 &&
-      await five.getAttribute('aria-checked') === 'true' && await four.getAttribute('aria-checked') === 'false')
-    ok('the focused face is the one tab stop, and Enter picks it');
-  else fail('the focused face is the one tab stop, and Enter picks it', movedTabindex);
+  const picked = await five.getAttribute('aria-checked');
+  if (picked === 'true') ok('Enter picks the focused face');
+  else fail('Enter picks the focused face', picked);
 
   /* The keyboard equivalent of the click-to-clear a mistap relies on: Enter
      on a native <button> fires the same click handler a pointer would, so
