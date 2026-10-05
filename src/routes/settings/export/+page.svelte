@@ -953,10 +953,10 @@
        broke onto two lines. Import is the block, the act this section is
        for; checking a backup is the lighter one under it. -->
   <div class="stack-3">
-    <button class="btn btn-soft" data-import onclick={requestImport} disabled={importing || verifying}>
+    <button class="btn btn-soft btn-block" data-import onclick={requestImport} disabled={importing || verifying}>
       <span>{importing ? m.imp_running() : m.imp_run()}</span>
     </button>
-    <button class="btn btn-ghost" data-verify onclick={doVerify} disabled={importing || verifying}>
+    <button class="btn btn-ghost btn-block" data-verify onclick={doVerify} disabled={importing || verifying}>
       <Icon name="shield" size={18} />
       <span>{verifying ? m.verify_running() : m.verify_run()}</span>
     </button>
