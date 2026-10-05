@@ -66,8 +66,6 @@
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
-  import Mark from '$lib/components/Mark.svelte';
-  import { isAndroid } from '$lib/platform';
   import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -725,7 +723,7 @@
            Diary" while the tab, the launcher and the rail all say "Notes"
            undoes the rest of the disguise in one line. Two sites in Settings
            still name the app under disguise; those are ticket 24's screen. -->
-      <h1 class="home-hero" data-home-hero data-field-part translate="no">{#if !isAndroid()}<Mark size={40} />{/if}{appWordmark(prefs.disguise, m.app_name())}</h1>
+      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
     </div>
     <!-- The foot: one line of who and when, one of how much, and the gear at
          the line's end. On the page rather than the field because all three
@@ -1441,13 +1439,6 @@
     color: inherit;
     margin: 0;
     min-width: 0;
-    /* The logotype, stacked (ticket 37). Beside the word the tile would
-       take 1.7em of the row and run the word into the sun's chord, which
-       the arithmetic above leaves 287px at 390 for. Above it the tile sits
-       in the field's empty left half instead, left-aligned with the word's
-       own edge. Under disguise Mark draws nothing and this is the plain
-       word again. */
-    display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
   }
   /* Below 360px the sun draws at 0.82, below 240px (what 200% zoom leaves of
      a 390px phone) at 0.6 (rule 7). The field keeps its height in both, so
