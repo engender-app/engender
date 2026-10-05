@@ -13,6 +13,7 @@
   import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import Slider from '$lib/components/Slider.svelte';
   import Switch from '$lib/components/Switch.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
@@ -45,6 +46,7 @@
 
   let reminders = $state(true);
   let disguise = $state(false);
+  let shareCounts = $state(true);
 
   let range = $state('month');
   let scale = $state('10');
@@ -125,6 +127,14 @@
       </div>
       <Switch checked={disguise} label="Disguise mode" onChange={(v) => (disguise = v)} />
     </div>
+    <!-- The kit's own row holding a switch, which is how the screens write it:
+         static, so the switch is the row's one control rather than a button
+         inside a button. -->
+    <ListRow static key="gallery-switch-row" title="Entries">
+      {#snippet trailing()}
+        <Switch checked={shareCounts} label="Entries" onChange={(v) => (shareCounts = v)} />
+      {/snippet}
+    </ListRow>
   </div>
 
   <h2 class="gallery-head">Segmented</h2>

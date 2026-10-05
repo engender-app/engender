@@ -50,6 +50,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { nameSlug } from '$lib/data/fold';
   import { fmtDay } from '$lib/data/dates';
@@ -73,7 +74,8 @@
   const detail = detailDraft<JournalDocument, { title: string; day: string }>({
     read: (j, id) => j.documents.getDocument(id).then((found) => found ?? undefined),
     blank: () => ({ title: '', day: dateInputValueFromEpochDay(todayEpochDay()) }),
-    fromRecord: (found) => ({ title: found.title, day: dateInputValueFromEpochDay(found.epochDay) })
+    fromRecord: (found) => ({ title: found.title, day: dateInputValueFromEpochDay(found.epochDay) }),
+    saving: () => saving
   });
   let draft = $derived(detail.draft);
   let stored = $derived(detail.record);
@@ -413,6 +415,8 @@
         title: draft.title,
         epochDay: epochDayFromDateInputValueOrToday(draft.day)
       });
+      detail.commit();
+      toast(m.saved(), { kind: 'saved' });
     } catch (error) {
       /* An update naming an id the journal no longer holds throws
          (ADR-0053), which here means the row went while this screen was
@@ -429,6 +433,8 @@
     if (!stored) return;
     confirming = false;
     await journal.documents.deleteDocument(stored.id);
+    // Deleting answered the question a rename would have asked.
+    detail.discard();
     await goto(DOCUMENTS);
   }
 </script>
@@ -704,6 +710,8 @@
     onPick={(next) => pickTarget(next)}
     onClose={() => (pickingTarget = false)}
   />
+
+  <DiscardSheet guard={detail.guard} />
 </div>
 
 <style>
