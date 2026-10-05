@@ -1,0 +1,45 @@
+engender to dziennik tranzycji. Wpis to nastrój, notatka, twoje skale, tagi i zdjęcia, a żeby się liczył, wystarczy jedno z tego. Napisz kilka jednego dnia, a dzień, który przepadł, dopisz z datą wsteczną.
+
+Aplikacje do notowania nastroju dobrze pasują do codziennego rytuału, tylko nie mają gdzie zapisać płci. engender działa tak samo i dokłada skale, które nazywasz po swojemu. Zapisuje to, co jej powiesz, i niczego nie interpretuje.
+
+Twój dziennik, twoje urządzenie
+
+Twój dziennik jest zapisany na twoim urządzeniu. Nie ma konta engender, nie ma serwera z kopią i nic nie synchronizuje się w tle.
+
+Dziennik jest zaszyfrowany tam, gdzie jest zapisany: wpisy, zdjęcia i miniatury, razem z plikami roboczymi. Klucz jest losowy i trzyma go dla ciebie Android Keystore. Na zewnątrz zostaje kilka ustawień, żeby aplikacja mogła wystartować i dać się odblokować: zapakowany klucz i ustawienia, z których się go wyprowadza, motyw, paleta i język, stan blokady przy wyjściu i kamuflażu, oraz znaczniki czasu spowalniające błędne próby PIN-u. Nic z tego nie jest tym, co piszesz.
+
+Zapisywanie
+
+Nastrój w pięciu stopniach, notatka, tagi, zdjęcia i twoje skale. Sześć skal jest wbudowanych, wśród nich Poczucie płci, od dysforii na jednym końcu do euforii na drugim. Własne skale ustawiasz od zera i łączysz w zestaw, żeby ekran wpisu pytał tylko o to, co mierzysz.
+
+Zdjęcia są trzymane w pamięci samej aplikacji. Nie trafiają do galerii telefonu, więc nie wyskoczą komuś, kto przewija zdjęcia.
+
+Wracanie do wpisów
+
+Miesiąc to kalendarz w jednym kolorze o różnej sile, sterowany nastrojem albo wybraną skalą. Dni bez wpisu zostają neutralne, bo luka to nie jest zły dzień.
+
+Wyszukiwanie szuka w notatkach i tagach w trakcie pisania, bez oglądania się na polskie znaki. Wykresy pokazują, jak skale zmieniają się z czasem. Kamienie milowe odliczają dni do dat przed tobą i wracają co roku do tych za tobą. Wyniki badań dostają wykres i nic więcej: bez norm referencyjnych i bez oceniania.
+
+Archiwa i eksport
+
+Eksport pakuje dziennik do jednego archiwum i szyfruje je hasłem, które wybierasz, zanim plik opuści aplikację. Import wkłada go z powrotem. Import z Daylio bierze plik CSV: zanim cokolwiek zapisze, pokazuje liczby i to, jak przełoży nastroje, a zawsze tylko dokłada. Jest też zwykły eksport do CSV albo JSON; taki plik nie jest zaszyfrowany i aplikacja każe to potwierdzić.
+
+Kopia według harmonogramu sama zapisuje zaszyfrowane archiwum do wybranego folderu, co tydzień albo co miesiąc.
+
+Przypomnienia
+
+Leki, zastrzyki, wizyty. Jednorazowe albo powtarzalne. Codzienne pytanie przychodzi raz dziennie, o porze, którą wybierasz, i pomija dni, w których już coś zapiszesz.
+
+Jeśli musisz uważać
+
+Wszystko w tej sekcji jest wyłączone, dopóki tego nie włączysz. Blokada aplikacji stawia PIN przed wejściem: zatrzymuje kogoś z twoim odblokowanym telefonem w ręku i nie jest szyfrowaniem tego, co zapisane. Kamuflaż daje aplikacji zwyczajną nazwę i ikonę. Szybkie wyjście czyści ekran jednym ruchem i blokuje aplikację, jeśli blokada jest włączona.
+
+Wygląd
+
+Szesnaście palet opartych na flagach. Każda przemalowuje całą aplikację, z wykresami i kalendarzem, w jasnym i ciemnym motywie. Kolor niczego nie ocenia: nie ma czerwonego na zły dzień, a pusty dzień zostaje pusty.
+
+engender jest po polsku i po angielsku.
+
+Wolne oprogramowanie
+
+engender jest wolnym oprogramowaniem na licencji GPLv3. Kod jest publiczny. Jeśli ten projekt kiedyś stanie, ktoś inny może kontynuować pracę nad kodem.
