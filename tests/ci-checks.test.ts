@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -109,4 +109,47 @@ describe('CI check collection', () => {
     expect(result.status).toBe(1);
     for (const check of CI_CHECKS.node) expect(result.stdout).toContain(`BLOCKED ${check.name}`);
   });
+});
+
+describe('Android release gates', () => {
+  it('runs the JVM suite after sync and reports its failure', async () => {
+    const calls: string[] = [];
+    const results = await runChecks(CI_CHECKS.android, {
+      run: async (_command: string, args: string[]) => {
+        calls.push(args.join(' '));
+        return args.includes(':app:testDebugUnitTest') ? 1 : 0;
+      }, log: () => {}
+    });
+    expect(calls.indexOf(':app:testDebugUnitTest')).toBeGreaterThan(calls.indexOf('cap sync android'));
+    expect(results.find((result) => result.id === 'jvm')?.outcome).toBe('failed');
+    expect(calls).toContain('scripts/fdroid-rebuild-report.mjs');
+  });
+
+  for (const fails of [true, false]) {
+    it(fails ? 'fails CI when assembleRelease fails and still writes its report' : 'reports non-reproducibility without failing a completed rebuild attempt', () => {
+      const root = mkdtempSync(join(tmpdir(), 'fdroid-report-'));
+      try {
+        mkdirSync(join(root, 'android'));
+        const gradlew = join(root, 'android/gradlew');
+        writeFileSync(gradlew, `#!/usr/bin/env node
+const fs = require('node:fs');
+if (process.argv.includes(':app:assembleRelease')) {
+  if (${fails}) process.exit(37);
+  const count = fs.existsSync('count') ? Number(fs.readFileSync('count', 'utf8')) + 1 : 1;
+  fs.writeFileSync('count', String(count));
+  fs.mkdirSync('app/build/outputs/apk/release', {recursive: true});
+  fs.writeFileSync('app/build/outputs/apk/release/app-release-unsigned.apk', String(count));
+}
+`);
+        chmodSync(gradlew, 0o755);
+        const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/fdroid-rebuild-report.mjs', import.meta.url))], {cwd: root, encoding: 'utf8'});
+        expect(result.status).toBe(fails ? 1 : 0);
+        const report = readFileSync(join(root, 'ci-logs/fdroid-rebuild.md'), 'utf8');
+        expect(report).toContain(fails ? 'Status: attempt-failed' : 'Status: not-reproducible');
+        expect(report).toContain('First build SHA256:');
+      } finally {
+        rmSync(root, {recursive: true, force: true});
+      }
+    });
+  }
 });

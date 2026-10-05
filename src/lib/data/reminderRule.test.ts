@@ -121,7 +121,9 @@ describe('the rule an editor choice writes back', () => {
       anchorEpochDay: null,
       epochDay: null
     });
-    expect(inWarsaw(() => ruleFromChoice('WEEKLY', '20:00', null, now)).recurrence).toBe('WEEKLY');
+    expect(inWarsaw(() => ruleFromChoice('WEEKLY', '20:00', null, now))).toEqual({
+      time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 7, anchorEpochDay: today, epochDay: null
+    });
   });
 
   it('starts a new progression today', () => {
@@ -165,4 +167,23 @@ describe('the rule an editor choice writes back', () => {
       expect(() => assertValidRule(inWarsaw(() => ruleFromChoice(choice, '20:00', null, now)))).not.toThrow();
     }
   });
+});
+
+it('keeps a Monday weekly reminder on Monday through Tuesday to Sunday resyncs and edits', () => {
+  process.env.TZ = 'Europe/Warsaw';
+  const weekly = ruleFromChoice('WEEKLY', '20:00', null, new Date('2026-08-10T10:00:00+02:00'));
+  for (let day = 11; day <= 16; day++) {
+    const now = new Date(`2026-08-${day}T10:00:00+02:00`);
+    const edited = ruleFromChoice('WEEKLY', '20:00', weekly, now);
+    expect(nextOccurrence(edited, now)?.getTime()).toBe(Date.parse('2026-08-17T20:00:00+02:00'));
+    expect(edited.anchorEpochDay).toBe(20675);
+  }
+});
+
+it('rejects a legacy unanchored Weekly rule before planning or writing it', () => {
+  const rule: ReminderRule = {
+    time: '20:00', recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null
+  };
+  expect(() => assertValidRule(rule)).toThrow('invalid reminder rule: WEEKLY');
+  expect(() => nextOccurrence(rule, new Date('2026-08-11T10:00:00+02:00'))).toThrow('WEEKLY reminder must be anchored before planning');
 });

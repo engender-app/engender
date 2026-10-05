@@ -492,6 +492,18 @@ Replace keeps the built-in vocabulary and device-local preferences. Merge adds u
 
 **External importers** sit in [data/archive/sources.ts](../src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](../src/lib/data/archive/plain.ts)) are readable files, not backups.
 
+The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
+The shared [ZIP reader](../src/lib/data/archive/zipReader.ts) allows at most
+1536 MiB of declared decompressed content across the members it reads, including
+Day One and TransTracks imports. Both limits use a ten-year estimate: twice the
+393.6 MiB attachment baseline in [the benchmark](../tests/long-journal/budgets.json),
+plus 64 MiB for longer recordings, metadata and ZIP overhead, totals 851.2 MiB.
+The factor of two allows larger source media than Engender's normalized photos;
+it is an assumption, not a measurement of another app's export. The file limit
+leaves room even if media barely compresses. These allocation limits do not
+guarantee enough memory on every device. Engender's encrypted Archives use a
+separate streaming reader.
+
 ## 7. Security model
 
 ### 7.1 Threat model
@@ -705,6 +717,7 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 ### 8.6 i18n
 
 - **Catalogues.** Paraglide compiles [messages/en.json](../messages/en.json) and [messages/pl.json](../messages/pl.json). The base locale is `en`, and the locale is resolved from `localStorage`, then the browser's preferred language, then the base locale ([vite.config.ts](../vite.config.ts)).
+- **Human copy review.** `npm run strings` serves the local catalogue editor in [scripts/strings.mjs](../scripts/strings.mjs). Field saves compare the displayed value with disk before replacing it; bulk save uses the same operation and retains conflicting edits in the browser. Literal find-and-replace previews selected languages across shown or all keys, then applies replacements to drafts before saving. Individual and group checkboxes save fingerprints of the reviewed English/Polish pairs in `.scratch/copy-review.json`. Later copy changes invalidate approval for the affected keys. A filtered group checkbox applies only to the shown keys. This review state is local tooling data, separate from the journal and shipped catalogues.
 - **Keys, not words, in the database.** Built-in rows store keys, and [data/vocabulary/](../src/lib/data/vocabulary) turns keys into words (ADR-0024).
 - **Copy checks.** `npm run check:copy` checks that both catalogues have the same keys and that the count in [messages/untranslated-literals.txt](../messages/untranslated-literals.txt) never grows. `docs/ui-copy.md` is the copy guide.
 - **Merging catalogues.** [scripts/merge-catalogue.mjs](../scripts/merge-catalogue.mjs) is a git merge driver that merges catalogues by key (README).

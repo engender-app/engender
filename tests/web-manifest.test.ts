@@ -13,6 +13,7 @@
    nothing to run. */
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 
 const root = new URL('../', import.meta.url);
@@ -25,6 +26,41 @@ const polish = JSON.parse(read('static/manifest-pl.webmanifest'));
 const disguisedPolish = JSON.parse(read('static/manifest-notes-pl.webmanifest'));
 
 describe('the web app manifest', () => {
+  it('offers an Apple install icon and hides its flag before disguised boot', () => {
+    const html = read('src/app.html');
+    const href = html.match(/<link rel="apple-touch-icon" href="([^"]+)"/)?.[1];
+    expect(href).toBeDefined();
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)![1];
+    for (const disguise of [false, true]) {
+      const links: Record<string, { href: string }> = {
+        'link[rel="icon"]': { href: '/favicon-trans.svg' },
+        'link[rel="manifest"]': { href: '/manifest.webmanifest' },
+        'link[rel="apple-touch-icon"]': { href: href! }
+      };
+      runInNewContext(script, {
+        localStorage: { getItem: () => JSON.stringify({ disguise }) },
+        document: { documentElement: { dataset: {} }, querySelector: (key: string) => links[key] },
+        navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {}
+      });
+      const file = links['link[rel="apple-touch-icon"]'].href.replace('%sveltekit.assets%', 'static');
+      expect(file).toBe(disguise ? 'static/apple-touch-icon-notes.png' : 'static/apple-touch-icon.png');
+      expect(exists(file)).toBe(true);
+    }
+  });
+
+  it('offers raster install icons in both languages and under disguise', () => {
+    for (const candidate of [manifest, polish, disguised, disguisedPolish]) {
+      for (const [size, purpose] of [['192x192', 'any'], ['512x512', 'any'], ['512x512', 'maskable']]) {
+        const icon = candidate.icons.find((item: { sizes: string; type: string; purpose: string }) =>
+          item.sizes === size && item.type === 'image/png' && item.purpose === purpose);
+        expect(icon, `${candidate.lang}: ${candidate.name} ${size} ${purpose}`).toBeDefined();
+        const png = readFileSync(new URL(`static${icon.src}`, root));
+        expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+        expect(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`).toBe(size);
+      }
+    }
+  });
+
   it('names the app and installs it as a standalone window', () => {
     expect(manifest.name).toBe('engender');
     expect(manifest.short_name).toBe('engender');

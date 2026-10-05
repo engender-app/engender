@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { makeArchiveArea } from './archive.ts';
-import { makeEntriesArea } from './entries.ts';
+import { openJournal } from './journal.ts';
 import { packArchive } from '../archive/pack.ts';
 import { portablePreferences } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
@@ -13,7 +13,7 @@ const photo = { full: new Uint8Array([1, 2]), thumb: new Uint8Array([3]) };
 test('a save during attachment metadata cannot add an entry without its attachment to a backup', async () => {
   const db = await migratedDb();
   const store = fakeFileStore();
-  const entries = makeEntriesArea(db, store);
+  const entries = openJournal(db, store).entries;
   await entries.upsertEntry({ epochDay: 100, mood: 4, note: 'before', attachPhotos: [photo] });
   let saved = false;
   let saving: Promise<number> | undefined;
@@ -40,7 +40,7 @@ test('a save during attachment metadata cannot add an entry without its attachme
       for (const file of snapshot.files) yield { name: file.name, bytes: await snapshot.readFile(file.name) };
     })()
   });
-  const restored = (await makeEntriesArea(targetDb, targetFiles).entriesForDay(100))[0];
+  const restored = (await openJournal(targetDb, targetFiles).entries.entriesForDay(100))[0];
   assert.equal(restored.photos.length, 1);
   for (const file of snapshot.files) assert.deepEqual(await targetFiles.read(file.name), await store.read(file.name));
   await targetDb.close();
@@ -50,7 +50,7 @@ test('a save during attachment metadata cannot add an entry without its attachme
 test('packing fails if an attachment disappears after the snapshot releases SQL access', async () => {
   const db = await migratedDb();
   const store = fakeFileStore();
-  const entries = makeEntriesArea(db, store);
+  const entries = openJournal(db, store).entries;
   const id = await entries.upsertEntry({ epochDay: 100, mood: 4, attachPhotos: [photo] });
   const snapshot = await makeArchiveArea(db, store).snapshot();
   const attached = (await entries.getEntry(id))!.photos[0];

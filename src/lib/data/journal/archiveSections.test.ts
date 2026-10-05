@@ -13,6 +13,7 @@ import { openArchive, packArchive } from '../archive/pack.ts';
 import { portablePreferences, type ArchiveJournal } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import { makeRemindersArea } from './reminders.ts';
 import { readRowContext } from './archiveRead.ts';
 import {
   applyArchiveJournal,
@@ -335,4 +336,25 @@ test('a fields declaration on the real registry keeps only the field it names', 
   const kept = Object.fromEntries(fields.map((field) => [field, (row as Record<string, unknown>)[field]]));
 
   assert.deepEqual(kept, { name: 'Started HRT' });
+});
+
+test('restoring legacy Weekly rows anchors them and merge preserves an existing anchor', async () => {
+  const driver = await migratedDb();
+  const journal = emptyArchiveJournal();
+  journal.reminders = [{
+    id: 'weekly-import', title: 'Injection', type: 'injection', time: '20:00',
+    recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true, autoSource: null
+  }];
+  const reminders = makeRemindersArea(driver);
+  await driver.transaction((driver) => applyArchiveJournal({
+    driver, mode: 'replace', journal, ts: Date.parse('2026-08-10T12:00:00+02:00')
+  }, ARCHIVE_SECTIONS.filter((section) => section.name === 'reminders')));
+  const [imported] = await reminders.getReminders();
+  assert.equal(imported.recurrence, 'EVERY_N_DAYS');
+  assert.equal(imported.interval, 7);
+  assert.equal(imported.anchorEpochDay, 20675);
+  await driver.transaction((driver) => applyArchiveJournal({
+    driver, mode: 'merge', journal, ts: Date.parse('2026-08-12T12:00:00+02:00')
+  }, ARCHIVE_SECTIONS.filter((section) => section.name === 'reminders')));
+  assert.equal((await reminders.getReminders())[0].anchorEpochDay, 20675);
 });

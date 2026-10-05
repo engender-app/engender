@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { recordHandles, recordHandleSlug } from './recordHandles.ts';
+import { discardHandles, recordHandles, recordHandleSlug } from './recordHandles.ts';
 
 describe('recordHandles', () => {
   it('names all three of a record sheet’s handles off one slug', () => {
@@ -48,5 +48,11 @@ describe('the generated vocabulary', () => {
   it('round-trips every prefix', () => {
     const handles = recordHandles('wear-session');
     for (const handle of Object.values(handles)) expect(recordHandleSlug(handle)).toBe('wear-session');
+  });
+});
+
+describe('discardHandles', () => {
+  it('keeps the two names the walkthrough already answers the question with', () => {
+    expect(discardHandles).toEqual({ keep: 'data-keep-editing', discard: 'data-discard-record' });
   });
 });

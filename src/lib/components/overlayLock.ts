@@ -144,10 +144,26 @@ const inertHolds = new Map<HTMLElement, number>();
 let scrollHolds = 0;
 let unlockedOverflow = '';
 
+/** Whether any overlay currently owns the keyboard. */
+export function overlayIsOpen(): boolean {
+  return overlayOwners.length > 0;
+}
+
 /** Makes everything outside `node` inert and unscrollable. Returns the undo,
     which restores focus to its launcher or the nearest surviving control in
-    the launcher's prior keyboard order. */
-export function lockBackground(node: HTMLElement): () => void {
+    the launcher's prior keyboard order. The undo's `recede()` starts
+    un-blurring the background early, for an overlay whose exit animation
+    runs before its node is destroyed.
+
+    `keep` names shell children that stay live beside the overlay because it
+    is drawn over them on purpose - quick add's scrim, and the bar its add
+    button sits in. `withdraw: false` skips the blurred crossfade over the
+    inert children, for an overlay whose own scrim already blurs them. */
+export function lockBackground(
+  node: HTMLElement,
+  options: { keep?: HTMLElement[]; withdraw?: boolean } = {}
+): (() => void) & { recede(): void } {
+  const keep = options.keep ?? [];
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const root = document.querySelector('[data-app-root]');
   const priorFocusOrder = root ? focusableElements(root) : [];
@@ -161,7 +177,7 @@ export function lockBackground(node: HTMLElement): () => void {
        change" - and its buttons stayed reachable behind a modal. */
     const withdrawn = [...root.children, ...root.querySelectorAll('[data-app-savebar]')] as HTMLElement[];
     for (const child of withdrawn) {
-      if (child.contains(node)) continue;
+      if (child.contains(node) || keep.some((kept) => child.contains(kept))) continue;
       const holds = inertHolds.get(child);
       if (holds) inertHolds.set(child, holds + 1);
       else if (child.hasAttribute('inert')) continue;
@@ -180,17 +196,32 @@ export function lockBackground(node: HTMLElement): () => void {
      matched has no prior frame to animate away from. One
      `requestAnimationFrame` is that one frame; a class added in the same
      tick as `inert` would never be seen on its own. */
-  let withdrawRaf: ReturnType<typeof requestAnimationFrame> | undefined = requestAnimationFrame(() => {
-    withdrawRaf = undefined;
-    for (const child of restoreInert) child.classList.add('is-withdrawn');
-  });
+  let withdrawRaf: ReturnType<typeof requestAnimationFrame> | undefined =
+    options.withdraw === false
+      ? undefined
+      : requestAnimationFrame(() => {
+          withdrawRaf = undefined;
+          for (const child of restoreInert) child.classList.add('is-withdrawn');
+        });
   const mainEl = document.querySelector<HTMLElement>('[data-app-scroll-region]');
   if (mainEl) {
     if (scrollHolds++ === 0) unlockedOverflow = mainEl.style.overflow;
     mainEl.style.overflow = 'hidden';
   }
 
-  return () => {
+  /* The blurred copy over the background fades out with the overlay's own
+     exit rather than vanishing when the node is finally destroyed: dropped
+     at release, it went from fully blurred to sharp in one frame at the end
+     of every sheet's dismissal (phase 15 ticket 04, measured on the discard
+     sheet). Only an element no other open overlay still holds is let go,
+     so a sheet closing over another leaves the background withdrawn. */
+  const recede = () => {
+    if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
+    withdrawRaf = undefined;
+    for (const el of restoreInert) if ((inertHolds.get(el) ?? 1) <= 1) el.classList.remove('is-withdrawn');
+  };
+
+  const release = () => {
     if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
     restoreInert.forEach((el) => {
       const holds = (inertHolds.get(el) ?? 1) - 1;
@@ -214,6 +245,7 @@ export function lockBackground(node: HTMLElement): () => void {
         ?.focus({ preventScroll: true });
     });
   };
+  return Object.assign(release, { recede });
 }
 
 /** Keeps Tab and Shift+Tab inside `container`. Call from a `keydown` handler
