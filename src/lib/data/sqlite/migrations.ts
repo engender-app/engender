@@ -11,11 +11,13 @@
    was the price of squashing before the 1.0.0 cutoff. From 1.0.0 on, every
    released migration stays in the chain and cannot be edited or squashed.
    Such a journal is behind, not ahead, so SchemaTooNewError never fires for
-   it: the baseline is pending, it runs against tables that are already there,
-   and the step fails inside its transaction. Nothing is written and the
-   pre-migration copy is left where it is (ADR-0006's ticket 04 amendment), so
-   the failure is loud and the journal is intact, which is the most this can be
-   made to do once the steps that would have carried it forward are gone. */
+   it. `baseline: true` is what lets the runner tell it apart from a first run:
+   a journal with a schema below the baseline is refused with
+   JournalBelowBaselineError before anything is copied or written, and the
+   failure screen says it comes from a development build and offers the way
+   out (after-release ticket 09). The journal is intact, which is the most
+   this can be made to do once the steps that would have carried it forward
+   are gone. */
 
 import type { Migration } from './migration-runner.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
@@ -251,7 +253,7 @@ END;
 `;
 
 export const migrations: Migration[] = [
-  { version: 78, sql: BASELINE_SCHEMA },
+  { version: 78, sql: BASELINE_SCHEMA, baseline: true },
   { version: 79, sql: SCHEMA_V79 },
   { version: 80, sql: SCHEMA_V80 },
   { version: 81, sql: SCHEMA_V81 },
