@@ -30,6 +30,7 @@ import type {
   ArchiveEntryTemplate,
   ArchiveFeltSenseEntry,
   ArchiveMarginNote,
+  ArchiveJournal,
   ArchiveHairPhoto,
   ArchiveHairRemovalPhoto,
   ArchiveHairRemovalSession,
@@ -453,9 +454,32 @@ export async function readMarginNotes({ driver }: SectionRead): Promise<ArchiveM
   const rows = await driver.query<{ uuid: string; entry_uuid: string; epoch_day: number; text: string }>(
     `SELECT mn.uuid, e.uuid AS entry_uuid, mn.epoch_day, mn.text
        FROM margin_note mn JOIN entry e ON e.id = mn.entry_id
+      WHERE e.trashed_at IS NULL
       ORDER BY mn.epoch_day, mn.id`
   );
   return rows.map((r) => ({ id: r.uuid, entryId: r.entry_uuid, epochDay: r.epoch_day, text: r.text }));
+}
+
+export async function readRevisits({ driver }: SectionRead): Promise<ArchiveJournal['revisits']> {
+  const rows = await driver.query<{
+    uuid: string;
+    entry_id: string;
+    entry_epoch_day: number;
+    created_epoch_day: number;
+    target_epoch_day: number;
+  }>(
+    `SELECT r.uuid, r.entry_id, r.entry_epoch_day, r.created_epoch_day, r.target_epoch_day
+       FROM revisit r JOIN entry e ON e.uuid = r.entry_id
+      WHERE e.trashed_at IS NULL
+      ORDER BY r.target_epoch_day, r.id`
+  );
+  return rows.map((r) => ({
+    id: r.uuid,
+    entryId: r.entry_id,
+    entryEpochDay: r.entry_epoch_day,
+    createdEpochDay: r.created_epoch_day,
+    targetEpochDay: r.target_epoch_day
+  }));
 }
 
 export async function readEffectCategories({ driver }: SectionRead): Promise<ArchiveEffectCategory[]> {

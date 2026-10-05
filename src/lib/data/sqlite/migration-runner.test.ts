@@ -15,6 +15,7 @@ import {
 } from './migration-runner.ts';
 import type { MigrationDb, MigrationFileOps, Migration } from './migration-runner.ts';
 import { makeNodeSqliteDb as makeDb } from './test-support/node-sqlite-driver.ts';
+import { capturedConsoleOutput } from '../../crypto/test-support/capture-console.ts';
 
 // Stands in for a SQLite build without FTS5 compiled in - no node:sqlite
 // build available to reproduce that, so the probe statement is faked.
@@ -389,7 +390,7 @@ test('migration failures restore foreign key enforcement', async () => {
   assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
 });
 
-test('foreign key violations fail migration and a later clean boot without retiring the recovery copy', async () => {
+test('foreign key violations fail migration without retiring the recovery copy', async () => {
   const db = makeDb();
   const fileOps = makeFileOpsSpy();
   const steps = [{ version: 1, sql: `
@@ -399,6 +400,22 @@ test('foreign key violations fail migration and a later clean boot without retir
   ` }];
   await assert.rejects(() => runMigrations(db, fileOps, steps), /Foreign key violations/);
   assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
-  await assert.rejects(() => runMigrations(db, fileOps, steps), /Foreign key violations/);
   assert.equal(fileOps.cleanupCalls, 0);
+});
+
+test('a clean boot opens a journal with an orphan and logs the foreign key violation', async () => {
+  const db = makeDb();
+  db.raw.exec(`PRAGMA foreign_keys = OFF;
+    CREATE TABLE parent (id INTEGER PRIMARY KEY);
+    CREATE TABLE child (parent_id INTEGER REFERENCES parent(id));
+    INSERT INTO child VALUES (99);
+    PRAGMA user_version = 1; PRAGMA foreign_keys = ON;`);
+  const fileOps = makeFileOpsSpy();
+  const output = await capturedConsoleOutput(async () => {
+    await runMigrations(db, fileOps, [{ version: 1, sql: '' }]);
+  });
+  assert.ok(output.some((line) => /Foreign key violations.*child/.test(line)));
+  assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+  assert.equal((await db.query('SELECT parent_id FROM child'))[0].parent_id, 99);
+  assert.equal(fileOps.cleanupCalls, 0, 'an orphan does not prove a recovery copy safe to retire');
 });

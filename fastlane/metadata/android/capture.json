@@ -1,0 +1,37 @@
+{
+  "fixture": "resetDemoFull",
+  "time": "2026-10-05T10:00:00.000Z",
+  "palette": "trans",
+  "theme": "light",
+  "viewport": [
+    432,
+    768
+  ],
+  "deviceScaleFactor": 2.5,
+  "screens": [
+    {
+      "name": "01-home",
+      "route": "/"
+    },
+    {
+      "name": "02-new-entry",
+      "route": "/entry/new/today?seedMood=4"
+    },
+    {
+      "name": "03-journal",
+      "route": "/calendar"
+    },
+    {
+      "name": "04-care",
+      "route": "/care"
+    },
+    {
+      "name": "05-look-back",
+      "route": "/stats"
+    },
+    {
+      "name": "06-settings-privacy",
+      "route": "/settings"
+    }
+  ]
+}
