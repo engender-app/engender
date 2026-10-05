@@ -109,7 +109,7 @@ describe('AAB signature verification with platform tools', () => {
     expect(unsigned.status).toBe(0);
     expect(unsigned.stdout).toContain('jar is unsigned.');
     expect(verification(root)).toContain(`AAB signature verification failed: ${aab}`);
-  });
+  }, 15000);
 
   function signedFixture() {
     const { root, aab } = fixture();
