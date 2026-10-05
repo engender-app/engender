@@ -41,7 +41,7 @@
   import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { journalDataKey } from '$lib/stores/boot.svelte';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, episodesWithNoDoseLogged } from '$lib/data/regimenEpisode';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
@@ -523,14 +523,11 @@
   );
 
   let todayDosesQuery = liveQuery((j) => j.doses.getDoses(day, day));
-  let loggedDoseDrugs = $derived(
-    new Set((todayDosesQuery.value ?? []).map((d) => d.drug?.toLowerCase().trim()).filter(Boolean))
-  );
 
   let dueScheduledDoses = $derived.by(() => {
     if (!activeEpisodes) return [];
-    return activeEpisodes
-      .filter((ep) => ep.dose != null && ep.dose > 0 && !loggedDoseDrugs.has(ep.drug.toLowerCase().trim()))
+    return episodesWithNoDoseLogged(episodesQuery.value ?? [], activeEpisodes, todayDosesQuery.value ?? [])
+      .filter((ep) => ep.dose != null && ep.dose > 0)
       .map((ep) => ({
         episodeId: ep.id,
         dose: ep.dose!,
@@ -1339,7 +1336,7 @@
   {/if}
 
   {#if prefs.entryDoseQuickLogEnabled && scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
-    <!-- Off the two reads as well as off the schedule: `loggedDoseDrugs` is
+    <!-- Off the two reads as well as off the schedule: the logged doses are
          `[]` until today's doses answer, so a chip for a dose already logged
          once stood on screen for the length of the round trip and then had
          to withdraw - the row offering a double log and vanishing
