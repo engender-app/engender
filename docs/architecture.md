@@ -13,7 +13,7 @@ This is a map of the codebase for anyone about to change it: what runs where, ho
 
 **About the links.** `.gitignore` keeps `docs/`, `CONTEXT.md`, `PRODUCT.md`, `SCREENS.md`, `.scratch/` and `.claude/` out of the public tree. The only tracked files under `docs/` are the two privacy policies, the copy-coverage note and this file, so each of them has to be added with `git add -f`. On a fresh clone, links to ADRs, `CONTEXT.md` and `docs/agents/` lead nowhere. They resolve only in a maintainer's working copy. Source comments cite them all the time for the same reason.
 
-All facts here were checked against `main` at `2e362652`. Where a count appears (tables, areas, guards), the file that holds it is named, so you can re-count it instead of trusting this page.
+All facts here were checked against `origin/main` at `41db8fff`. Where a count appears (tables, areas, guards), the file that holds it is named, so you can re-count it instead of trusting this page.
 
 ---
 
@@ -100,7 +100,7 @@ Two policies apply to dependencies. `scripts/check-licences.mjs` keeps the npm g
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
 │   └── service-worker.ts
-├── messages/            en.json, pl.json (3512 keys each), untranslated-literals.txt
+├── messages/            en.json, pl.json (3511 keys each), untranslated-literals.txt
 ├── project.inlang/      paraglide project settings
 ├── static/              fonts, icons, 16 palette favicons, manifests
 ├── android/             Capacitor project, 48 Java sources under app/src/main
@@ -212,7 +212,7 @@ flowchart LR
 
 **Write notifications.** Every journal write announces the tables it touched. Live queries and the reference mirror react to that (section 7).
 
-**Service worker.** It exchanges three messages, all defined once in `src/lib/pwa/sw-messages.ts` and imported by both sides: `engender:skip-waiting`, `engender:cache-on-demand` (OCR assets) and the PDF worker cache ask.
+**Service worker.** It exchanges three messages, each defined once and imported by both sides: `engender:skip-waiting` and `engender:cache-on-demand` (OCR assets) in `src/lib/pwa/sw-messages.ts`, and `engender:cache-pdf-worker` in `src/lib/pwa/pdf-worker-cache.ts`.
 
 **Native into the app.** Notifications and widgets open the app through launch routes that carry a nonce (section 9).
 
@@ -268,7 +268,8 @@ erDiagram
   entry ||--o{ entry_dimension_value : has
   gender_dimension ||--o{ entry_dimension_value : scale
   presentation ||--o{ entry : presentation_id
-  entry ||--o{ revisit : entry_uuid
+  entry ||--o{ revisit : entry_id
+  entry ||--o{ checklist : debrief_entry_id
 ```
 
 The same section holds `gender_preset`/`preset_dimension`, `body_region`, `entry_template` (with its tag and dimension children), `affirmation` and `presentation` (ADR-0048: a grouping key, never a set of scales). An entry is never deleted on the spot. `trashed_at` marks it, and boot purges trash older than 30 days.
@@ -339,7 +340,7 @@ Facade-wide rules:
 - An **update** that names an unknown id throws. A **delete** of an unknown id succeeds and changes nothing (ADR-0053).
 - Contextual writes from the entry editor commit in one transaction (ADR-0044).
 - An automatic trigger never creates a milestone without the person confirming it (ADR-0045).
-- Preferences live in SQLite (the `pref` table). A small boot cache in `localStorage` holds what has to apply before the database opens: theme, palette, accessibility, lock timing and disguise (ADR-0009, `data/prefs/boot-cache.ts`). `data/prefs/catalogue.ts` declares every preference as either portable (it travels in archives) or device-local (ADR-0003), and a test fails if a preference is in neither list.
+- Preferences live in SQLite (the `pref` table). A small boot cache in `localStorage` holds what has to apply before the database opens: theme, palette, mood preset, language, accessibility, lock timing and disguise (ADR-0009, `data/prefs/boot-cache.ts`). `data/prefs/catalogue.ts` declares every preference as either portable (it travels in archives) or device-local (ADR-0003), and a test fails if a preference is in neither list.
 
 ### 6.4 Reads, writes and live queries
 
@@ -473,7 +474,9 @@ Report vulnerabilities as `SECURITY.md` describes.
 ```mermaid
 flowchart TD
   PP[passphrase] -->|"Argon2id<br/>journal profile"| WK1[wrap key]
-  PIN[4-digit PIN] -->|"HMAC with device<br/>binding key"| PB[bound secret]
+  DBK2[device binding key] -->|"HMAC of a fixed label"| SIG[binding signature]
+  PIN[4-digit PIN] --> PB["PIN : signature"]
+  SIG --> PB
   PB -->|"Argon2id<br/>PIN profile"| WK2[wrap key]
   BIO[WebAuthn PRF<br/>output] --> WK3[wrap key]
   WK1 --> KS[keystore.json]
@@ -507,19 +510,22 @@ stateDiagram-v2
   booting --> needs_setup: no keystore
   booting --> needs_unlock: secret wrap exists
   booting --> needs_authentication: Android key<br/>needs a prompt
-  booting --> converting: plaintext journal (web)
-  converting --> conversion_refused
   booting --> needs_device_recovery: device key unusable
-  needs_setup --> ready
-  needs_unlock --> ready: key obtained
-  needs_authentication --> ready
-  converting --> ready
-  booting --> ready: auto-unlock
-  ready --> schema_too_new
+  booting --> conversion_refused
+  needs_unlock --> needs_authentication
+  needs_unlock --> conversion_refused
+  needs_setup --> converting: plaintext journal (web)
+  needs_unlock --> converting: plaintext journal (web)
+  needs_setup --> booting: key obtained
+  needs_unlock --> booting: key obtained
+  needs_authentication --> booting: key obtained
+  converting --> booting: converted
+  booting --> ready: journal opened
+  booting --> schema_too_new: journal newer<br/>than the app
   booting --> error
 ```
 
-These are the statuses in `stores/boot-state.ts`. `stores/boot-machine.ts` is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. `stores/boot.svelte.ts` and `boot-platform.ts` are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
+These are the statuses in `stores/boot-state.ts`, and the edges are the ones its transitions allow. Only `booting` reaches `ready` or `schema_too_new`: a gate hands back to `booting` once a key is obtained (`resetToBooting`), conversion does the same when it finishes, and any state can fail into `error`. `stores/boot-machine.ts` is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. `stores/boot.svelte.ts` and `boot-platform.ts` are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
 
 ```mermaid
 sequenceDiagram
@@ -565,7 +571,7 @@ stateDiagram-v2
 
 ### 7.5 Disguise
 
-`disguise/identity.ts` is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in `src/app.html` swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: a default, a disguised "Notes" alias, and one per pride flag, each in square and round versions (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise. Export file names become neutral. Setup doesn't change with disguise and offers it last (ADR-0079).
+`disguise/identity.ts` is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in `src/app.html` swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised "Notes" alias with no round version (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise. Export file names become neutral. Setup doesn't change with disguise and offers it last (ADR-0079).
 
 ### 7.6 Web hardening
 
@@ -644,7 +650,7 @@ flowchart LR
 Motion follows mechanical rules that tests and frame sweeps can check:
 
 - **A state change moves** unless its ticket says why not (ADR-0078). Nothing should paint at its destination before it has travelled there, and no frame should have an element in neither place. In this codebase both of those count as a "yank".
-- **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight` and `clip` in `motion/reveal.ts`, never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and `ReadGate.svelte`, then crossfade.
+- **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight`, `disclose` and `collapse` in `motion/reveal.ts`, never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and `ReadGate.svelte`, then crossfade.
 - **One easing and one set of durations.** `motion/tokens.ts` mirrors `--ease-out` and the `--dur-*` tokens for Svelte and WAAPI transitions, which CSS cannot reach.
 - **Reduced motion.** `theme/base.css` clamps durations to 1ms under reduced motion or `html[data-a11y-motion]`. `tests/motion-system.test.ts` requires every animation's end state to equal its element's resting state, so a clamped animation never strands an element.
 - **Ambient motion has a budget** (ADR-0050, ADR-0051, ADR-0071).
