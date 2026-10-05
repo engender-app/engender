@@ -42,6 +42,7 @@
     title = '',
     onClose,
     onRequestClose,
+    onClosed,
     children,
     globalTransitions = false,
   }: {
@@ -49,6 +50,13 @@
     title?: string;
     onClose?: () => void;
     onRequestClose?: () => void;
+    /** Once the sheet has finished leaving and handed focus and scrolling
+        back to the screen: the moment a caller can move either itself. Set
+        while the sheet is still on screen, a scroll is refused (the region
+        is locked) and a focus is taken back by the release. It also fires
+        when the screen unmounts with the sheet still open, so a caller
+        that acts on it should only do so for a close it asked for. */
+    onClosed?: () => void;
     children: Snippet;
     globalTransitions?: boolean;
   } = $props();
@@ -206,6 +214,17 @@
     };
   }
 
+  /* The background lock's own release runs as the scrim leaves, and it
+     queues the focus return; onClosed queues after it, so a caller that
+     moves focus wins over the launcher getting it back. */
+  function holdBackground(node: HTMLElement) {
+    const release = lockBackground(node);
+    return () => {
+      release();
+      queueMicrotask(() => onClosed?.());
+    };
+  }
+
   function ownSheet(node: HTMLElement) {
     return registerOverlay(node, { dismiss: close });
   }
@@ -241,7 +260,7 @@
     onclick={(e) => {
       if (e.target === e.currentTarget) close();
     }}
-    {@attach lockBackground}
+    {@attach holdBackground}
   >
     {@render tint()}
     <div
