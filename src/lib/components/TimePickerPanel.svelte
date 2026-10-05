@@ -25,7 +25,7 @@
      there turns the drums to it. Use time takes whichever was touched
      last - the drums' own value, so an arrow and Enter in quick
      succession commit the stepped time even though the drum is still on
-     its way and the entry not yet written; or the entry from focus onward,
+     its way and the entry not yet written; or the entry from editing onward,
      so a settling drum cannot rewrite a selection before typing starts
      and a half-typed time is refused rather than half applied. */
   import { untrack } from 'svelte';
@@ -254,6 +254,8 @@
         autocomplete="off"
         data-time-picker-entry
         onfocus={() => { lastTouched = 'entry'; }}
+        onpointerdown={() => { lastTouched = 'entry'; }}
+        onselect={() => { lastTouched = 'entry'; }}
         oninput={onTyped}
         onkeydown={(event) => {
           if (event.key !== 'Enter') return;
