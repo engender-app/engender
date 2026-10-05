@@ -1065,3 +1065,15 @@ test('the comparison still reports a dose with no slot in reach as unmatched', a
   if (comparison.reason !== null) return;
   assert.equal(comparison.comparison.unmatched.length, 1);
 });
+
+test('on the day a late dose is logged, the agenda’s week behind already counts its slot taken', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal, null);
+  await lateDose(journal, MONDAY + 1);
+
+  /* Tuesday's window ends on Monday; the dose that filled Monday is Tuesday's. */
+  const comparison = await journal.doses.getComparison({ fromEpochDay: MONDAY - 6, toEpochDay: MONDAY });
+  assert.equal(comparison.reason, null);
+  if (comparison.reason !== null) return;
+  assert.equal(mostRecentPassedSlot(comparison.comparison, MONDAY + 1), null);
+});
