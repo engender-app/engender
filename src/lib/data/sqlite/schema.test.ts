@@ -93,7 +93,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 85);
+  assert.equal(db.getUserVersion(), 86);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1025,4 +1025,46 @@ test('every wear session has a kind, and a write that names none gets the defaul
   };
   assert.equal(row.kind, 'binder');
   assert.equal(row.note, 'a bit tight by the end');
+});
+
+test('weekly migration anchors legacy rows on their recorded local day without changing other reminders', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 85));
+  const recordedAt = Date.parse('2026-08-10T12:00:00+02:00');
+  await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
+    VALUES ('weekly', 'Injection', 'injection', '20:00', 'WEEKLY', ?),
+           ('daily', 'Daily', 'med', '20:00', 'DAILY', ?)`, [recordedAt, recordedAt]);
+  await runMigrations(db, noopFileOps(), migrations);
+  const rows = await db.query('SELECT uuid, recurrence, interval, anchor_epoch_day, updated_at FROM reminder ORDER BY id');
+  assert.deepEqual(rows.map((row) => ({ ...row })), [
+    { uuid: 'weekly', recurrence: 'EVERY_N_DAYS', interval: 7, anchor_epoch_day: 20675, updated_at: recordedAt },
+    { uuid: 'daily', recurrence: 'DAILY', interval: null, anchor_epoch_day: null, updated_at: recordedAt }
+  ]);
+});
+
+test('an old weekly reminder inserted by archive restore is anchored on its recorded local day', async () => {
+  const db = await migratedDb();
+  await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
+    VALUES ('archive-weekly', 'Injection', 'injection', '20:00', 'WEEKLY', ?)`,
+    [Date.parse('2026-08-10T12:00:00+02:00')]);
+  assert.deepEqual((await db.query('SELECT recurrence, interval, anchor_epoch_day FROM reminder')).map((row) => ({ ...row })),
+    [{ recurrence: 'EVERY_N_DAYS', interval: 7, anchor_epoch_day: 20675 }]);
+});
+
+test('weekly migration uses the local calendar day at a UTC day boundary', async () => {
+  const originalTz = process.env.TZ;
+  process.env.TZ = 'Pacific/Kiritimati';
+  try {
+    const db = makeNodeSqliteDb();
+    await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 85));
+    await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
+      VALUES ('boundary', 'Injection', 'injection', '20:00', 'WEEKLY', ?)`,
+      [Date.parse('2026-08-09T10:30:00Z')]);
+    await runMigrations(db, noopFileOps(), migrations);
+    const [row] = await db.query('SELECT anchor_epoch_day FROM reminder');
+    assert.equal(row.anchor_epoch_day, 20675);
+  } finally {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  }
 });

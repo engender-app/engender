@@ -230,6 +230,26 @@ DELETE FROM revisit WHERE entry_id NOT IN (SELECT uuid FROM entry);
 DELETE FROM taper WHERE procedure_id NOT IN (SELECT id FROM procedure);
 `;
 
+/* v86: Weekly uses the existing seven-day progression. Reminder rows have
+   no creation timestamp, so updated_at is the only recorded day available
+   for legacy rows. For edited rows the original weekday cannot be recovered.
+   The insert trigger also translates WEEKLY from older archives. */
+const SCHEMA_V86 = `
+UPDATE reminder
+SET recurrence = 'EVERY_N_DAYS', interval = 7,
+    anchor_epoch_day = CAST(strftime('%s', date(updated_at / 1000, 'unixepoch', 'localtime')) AS INTEGER) / 86400
+WHERE recurrence = 'WEEKLY';
+
+CREATE TRIGGER reminder_anchor_legacy_weekly AFTER INSERT ON reminder
+WHEN NEW.recurrence = 'WEEKLY'
+BEGIN
+  UPDATE reminder
+  SET recurrence = 'EVERY_N_DAYS', interval = 7,
+      anchor_epoch_day = CAST(strftime('%s', date(updated_at / 1000, 'unixepoch', 'localtime')) AS INTEGER) / 86400
+  WHERE id = NEW.id;
+END;
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA },
   { version: 79, sql: SCHEMA_V79 },
@@ -238,5 +258,6 @@ export const migrations: Migration[] = [
   { version: 82, sql: SCHEMA_V82 },
   { version: 83, sql: SCHEMA_V83 },
   { version: 84, sql: SCHEMA_V84 },
-  { version: 85, sql: SCHEMA_V85 }
+  { version: 85, sql: SCHEMA_V85 },
+  { version: 86, sql: SCHEMA_V86 }
 ];

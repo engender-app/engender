@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
+import java.util.function.Consumer;
 
 public final class ReminderScheduler {
 
@@ -32,6 +33,9 @@ public final class ReminderScheduler {
 
     private ReminderScheduler() {}
 
+    // The class monitor covers store reads through alarm replacement and wipe.
+    // A receiver must not write an old payload over a concurrent journal sync.
+
     /**
      * The store is written before the old alarms are cancelled, so a wrap
      * that fails leaves the phone on the rules it already had rather than
@@ -39,19 +43,51 @@ public final class ReminderScheduler {
      * rejects, which {@code platform-sync.ts} logs and nothing shows the
      * person; what recovers it is the next sync, on the next focus.
      */
-    static void saveAndSchedule(Context context, JSONObject payload) throws Exception {
-        JSONObject previous = loadPayload(context);
-        ReminderPayloadStore.write(context, payload);
-
-        cancelAll(context, previous);
-        scheduleAll(context, payload, ZonedDateTime.now());
+    static synchronized void saveAndSchedule(Context context, JSONObject payload) throws Exception {
+        ZonedDateTime now = ZonedDateTime.now();
+        saveAndSchedule(payload, now, () -> loadPayload(context),
+            saved -> ReminderPayloadStore.write(context, saved),
+            previous -> cancelAll(context, previous), saved -> scheduleAll(context, saved, now));
     }
 
-    static void rescheduleFromStore(Context context) {
-        JSONObject payload = loadPayload(context);
-        if (payload == null) return;
-        cancelAll(context, payload);
-        scheduleAll(context, payload, ZonedDateTime.now());
+    static synchronized void rescheduleFromStore(Context context) {
+        ZonedDateTime now = ZonedDateTime.now();
+        rescheduleFromStore(() -> loadPayload(context), now,
+            migrated -> ReminderPayloadStore.write(context, migrated),
+            payload -> cancelAll(context, payload), payload -> scheduleAll(context, payload, now));
+    }
+
+    interface PayloadReader {
+        JSONObject read() throws Exception;
+    }
+
+    interface PayloadWriter {
+        void write(JSONObject payload) throws Exception;
+    }
+
+    static synchronized void saveAndSchedule(JSONObject payload, ZonedDateTime now, PayloadReader reader, PayloadWriter writer,
+                                Consumer<JSONObject> cancel, Consumer<JSONObject> schedule) throws Exception {
+        JSONObject previous = reader.read();
+        ReminderPlanner.anchorLegacyWeeklyRules(payload, now);
+        writer.write(payload);
+        cancel.accept(previous);
+        schedule.accept(payload);
+    }
+
+    /** A failed migration write leaves existing alarms intact. Anchored
+        payloads need no further store write. */
+    static synchronized void rescheduleFromStore(PayloadReader reader, ZonedDateTime now, PayloadWriter writer,
+                                    Consumer<JSONObject> cancel, Consumer<JSONObject> schedule) {
+        JSONObject payload;
+        try {
+            payload = reader.read();
+            if (payload == null) return;
+            if (ReminderPlanner.anchorLegacyWeeklyRules(payload, now)) writer.write(payload);
+        } catch (Exception failedStore) {
+            return;
+        }
+        cancel.accept(payload);
+        schedule.accept(payload);
     }
 
     /**
@@ -79,7 +115,7 @@ public final class ReminderScheduler {
      * limit: it is cancelled by its fixed request code whatever the payload
      * says.
      */
-    public static void wipe(Context context) throws Exception {
+    public static synchronized void wipe(Context context) throws Exception {
         cancelAll(context, loadPayload(context));
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
         /* After the file, and for the same reason AutoExportPlugin deletes
@@ -89,7 +125,7 @@ public final class ReminderScheduler {
         ReminderPayloadStore.deleteKey();
     }
 
-    static JSONObject loadPayload(Context context) {
+    static synchronized JSONObject loadPayload(Context context) {
         return ReminderPayloadStore.read(context);
     }
 
