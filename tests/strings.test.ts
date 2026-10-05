@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { get, request } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import { serializeCatalogue } from '../scripts/catalogue.mjs';
-import { createStringsServer, readStrings, writeString } from '../scripts/strings.mjs';
+import { createStringsServer, readStrings, writeReviews, writeString } from '../scripts/strings.mjs';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -227,8 +227,65 @@ describe('strings HTTP server', () => {
       expect(updated.find((row: { key: string }) => row.key === 'greeting')).toMatchObject({
         change: 'changed', pl: 'Miłego dnia', previous: { en: 'Hello', pl: 'Dzień dobry' }
       });
+      const review = { reviewed: true, keys: updated.filter((row: { key: string }) => row.key === 'greeting') };
+      const reviewPatch = (body: unknown, origin = url) => fetch(`${url}/api/reviews`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(body)
+      });
+      expect((await reviewPatch(review, 'https://example.com')).status).toBe(403);
+      expect((await reviewPatch(review)).status).toBe(204);
+      expect(readStrings(root).find((row) => row.key === 'greeting')?.reviewed).toBe(true);
+      expect((await reviewPatch({ ...review, keys: [{ ...review.keys[0], pl: 'Stale' }] })).status).toBe(409);
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
+  });
+});
+
+describe('copy review memory', () => {
+  it('persists a group and individual unchecking without changing catalogues', () => {
+    const root = fixture();
+    const before = ['en', 'pl'].map((locale) => readFileSync(join(root, `messages/${locale}.json`), 'utf8'));
+    const keys = readStrings(root).filter((row) => ['greeting', 'readings'].includes(row.key));
+    writeReviews(root, { keys, reviewed: true });
+    expect(readStrings(root).filter((row) => row.reviewed).map((row) => row.key)).toEqual(['greeting', 'readings']);
+    writeReviews(root, { keys: keys.slice(0, 1), reviewed: false });
+    expect(readStrings(root).filter((row) => row.reviewed).map((row) => row.key)).toEqual(['readings']);
+    expect(['en', 'pl'].map((locale) => readFileSync(join(root, `messages/${locale}.json`), 'utf8'))).toEqual(before);
+    expect(JSON.parse(readFileSync(join(root, '.scratch/copy-review.json'), 'utf8')).readings).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('reopens only changed copy, including English and Polish plural forms', () => {
+    const root = fixture();
+    writeReviews(root, { keys: readStrings(root), reviewed: true });
+    writeString(root, plainEdit());
+    writeString(root, { locale: 'pl', key: 'readings', variant: 0, form: 'countPlural=few',
+      previous: '{count} odczyty', text: 'Odczyty: {count}' });
+    expect(readStrings(root).filter((row) => !row.reviewed).map((row) => row.key)).toEqual(['greeting', 'readings']);
+  });
+
+  it('rejects stale group approval without partly saving it or losing prior progress', () => {
+    const root = fixture();
+    const keys = readStrings(root);
+    writeReviews(root, { keys: keys.filter((row) => row.key === 'missing'), reviewed: true });
+    const before = readFileSync(join(root, '.scratch/copy-review.json'), 'utf8');
+    writeString(root, { ...plainEdit(), key: 'orphan', previous: 'Unused', text: 'Changed outside the editor' });
+    expect(() => writeReviews(root, { keys, reviewed: true })).toThrow('Copy changed for orphan');
+    expect(readFileSync(join(root, '.scratch/copy-review.json'), 'utf8')).toBe(before);
+  });
+
+  it.each([null, {}, { reviewed: true, keys: [] }, { reviewed: 'yes', keys: [] },
+    { reviewed: true, keys: [null] }, { reviewed: true, keys: [{ key: '__proto__' }] },
+    { reviewed: true, keys: [{ key: '$schema' }] }, { reviewed: true, keys: [{ key: 'unknown' }] }
+  ])('rejects invalid review requests: %j', (review) => {
+    const root = fixture();
+    expect(() => writeReviews(root, review)).toThrow();
+    expect(readStrings(root).some((row) => row.reviewed)).toBe(false);
+  });
+
+  it('reports damaged review memory rather than silently discarding it', () => {
+    const root = fixture();
+    mkdirSync(join(root, '.scratch'));
+    writeFileSync(join(root, '.scratch/copy-review.json'), '{broken');
+    expect(() => readStrings(root)).toThrow();
   });
 });
