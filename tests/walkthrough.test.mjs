@@ -8461,6 +8461,38 @@ try {
 } catch (e) { fail('the recovery key', e); }
 });
 
+/* The licence notices (phase 15 release-blockers ticket 10): About links
+   to them, the build wrote one row per bundled package, and a row opens the
+   text its licence asks to travel with the app. Svelte is the package the
+   check names because every chunk carries its runtime, so a notices list
+   without it means the build read the wrong graph. Before the access-mode
+   flow for the reason the recovery key gives: after it, every screen is a
+   gate. */
+await flow('licence notices', async () => {
+try {
+  await fresh('/settings');
+  await page.locator('[data-list-row="about"]').click();
+  for (const link of ['privacy', 'source']) {
+    const href = await page.locator(`[data-about-link="${link}"]`).getAttribute('href');
+    if (!href?.startsWith('https://github.com/engender-app/engender')) {
+      throw new Error(`About's ${link} link goes to ${href}`);
+    }
+  }
+  await page.locator('[data-about-link="licences"]').click();
+  await page.waitForURL('**/settings/licences');
+  await page.waitForSelector('[data-licence="svelte"]');
+  const rows = await page.locator('[data-licence]').count();
+  if (rows < 20) throw new Error(`the notices list has ${rows} rows`);
+  await page.locator('[data-licence="svelte"]').click();
+  const text = page.locator('[data-licence-text]').first();
+  await text.waitFor();
+  if (!(await text.innerText()).includes('Permission is hereby granted')) {
+    throw new Error('svelte opens no MIT text');
+  }
+  ok(`About links to ${rows} licence notices, and a row opens its text`);
+} catch (e) { fail('licence notices', e); }
+});
+
 /* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
    PIN that opens it (ticket 53, replacing ticket 17's app lock).
 
