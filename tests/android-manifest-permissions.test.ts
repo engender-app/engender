@@ -63,6 +63,24 @@ describe('privacy policy names every permission the manifest declares (phase 12 
     expect(privacyPolicyPl).toContain(permission);
   });
 
+  /* What ships is the merged manifest, and androidx.biometric adds these
+     two to it (the note at the top of this file). A reader of the installed
+     app sees them, so the policy has to name them too (phase 15
+     release-blockers ticket 10, audit findings S-09 and SEC-04). */
+  const MERGED_IN = ['USE_BIOMETRIC', 'USE_FINGERPRINT'];
+
+  it.each(MERGED_IN)('%s, merged in by androidx.biometric, appears in both policies', (permission) => {
+    expect(privacyPolicyEn).toContain(permission);
+    expect(privacyPolicyPl).toContain(permission);
+  });
+
+  it('both policies carry the two sections Play looks for: a contact and how to delete', () => {
+    expect(privacyPolicyEn).toMatch(/^## Contact$/m);
+    expect(privacyPolicyEn).toMatch(/^## Deleting your data$/m);
+    expect(privacyPolicyPl).toMatch(/^## Kontakt$/m);
+    expect(privacyPolicyPl).toMatch(/^## Usuwanie danych$/m);
+  });
+
   it('both policies still say the app requests no INTERNET permission', () => {
     expect(privacyPolicyEn).toContain('does not request the `INTERNET` permission');
     expect(privacyPolicyPl).toContain('nie prosi o uprawnienie `INTERNET`');
