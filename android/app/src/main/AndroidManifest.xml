@@ -676,7 +676,10 @@
          CAMERA (BridgeWebChromeClient.java lines 104-105), so getUserMedia
          asking for video is all it takes and there is no native bridge here
          either. RECORD_AUDIO above covers the sound half - a video note
-         records both. No <uses-feature>: a device without a camera should
-         still install and use every other part of the journal. -->
+         records both. Optional hardware declarations keep devices without
+         a camera or microphone eligible to install the app. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 </manifest>
