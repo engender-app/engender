@@ -3725,6 +3725,7 @@
   "vb_comfort_set": "Ustaw swój zakres",
   "vb_comfort_value": "{low} do {high} Hz",
   "vb_db": "{value} dB",
+  "vb_discard_body": "Ten wzorzec nie został zapisany. Jego nagrania przepadną.",
   "vb_distance_hint": "Trzymaj telefon w tej samej odległości od ust, co poprzednio.",
   "vb_fail_clipping": "Odsuń się trochę od mikrofonu.",
   "vb_fail_noise": "Spróbuj w cichszym miejscu, jeśli możesz.",
