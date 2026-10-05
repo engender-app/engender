@@ -135,7 +135,7 @@
   {:else}
     <SectionHeading text={m.wrapped_share_picker_title()} />
     <ListCard>
-      <ListRow key="share-counts" title={m.wrapped_stat_entries()} chevron={false}>
+      <ListRow static key="share-counts" title={m.wrapped_stat_entries()}>
         {#snippet trailing()}
           <Switch
             checked={selection.counts}
@@ -144,7 +144,7 @@
           />
         {/snippet}
       </ListRow>
-      <ListRow key="share-palette" title={m.wrapped_share_element_palette()} chevron={false}>
+      <ListRow static key="share-palette" title={m.wrapped_share_element_palette()}>
         {#snippet trailing()}
           <Switch
             checked={selection.paletteArt}
