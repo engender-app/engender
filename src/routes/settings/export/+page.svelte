@@ -13,6 +13,7 @@
   import type { PickedArchive } from '$lib/data/archive/pick';
   import {
     pickForRestore,
+    restoreGuard,
     runRestore,
     runVerify,
     type RestoreFailureKind
@@ -456,8 +457,11 @@
     }
   }
 
+  /* A missing file or password is refused before anything asks: a sheet
+     asking whether to replace the journal, only to say afterwards that no
+     file was chosen, has the order backwards. */
   function requestImport() {
-    if (impMode === 'replace') replaceSheet = true;
+    if (impMode === 'replace' && restoreGuard(picked, impPass) === null) replaceSheet = true;
     else void doImport();
   }
 
