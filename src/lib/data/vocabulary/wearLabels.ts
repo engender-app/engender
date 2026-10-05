@@ -148,7 +148,7 @@ const SAFETY_FACTS: Record<WearKind, { facts: () => string[]; source: () => stri
 };
 
 function labelForKind(record: Record<WearKind, () => string>, kind: WearKind): string {
-  return Object.hasOwn(record, kind) ? record[kind]() : kind;
+  return Object.prototype.hasOwnProperty.call(record, kind) ? record[kind]() : kind;
 }
 
 export const wearKindLabel = (kind: WearKind): string => labelForKind(KIND_LABELS, kind);
@@ -162,6 +162,6 @@ export const wearReminderTitle = (kind: WearKind): string => labelForKind(REMIND
 export const wearTileTitle = (kind: WearKind): string => labelForKind(TILE_TITLES, kind);
 export const wearReturningRowTitle = (kind: WearKind): string => labelForKind(RETURNING_ROW_TITLES, kind);
 export const wearSafetyFacts = (kind: WearKind): { facts: string[]; source: string } =>
-  Object.hasOwn(SAFETY_FACTS, kind)
+  Object.prototype.hasOwnProperty.call(SAFETY_FACTS, kind)
     ? { facts: SAFETY_FACTS[kind].facts(), source: SAFETY_FACTS[kind].source() }
     : { facts: [], source: '' };
