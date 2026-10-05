@@ -31,21 +31,19 @@
 
 import { unzipSync } from 'fflate';
 
-/** Refuses everything past a real ten-year export by design, not by guess -
-    see `.scratch/pre-production-human-steps/05-zip-import-ceilings.md` for
-    picking the real number from an actual export nobody has measured yet.
-    The Daylio backup sheet's `dlb_too_large` string names this number in
-    both languages - change one, change the other. */
-const ZIP_INFLATED_CEILING_BYTES = 512 * 1024 * 1024;
+/** 1536 MiB allows headroom above the 851.2 MiB ten-year import estimate
+    documented in docs/architecture.md. This bounds allocations; it does
+    not guarantee the device has enough memory for every accepted import.
+    Keep `dlb_too_large` in sync in both message catalogues. */
+const ZIP_INFLATED_CEILING_BYTES = 1536 * 1024 * 1024;
 
 /** The picked file's own size on disk, checked before it is read into
     memory at all - a cheap, separate guard from the ceiling above, which
     only applies once a file is already a `Uint8Array` fflate can look
-    inside. Smaller on purpose: a real export compresses, so a file already
-    this size before unpacking has no legitimate way to land under the
-    inflated ceiling once it does. Same human step as above, and the same
-    "keep the copy in sync" note - `dlb_file_too_large` names this one. */
-export const IMPORT_FILE_SIZE_CEILING_BYTES = 256 * 1024 * 1024;
+    inside. 1024 MiB admits the estimate even with little media compression,
+    while keeping the input buffer below the decompression budget.
+    Keep `dlb_file_too_large` in sync in both message catalogues. */
+export const IMPORT_FILE_SIZE_CEILING_BYTES = 1024 * 1024 * 1024;
 
 /** A zip refused a member, or a running total of members, past the ceiling
     it was opened with - before fflate allocated anything for it. */

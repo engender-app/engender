@@ -492,6 +492,18 @@ Replace keeps the built-in vocabulary and device-local preferences. Merge adds u
 
 **External importers** sit in [data/archive/sources.ts](../src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](../src/lib/data/archive/plain.ts)) are readable files, not backups.
 
+The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
+The shared [ZIP reader](../src/lib/data/archive/zipReader.ts) allows at most
+1536 MiB of declared decompressed content across the members it reads, including
+Day One and TransTracks imports. Both limits use a ten-year estimate: twice the
+393.6 MiB attachment baseline in [the benchmark](../tests/long-journal/budgets.json),
+plus 64 MiB for longer recordings, metadata and ZIP overhead, totals 851.2 MiB.
+The factor of two allows larger source media than Engender's normalized photos;
+it is an assumption, not a measurement of another app's export. The file limit
+leaves room even if media barely compresses. These allocation limits do not
+guarantee enough memory on every device. Engender's encrypted Archives use a
+separate streaming reader.
+
 ## 7. Security model
 
 ### 7.1 Threat model
