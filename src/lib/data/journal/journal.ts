@@ -422,7 +422,12 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const appointments = makeAppointmentsArea(driver);
   const procedures = makeProceduresArea(driver, files, checklists, milestones, appointments);
   const letters = makeLettersArea(driver);
-  const entries = makeEntriesArea(driver, files, makeChecklistsArea);
+  const entries = makeEntriesArea(
+    driver,
+    files,
+    (scope) => makeDosesArea(scope, makeRegimenArea(scope)),
+    makeChecklistsArea
+  );
   const feltSense = makeFeltSenseArea(driver);
   const tags = makeTagsArea(driver);
   const measurements = makeMeasurementsArea(driver);
