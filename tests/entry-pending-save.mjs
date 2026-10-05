@@ -1,7 +1,7 @@
 /* Run against the demo build: VITE_DEMO=1 npm run build && node tests/entry-pending-save.mjs.
    Delay the first encrypted attachment write without replacing storage. */
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 import { INIT_HIDE_DEMO_SCRIPT, STUB_PERSIST_SCRIPT } from './yank-sweep-core.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
@@ -12,6 +12,8 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const shots = '.claude/entry-pending-save-shots';
 await mkdir(shots, { recursive: true });
+let diagnosticPage;
+const browserErrors = [];
 
 async function attachPhoto(page) {
   if (await page.locator('[data-section-chip="photos"]').getAttribute('aria-expanded') !== 'true') {
@@ -83,8 +85,15 @@ try {
       };
     });
     const page = await context.newPage();
+    diagnosticPage = page;
     const errors = [];
-    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('pageerror', (error) => {
+      errors.push(error.message);
+      browserErrors.push({ locale, type: 'pageerror', message: error.message });
+    });
+    page.on('console', (message) => {
+      if (message.type() === 'error') browserErrors.push({ locale, type: 'console', message: message.text() });
+    });
     await settlePage(page, base, '/settings', locale === 'en' ? 'light' : 'dark');
     await page.locator('[data-list-row="language"]').click();
     await page.locator(`[data-segment="${locale}"]`).click();
@@ -345,6 +354,29 @@ try {
     console.log(`PASS ${locale}: pending save freezes edits and persists entry and encrypted photo`);
     await context.close();
   }
+} catch (error) {
+  // The gallery precedes reloads. Keep the failed screen too, without replacing
+  // the guard's error if capture fails or the browser stops answering.
+  if (diagnosticPage && !diagnosticPage.isClosed()) {
+    const page = diagnosticPage;
+    let deadline;
+    await Promise.race([
+      Promise.allSettled([
+        writeFile(`${shots}/failure.json`, JSON.stringify({ url: page.url(), error: String(error), browserErrors }, null, 2)),
+        page.content().then((html) => writeFile(`${shots}/failure.html`, html)),
+        page.evaluate(() => ({
+          boot: document.querySelector('[data-app-root]')?.getAttribute('data-boot') ?? null,
+          locked: !!document.querySelector('[data-applock]'),
+          visibility: document.visibilityState,
+          entryCards: [...document.querySelectorAll('[data-entry-card]')].map((node) => node.textContent)
+        })).then((state) => writeFile(`${shots}/failure-state.json`, JSON.stringify(state, null, 2))),
+        page.screenshot({ path: `${shots}/failure.png`, fullPage: true })
+      ]),
+      new Promise((resolve) => { deadline = setTimeout(resolve, 5000); })
+    ]);
+    clearTimeout(deadline);
+  }
+  throw error;
 } finally {
   await browser.close();
   await app.close();
