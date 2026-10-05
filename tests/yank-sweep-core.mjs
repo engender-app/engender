@@ -1533,6 +1533,7 @@ const HYDRATION_SCENES = [
   { name: 'notifications', at: '/settings/notifications', is: 'the notifications half of the registry' },
   { name: 'permissions', at: '/settings/permissions', is: 'what the app asks the device for' },
   { name: 'trash', at: '/settings/trash', is: 'the 30-day window' },
+  { name: 'licences', at: '/settings/licences', is: 'the licence notices' },
   /* Sheets over settled screens: the sheet's own hydration is the question,
      so these wait the screen out first and then record the opening. The
      palette chooser is not among them because it is not a sheet any more:

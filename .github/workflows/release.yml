@@ -33,25 +33,34 @@ jobs:
     environment: release
     # Secrets cannot appear directly in step conditions; expose only presence.
     env:
+      RELEASE_TAG: ${{ github.ref_name }}
       PLAY_UPLOAD_ENABLED: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # The tag object itself, not just the commit: app-version.mjs asks
           # whether the tag carries a signature, and a shallow checkout has no
           # tag to ask about.
+          persist-credentials: false
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: npm
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: temurin
           java-version: '21'
+      - name: Put Android signing tools on PATH
+        run: |
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -x "$build_tools/apksigner"
+          test -x "$build_tools/zipalign"
+          echo "$build_tools" >> "$GITHUB_PATH"
+
       - run: npm ci
 
       - name: Read the version from the signed tag, once
@@ -60,6 +69,8 @@ jobs:
           # --release refuses a development version here, at the step that reads
           # the tag, rather than letting an unsigned tag get further in.
           version="$(node scripts/app-version.mjs --release)"
+          [[ "$RELEASE_TAG" == "v$version" ]]
+          git merge-base --is-ancestor HEAD origin/main
           echo "Releasing $version"
           echo "value=$version" >> "$GITHUB_OUTPUT"
           # Every later step, and every artifact, is handed this same string.
@@ -76,7 +87,7 @@ jobs:
       - name: Derive Android version values from the same release version
         run: |
           mkdir -p dist
-          node scripts/android-version.mjs "${{ steps.version.outputs.value }}" > dist/android-version.env
+          node scripts/android-version.mjs "$ENGENDER_VERSION" > dist/android-version.env
           cat dist/android-version.env
           # android-version.mjs prints ANDROID_VERSION_CODE; build.gradle reads
           # ENGENDER_VERSION_CODE (ENGENDER_VERSION is already set from
@@ -84,41 +95,46 @@ jobs:
           version_code="$(grep '^ANDROID_VERSION_CODE=' dist/android-version.env | cut -d= -f2)"
           echo "ENGENDER_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
 
-      - name: Materialize Android signing key in the protected environment
+      - name: Build unsigned Android release artifacts
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          key="$RUNNER_TEMP/upload-keystore.p12"
-          base64 --decode <<<"$ANDROID_KEYSTORE_BASE64" > "$key"
-          chmod 600 "$key"
-          # The path is a RUNNER_TEMP file at mode 600, not a secret, so it can
-          # ride in GITHUB_ENV. The keystore password and key alias below stay
-          # scoped to the Gradle step that actually reads them, so a compromised
-          # later step (the Play upload action) never sees them.
-          echo "ANDROID_KEYSTORE_PATH=$key" >> "$GITHUB_ENV"
-          echo "ANDROID_REQUIRE_SIGNING=true" >> "$GITHUB_ENV"
-          echo "ANDROID_REQUIRE_RELEASE_VERSION=true" >> "$GITHUB_ENV"
-
-      - name: Build signed Android release artifacts
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+          ANDROID_REQUIRE_RELEASE_VERSION: 'true'
         run: |
           npm run build
           npx cap sync android
-          (cd android && ./gradlew :app:assembleRelease :app:bundleRelease)
+          (cd android && ./gradlew :app:assembleRelease :app:bundleRelease --max-workers=2 --no-daemon)
+          test -f android/app/build/outputs/apk/release/app-release-unsigned.apk
+          test -f android/app/build/outputs/bundle/release/app-release.aab
 
+      # Only native signing tools receive the key and passwords. The key is
+      # removed before package-release.mjs runs its reproducibility builds.
+      - name: Sign Android release artifacts
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+        run: |
+          key="$RUNNER_TEMP/upload-keystore.p12"
+          trap 'rm -f "$key" "$RUNNER_TEMP/aligned.apk"' EXIT
+          umask 077
+          base64 --decode <<<"$ANDROID_KEYSTORE_BASE64" > "$key"
+          export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
           mkdir -p dist/release
-          cp android/app/build/outputs/apk/release/app-release.apk \
-             "dist/release/engender-android-release-${{ steps.version.outputs.value }}.apk"
-          cp android/app/build/outputs/bundle/release/app-release.aab \
-             "dist/release/engender-android-release-${{ steps.version.outputs.value }}.aab"
+          zipalign -P 16 -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          apksigner sign --ks "$key" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
+            --v4-signing-enabled false \
+            --out "dist/release/engender-android-release-$ENGENDER_VERSION.apk" "$RUNNER_TEMP/aligned.apk"
+          jarsigner -keystore "$key" -storepass:env ANDROID_KEYSTORE_PASSWORD \
+            -keypass:env ANDROID_KEY_PASSWORD \
+            -signedjar "dist/release/engender-android-release-$ENGENDER_VERSION.aab" \
+            android/app/build/outputs/bundle/release/app-release.aab "$ANDROID_KEY_ALIAS"
 
-      - name: Verify release artifacts before packaging
-        run: node scripts/check-release-artifacts.mjs
-
-      - name: Build, package, and check what came out
+      - name: Build reproducible web and source packages with checksums
         run: node scripts/package-release.mjs
+
+      - name: Verify complete release artifacts before publishing
+        run: node scripts/check-release-artifacts.mjs
 
       # Publish all signed artifacts and checksums before contacting Play.
       - name: Publish
@@ -131,16 +147,11 @@ jobs:
             cat dist/release/SHA256SUMS
             printf '```\n'
           } > dist/release-body.md
-          gh release create "${{ github.ref_name }}" \
-            --title "engender ${{ steps.version.outputs.value }}" \
+          gh release create "$RELEASE_TAG" \
+            --title "engender $ENGENDER_VERSION" \
             --notes-file dist/release-body.md \
             dist/release/*
 
-      # Pinned to a commit SHA, not a tag: this is a third-party action that
-      # already runs with the Play service-account JSON, and a tag can move
-      # under us between one release and the next. First-party actions/*
-      # steps above stay on their major-version tag - GitHub controls those,
-      # so the extra pin buys nothing over the account boundary itself.
       # First upload the AAB manually in Play Console. Keep drafts until the
       # account accepts automatic releases; then change status to completed.
       # Play failure leaves the published GitHub Release and job successful.

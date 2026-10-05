@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { Toggle } from 'melt/builders';
-
   let {
     checked = false,
     label,
@@ -18,13 +16,15 @@
     disabled?: boolean;
   } = $props();
 
-  // Melt UI toggle provides the behaviour; visually styled as a switch.
-  const toggle = new Toggle({
-    value: () => checked,
-    onValueChange: (v) => onChange(v),
-  });
+  /* A plain button with role="switch", and aria-checked as its one state.
+     It used to spread Melt's Toggle trigger, which also set aria-pressed:
+     a toggle button's state on top of a switch's, so axe flagged every
+     switch in the app and a screen reader was handed two answers to one
+     question (release blockers 09). Space and Enter come from the button
+     itself, and a native disabled button already refuses the click. */
+  const flip = () => onChange(!checked);
 </script>
 
-<button {...toggle.trigger} class="switch" role="switch" aria-checked={checked} aria-label={label} {disabled}>
+<button type="button" class="switch" role="switch" aria-checked={checked} aria-label={label} {disabled} onclick={flip}>
   <span class="switch-track"><span class="switch-thumb"></span></span>
 </button>

@@ -75,6 +75,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import ChoiceChips from '$lib/components/kit/ChoiceChips.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -130,7 +131,7 @@
 
   // Falls back off 'waist' when it has been hidden - the picker below only
   // ever offers a visible type, and defaulting to a hidden one would open
-  // on a selection Segmented has no button for. Derived rather than seeded
+  // on a selection the picker has no chip for. Derived rather than seeded
   // once at mount: on a cold navigation straight here the vocabulary mirror
   // is still empty when this script runs (ticket 170), and a one-off seed
   // would have kept 'waist' even for somebody who hid it. Once a type is
@@ -253,7 +254,7 @@
   /* --- Sizes ------------------------------------------------------------
 
      The category filter is this half's picker, the same job the type
-     Segmented does above: it says which reading is showing, and both the
+     chips do above: it says which reading is showing, and both the
      change lines and the log answer to it.
 
      'all' opens on every category at once rather than whichever came
@@ -443,7 +444,7 @@
        log that repeats the same two records as rows. -->
   <ReadReserve id="measurements-picker" ready={nowRevealed} estimate={reserveNow} onrest={rememberNow} data-measurements-now>
     <div>
-      <Segmented name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (pickedType = v)} />
+      <ChoiceChips name={m.measurement_type_label()} options={typeOptions} value={type} onChange={(v) => (pickedType = v)} key="measurement-type" />
     </div>
     {#if span}
       <dl class="span" data-measurement-span transition:disclose={{ skip: !afterArrival }}>
@@ -635,7 +636,7 @@
     {#snippet fields(editor)}
       <Field label={m.measurement_type_label()} legend>
         {#snippet children()}
-          <Segmented name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor.type = v)} />
+          <ChoiceChips name={m.measurement_type_label()} options={typeOptions} value={editor.type} onChange={(v) => (editor.type = v)} key="measurement-type-editor" />
         {/snippet}
       </Field>
       <div class="cd-endpoints measurement-pair">

@@ -21,15 +21,16 @@ keep milestones, and prepare a summary for a clinician. Encrypted archives
 let you back up the journal or move it between web and Android. Text and PDF
 exports let you share selected records.
 
-App lock, disguise mode and quick exit help keep journal content out of view.
-Android reminders use a generic label by default. The Android build does not
-request the INTERNET permission.
+App lock and disguise mode help keep journal content out of view, and the lock
+can close the journal as soon as you leave the app. Android reminders use a
+generic label by default. The Android build does not request the INTERNET
+permission.
 
 This is the first versioned release. Earlier development builds, including
 the August web beta, do not establish a supported update path. Export anything
 you want to keep before replacing a development build.
 
-- Schema changes: the first release establishes schema 85; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
+- Schema changes: the first release establishes schema 86; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
 - Archive format changes: the first release establishes archive format 2. Archives from development builds are not a supported restore path.
 - Security migrations: none for this first release. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
 - Minimum supported version: 1.0.0 is the first supported release; there is no earlier supported version to update from.

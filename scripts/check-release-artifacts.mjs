@@ -99,7 +99,7 @@ export function releaseArtifactProblems(input) {
  * @param {string[]} args
  */
 function run(command, args) {
-  execFileSync(command, args, { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
+  return execFileSync(command, args, { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
 }
 
 /**
@@ -143,12 +143,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     problems.push('jarsigner is not available on PATH');
   } else {
     try {
-      // No -strict: Android signing certs are normally self-signed with no CA
-      // chain, and an AAB reads differently via JarFile and JarInputStream by
-      // construction. -strict turns both of those expected traits into a
-      // failure on every legitimately signed AAB, not just a broken one.
-      // jarsigner still exits non-zero on an actually missing or bad signature.
-      run('jarsigner', ['-verify', aab]);
+      // Android certificates are self-signed, so CA trust is not required.
+      // jarsigner exits zero for unsigned archives and partially signed ones.
+      // Require verification and reject unchecked entries in a fixed language.
+      const result = run('jarsigner', ['-J-Duser.language=en', '-J-Duser.country=US', '-verify', aab]);
+      if (!result.includes('jar verified.') || result.includes('unsigned entries')) {
+        throw new Error('AAB contains unsigned payload');
+      }
     } catch {
       problems.push(`AAB signature verification failed: ${aab}`);
     }

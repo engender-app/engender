@@ -70,6 +70,47 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('release blockers 03 duplicate display values', 11, async () => {
+  const result = await load('/duplicate-keys.html', 'duplicate-keys');
+  for (const item of result.cases) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'the rendered values did not match');
+  }
+});
+
+await block('archived wear kinds', 8, async () => {
+  const r = await load('/wear-labels.html', 'wear-labels-probe');
+  if (r.error) throw new Error(r.error);
+  const unknownKinds = ['future-wear', 'constructor', '__proto__', 'toString'];
+  const unknown = r.accessorResults;
+  const rendered = r.rendered;
+  const check = (condition, label) => condition ? ok(label) : fail(label, JSON.stringify(r));
+  check(unknown.length === 4 && unknownKinds.every(kind =>
+    unknown.some(row => row.kind === kind && row.labels?.length === 10 && row.labels.every(label => label === kind))),
+    'all wear labels preserve unknown archived kinds, including inherited property names');
+  check(unknown.every(row => row.safety?.facts.length === 0 && row.safety.source === ''),
+    'unknown wear kinds receive no invented safety advice');
+  const messages = JSON.parse(await readFile(`${here}/../../messages/en.json`, 'utf8'));
+  const labelKeys = [
+    'wear_kind', 'wear_session_add_aria', 'wear_session_new_sheet', 'wear_session_edit_sheet',
+    'wear_session_running_sheet', 'wear_session_running_card', 'wear_session_delete_sheet',
+    'wear_session_reminder_title', 'tile_wear_title', 'coming_back_wear_row'
+  ];
+  check(r.known.length === 3 && r.known.every(row =>
+    row.labels.length === 10 && row.labels.every((label, index) => label === messages[`${labelKeys[index]}_${row.kind}`])),
+    'known wear kinds retain every catalogue translation');
+  check(r.known.every(row => row.safety.facts.length === 3 &&
+    row.safety.facts.every((fact, index) => fact === messages[`wear_facts_${row.kind}_${index + 1}`]) &&
+    row.safety.source === messages[`wear_facts_${row.kind}_source`]),
+    'known wear kinds retain their safety facts and sources');
+  const everyKind = (field) => rendered.length === 4 && unknownKinds.every(kind =>
+    rendered.some(row => row.kind === kind && row[field] === true));
+  check(everyKind('running'), 'the Wear screen renders running sessions with unknown kinds');
+  check(everyKind('add'), 'the Wear screen names its add control for an unknown latest kind');
+  check(everyKind('row'), 'the Wear screen renders completed sessions with unknown kinds');
+  check(everyKind('hub'), 'the More hub renders running wear sessions with unknown kinds');
+});
+
 await block('failed encrypted pool initialization preserves journal data', 8, async () => {
   const r = await load('/pool-initialization.html', 'pool-initialization');
   if (r.error) throw new Error(r.error);
@@ -1253,7 +1294,7 @@ await block('U03 radio selection and disabled choices', 2, async () => {
   ok('MoodPicker: Space, arrows, Tab re-entry and disabled choices');
 });
 
-await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
+await block('phase 9 audit ticket 07 mood chips keyboard nav', 5, async () => {
   await page.goto(`http://localhost:${port}/kit.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-kit-ready]', { state: 'attached' });
 
@@ -1263,17 +1304,29 @@ await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
     ok('only the picked mood (4) is a tab stop');
   else fail('only the picked mood is a tab stop', JSON.stringify(tabindexes));
 
+  /* Release blockers 08 (audit A11Y-02): Today's pick opens the editor, so an
+     arrow moves focus and the one tab stop without picking anything, and
+     Enter or Space is the pick. */
   const four = faces.nth(3);
   const five = faces.nth(4);
   await four.focus();
   await page.keyboard.press('ArrowRight');
-  const movedChecked = await five.getAttribute('aria-checked');
-  if (movedChecked === 'true') ok('ArrowRight moves the tab stop and the pick to the next face');
-  else fail('ArrowRight moves the pick to the next face', movedChecked);
+  const arrowState = await faces.evaluateAll((els) => ({
+    checked: els.map((el) => el.getAttribute('aria-checked')),
+    focused: els.indexOf(document.activeElement),
+  }));
+  if (arrowState.focused === 4 && arrowState.checked[3] === 'true' && arrowState.checked[4] === 'false')
+    ok('ArrowRight moves focus to the next face and leaves the pick where it was');
+  else fail('ArrowRight moves focus without picking', JSON.stringify(arrowState));
 
   const movedTabindex = await five.getAttribute('tabindex');
-  if (movedTabindex === '0') ok('and the newly picked face becomes the one tab stop');
-  else fail('the newly picked face becomes the one tab stop', movedTabindex);
+  if (movedTabindex === '0') ok('and the focused face becomes the one tab stop');
+  else fail('the focused face becomes the one tab stop', movedTabindex);
+
+  await page.keyboard.press('Enter');
+  const picked = await five.getAttribute('aria-checked');
+  if (picked === 'true') ok('Enter picks the focused face');
+  else fail('Enter picks the focused face', picked);
 
   /* The keyboard equivalent of the click-to-clear a mistap relies on: Enter
      on a native <button> fires the same click handler a pointer would, so
@@ -1282,6 +1335,71 @@ await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
   const cleared = await five.getAttribute('aria-checked');
   if (cleared === 'false') ok('Enter on the picked face clears it, the same as a click would');
   else fail('Enter on the picked face clears it', cleared);
+});
+
+// --- Release blockers 09: a switch states one thing, once ------------------
+/* Axe flagged every switch for carrying aria-pressed beside role="switch"
+   and aria-checked (Melt's Toggle trigger added it), and a ListRow holding a
+   switch for being a button with a button inside it. Both are facts about
+   the rendered DOM and the focus order, so they are read here off the real
+   page: no switch carries a second state, none sits inside another control,
+   Tab reaches each one once and Space flips it once. */
+await block('release blockers 09 switch semantics and keyboard', 5, async () => {
+  await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
+
+  const switches = page.locator('[data-case="switches"] [role="switch"]');
+  const count = await switches.count();
+
+  const pressed = await switches.evaluateAll((els) => els.filter((e) => e.hasAttribute('aria-pressed')).length);
+  if (count > 0 && pressed === 0) ok(`none of the ${count} switches carries aria-pressed beside aria-checked`);
+  else fail('no switch carries aria-pressed', `${pressed} of ${count}`);
+
+  const nested = await switches.evaluateAll(
+    (els) =>
+      els.filter((e) => e.parentElement?.closest('button, a[href], [role="button"], [role="switch"], [role="checkbox"]')).length
+  );
+  if (nested === 0) ok('no switch sits inside another control (the kit row holding one is static)');
+  else fail('no switch sits inside another control', `${nested} nested`);
+
+  /* Walk Tab from the element before the card and record what takes focus
+     until it leaves the card again. */
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-case="switches"]');
+    const before = document.createElement('button');
+    before.dataset.tabStart = '';
+    card?.before(before);
+    before.focus();
+  });
+  const stops = [];
+  for (let i = 0; i < count + 3; i++) {
+    await page.keyboard.press('Tab');
+    const stop = await page.evaluate(() => {
+      const a = document.activeElement;
+      if (!a?.closest('[data-case="switches"]')) return null;
+      return `${a.getAttribute('role') ?? a.tagName}:${a.getAttribute('aria-label') ?? ''}`;
+    });
+    if (stop === null) break;
+    stops.push(stop);
+  }
+  await page.evaluate(() => document.querySelector('[data-tab-start]')?.remove());
+  const switchStops = stops.filter((s) => s.startsWith('switch:'));
+  if (stops.length === count && new Set(switchStops).size === count)
+    ok(`Tab reaches each of the ${count} switches once and nothing else in their rows`);
+  else fail('Tab reaches each switch once', JSON.stringify(stops));
+
+  const row = page.locator('[data-list-row="gallery-switch-row"] [role="switch"]');
+  const before = await row.getAttribute('aria-checked');
+  await row.focus();
+  await page.keyboard.press('Space');
+  const after = await row.getAttribute('aria-checked');
+  if (before === 'true' && after === 'false') ok('Space flips the row\'s switch once (true to false)');
+  else fail('Space flips the switch once', `${before} -> ${after}`);
+
+  await page.keyboard.press('Space');
+  const back = await row.getAttribute('aria-checked');
+  if (back === 'true') ok('a second Space flips it back, so one press is one change');
+  else fail('a second Space flips it back', back);
 });
 
 // --- Ticket 09: bar and donut hover interactivity ---------------------------

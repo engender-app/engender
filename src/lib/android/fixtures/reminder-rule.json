@@ -14,18 +14,60 @@
     "expectedIso": "2026-08-14T08:00:00+02:00"
   },
   {
-    "name": "WEEKLY fires later today while the time has not passed",
+    "name": "An anchored weekly reminder fires later on its weekday while the time has not passed",
     "zone": "Europe/Warsaw",
     "nowIso": "2026-08-11T19:00:00+02:00",
-    "rule": { "time": "20:00", "recurrence": "WEEKLY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20676, "epochDay": null },
     "expectedIso": "2026-08-11T20:00:00+02:00"
   },
   {
-    "name": "WEEKLY rolls a full week once the time has passed",
+    "name": "An anchored weekly reminder rolls a full week once the time has passed",
     "zone": "Europe/Warsaw",
     "nowIso": "2026-08-11T19:00:00+02:00",
-    "rule": { "time": "09:30", "recurrence": "WEEKLY", "interval": null, "anchorEpochDay": null, "epochDay": null },
+    "rule": { "time": "09:30", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20676, "epochDay": null },
     "expectedIso": "2026-08-18T09:30:00+02:00"
+  },
+  {
+    "name": "A Monday weekly reminder stays on Monday when resynced on August 11",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-11T10:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-17T20:00:00+02:00"
+  },
+  {
+    "name": "A Monday weekly reminder stays on Monday when resynced on August 12",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-12T10:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-17T20:00:00+02:00"
+  },
+  {
+    "name": "A Monday weekly reminder stays on Monday when resynced on August 13",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-13T10:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-17T20:00:00+02:00"
+  },
+  {
+    "name": "A Monday weekly reminder stays on Monday when resynced on August 14",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-14T10:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-17T20:00:00+02:00"
+  },
+  {
+    "name": "A Monday weekly reminder stays on Monday when resynced on August 15",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-15T10:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-17T20:00:00+02:00"
+  },
+  {
+    "name": "A Monday weekly reminder stays on Monday when resynced on August 16",
+    "zone": "Europe/Warsaw",
+    "nowIso": "2026-08-16T10:00:00+02:00",
+    "rule": { "time": "20:00", "recurrence": "EVERY_N_DAYS", "interval": 7, "anchorEpochDay": 20675, "epochDay": null },
+    "expectedIso": "2026-08-17T20:00:00+02:00"
   },
   {
     "name": "EVERY_N_DAYS lands on the anchored progression, not on today plus N",
