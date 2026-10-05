@@ -13,7 +13,7 @@ function harness(lockAfter: LockAfter, { android = false } = {}) {
   let locks = 0;
   const page = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
   const timing = { value: lockAfter };
-  const native: { __lockOnLeaveFromNative?: () => void; __lockOnReturnFromNative?: () => void } = {};
+  const native: { __lockOnLeaveFromNative?: (ownScreen?: boolean) => void; __lockOnReturnFromNative?: () => void } = {};
   const stop = watchLeave({
     page,
     native: android ? native : undefined,
@@ -32,6 +32,7 @@ function harness(lockAfter: LockAfter, { android = false } = {}) {
     hide: () => show('hidden'),
     reveal: () => show('visible'),
     nativeLeave: () => native.__lockOnLeaveFromNative?.(),
+    ownScreenLeave: () => native.__lockOnLeaveFromNative?.(true),
     nativeReturn: () => native.__lockOnReturnFromNative?.(),
     wait: (ms: number) => void (clock += ms),
     setClock: (ms: number) => void (clock = ms)
@@ -79,6 +80,52 @@ test('on Android a hidden page is not a leave: the activity says when the app le
   app.hide();
   app.reveal();
   expect(app.locks()).toBe(0);
+  app.nativeLeave();
+  expect(app.locks()).toBe(1);
+});
+
+test('under immediately, a screen the app opened itself is a minute of grace, not a lock', () => {
+  /* A photo picker, the camera, a folder picker or a permission dialog. The
+     activity cannot see Home or Recents pressed on a screen it does not own,
+     so the time spent there still counts: a picker left open for longer
+     than a minute is treated as the person having gone. */
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  expect(app.locks()).toBe(0);
+  app.wait(59_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(0);
+  app.ownScreenLeave();
+  app.wait(61_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+test('a real leave from inside one of the app\'s own screens still locks at once', () => {
+  /* The screen going off while a picker is up reaches the activity, and is
+     leaving whatever is on top. */
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  app.nativeLeave();
+  expect(app.locks()).toBe(1);
+});
+
+test('the timed choices count time on the app\'s own screens like any other absence', () => {
+  const app = harness('five-minutes', { android: true });
+  app.ownScreenLeave();
+  app.wait(4 * 60_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(0);
+  app.ownScreenLeave();
+  app.wait(5 * 60_000 + 1_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+test('the grace ends with the return, so the next leave is judged on its own', () => {
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  app.nativeReturn();
   app.nativeLeave();
   expect(app.locks()).toBe(1);
 });

@@ -1,11 +1,15 @@
 package dev.engender.app;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -30,6 +34,16 @@ public class MainActivity extends BridgeActivity {
     private static final String APP_ORIGIN = "https://localhost";
 
     private final OwnSystemUi ownSystemUi = new OwnSystemUi();
+
+    /** The screen going off is leaving, whatever is on top: a picker the app
+     * opened ends its window here rather than when its result comes back. */
+    private final BroadcastReceiver screenOff = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ownSystemUi.closed();
+            lockOnLeave();
+        }
+    };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -67,6 +81,13 @@ public class MainActivity extends BridgeActivity {
             PhotoPickChannel.registerIfSupported(bridge.getWebView(), APP_ORIGIN);
         }
         captureReminderRoute(getIntent());
+        ContextCompat.registerReceiver(this, screenOff, new IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED);
+    }
+
+    @Override
+    public void onDestroy() {
+        unregisterReceiver(screenOff);
+        super.onDestroy();
     }
 
     @Override
@@ -81,7 +102,13 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void startActivityForResult(Intent intent, int requestCode, Bundle options) {
         ownSystemUi.opened(requestCode);
-        super.startActivityForResult(intent, requestCode, options);
+        try {
+            super.startActivityForResult(intent, requestCode, options);
+        } catch (RuntimeException e) {
+            // Nothing opened, so no result will ever close the window.
+            ownSystemUi.closed();
+            throw e;
+        }
     }
 
     // Closed before the result is handed on, because handling it can open the
@@ -141,12 +168,14 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && LockTimingPlugin.isEnabled(this)) {
             ScreenCapturePlugin.applyWindowFlags(this, false);
         }
-        // Covered by a screen the app opened itself is not leaving it. The
-        // page's own visibility is ignored on Android for the same reason
-        // (leave-lock.ts), so this is the only check there is.
-        if (ownSystemUi.isOpen()) return;
         if (bridge == null || bridge.getWebView() == null) return;
-        bridge.getWebView().evaluateJavascript("window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative();", null);
+        // Covered by a screen the app opened itself is not leaving it yet,
+        // and the page decides how long it may stay up (leave-lock.ts). The
+        // page's own visibility is ignored on Android for the same reason, so
+        // this is the only report there is.
+        String ownScreen = ownSystemUi.isOpen() ? "true" : "false";
+        bridge.getWebView().evaluateJavascript(
+            "window.__lockOnLeaveFromNative && window.__lockOnLeaveFromNative(" + ownScreen + ");", null);
     }
 
     private void returnFromLeave() {

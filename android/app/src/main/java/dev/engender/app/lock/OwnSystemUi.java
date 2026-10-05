@@ -9,7 +9,9 @@ package dev.engender.app.lock;
  * on it sent somebody attaching a photo back to the lock screen.
  *
  * Opened as the request goes out and closed when its result comes back, which
- * Android delivers before the app resumes. A plain startActivity reaches
+ * Android delivers before the app resumes, or when the screen goes off. Home
+ * or Recents pressed on top of a picker never reaches the app, which is why
+ * the page caps how long this window may last rather than trusting it. A plain startActivity reaches
  * startActivityForResult with a negative request code and opens nothing: the
  * settings pages the app links to are somewhere else, and going there locks.
  */

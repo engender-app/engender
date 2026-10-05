@@ -66,8 +66,13 @@
       animation API rather than a CSS transition: app.css cuts every
       transition to 1ms under reduced motion, which would swap the words in
       one frame. */
+  let toggling = false;
+
   async function toggleShown() {
-    if (!input || !toggle) return;
+    /* One trade at a time: a second press mid-dip would flip the words
+       back while the field was still on its way to the first answer. */
+    if (!input || !toggle || toggling) return;
+    toggling = true;
     const field = input;
     const half = crossfadeDuration();
     shown = !shown;
@@ -86,6 +91,7 @@
     field.setSelectionRange(selectionStart, selectionEnd);
     field.animate([{ color: 'transparent' }, {}], { duration: half, easing: 'ease-out' });
     out.cancel();
+    toggling = false;
   }
 
   async function submit(event: SubmitEvent) {
