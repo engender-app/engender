@@ -30,6 +30,7 @@
          Production hosting has to map the .webmanifest extension to
          application/manifest+json; nginx's default mime.types does not. -->
     <link rel="icon" href="%sveltekit.assets%/favicon-trans.svg" />
+    <link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <script>
       /* Stamps the user's theme, palette and tab icon before first paint
@@ -83,6 +84,8 @@
         const manifest = document.querySelector('link[rel="manifest"]');
         if (boot.disguise) {
           manifest.href = manifest.href.replace('manifest.webmanifest', 'manifest-notes.webmanifest');
+          const touchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+          if (touchIcon) touchIcon.href = touchIcon.href.replace('apple-touch-icon.png', 'apple-touch-icon-notes.png');
         }
         const savedLocale = localStorage.getItem('PARAGLIDE_LOCALE');
         const locale = savedLocale === 'en' || savedLocale === 'pl' ? savedLocale : navigator.language;
