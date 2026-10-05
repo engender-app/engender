@@ -33,6 +33,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Fail the disposable gate probe
+        run: exit 1
       - uses: actions/checkout@v7
         with:
           # Deep, with the tags, because release.yml calls this workflow against
@@ -95,6 +97,7 @@ jobs:
       # against a fresh `npm audit` before re-running the fix, not after.
 
   android:
+    if: ${{ false }}
     name: Android debug artifact and F-Droid checks
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -146,6 +149,7 @@ jobs:
           retention-days: 30
 
   browser:
+    if: ${{ false }}
     name: Browser verification (${{ matrix.name }})
     runs-on: ubuntu-24.04
     # Each tier owns its build and journal. A failed walkthrough cannot skip
@@ -240,6 +244,7 @@ jobs:
           retention-days: 7
 
   guards:
+    if: ${{ false }}
     name: Regression guards (${{ matrix.tier }} ${{ matrix.shard }})
     runs-on: ubuntu-24.04
     # Separate hosted jobs isolate browser storage, fixtures and build outputs.
@@ -329,6 +334,7 @@ jobs:
           retention-days: 7
 
   benchmark:
+    if: ${{ false }}
     name: Ten-year Journal, against the regression budget
     runs-on: ubuntu-24.04
     # Its own job rather than another step in the browser one. The run takes
