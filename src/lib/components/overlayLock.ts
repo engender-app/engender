@@ -146,8 +146,10 @@ let unlockedOverflow = '';
 
 /** Makes everything outside `node` inert and unscrollable. Returns the undo,
     which restores focus to its launcher or the nearest surviving control in
-    the launcher's prior keyboard order. */
-export function lockBackground(node: HTMLElement): () => void {
+    the launcher's prior keyboard order. The undo's `recede()` starts
+    un-blurring the background early, for an overlay whose exit animation
+    runs before its node is destroyed. */
+export function lockBackground(node: HTMLElement): (() => void) & { recede(): void } {
   const previouslyFocused = document.activeElement as HTMLElement | null;
   const root = document.querySelector('[data-app-root]');
   const priorFocusOrder = root ? focusableElements(root) : [];
@@ -190,7 +192,19 @@ export function lockBackground(node: HTMLElement): () => void {
     mainEl.style.overflow = 'hidden';
   }
 
-  return () => {
+  /* The blurred copy over the background fades out with the overlay's own
+     exit rather than vanishing when the node is finally destroyed: dropped
+     at release, it went from fully blurred to sharp in one frame at the end
+     of every sheet's dismissal (phase 15 ticket 04, measured on the discard
+     sheet). Only an element no other open overlay still holds is let go,
+     so a sheet closing over another leaves the background withdrawn. */
+  const recede = () => {
+    if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
+    withdrawRaf = undefined;
+    for (const el of restoreInert) if ((inertHolds.get(el) ?? 1) <= 1) el.classList.remove('is-withdrawn');
+  };
+
+  const release = () => {
     if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
     restoreInert.forEach((el) => {
       const holds = (inertHolds.get(el) ?? 1) - 1;
@@ -214,6 +228,7 @@ export function lockBackground(node: HTMLElement): () => void {
         ?.focus({ preventScroll: true });
     });
   };
+  return Object.assign(release, { recede });
 }
 
 /** Keeps Tab and Shift+Tab inside `container`. Call from a `keydown` handler
