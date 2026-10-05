@@ -244,6 +244,20 @@ try {
       JSON.stringify(await focused(page))
     );
   });
+  await section('quick add from the desktop rail', async () => {
+    await page.setViewportSize({ width: 1280, height: 844 });
+    await settlePage(page, base, '/', 'light');
+    await page.locator('[data-rail-add]').focus();
+    await page.keyboard.press('Enter');
+    ok(await eventually(page, () => !!document.activeElement?.closest('[data-fan]')), 'Enter on the rail puts focus inside the fan');
+    await page.keyboard.press('Escape');
+    ok(await fanClosed(page), 'Escape closes the fan');
+    ok(
+      await eventually(page, () => document.activeElement?.matches('[data-rail-add]') ?? false),
+      'Escape gives focus back to the rail button',
+      JSON.stringify(await focused(page))
+    );
+  });
   await page.context().close();
 
   await section('onboarding', async () => {
