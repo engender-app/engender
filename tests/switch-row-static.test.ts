@@ -53,7 +53,7 @@ function listRows(file: string, source: string): Row[] {
     const end = tagEnd(source, m.index);
     const tag = source.slice(m.index, end + 1);
     if (tag.endsWith('/>')) continue;
-    stack.push({ start: m.index, bodyStart: end + 1, isStatic: /\sstatic(\s|=|>|$)/.test(tag) });
+    stack.push({ start: m.index, bodyStart: end + 1, isStatic: /\sstatic(\s|>|$|=\{\s*true\s*\})/.test(tag) });
     token.lastIndex = end + 1;
   }
   return rows;

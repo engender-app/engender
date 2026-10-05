@@ -130,7 +130,7 @@
     <!-- The kit's own row holding a switch, which is how the screens write it:
          static, so the switch is the row's one control rather than a button
          inside a button. -->
-    <ListRow static key="gallery-switch-row" title="Entries" chevron={false}>
+    <ListRow static key="gallery-switch-row" title="Entries">
       {#snippet trailing()}
         <Switch checked={shareCounts} label="Entries" onChange={(v) => (shareCounts = v)} />
       {/snippet}
