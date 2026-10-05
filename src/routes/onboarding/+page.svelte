@@ -1101,10 +1101,10 @@
                      and too late to be surprised by. -->
                 <ListCard>
                   <ListRow
+                    static
                     key="disguise"
                     title={m.disguise_app_title()}
                     subtitle={isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
-                    chevron={false}
                   >
                     {#snippet trailing()}
                       <Switch

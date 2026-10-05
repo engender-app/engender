@@ -19,6 +19,11 @@
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { detailDraft } from '$lib/components/kit/detailDraft.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
+  import { crossfade } from '$lib/motion/reveal';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { isAndroid } from '$lib/platform';
 
@@ -41,7 +46,8 @@
   /* Reminders are tens of rows and not mirrored, so the one being edited comes
      from the list rather than from a query of its own. The draft is filled the
      moment it arrives and never again, and refilled if the route moves to
-     another id - both are detailDraft.ts's rules, node-tested there. */
+     another id - both are detailDraft.ts's rules, node-tested there. Back
+     with an unsaved change asks first, which is detailDraft's default. */
   const detail = detailDraft<Reminder, { title: string; type: Reminder['type']; time: string; choice: RecurrenceChoice }>({
     read: async (j, id) => (await j.reminders.getReminders()).find((r) => r.id === id),
     blank: () => ({ title: '', type: 'med', time: '20:00', choice: 'DAILY' }),
@@ -79,6 +85,8 @@
       enabled: detail.record?.enabled ?? true,
       ...ruleFromDraft(),
     });
+    // The baseline moves first, or the guard would hold the save's own exit.
+    detail.commit();
     goto('/settings/reminders');
   }
 </script>
@@ -86,6 +94,25 @@
 <div class="screen" data-screen>
   <ScreenHeader title={detail.isNew ? m.rem_new_title() : m.rem_edit_title()} back="/settings/reminders" />
 
+  {#if detail.failed && !detail.isNew}
+    <Notice key="reminder-read" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => detail.retry() }} />
+  {:else if detail.loading && !detail.isNew}
+    <div out:crossfade><Skeleton variant="block" count={1} /></div>
+  {:else if !detail.isNew && !detail.record}
+    <!-- An id that names nothing stored: a deleted reminder, an old link.
+         Before ticket 04 this drew an empty editable form, and Save made a
+         new reminder out of it. -->
+    <div class="screen-part" in:crossfade>
+      <Notice
+        icon="bell"
+        key="reminder-missing"
+        role={roleAt(activeFlag.roles, 0)}
+        title={m.rem_missing_title()}
+        action={{ label: m.rem_missing_action(), href: '/settings/reminders' }}
+      />
+    </div>
+  {:else}
+  <div class="screen-part" in:crossfade>
   {#if origin}
     <!-- Editing and saving clears autoSource (reminders.ts), so this notice
          is itself the warning that Save takes the reminder over - shown
@@ -146,4 +173,8 @@
       <Icon name="check" size={20} /><span>{m.rem_save()}</span>
     </button>
   </SaveBar>
+  </div>
+  {/if}
 </div>
+
+<DiscardSheet guard={detail.guard} />

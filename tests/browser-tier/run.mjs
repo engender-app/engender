@@ -1284,6 +1284,71 @@ await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
   else fail('Enter on the picked face clears it', cleared);
 });
 
+// --- Release blockers 09: a switch states one thing, once ------------------
+/* Axe flagged every switch for carrying aria-pressed beside role="switch"
+   and aria-checked (Melt's Toggle trigger added it), and a ListRow holding a
+   switch for being a button with a button inside it. Both are facts about
+   the rendered DOM and the focus order, so they are read here off the real
+   page: no switch carries a second state, none sits inside another control,
+   Tab reaches each one once and Space flips it once. */
+await block('release blockers 09 switch semantics and keyboard', 5, async () => {
+  await page.goto(`http://localhost:${port}/controls.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-controls-ready]', { state: 'attached' });
+
+  const switches = page.locator('[data-case="switches"] [role="switch"]');
+  const count = await switches.count();
+
+  const pressed = await switches.evaluateAll((els) => els.filter((e) => e.hasAttribute('aria-pressed')).length);
+  if (count > 0 && pressed === 0) ok(`none of the ${count} switches carries aria-pressed beside aria-checked`);
+  else fail('no switch carries aria-pressed', `${pressed} of ${count}`);
+
+  const nested = await switches.evaluateAll(
+    (els) =>
+      els.filter((e) => e.parentElement?.closest('button, a[href], [role="button"], [role="switch"], [role="checkbox"]')).length
+  );
+  if (nested === 0) ok('no switch sits inside another control (the kit row holding one is static)');
+  else fail('no switch sits inside another control', `${nested} nested`);
+
+  /* Walk Tab from the element before the card and record what takes focus
+     until it leaves the card again. */
+  await page.evaluate(() => {
+    const card = document.querySelector('[data-case="switches"]');
+    const before = document.createElement('button');
+    before.dataset.tabStart = '';
+    card?.before(before);
+    before.focus();
+  });
+  const stops = [];
+  for (let i = 0; i < count + 3; i++) {
+    await page.keyboard.press('Tab');
+    const stop = await page.evaluate(() => {
+      const a = document.activeElement;
+      if (!a?.closest('[data-case="switches"]')) return null;
+      return `${a.getAttribute('role') ?? a.tagName}:${a.getAttribute('aria-label') ?? ''}`;
+    });
+    if (stop === null) break;
+    stops.push(stop);
+  }
+  await page.evaluate(() => document.querySelector('[data-tab-start]')?.remove());
+  const switchStops = stops.filter((s) => s.startsWith('switch:'));
+  if (stops.length === count && new Set(switchStops).size === count)
+    ok(`Tab reaches each of the ${count} switches once and nothing else in their rows`);
+  else fail('Tab reaches each switch once', JSON.stringify(stops));
+
+  const row = page.locator('[data-list-row="gallery-switch-row"] [role="switch"]');
+  const before = await row.getAttribute('aria-checked');
+  await row.focus();
+  await page.keyboard.press('Space');
+  const after = await row.getAttribute('aria-checked');
+  if (before === 'true' && after === 'false') ok('Space flips the row\'s switch once (true to false)');
+  else fail('Space flips the switch once', `${before} -> ${after}`);
+
+  await page.keyboard.press('Space');
+  const back = await row.getAttribute('aria-checked');
+  if (back === 'true') ok('a second Space flips it back, so one press is one change');
+  else fail('a second Space flips it back', back);
+});
+
 // --- Ticket 09: bar and donut hover interactivity ---------------------------
 /* A mouse hover and a keyboard focus are both real DOM events Playwright can
    drive; a finger is the one input this suite has to fake, since headless

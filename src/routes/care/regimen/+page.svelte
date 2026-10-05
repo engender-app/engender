@@ -1,6 +1,5 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { beforeNavigate, goto } from '$app/navigation';
   import { sameDraft, snapshotDraft } from '$lib/components/kit/recordEditor';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* What you are taking, and since when, on the surface kit (phase 5 UX
@@ -30,6 +29,8 @@
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -163,7 +164,6 @@
   let failure = $state<string | null>(null);
   let status = $state<string | null>(null);
   let messageGroup = $state<'episode' | 'schedule' | 'pause' | 'end'>('episode');
-  let pendingDismiss = $state<(() => void) | null>(null);
   let episodeSnapshot = $derived(editor ? { ...editor, dose: String(editor.dose ?? '') } : null);
   let episodeBaseline = $state<typeof episodeSnapshot>(null);
   let scheduleSnapshot = $derived(schedule ? {
@@ -181,31 +181,20 @@
     ...(!Number.isFinite(parseFloat(String(editor?.dose ?? ''))) ? [m.regimen_dose_required()] : [])
   ]);
 
-  function requestDismiss(after: () => void = () => { editor = null; }) {
-    if (saving || pendingDismiss) return;
-    if (changed) pendingDismiss = after;
-    else after();
-  }
-
-  function discard() {
-    const after = pendingDismiss;
-    pendingDismiss = null;
-    after?.();
-  }
-
-  beforeNavigate((navigation) => {
-    if (!editor || (!changed && !saving)) return;
-    navigation.cancel();
-    if (navigation.willUnload) return;
-    requestDismiss(() => {
-      editor = null;
-      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
-      else if (navigation.to) void goto(navigation.to.url); // Destination is already a resolved navigation URL.
-    });
+  /* The editor sheet's own close and a navigation away from the screen
+     under it ask the same question (leaveGuard.ts). */
+  const guard = leaveGuard({
+    holding: () => editor !== null && changed,
+    busy: () => editor !== null && saving,
+    onDiscard: () => { editor = null; }
   });
 
+  function requestDismiss(after: () => void = () => { editor = null; }) {
+    guard.request(after);
+  }
+
   $effect(() => {
-    if (!editor) pendingDismiss = null;
+    if (!editor) guard.keep();
   });
 
   async function write(group: typeof messageGroup, action: () => Promise<unknown>, failedMessage: string): Promise<boolean> {
@@ -887,14 +876,7 @@
       </button>
     {/if}
   </Sheet>
-  <Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
-    <h3>{m.record_discard_title()}</h3>
-    <p class="muted">{m.regimen_discard_body()}</p>
-    <div class="discard-actions">
-      <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}><span>{m.record_keep_editing()}</span></button>
-      <button class="btn btn-danger" data-discard-record onclick={discard}><span>{m.vb_practice_discard()}</span></button>
-    </div>
-  </Sheet>
+  <DiscardSheet {guard} body={m.regimen_discard_body()} />
 </div>
 
 <style>
@@ -916,12 +898,6 @@
     .regimen-editor :global(.cd-endpoints) {
       grid-template-columns: 1fr;
     }
-  }
-
-  .discard-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
   }
 
   .regimen-elsewhere {
