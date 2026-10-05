@@ -41,17 +41,37 @@ public final class ReminderScheduler {
      */
     static void saveAndSchedule(Context context, JSONObject payload) throws Exception {
         JSONObject previous = loadPayload(context);
+        ZonedDateTime now = ZonedDateTime.now();
+        ReminderPlanner.anchorLegacyWeeklyRules(payload, now);
         ReminderPayloadStore.write(context, payload);
 
         cancelAll(context, previous);
-        scheduleAll(context, payload, ZonedDateTime.now());
+        scheduleAll(context, payload, now);
     }
 
     static void rescheduleFromStore(Context context) {
         JSONObject payload = loadPayload(context);
         if (payload == null) return;
-        cancelAll(context, payload);
-        scheduleAll(context, payload, ZonedDateTime.now());
+        ZonedDateTime now = ZonedDateTime.now();
+        rescheduleFromStore(payload, now, migrated -> ReminderPayloadStore.write(context, migrated),
+            () -> cancelAll(context, payload), () -> scheduleAll(context, payload, now));
+    }
+
+    interface PayloadWriter {
+        void write(JSONObject payload) throws Exception;
+    }
+
+    /** A failed migration write leaves existing alarms intact. Anchored
+        payloads need no further store write. */
+    static void rescheduleFromStore(JSONObject payload, ZonedDateTime now, PayloadWriter writer,
+                                    Runnable cancel, Runnable schedule) {
+        try {
+            if (ReminderPlanner.anchorLegacyWeeklyRules(payload, now)) writer.write(payload);
+        } catch (Exception failedWrite) {
+            return;
+        }
+        cancel.run();
+        schedule.run();
     }
 
     /**
