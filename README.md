@@ -136,6 +136,10 @@ The import tools accept supported exports from Daylio, Day One, TransTracks,
 Track & Graph and Pixels. Plain CSV and JSON exports are available when you
 want to work with your own records outside the app.
 
+Daylio backups may be up to 1024 MiB on disk. ZIP imports from Daylio, Day One
+and TransTracks allow up to 1536 MiB of decompressed content. Large imports
+also need enough free memory on the device.
+
 An optional recovery key can unlock the journal on the device that still
 holds it. It cannot restore deleted data, move a journal to another device
 or decrypt an Archive. Keep backups separately from the device holding
