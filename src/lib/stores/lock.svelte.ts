@@ -61,8 +61,9 @@ function lockNow() {
   ui.chooserOpen = false;
 }
 
-/** Watches page visibility and Android's early leave hook. The preference
-    is read when leaving, so changing timing does not replace listeners. */
+/** Watches page visibility, or on Android the activity's leave and return
+    hooks instead. The preference is read when leaving, so changing timing
+    does not replace listeners. */
 export function watchLock(): () => void {
   return watchLeave({
     page: document,

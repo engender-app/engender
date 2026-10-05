@@ -1,8 +1,8 @@
 /* When leaving the app asks for its secret again (lock-timing ticket 01).
 
    The clock starts when the page is hidden - a switched tab, a backgrounded
-   app, a screen turned off - or Android reports leaving through Recents.
-   A desktop window losing focus
+   app, a screen turned off - or, on Android, when the activity reports
+   leaving. A desktop window losing focus
    while it is still on screen is not leaving, and used to lock the diary the
    moment somebody clicked the window beside it.
 
@@ -10,9 +10,15 @@
    hidden may never run, since a backgrounded WebView is suspended, and the
    return is the first moment anything could be seen anyway. The one timing
    that cannot wait for the return is `immediately`, which locks as the page
-   goes so the app switcher's thumbnail is taken of a locked screen. On
-   Android the native onUserLeaveHint call (lock.svelte.ts) can get there
-   sooner still; this listener is the one that runs everywhere.
+   goes so the app switcher's thumbnail is taken of a locked screen.
+
+   On Android the activity is the only judge of leaving, and the page's
+   visibility is not listened to at all. A photo picker, the camera, a folder
+   picker and a permission dialog each cover the WebView and hide the page
+   while the person is still in the middle of something here, and only the
+   activity knows that it started them (MainActivity's own-system-UI window).
+   Home, Recents and the screen going off all reach the activity too, so
+   nothing that used to lock stops locking.
 
    Wall-clock time, not performance.now(): a monotonic clock can stop while
    the device sleeps, which would under-count exactly the long absences this
@@ -29,7 +35,7 @@ const LOCK_AFTER_MS: Record<Exclude<LockAfter, 'immediately' | 'restart'>, numbe
   'five-minutes': 5 * 60_000
 };
 
-/** Hooks invoked by the Android activity when WebView visibility misses Recents. */
+/** Hooks the Android activity calls on every leave and return it judges real. */
 export type NativeLeaveHooks = {
   __lockOnLeaveFromNative?: () => void;
   __lockOnReturnFromNative?: () => void;
@@ -71,16 +77,14 @@ export function watchLeave({
     else onReturn();
   };
 
-  page.addEventListener('visibilitychange', onVisibility);
   if (native) {
     native.__lockOnLeaveFromNative = onLeave;
     native.__lockOnReturnFromNative = onReturn;
-  }
-  return () => {
-    page.removeEventListener('visibilitychange', onVisibility);
-    if (native) {
+    return () => {
       delete native.__lockOnLeaveFromNative;
       delete native.__lockOnReturnFromNative;
-    }
-  };
+    };
+  }
+  page.addEventListener('visibilitychange', onVisibility);
+  return () => page.removeEventListener('visibilitychange', onVisibility);
 }
