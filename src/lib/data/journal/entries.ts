@@ -32,6 +32,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { ChecklistsArea } from './checklists';
+import type { DosesArea } from './doses';
 import {
   insertStagedPhoto,
   photosByEntry,
@@ -317,6 +318,7 @@ type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
 export function makeEntriesArea(
   driver: SqliteDriver,
   files: PhotoFileStore,
+  dosesFor: (driver: SqliteDriver) => Pick<DosesArea, 'upsertDose'>,
   checklistsFor?: (driver: SqliteDriver) => Pick<ChecklistsArea, 'recordDebriefEntry'>
 ): EntriesArea {
   const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
@@ -771,34 +773,14 @@ export function makeEntriesArea(
 
     if (input.doseLog) {
       const dose = input.doseLog;
-      const doseUuid = mintUuid();
       const doseTimestamp = dose.timestamp ?? input.timestamp ?? startOfDayTimestamp(epochDay);
-      const doseRoute = dose.route ?? 'oral';
-      const doseStatus = dose.status ?? 'taken';
-      await driver.run(
-        `INSERT INTO dose_event (timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-                                 status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, updated_at, uuid)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)`,
-        [
-          doseTimestamp,
-          doseRoute,
-          dose.dose,
-          dose.doseUnit,
-          dose.injectionSite ?? null,
-          dose.vehicle ?? null,
-          dose.applicationSite ?? null,
-          doseStatus,
-          dose.drug ?? null,
-          now(),
-          doseUuid
-        ]
-      );
-      if (dose.drug) {
-        await driver.run(
-          'UPDATE medication_stock SET quantity = MAX(0, quantity - ?), updated_at = ? WHERE drug = ?',
-          [dose.dose, now(), dose.drug.trim()]
-        );
-      }
+      await dosesFor(driver).upsertDose({
+        ...dose,
+        timestamp: doseTimestamp,
+        route: dose.route ?? 'oral',
+        source: 'person',
+        context: 'entry'
+      });
     }
 
     if (input.procedureRecovery && resolved.procedureRowId != null) {

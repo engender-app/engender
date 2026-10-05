@@ -45,6 +45,15 @@ const EXPECTED = [
 ];
 
 describe('android permissions', () => {
+  it('remains installable without camera, autofocus or microphone hardware', () => {
+    for (const feature of ['camera', 'camera.autofocus', 'microphone']) {
+      const declaration = [...manifest.matchAll(/<uses-feature\b[^>]*>/g)]
+        .find(([tag]) => tag.includes(`android:name="android.hardware.${feature}"`));
+      expect(declaration, feature).toBeDefined();
+      expect(declaration![0]).toContain('android:required="false"');
+    }
+  });
+
   it('does not ask for INTERNET, which is the claim a reader can check', () => {
     expect(declared()).not.toContain('INTERNET');
   });
