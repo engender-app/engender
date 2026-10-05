@@ -886,9 +886,9 @@
 
   async function confirmDelete() {
     deleteOpen = false;
-    // Deleting answered the question leaving would have asked.
-    baseline = entryDraftFingerprint(entryDraft);
     if (!existing) {
+      // Deleting answered the question leaving would have asked.
+      baseline = entryDraftFingerprint(entryDraft);
       await leave();
       return;
     }
@@ -900,6 +900,7 @@
       toast(m.entry_delete_failed());
       return;
     }
+    baseline = entryDraftFingerprint(entryDraft);
     try {
       await leave();
     } catch (error) {
