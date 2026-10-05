@@ -113,9 +113,7 @@ Aplikacja prosi o następujące uprawnienia:
 
 Android pokazuje też `dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
 To nie jest prośba do ciebie: AndroidX deklaruje to uprawnienie, żeby
-wewnętrzne komunikaty aplikacji mogła wysyłać tylko ona sama. [OPEN:
-sprawdzone na scalonym manifeście z 30 sierpnia, jeszcze pod starym
-identyfikatorem aplikacji; potwierdzić nazwę na świeżym buildzie wydania.]
+wewnętrzne komunikaty aplikacji mogła wysyłać tylko ona sama.
 
 Przypomnienia i codzienne pytanie domyślnie pokazują tylko ogólny tytuł,
 nawet na zablokowanym ekranie. Ustawienie w sekcji Powiadomienia to wyłącza

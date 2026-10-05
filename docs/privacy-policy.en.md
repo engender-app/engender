@@ -110,9 +110,7 @@ The app requests these permissions:
 
 Android also lists `dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
 It is not something the app asks of you: AndroidX declares it so that only
-the app itself can send its own internal messages. [OPEN: confirmed on a
-merged manifest from 30 August under the app's old ID; recheck the name on a
-fresh release build.]
+the app itself can send its own internal messages.
 
 Reminder and check-in notifications show only a generic label by default,
 even on a locked screen. A setting under Notifications turns that off and

@@ -84,7 +84,7 @@ export const ANDROID_LIBRARIES = [
     files: ['scripts/licence-texts/Apache-2.0.txt']
   },
   {
-    name: 'Kotlin standard library',
+    name: 'Kotlin standard library and coroutines',
     groups: ['org.jetbrains.kotlin', 'org.jetbrains.kotlinx'],
     licence: 'Apache-2.0',
     files: ['scripts/licence-texts/Apache-2.0.txt']
