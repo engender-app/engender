@@ -318,6 +318,32 @@ try {
     await lab.page.locator('[data-add]').click();
     await lab.page.locator('#lab-time').click();
     await pickerAtRest(lab.page);
+    await check(`${theme}: focusing the entry protects a selection before typing while a drum settles`, async () => {
+      await entry(lab.page).fill('07:45');
+      await pickerAtRest(lab.page);
+      await drum(lab.page, 'hour').focus();
+      await lab.page.keyboard.press('End');
+      await lab.page.keyboard.press('Tab');
+      await lab.page.keyboard.press('Tab');
+      assert.equal(await entry(lab.page).evaluate((el) => el === document.activeElement), true);
+      await lab.page.keyboard.press('Control+A');
+      const selected = await entry(lab.page).evaluate((el) => ({ value: el.value, start: el.selectionStart, end: el.selectionEnd }));
+      assert.deepEqual(selected, { value: '07:45', start: 0, end: 5 });
+      assert.ok((await state(lab.page)).hour.y < 23 * ROW, 'the drum must still be moving when the entry is selected');
+      await pickerAtRest(lab.page);
+      await lab.page.keyboard.insertText('09:15');
+      assert.equal(await entry(lab.page).inputValue(), '09:15', 'a settling drum must not collapse the selection and prepend its time');
+      await lab.page.locator('[data-time-picker-apply]').click();
+      await lab.page.locator('[data-time-picker]').waitFor({ state: 'detached' });
+      assert.equal(await lab.page.locator('#lab-time').inputValue(), '09:15');
+      await lab.page.locator('#lab-time').click();
+      await pickerAtRest(lab.page);
+      await entry(lab.page).focus();
+      await drum(lab.page, 'hour').focus();
+      await lab.page.keyboard.press('ArrowUp');
+      await pickerAtRest(lab.page);
+      assert.equal((await assertRestsOnRow(lab.page, 'drum after entry focus')).entry, '10:15');
+    });
     await check(`${theme}: finishing a drum move cannot replace a partially typed time`, async () => {
       await entry(lab.page).fill('23:59');
       await entry(lab.page).fill('09:');
@@ -349,16 +375,47 @@ try {
     const deskCrop = await surfaceCrop(desk.page);
     scenes.at(-1).crop = deskCrop;
     before = await state(desk.page);
+    await entry(desk.page).focus();
     await record(desk, `popover-wheel-${theme}`, async () => {
       const box = await drum(desk.page, 'hour').boundingBox();
+      const minuteBox = await drum(desk.page, 'minute').boundingBox();
       await desk.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await desk.page.mouse.wheel(0, -100);
-    }, { crop: deskCrop, note: 'desktop: one wheel notch back on the hour drum' });
+      await desk.page.mouse.move(minuteBox.x + minuteBox.width / 2, minuteBox.y + minuteBox.height / 2);
+      await desk.page.mouse.wheel(0, 100);
+    }, { crop: deskCrop, note: 'desktop: wheel the hour back and the minute forward while the entry stays focused' });
     await pickerAtRest(desk.page);
-    await check(`${theme}: a wheel turns a drum and it rests on a row`, async () => {
+    await check(`${theme}: a wheel takes ownership from the entry and rests on a row`, async () => {
       const s = await assertRestsOnRow(desk.page, 'wheel');
       assert.ok(s.hour.now < before.hour.now, `the wheel left the hour at ${s.hour.now}`);
+      assert.ok(s.minute.now > before.minute.now, `the wheel left the minute at ${s.minute.now}`);
     });
+    for (const selection of ['keyboard', 'pointer']) {
+      await check(`${theme}: ${selection} selection retakes ownership after a wheel without refocusing`, async () => {
+        await entry(desk.page).fill('07:45');
+        await pickerAtRest(desk.page);
+        const hourBox = await drum(desk.page, 'hour').boundingBox();
+        const entryBox = await entry(desk.page).boundingBox();
+        await desk.page.mouse.move(hourBox.x + hourBox.width / 2, hourBox.y + hourBox.height / 2);
+        await desk.page.mouse.wheel(0, -400);
+        if (selection === 'keyboard') await desk.page.keyboard.press('Control+A');
+        else await desk.page.mouse.click(entryBox.x + entryBox.width / 2, entryBox.y + entryBox.height / 2, { clickCount: 3 });
+        const { hour, ...selected } = await desk.page.evaluate(() => {
+          const input = document.querySelector('[data-time-picker-entry]');
+          return { focused: input === document.activeElement, value: input.value, start: input.selectionStart, end: input.selectionEnd, hour: document.querySelector('[data-time-picker-drum="hour"]').scrollTop };
+        });
+        assert.deepEqual(selected, { focused: true, value: '07:45', start: 0, end: 5 });
+        assert.ok(hour > 0, 'selection must precede the wheel reaching its destination');
+        await pickerAtRest(desk.page);
+        await desk.page.keyboard.insertText('09:15');
+        assert.equal(await entry(desk.page).inputValue(), '09:15', 'a wheel settling after selection must not prepend its time');
+        await desk.page.locator('[data-time-picker-apply]').click();
+        await desk.page.locator('[data-time-picker]').waitFor({ state: 'detached' });
+        assert.equal(await deskField.inputValue(), '09:15');
+        await deskField.click();
+        await pickerAtRest(desk.page);
+      });
+    }
     await desk.page.locator('[data-time-picker-drum="hour"]').focus();
     await record(desk, `popover-close-${theme}`, () => desk.page.keyboard.press('Escape'), { crop: deskCrop, note: 'desktop: Escape rolls it back up into the field' });
     await check(`${theme}: desktop Escape gives focus back to the field`, async () => {
