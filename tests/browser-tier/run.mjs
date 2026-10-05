@@ -1404,19 +1404,16 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  const gate = live.readinessGate;
-  if (gate.disabledCalls === 0 && gate.pendingWhileDisabled)
-    ok('a gated query stays pending without calling its read while disabled');
-  else fail('a gated query stays pending without calling its read while disabled', JSON.stringify(gate));
-  if (gate.firstAttempts === 2 && gate.firstRetryDelayMs >= 45 && !gate.failedDuringFirstRetry)
-    ok('a gated query preserves the first real read rejection retry');
-  else fail('a gated query preserves the first real read rejection retry', JSON.stringify(gate));
-  if (gate.valueAfterMountedWrite === gate.expectedAfterMountedWrite && gate.laterFailureAttempts === 1 && gate.staleAfterLaterFailure)
-    ok('a mounted gated query follows writes and reports later rejections without another retry');
-  else fail('a mounted gated query follows writes and reports later rejections without another retry', JSON.stringify(gate));
-  if (gate.disabledResultIgnored && gate.disposedResultIgnored)
-    ok('disabling or disposing a gated query rejects its older in-flight answer');
-  else fail('disabling or disposing a gated query rejects its older in-flight answer', JSON.stringify(gate));
+  const read = live.readLifecycle;
+  if (read.firstAttempts === 2 && read.firstRetryDelayMs >= 45 && !read.failedDuringFirstRetry)
+    ok('a query preserves the first real read rejection retry');
+  else fail('a query preserves the first real read rejection retry', JSON.stringify(read));
+  if (read.valueAfterMountedWrite === read.expectedAfterMountedWrite && read.laterFailureAttempts === 1 && read.staleAfterLaterFailure)
+    ok('a mounted query follows writes and reports later rejections without another retry');
+  else fail('a mounted query follows writes and reports later rejections without another retry', JSON.stringify(read));
+  if (read.disposedResultIgnored)
+    ok('disposing a query rejects its older in-flight answer');
+  else fail('disposing a query rejects its older in-flight answer', JSON.stringify(read));
 
   // The stock screen's read, against the write it used to miss: a projection
   // reads the episode history through regimen.getEpisodes().
