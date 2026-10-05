@@ -133,7 +133,7 @@
     {#if tags?.length || marks?.length}
       <span class="kit-entry-meta">
         {#each marks ?? [] as mark}<Icon name={mark} size={16} />{/each}
-        {#each tags ?? [] as tag}<span class="kit-pill">{tag}</span>{/each}
+        {#each tags ?? [] as tag}<span class="kit-pill" data-entry-tag>{tag}</span>{/each}
       </span>
     {/if}
   </div>
