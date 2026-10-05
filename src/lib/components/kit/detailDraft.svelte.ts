@@ -9,7 +9,9 @@
    this module cannot write that line any more.
 
    Leaving a changed draft asks first, by default (leaveGuard.ts). A screen
-   renders the question with `<DiscardSheet guard={detail.guard} />`. */
+   renders the question with `<DiscardSheet guard={detail.guard} />`. The
+   guard registers a `beforeNavigate`, which is one more reason this is
+   called during component initialisation and nowhere else. */
 
 import { page } from '$app/state';
 import { liveQuery, type LiveQuery } from '$lib/data/live/journal.svelte';

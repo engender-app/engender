@@ -22,7 +22,7 @@ function setup(start: { holding?: boolean; busy?: boolean } = {}) {
   const state: LeaveGuardState = { pendingDeparture: null };
   const onDiscard = vi.fn();
   const navigator = {
-    go: vi.fn(),
+    go: vi.fn<(delta: number) => Promise<unknown>>(() => Promise.resolve()),
     goto: vi.fn<(url: URL) => Promise<unknown>>(() => Promise.resolve())
   };
   const guard = leaveGuardCore(
@@ -91,6 +91,31 @@ describe('leaveGuardCore', () => {
   it('re-arms after a replay that failed: the next departure is held again', async () => {
     const { guard, navigator, state } = setup();
     navigator.goto.mockImplementationOnce(() => Promise.reject(new Error('load failed')));
+    guard.beforeNavigate(departure());
+    guard.discard();
+    await Promise.resolve();
+    await Promise.resolve();
+    const next = departure();
+    guard.beforeNavigate(next);
+    expect(next.cancelled).toBe(true);
+    expect(state.pendingDeparture).not.toBeNull();
+  });
+
+  it('re-arms after a history move that went nowhere and never reached the check', async () => {
+    const { guard, navigator, state } = setup();
+    guard.beforeNavigate(departure({ type: 'popstate', delta: -5 }));
+    guard.discard();
+    expect(navigator.go).toHaveBeenCalledWith(-5);
+    await Promise.resolve();
+    await Promise.resolve();
+    const next = departure();
+    guard.beforeNavigate(next);
+    expect(next.cancelled).toBe(true);
+    expect(state.pendingDeparture).not.toBeNull();
+  });
+
+  it('re-arms after a goto that resolved without reaching the check', async () => {
+    const { guard, state } = setup();
     guard.beforeNavigate(departure());
     guard.discard();
     await Promise.resolve();

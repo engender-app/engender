@@ -24,9 +24,11 @@ export type Departure = {
   readonly to: { readonly url: URL } | null;
 };
 
-/** How a held departure is carried out once the person discards. */
+/** How a held departure is carried out once the person discards. Both
+    settle once the move has gone through its own `beforeNavigate`, or has
+    turned out not to happen at all. */
 export type Replay = {
-  go(delta: number): void;
+  go(delta: number): Promise<unknown>;
   goto(url: URL): Promise<unknown>;
 };
 
@@ -53,24 +55,26 @@ export function leaveGuardCore(
   state: LeaveGuardState = { pendingDeparture: null }
 ) {
   /* One-shot: the departure being replayed is let through its own check
-     and nothing after it is. It is spent by that check, or by the replay
-     failing before it got there, so a navigation that fails to load leaves
-     the guard armed - the bug 2acb6196 fixed in one copy of four. */
+     and nothing after it is. It is spent by that check, or once the replay
+     settles whichever way it went, so a navigation that fails to load, or
+     a history move that goes nowhere, leaves the guard armed - the bug
+     2acb6196 fixed in one copy of four. */
   let replaying = false;
 
   const busy = () => options.busy?.() ?? false;
 
   function carryOut(departure: Departure) {
+    const move =
+      departure.type === 'popstate' && departure.delta
+        ? replay.go(departure.delta)
+        : departure.to
+          ? replay.goto(departure.to.url)
+          : null;
+    if (!move) return;
     replaying = true;
-    if (departure.type === 'popstate' && departure.delta) {
-      replay.go(departure.delta);
-    } else if (departure.to) {
-      replay.goto(departure.to.url).catch(() => {
-        replaying = false;
-      });
-    } else {
+    move.catch(() => {}).finally(() => {
       replaying = false;
-    }
+    });
   }
 
   return {

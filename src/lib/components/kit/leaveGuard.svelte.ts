@@ -4,7 +4,27 @@
    `beforeNavigate`. DiscardSheet.svelte renders the question. */
 
 import { beforeNavigate, goto } from '$app/navigation';
-import { leaveGuardCore, type LeaveGuardOptions } from './leaveGuard.ts';
+import { leaveGuardCore, type LeaveGuardOptions, type LeaveGuardState } from './leaveGuard.ts';
+
+/* A history move has no promise of its own. It settles on the popstate it
+   causes, a task after SvelteKit's own listener has run that navigation's
+   `beforeNavigate`, or, for a delta past either end of the history, which
+   the browser ignores without an event, after a bound. */
+const SETTLE_BOUND_MS = 1000;
+
+function historyGo(delta: number): Promise<void> {
+  return new Promise((resolve) => {
+    const settle = () => {
+      clearTimeout(bound);
+      removeEventListener('popstate', onPop);
+      resolve();
+    };
+    const onPop = () => setTimeout(settle, 0);
+    const bound = setTimeout(settle, SETTLE_BOUND_MS);
+    addEventListener('popstate', onPop);
+    history.go(delta);
+  });
+}
 
 export type LeaveGuard = {
   /** The departure waiting on an answer, or null with no question open. */
@@ -16,12 +36,14 @@ export type LeaveGuard = {
   discard(): void;
 };
 
+/** Registers a `beforeNavigate`, so call it during component
+    initialisation, the same as SvelteKit's own. */
 export function leaveGuard(options: LeaveGuardOptions): LeaveGuard {
-  const state = $state<{ pendingDeparture: (() => void) | null }>({ pendingDeparture: null });
+  const state = $state<LeaveGuardState>({ pendingDeparture: null });
   const core = leaveGuardCore(
     options,
     {
-      go: (delta) => history.go(delta),
+      go: historyGo,
       // The destination is SvelteKit's own resolved navigation URL.
       goto: (url) => goto(url)
     },
