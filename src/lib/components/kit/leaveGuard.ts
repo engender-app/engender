@@ -36,7 +36,9 @@ export type LeaveGuardOptions = {
   /** A save in flight. Leaving is refused without a question until it
       lands, since there is nothing to discard yet and nothing to keep. */
   busy?: () => boolean;
-  /** Drop the draft. Runs before the departure is carried out. */
+  /** Drop the draft. Runs once the departure has been started, so a
+      departure that needs the draft to find its way - a delete reading the
+      record off an open editor - still has it. */
   onDiscard?: () => void;
 };
 
@@ -106,8 +108,8 @@ export function leaveGuardCore(
     discard() {
       const after = state.pendingDeparture;
       state.pendingDeparture = null;
-      options.onDiscard?.();
       after?.();
+      options.onDiscard?.();
     }
   };
 }
