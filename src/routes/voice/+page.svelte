@@ -283,7 +283,16 @@
     selected = stepCompareAnchor(selected, which, direction, anchors);
   }
 
+  /* The benchmark flow owns its unsaved take, so a switch away from its tab
+     asks it first (ticket 04, audit L05-02). */
+  let benchmarkFlow = $state<ReturnType<typeof VoiceBenchmarkFlow> | undefined>();
+
   function changeTab(next: string) {
+    if (tab === 'record' && next !== 'record' && benchmarkFlow) benchmarkFlow.leave(() => showTab(next));
+    else showTab(next);
+  }
+
+  function showTab(next: string) {
     tab = next as Tab;
     // A pick belongs to the compare tab, and a half-made pick left behind a
     // tab switch is a state nobody can see to undo.
@@ -466,7 +475,7 @@
     </div>
 
     {#if tab === 'record'}
-      <VoiceBenchmarkFlow onSaved={() => (tab = 'compare')} />
+      <VoiceBenchmarkFlow bind:this={benchmarkFlow} onSaved={() => (tab = 'compare')} />
       <!-- Saying you are done with this area (phase 8 features ticket 04),
            at the Record tab's own foot now rather than at screen level
            (phase 11 ticket 17): the passage and the Record control open the

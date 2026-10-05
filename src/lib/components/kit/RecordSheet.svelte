@@ -21,10 +21,11 @@
      which is the same shape recordEditor takes when it is handed no
      `blank`. */
   import type { Snippet } from 'svelte';
-  import { beforeNavigate, goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';
   import ConfirmDeleteSheet from './ConfirmDeleteSheet.svelte';
+  import DiscardSheet from './DiscardSheet.svelte';
+  import { leaveGuard } from './leaveGuard.svelte';
   import type { recordEditor } from './recordEditor.svelte';
   import { recordHandles } from './recordHandles';
 
@@ -93,38 +94,25 @@
   const handles = $derived(recordHandles(handle));
   let draft = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
-  let pendingDismiss = $state<(() => void) | null>(null);
+  /* Closing the editor with a change in it asks first, whether the close
+     is the sheet's own (Cancel, the scrim, Delete) or a navigation away
+     from the screen under it (leaveGuard.ts). */
+  const guard = leaveGuard({
+    holding: () => draft !== null && record.changed,
+    busy: () => draft !== null && record.saving,
+    onDiscard: () => { record.editor = null; }
+  });
 
   function requestDismiss(after: () => void = () => { record.editor = null; }) {
-    if (record.saving || pendingDismiss) return;
-    if (record.changed) pendingDismiss = after;
-    else after();
-  }
-
-  function discard() {
-    const after = pendingDismiss;
-    pendingDismiss = null;
-    after?.();
+    guard.request(after);
   }
 
   function requestDelete() {
     requestDismiss(() => { record.askToDelete(); });
   }
 
-  beforeNavigate((navigation) => {
-    if (!draft || (!record.changed && !record.saving)) return;
-    navigation.cancel();
-    // Unloading uses the browser's own confirmation; it cannot await a sheet.
-    if (navigation.willUnload) return;
-    requestDismiss(() => {
-      record.editor = null;
-      if (navigation.type === 'popstate' && navigation.delta) history.go(navigation.delta);
-      else if (navigation.to) void goto(navigation.to.url);
-    });
-  });
-
   $effect(() => {
-    if (!draft) pendingDismiss = null;
+    if (!draft) guard.keep();
   });
 
   /* Stated outright by most screens, read off the record being deleted by
@@ -184,18 +172,7 @@
   </Sheet>
 {/if}
 
-<Sheet open={pendingDismiss !== null} title={m.record_discard_title()} onClose={() => { pendingDismiss = null; }}>
-  <h3>{m.record_discard_title()}</h3>
-  <p class="muted">{m.record_discard_body()}</p>
-  <div class="discard-actions">
-    <button class="btn btn-primary" data-keep-editing onclick={() => { pendingDismiss = null; }}>
-      <span>{m.record_keep_editing()}</span>
-    </button>
-    <button class="btn btn-danger" data-discard-record onclick={discard}>
-      <span>{m.vb_practice_discard()}</span>
-    </button>
-  </div>
-</Sheet>
+<DiscardSheet {guard} />
 
 <style>
   fieldset {
@@ -211,12 +188,6 @@
 
   fieldset > :global(* + *) {
     margin-top: var(--space-4);
-  }
-
-  .discard-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
   }
 </style>
 
