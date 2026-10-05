@@ -14,6 +14,7 @@
    and they are 1.7 MB of the same, which ADR-0065 leaves out of scope. */
 import { mkdir, copyFile, readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import './patch-sqlite-wasm.mjs';
 
 const root = process.cwd();
 
