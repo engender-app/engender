@@ -292,6 +292,14 @@ container queries. User-facing strings live in
 [messages/pl.json](messages/pl.json). Native Android code is in
 [android](android), and verification scripts are in [tests](tests).
 
+For copy review, run `npm run strings` and open the local URL it prints.
+The editor shows English and Polish together, with theme and review filters.
+Save individual fields or use **Save all changes**, which includes edits
+hidden by filters. Review checkboxes work per key or for the shown keys in a
+group. Progress is saved in `.scratch/copy-review.json`; changing either
+language makes that key need review again. Unsaved edits stay in the browser
+until saved, and conflicting disk changes are reported without overwriting them.
+
 ## Releases and hosting
 
 CI runs the build, type checks, Node tests, catalogue and licence checks,
