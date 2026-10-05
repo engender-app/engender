@@ -45,3 +45,28 @@ export function findDrumYanks(samples) {
   }
   return yanks;
 }
+
+/** @typedef {{ t: number, open: false } | { t: number, open: true, vw: number, vop: number, panels: { k: number, l: number }[] }} MonthSample */
+
+/* As with surfaces and drums, compare travel per elapsed 16ms frame.
+   Samples bound average speed; they cannot locate a jump hidden in a gap. */
+/** @param {MonthSample[]} samples */
+export function findMonthYanks(samples) {
+  const yanks = [];
+  for (let i = 1; i < samples.length; i++) {
+    const sample = samples[i];
+    const previous = samples[i - 1];
+    if (!sample.open || !previous.open || sample.vop < 0.05 || previous.vop < 0.05) continue;
+    const elapsed = Math.max(1, sample.t - previous.t);
+    const steps = Math.max(1, elapsed / 16);
+    for (const panel of sample.panels) {
+      const before = previous.panels.find((p) => p.k === panel.k);
+      if (!before) continue;
+      const distance = panel.l - before.l;
+      if (Math.abs(distance) / steps > sample.vw * 0.5) {
+        yanks.push({ t: sample.t, k: panel.k, what: `month jumps ${Math.round(distance)}px over ${elapsed}ms` });
+      }
+    }
+  }
+  return yanks;
+}
