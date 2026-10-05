@@ -3643,6 +3643,46 @@ try {
 } catch (e) { fail('web reminder editor', e); }
 });
 
+/* 15c. a reminder edit asks before Back drops it, and an id that names no
+   reminder says so (phase 15 ticket 04, audit A1/V16). The editor sat on
+   detailDraft with no guard of its own, and an unknown id drew an empty
+   editable form whose Save made a new reminder. */
+await flow('reminder editor asks before leaving', async () => {
+try {
+  await page.goto(BASE + '/settings/reminders/no-such-reminder', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-notice="reminder-missing"]');
+  if (await page.locator('#r-name').count()) throw new Error('an unknown reminder id still draws the editable form');
+
+  await page.goto(BASE + '/settings/reminders', { waitUntil: 'networkidle' });
+  await booted();
+  // Web draws no add control (a browser cannot ring), so the editor is
+  // reached through an in-app link added for the walk.
+  await page.evaluate(() => {
+    const a = document.createElement('a');
+    a.href = '/settings/reminders/new';
+    a.setAttribute('data-probe-new-reminder', '');
+    a.textContent = 'new';
+    document.querySelector('[data-screen]')?.append(a);
+  });
+  await page.locator('[data-probe-new-reminder]').click();
+  await page.waitForSelector('#r-name');
+  await page.locator('#r-name').fill('Patch, not saved');
+  await page.locator('[data-screen-back]').first().click();
+  await page.waitForSelector('[data-discard-record]', { timeout: 5000 }).catch(() => {
+    throw new Error('Back left a changed reminder without asking');
+  });
+  await page.locator('[data-keep-editing]').click();
+  await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
+  if ((await page.locator('#r-name').inputValue()) !== 'Patch, not saved') throw new Error('Keep editing lost the reminder name');
+  await page.evaluate(() => window.history.back());
+  await page.waitForSelector('[data-discard-record]', { timeout: 5000 });
+  await page.locator('[data-discard-record]').click();
+  await page.waitForFunction(() => location.pathname === '/settings/reminders', null, { timeout: 10000 });
+  ok('reminder editor: unknown id is not found, Back asks, Keep keeps, Discard leaves');
+} catch (e) { fail('reminder editor asks before leaving', e); }
+});
+
 /* 16. preferences survive a reload and land before first paint (ticket 06) */
 await flow('boot preferences', async () => {
 try {
