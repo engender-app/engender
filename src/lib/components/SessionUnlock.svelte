@@ -185,13 +185,10 @@
     : m.pp_forgot()
   );
 
-  /* The one gate that can greet by name, and the whole of why: the journal is
-     open behind this screen, so `prefs.name` has been read. Everything else
-     about a gate's title - the wordmark where there is nobody to greet, and
-     why it goes through `appWordmark` - is argued in GateScreen.svelte. */
-  let title = $derived(
-    prefs.name ? m.pin_greeting_named({ name: prefs.name }) : appWordmark(prefs.disguise, m.app_name())
-  );
+  /* The wordmark, never the person's name, although the name has been read
+     by now: whoever is holding a locked phone is exactly who should not see
+     it. GateScreen.svelte argues the rest for all six gates. */
+  let title = $derived(appWordmark(prefs.disguise, m.app_name()));
 </script>
 
 <GateScreen {title} data-applock>
