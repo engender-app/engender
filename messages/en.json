@@ -1315,7 +1315,21 @@
   "exp_warning_title": "Keep the archive password",
   "export_import": "Export / import",
   "exposure_dose_totals_title": "Dose totals",
-  "exposure_medication_days_count": "{days} medication-days",
+  "exposure_medication_days_count": [
+    {
+      "declarations": [
+        "input days",
+        "local daysPlural = days: plural"
+      ],
+      "selectors": [
+        "daysPlural"
+      ],
+      "match": {
+        "daysPlural=one": "{days} medication-day",
+        "daysPlural=other": "{days} medication-days"
+      }
+    }
+  ],
   "exposure_regimen_days_note": "Each regimen counts its own days. Concurrent medications add up to more than the calendar span.",
   "exposure_regimen_days_title": "Medication-days on each regimen",
   "exposure_route_days_note": "Days on each route sum all concurrent episodes using that route. Concurrent medications add up to more than the calendar span.",
@@ -1323,7 +1337,7 @@
   "exposure_title": "Cumulative exposure",
   "feature_genital_effects": "Genital and sexual effects",
   "features_to_show": "Features to show",
-  "features_to_show_sub": "Turning a feature off hides its entry points and prompts. ",
+  "features_to_show_sub": "Turning a feature off hides its entry points and prompts.",
   "footer_note": "nothing you write is sent anywhere",
   "gender_label": "Gender",
   "gender_scales": "Gender scales",
