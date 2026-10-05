@@ -2144,6 +2144,8 @@ try {
   await page.locator('[data-pick-file]').click();
   await page.locator('#imp-pass').fill('walkthrough');
   await page.locator('[data-import]').click();
+  /* Merge only adds, so it runs without the confirm Replace asks for. */
+  if (await page.locator('[data-sheet]').count()) throw new Error('Merge opened a confirm sheet');
   await page.waitForFunction(
     () => [...document.querySelectorAll('[data-toast]')].some((t) => /Archive imported|Archiwum zaimportowane/.test(t.textContent)),
     null,
@@ -2157,6 +2159,39 @@ try {
     throw new Error(`today went from ${beforeToday} entries to ${afterToday} on merging its own backup`);
   }
   ok(`export → import round trip through the screen, ${before} recent entries and ${beforeToday} for today unchanged`);
+
+  /* Replace asks first (phase 15 release-blockers ticket 05). The same file
+     again, so a replace that does run puts back what was there and the
+     flows after this one read the journal they always did. Keeping the
+     journal is checked on the toast as well as the counts: a replace with
+     its own backup leaves the counts alone either way, and the toast is
+     the one thing only a run that happened says. */
+  const replacedToast = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('[data-toast]')].some((t) => /Journal replaced|Archiwum zastąpiło/.test(t.textContent))
+    );
+  await page.goto(BASE + '/settings/export', { waitUntil: 'networkidle' });
+  await booted();
+  page.once('filechooser', (chooser) =>
+    chooser.setFiles({ name: download.suggestedFilename(), mimeType: 'application/octet-stream', buffer })
+  );
+  await page.locator('[data-pick-file]').click();
+  await page.locator('#imp-pass').fill('walkthrough');
+  await page.locator('[data-import-mode="replace"]').click();
+  await page.locator('[data-import]').click();
+  await page.locator('[data-sheet] [data-keep-journal]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  if (await replacedToast()) throw new Error('keeping the journal replaced it anyway');
+  if (await page.locator('[data-import]').isDisabled()) throw new Error('keeping the journal started an import');
+  await page.locator('[data-import]').click();
+  await page.locator('[data-sheet] [data-confirm-replace]').click();
+  await page.waitForFunction(
+    () => [...document.querySelectorAll('[data-toast]')].some((t) => /Journal replaced|Archiwum zastąpiło/.test(t.textContent)),
+    null,
+    { timeout: 120000 }
+  );
+  if ((await homeCards()) !== before) throw new Error('replacing the journal with its own backup changed Home');
+  ok('Replace opens its confirm first: keeping the journal runs nothing, confirming replaces it');
 } catch (e) { fail('archive round trip', e); }
 });
 
