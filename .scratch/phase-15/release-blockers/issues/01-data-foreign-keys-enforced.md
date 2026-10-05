@@ -1,6 +1,7 @@
 # 01 - data: Foreign keys enforced where the journal actually runs
 
-Status: ready-for-agent (reopened 2026-10-05: an archive holding a revisit on a trashed entry cannot be restored with foreign keys on, L01-01)
+Status: ready-for-agent
+Status note: (reopened 2026-10-05: an archive holding a revisit on a trashed entry cannot be restored with foreign keys on, L01-01)
 Was: phase-14 pre-release 01 (moved 2026-10-05)
 Type: bug
 Audit findings: D1

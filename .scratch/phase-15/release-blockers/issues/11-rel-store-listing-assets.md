@@ -5,7 +5,7 @@ Was: phase-14 pre-release 20 (moved 2026-10-05)
 Type: build
 Audit findings: R10
 Severity: P2 (needed for Play and F-Droid; not for GitHub Release or Obtainium)
-Blocked by: done/phase-14 pre-release 05 (done)
+Blocked by: none
 Blocked by note: done/phase-14 pre-release 05 (links). Ideally also old pre-release 14 to 19 so the screenshots show the fixed screens; those are now after-release 17, 16, 05, 27 and 28 (15 is done), so this is a preference, not a blocker.
 Size: M
 Size note: one to two days
