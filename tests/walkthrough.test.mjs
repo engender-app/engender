@@ -1165,19 +1165,19 @@ try {
   await booted();
   await page.locator('[data-new-tag-group]').click();
   await page.locator('#newgroup-input').fill('Duplicate label regression');
-  await page.getByRole('button', { name: 'Add group', exact: true }).click();
-  const group = page.locator('details').filter({ hasText: 'Duplicate label regression' });
-  await group.getByRole('button', { name: 'Add a tag to Duplicate label regression' }).click();
+  await page.locator('[data-save-new-tag-group]').click();
+  const group = page.locator('[data-tag-group]').filter({ hasText: 'Duplicate label regression' }); // text-under-test: this flow's new group name
+  await group.locator('[data-add-tag]').click();
   await page.locator('#newtag-input').fill('social dysphoria');
-  await page.getByRole('button', { name: 'Add tag', exact: true }).click();
-  await group.locator('.managed-label').filter({ hasText: /^social dysphoria$/ }).waitFor();
+  await page.locator('[data-save-new-tag]').click();
+  await group.locator('[data-managed-tag-label]').filter({ hasText: /^social dysphoria$/ }).waitFor(); // text-under-test: the custom label typed above
 
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
   await booted();
   await page.locator('#ed-note').fill('Duplicate tag labels survive saving');
   await page.locator('[data-mood="3"]').click();
   await page.locator('[data-section-chip="tags"]').click();
-  const tags = page.locator('[data-tag]').filter({ hasText: /^social dysphoria$/ });
+  const tags = page.locator('[data-tag]').filter({ hasText: /^social dysphoria$/ }); // text-under-test: the intentionally equal built-in and custom labels
   if (await tags.count() !== 2) throw new Error('the editor did not offer both equal tag labels');
   await tags.nth(0).click();
   await tags.nth(1).click();
@@ -1195,9 +1195,9 @@ try {
   for (const path of ['/calendar', '/day/today']) {
     await page.goto(BASE + path, { waitUntil: 'networkidle' });
     await booted();
-    const entry = page.locator('[data-entry-card]').filter({ hasText: 'Duplicate tag labels survive saving' });
+    const entry = page.locator('[data-entry-card]').filter({ hasText: 'Duplicate tag labels survive saving' }); // text-under-test: the note typed by this flow
     await entry.waitFor();
-    if (await entry.locator('.kit-pill').filter({ hasText: /^social dysphoria$/ }).count() !== 2) {
+    if (await entry.locator('[data-entry-tag]').filter({ hasText: /^social dysphoria$/ }).count() !== 2) { // text-under-test: both saved equal labels
       throw new Error(path + ' did not render both equal tag labels');
     }
   }
@@ -6313,14 +6313,14 @@ try {
   const chooser = page.waitForEvent('filechooser');
   await page.locator('[data-pick-backup]').click();
   await (await chooser).setFiles({ name: 'duplicate-moods.daylio', mimeType: 'application/octet-stream', buffer: Buffer.from(backup) });
-  const moods = page.locator('.value-row').filter({ has: page.locator('span', { hasText: /^Same mood label$/ }) });
+  const moods = page.locator('[data-backup-mood]').filter({ has: page.locator('[data-backup-mood-name]', { hasText: /^Same mood label$/ }) }); // text-under-test: the two fixture mood names
   await moods.first().waitFor({ timeout: 15000 });
   if (await moods.count() !== 2) throw new Error('the preview did not render both equal custom mood labels');
-  const positions = (await moods.locator('strong').allTextContents()).map((value) => value.trim()[0]).sort();
+  const positions = (await moods.locator('[data-backup-mood-position]').allTextContents()).map((value) => value.trim()[0]).sort();
   if (JSON.stringify(positions) !== JSON.stringify(['1', '3'])) {
     throw new Error('equal mood labels lost their distinct positions: ' + JSON.stringify(positions));
   }
-  if (await page.locator('.value-row span').filter({ hasText: /^built-in-0$/ }).count() !== 1) {
+  if (await page.locator('[data-backup-mood-name]').filter({ hasText: /^built-in-0$/ }).count() !== 1) { // text-under-test: the fixture name matching the former fallback key
     throw new Error('the preview lost the custom name matching a built-in fallback');
   }
   if (errors.length !== errorOffset) throw new Error(errors.slice(errorOffset).join('\n'));
