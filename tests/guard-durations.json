@@ -77,7 +77,7 @@
     "day-cold-load-yank": 84.19,
     "entry-editor-return": 250.15,
     "calendar-month-a11y-check": 197.43,
-    "quick-add-focus-check": 30,
+    "quick-add-focus-check": 12,
     "chart-a11y-check": 228.26,
     "tally-chip-row-yank": 57.84,
     "changes-methodology-check": 10.55,
@@ -265,7 +265,7 @@
       197.43
     ],
     "quick-add-focus-check": [
-      30
+      12
     ],
     "chart-a11y-check": [
       228.26

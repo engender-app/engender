@@ -8,17 +8,21 @@ import { nextRadioIndex } from './rovingRadioIndex';
     into the editor on the first face they passed (WCAG 3.2.2, audit
     A11Y-02). There an arrow moves focus and the group's one Tab stop with
     it, and Space or Enter commits. */
-export function rovingRadio(group: HTMLElement, options: { selectOnArrow?: boolean } = {}) {
-  const selectOnArrow = options.selectOnArrow ?? true;
+export function rovingRadio(group: HTMLElement, config: { selectOnArrow?: boolean } = {}) {
+  const selectOnArrow = config.selectOnArrow ?? true;
   const radios = () => Array.from(group.querySelectorAll<HTMLElement>('[role="radio"]'))
     .filter(radio => radio.closest('[role="radiogroup"]') === group);
   const enabled = (radio: HTMLElement) => !radio.matches(':disabled, [aria-disabled="true"]');
 
+  /** The group's one Tab stop. */
+  function tabStop(stop: HTMLElement | undefined) {
+    for (const radio of radios()) radio.tabIndex = radio === stop ? 0 : -1;
+  }
+
   function sync() {
     const options = radios();
-    const active = options.find(radio => enabled(radio) && radio.getAttribute('aria-checked') === 'true')
-      ?? options.find(enabled);
-    for (const radio of options) radio.tabIndex = radio === active ? 0 : -1;
+    tabStop(options.find(radio => enabled(radio) && radio.getAttribute('aria-checked') === 'true')
+      ?? options.find(enabled));
   }
 
   function keydown(event: KeyboardEvent) {
@@ -30,7 +34,7 @@ export function rovingRadio(group: HTMLElement, options: { selectOnArrow?: boole
     event.preventDefault();
     const target = options[next ?? current];
     if (!selectOnArrow && next !== null) {
-      for (const radio of radios()) radio.tabIndex = radio === target ? 0 : -1;
+      tabStop(target);
       target.focus();
       return;
     }
