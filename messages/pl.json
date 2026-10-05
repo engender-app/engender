@@ -2360,7 +2360,6 @@
   "pin_confirm_body": "Wpisz ponownie te same cztery cyfry.",
   "pin_forgot": "Nie pamiętasz PIN-u?",
   "pin_forgot_key_note": "Nie da się odzyskać zapomnianego kodu PIN. Jeśli masz zapisany klucz odzyskiwania, otwórz aplikację ponownie, aby go użyć. Zapisana kopia zapasowa pozwala przywrócić zawarte w niej dane.",
-  "pin_greeting_named": "Cześć, {name}",
   "pin_mismatch": "Te dwa PIN-y się różnią. Zacznij od nowa.",
   "pin_progress": "Wpisany PIN: {typed} z {total} cyfr",
   "pin_throttled": "Za dużo nieudanych prób. Spróbuj ponownie za {seconds} s.",
