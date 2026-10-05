@@ -1,6 +1,7 @@
 # 13 - data: Archive format guards that have to be inside 1.0
 
-Status: ready-for-agent (reopened 2026-10-05 for audit follow-up ARCH-02, L02-05; the original scope shipped)
+Status: ready-for-agent
+Status note: (reopened 2026-10-05 for audit follow-up ARCH-02, L02-05; the original scope shipped)
 Was: phase-14 pre-release 08 (moved 2026-10-05)
 Type: build
 Audit findings: D3, A3, D5

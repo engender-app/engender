@@ -1,6 +1,7 @@
 # 07 - rel: The release workflow publishes, and there is a version to publish
 
-Status: ready-for-agent (reopened 2026-10-05: the workflow checks artifacts one step before it builds them, so every tag fails, L10-01)
+Status: ready-for-agent
+Status note: (reopened 2026-10-05: the workflow checks artifacts one step before it builds them, so every tag fails, L10-01)
 Was: phase-14 pre-release 07 (moved 2026-10-05)
 Type: build
 Audit findings: R3, R4, R12
