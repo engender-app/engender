@@ -403,7 +403,13 @@
     }
     node.id = QUESTION_ID;
     if (questionsArrived++ === 0) return;
-    const frame = requestAnimationFrame(() => node.focus({ preventScroll: true }));
+    /* Only if nothing else took focus in that frame: a tap on an answer
+       that quickly is the person already moving on. */
+    const was = document.activeElement;
+    const frame = requestAnimationFrame(() => {
+      const now = document.activeElement;
+      if (now === was || !now || now === document.body) node.focus({ preventScroll: true });
+    });
     return () => cancelAnimationFrame(frame);
   }
 
