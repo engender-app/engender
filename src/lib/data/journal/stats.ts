@@ -704,7 +704,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     async recap(fromEpochDay, toEpochDay) {
       const range = [fromEpochDay, toEpochDay];
 
-      const totals = await driver.query<{ entry_count: number; average_mood: number | null }>(
+      const totalsRead = driver.query<{ entry_count: number; average_mood: number | null }>(
         `SELECT COUNT(*) AS entry_count, AVG(mood) AS average_mood FROM entry
          WHERE epoch_day BETWEEN ? AND ? AND trashed_at IS NULL`,
         range
@@ -713,7 +713,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       /* Hidden tags are counted here, unlike in the insights: a recap reads
          back what the month held, and hiding a tag removes it from the
          places a user picks things, not from the past (CONTEXT: Hidden). */
-      const topTagRows = await driver.query<{ id: string; entries: number }>(
+      const topTagRowsRead = driver.query<{ id: string; entries: number }>(
         `SELECT COALESCE(t.key, t.uuid) AS id, COUNT(*) AS entries
          FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
@@ -723,7 +723,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         range
       );
 
-      const milestoneRows = await driver.query<{ id: string; name: string; epoch_day: number }>(
+      const milestoneRowsRead = driver.query<{ id: string; name: string; epoch_day: number }>(
         `SELECT uuid AS id, name, epoch_day FROM milestone
          WHERE epoch_day BETWEEN ? AND ? ORDER BY epoch_day, id`,
         range
@@ -733,7 +733,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          orders entries. A hidden dimension is left out: this is the app
          choosing a dimension to show, and choosing one the user has put
          away would be volunteering it back. */
-      const changes = await driver.query<{
+      const changesRead = driver.query<{
         key: string;
         min_value: number;
         max_value: number;
@@ -768,7 +768,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          has them: exactly one owner column is set (the photo table's
          CHECK), so a milestone's photo dates itself off the milestone and an
          entry's off the entry, in one query rather than two. */
-      const photoRows = await driver.query<{ uuid: string; file_path: string; epoch_day: number; starred: number }>(
+      const photoRowsRead = driver.query<{ uuid: string; file_path: string; epoch_day: number; starred: number }>(
         `WITH dated AS (
            SELECT p.uuid AS uuid, p.file_path AS file_path, p.starred AS starred,
                   COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
@@ -798,6 +798,11 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          ORDER BY epoch_day, order_index, id`,
         [...range, RECAP_PHOTO_HIGHLIGHTS]
       );
+
+      // These reads share a range, but none needs another read's answer.
+      const [totals, topTagRows, milestoneRows, changes, photoRows] = await Promise.all([
+        totalsRead, topTagRowsRead, milestoneRowsRead, changesRead, photoRowsRead
+      ]);
 
       /* Ranked by how far the value moved through its own range, because a
          20-point move on a 0-100 dimension and a 3-point move on a 0-10

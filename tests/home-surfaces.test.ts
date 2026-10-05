@@ -335,8 +335,10 @@ describe('what spec 08 took off Home', () => {
        read, before either fetch runs. */
     expect(home).toContain("from '$lib/data/agendaReads'");
     expect(home).toMatch(
-      /readAgenda\(\s*\{ dayAhead: j\.dayAhead, doses: j\.doses \},\s*today,\s*prefs\.disguise,\s*shownAgendaKinds\(prefs\),\s*dosePanelCoversEveryDose\s*\)/
+      /readAgenda\(j,\s*today,\s*prefs\.disguise\)/
     );
+    expect(home).toMatch(/projectAgenda\(agendaQuery\.value,\s*shownAgendaKinds\(prefs\),\s*dosePanelCoversEveryDose\)/);
+    expect(home).toContain('liveTiles.ready && !prefs.disguise');
     expect(home).toContain('dayAheadMarkLabel(item.kind)');
     expect(home).toContain('passedSlotSentence(');
     expect(home).not.toContain('DAY_AHEAD_ROUTES');
