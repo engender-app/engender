@@ -83,7 +83,7 @@
         calendar shades by (metricKey). */
     scaleTrend: DayAverage[];
     dimChange: RecapDimChange | null;
-    topTags: { label: string; count: number }[];
+    topTags: { id: string; label: string; count: number }[];
     /** The journey anchor's duration (phase 5 ticket 25), already named and
         formatted - the caller resolves the anchor milestone and formats its
         gap to today, the same division of labour dimChange's name
@@ -254,7 +254,7 @@
 {#if topTags.length}
   <SectionHeading text={m.wrapped_tags()} />
   <div class="tag-row" data-wrapped-tags>
-    {#each topTags as tag (tag.label)}
+    {#each topTags as tag (tag.id)}
       <span class="tag-chip">{m.recap_tag_count({ label: tag.label, count: String(tag.count) })}</span>
     {/each}
   </div>

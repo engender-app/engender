@@ -1167,10 +1167,10 @@
           <!-- A mood Daylio named itself has no name in the file, so its
                own row is headed by this app's word for that position and
                says the position alone rather than repeating the word. -->
-          {#each backupPreview.moods as mood, i (mood.name ?? `built-in-${i}`)}
-            <div class="rows-divide value-row">
-              <span>{mood.name ?? (mood.mood === null ? m.dlb_mood_unmapped() : moodName(mood.mood))}</span>
-              <strong>
+          {#each backupPreview.moods as mood}
+            <div class="rows-divide value-row" data-backup-mood>
+              <span data-backup-mood-name>{mood.name ?? (mood.mood === null ? m.dlb_mood_unmapped() : moodName(mood.mood))}</span>
+              <strong data-backup-mood-position>
                 {mood.mood === null
                   ? m.dlb_mood_unmapped()
                   : mood.name === null

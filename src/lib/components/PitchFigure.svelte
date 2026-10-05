@@ -362,7 +362,7 @@
          whatever width it lands in, and stretched type is the one thing a
          non-uniform viewBox cannot be forgiven for. -->
     <div class="pf-gutter" aria-hidden="true">
-      {#each edges as edge (edge.hz)}
+      {#each edges as edge}
         <span class="pf-tick" style="top: {edge.y}%">{tickLabel(edge.hz)}</span>
       {/each}
     </div>
@@ -393,7 +393,7 @@
              touch. -->
         <g data-pitch-middle>
           <rect class="pf-middle" x="0" y={middle.top} {width} height={middle.height} />
-          {#each [middle.top, middle.top + middle.height] as at (at)}
+          {#each [middle.top, middle.top + middle.height] as at}
             <line class="pf-middle-edge" x1="0" y1={at} x2={width} y2={at} vector-effect="non-scaling-stroke" />
           {/each}
         </g>
@@ -449,7 +449,7 @@
                which is what the row stores and why (audio/pitch.ts). Drawn
                as its two edges, so it reads as a measurement of this take
                rather than as another region of the world. -->
-          {#each [span.highHz, span.lowHz] as edge (edge)}
+          {#each [span.highHz, span.lowHz] as edge}
             <line
               class="pf-span"
               data-pitch-span
@@ -496,7 +496,7 @@
               y2={y(comfort.lowHz)}
               vector-effect="non-scaling-stroke"
             />
-            {#each [comfort.highHz, comfort.lowHz] as end (end)}
+            {#each [comfort.highHz, comfort.lowHz] as end}
               <line
                 x1={BRACKET_X}
                 y1={y(end)}
@@ -533,7 +533,7 @@
           <line class="pf-spine" x1="0" y1="0" x2="0" y2={HEIGHT} vector-effect="non-scaling-stroke" />
 
           {#if span}
-            {#each [span.highHz, span.lowHz] as edge (edge)}
+            {#each [span.highHz, span.lowHz] as edge}
               <line
                 class="pf-span"
                 data-density-span

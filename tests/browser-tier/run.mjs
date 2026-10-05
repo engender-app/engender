@@ -70,6 +70,14 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('release blockers 03 duplicate display values', 11, async () => {
+  const result = await load('/duplicate-keys.html', 'duplicate-keys');
+  for (const item of result.cases) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'the rendered values did not match');
+  }
+});
+
 await block('failed encrypted pool initialization preserves journal data', 8, async () => {
   const r = await load('/pool-initialization.html', 'pool-initialization');
   if (r.error) throw new Error(r.error);
