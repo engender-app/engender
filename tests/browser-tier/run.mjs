@@ -70,6 +70,14 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('release blockers 03 duplicate display values', 11, async () => {
+  const result = await load('/duplicate-keys.html', 'duplicate-keys');
+  for (const item of result.cases) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'the rendered values did not match');
+  }
+});
+
 await block('failed encrypted pool initialization preserves journal data', 8, async () => {
   const r = await load('/pool-initialization.html', 'pool-initialization');
   if (r.error) throw new Error(r.error);
@@ -1268,12 +1276,17 @@ await block('phase 9 audit ticket 07 mood chips keyboard nav', 4, async () => {
   await four.focus();
   await page.keyboard.press('ArrowRight');
   const movedChecked = await five.getAttribute('aria-checked');
-  if (movedChecked === 'true') ok('ArrowRight moves the tab stop and the pick to the next face');
-  else fail('ArrowRight moves the pick to the next face', movedChecked);
+  const movedFocus = await five.evaluate((face) => document.activeElement === face);
+  if (movedFocus && movedChecked === 'false' && await four.getAttribute('aria-checked') === 'true')
+    ok('ArrowRight moves focus while keeping the picked mood');
+  else fail('ArrowRight moves focus while keeping the picked mood', JSON.stringify({ movedFocus, movedChecked }));
 
   const movedTabindex = await five.getAttribute('tabindex');
-  if (movedTabindex === '0') ok('and the newly picked face becomes the one tab stop');
-  else fail('the newly picked face becomes the one tab stop', movedTabindex);
+  await page.keyboard.press('Enter');
+  if (movedTabindex === '0' && await faces.evaluateAll((nodes) => nodes.filter((node) => node.getAttribute('tabindex') === '0').length) === 1 &&
+      await five.getAttribute('aria-checked') === 'true' && await four.getAttribute('aria-checked') === 'false')
+    ok('the focused face is the one tab stop, and Enter picks it');
+  else fail('the focused face is the one tab stop, and Enter picks it', movedTabindex);
 
   /* The keyboard equivalent of the click-to-clear a mistap relies on: Enter
      on a native <button> fires the same click handler a pointer would, so
