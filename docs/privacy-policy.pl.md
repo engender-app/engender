@@ -103,8 +103,8 @@ Aplikacja prosi o następujące uprawnienia:
 - `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS`, do notatek głosowych, ćwiczeń
   głosu i dźwięku w notatkach wideo.
 - `CAMERA`, do notatek wideo i do robienia zdjęć. Zdjęcie robi aplikacja
-  aparatu, ale gdy aplikacja deklaruje to uprawnienie, Android wymaga go
-  także przy takim zdjęciu.
+  aparatu, a engender prosi o to uprawnienie przed jej otwarciem, bo
+  Android wymaga tego od aplikacji, która je deklaruje.
 - `USE_BIOMETRIC` i `USE_FINGERPRINT`, które dodaje biblioteka biometryczna
   AndroidX, żeby aplikacja mogła pokazać systemowe pytanie o odcisk palca,
   twarz albo blokadę ekranu przed otwarciem dziennika. Aplikacja nie widzi

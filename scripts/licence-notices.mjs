@@ -25,6 +25,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { lockfilePackages, READ_BY_HAND } from './check-licences.mjs';
 
+/** The Apache-2.0 text, for everything under it that ships none of its own. */
+const APACHE = 'scripts/licence-texts/Apache-2.0.txt';
+
 /** Licences that ask for no text to travel with the code. Everything else
     needs a licence file, from the package or from LICENCE_TEXT_BY_HAND. */
 const NO_TEXT_REQUIRED = new Set(['0BSD', 'Unlicense']);
@@ -39,11 +42,11 @@ const LICENCE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i;
     @type {Record<string, { file: string, read: string }>} */
 export const LICENCE_TEXT_BY_HAND = {
   '@evolu/sqlite-wasm': {
-    file: 'scripts/licence-texts/Apache-2.0.txt',
+    file: APACHE,
     read: 'package.json says Apache-2.0 and the tarball has no LICENSE; the Apache text itself is what the licence asks to pass on.'
   },
   '@sqlite.org/sqlite-wasm': {
-    file: 'scripts/licence-texts/Apache-2.0.txt',
+    file: APACHE,
     read: 'The copy SQLocal nests: package.json says Apache-2.0 and the tarball has no LICENSE. SQLite itself, inside it, is public domain.'
   },
   '@tesseract.js-data/eng': {
@@ -81,37 +84,37 @@ export const ANDROID_LIBRARIES = [
     name: 'AndroidX',
     groups: ['androidx.'],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt']
+    files: [APACHE]
   },
   {
     name: 'Kotlin standard library and coroutines',
     groups: ['org.jetbrains.kotlin', 'org.jetbrains.kotlinx'],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt']
+    files: [APACHE]
   },
   {
     name: 'JetBrains annotations',
     groups: ['org.jetbrains:annotations'],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt']
+    files: [APACHE]
   },
   {
     name: 'JSpecify annotations',
     groups: ['org.jspecify'],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt']
+    files: [APACHE]
   },
   {
     name: 'Guava ListenableFuture',
     groups: ['com.google.guava'],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt']
+    files: [APACHE]
   },
   {
     name: 'Apache Cordova',
     groups: ['org.apache.cordova'],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt', 'scripts/licence-texts/cordova-notice.txt']
+    files: [APACHE, 'scripts/licence-texts/cordova-notice.txt']
   },
   {
     name: 'SQLCipher for Android',
@@ -127,7 +130,7 @@ export const ANDROID_LIBRARIES = [
     name: 'OpenSSL (inside SQLCipher)',
     groups: [],
     licence: 'Apache-2.0',
-    files: ['scripts/licence-texts/Apache-2.0.txt']
+    files: [APACHE]
   },
   {
     name: 'Bouncy Castle',
@@ -266,15 +269,12 @@ export function buildNotices({ app, android = [], lock, files, read, androidLibr
   return { notices: { texts, sections }, problems };
 }
 
-/** buildNotices over this checkout's own files. @param {string} root */
-export function noticesFromDisk(root, /** @type {Iterable<string>} */ bundledIds) {
-  const app = new Set(VENDORED_PACKAGES);
-  for (const id of bundledIds) {
-    const path = packagePathOf(id);
-    if (path) app.add(path);
-  }
+/** buildNotices over this checkout's own files, for the lockfile paths
+    of the packages the bundle shipped (packagePathOf maps a module to one).
+    @param {string} root @param {Iterable<string>} shipped */
+export function noticesFromDisk(root, shipped) {
   return buildNotices({
-    app,
+    app: new Set([...VENDORED_PACKAGES, ...shipped]),
     android: ANDROID_PACKAGES,
     lock: lockfilePackages(root),
     files: (dir) => (existsSync(join(root, dir)) ? readdirSync(join(root, dir)) : []),

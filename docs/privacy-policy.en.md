@@ -101,8 +101,8 @@ The app requests these permissions:
 - `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes, voice
   practice and the sound of video notes.
 - `CAMERA`, for video notes and for taking a photo. A photo is taken with
-  your phone's camera app, but Android requires the app that asks for it to
-  hold this permission once the app declares it.
+  your phone's camera app, and the app asks for this permission before it
+  opens it, because Android requires that of an app that declares it.
 - `USE_BIOMETRIC` and `USE_FINGERPRINT`, which the AndroidX biometric
   library adds so the app can show the system's fingerprint, face or screen
   lock prompt before it opens the journal. The app never sees your

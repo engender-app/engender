@@ -1,11 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin } from 'vite';
 import sqlocal from 'sqlocal/vite';
 import { appVersion } from './scripts/app-version.mjs';
 import { lockfilePackages } from './scripts/check-licences.mjs';
-import { noticesFromDisk } from './scripts/licence-notices.mjs';
+import { noticesFromDisk, packagePathOf } from './scripts/licence-notices.mjs';
 import capacitorConfig from './capacitor.config';
 
 /* What the client build actually emitted, written where src/service-worker.ts
@@ -172,6 +172,7 @@ function licenceNotices() {
   const workerModules = new Set<string>();
   let serving = false;
   let client = false;
+  let server = false;
   let rendered: string | undefined;
 
   const worker: Plugin = {
@@ -186,6 +187,7 @@ function licenceNotices() {
     configResolved(config) {
       serving = config.command === 'serve';
       client = config.build.outDir.endsWith('/client');
+      server = config.build.outDir.endsWith('/server');
     },
     buildStart() {
       rendered = undefined;
@@ -196,8 +198,8 @@ function licenceNotices() {
     load(id) {
       if (id !== `\0${NOTICES_ID}`) return;
       if (serving) {
-        const runtime = lockfilePackages('.').filter((entry) => !lockEntryIsDev(entry.path));
-        const { notices } = noticesFromDisk('.', runtime.map((entry) => `${entry.path}/index.js`));
+        const runtime = lockfilePackages('.').filter((entry) => !entry.dev);
+        const { notices } = noticesFromDisk('.', runtime.map((entry) => entry.path));
         return `export default ${JSON.stringify(notices)};`;
       }
       return `export default JSON.parse(${JSON.stringify(NOTICES_PLACEHOLDER)});`;
@@ -205,32 +207,29 @@ function licenceNotices() {
     renderChunk(code) {
       if (!code.includes(NOTICES_PLACEHOLDER)) return;
       if (rendered === undefined) {
-        const empty = { texts: [], sections: [] };
         if (client) {
-          const { notices, problems } = noticesFromDisk('.', [...this.getModuleIds(), ...workerModules]);
+          const shipped = [...this.getModuleIds(), ...workerModules].map(packagePathOf).filter((path) => path !== null);
+          const { notices, problems } = noticesFromDisk('.', shipped);
           if (problems.length) this.error(`Licence notices are incomplete:\n${problems.join('\n')}`);
           rendered = JSON.stringify(notices);
+        } else if (server) {
+          // The prerender's copy, which no browser ever loads.
+          rendered = JSON.stringify({ texts: [], sections: [] });
         } else {
-          rendered = JSON.stringify(empty);
+          // A third kind of build would ship empty notices without a word.
+          this.error('Licence notices: a build that is neither the client nor the server renders them');
         }
       }
-      // Whatever quotes the minifier chose, the placeholder is one string literal.
-      return code.replace(new RegExp(`(["'\`])${NOTICES_PLACEHOLDER}\\1`), JSON.stringify(rendered));
+      // Whatever quotes the minifier chose, the placeholder is one string
+      // literal. A function, so a `$&` inside a licence text stays literal.
+      const literal = new RegExp(`(["'\`])${NOTICES_PLACEHOLDER}\\1`, 'g');
+      const out = code.replace(literal, () => JSON.stringify(rendered));
+      if (out.includes(NOTICES_PLACEHOLDER)) this.error('Licence notices: the placeholder survived rendering');
+      return out;
     }
   };
 
   return { main, worker };
-}
-
-/** Whether the lockfile marks a package as needed only for development. */
-let devPaths: Set<string> | undefined;
-function lockEntryIsDev(path: string): boolean {
-  devPaths ??= new Set(
-    Object.entries(JSON.parse(readFileSync('package-lock.json', 'utf8')).packages as Record<string, { dev?: boolean }>)
-      .filter(([, entry]) => entry.dev)
-      .map(([key]) => key)
-  );
-  return devPaths.has(path);
 }
 
 /* One pair per build: each build loads this config afresh, so the worker
