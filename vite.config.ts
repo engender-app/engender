@@ -321,6 +321,12 @@ export default defineConfig(({ command }) => ({
       ...(locale ? { experimentalStaticLocale: '/** @type {any} */ (globalThis).__PARAGLIDE_STATIC_LOCALE__' } : {}),
       strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
     }),
+    // Before sveltekit(), so its document handler runs first. Returning the
+    // hook makes it run after Vite's own host check, not before it.
+    {
+      name: 'engender:joined-locale-preview',
+      configurePreviewServer: (server) => () => serveJoinedLocaleBuild(server)
+    },
     sveltekit(),
     sharedWasmAssets(),
     notices.main,
@@ -330,10 +336,7 @@ export default defineConfig(({ command }) => ({
     {
       name: 'engender:cross-origin-isolate',
       configureServer: isolateServer,
-      configurePreviewServer(server) {
-        isolateServer(server);
-        serveJoinedLocaleBuild(server);
-      }
+      configurePreviewServer: isolateServer
     },
   ],
 }));
