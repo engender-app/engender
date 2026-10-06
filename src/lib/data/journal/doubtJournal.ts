@@ -87,10 +87,12 @@ export function makeDoubtJournalArea(driver: SqliteDriver): DoubtJournalArea {
     },
 
     async deleteSnapshot(id) {
-      await driver.run('DELETE FROM doubt_snapshot_entry WHERE snapshot_id IN (SELECT id FROM doubt_snapshot WHERE uuid = ?)', [
-        id
-      ]);
-      await driver.run('DELETE FROM doubt_snapshot WHERE uuid = ?', [id]);
+      await driver.transaction(async (driver) => {
+        await driver.run('DELETE FROM doubt_snapshot_entry WHERE snapshot_id IN (SELECT id FROM doubt_snapshot WHERE uuid = ?)', [
+          id
+        ]);
+        await driver.run('DELETE FROM doubt_snapshot WHERE uuid = ?', [id]);
+      });
     }
   };
 }

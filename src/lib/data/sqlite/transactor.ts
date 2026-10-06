@@ -113,7 +113,10 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
       }
     }));
     return writing.then(async (value) => {
-      for (const cleanup of cleanups) await cleanup();
+      for (const cleanup of cleanups) {
+        try { await cleanup(); }
+        catch (error) { console.warn('Could not finish post-commit cleanup', error); }
+      }
       return value;
     });
   }

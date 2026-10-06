@@ -37,7 +37,8 @@ public class AutoExportDeliveryTest {
     @Test public void completeLargeBackupRoundTripsAndFailuresPreserveRecovery() throws Exception {
         java.util.concurrent.CountDownLatch bootstrapped = new java.util.concurrent.CountDownLatch(1);
         app.sendOrderedBroadcast(new android.content.Intent().setComponent(new android.content.ComponentName(
-            "dev.engender.app.test", BackupDocumentsProvider.Bootstrap.class.getName())), null,
+            InstrumentationRegistry.getInstrumentation().getContext().getPackageName(), BackupDocumentsProvider.Bootstrap.class.getName()))
+                .putExtra("targetPackage", app.getPackageName()), null,
             new android.content.BroadcastReceiver() {
                 @Override public void onReceive(Context context, android.content.Intent intent) { bootstrapped.countDown(); }
             }, null, 0, null, null);
