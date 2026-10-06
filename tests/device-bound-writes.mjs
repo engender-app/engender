@@ -6,6 +6,7 @@ const server = await createServer({
   configFile: false,
   root: process.cwd(),
   appType: 'custom',
+  optimizeDeps: { noDiscovery: true },
   server: { host: '127.0.0.1', port: 0 }
 });
 server.middlewares.use('/device-bound-write-proof', (_request, response) => {
