@@ -331,8 +331,8 @@ console.log(`${duringOk ? 'ok  ' : 'FAIL'} reads finishing during motion also fi
 /* CI printed only the verdict when this went red on main (run 37385237608),
    which could not say whether the reads had landed during the motion. */
 if (!duringOk) {
-  for (const f of during.slice(Math.max(0, duringEnd - 8), duringEnd + 3)) {
-    console.log(`     ${Math.round(f.at)}ms ${f.moving ? 'moving' : 'still '} ${f.readable ? 'readable' : 'unread  '} ${f.placeholder ? 'placeholder' : ''}`);
+  for (const f of during.slice(Math.max(0, duringEnd - 7), duringEnd + 3)) {
+    console.log(`     ${Math.round(f.at)}ms ${f.moving ? 'moving' : 'still '} ${f.readable ? 'readable' : 'unread  '}${f.placeholder ? ' placeholder' : ''}`);
   }
 }
 
