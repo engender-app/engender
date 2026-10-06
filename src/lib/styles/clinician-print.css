@@ -143,6 +143,89 @@
   inset: 0 min(0px, calc((100% - var(--touch-target)) / 2));
 }
 
+/* Phone width (after-release 22, the audit's UI-11). Six tables 336 to
+   625px wide sat in a 306px region, so even with a scroll cue every header
+   past the edge read cut mid-word ("Rout", "Dose 48 m"), and dates broke a
+   word a line. Below 30rem of frame, a table with three or more columns
+   reads as stacked rows instead: each row a block, each cell its header
+   over its value, wrapping as many to a line as fit. Every column is on
+   screen without scrolling, so there is nothing for the keyboard to reach
+   past. Two-column tables fit as tables once a long header may wrap.
+
+   The headers stay in the table for screen readers, only clipped from
+   sight, and each cell's printed label is decoration (the empty
+   alternative text after the slash), so a cell is announced once with its
+   column header rather than twice. Screen only: paper keeps the tables. */
+@media screen {
+  .dossier-date {
+    white-space: nowrap;
+  }
+
+  @container dossier-table (max-width: 29.99rem) {
+    .dossier-table th {
+      white-space: normal;
+    }
+
+    .dossier-table:has(th:nth-child(3)),
+    .dossier-table:has(th:nth-child(3)) tbody {
+      display: block;
+    }
+
+    .dossier-table:has(th:nth-child(3)) thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .dossier-table:has(th:nth-child(3)) tr {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+      padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .dossier-table:has(th:nth-child(3)) tr.dossier-row-overflow {
+      display: none;
+    }
+
+    .dossier-table:has(th:nth-child(3)) td {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      padding: 0;
+      border: 0;
+    }
+
+    .dossier-table:has(th:nth-child(3)) td::before {
+      content: attr(data-label) / '';
+      display: block;
+      font-size: var(--text-xs);
+      color: var(--text-2);
+    }
+
+    /* The row is the target: a stacked row is taller than the touch floor
+       on its own, and a link shorter than its row left the rest of the
+       record dead to a tap. */
+    .dossier-table:has(th:nth-child(3)) .dossier-row-link {
+      position: static;
+      display: inline;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .dossier-table:has(th:nth-child(3)) .dossier-row-link::after {
+      inset: 0;
+      z-index: 1;
+    }
+  }
+}
+
 .dossier-sub-list {
   display: flex;
   flex-direction: column;
