@@ -177,13 +177,13 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   }
 
   return {
-    exec: (sql) => { invalidate(); return call(() => driver.exec(sql)); },
+    exec: (sql) => call(() => { invalidate(); return driver.exec(sql); }),
     query,
-    run: (sql, params) => { invalidate(); return Promise.resolve(call(() => driver.run(sql, params))); },
+    run: (sql, params) => Promise.resolve(call(() => { invalidate(); return driver.run(sql, params); })),
     getUserVersion: () => call(() => driver.getUserVersion()),
-    setUserVersion: (version) => { invalidate(); return call(() => driver.setUserVersion(version)); },
+    setUserVersion: (version) => call(() => { invalidate(); return driver.setUserVersion(version); }),
     transaction,
-    close: () => { invalidate(); return Promise.resolve(call(() => driver.close())); },
+    close: () => Promise.resolve(call(() => { invalidate(); return driver.close(); })),
     readSnapshot
   };
 }

@@ -99,6 +99,29 @@ test('a primed shared read waits until a held snapshot releases the connection',
   await db.close();
 });
 
+for (const mutation of ['run', 'exec'] as const) {
+  test(`a queued ${mutation} invalidates a read queued before it behind a snapshot`, async () => {
+    const db = await migratedDb();
+    await db.run("INSERT INTO pref (key, value) VALUES ('answer', 'before')");
+    const entered = latch();
+    const release = latch();
+    const snapshot = db.readSnapshot(async () => {
+      entered.release();
+      await release.promise;
+    });
+    await entered.promise;
+    const sql = 'SELECT value FROM pref';
+    const reading = db.query(sql);
+    const writing = db[mutation]("UPDATE pref SET value = 'after'");
+    release.release();
+    await snapshot;
+    assert.deepEqual((await reading).map((row) => row.value), ['before']);
+    await writing;
+    assert.deepEqual((await db.query(sql)).map((row) => row.value), ['after']);
+    await db.close();
+  });
+}
+
 test('identical reads share one statement until a write, with independent result rows', async () => {
   const db = await migratedDb();
   await db.run("INSERT INTO pref (key, value) VALUES ('answer', 'before')");
