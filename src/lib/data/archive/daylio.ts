@@ -311,6 +311,7 @@ export async function daylioPreview(
       }
       candidate.entry.tags.push(tag.id);
     }
+    candidate.entry.tags = [...new Set(candidate.entry.tags)];
   }
 
   const mappings = [...moodMappings].map(([label, mood]) => ({ label, mood }));

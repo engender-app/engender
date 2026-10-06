@@ -7,8 +7,8 @@ import {
   attributeDrug,
   drugSpans,
   earliestEpisode,
-  episodesWithNoDoseLogged,
   expectedDosesOnDay,
+  lastDayWithin,
   nearestActiveEpisode,
   showAttributionLabel
 } from './regimenEpisode.ts';
@@ -394,37 +394,26 @@ test('showAttributionLabel: two episodes agreeing on one drug hide the "not reco
   assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol'), false);
 });
 
-/* The editor's quick-log chip (after-release ticket 01, L04-09). It used to
-   read a dose's own `drug`, which is null on most doses, so a dose logged
-   from the dose sheet left the chip up and one tap logged a second. */
+/* The day-ahead dose marks read each episode only as far as its own span
+   reaches into the range (after-release ticket 01). */
 
-const dayDose = (epochDay: number, drug: string | null = null) => ({
-  drug,
-  timestamp: startOfDayTimestamp(epochDay) + 9 * 3600000
+test('an open episode that began before the range runs to the end of it', () => {
+  assert.equal(lastDayWithin(episode('a', 100), 150, 160), 160);
 });
 
-test('a dose with no drug name of its own takes the episode off the still-to-log list', () => {
-  const episodes = [episode('a', 100)];
-  assert.deepEqual(episodesWithNoDoseLogged(episodes, episodes, [dayDose(150)]), []);
+test('an episode that ends inside the range stops at its own end', () => {
+  assert.equal(lastDayWithin(episode('a', 100, 154), 150, 160), 154);
 });
 
-test('an episode with nothing logged that day stays on the list', () => {
-  const episodes = [episode('a', 100)];
-  assert.deepEqual(episodesWithNoDoseLogged(episodes, episodes, []).map((e) => e.id), ['a']);
+test('an episode that starts inside the range still reaches its end', () => {
+  assert.equal(lastDayWithin(episode('a', 155), 150, 160), 160);
 });
 
-test('a dose naming one of two running drugs takes only that one off, whatever its case', () => {
-  const episodes = [episode('a', 100, null, 'Estradiol'), episode('b', 100, null, 'spironolactone')];
-  assert.deepEqual(
-    episodesWithNoDoseLogged(episodes, episodes, [dayDose(150, 'estradiol ')]).map((e) => e.id),
-    ['b']
-  );
+test('an episode that misses the range on either side answers null', () => {
+  assert.equal(lastDayWithin(episode('a', 161), 150, 160), null);
+  assert.equal(lastDayWithin(episode('a', 100, 149), 150, 160), null);
 });
 
-test('a drug-less dose while two drugs run belongs to neither, so both stay', () => {
-  const episodes = [episode('a', 100, null, 'estradiol'), episode('b', 100, null, 'spironolactone')];
-  assert.deepEqual(
-    episodesWithNoDoseLogged(episodes, episodes, [dayDose(150)]).map((e) => e.id),
-    ['a', 'b']
-  );
+test('an episode ending on the first day of the range keeps that one day', () => {
+  assert.equal(lastDayWithin(episode('a', 100, 150), 150, 160), 150);
 });

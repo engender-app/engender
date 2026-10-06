@@ -109,7 +109,7 @@ public class RetrospectiveNotificationsPlugin extends Plugin {
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(getContext(), channelId)
                 .setSmallIcon(DisguiseAlias.isDisguised(getContext())
-                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_launcher_foreground)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin } from 'vite';
-import sqlocal from 'sqlocal/vite';
 import { appVersion } from './scripts/app-version.mjs';
 import { lockfilePackages } from './scripts/check-licences.mjs';
 import { noticesFromDisk, packagePathOf } from './scripts/licence-notices.mjs';
@@ -53,7 +52,7 @@ function demoWorkerPrewarm(): Plugin {
           bootstrap = reachable(ids.filter((module) =>
             module.endsWith('/src/lib/data/demo/prewarm.ts') ||
             module.endsWith('/src/lib/data/sqlite/mc-driver.ts') ||
-            module.endsWith('/src/lib/data/conversion/plaintext-journal.ts') ||
+            module.endsWith('/src/lib/data/legacy-journal.ts') ||
             module.endsWith('/src/lib/platform.ts')
           ));
           for (const module of bootstrap) startup.delete(module);
@@ -286,18 +285,12 @@ export default defineConfig(({ command }) => ({
       strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
     }),
     sveltekit(),
-    // Handles SQLocal's worker and sets the COOP/COEP headers SQLocal's
-    // own docs call for - but only for the Vite dev server, so
-    // however this gets deployed for real, production hosting has to set
-    // Cross-Origin-Embedder-Policy: require-corp and
-    // Cross-Origin-Opener-Policy: same-origin itself.
-    sqlocal(),
     sharedWasmAssets(),
     notices.main,
     writeEmittedClientAssets(),
     // `vite preview` is what the walkthrough suite serves the built app
     // from, and it got neither header. Without them this Chromium has no
-    // SharedArrayBuffer, SQLocal's worker cannot install its OPFS VFS, and
+    // SharedArrayBuffer, the SQLite worker cannot install its OPFS VFS, and
     // opening the database fails outright with "Value at index 0 does not
     // have a transferable type" - which nothing caught while no screen
     // read from the database. Now that preferences live there too, the

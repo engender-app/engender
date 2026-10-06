@@ -69,3 +69,10 @@ test('two calls a millisecond apart never share a UID', () => {
   const uidOf = (ics: string) => lines(ics).find((l) => l.startsWith('UID:'));
   expect(uidOf(a)).not.toBe(uidOf(b));
 });
+
+test('long UTF-8 titles fold at 75 octets without splitting characters', () => {
+  const title = 'Zażółć gęślą jaźń '.repeat(20);
+  const text = buildCalendarEvent({kind: 'surgery', epochDay: 20000, title, nowEpochMs: 0});
+  for (const line of text.split('\r\n')) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+  expect(text.replace(/\r\n /g, '')).toContain(`SUMMARY:${title}`);
+});

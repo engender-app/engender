@@ -814,13 +814,6 @@
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
-/* Determinate where there is a number to be determinate about. The
-   conversion knows how many photos it has re-encrypted and how many are
-   left, and that was being spent on a sentence alone while the screen it
-   sits on can hold someone for minutes. The shape is .rail's; what this
-   adds is where it sits. */
-.gate-progress { margin: var(--space-5) 0 0; }
-
 /* ---------- the gates, short ----------
 
    Under 640px tall - what a raised keyboard leaves on any phone, and what a

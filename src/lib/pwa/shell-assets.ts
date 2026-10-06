@@ -35,8 +35,7 @@
    The SQLite worker1 promiser's worker is never constructed at all: the
    file is in the build because the sqlite-wasm package names it in
    `sqlite3Worker1Promiser.defaultConfig`, a factory only that promiser
-   calls, and the journal talks to SQLite through mc-worker.ts and SQLocal's
-   worker instead. Nothing asks for it, so nothing is lost by not storing it. */
+   calls, and the journal talks to SQLite through mc-worker.ts instead. Nothing asks for it, so nothing is lost by not storing it. */
 
 /** The one directory in static/ that the shell does not precache. */
 export const ON_DEMAND_PREFIX = '/tesseract/';

@@ -64,3 +64,13 @@ test('an invalid date is rejected before anything is written', async () => {
   await assert.rejects(journal.archive.previewPixelsImport(bytes), /invalid date/i);
   assert.deepEqual((await journal.archive.snapshot()).journal, before);
 });
+
+test('case-variant duplicate Pixels tags commit once and invalid moods never land', async () => {
+  const journal = await setup();
+  const preview = await journal.archive.previewPixelsImport(backup([{ date: '2026-9-1', type: 'MOOD', scores: [9], notes: 'work', tags: [{type: 'Activities', entries: ['Work', 'work']}]}]));
+  assert.equal(preview.invalidMoodCount, 1);
+  await journal.archive.commitPixelsImport(preview);
+  const entry = (await journal.archive.snapshot()).journal.entries[0];
+  assert.equal(entry.mood, null);
+  assert.equal(entry.tags.length, 1);
+});

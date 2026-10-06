@@ -48,6 +48,21 @@ describe('the web app manifest', () => {
     }
   });
 
+  it('uses the localised decoy title before first paint', () => {
+    const script = read('src/app.html').match(/<script>([\s\S]*?)<\/script>/)![1];
+    for (const locale of ['en', 'pl']) {
+      const document = {
+        title: 'engender', documentElement: { dataset: {} },
+        querySelector: () => ({ href: '/manifest.webmanifest' })
+      };
+      runInNewContext(script, {
+        localStorage: { getItem: (key: string) => key === 'PARAGLIDE_LOCALE' ? locale : JSON.stringify({ disguise: true }) },
+        document, navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {}
+      });
+      expect(document.title).toBe(locale === 'pl' ? 'Notatki' : 'Notes');
+    }
+  });
+
   it('offers raster install icons in both languages and under disguise', () => {
     for (const candidate of [manifest, polish, disguised, disguisedPolish]) {
       for (const [size, purpose] of [['192x192', 'any'], ['512x512', 'any'], ['512x512', 'maskable']]) {
@@ -107,7 +122,7 @@ describe('the web app manifest', () => {
     // The route reads 'today' as a day parameter, so a long-press shortcut
     // opens the editor on the current epoch day without a date in the URL.
     expect(exists('src/routes/entry/new/[day]/+page.svelte')).toBe(true);
-    expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain("=== 'today'");
+    expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain('parseDayParam(page.params.day, todayEpochDay())');
   });
 
   it('keeps install text and shortcut destination paired across languages', () => {
@@ -138,7 +153,8 @@ describe('the disguised manifest', () => {
     // more surface to keep neutral, and the disguise loses nothing without it.
     expect(disguised.shortcuts).toBeUndefined();
     expect(disguisedPolish.lang).toBe('pl');
-    expect(disguisedPolish.name).toBe('Notes');
+    expect(disguisedPolish.name).toBe('Notatki');
+    expect(disguisedPolish.short_name).toBe('Notatki');
     expect(disguisedPolish.description).toBe('Miejsce na notatki.');
     expect(disguisedPolish.shortcuts).toBeUndefined();
   });

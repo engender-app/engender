@@ -23,6 +23,7 @@
     "built 6/6": 51.0
   },
   "guards": {
+    "day-addresses": 45,
     "blind-edge-padding-check": 3.49,
     "dilation-schedule-action": 15.38,
     "letters-ready-jump": 15.87,
