@@ -140,11 +140,14 @@ const browser = await launchChromium();
 const context = await browser.newContext();
 const page = await context.newPage();
 const startupEvents = [];
+const workerIds = new WeakMap();
+let nextWorkerId = 0;
 let startupEventCount = 0;
 const startupStartedAt = performance.now();
-const retainStartupEvent = (kind, detail) => {
+const retainStartupEvent = (kind, detail, workerId) => {
   startupEventCount++;
-  startupEvents.push({ at: performance.now() - startupStartedAt, kind, detail: String(detail).slice(0, 4096) });
+  startupEvents.push({ at: performance.now() - startupStartedAt, kind, detail: String(detail).slice(0, 4096),
+    ...(workerId === undefined ? {} : { workerId }) });
   if (startupEvents.length > 128) startupEvents.shift();
 };
 context.on('requestfailed', (request) =>
@@ -156,8 +159,11 @@ page.on('framenavigated', (frame) => {
   if (frame === page.mainFrame()) retainStartupEvent('navigation', frame.url());
 });
 page.on('worker', (worker) => {
-  retainStartupEvent('worker-started', worker.url());
-  worker.on('close', () => retainStartupEvent('worker-closed', worker.url()));
+  // URLs repeat across fixture connections; IDs pair each close with its start.
+  const id = ++nextWorkerId;
+  workerIds.set(worker, id);
+  retainStartupEvent('worker-started', worker.url(), id);
+  worker.on('close', () => retainStartupEvent('worker-closed', worker.url(), id));
 });
 page.on('console', (message) => {
   if (message.type() === 'error' || message.type() === 'warning') {
@@ -170,8 +176,8 @@ async function captureStartupFailure(error) {
   const report = {
     error: String(error).slice(0, 4096), browser: browser.version(), source: process.env.GITHUB_SHA ?? null,
     host: { node: process.version, cpus: cpus().length, cpuModel: cpus()[0]?.model, freeMemory: freemem(), totalMemory: totalmem(), loadAverage: loadavg() },
-    eventCount: startupEventCount, events: [...startupEvents], workers: page.workers().slice(-128).map((worker) => worker.url()),
-    limits: 'Events retain the last 128 observations. Resources are document entries, not worker timings. A final stage locates unfinished work but does not establish its cause.'
+    eventCount: startupEventCount, events: [...startupEvents], workers: page.workers().slice(-128).map((worker) => ({ id: workerIds.get(worker), url: worker.url() })),
+    limits: 'Events retain the last 128 observations. Worker IDs are stable within this run. Resources are document entries, not worker timings. Generation counters cover entry writes and photo creation; other fixture operations are not counted. A final stage locates unfinished work but does not establish its cause.'
   };
   let timeout;
   try {

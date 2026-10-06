@@ -28,7 +28,10 @@
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
-  import type { ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
+  import { regimenEsterNote, type ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
+  import { resize } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
   import '$lib/styles/clinician-print.css';
 
@@ -73,11 +76,56 @@
       : range;
   };
 
+  /* A regimen episode's route is free text (types.ts), a dose's is the
+     closed set; the label falls back to the text itself for a route the
+     set does not know. */
+  const episodeRoute = (route: string) => routeLabel(route as DoseRoute);
+
   const siteOf = (dose: DoseEvent): string | null => {
     if (isInjectionDose(dose)) return dose.injectionSite ? injectionSiteLabel(dose.injectionSite) : null;
     if (isTopicalDose(dose)) return dose.applicationSite ? applicationSiteLabel(dose.applicationSite) : null;
     return null;
   };
+
+  /* The profile card's motion (after-release 22). Pronouns and a date of
+     birth come and go as the person types them in the controls sheet, so
+     a row arrives in, or leaves, the middle of a grid that reflows around
+     it - sideways too, once the card is wide enough for columns. The card
+     is the surface, and it only moves: its height follows through
+     `resize`, and the rows it displaces travel from where they were
+     painted (reorder.svelte.ts's FLIP, in both axes). The row that came or
+     went is content on that surface, so it crossfades rather than sliding
+     or clipping (ADR-0078's object rule binds the surface; a clip on a
+     grid cell would cut the label and value apart mid-reveal). A leaving
+     row is lifted out of the flow at its own place for its fade, so the
+     rest can travel at once rather than after it has gone. */
+  let profileGrid = $state<HTMLElement>();
+  travelOnChange(
+    () => (profileGrid ? [...profileGrid.querySelectorAll<HTMLElement>('[data-profile-item]')] : []),
+    (el) => el.dataset.profileItem ?? '',
+    () => [dossier.demographics?.pronouns?.trim(), dossier.demographics?.dob]
+  );
+
+  /* The arriving row waits for half the travel before it fades in, so its
+     text lands in the gap the displaced rows have opened rather than over
+     them as they pass (the first flipbook had "they/them" printed across
+     "Reporting period" for six frames). A leaving row keeps the full
+     crossfade: at half of it, the ease-out took 79% of its opacity in one
+     frame, which reads as the row vanishing. */
+  function profileArrive(_node: Element) {
+    return { ...fadeOnly(crossfadeDuration()), delay: motionDuration('--dur-med') / 2 };
+  }
+
+  function profileLeave(node: HTMLElement) {
+    const { offsetTop, offsetLeft, offsetWidth } = node;
+    Object.assign(node.style, {
+      position: 'absolute',
+      top: `${offsetTop}px`,
+      left: `${offsetLeft}px`,
+      width: `${offsetWidth}px`
+    });
+    return fadeOnly(crossfadeDuration());
+  }
 
   const isDossierEmpty = $derived(
     !dossier.demographics &&
@@ -92,10 +140,11 @@
   );
 </script>
 
-{#snippet routeName(route: string)}
-  <span class="no-print">{routeLabel(route as DoseRoute)}</span>
-  <span class="dossier-route-print">{route}</span>
-{/snippet}
+<!-- A date in a table cell never breaks between its words on screen ("11 /
+     Jul / 2026" stacked one word a line at 390, after-release 22). Print
+     keeps its own wrapping: clinician-print.css scopes the rule to screen.
+     `after` keeps a list's comma on its date's line. -->
+{#snippet date(epochDay: number, after = '')}<span class="dossier-date">{dayShort(epochDay)}{after}</span>{/snippet}
 
 {#snippet truncateNote(hidden: number)}
   <p class="dossier-truncate-note no-print" data-dossier-truncate>
@@ -106,33 +155,37 @@
 <div class="clinician-dossier" data-clinician-dossier>
   <!-- 1. Patient Demographics & Profile -->
   {#if dossier.demographics}
-    <div class="dossier-profile-card" data-dossier-section="demographics">
-      <div class="dossier-profile-grid">
-        <div class="dossier-profile-item">
+    <div class="dossier-profile-card" data-dossier-section="demographics" use:resize>
+      <div class="dossier-profile-grid" bind:this={profileGrid}>
+        <div class="dossier-profile-item" data-profile-item="name">
           <span class="dossier-profile-label">{m.clinician_summary_name_label()}</span>
           <span class="dossier-profile-value">
             {dossier.demographics.name.trim() || m.clinician_summary_not_set()}
           </span>
         </div>
-        <div class="dossier-profile-item">
-          <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>
-          <span class="dossier-profile-value">
-            {dossier.demographics.pronouns?.trim() || m.clinician_summary_not_set()}
-          </span>
-        </div>
+        <!-- Drawn only when given, like the date of birth under it: both
+             come from a field on this screen that is empty by default, and a
+             row reading "Not specified" told the doctor something the
+             person never said (after-release 22). -->
+        {#if dossier.demographics.pronouns?.trim()}
+          <div class="dossier-profile-item" data-profile-item="pronouns" in:profileArrive out:profileLeave>
+            <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>
+            <span class="dossier-profile-value">{dossier.demographics.pronouns.trim()}</span>
+          </div>
+        {/if}
         {#if dossier.demographics.dob}
-          <div class="dossier-profile-item">
+          <div class="dossier-profile-item" data-profile-item="dob" in:profileArrive out:profileLeave>
             <span class="dossier-profile-label">{m.clinician_summary_dob_label()}</span>
             <span class="dossier-profile-value">{dossier.demographics.dob}</span>
           </div>
         {/if}
-        <div class="dossier-profile-item">
+        <div class="dossier-profile-item" data-profile-item="period">
           <span class="dossier-profile-label">{m.clinician_summary_period_label()}</span>
           <span class="dossier-profile-value num">
             {dayShort(dossier.fromEpochDay)} – {dayShort(dossier.toEpochDay)}
           </span>
         </div>
-        <div class="dossier-profile-item">
+        <div class="dossier-profile-item" data-profile-item="generated">
           <span class="dossier-profile-label">{m.clinician_summary_generated_label()}</span>
           <span class="dossier-profile-value num">
             {dayShort(dossier.generatedAtEpochDay)}
@@ -165,15 +218,16 @@
             </thead>
             <tbody>
               {#each dossier.regimen.current as ep, i (ep.id)}
+                {@const ester = regimenEsterNote(ep.drug, ep.ester)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>
+                  <td data-label={m.regimen_drug_label()}>
                     <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
-                    {#if ep.ester}<span class="muted small">({ep.ester})</span>{/if}
+                    {#if ester}<span class="muted small">({ester})</span>{/if}
                   </td>
-                  <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{@render routeName(ep.route)}</td>
-                  <td>{ep.interval}</td>
-                  <td class="num">{episodeSpan(ep)}</td>
+                  <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(ep.route)}</td>
+                  <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
+                  <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -203,16 +257,17 @@
             </thead>
             <tbody>
               {#each pastEpisodes as ep, i (ep.id)}
+                {@const ester = regimenEsterNote(ep.drug, ep.ester)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>
-                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
-                      ? ` (${ep.ester})`
+                  <td data-label={m.regimen_drug_label()}>
+                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ester
+                      ? ` (${ester})`
                       : ''}
                   </td>
-                  <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{@render routeName(ep.route)}</td>
-                  <td>{ep.interval}</td>
-                  <td class="num">{episodeSpan(ep)}</td>
+                  <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(ep.route)}</td>
+                  <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
+                  <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -243,20 +298,20 @@
                 {@const doseDay = epochDayFromTimestamp(dose.timestamp)}
                 {@const site = siteOf(dose)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">{dayShort(doseDay)}</td>
-                  <td class="num">{fmtTime(dose.timestamp)}</td>
-                  <td class="num">
+                  <td data-label={m.dose_day_label()} class="num">{@render date(doseDay)}</td>
+                  <td data-label={m.dose_time_label()} class="num"><span class="dossier-date">{fmtTime(dose.timestamp)}</span></td>
+                  <td data-label={m.regimen_dose_label()} class="num">
                     <a class="dossier-row-link" href={`/care/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
                     {#if dose.drug}<span class="muted small">· {dose.drug}</span>{/if}
                   </td>
-                  <td>{routeLabel(dose.route)}</td>
-                  <td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(dose.route)}</td>
+                  <td data-label={m.dose_injection_site_label()}>
                     {site ?? '—'}
                     {#if isInjectionDose(dose) && dose.vehicle}
                       <span class="muted small">({vehicleLabel(dose.vehicle)})</span>
                     {/if}
                   </td>
-                  <td>
+                  <td data-label={m.clinician_summary_status_label()}>
                     {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
                     <!-- The footnote marker for a dose a schedule wrote
                          rather than the person (phase 11 ticket 11,
@@ -312,9 +367,9 @@
             <tbody>
               {#each dossier.exposure.doseTotals as dt, i (JSON.stringify([dt.drug, dt.route, dt.doseUnit]))}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td><strong>{dt.drug}</strong></td>
-                  <td>{routeLabel(dt.route)}</td>
-                  <td class="num">{dt.total} {dt.doseUnit}</td>
+                  <td data-label={m.regimen_drug_label()}><strong>{dt.drug}</strong></td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(dt.route)}</td>
+                  <td data-label={m.exposure_dose_totals_title()} class="num">{dt.total} {dt.doseUnit}</td>
                 </tr>
               {/each}
             </tbody>
@@ -338,8 +393,8 @@
             <tbody>
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>{@render routeName(rd.route)}</td>
-                  <td class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(rd.route)}</td>
+                  <td data-label={m.exposure_route_days_title()} class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -368,10 +423,10 @@
             <tbody>
               {#each dossier.exposure.regimenDays as regd, i (regd.episodeId)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td><strong>{regd.drug}</strong></td>
-                  <td class="num">{regd.dose} {regd.doseUnit}</td>
-                  <td>{@render routeName(regd.route)}</td>
-                  <td class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
+                  <td data-label={m.regimen_drug_label()}><strong>{regd.drug}</strong></td>
+                  <td data-label={m.regimen_dose_label()} class="num">{regd.dose} {regd.doseUnit}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(regd.route)}</td>
+                  <td data-label={m.exposure_regimen_days_title()} class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -410,23 +465,23 @@
             <tbody>
               {#each dossier.labs as lab, i (lab.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">
-                    {dayShort(lab.epochDay)}
-                    {#if lab.drawTime}<span class="muted small">· {lab.drawTime}</span>{/if}
+                  <td data-label={m.labs_date_label()} class="num">
+                    {@render date(lab.epochDay)}
+                    {#if lab.drawTime}<span class="muted small dossier-date">· {lab.drawTime}</span>{/if}
                   </td>
-                  <td><strong>{lab.analyte}</strong></td>
-                  <td class="num">
+                  <td data-label={m.labs_analyte_label()}><strong>{lab.analyte}</strong></td>
+                  <td data-label={m.labs_value_label()} class="num">
                     <strong>{lab.value}</strong> <span class="muted small">{lab.unit}</span>
                   </td>
-                  <td>
+                  <td data-label={m.clinician_summary_timing_header()}>
                     {#if lab.timing}
                       <span class="dossier-timing-badge">{labTimingLabel(lab.timing)}</span>
                     {:else}
                       <span class="muted small">—</span>
                     {/if}
                   </td>
-                  <td>{lab.provider.trim() || '—'}</td>
-                  <td>{lab.note.trim() || '—'}</td>
+                  <td data-label={m.labs_provider_label()}>{lab.provider.trim() || '—'}</td>
+                  <td data-label={m.labs_note_label()} class="dossier-cell-wide">{lab.note.trim() || '—'}</td>
                 </tr>
               {/each}
             </tbody>
@@ -461,9 +516,9 @@
             <tbody>
               {#each dossier.sideEffects as effect, i (effect.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">{dayShort(effect.epochDay)}</td>
-                  <td><strong>{effect.name}</strong></td>
-                  <td>
+                  <td data-label={m.side_effect_date_label()} class="num">{@render date(effect.epochDay)}</td>
+                  <td data-label={m.side_effect_name_label()}><strong>{effect.name}</strong></td>
+                  <td data-label={m.side_effect_severity_label()}>
                     {#if effect.severity === null}
                       {m.clinician_summary_not_set()}
                     {:else}
@@ -503,8 +558,8 @@
             <tbody>
               {#each dossier.cycleEvents as event, i (event.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">{dayShort(event.epochDay)}</td>
-                  <td><strong>{cycleEventKindName(event.kind)}</strong></td>
+                  <td data-label={m.cycle_event_date_label()} class="num">{@render date(event.epochDay)}</td>
+                  <td data-label={m.cycle_event_kind_label()}><strong>{cycleEventKindName(event.kind)}</strong></td>
                 </tr>
               {/each}
             </tbody>
@@ -538,7 +593,7 @@
             <tbody>
               {#each dossier.appointmentPrep as item, i (item.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td style="width: 130px;">
+                  <td data-label={m.clinician_summary_status_label()} style="width: 130px;">
                     {#if item.checked}
                       <span class="dossier-timing-badge" style="text-decoration: line-through;">{m.clinician_summary_prep_done()}</span>
                     {:else}
@@ -548,7 +603,7 @@
                       <span class="muted small">· {m.appointment_prep_carried_forward_badge()}</span>
                     {/if}
                   </td>
-                  <td style={item.checked ? 'text-decoration: line-through;' : ''}>
+                  <td data-label={m.appointment_prep_title()} style={item.checked ? 'text-decoration: line-through;' : ''}>
                     {item.content}
                   </td>
                 </tr>
@@ -586,10 +641,10 @@
             {#each dossier.procedures as proc, i (proc.id)}
               {@const day = recoveryDay(proc.surgeryEpochDay, today)}
               <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                <td><strong>{proc.name}</strong></td>
-                <td>
+                <td data-label={m.surgery_name_label()}><strong>{proc.name}</strong></td>
+                <td data-label={m.surgery_date_label()}>
                   {#if proc.surgeryEpochDay !== null}
-                    <span class="num">{dayShort(proc.surgeryEpochDay)}</span>
+                    <span class="num">{@render date(proc.surgeryEpochDay)}</span>
                     {#if day.type === 'since'}
                       <span class="muted small">· {m.surgery_day_since({ days: m.n_days({ n: day.days }) })}</span>
                     {:else if day.type === 'upcoming'}
@@ -601,14 +656,14 @@
                     <span class="muted small">{m.surgery_date_none()}</span>
                   {/if}
                 </td>
-                <td>
+                <td data-label={m.surgery_consults_title()}>
                   {#if proc.consults.length}
-                    {proc.consults.map((c) => dayShort(c.epochDay)).join(', ')}
+                    {#each proc.consults as consult, k (consult)}{k > 0 ? ' ' : ''}{@render date(consult.epochDay, k < proc.consults.length - 1 ? ',' : '')}{/each}
                   {:else}
                     —
                   {/if}
                 </td>
-                <td>
+                <td data-label={m.surgery_notes_title()} class="dossier-cell-wide">
                   {proc.notes.trim() || '—'}
                   {#if proc.checklistItems.length}
                     <div class="dossier-sub-list">
@@ -652,8 +707,8 @@
             <tbody>
               {#each dossier.finishedAreas as area, i (area.key)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td><strong>{areaGroupName(area.key)}</strong></td>
-                  <td class="num">{dayShort(area.epochDay)}</td>
+                  <td data-label={m.area_finish_table_area()}><strong>{areaGroupName(area.key)}</strong></td>
+                  <td data-label={m.area_finish_table_ended()} class="num">{@render date(area.epochDay)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -677,6 +732,16 @@
 </div>
 
 <style>
+  @media screen {
+    .dossier-profile-grid {
+      position: relative;
+    }
+
+    .dossier-profile-item {
+      transition: translate var(--dur-med) var(--ease-out);
+    }
+  }
+
   .sub-heading {
     margin: var(--space-3) 0 var(--space-1);
     font-size: var(--text-sm);

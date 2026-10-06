@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support';
 import type { Journal } from '../journal/journal';
-import { assembleClinicianDossier, regimenDrugNames } from './clinicianSummaryData';
+import { assembleClinicianDossier, regimenDrugNames, regimenEsterNote } from './clinicianSummaryData';
 
 let journal: Journal;
 
@@ -213,5 +213,29 @@ describe('regimenDrugNames', () => {
 
   it('comes back empty with no episodes', () => {
     expect(regimenDrugNames([])).toEqual([]);
+  });
+});
+
+/* After-release 22 (L04-06): the regimen cell read "Estradiol valerate
+   (valerate)", naming the ester twice. */
+describe('regimenEsterNote', () => {
+  it('names an ester the drug name does not already carry', () => {
+    expect(regimenEsterNote('Estradiol', 'valerate')).toBe('valerate');
+    expect(regimenEsterNote('Testosterone', 'cypionate')).toBe('cypionate');
+  });
+
+  it('says nothing when the drug name already names the ester, whatever its case', () => {
+    expect(regimenEsterNote('Estradiol valerate', 'valerate')).toBeNull();
+    expect(regimenEsterNote('Estradiol Valerate', 'valerate')).toBeNull();
+    expect(regimenEsterNote('Testosterone CYPIONATE', ' Cypionate ')).toBeNull();
+  });
+
+  it('says nothing without an ester', () => {
+    expect(regimenEsterNote('Spironolactone', null)).toBeNull();
+    expect(regimenEsterNote('Spironolactone', '  ')).toBeNull();
+  });
+
+  it('does not take a word that merely starts with the ester for the ester', () => {
+    expect(regimenEsterNote('Estradiol enanthate-free', 'enanthat')).toBe('enanthat');
   });
 });
