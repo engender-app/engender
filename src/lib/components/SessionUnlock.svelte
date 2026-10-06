@@ -104,6 +104,15 @@
     return 'ok';
   }
 
+  /* Back to idle after a refusal, never after the way in: the gate leaves
+     inside the app's opening transition, and turning the button back to
+     its idle label and emptying the field first painted both for two
+     frames before the gate went (after-release ticket 10, sampled per
+     frame). The field and label leave with the gate instead. */
+  const settle = () => {
+    if (!ui.appOpening) busy = false;
+  };
+
   /* The passphrase has its own field and its own button, and no throttle:
      its input space is not something anybody types their way through, and
      the derivation itself is the wall (crypto/params.ts). */
@@ -118,13 +127,12 @@
         error = m.su_reopen_failed();
         return;
       }
-      passphrase = '';
       opened();
     } catch (e) {
       const deviceGone = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
       error = e instanceof DeviceBindingUnavailableError ? deviceGone : m.pp_wrong();
     } finally {
-      busy = false;
+      settle();
     }
   }
 
@@ -145,7 +153,7 @@
       console.error('the biometric unlock failed', e);
       error = m.bm_unlock_failed();
     } finally {
-      busy = false;
+      settle();
     }
   }
 
@@ -177,7 +185,7 @@
       console.error('the device-lock prompt failed', e);
       error = m.ak_failed();
     } finally {
-      busy = false;
+      settle();
     }
   }
 
