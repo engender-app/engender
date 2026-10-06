@@ -25,15 +25,16 @@ async function visit(path) {
    per section: ticket 16 left one count line, the total, in the same words
    on Search and on a saved question. So the rows are counted here and the
    one line is checked to state their sum in `results_count`'s own wording. */
-async function counts(entries, other) {
-  await page.waitForFunction(([entries, other]) =>
+async function counts(entries, other, photos = 0) {
+  await page.waitForFunction(([entries, other, photos]) =>
     document.querySelectorAll('[data-entry-card]').length === entries &&
-    document.querySelectorAll('[data-search-hit]').length === other, [entries, other]);
+    document.querySelectorAll('[data-search-hit]').length === other &&
+    document.querySelectorAll('[data-starred-photos] .starred-photo-cell').length === photos, [entries, other, photos]);
   const lines = await page.locator('[data-search-count]').allInnerTexts();
   const expected = await page.evaluate(async (count) => {
     const { m } = await import('/src/lib/paraglide/messages.js');
     return m.results_count({ count });
-  }, entries + other);
+  }, entries + other + photos);
   assert.deepEqual(lines.map((line) => line.trim()), [expected], 'one count line, in one format');
   /* And no second count anywhere on the screen: the audit found "Entries:
      27" on Search and a count per section on a saved question. The
@@ -68,6 +69,13 @@ try {
     await clearJournal(journal);
     await journal.entries.upsertEntry({ epochDay: 20000, mood: 3, note: 'scopeprobe appointment' });
     await journal.documents.addDocument({ epochDay: 20000, title: 'scopeprobe document' }, { pdfBytes: new TextEncoder().encode('%PDF-1.4\n%%EOF') });
+    /* One starred photo, on an entry nothing below searches for, so only a
+       Starred question brings it. */
+    const canvas = Object.assign(document.createElement('canvas'), { width: 8, height: 8 });
+    const jpeg = async () => new Uint8Array(await (await new Promise((done) => canvas.toBlob(done, 'image/jpeg'))).arrayBuffer());
+    const owner = await journal.entries.upsertEntry({ epochDay: 19000, mood: 4 });
+    const photo = await journal.photos.attach({ entryId: owner }, { full: await jpeg(), thumb: await jpeg() });
+    await journal.photos.setStarred(photo, true);
   });
   for (const locale of ['en', 'pl']) {
     await page.evaluate(async locale => {
@@ -142,7 +150,10 @@ try {
         m.search_filter_starred()];
     }, title);
     for (const label of storedLabels) await page.locator('[data-saved-question-definition]').getByText(label, { exact: true }).waitFor();
-    await counts(0, 1);
+    /* Starred answers with the starred photo too, and counts it, as /search
+       does with the same question (the ticket 16 follow-up). */
+    await counts(0, 1, 1);
+    const savedTotal = (await page.locator('[data-search-count]').innerText()).trim();
     if (process.argv.includes('--gallery')) {
       await mkdir('.claude/u23-shots', { recursive: true });
       await page.setViewportSize({ width: 390, height: 844 });
@@ -174,6 +185,9 @@ try {
     assert.equal(await summary.getAttribute('aria-expanded'), 'false');
     await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
     await cdp.detach();
+    await visit('/search?q=scopeprobe&starred=1');
+    await counts(0, 1, 1);
+    assert.equal((await page.locator('[data-search-count]').innerText()).trim(), savedTotal, 'a saved Starred question and /search say the same total');
     await visit('/search');
     await page.locator('#q').fill('nothingmatchesu23');
     await page.locator('[data-notice="search-none"]').waitFor();
