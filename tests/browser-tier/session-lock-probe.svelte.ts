@@ -27,6 +27,7 @@ import {
   journalIsOpen
 } from '../../src/lib/data/live/journal.svelte.ts';
 import { forgetReference, hydrateReference, reference } from '../../src/lib/data/live/reference.svelte.ts';
+import { sessionDriver } from '../../src/lib/data/live/sessionDriver.ts';
 import { journalSession } from '../../src/lib/stores/journal-session.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 
@@ -59,17 +60,13 @@ async function run() {
     publish({ error: String((booted.error as Error)?.stack ?? booted.error) });
     return;
   }
-  const opened = attachJournal(openJournal(booted.driver, opfsPhotoFiles()));
-  await opened.reconcileBuiltIns();
-  await hydrateReference(opened);
-  journalIsOpen();
-
   const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     suspend: () => journalIsClosing(),
     async open(key) {
       const sqlite = createEncryptedWebSqlite(DATABASE, key);
       try {
-        const reopened = attachJournal(openJournal(sqlite.driver, opfsPhotoFiles()));
+        const reopened = attachJournal(openJournal(journalDriver, opfsPhotoFiles()));
+        session.connection.open(sqlite.driver);
         await hydrateReference(reopened);
         journalIsOpen();
         return sqlite.driver;
@@ -83,6 +80,14 @@ async function run() {
       prewarmJournalWorker(DATABASE).catch(() => {});
     }
   });
+  /* Built over the session's connection as boot.svelte.ts builds it, so a
+     handle held across a lock reaches the reopened database. */
+  const journalDriver = sessionDriver(session.connection);
+  session.connection.open(booted.driver);
+  const opened = attachJournal(openJournal(journalDriver, opfsPhotoFiles()));
+  await opened.reconcileBuiltIns();
+  await hydrateReference(opened);
+  journalIsOpen();
   session.adopt(PROBE_DATA_KEY, booted.driver);
 
   const group = reference.tagGroups[0].key;
@@ -109,6 +114,15 @@ async function run() {
   await session.unlock(PROBE_DATA_KEY);
   const reopenMs = performance.now() - reopenStarted;
   await whileLocked;
+
+  /* A save that took its journal handle before the lock and only reaches
+     the database after the unlock, the way a save encrypting a photo does
+     when the lock stops waiting for it: it has to land on the reopened
+     database, not fail on the terminated worker. */
+  const capturedLate = await opened.tags.addTag(group, 'captured before the lock').then(
+    () => null,
+    (error: Error) => error.message
+  );
 
   const stored = (await journal.tags.getTagGroups()).flatMap((g) => g.tags.map((tag) => tag.label));
 
@@ -140,6 +154,7 @@ async function run() {
     keyHandedOut,
     mirrorWhileLocked,
     whileLockedWaited,
+    capturedLate,
     stored,
     mirrorFollowed,
     mirrorAfterReopen: labels(),

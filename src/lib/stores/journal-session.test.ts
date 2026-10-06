@@ -18,6 +18,12 @@ function fakeDriver(name: string, log: string[]) {
   return {
     name,
     closed: false,
+    /** One database call, the way a repository makes them: refused once
+        the worker is closed, as the real driver refuses. */
+    async query() {
+      if (this.closed) throw new Error('the database worker was closed');
+      return name;
+    },
     async close() {
       this.closed = true;
       log.push(`close ${name}`);
@@ -218,4 +224,91 @@ test('a call that never settles does not hold the key past the limit', async () 
   await session.lock();
   assert.equal(first.closed, true, 'closing the worker is what rejects the hung call');
   assert.equal(session.key.current, null);
+});
+
+test('a save still staging photos when the drain runs out lands on the reopened database', async () => {
+  /* The pending-save guard's third scenario: the save is inside its facade
+     call, encrypting a photo, when the lock comes. It is still there when
+     the drain gives up and the worker closes, and only after the unlock does
+     it reach its transaction. The database it reaches has to be the open
+     one, not the one it could see when it started. */
+  const log: string[] = [];
+  const first = fakeDriver('driver 1', log);
+  const journals = sessionGate<string>();
+  journals.open('journal 1');
+  const session = journalSession<Key, FakeDriver>(
+    {
+      suspend: () => journals.close(),
+      open: async () => fakeDriver('driver 2', log),
+      release: () => {},
+      prewarm: () => {}
+    },
+    { suspendLimitMs: 20 }
+  );
+  session.adopt(keyOf(1), first);
+  let photoStaged!: () => void;
+  const save = journals.run(async () => {
+    await new Promise<void>((r) => (photoStaged = r));
+    return session.connection.run((driver) => driver.query());
+  });
+
+  await session.lock();
+  assert.equal(first.closed, true);
+  await session.unlock(keyOf(1));
+  photoStaged();
+
+  assert.equal(await save, 'driver 2');
+});
+
+test('a database call made while locked waits for the unlock rather than failing', async () => {
+  const { session, boot } = setup();
+  boot(keyOf(1));
+  await session.lock();
+  const call = session.connection.run((driver) => driver.query());
+  assert.equal(await settled(call), false);
+  await session.unlock(keyOf(1));
+  assert.equal(await call, 'driver 2');
+});
+
+test('a database call already running when the lock comes finishes before the worker closes', async () => {
+  const { session, boot, first, log } = setup();
+  boot(keyOf(1));
+  let finish!: () => void;
+  const call = session.connection.run(async (driver) => {
+    await new Promise<void>((r) => (finish = r));
+    log.push('call finished');
+    return driver.query();
+  });
+  const locking = session.lock();
+  assert.equal(await settled(locking), false);
+  finish();
+  await locking;
+  assert.equal(await call, 'driver 1');
+  assert.equal(first.closed, true);
+  assert.deepEqual(log.slice(0, 3), ['suspended', 'call finished', 'close driver 1']);
+});
+
+test('an unlock that arrives while the lock waits on a slow save stops the wait', async () => {
+  /* The save lands on the reopened database whenever it gets there, so
+     holding the person at "Decrypting..." until the limit buys nothing. */
+  const log: string[] = [];
+  const journals = sessionGate<string>();
+  journals.open('journal 1');
+  const session = journalSession<Key, FakeDriver>(
+    {
+      suspend: () => journals.close(),
+      open: async () => fakeDriver('driver 2', log),
+      release: () => {},
+      prewarm: () => {}
+    },
+    { suspendLimitMs: 60_000 }
+  );
+  session.adopt(keyOf(1), fakeDriver('driver 1', log));
+  void journals.run(() => new Promise<void>(() => {}));
+  const locking = session.lock();
+  assert.equal(await settled(locking), false);
+  const unlocking = session.unlock(keyOf(1));
+  assert.equal(await settled(Promise.all([locking, unlocking])), true);
+  assert.equal(session.driver?.name, 'driver 2');
+  assert.equal(session.locked, false);
 });
