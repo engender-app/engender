@@ -2752,6 +2752,11 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 .pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
 .pin-wait + .pin-status { margin-top: var(--space-3); }
 
+/* A failed reset, inside the sheet that asked for it (after-release ticket
+   09). Spaced by padding rather than margin, so the line's own disclose
+   travels the space it takes instead of the space arriving in one frame. */
+.reset-failed { color: var(--danger); margin: 0; padding-top: var(--space-3); }
+
 /* ---------- misc ---------- */
 .muted { color: var(--text-2); }
 .small { font-size: var(--text-sm); }

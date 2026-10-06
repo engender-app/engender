@@ -2738,5 +2738,11 @@ await block('PIN count status', 1, async () => {
   ok('EN/PL count-only status updates through keyboard entry, backspace and refusal');
 });
 
+await block('Gates say what happened', 1, async () => {
+  const { verifyGatesSayWhatHappened } = await import('../gates-say-what-happened.mjs');
+  await verifyGatesSayWhatHappened();
+  ok('boot failures speak a sentence, a failed reset shows in its sheet, a mode keeps its own error');
+});
+
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);

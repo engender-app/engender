@@ -44,6 +44,7 @@
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
 
   let { mode }: { mode: JournalAccessMode } = $props();
 
@@ -66,6 +67,7 @@
   let busy = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
+  let resetError = $state('');
 
   /* PIN mode's attempts go through PinEntry, which owns the pad and the
      growing delay for both this screen and the cold-start gate. */
@@ -158,8 +160,7 @@
       // act on.
       console.error('the app reset failed', e);
       resetting = false;
-      resetOpen = false;
-      error = m.reset_failed();
+      resetError = m.reset_failed();
     }
   }
 
@@ -264,6 +265,12 @@
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {#if resetError}
+    <!-- In the sheet, which stays open: the sheet is where the button was
+         pressed, and closing it on a failure left the gate looking as if
+         nothing had happened (after-release ticket 09). -->
+    <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
+  {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
       <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>
