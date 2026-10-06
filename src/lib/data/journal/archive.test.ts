@@ -375,7 +375,8 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       interval: 'every 2 weeks',
       startEpochDay: 19000,
       endEpochDay: null,
-      endReason: null
+      endReason: null,
+      hidden: false
     }
   ]);
 });
@@ -730,6 +731,34 @@ test('a regimen episode\'s end reason travels, and a restore keeps it', async ()
 
   const restored = (await target.regimen.getEpisodes()).find((e) => e.id === episode);
   assert.equal(restored?.endReason, 'pausedForNow');
+});
+
+/* After-release 07: an episode put away stays put away across a backup.
+   Hidden is the person's own statement that the row was a mistake, so a
+   restore that brought it back into Care and the curve would undo it. An
+   archive from before the field existed reads as shown. */
+test('a hidden regimen episode travels hidden, and a restore keeps it hidden', async () => {
+  const { journal, episode } = await populated();
+  await journal.regimen.setEpisodeHidden(episode, true);
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.hidden, true);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  assert.equal((await target.regimen.getEpisodes()).some((e) => e.id === episode), false);
+  assert.deepEqual((await target.regimen.getHiddenEpisodes()).map((e) => e.id), [episode]);
+
+  const older = {
+    ...snapshot.journal,
+    regimenEpisodes: snapshot.journal.regimenEpisodes.map(({ hidden: _hidden, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.equal((await fromOlder.regimen.getEpisodes()).some((e) => e.id === episode), true);
 });
 
 /* Ticket 56: a document's link travels as the pair it is stored as, and a

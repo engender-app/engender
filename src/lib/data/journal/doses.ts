@@ -677,6 +677,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
           `SELECT s.id, s.uuid, e.uuid AS episode_uuid, s.recurrence_kind, s.every_n_days, s.doses_per_day,
                   s.auto_log_from_epoch_day
              FROM dose_schedule s JOIN regimen_episode e ON e.id = s.episode_id
+            WHERE e.hidden = 0
             ORDER BY s.id`
         ),
         driver.query<{ schedule_id: number; weekday: number }>(
@@ -786,6 +787,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       }>(
         `SELECT p.uuid, e.uuid AS episode_uuid, p.start_epoch_day, p.end_epoch_day, p.reason
            FROM dose_pause p JOIN regimen_episode e ON e.id = p.episode_id
+          WHERE e.hidden = 0
           ORDER BY p.start_epoch_day, p.id`
       );
       return rows.map((row) => ({
