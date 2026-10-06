@@ -66,6 +66,12 @@ for (const round of [1, 2]) {
   await page.locator('[data-manage-entry-templates]').click();
   await page.waitForSelector('[data-sheet]');
   await page.waitForTimeout(450);
+  /* The out-of-order release happens when the picker's scrim is destroyed
+     at the end of its outro, so the shell is judged after that, with the
+     manager the only sheet left. Judged inside the outro (a slow runner
+     past 450ms), querySelector found the departing picker first and
+     reported the manager's own scrim as background. */
+  await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 1, null, { timeout: 5000 });
   const reachable = await page.evaluate(() => {
     const sheet = document.querySelector('[data-sheet]');
     return Array.from(document.querySelector('[data-app-root]').children)
