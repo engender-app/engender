@@ -5,7 +5,7 @@
      Three reads, the same three `/search` makes and with the same shape - the
      acceptance criterion is that a saved question's results equal the
      equivalent ad hoc search's results, and the only way that is true by
-     construction rather than by careful copying is to call the same two
+     construction rather than by careful copying is to call the same
      functions with filters read straight off the saved row
      (entrySearchFiltersOf, savedQuestionQuery.ts). The third is the starred
      photos a Starred question also answers with, read and counted through
@@ -186,8 +186,8 @@
   let loading = $derived(search.loading || elsewhere.loading || photos.loading);
   let anyFailed = $derived(search.failed || elsewhere.failed || photos.failed);
   let foundNothing = $derived(hits.length === 0 && hitRows.length === 0 && !photosShown);
-  /* Reads retain old values and failures during a new run. Wait for both
-     attempts to use this question's criteria before showing an answer. */
+  /* Reads retain old values and failures during a new run. Wait for all
+     three attempts to use this question's criteria before showing an answer. */
   let resultsReady = $derived(
     !!stableSearch && stableSearch.signature === searchSignature &&
     searchAttempt === stableSearch && elsewhereAttempt === stableSearch && photosAttempt === stableSearch &&

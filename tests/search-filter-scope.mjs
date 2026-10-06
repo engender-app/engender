@@ -188,6 +188,17 @@ try {
     await visit('/search?q=scopeprobe&starred=1');
     await counts(0, 1, 1);
     assert.equal((await page.locator('[data-search-count]').innerText()).trim(), savedTotal, 'a saved Starred question and /search say the same total');
+    /* Unstarring on the saved screen takes the photo off it and out of the
+       count; starred again after, for the next locale's pass. */
+    await page.goBack();
+    await counts(0, 1, 1);
+    await page.locator('[data-starred-photos] .starred-photo-unstar').click();
+    await counts(0, 1, 0);
+    await page.evaluate(async () => {
+      const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
+      for (const photo of await journal.photos.inJournal()) await journal.photos.setStarred(photo.id, true);
+    });
+    await counts(0, 1, 1);
     await visit('/search');
     await page.locator('#q').fill('nothingmatchesu23');
     await page.locator('[data-notice="search-none"]').waitFor();

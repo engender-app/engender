@@ -443,7 +443,10 @@ export async function runJournalContract(
      screen showed the entries alone, so the same question gave two
      different answers. Both screens now read the photos and the total
      through starredPhotosAsked and answerTotal, which this runs once with
-     the ad hoc filters and once with the saved row's. */
+     the ad hoc filters and once with the saved row's. That proves the
+     helpers and the saved row's round trip agree, not that each screen
+     calls them; tests/search-filter-scope.mjs is what checks the two
+     screens state the same total. */
   await r.section('a saved Starred question answers with the same entries, photos and total as /search', async () => {
     const group = await journal.tags.addGroup('saved-question-starred-photo-test');
     const tag = await journal.tags.addTag(group.key, 'voice');
@@ -464,7 +467,8 @@ export async function runJournalContract(
 
     const filters: EntrySearchFilters = { tagIds: [tag.id], starred: true };
     const adHoc = await answer('', filters);
-    r.equal('the ad hoc search finds the starred entry and the starred photo', [adHoc.hits, adHoc.photos, adHoc.total], [[starredId], [photoId], 2]);
+    r.equal('the ad hoc search finds the starred entry', adHoc.hits, [starredId]);
+    r.equal('and the starred photo, counted in its total', [adHoc.photos.includes(photoId), adHoc.total], [true, 1 + adHoc.photos.length]);
     r.equal('and no photos when Starred is off', (await starredPhotosAsked(journal.photoLibrary, { tagIds: [tag.id] })).length, 0);
 
     const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred voice days', '', filters));
