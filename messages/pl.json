@@ -3479,7 +3479,7 @@
   "tally_log_correctly_gendered": "Zapisz dobre zaimki",
   "tally_log_misgendered": "Zapisz misgenderowanie",
   "tally_misgendered": "Misgenderowanie",
-  "tally_tile_figures": "{misgendered} · {correct}",
+  "tally_tile_figures": "{misgendered}  ·  {correct}",
   "tally_tile_note": "Misgenderowanie · dobre zaimki",
   "tally_trend_sub": "Misgenderowanie i dobre zaimki w czasie.",
   "tally_trend_title": "Licznik",

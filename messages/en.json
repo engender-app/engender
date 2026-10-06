@@ -3421,7 +3421,7 @@
   "tally_log_correctly_gendered": "Log correct gendering",
   "tally_log_misgendered": "Log misgendering",
   "tally_misgendered": "Misgendered",
-  "tally_tile_figures": "{misgendered} · {correct}",
+  "tally_tile_figures": "{misgendered}  ·  {correct}",
   "tally_tile_note": "Misgendered · correctly gendered",
   "tally_trend_sub": "Misgendering and correct gendering, over time.",
   "tally_trend_title": "Tally",
