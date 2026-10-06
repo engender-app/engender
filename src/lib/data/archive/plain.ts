@@ -39,7 +39,7 @@ export interface PlainNaming {
     guard is a spreadsheet convention, not an RFC 4180 quote, so it runs
     before the quoting check above and does not exempt the field from it. */
 function csvField(value: string): string {
-  const guarded = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
 }
 

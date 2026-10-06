@@ -33,6 +33,7 @@ import {
   filePhotoPicker
 } from './picker.ts';
 import { DocumentRefusedError } from '../documents/accept.ts';
+import { PHOTO_SIZE_CEILING, PhotoTooLargeError } from './limits';
 import { DOCUMENT_SIZE_CEILING } from '../documents/limits.ts';
 
 /* A fake File whose arrayBuffer() is a spy: every ceiling test below asserts
@@ -164,12 +165,11 @@ describe('filePhotoPicker', () => {
 
   test('refuses a file over the ceiling without reading it', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
-    const oversized = fakeFile(DOCUMENT_SIZE_CEILING + 1);
+    const oversized = fakeFile(PHOTO_SIZE_CEILING + 1);
     vi.mocked(chooseFiles).mockResolvedValue([oversized]);
 
     await expect(filePhotoPicker().pick()).rejects.toMatchObject({
-      constructor: DocumentRefusedError,
-      kind: 'too-large'
+      constructor: PhotoTooLargeError,
     });
     expect(oversized.arrayBuffer).not.toHaveBeenCalled();
   });
@@ -177,17 +177,17 @@ describe('filePhotoPicker', () => {
   test('refuses the whole batch, none read, if any one of several is over the ceiling', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
     const fine = fakeFile(1024);
-    const oversized = fakeFile(DOCUMENT_SIZE_CEILING + 1);
+    const oversized = fakeFile(PHOTO_SIZE_CEILING + 1);
     vi.mocked(chooseFiles).mockResolvedValue([fine, oversized]);
 
-    await expect(filePhotoPicker().pick()).rejects.toThrow(DocumentRefusedError);
+    await expect(filePhotoPicker().pick()).rejects.toThrow(PhotoTooLargeError);
     expect(fine.arrayBuffer).not.toHaveBeenCalled();
     expect(oversized.arrayBuffer).not.toHaveBeenCalled();
   });
 
   test('accepts a file at exactly the ceiling', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
-    vi.mocked(chooseFiles).mockResolvedValue([fakeFile(DOCUMENT_SIZE_CEILING, [1])]);
+    vi.mocked(chooseFiles).mockResolvedValue([fakeFile(PHOTO_SIZE_CEILING, [1])]);
 
     const picked = await filePhotoPicker().pick();
 
@@ -202,12 +202,36 @@ describe('filePhotoPicker', () => {
     vi.mocked(androidPhotos.pickImages).mockRejectedValue(new Error('too-large'));
 
     await expect(filePhotoPicker().pick()).rejects.toMatchObject({
-      constructor: DocumentRefusedError,
-      kind: 'too-large'
+      constructor: PhotoTooLargeError,
     });
     expect(vi.mocked(readPickedOverChannel)).not.toHaveBeenCalled();
     expect(vi.mocked(androidPhotos.readPickedChunk)).not.toHaveBeenCalled();
   });
+});
+
+test('a 30 MiB photo passes the raw photo ceiling before normalization', async () => {
+  vi.resetAllMocks();
+  vi.mocked(isAndroid).mockReturnValue(false);
+  const file = fakeFile(30 * 1024 * 1024, [137, 80, 78, 71]);
+  vi.mocked(chooseFiles).mockResolvedValue([file]);
+  expect(await filePhotoPicker().pick()).toEqual([new Uint8Array([137, 80, 78, 71])]);
+  expect(file.arrayBuffer).toHaveBeenCalledOnce();
+});
+
+test('an unknown-size Android photo refused during reading keeps photo wording', async () => {
+  vi.resetAllMocks();
+  vi.mocked(isAndroid).mockReturnValue(true);
+  vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: ['unknown-size'] });
+  vi.mocked(readPickedOverChannel).mockRejectedValue(new Error('too-large'));
+  await expect(filePhotoPicker().pick()).rejects.toThrow(PhotoTooLargeError);
+});
+
+test('an unknown-size Android document refused during reading keeps document wording', async () => {
+  vi.resetAllMocks();
+  vi.mocked(isAndroid).mockReturnValue(true);
+  vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ token: 'unknown-size' });
+  vi.mocked(readPickedOverChannel).mockRejectedValue(new Error('too-large'));
+  await expect(documentPicker().pick()).rejects.toMatchObject({ constructor: DocumentRefusedError, kind: 'too-large' });
 });
 
 describe('cameraPhotoPicker', () => {
@@ -262,12 +286,11 @@ describe('cameraPhotoPicker', () => {
 
   test('refuses a shot over the ceiling without reading it', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
-    const oversized = fakeFile(DOCUMENT_SIZE_CEILING + 1);
+    const oversized = fakeFile(PHOTO_SIZE_CEILING + 1);
     vi.mocked(chooseFiles).mockResolvedValue([oversized]);
 
     await expect(cameraPhotoPicker().pick()).rejects.toMatchObject({
-      constructor: DocumentRefusedError,
-      kind: 'too-large'
+      constructor: PhotoTooLargeError,
     });
     expect(oversized.arrayBuffer).not.toHaveBeenCalled();
   });

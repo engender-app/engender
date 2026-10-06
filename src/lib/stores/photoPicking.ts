@@ -14,6 +14,7 @@
 import { cameraPhotoPicker, filePhotoPicker } from '../data/photos/picker';
 import { m } from '$lib/paraglide/messages';
 import { normalizePhoto, UnsupportedImageError } from '../data/photos/normalize';
+import { PhotoTooLargeError } from '../data/photos/limits';
 import { DocumentRefusedError } from '../data/documents/accept';
 import type { NormalizedPhoto } from '../data/journal/photos';
 import { toast } from './toasts.svelte';
@@ -39,7 +40,9 @@ const camera = cameraPhotoPicker();
     line) otherwise. Shared by pickPhotos and capturePhoto, which differ only
     in which log line the generic case gets. */
 function toastPickFailure(error: unknown, logMessage: string): void {
-  if (error instanceof DocumentRefusedError) {
+  if (error instanceof PhotoTooLargeError) {
+    toast(m.photo_too_large());
+  } else if (error instanceof DocumentRefusedError) {
     toast(m.document_too_large());
   } else {
     console.error(logMessage, error);

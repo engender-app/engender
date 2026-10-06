@@ -47,6 +47,7 @@ public class PhotosPlugin extends Plugin {
         the number hold() checks a content provider's declared size against
         before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
+    private static final long PHOTO_SIZE_CEILING = 32L * 1024 * 1024;
 
     @Override
     public void load() {
@@ -133,7 +134,7 @@ public class PhotosPlugin extends Plugin {
             } else if (data.getData() != null) {
                 uris.add(data.getData());
             }
-            for (String token : hold(uris)) tokens.put(token);
+            for (String token : hold(uris, PHOTO_SIZE_CEILING)) tokens.put(token);
             result.put("tokens", tokens);
             call.resolve(result);
         } catch (Exception e) {
@@ -184,7 +185,7 @@ public class PhotosPlugin extends Plugin {
         }
 
         try {
-            result.put("token", hold(Collections.singletonList(uri)).get(0));
+            result.put("token", hold(Collections.singletonList(uri), DOCUMENT_SIZE_CEILING).get(0));
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -444,15 +445,15 @@ public class PhotosPlugin extends Plugin {
         activity result it came from by as long as it takes the WebView to
         ask for the bytes, and a static map holding an Activity would be a
         leak. */
-    private List<String> hold(List<Uri> uris) throws IOException {
+    private List<String> hold(List<Uri> uris, long ceiling) throws IOException {
         for (Uri uri : uris) {
-            if (querySize(uri) > DOCUMENT_SIZE_CEILING) throw new IOException("too-large");
+            if (querySize(uri) > ceiling) throw new IOException("too-large");
         }
 
         Context context = getContext().getApplicationContext();
         List<PickedFiles.Source> sources = new ArrayList<>(uris.size());
         for (Uri uri : uris) {
-            sources.add(() -> context.getContentResolver().openInputStream(uri));
+            sources.add(() -> PhotoPickChannel.limit(context.getContentResolver().openInputStream(uri), ceiling));
         }
         return PickedFiles.hold(sources);
     }
