@@ -99,6 +99,7 @@
      is what someone asked for. */
   let running = $state<ExportPath | null>(null);
   let autoDestination = $state<string | null>(null);
+  let autoDestinationUri = $state<string | null>(null);
   let autoLastSuccessAt = $state<number | null>(null);
   let autoLastFailureAt = $state<number | null>(null);
   let autoLastFailureReason = $state<string | null>(null);
@@ -174,6 +175,7 @@
     prefs.autoExportEnabled = status.enabled;
     prefs.autoExportSchedule = status.schedule;
     autoDestination = status.destinationLabel;
+    autoDestinationUri = status.destinationUri;
     autoHasPassword = status.hasPassword;
     autoLastSuccessAt = status.lastSuccessAt;
     autoLastFailureAt = status.lastFailureAt;
@@ -856,14 +858,14 @@
     <div class="spread">
       <span class="small muted">{m.exp_auto_destination_label()}</span>
       <button class="btn btn-soft" type="button" onclick={pickAutoDestination} disabled={autoBusy}>
-        <span>{autoDestination ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
+        <span>{autoDestinationUri ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
       </button>
     </div>
     <p class="muted small">
       {m.exp_auto_destination_note()}
     </p>
     <p class="muted small">
-      {autoDestination ?? m.exp_auto_destination_missing()}
+      {autoDestination ?? (autoDestinationUri ? m.exp_auto_destination_chosen() : m.exp_auto_destination_missing())}
     </p>
 
     {#if prefs.autoExportEnabled}

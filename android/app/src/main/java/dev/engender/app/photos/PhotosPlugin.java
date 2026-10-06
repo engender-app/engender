@@ -393,7 +393,7 @@ public class PhotosPlugin extends Plugin {
             if (names == null) names = new String[0];
             Arrays.sort(names);
             JSArray list = new JSArray();
-            for (String name : names) list.put(name);
+            for (String name : names) if (!name.startsWith(".")) list.put(name);
             JSObject result = new JSObject();
             result.put("names", list);
             call.resolve(result);

@@ -55,6 +55,28 @@ export function travelFrom(rows: HTMLElement[], keyOf: (el: HTMLElement) => stri
   });
 }
 
+/** The same travel for a list that changes under a read rather than under
+    a drag: a dose saved to another day, a procedure that moved to the
+    archive (after-release 05). Measured before the DOM updates, released
+    after it, every time `track` changes. Call it while the component
+    initialises; the rows need the list's own CSS translate transition.
+
+    Hand-written rather than Svelte's `animate:` directive on purpose: the
+    first `animate:` in the app pulls the keyed-each animation runtime into
+    the shared chunk every screen loads first, about 400 bytes gzip of a
+    first-load budget that has none to spare. */
+export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElement) => string, track: () => unknown): void {
+  let before: RowTop[] = [];
+  $effect.pre(() => {
+    track();
+    before = measureTops(rows(), keyOf);
+  });
+  $effect(() => {
+    track();
+    travelFrom(rows(), keyOf, before);
+  });
+}
+
 /** One handle-drag over a list of rows. The list draws each row at
     `offset(key)` while `drag` is set, and asks `release()` on pointer up. */
 export class ListDrag {

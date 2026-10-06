@@ -118,6 +118,10 @@ public class AutoExportPlugin extends Plugin {
         }
 
         boolean enabled = enabledArg && destinationUri() != null;
+        if (!enabledArg) {
+            releaseDestinationGrant(destinationUri());
+            preferences().edit().remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL).apply();
+        }
         preferences().edit().putBoolean(KEY_ENABLED, enabled).putString(KEY_SCHEDULE, schedule).apply();
         call.resolve(statusObject());
     }
@@ -255,6 +259,7 @@ public class AutoExportPlugin extends Plugin {
             int grants = flags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             getContext().getContentResolver().takePersistableUriPermission(uri, grants);
 
+            Uri previous = destinationUri();
             String label = destinationLabel(uri);
             preferences().edit()
                 .putString(KEY_DESTINATION_URI, uri.toString())
@@ -263,9 +268,10 @@ public class AutoExportPlugin extends Plugin {
                 .remove(KEY_LAST_FAILURE_REASON)
                 .apply();
 
+            if (previous != null && !previous.equals(uri)) releaseDestinationGrant(previous);
             out.put("picked", true);
             out.put("destinationUri", uri.toString());
-            out.put("destinationLabel", label);
+            out.put("destinationLabel", label == null ? JSObject.NULL : label);
             call.resolve(out);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -441,7 +447,7 @@ public class AutoExportPlugin extends Plugin {
     private void rejectDelivery(PluginCall call, Exception e) {
         String reason = e instanceof SecurityException ? "destination-revoked"
             : e instanceof IOException ? classifyIoFailure((IOException) e) : message(e);
-        if (reason.contains("destination-revoked") || reason.contains("destination-unavailable")) {
+        if (reason.contains("destination-revoked")) {
             disableWithFailure(reason);
         } else {
             failure(reason);
@@ -525,6 +531,21 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
+    private void releaseDestinationGrant(Uri uri) {
+        if (uri == null) return;
+        ContentResolver resolver = getContext().getContentResolver();
+        try {
+            for (UriPermission held : resolver.getPersistedUriPermissions()) {
+                if (!uri.equals(held.getUri())) continue;
+                int modes = (held.isReadPermission() ? Intent.FLAG_GRANT_READ_URI_PERMISSION : 0)
+                    | (held.isWritePermission() ? Intent.FLAG_GRANT_WRITE_URI_PERMISSION : 0);
+                if (modes != 0) resolver.releasePersistableUriPermission(uri, modes);
+            }
+        } catch (RuntimeException cleanup) {
+            Log.w("AutoExport", "Could not release backup folder access", cleanup);
+        }
+    }
+
     private SharedPreferences preferences() {
         return getContext().getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
     }
@@ -543,6 +564,7 @@ public class AutoExportPlugin extends Plugin {
     }
 
     private void disableWithFailure(String reason) {
+        releaseDestinationGrant(destinationUri());
         long now = System.currentTimeMillis();
         preferences().edit()
             .putBoolean(KEY_ENABLED, false)
@@ -622,11 +644,11 @@ public class AutoExportPlugin extends Plugin {
 
     private static String destinationLabel(Uri uri) {
         String tree = uri.getLastPathSegment();
-        if (tree == null || tree.isEmpty()) return "chosen folder";
+        if (tree == null || tree.isEmpty()) return null;
         int marker = tree.lastIndexOf(':');
         String value = marker >= 0 ? tree.substring(marker + 1) : tree;
         value = Uri.decode(value);
-        return value.isEmpty() ? "chosen folder" : value;
+        return value.isEmpty() ? null : value;
     }
 
     private static String message(Exception e) {
