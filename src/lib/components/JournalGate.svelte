@@ -59,6 +59,12 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
   /* Which row of the module is open, so this gate's own title can name it
      rather than leaving "How should your journal open?" over a screen where
      that has already been answered. */

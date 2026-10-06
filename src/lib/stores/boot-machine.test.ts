@@ -428,6 +428,12 @@ test('a journal from below the baseline names itself and asks for no restore', (
   expect(effects).toEqual([]);
 });
 
+test('a below-baseline refusal that arrives as text is still named', () => {
+  /* A bridge or a worker hands over the message, not the class. */
+  const text = new JournalBelowBaselineError(50, 78).message;
+  expect(walk(started('web'), { type: 'boot-failed', message: text }).machine.boot.failure).toBe('below-baseline');
+});
+
 test('a key that does not read the file is the unreadable failure, however it arrives', () => {
   expect(failedOpen(new Error('file is not a database (code 26)')).machine.boot.failure).toBe('unreadable');
   expect(

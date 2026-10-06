@@ -16,6 +16,12 @@
   let restoringArchive = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
 
   function open(archive: boolean) {
     restoringArchive = archive;
