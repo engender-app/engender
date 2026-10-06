@@ -113,7 +113,7 @@
         const give = () => {
           for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
         };
-        const protocol = performance.getEntriesByType('navigation')[0]?.nextHopProtocol;
+        const protocol = globalThis.performance?.getEntriesByType?.('navigation')[0]?.nextHopProtocol;
         if (protocol === 'http/1.1' || protocol === 'http/1.0') {
           const watch = new MutationObserver(give);
           watch.observe(document.documentElement, { childList: true, subtree: true });
