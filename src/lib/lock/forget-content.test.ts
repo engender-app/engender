@@ -68,3 +68,18 @@ it('takes a search held before a reload, when nothing has loaded the search modu
   forgetJournalContent();
   expect(sessionStorage.getItem('engender-search-return')).toBeNull();
 });
+
+it('still forgets the rest when one holder throws, then reports it', () => {
+  stubStorage();
+  holdRoomAnswers({ appointmentId: 'appt-3', answers: [{ question: 'Q', answer: 'A' }], byItemId: { i: 'A' } });
+  forgetOnLock(() => {
+    throw new Error('holder broke');
+  });
+  let later = false;
+  forgetOnLock(() => {
+    later = true;
+  });
+  expect(() => forgetJournalContent()).toThrow('holder broke');
+  expect(later).toBe(true);
+  expect(roomAnswersFor('appt-3')).toEqual([]);
+});

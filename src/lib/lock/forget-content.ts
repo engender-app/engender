@@ -30,9 +30,19 @@ export function forgetOnLock(forget: () => void): void {
   holders.add(forget);
 }
 
+/** Every holder runs even if one before it throws: a lock that stopped at
+    the first failure would leave the rest of the content in the page. */
 export function forgetJournalContent(): void {
-  for (const forget of holders) forget();
   try {
     sessionStorage.removeItem(HELD_SEARCH_KEY);
   } catch { /* no storage, so nothing was held there */ }
+  let failure: unknown = null;
+  for (const forget of holders) {
+    try {
+      forget();
+    } catch (error) {
+      failure ??= error;
+    }
+  }
+  if (failure !== null) throw failure;
 }
