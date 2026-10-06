@@ -121,18 +121,27 @@
    monochrome-friendly by design and a link that reads only as a colour
    would fail that on its own page.
 
-   The table's own row is a dense, print-shaped read (this is a clinical
-   report, not a list of controls), so the visible text is one line at
-   `--text-sm`. The negative margin pads the tap target out to
-   `--touch-target` without pulling the row's own height along with it -
-   computed against the token rather than a measured pixel figure, the
-   same shape kit.css's `.kit-notice-x` centring uses, and padding and
-   margin cancel exactly so nothing about the printed or on-screen layout
-   moves. */
+   The target is the touch floor, from the row's top edge to its bottom:
+   the negative margin takes the cell's own vertical padding back, so a
+   row holding a link is 48px tall and its text keeps the line the other
+   cells' text sits on. It used to reach 12px past a 39px row instead, and
+   the next row's link covered it, which left 35px of each one pressable
+   (after-release 18). Rows without a link keep their height. Aligned to
+   the top of the line, or the cell's baseline pushed it below its own row
+   into the next one's link. Raised over the cell's own text, because a
+   drug name after the dose wraps onto the line the target reaches into,
+   and a later inline box paints, and takes the press, over an earlier one. */
 .dossier-row-link {
-  display: inline-block;
-  margin: calc((var(--text-sm) * var(--leading-body) - var(--touch-target)) / 2) 0;
-  padding: calc((var(--touch-target) - var(--text-sm) * var(--leading-body)) / 2) 0;
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  vertical-align: top;
+  align-items: flex-start;
+  box-sizing: border-box;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  margin-block: calc(-1 * var(--space-2));
+  padding-top: var(--space-2);
   color: inherit;
   text-decoration: underline;
 }
@@ -281,6 +290,12 @@
      always was - the href stays (a PDF export keeps it clickable), only the
      on-screen affordance goes. */
   .dossier-row-link {
+    display: inline;
+    vertical-align: baseline;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
     color: #000000 !important;
     text-decoration: none !important;
   }
