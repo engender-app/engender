@@ -18,12 +18,13 @@
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
-  import { tryoutKindName } from '$lib/data/vocabulary/labels';
+  import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ChoiceChips from '$lib/components/kit/ChoiceChips.svelte';
+  import MoodFace from '$lib/components/MoodFace.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
@@ -319,8 +320,12 @@
     saveFailed = false;
     try {
       if (await answerOffer(ADOPT_OFFER, subject, given, journal)) {
-        if (options?.updateProfileName && draft.kind === 'name') {
-          prefs.name = options.milestoneTitle || draft.label;
+        /* The stored name, never the milestone's title or an unsaved edit
+           in the label field: the switch promised "use {name}", and a
+           milestone renamed "Started going by Alex" is not what anyone
+           wants to be called (phase 15 after-release ticket 15). */
+        if (options?.updateProfileName && detail.record?.kind === 'name') {
+          prefs.name = detail.record.label;
         }
         const endEpochDay = todayEpochDay();
         draft.end = dateInputValueFromEpochDay(endEpochDay);
@@ -486,18 +491,30 @@
       {#snippet rows()}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-            <ListRow
-              static
-              data-feeling={f.id}
-              title={dayLabel(f.epochDay)}
-              subtitle={f.note}
-              action={{
-                icon: 'trash',
-                label: m.tryout_feeling_delete_sheet(),
-                onclick: () => feelingRecord.askToDelete(f),
-                attrs: { 'data-delete-feeling': f.id }
-              }}
-            />
+            <!-- The reading first, then when (phase 15 after-release ticket
+                 15): this log is "how it's felt", and rows that held only a
+                 date never said how. A reading saved or deleted here opens
+                 or closes its row rather than appearing or vanishing in one
+                 frame; the rows already there when the log loads do not. -->
+            <div class="rows-divide" transition:disclose>
+              <ListRow
+                static
+                data-feeling={f.id}
+                data-feeling-mood={f.mood}
+                title={moodName(f.mood)}
+                subtitle={[dayLabel(f.epochDay), f.note]}
+                action={{
+                  icon: 'trash',
+                  label: m.tryout_feeling_delete_sheet(),
+                  onclick: () => feelingRecord.askToDelete(f),
+                  attrs: { 'data-delete-feeling': f.id }
+                }}
+              >
+                {#snippet leading()}
+                  <span class="feeling-face"><MoodFace step={f.mood} size={36} /></span>
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
       {/snippet}
@@ -594,6 +611,12 @@
 <DiscardSheet guard={detail.guard} />
 
 <style>
+  .feeling-face {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+  }
+
   fieldset {
     border: 0;
     padding: 0;
