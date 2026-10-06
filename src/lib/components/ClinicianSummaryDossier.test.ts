@@ -7,6 +7,10 @@ const dossierComponent = readFileSync(
   root + '/src/lib/components/ClinicianSummaryDossier.svelte',
   'utf8'
 );
+const summaryPage = readFileSync(
+  root + '/src/routes/health/clinician-summary/+page.svelte',
+  'utf8'
+);
 const printCss = readFileSync(
   root + '/src/lib/styles/clinician-print.css',
   'utf8'
@@ -172,5 +176,36 @@ describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
     expect(printCss).toMatch(/\.dossier-row-overflow\s*{\s*display:\s*none;\s*}/);
     const printBlock = printCss.slice(printCss.indexOf('@media print'));
     expect(printBlock).toMatch(/\.dossier-row-overflow\s*{[^}]*display:\s*table-row/);
+  });
+});
+
+/* After-release 22, the 5 October audit's follow-up on the summary a
+   person hands their doctor. */
+describe('ClinicianSummaryDossier says only what the person told it (after-release 22)', () => {
+  /* L04-02: every summary printed "Pronouns: Not specified", and nothing
+     in the app could change it. */
+  it('draws the pronouns row only when pronouns were given', () => {
+    expect(dossierComponent).toMatch(/{#if dossier\.demographics\.pronouns\?\.trim\(\)}/);
+    expect(dossierComponent).not.toContain('pronouns?.trim() || m.clinician_summary_not_set()');
+  });
+
+  it('takes pronouns from a field on the summary screen, as it takes the date of birth', () => {
+    expect(summaryPage).toContain('bind:value={pronounsInput}');
+    expect(summaryPage).toContain('pronouns: pronounsInput.trim() || null');
+    expect(summaryPage).not.toMatch(/prefs\.pronouns/);
+  });
+
+  /* L04-06: print showed the raw route code ("im", "oral") in English,
+     while the screen and the dose tables showed the label. */
+  it('prints the same route label it shows, with no print-only route code', () => {
+    expect(dossierComponent).not.toContain('dossier-route-print');
+    expect(printCss).not.toContain('dossier-route-print');
+    expect(dossierComponent).not.toMatch(/\{route\}/);
+  });
+
+  it('names an ester beside the drug only when the drug name does not already', () => {
+    expect(dossierComponent).toContain('regimenEsterNote(ep.drug, ep.ester)');
+    expect(dossierComponent).not.toContain('{#if ep.ester}');
+    expect(dossierComponent).not.toContain('ep.ester\n');
   });
 });
