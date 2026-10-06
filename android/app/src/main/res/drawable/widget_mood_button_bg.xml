@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#FFFFFF" />
-    <corners android:radius="12dp" />
-</shape>
+<!-- 3dp each side makes the 6dp gap between neighbouring pills; 4dp above
+     and below brings the 48dp view down to a 40dp pill. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="3dp"
+    android:insetRight="3dp"
+    android:insetTop="4dp"
+    android:insetBottom="4dp"
+    android:drawable="@drawable/widget_pill" />
