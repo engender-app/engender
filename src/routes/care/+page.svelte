@@ -111,6 +111,7 @@
     drug: string;
     quantity: string;
     unit: string;
+    dosesPerUnit: string;
     leadTimeDays: string;
     recordedDate: string;
     openedDate: string;
@@ -134,6 +135,7 @@
       drug: row.entry.drug,
       quantity: String(row.entry.quantity),
       unit: row.entry.unit,
+      dosesPerUnit: row.entry.dosesPerUnit === null ? '' : String(row.entry.dosesPerUnit),
       leadTimeDays: row.entry.leadTimeDays === null ? '' : String(row.entry.leadTimeDays),
       recordedDate: dateInputValueFromEpochDay(row.entry.recordedEpochDay),
       openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
@@ -148,6 +150,7 @@
       drug,
       quantity: '',
       unit: '',
+      dosesPerUnit: '',
       leadTimeDays: '',
       recordedDate: dateInputValueFromEpochDay(today),
       openedDate: '',
@@ -185,6 +188,10 @@
     const unit = stockEditor.unit.trim();
     if (isNaN(quantity) || !drug || !unit) return;
 
+    /* A number field hands over null once emptied; anything not above zero
+       is read as nothing typed, one dose per unit. */
+    const perUnit = Number(stockEditor.dosesPerUnit);
+    const dosesPerUnit = stockEditor.dosesPerUnit !== null && stockEditor.dosesPerUnit !== '' && perUnit > 0 ? perUnit : null;
     const leadTime = parseInt(stockEditor.leadTimeDays, 10);
     const leadTimeDays = isNaN(leadTime) ? null : leadTime;
     const openedEpochDay = stockEditor.openedDate ? epochDayFromDateInputValue(stockEditor.openedDate) : null;
@@ -200,6 +207,7 @@
       drug,
       quantity,
       unit,
+      dosesPerUnit,
       recordedEpochDay: epochDayFromDateInputValueOrToday(stockEditor.recordedDate),
       leadTimeDays,
       openedEpochDay,
@@ -952,6 +960,21 @@
           {/snippet}
         </Field>
       </div>
+      <Field label={m.stock_doses_per_unit_label()} id="care-stock-doses-per-unit">
+        {#snippet children(id)}
+          <input
+            class="input"
+            type="number"
+            {id}
+            name="stock-doses-per-unit"
+            min="1"
+            placeholder={m.stock_doses_per_unit_placeholder()}
+            inputmode="decimal"
+            bind:value={stockEditor!.dosesPerUnit}
+          />
+        {/snippet}
+      </Field>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_doses_per_unit_hint()}</p>
       <Field label={m.stock_lead_time_label()} id="care-stock-lead-time">
         {#snippet children(id)}
           <input

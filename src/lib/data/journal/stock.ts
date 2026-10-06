@@ -46,6 +46,9 @@ interface StockEntryInput {
       01). Optional and defaulted to null, so every caller before this ticket
       keeps working unchanged. */
   leadTimeDays?: number | null;
+  /** Doses one unit holds (after-release ticket 01). Optional and defaulted
+      to null, one dose per unit. */
+  dosesPerUnit?: number | null;
 }
 
 export interface StockProjectionRow {
@@ -104,6 +107,7 @@ type StockRow = {
   in_use_window_days: number | null;
   in_use_end_epoch_day: number | null;
   lead_time_days: number | null;
+  doses_per_unit: number | null;
 };
 
 const toStock = (row: StockRow): MedicationStock => ({
@@ -117,12 +121,13 @@ const toStock = (row: StockRow): MedicationStock => ({
   openedEpochDay: row.opened_epoch_day,
   inUseWindowDays: row.in_use_window_days,
   inUseEndEpochDay: row.in_use_end_epoch_day,
-  leadTimeDays: row.lead_time_days
+  leadTimeDays: row.lead_time_days,
+  dosesPerUnit: row.doses_per_unit
 });
 
 const STOCK_COLUMNS =
   'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, ' +
-  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days';
+  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit';
 
 /** Where box 4's reminder marks which drug it belongs to
     (stockReminder.ts). The marker itself lives in autoSource.ts, which is
@@ -219,6 +224,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         input.inUseWindowDays ?? null,
         input.inUseEndEpochDay ?? null,
         input.leadTimeDays ?? null,
+        input.dosesPerUnit ?? null,
         now()
       ];
 
@@ -226,7 +232,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         await driver.run(
           `UPDATE medication_stock
               SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, updated_at = ?,
+                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?, updated_at = ?,
                   drug = ?
             WHERE uuid = ?`,
           [...values, drug, existing[0].uuid]
@@ -238,8 +244,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
       await driver.run(
         `INSERT INTO medication_stock
            (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
-            opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, drug, ...values]
       );
       return uuid;
