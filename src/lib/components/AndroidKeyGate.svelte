@@ -172,7 +172,7 @@
   <!-- The wordmark, not a greeting and not an instruction: this screen
        renders before the journal the name lives in can be read, and what to
        do is on the line under it. GateScreen.svelte argues the rest. -->
-  <GateScreen title={appWordmark(prefs.disguise, m.app_name())}>
+  <GateScreen title={appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}>
     <!-- Polite rather than an alert: the prompt is Android's own dialog and
          takes the focus, so this line is what is waiting underneath when it
          goes, not something that interrupts. -->

@@ -723,7 +723,7 @@
            Diary" while the tab, the launcher and the rail all say "Notes"
            undoes the rest of the disguise in one line. Two sites in Settings
            still name the app under disguise; those are ticket 24's screen. -->
-      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
+      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</h1>
     </div>
     <!-- The foot: one line of who and when, one of how much, and the gear at
          the line's end. On the page rather than the field because all three
