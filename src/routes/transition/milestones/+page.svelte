@@ -314,10 +314,10 @@
      down 114px under someone who is already looking at it. Once the rail
      has painted, an offer that answers late, and a row that goes, open and
      close as usual. */
-  let annivArrived = $state(false);
+  let railPainted = $state(false);
   $effect(() => {
-    if (annivArrived || !vocabulary.ready) return;
-    const id = requestAnimationFrame(() => (annivArrived = true));
+    if (railPainted || !vocabulary.ready) return;
+    const id = requestAnimationFrame(() => (railPainted = true));
     return () => cancelAnimationFrame(id);
   });
 
@@ -367,7 +367,7 @@
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
       {#if anniversaries.length}
-        <div class="screen-part" data-anniv-offers transition:disclose={{ skip: !annivArrived }}>
+        <div class="screen-part" data-anniv-offers transition:disclose={{ skip: !railPainted }}>
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each anniversaries as { mi, years } (mi.id)}
               <div class="rows-divide" transition:disclose>
