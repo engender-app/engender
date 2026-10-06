@@ -125,6 +125,17 @@ public class SensitiveClipboardTest {
         }
     }
 
+    @Test public void aClipboardRecordFromAnEarlierBootExpiresImmediately() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            onMainThread(() -> SensitiveClipboard.copy(context, KEY, 60_000));
+            SharedPreferences prefs = context.getSharedPreferences(SensitiveClipboard.PREFS, Context.MODE_PRIVATE);
+            prefs.edit().putInt("bootCount", -1).putLong("dueAtRealtime", Long.MAX_VALUE).commit();
+            onMainThread(() -> SensitiveClipboard.clearIfDue(context));
+            assertFalse(KEY.equals(textOnClipboard()));
+            assertNull(prefs.getString("digest", null));
+        }
+    }
+
     private void copyTheKey() {
         onMainThread(() -> SensitiveClipboard.copy(context, KEY, CLEAR_AFTER_MS));
     }

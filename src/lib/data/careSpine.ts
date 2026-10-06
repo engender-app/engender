@@ -20,7 +20,7 @@
    and stop (PRODUCT.md:109, and labTiming.ts's own header for the
    precedent). */
 
-import { adherence, expectedSlots, type DoseSlot } from './doseSchedule';
+import { adherence, expectedSlots, slotToleranceDays, type DoseSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
 import { resolveCurveDrug } from './hormoneDrug';
 import { attributeDose, attributeDrug } from './regimenEpisode';
@@ -263,7 +263,7 @@ export function nextExpectedSlot(
   todayEpochDay: number
 ): DoseSlot | null {
   const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS);
-  return adherence(slots, doses, pauses).rows.find((row) => row.dose === null)?.slot ?? null;
+  return adherence(slots, doses, pauses, slotToleranceDays(schedule)).rows.find((row) => row.dose === null)?.slot ?? null;
 }
 
 type MarkEntry = { kind: SpineMarkKind; epochDay: number; recordId?: string | null };

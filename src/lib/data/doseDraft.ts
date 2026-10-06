@@ -17,7 +17,7 @@ import {
   dateInputValueFromEpochDay,
   epochDayFromDateInputValueOrToday,
   epochDayFromTimestamp,
-  startOfDayTimestamp
+  timestampAtLocalTime
 } from './epochDay';
 import type { DoseEventInput } from './journal/doses';
 import type {
@@ -58,10 +58,15 @@ function timeInputValue(timestamp: number): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+/** The moment a dose typed as a day and a wall-clock time happened at. Set
+    on the day's own local date rather than added to midnight, so 10:00 on
+    the day the clocks change saves 10:00 and not 09:00 or 11:00
+    (after-release ticket 01). A blank or half-typed time counts its missing
+    parts as zero, as it always has. */
 export function draftTimestamp(dayValue: string, timeValue: string): number {
   const epochDay = epochDayFromDateInputValueOrToday(dayValue);
   const [hours, minutes] = timeValue.split(':').map(Number);
-  return startOfDayTimestamp(epochDay) + (hours || 0) * 3600000 + (minutes || 0) * 60000;
+  return timestampAtLocalTime(epochDay, `${hours || 0}:${minutes || 0}`);
 }
 
 /** A new dose, seeded from the active episode: someone logging today's dose

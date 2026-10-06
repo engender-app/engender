@@ -431,4 +431,97 @@ public class JournalKeystoreTest {
         }
         return -1;
     }
+    @Test public void aFailedReplacementKeepsThePreviousKeyOpenable() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        try {
+            keystore.wrap(JournalKeystore.Variant.UNLOCKED, new byte[300]);
+            fail("RSA accepted an oversized data key");
+        } catch (javax.crypto.IllegalBlockSizeException expected) {
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        }
+    }
+
+    @Test public void aFailedAtomicWriteKeepsThePreviousWrapOpenable() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        File staged = new File(keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED).getPath() + ".new");
+        assertTrue(staged.mkdir());
+        try {
+            keystore.wrap(JournalKeystore.Variant.UNLOCKED, new byte[32]);
+            fail("writing over a directory unexpectedly succeeded");
+        } catch (java.io.IOException expected) {
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        } finally {
+            assertTrue(staged.delete());
+        }
+    }
+
+    @Test public void repeatedReplacementSwapsAliasAndBlobTogether() throws Exception {
+        keystore.create(JournalKeystore.Variant.UNLOCKED);
+        for (int i = 1; i <= 3; i++) {
+            byte[] replacement = new byte[32];
+            java.util.Arrays.fill(replacement, (byte) i);
+            keystore.wrap(JournalKeystore.Variant.UNLOCKED, replacement);
+            assertArrayEquals(replacement, new JournalKeystore(context()).unwrapUnlocked());
+            KeyStore androidKeystore = KeyStore.getInstance("AndroidKeyStore");
+            androidKeystore.load(null);
+            assertTrue(androidKeystore.containsAlias(JournalKeystore.UNLOCKED_ALIAS)
+                != androidKeystore.containsAlias(JournalKeystore.UNLOCKED_ALIAS + ".replacement"));
+        }
+        keystore.erase(JournalKeystore.Variant.UNLOCKED);
+        assertFalse(keystore.hasKey());
+    }
+
+    @Test public void aPostRenameSyncFailurePreservesBothPossiblePublishedKeys() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        File blob = keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED);
+        byte[] originalWrap = Files.readAllBytes(blob.toPath());
+        byte[] replacement = new byte[32];
+        java.util.Arrays.fill(replacement, (byte) 7);
+        java.util.concurrent.atomic.AtomicInteger syncs = new java.util.concurrent.atomic.AtomicInteger();
+        JournalKeystore failing = new JournalKeystore(context(), (directory) -> {
+            if (syncs.incrementAndGet() == 2) throw new java.io.IOException("directory sync failed");
+        });
+        try {
+            failing.wrap(JournalKeystore.Variant.UNLOCKED, replacement);
+            fail("the directory sync failure was ignored");
+        } catch (java.io.IOException expected) {
+            assertArrayEquals(replacement, new JournalKeystore(context()).unwrapUnlocked());
+            // Simulate the old directory entry returning after failed publication, not device power loss.
+            Files.write(blob.toPath(), originalWrap);
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        }
+    }
+
+    @Test public void aFailedPublicationAndRetryKeepEveryPossibleDirectoryStateOpenable() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        File blob = keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED);
+        byte[] originalWrap = Files.readAllBytes(blob.toPath());
+        byte[] replacement = new byte[32];
+        java.util.Arrays.fill(replacement, (byte) 7);
+        JournalKeystore failing = new JournalKeystore(context(), (directory) -> {
+            if (!java.util.Arrays.equals(originalWrap, Files.readAllBytes(blob.toPath()))) {
+                throw new java.io.IOException("directory sync failed");
+            }
+        });
+        try {
+            failing.wrap(JournalKeystore.Variant.UNLOCKED, replacement);
+            fail("the directory sync failure was ignored");
+        } catch (java.io.IOException expected) { }
+
+        File staged = new File(blob.getPath() + ".new");
+        assertTrue(staged.mkdir());
+        JournalKeystore retry = new JournalKeystore(context(), (directory) -> {
+            throw new java.io.IOException("retry directory sync failed");
+        });
+        try {
+            retry.wrap(JournalKeystore.Variant.UNLOCKED, new byte[32]);
+            fail("the retry failure was ignored");
+        } catch (java.io.IOException expected) {
+            assertArrayEquals(replacement, new JournalKeystore(context()).unwrapUnlocked());
+            // A failed sync permits either directory entry, even if another replacement is attempted.
+            Files.write(blob.toPath(), originalWrap);
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        } finally { assertTrue(staged.delete()); }
+    }
+
 }
