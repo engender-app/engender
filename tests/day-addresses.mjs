@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
+import { fillDate, launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 
 const app = await previewBuild(process.cwd());
 const base = `http://localhost:${app.httpServer.address().port}`;
@@ -73,14 +73,22 @@ try {
     assert.equal(await page.locator('#ed-note').isEditable(), true);
   });
   await check('same-route navigation reads the second letter', async () => {
-    await load('/more');
-    await page.locator('[data-fill-every-feature]').dispatchEvent('click');
-    await page.waitForFunction(() => !document.querySelector('[data-fill-every-feature]').disabled);
     await load('/transition/letters');
+    const texts = ['First address test letter.', 'Second address test letter.'];
+    for (const text of texts) {
+      await page.locator('[data-add]').click();
+      await page.locator('#letter-text').fill(text);
+      await fillDate(page, '#letter-unlock', '2000-01-01');
+      await page.locator('[data-save-letter]').click();
+      await page.locator('[data-sheet]').waitFor({ state: 'detached' });
+    }
     await page.locator('[data-letter-open]').nth(1).waitFor();
     const ids = await page.locator('[data-letter-open]').evaluateAll((nodes) => nodes.map((node) => node.dataset.letterOpen));
+    assert.equal(ids.length, 2, 'two readable letters were saved');
+    assert.notEqual(ids[0], ids[1], 'letters have distinct IDs');
     await load(`/transition/letters/${ids[0]}`);
     const firstText = await page.locator('[data-letter-text]').innerText();
+    assert.ok(texts.includes(firstText), 'first route reads a saved letter');
     await page.evaluate((id) => {
       window.letterRouteDocument = document;
       const link = document.createElement('a');
@@ -93,7 +101,9 @@ try {
     await page.waitForURL(`**/transition/letters/${ids[1]}`);
     await page.locator(`[data-letter="${ids[1]}"] [data-letter-text]`).waitFor({ timeout: 3000 });
     assert.equal(await page.evaluate(() => document === window.letterRouteDocument), true, 'navigation keeps the document');
-    assert.notEqual(await page.locator('[data-letter-text]').innerText(), firstText);
+    const secondText = await page.locator('[data-letter-text]').innerText();
+    assert.ok(texts.includes(secondText), 'second route reads a saved letter');
+    assert.notEqual(secondText, firstText);
   });
 } finally {
   await browser.close();

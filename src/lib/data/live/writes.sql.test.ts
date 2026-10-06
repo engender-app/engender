@@ -303,6 +303,10 @@ beforeAll(async () => {
     journal.bodyRegions.addCustomRegion('scar tissue')
   )) as { id: string };
   await drive('bodyRegions', 'setRegionHidden', () => journal.bodyRegions.setRegionHidden('hairline', true));
+  await drive('bodyRegions', 'renameCustomRegion', async () => {
+    const region = await journal.bodyRegions.addCustomRegion('scar tisue');
+    await journal.bodyRegions.renameCustomRegion(region.id, 'scar tissue');
+  });
 
   // --- dimensions ---------------------------------------------------------
   const voice = (await drive('dimensions', 'addCustomDimension', () =>
@@ -550,6 +554,10 @@ beforeAll(async () => {
     })
   )) as string;
   await drive('regimen', 'endEpisode', () => journal.regimen.endEpisode(secondEpisodeId, 19400));
+  await drive('regimen', 'setEpisodeHidden', async () => {
+    await journal.regimen.setEpisodeHidden(secondEpisodeId, true);
+    await journal.regimen.setEpisodeHidden(secondEpisodeId, false);
+  });
 
   const doseId = (await drive('doses', 'upsertDose', () =>
     journal.doses.upsertDose({
@@ -1071,6 +1079,7 @@ beforeAll(async () => {
   await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
   await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered', 20000));
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
+  await driveRead('regimen', 'getHiddenEpisodes', () => journal.regimen.getHiddenEpisodes());
   await driveRead('regimen', 'hasAny', () => journal.regimen.hasAny());
   await driveRead('doses', 'getDoses', () => journal.doses.getDoses(0, 30000));
   await driveRead('doses', 'getDoseById', () => journal.doses.getDoseById('00000000-0000-0000-0000-000000000000'));
