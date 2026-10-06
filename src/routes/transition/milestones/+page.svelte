@@ -43,6 +43,7 @@
     epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { EditorPhoto } from '$lib/stores/photoPicking';
@@ -176,7 +177,7 @@
   });
 
   function statusText(mi: Milestone): string {
-    const s = milestoneStatus(mi, todayEpochDay());
+    const s = milestoneStatus(mi, currentDay());
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
     if (s.type === 'today') return m.ms_status_today();
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
@@ -292,14 +293,14 @@
   const ANNIV_OFFER = OFFERS['milestone-anniversary-felt-sense'];
   let answeredToday = liveQuery((j) =>
     j.feltSense
-      .onDay(todayEpochDay())
+      .onDay(currentDay())
       .then((rows) => new Set(rows.flatMap((f) => (f.owner.kind === 'milestone' ? [f.owner.id] : []))))
   );
   let skippedAnniv = $state<string[]>([]);
   let anniversaries = $derived.by(() => {
     const answered = answeredToday.value;
     if (!answered) return [];
-    const today = todayEpochDay();
+    const today = currentDay();
     return sorted.flatMap((mi) => {
       const s = milestoneStatus(mi, today);
       return s.isAnnivToday && !answered.has(mi.id) && !skippedAnniv.includes(mi.id) ? [{ mi, years: s.years ?? 0 }] : [];

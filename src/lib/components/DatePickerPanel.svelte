@@ -32,7 +32,8 @@
   import { flushSync, tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthYear } from '$lib/data/dates';
-  import { dateInputValueFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
+  import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { drumIn, drumOut } from '$lib/motion/drum';
   import { crossfadeDuration, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import Icon from './Icon.svelte';
@@ -56,7 +57,7 @@
   } = $props();
 
   const titleId = $props.id();
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   /* The months sit this far apart on the track, so a neighbour sliding in
      is a separate page rather than a continuation of the one leaving. */
   const GUTTER = 16;

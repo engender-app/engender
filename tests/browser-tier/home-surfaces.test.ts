@@ -1,5 +1,6 @@
 import { flushSync } from 'svelte';
 import { mountScreen, until } from './mount-screen';
+import { setScreenRoute } from './screen-router.svelte';
 import { mountInto } from './mount';
 import {
   fixture,
@@ -189,6 +190,49 @@ export async function homeContracts(): Promise<Result[]> {
     }
     return false;
   });
+  await screen.remove();
+  /* Midnight on a Home that stays mounted (after-release ticket 02): the
+     greeting moves to the new day, and a widget tap that navigates to
+     /?tally= logs to the new day, not to the day Home was opened on. The
+     clock is shifted in the page and the day store woken the way a page
+     coming back to the foreground wakes it. */
+  screen = await mountScreen('/', f);
+  await until(() => root().querySelector('[data-home-hello]'), 'Home greeting');
+  const greetingBefore = node(root(), '[data-home-hello]').textContent;
+  const RealDate = Date;
+  const shift = 86_400_000;
+  class ShiftedDate extends RealDate {
+    constructor(...args: unknown[]) {
+      super(...((args.length ? args : [RealDate.now() + shift]) as [number]));
+    }
+    static now() {
+      return RealDate.now() + shift;
+    }
+  }
+  const newDayTallies = () => f.journal.tally.getEventsOnDay(today + 1);
+  const mountDayTallies = () => f.journal.tally.getEventsOnDay(today);
+  const [newBefore, oldBefore] = [(await newDayTallies()).length, (await mountDayTallies()).length];
+  globalThis.Date = ShiftedDate as DateConstructor;
+  try {
+    document.dispatchEvent(new Event('visibilitychange'));
+    await check('Home greeting follows the day across midnight without a reload', async () => {
+      await until(
+        () => node(root(), '[data-home-hello]').textContent !== greetingBefore || null,
+        'greeting on the new day'
+      );
+      return true;
+    });
+    setScreenRoute('/?tally=misgendered');
+    await check('A tally link on a mounted Home after midnight lands on the new day', async () => {
+      for (let i = 0; i < 100; i++) {
+        if ((await newDayTallies()).length === newBefore + 1) return (await mountDayTallies()).length === oldBefore;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      return false;
+    });
+  } finally {
+    globalThis.Date = RealDate;
+  }
   await screen.remove();
   screen = await mountScreen('/more', f);
   await check('More keeps Safe Space and milestones destinations', async () => {

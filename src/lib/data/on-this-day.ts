@@ -30,6 +30,13 @@ interface OnThisDayCandidate {
   epochDay: number;
 }
 
+/** Whether a lookback day is worth showing: a good day, or one that carries
+    a letter. The Home card and the block it opens both ask, so they cannot
+    disagree about which days there are. */
+export function onThisDayQualifies(good: boolean, dayLetters: readonly unknown[]): boolean {
+  return good || dayLetters.length > 0;
+}
+
 /** The three days on-this-day checks today. */
 export function onThisDayCandidates(todayEpochDay: number): OnThisDayCandidate[] {
   return ON_THIS_DAY_LOOKBACKS.map(({ key, months }) => ({
