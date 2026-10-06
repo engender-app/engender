@@ -7,15 +7,18 @@
    arrangement ADR-0017 already uses for the journal: one app-level module
    constructs the real thing and the UI reads it.
 
-   Not reactive: the store is set before the first screen renders and never
-   replaced, so nothing needs to re-run when it changes. */
+   Not reactive: the store is set before the first screen renders, and
+   replaced only around a lock on the web (after-release ticket 10), which
+   sets it to null and back while every screen that reads it is unmounted
+   behind the lock - so nothing needs to re-run when it changes. Null reads
+   as "no store yet", the answer a read during boot already got. */
 
 import { thumbFileName } from '../data/photos/names';
 import type { PhotoFileStore } from '../data/journal/journal';
 
 let store: PhotoFileStore | null = null;
 
-export function setPhotoFiles(files: PhotoFileStore): void {
+export function setPhotoFiles(files: PhotoFileStore | null): void {
   store = files;
 }
 
