@@ -394,9 +394,8 @@ test('showAttributionLabel: two episodes agreeing on one drug hide the "not reco
   assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol', 2), false);
 });
 
-/* The editor's quick-log chip (after-release ticket 01, L04-09). It used to
-   read a dose's own `drug`, which is null on most doses, so a dose logged
-   from the dose sheet left the chip up and one tap logged a second. */
+/* The day-ahead dose marks read each episode only as far as its own span
+   reaches into the range (after-release ticket 01). */
 
 test('an open episode that began before the range runs to the end of it', () => {
   assert.equal(lastDayWithin(episode('a', 100), 150, 160), 160);

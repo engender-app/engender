@@ -37,4 +37,3 @@ export function episodesWithNoDoseLogged(
 export function remainingAfterOneDose(remaining: number, stock: Pick<StockEntry, 'dosesPerUnit'>): number {
   return remaining - 1 / dosesInOneUnit(stock);
 }
-
