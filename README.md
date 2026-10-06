@@ -258,8 +258,8 @@ literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
 The browser suites use Chromium. Set `CHROMIUM_PATH` if its executable is
-not at the harness's default location. They cover storage contracts, complete
-user flows and offline startup of the production build:
+not at the harness's default location. They cover storage contracts, rendered screens, complete user flows and
+offline startup of the production build:
 
 ```sh
 npm run test:browser

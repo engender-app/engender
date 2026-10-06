@@ -613,6 +613,9 @@ interface ArchiveRegimenEpisode {
       as null - no reason recorded, which is exactly what a pre-ticket
       ended episode has. */
   endReason: EpisodeEndReason | null;
+  /** Put away (after-release 07). Absent on an archive from before the
+      field existed, which a restore writes as shown. */
+  hidden: boolean;
 }
 
 /* Flat and nullable, the way ArchiveReminder carries its recurrence

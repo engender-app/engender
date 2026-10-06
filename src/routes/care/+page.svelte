@@ -37,6 +37,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -72,6 +73,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   /* Two areas outside the lanes: the rail's own card, and the readings that
      do not fit on one. The rail takes role 0, the only index that is a
@@ -218,10 +220,29 @@
     stockEditor = null;
   }
 
-  async function deleteStockEntry() {
+  /* Stopping tracking takes the automatic run-out reminder with it, so it
+     asks first, over the editor, and says it happened (after-release 07).
+     Named by the saved drug rather than the draft, which may already have
+     been retyped. */
+  let stockDeleteTarget = $state<{ id: string; drug: string } | null>(null);
+
+  function askToDeleteStock() {
     if (!stockEditor?.id) return;
-    await journal.stock.deleteEntry(stockEditor.id);
-    stockEditor = null;
+    const id = stockEditor.id;
+    stockDeleteTarget = { id, drug: stock.find((row) => row.entry.id === id)?.entry.drug ?? stockEditor.drug };
+  }
+
+  async function deleteStockEntry() {
+    const target = stockDeleteTarget;
+    if (!target) return;
+    stockDeleteTarget = null;
+    await journal.stock.deleteEntry(target.id);
+    /* The whole sheet goes, rather than swapping the editor for the list
+       inside it: that swap resized the open sheet in one frame. The editor
+       stays as it was while the sheet slides away; the next opening sets
+       its own. */
+    stockSheetOpen = false;
+    toast(m.stock_deleted({ drug: target.drug }));
   }
 
   /* The lane a spine mark was tapped from, for one return: written as a
@@ -1044,7 +1065,7 @@
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveStockEntry}><span>{m.stock_save()}</span></button>
         {#if stockEditor.id}
-          <button class="btn btn-ghost" data-delete-stock onclick={deleteStockEntry}>
+          <button class="btn btn-ghost" data-delete-stock onclick={askToDeleteStock}>
             <span>{m.stock_delete_action({ drug: stockEditor.drug })}</span>
           </button>
         {/if}
@@ -1102,6 +1123,18 @@
       {/if}
     {/if}
   </Sheet>
+
+  <ConfirmDeleteSheet
+    open={stockDeleteTarget !== null}
+    title={stockDeleteTarget ? m.stock_delete_action({ drug: stockDeleteTarget.drug }) : ''}
+    question={stockDeleteTarget ? m.stock_delete_q({ drug: stockDeleteTarget.drug }) : ''}
+    hint={m.stock_delete_hint()}
+    confirmLabel={m.stock_delete_confirm()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-stock': '' }}
+    onConfirm={deleteStockEntry}
+    onCancel={() => (stockDeleteTarget = null)}
+  />
 </div>
 
 <style>

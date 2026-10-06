@@ -792,13 +792,20 @@ flowchart TB
 | Tier | Run | What it proves |
 |---|---|---|
 | Node | `npm test` | The data layer against real `node:sqlite` through `test-support` drivers; schema, migrations, archive round trips and golden archives; declarations against SQL; pure domain logic; machines and policies; stylesheet invariants. Build once first, because [csp.test.ts](../tests/csp.test.ts) reads `build/`. |
-| Browser | `npm run test:browser` | [tests/browser-tier/](../tests/browser-tier): SQLite3MultipleCiphers on real OPFS, WebCrypto, canvas photo and video processing, the service-worker lifecycle, kit geometry. Each check group declares how many checks it expects (`createReporter().block`), so a group that runs fewer fails. |
+| Browser | `npm run test:browser` | [tests/browser-tier/](../tests/browser-tier): SQLite3MultipleCiphers on real OPFS, WebCrypto, canvas photo and video processing, the service-worker lifecycle, kit geometry and rendered screen contracts. Each check group declares how many checks it expects (`createReporter().block`), so a group that runs fewer fails. |
 | Guards | `npm run test:guards`, `test:guards:built` | One Playwright script per regression, listed in [tests/guards.json](../tests/guards.json) (35 `dev`, 39 `built`) and run by [tests/run-guards.mjs](../tests/run-guards.mjs) with retry and shards. [tests/PROBES.md](../tests/PROBES.md) is the index; a probe that isn't indexed is deleted before its ticket merges. |
 | Walkthrough | `npm run test:walkthrough` | [tests/walkthrough.test.mjs](../tests/walkthrough.test.mjs) drives the whole demo build through real flows by `data-*` handles. Four groups: journal, setup, features, actions. A full run takes about 15 minutes. |
 | Built app | `npm run verify:build`, `verify:hosting` | Installed-PWA cold start, offline start, update and PIN; the nginx container's headers, cache rules and SPA routing. |
 | Benchmarks | `npm run benchmark:long-journal`, `test:return-floor` | A ten-year fixture against [tests/long-journal/budgets.json](../tests/long-journal/budgets.json); the return-floor timing. |
 | Android | `npm run test:android` | Instrumentation tests on the `gd26` and `tracker35` emulators: native SQLite features, Keystore behaviour, the encryption claim test, the contract suite in a WebView. JVM unit tests run with `./gradlew :app:testDebugUnitTest`. |
 | Galleries | `npm run gallery:*`, `measure:*`, `sweep:*` | Renders and frame captures for review. Most of them gate nothing. |
+
+Screen contracts use [mount-screen.ts](../tests/browser-tier/mount-screen.ts)
+to render route components over seeded, open journals. The fixture attaches
+the journal, hydrates reference data and opens the journal gate before mounting.
+Home, Calendar and Settings assertions inspect DOM, computed styles and real
+interactions in Chromium; they do not read component source. These suites stay
+outside the Node tier, whose test drivers cannot provide browser storage.
 
 The contract suite in [data/journal/contract-suite.ts](../src/lib/data/journal/contract-suite.ts) runs the same journal assertions against every driver: Node, the browser tier and Android.
 
