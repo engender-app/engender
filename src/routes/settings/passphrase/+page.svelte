@@ -14,6 +14,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
@@ -56,8 +57,13 @@
         return;
       }
       goto('/settings/security');
-    } catch {
-      error = m.pp_change_wrong_current();
+    } catch (e) {
+      /* Only a passphrase that did not unwrap the key is the current
+         passphrase's fault. A keystore that would not read or write is
+         something else, and blaming the typing sent people to retype a
+         passphrase that was right (after-release ticket 09). */
+      console.error('changing the passphrase failed', e);
+      error = e instanceof DecryptionFailedError ? m.pp_change_wrong_current() : m.pp_change_failed();
     } finally {
       busy = false;
     }
