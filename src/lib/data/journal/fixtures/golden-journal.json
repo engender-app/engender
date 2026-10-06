@@ -996,7 +996,8 @@
       "startEpochDay": null,
       "endEpochDay": null,
       "hasNote": true,
-      "hasPhoto": false
+      "hasPhoto": false,
+      "starred": false
     }
   ],
   "revisits": [

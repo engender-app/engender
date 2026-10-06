@@ -704,6 +704,8 @@ export interface SavedQuestion {
   endEpochDay: number | null;
   hasNote: boolean;
   hasPhoto: boolean;
+  /** Starred entries only (after-release ticket 16). */
+  starred: boolean;
 }
 
 /** A named stretch of the person's own timeline (phase 6 ticket 01,
