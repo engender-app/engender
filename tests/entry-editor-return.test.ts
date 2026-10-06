@@ -20,10 +20,16 @@ describe('entry editor Save, date and delete', () => {
     expect(editor).toMatch(/<span class="visually-hidden" role="status" data-save-status>/);
   });
 
-  it('gives the date line no negative top margin', () => {
-    const rule = editor.match(/\.editor-date \{[^}]*\}/)?.[0] ?? '';
-    expect(rule).not.toBe('');
-    expect(rule).not.toMatch(/margin:[^;]*calc\(-1/);
+  it('draws the date line as the header subtitle, not a paragraph spaced by hand', () => {
+    expect(editor).toContain('subtitle={dateLine}');
+    expect(editor).not.toContain('class="editor-date"');
+  });
+
+  it('makes the disabling fieldset the screen itself, so the screen rules reach its blocks', () => {
+    const open = editor.match(/<fieldset[^>]*class="screen editor"[^>]*>/)?.[0] ?? '';
+    expect(open).toContain('disabled={saving}');
+    expect(open).toContain('inert={saving}');
+    expect(editor).not.toContain('class="editor-fields"');
   });
 
   it('moves to trash with a Restore action and says so when the delete fails', () => {
