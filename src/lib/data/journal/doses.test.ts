@@ -6,7 +6,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay.ts';
-import { mostRecentPassedSlot } from '../doseSchedule.ts';
+import { autoLogSlots, mostRecentPassedSlot } from '../doseSchedule.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import { makeDosesArea } from './doses.ts';
 import type { Journal } from './journal.ts';
@@ -734,6 +734,81 @@ test('an auto-logged dose is taken, carries the schedule as its source, and take
       ['taken', 'schedule', 3, 'mg', 'oral']
     ]
   );
+});
+
+test('a repeated ten-year auto-log pass hydrates only a deleted slot window', async () => {
+  const { db, journal } = await journalWithBuiltIns();
+  const from = 19000;
+  const today = from + 3652;
+  await autoLogging(journal, { startEpochDay: from, fromEpochDay: from });
+  await db.run(
+    `WITH RECURSIVE days(day) AS (VALUES (?) UNION ALL SELECT day + 1 FROM days WHERE day < ?)
+     INSERT INTO dose_event (uuid, timestamp, route, dose, dose_unit, status, drug, source, updated_at)
+     SELECT 'auto-log-history-' || printf('%d', day), ? + (day - ?) * 86400000, 'oral', 3, 'mg',
+            'taken', 'estradiol', 'schedule', 1 FROM days`,
+    [from, today - 1, at(from, 12), from]
+  );
+  const reads: { sql: string; parameters: number; rows: number }[] = [];
+  const doses = makeDosesArea({
+    ...db,
+    async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      const rows = await db.query<Row>(sql, params);
+      if (sql.includes('dose_event')) reads.push({ sql, parameters: params?.length ?? 0, rows: rows.length });
+      return rows;
+    }
+  }, journal.regimen);
+  for (let pass = 0; pass < 2; pass++) {
+    reads.length = 0;
+    await db.readSnapshot(async () => {});
+    assert.equal(await doses.autoLogDueDoses(today, []), 0);
+    assert.ok(reads.length <= 5);
+    assert.ok(reads.every((read) => read.parameters <= 999));
+    assert.equal(reads.reduce((count, read) => count + read.rows, 0), 1);
+  }
+  await db.run('DELETE FROM dose_event WHERE uuid = ?', [`auto-log-history-${from + 42}`]);
+  reads.length = 0;
+  assert.equal(await doses.autoLogDueDoses(today, []), 1);
+  assert.equal(reads.filter((read) => read.sql.includes('dose_unit')).reduce((count, read) => count + read.rows, 0), 0);
+  assert.equal(reads.reduce((count, read) => count + read.rows, 0), 2);
+  assert.equal(await doses.autoLogDueDoses(today, []), 0);
+});
+
+test('indexed auto-log candidates preserve pairing, attribution, pauses and amount cycles', async () => {
+  for (const recurrence of [
+    ...[1, 2, 3, 7, 13].map((everyNDays) => ({ kind: 'everyNDays' as const, everyNDays })),
+    ...[[1], [1, 4], [0, 2, 5]].map((weekdays) => ({ kind: 'weekdays' as const, weekdays }))
+  ]) for (const dosesPerDay of [1, 3]) for (const overlap of ['none', 'different', 'same']) {
+    const { db, journal } = await journalWithBuiltIns();
+    const episodeId = await episode(journal, 19000, ' estradiol ');
+    if (overlap !== 'none') await episode(journal, 19014, overlap === 'same' ? 'estradiol' : 'testosterone', 19034);
+    await journal.doses.upsertSchedule({
+      episodeId, recurrence, dosesPerDay,
+      doseAmounts: [{ dose: 2, doseUnit: 'mg' }, { dose: 3, doseUnit: 'mg' }],
+      autoLogFromEpochDay: 19004
+    });
+    await journal.doses.upsertPause({ episodeId, startEpochDay: 19021, endEpochDay: 19024, reason: 'planned' });
+    let random = dosesPerDay;
+    const next = () => { random = (random * 1664525 + 1013904223) >>> 0; return random; };
+    await db.transaction(async (scope) => {
+      for (let i = 0; i < 75; i++) await scope.run(
+        `INSERT INTO dose_event (uuid, timestamp, drug, status, route, dose, dose_unit, updated_at)
+         VALUES (?, ?, ?, ?, 'oral', 2, 'mg', 1)`,
+        [`candidate-${i}`, at(19000 + next() % 63, next() % 24),
+          [null, '', 'estradiol', '  estradiol  ', '\u00a0estradiol\u00a0', 'testosterone', 'other'][next() % 7],
+          ['taken', 'skipped', 'changed'][next() % 3]]
+      );
+    });
+    const episodes = await journal.regimen.getEpisodes();
+    const [schedule] = await journal.doses.getSchedules();
+    const ownDoses = (await journal.doses.getDoses(18990, 19070))
+      .filter((dose) => attributeDose(episodes, dose).episode?.id === episodeId);
+    const expected = autoLogSlots(schedule, 19000, ownDoses, await journal.doses.getPauses(), 19060);
+    assert.equal(await journal.doses.autoLogDueDoses(19060, []), expected.length, JSON.stringify({ recurrence, dosesPerDay, overlap }));
+    const written = (await journal.doses.getDoses(19000, 19060)).filter((dose) => dose.source === 'schedule');
+    assert.deepEqual(written.map((dose) => [dose.timestamp, dose.dose, dose.doseUnit]),
+      expected.map(({ slot, timestamp }) => [timestamp, slot.amount!.dose, slot.amount!.doseUnit]));
+    await db.close();
+  }
 });
 
 test('the auto-log pass writes nothing twice: the doses it wrote fill the slots it would write again', async () => {

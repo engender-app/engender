@@ -251,6 +251,7 @@
           {/if}
           {#if question.hasNote}<li>{m.search_filter_has_note()}</li>{/if}
           {#if question.hasPhoto}<li>{m.search_filter_has_photo()}</li>{/if}
+          {#if question.starred}<li>{m.search_filter_starred()}</li>{/if}
         </ul>
       </div>
     {/if}

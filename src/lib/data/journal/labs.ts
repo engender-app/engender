@@ -3,6 +3,9 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
+import { resolveCurveDrug } from '../hormoneDrug';
+import { drugSpans } from '../regimenEpisode';
+import { FIRST_EPOCH_DAY, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { drawUpperBound, labTimingFor, selectTimingDose, type CandidateDose, type LabDraw } from '../labTiming';
 import { assertChanged, mintUuid, now } from './support';
 import { normalizeUnit } from '../labs/units';
@@ -67,6 +70,7 @@ export interface LabsArea {
       clinician summary, having no per-day read to reach for, walks
       `getUsedAnalytes` and filters. */
   getResultsOnDay(epochDay: number): Promise<LabResult[]>;
+  getResultsInRange(fromEpochDay: number, toEpochDay: number): Promise<LabResult[]>;
   /** The most recently drawn result of any analyte, or null with no results
       at all. What the care overview marks its draw at (phase 5 deepening
       ticket 07): the rail asks "when was blood last taken", which is a
@@ -184,20 +188,38 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       over exactly as if it weren't there, rather than reported as this
       draw's context (phase 8 features ticket 37). */
   const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
-    const [rows, episodes] = await Promise.all([
-      driver.query<{ timestamp: number; route: string; drug: string | null }>(
-        `SELECT timestamp, route, drug FROM dose_event
-          WHERE timestamp <= ? AND status <> 'skipped'
-          ORDER BY timestamp DESC, id DESC`,
-        [drawUpperBound(draw)]
+    const curveDrug = resolveCurveDrug(analyte);
+    if (curveDrug === null) return null;
+    const upper = drawUpperBound(draw);
+    const [names, episodes] = await Promise.all([
+      driver.query<{ drug: string | null }>(
+        "SELECT DISTINCT drug FROM dose_event WHERE timestamp <= ? AND status <> 'skipped' AND drug IS NOT NULL AND drug <> ''",
+        [upper]
       ),
       regimen.getEpisodes()
     ]);
-    const doses: CandidateDose[] = rows.map((row) => ({
-      timestamp: row.timestamp,
-      route: row.route as DoseRoute,
-      drug: row.drug
-    }));
+    const drugs = names.filter((row) => row.drug && resolveCurveDrug(row.drug) === curveDrug).map((row) => row.drug);
+    const spans = drugSpans(episodes, FIRST_EPOCH_DAY, epochDayFromTimestamp(upper)).filter((span) =>
+      !span.ambiguous && (span.drug === null || resolveCurveDrug(span.drug) === curveDrug)
+    );
+    const clauses: string[] = [];
+    const params: unknown[] = [upper];
+    if (drugs.length) {
+      clauses.push(`drug IN (${drugs.map(() => '?').join(', ')})`);
+      params.push(...drugs);
+    }
+    for (const span of spans) {
+      clauses.push("((drug IS NULL OR drug = '') AND timestamp >= ? AND timestamp < ?)");
+      params.push(startOfDayTimestamp(span.fromEpochDay), startOfDayTimestamp(span.toEpochDay + 1));
+    }
+    if (!clauses.length) return null;
+    const rows = await driver.query<{ timestamp: number; route: string; drug: string | null }>(
+      `SELECT timestamp, route, drug FROM dose_event
+       WHERE timestamp <= ? AND status <> 'skipped' AND (${clauses.join(' OR ')})
+       ORDER BY timestamp DESC, id DESC LIMIT 1`,
+      params
+    );
+    const doses: CandidateDose[] = rows.map((row) => ({ ...row, route: row.route as DoseRoute }));
     const dose = selectTimingDose(analyte, doses, episodes);
     return dose ? labTimingFor(draw, dose) : null;
   };
@@ -217,6 +239,14 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
     },
 
     getResults: resultsFor,
+
+    async getResultsInRange(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<LabRow>(
+        `SELECT ${LAB_COLUMNS} FROM lab_result WHERE epoch_day >= ? AND epoch_day <= ? ORDER BY epoch_day, analyte, id`,
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map(toLabResult);
+    },
 
     async getResultsOnDay(epochDay) {
       const rows = await driver.query<LabRow>(`SELECT ${LAB_COLUMNS} FROM lab_result WHERE epoch_day = ? ORDER BY id`, [
