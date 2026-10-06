@@ -237,7 +237,11 @@
     if (!target) return;
     stockDeleteTarget = null;
     await journal.stock.deleteEntry(target.id);
-    stockEditor = null;
+    /* The whole sheet goes, rather than swapping the editor for the list
+       inside it: that swap resized the open sheet in one frame. The editor
+       stays as it was while the sheet slides away; the next opening sets
+       its own. */
+    stockSheetOpen = false;
     toast(m.stock_deleted({ drug: target.drug }));
   }
 
