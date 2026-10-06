@@ -252,6 +252,16 @@ BEGIN
 END;
 `;
 
+/* v87: how many doses one unit of stock holds (after-release ticket 01).
+   Stock subtracted one unit per dose whatever the unit was, so two vials of
+   injectable estradiol were counted out after two injections. Nullable, and
+   NULL keeps that one-dose-per-unit reading, which is right for every row
+   counted in pills or doses and the only reading an existing row can be
+   given without asking. REAL because a quantity is REAL already. */
+const SCHEMA_V87 = `
+ALTER TABLE medication_stock ADD COLUMN doses_per_unit REAL;
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA, baseline: true },
   { version: 79, sql: SCHEMA_V79 },
@@ -261,5 +271,6 @@ export const migrations: Migration[] = [
   { version: 83, sql: SCHEMA_V83 },
   { version: 84, sql: SCHEMA_V84 },
   { version: 85, sql: SCHEMA_V85 },
-  { version: 86, sql: SCHEMA_V86 }
+  { version: 86, sql: SCHEMA_V86 },
+  { version: 87, sql: SCHEMA_V87 }
 ];
