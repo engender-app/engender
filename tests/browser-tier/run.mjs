@@ -70,9 +70,9 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
-await block('rendered screen contracts', 150, async () => {
+await block('rendered screen contracts', 169, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 57, home: 35, calendar: 58 })) {
+  for (const [suite, expected] of Object.entries({ direction: 57, home: 53, calendar: 59 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);

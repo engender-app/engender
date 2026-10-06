@@ -17,6 +17,7 @@ import { pickRecording } from '$lib/stores/voiceRecording';
 import { pickVideo } from '$lib/stores/videoRecording';
 import { VIDEO_SIZE_CEILING } from '$lib/data/videoNotes/limits';
 import { m } from '$lib/paraglide/messages';
+import { MOOD_FACES } from '$lib/components/moodFace';
 import overlongVideo from './screen-contracts/overlong.webm?url';
 import { fmtDay } from '$lib/data/dates';
 
@@ -92,12 +93,30 @@ export async function calendarContracts(): Promise<Result[]> {
       cell().querySelector('.cal-face.is-earlier.is-on') &&
       cell().querySelector('.cal-face.is-later.is-on')
   );
-  await check(
-    'Half fills follow earliest and latest mood rather than average',
-    () =>
-      style(cell(), '.cal-half.is-earlier').backgroundColor !==
-      style(cell(), '.cal-half.is-later').backgroundColor
-  );
+  await check('Earlier and later halves preserve exact logged mood colors and faces', async () => {
+    const sample = document.createElement('span');
+    sample.style.transition = 'none';
+    root().append(sample);
+    const colors = [1, 5].map((step) => {
+      sample.style.background = `var(--mood-${step})`;
+      return getComputedStyle(sample).backgroundColor;
+    });
+    sample.remove();
+    await until(
+      () =>
+        ['earlier', 'later'].every(
+          (side, i) => style(cell(), `.cal-half.is-${side}`).backgroundColor === colors[i]
+        ),
+      `logged split colors ${colors.join(', ')}`
+    );
+    for (const [i, side] of ['earlier', 'later'].entries()) {
+      const actual = node(cell(), `.cal-face.is-${side} .mood-face-mouth`).getAttribute('d');
+      const expected = MOOD_FACES[i === 0 ? 1 : 5].mouth;
+      if (actual !== expected)
+        throw new Error(`${side} mood mouth: ${actual}; expected ${expected}`);
+    }
+    return true;
+  });
   await check('Face and fill clip along identical cuts with two-pixel gutter', () => {
     return (
       ['earlier', 'later'].every(
@@ -331,6 +350,11 @@ export async function calendarContracts(): Promise<Result[]> {
       )) === null
   );
   await screen.remove();
+  await f.journal.letters.addLetter({
+    epochDay: today - 2,
+    unlockEpochDay: today - 1,
+    text: 'Contract elsewhere'
+  });
   screen = await mountScreen('/search', f);
   await until(() => root().querySelector('.search-input'), 'search');
   await check(
@@ -345,10 +369,10 @@ export async function calendarContracts(): Promise<Result[]> {
   search.dispatchEvent(new Event('input', { bubbles: true }));
   await until(() => root().querySelector('[data-search-more]'), 'search results');
   await check(
-    'Search renders first thirty results and reports full match count',
+    'Search renders first thirty results and reports full entries-plus-records match count',
     () =>
       root().querySelectorAll('[data-entry-card]').length === 30 &&
-      /65/.test(node(root(), '[data-search-count]').textContent!)
+      /66/.test(node(root(), '[data-search-count]').textContent!)
   );
   await check('Scroll does not load next search page', async () => {
     root().dispatchEvent(new Event('scroll'));
@@ -392,6 +416,34 @@ export async function calendarContracts(): Promise<Result[]> {
     await until(() => root().querySelector('[data-active-filter-chip]'), 'active filter');
     return root().querySelector('[data-filter-clear]');
   });
+  await screen.remove();
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((value) => resolve(value!), 'image/jpeg')
+  );
+  const jpeg = new Uint8Array(await blob.arrayBuffer());
+  const photoId = await f.journal.photos.attach(
+    { entryId: entries[0].id },
+    { full: jpeg, thumb: jpeg }
+  );
+  await f.journal.photos.setStarred(photoId, true);
+  screen = await mountScreen('/search?q=Contract&starred=1', f);
+  await check(
+    'Starred search total includes entry, elsewhere record and starred photo',
+    async () => {
+      await until(() => root().querySelector('[data-starred-photos]'), 'starred photos');
+      await until(
+        () =>
+          node(root(), '[data-search-count]').textContent?.trim() === m.results_count({ count: 3 }),
+        'combined starred count'
+      );
+      return (
+        root().querySelectorAll('[data-entry-card]').length === 1 &&
+        root().querySelectorAll('.starred-photo-cell').length === 1
+      );
+    }
+  );
   await screen.remove();
   for (const route of [`/day/${splitDay}`, '/search?q=Contract', `/entry/${entries[0].id}`]) {
     const held = heldReads(f, ['entries']);
