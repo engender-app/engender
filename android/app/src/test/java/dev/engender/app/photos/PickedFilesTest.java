@@ -8,6 +8,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -263,4 +264,107 @@ public class PickedFilesTest {
 
         assertTrue(opened[0]);
     }
+    @Test
+    public void acceptedChannelReadCanFallBackAfterLostReply() throws Exception {
+        String token = PickedFiles.hold(Collections.singletonList(bytes(1, 2, 3))).get(0);
+        InputStream channel = PickedFiles.openForChannel(token);
+        channel.read();
+        PickedFiles.finishChannelRead(channel);
+        byte[] fallback = new byte[4];
+        assertEquals(3, PickedFiles.readChunk(token, fallback));
+        assertArrayEquals(new byte[] { 1, 2, 3, 0 }, fallback);
+    }
+
+    @Test
+    public void channelTimeoutClosesOldReaderAndLateCompletionLeavesFallbackAlone() throws Exception {
+        List<WatchedStream> opened = new java.util.ArrayList<>();
+        String token = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> {
+            WatchedStream stream = new WatchedStream(new byte[] { 1, 2, 3, 4 });
+            opened.add(stream);
+            return stream;
+        })).get(0);
+        InputStream channel = PickedFiles.openForChannel(token);
+        channel.read();
+        PickedFiles.cancelChannelRead(token);
+        assertTrue(opened.get(0).closed);
+        byte[] buffer = new byte[2];
+        assertEquals(2, PickedFiles.readChunk(token, buffer));
+        assertArrayEquals(new byte[] { 1, 2 }, buffer);
+        PickedFiles.finishChannelRead(channel);
+        assertFalse(opened.get(1).closed);
+        assertEquals(2, PickedFiles.readChunk(token, buffer));
+        assertArrayEquals(new byte[] { 3, 4 }, buffer);
+        assertEquals(0, PickedFiles.readChunk(token, buffer));
+        assertTrue(opened.get(1).closed);
+        assertNull(PickedFiles.take(token));
+    }
+
+    @Test
+    public void receiptAcknowledgementReleasesSourceAndReader() throws Exception {
+        WatchedStream stream = new WatchedStream(new byte[] { 1 });
+        String token = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> stream)).get(0);
+        InputStream channel = PickedFiles.openForChannel(token);
+        PickedFiles.release(token);
+        PickedFiles.finishChannelRead(channel);
+        assertTrue(stream.closed);
+        assertNull(PickedFiles.take(token));
+    }
+
+    @Test
+    public void failedChannelReadReleasesSourceAndReader() throws Exception {
+        boolean[] closed = { false };
+        InputStream stream = new InputStream() {
+            @Override public int read() throws java.io.IOException {
+                throw new java.io.IOException("provider read failed");
+            }
+            @Override public void close() { closed[0] = true; }
+        };
+        String token = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> stream)).get(0);
+        InputStream channel = PickedFiles.openForChannel(token);
+        try {
+            PhotoPickChannel.readFully(channel);
+            fail("expected provider failure");
+        } catch (java.io.IOException error) {
+            assertEquals("provider read failed", error.getMessage());
+            PickedFiles.release(token);
+        } finally {
+            PickedFiles.finishChannelRead(channel);
+        }
+        assertTrue(closed[0]);
+        assertEquals(-1, PickedFiles.readChunk(token, new byte[2]));
+    }
+
+    @Test
+    public void openingAnOldSourceCannotReplaceANewerPickReader() throws Exception {
+        WatchedStream old = new WatchedStream(new byte[] { 1 });
+        WatchedStream next = new WatchedStream(new byte[] { 2, 3, 4 });
+        String[] nextToken = { null };
+        String oldToken = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> {
+            nextToken[0] = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> next)).get(0);
+            assertEquals(2, PickedFiles.readChunk(nextToken[0], new byte[2]));
+            return old;
+        })).get(0);
+        assertNull(PickedFiles.openForChannel(oldToken));
+        assertTrue(old.closed);
+        assertFalse(next.closed);
+        assertEquals(1, PickedFiles.readChunk(nextToken[0], new byte[2]));
+        assertTrue(next.closed);
+    }
+
+    @Test
+    public void newPickClosesChannelAndLateCompletionCannotCloseNewChunkReader() throws Exception {
+        WatchedStream old = new WatchedStream(new byte[] { 1 });
+        String oldToken = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> old)).get(0);
+        InputStream channel = PickedFiles.openForChannel(oldToken);
+        WatchedStream next = new WatchedStream(new byte[] { 2, 3, 4 });
+        String nextToken = PickedFiles.hold(Collections.<PickedFiles.Source>singletonList(() -> next)).get(0);
+        assertTrue(old.closed);
+        assertEquals(2, PickedFiles.readChunk(nextToken, new byte[2]));
+        PickedFiles.finishChannelRead(channel);
+        PickedFiles.release(oldToken);
+        assertFalse(next.closed);
+        assertEquals(1, PickedFiles.readChunk(nextToken, new byte[2]));
+        assertTrue(next.closed);
+    }
+
 }
