@@ -44,6 +44,7 @@
   import { activeEpisodesAt, episodesWithNoDoseLogged } from '$lib/data/regimenEpisode';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
+  import { dosesPerUnit } from '$lib/data/stockProjection';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { areaQuiet } from '$lib/data/areaState';
@@ -1373,7 +1374,7 @@
             </span>
             {#if stockRow}
               <span class="dose-chip-sub">
-                {stockRemainingLabel(stockRow.projection.remaining - 1, stockRow.entry.unit)}
+                {stockRemainingLabel(stockRow.projection.remaining - 1 / dosesPerUnit(stockRow.entry), stockRow.entry.unit)}
               </span>
             {/if}
           </span>

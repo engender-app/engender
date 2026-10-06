@@ -71,7 +71,8 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
       openedEpochDay: null,
       inUseWindowDays: null,
       inUseEndEpochDay: null,
-      leadTimeDays: null
+      leadTimeDays: null,
+      dosesPerUnit: null
     }
   ]);
 });
@@ -632,4 +633,28 @@ test('saving with an id that names no entry refuses rather than inventing one', 
     /unknown stock entry/
   );
   assert.deepEqual(await journal.stock.getEntries(), []);
+});
+
+/* Doses per unit (after-release ticket 01, L03-04): stored on the entry and
+   divided into the projection, so two vials at five doses each last ten. */
+
+test('doses per unit round-trips and divides each dose into the remaining count', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol valerate');
+  await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: 19000, dosesPerUnit: 5 });
+  for (const day of [19000, 19007, 19014]) {
+    await journal.doses.upsertDose({ timestamp: at(day), route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+
+  const [row] = await journal.stock.getProjections(19020);
+
+  assert.equal(row.entry.dosesPerUnit, 5);
+  assert.equal(row.projection.remaining, 1.4);
+  assert.equal(row.projection.runOutEpochDay, 19020 + 49);
+});
+
+test('an entry saved without doses per unit reads back null, one dose per unit', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 30, unit: 'pills', recordedEpochDay: 19000 });
+  assert.equal((await journal.stock.getEntries())[0].dosesPerUnit, null);
 });
