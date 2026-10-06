@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { get } from 'node:http';
 import { preview } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 import { serveBuild } from './serve-build.mjs';
@@ -57,6 +58,15 @@ try {
       passed(`vite preview serves the joined shell and selects ${saved}`);
       await context.close();
     }
+    // Serving build/ must not skip Vite's host check (DNS rebinding).
+    const rebound = await new Promise((resolve, reject) => {
+      get(vitePreview.resolvedUrls.local[0], { headers: { host: 'rebind.example' } }, (response) => {
+        response.resume();
+        resolve(response.statusCode);
+      }).on('error', reject);
+    });
+    assert.equal(rebound, 403);
+    passed('vite preview still refuses a foreign Host header');
   } finally {
     await vitePreview.close();
   }
