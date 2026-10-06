@@ -324,7 +324,7 @@
           weekday: 'long',
           day: 'numeric',
           month: 'long',
-          ...(crossesCalendarYear(epochDay, todayEpochDay()) ? { year: 'numeric' } : {})
+          ...(crossesCalendarYear(epochDay, currentDay()) ? { year: 'numeric' } : {})
         })}
     screen="day"
     back="/calendar"

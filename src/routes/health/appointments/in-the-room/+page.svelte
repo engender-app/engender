@@ -38,7 +38,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { currentDay } from '$lib/stores/today.svelte';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { appointmentsOnDay, chosenAppointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
   import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
@@ -55,7 +55,10 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const today = $derived(currentDay());
+  /* The day the visit opened on, held on purpose: an appointment that runs
+     past midnight is still the one in the room, and following the clock
+     would drop the chosen appointment and the answer being typed. */
+  let today = $state(todayEpochDay());
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
