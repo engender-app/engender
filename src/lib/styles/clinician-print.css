@@ -39,7 +39,7 @@
 }
 
 .dossier-profile-value {
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   font-weight: var(--weight-bold);
   color: var(--text);
 }
@@ -96,7 +96,7 @@
 .dossier-table th {
   background: var(--surface-2);
   color: var(--text);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
   padding: var(--space-2) var(--space-3);
   border-bottom: 2px solid var(--hairline);
   white-space: nowrap;
