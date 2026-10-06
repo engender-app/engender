@@ -216,7 +216,7 @@
           {@const role = roleAt(activeFlag.roles, p.roleIndex)}
           <button
             type="button"
-            class="contextual-chip presentation-chip press"
+            class="contextual-chip presentation-chip hit-floor press"
             class:is-active={editor.presentationId === p.id}
             {...roleAttrs(role)}
             role="radio"

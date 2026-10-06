@@ -187,7 +187,7 @@
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     {#if action.href}
       <a
-        class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
+        class={action.text ? 'btn btn-soft kit-tile-act hit-floor press' : 'btn btn-soft icon-btn kit-tile-act hit-floor press'}
         href={action.href}
         aria-label={action.label}
         {...action.attrs}
@@ -198,7 +198,7 @@
     {:else}
       <button
         type="button"
-        class={action.text ? 'btn btn-soft kit-tile-act press' : 'btn btn-soft icon-btn kit-tile-act press'}
+        class={action.text ? 'btn btn-soft kit-tile-act hit-floor press' : 'btn btn-soft icon-btn kit-tile-act hit-floor press'}
         aria-label={action.label}
         onclick={runTileAction}
         {...action.attrs}

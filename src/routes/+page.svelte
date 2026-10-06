@@ -1581,14 +1581,15 @@
      becomes a route, and a chevron pointing right would promise the
      opposite. It names what it holds so you can tell whether to open it.
 
-     Full width and 44px tall: it is the control for everything the cap left
-     out, and the touch floor applies to it like any other row. */
+     Full width and the touch floor tall: it is the control for everything
+     the cap left out, and the floor applies to it like any other row. It
+     was 44px under a comment calling that the floor (after-release 18). */
   .home-fold {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     width: 100%;
-    min-height: 44px;
+    min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: 1px solid var(--outline);

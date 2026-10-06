@@ -1331,9 +1331,9 @@ describe('the cap on animating layout', () => {
   const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string }[] = [
     {
       selector: "[data-nav-pill='bar']",
-      props: ['left', 'right'],
+      props: ['left', 'right', 'top', 'bottom'],
       reason:
-        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling'
+        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling. Top and bottom move only in the two-row bar large text brings (after-release 18), the same box crossing rows'
     },
     {
       selector: "[data-nav-pill='rail']",
@@ -1501,7 +1501,7 @@ describe("the travelling indicators' shared mechanic", () => {
   const fallbackOf = (word: string) => /^var\(\s*--[\w-]+\s*,\s*([\s\S]+)\)$/.exec(word)?.[1]?.trim();
 
   const PILLS: { sheet: string; prelude: string; props: string[] }[] = [
-    { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='bar']", props: ['left', 'right'] },
+    { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='bar']", props: ['left', 'right', 'top', 'bottom'] },
     { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='rail']", props: ['top', 'bottom'] },
     { sheet: 'src/lib/styles/components.css', prelude: '.segment-pill', props: ['left', 'right'] }
   ];
