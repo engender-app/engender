@@ -30,7 +30,8 @@
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
   import { regimenEsterNote, type ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
   import { resize } from '$lib/motion/reveal';
-  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
   import '$lib/styles/clinician-print.css';
 
@@ -75,6 +76,11 @@
       : range;
   };
 
+  /* A regimen episode's route is free text (types.ts), a dose's is the
+     closed set; the label falls back to the text itself for a route the
+     set does not know. */
+  const episodeRoute = (route: string) => routeLabel(route as DoseRoute);
+
   const siteOf = (dose: DoseEvent): string | null => {
     if (isInjectionDose(dose)) return dose.injectionSite ? injectionSiteLabel(dose.injectionSite) : null;
     if (isTopicalDose(dose)) return dose.applicationSite ? applicationSiteLabel(dose.applicationSite) : null;
@@ -84,45 +90,21 @@
   /* The profile card's motion (after-release 22). Pronouns and a date of
      birth come and go as the person types them in the controls sheet, so
      a row arrives in, or leaves, the middle of a grid that reflows around
-     it - sideways too, once the card is wide enough for columns. The row
-     itself only fades; the rows it displaces travel from where they were
-     painted (measured before the update, released after it, the way
-     reorder.svelte.ts carries a list, in two axes here); and the card's
-     height follows through `resize`. A leaving row is lifted out of the
-     flow at its own place for its fade, so the rest can travel at once
-     rather than after it has gone. */
+     it - sideways too, once the card is wide enough for columns. The card
+     is the surface, and it only moves: its height follows through
+     `resize`, and the rows it displaces travel from where they were
+     painted (reorder.svelte.ts's FLIP, in both axes). The row that came or
+     went is content on that surface, so it crossfades rather than sliding
+     or clipping (ADR-0078's object rule binds the surface; a clip on a
+     grid cell would cut the label and value apart mid-reveal). A leaving
+     row is lifted out of the flow at its own place for its fade, so the
+     rest can travel at once rather than after it has gone. */
   let profileGrid = $state<HTMLElement>();
-  const profileItems = () =>
-    profileGrid ? [...profileGrid.querySelectorAll<HTMLElement>('[data-profile-item]')] : [];
-  let profileBefore = new Map<string, DOMRect>();
-  const profileKey = () => [dossier.demographics?.pronouns?.trim(), dossier.demographics?.dob];
-
-  $effect.pre(() => {
-    profileKey();
-    profileBefore = new Map(profileItems().map((el) => [el.dataset.profileItem!, el.getBoundingClientRect()]));
-  });
-
-  $effect(() => {
-    profileKey();
-    if (isReducedMotion()) return;
-    const moved: HTMLElement[] = [];
-    for (const el of profileItems()) {
-      const from = profileBefore.get(el.dataset.profileItem!);
-      if (!from || el.dataset.leaving !== undefined) continue;
-      const to = el.getBoundingClientRect();
-      if (Math.abs(from.left - to.left) < 0.5 && Math.abs(from.top - to.top) < 0.5) continue;
-      el.style.transition = 'none';
-      el.style.translate = `${from.left - to.left}px ${from.top - to.top}px`;
-      moved.push(el);
-    }
-    if (moved.length)
-      requestAnimationFrame(() => {
-        for (const el of moved) {
-          el.style.transition = '';
-          el.style.translate = '';
-        }
-      });
-  });
+  travelOnChange(
+    () => (profileGrid ? [...profileGrid.querySelectorAll<HTMLElement>('[data-profile-item]')] : []),
+    (el) => el.dataset.profileItem ?? '',
+    () => [dossier.demographics?.pronouns?.trim(), dossier.demographics?.dob]
+  );
 
   /* The arriving row waits for half the travel before it fades in, so its
      text lands in the gap the displaced rows have opened rather than over
@@ -136,7 +118,6 @@
 
   function profileLeave(node: HTMLElement) {
     const { offsetTop, offsetLeft, offsetWidth } = node;
-    node.dataset.leaving = '';
     Object.assign(node.style, {
       position: 'absolute',
       top: `${offsetTop}px`,
@@ -161,8 +142,9 @@
 
 <!-- A date in a table cell never breaks between its words on screen ("11 /
      Jul / 2026" stacked one word a line at 390, after-release 22). Print
-     keeps its own wrapping: clinician-print.css scopes the rule to screen. -->
-{#snippet date(epochDay: number)}<span class="dossier-date">{dayShort(epochDay)}</span>{/snippet}
+     keeps its own wrapping: clinician-print.css scopes the rule to screen.
+     `after` keeps a list's comma on its date's line. -->
+{#snippet date(epochDay: number, after = '')}<span class="dossier-date">{dayShort(epochDay)}{after}</span>{/snippet}
 
 {#snippet truncateNote(hidden: number)}
   <p class="dossier-truncate-note no-print" data-dossier-truncate>
@@ -243,7 +225,7 @@
                     {#if ester}<span class="muted small">({ester})</span>{/if}
                   </td>
                   <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td data-label={m.regimen_route_label()}>{routeLabel(ep.route as DoseRoute)}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(ep.route)}</td>
                   <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
                   <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
@@ -283,7 +265,7 @@
                       : ''}
                   </td>
                   <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td data-label={m.regimen_route_label()}>{routeLabel(ep.route as DoseRoute)}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(ep.route)}</td>
                   <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
                   <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
@@ -411,7 +393,7 @@
             <tbody>
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td data-label={m.regimen_route_label()}>{routeLabel(rd.route as DoseRoute)}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(rd.route)}</td>
                   <td data-label={m.exposure_route_days_title()} class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
                 </tr>
               {/each}
@@ -443,7 +425,7 @@
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td data-label={m.regimen_drug_label()}><strong>{regd.drug}</strong></td>
                   <td data-label={m.regimen_dose_label()} class="num">{regd.dose} {regd.doseUnit}</td>
-                  <td data-label={m.regimen_route_label()}>{routeLabel(regd.route as DoseRoute)}</td>
+                  <td data-label={m.regimen_route_label()}>{episodeRoute(regd.route)}</td>
                   <td data-label={m.exposure_regimen_days_title()} class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
                 </tr>
               {/each}
@@ -676,7 +658,7 @@
                 </td>
                 <td data-label={m.surgery_consults_title()}>
                   {#if proc.consults.length}
-                    {#each proc.consults as consult, k (consult)}{k > 0 ? ' ' : ''}<span class="dossier-date">{dayShort(consult.epochDay)}{k < proc.consults.length - 1 ? ',' : ''}</span>{/each}
+                    {#each proc.consults as consult, k (consult)}{k > 0 ? ' ' : ''}{@render date(consult.epochDay, k < proc.consults.length - 1 ? ',' : '')}{/each}
                   {:else}
                     —
                   {/if}

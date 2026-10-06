@@ -129,7 +129,7 @@ export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] 
   return [...new Set(episodes.map((episode) => episode.drug))].sort((a, b) => a.localeCompare(b));
 }
 
-const words = (text: string) =>
+const spacedWords = (text: string) =>
   ` ${text.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
 
 /** The ester a regimen row should name beside its drug, or null when there
@@ -140,7 +140,7 @@ const words = (text: string) =>
 export function regimenEsterNote(drug: string, ester: string | null): string | null {
   const note = ester?.trim();
   if (!note) return null;
-  return words(drug).includes(words(note)) ? null : note;
+  return spacedWords(drug).includes(spacedWords(note)) ? null : note;
 }
 
 /** Assembles all requested sections for the given range into a structured

@@ -208,6 +208,7 @@
       content: none;
     }
 
+    /* Said again because the rule above outranks the plain one below. */
     .dossier-table:has(th:nth-child(3)) tr.dossier-row-overflow {
       display: none;
     }

@@ -231,7 +231,7 @@ describe('stacked rows at phone width (after-release 22)', () => {
   });
 
   it('keeps a table date on one line on screen only', () => {
-    expect(dossierComponent).toContain('<span class="dossier-date">{dayShort(epochDay)}</span>');
+    expect(dossierComponent).toContain('<span class="dossier-date">{dayShort(epochDay)}{after}</span>');
     expect(screenBlock).toMatch(/\.dossier-date\s*{\s*white-space:\s*nowrap;/);
   });
 });
