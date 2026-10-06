@@ -627,8 +627,18 @@
                beside it: the mark is the label. One per series, because each
                line ends where its own metric was last logged and those are
                not the same day. -->
-          {#if path.last}<circle class="kit-area-ring" cx={path.last.x} cy={path.last.y} r="5" />{/if}
+          {#if path.last}
+            <circle class="kit-area-ring-casing" cx={path.last.x} cy={path.last.y} r="5" />
+            <circle class="kit-area-ring" cx={path.last.x} cy={path.last.y} r="5" />
+          {/if}
           {#if overlayPath?.last}
+            <circle
+              class="kit-area-ring-casing is-overlay"
+              cx={overlayPath.last.x}
+              cy={overlayPath.last.y}
+              r="5"
+              in:fade={{ duration: motionDuration('--dur-med') }}
+            />
             <circle
               class="kit-area-ring is-overlay"
               cx={overlayPath.last.x}
@@ -792,6 +802,18 @@
     stroke-width: 4;
     stroke-linejoin: miter;
     stroke-linecap: square;
+  }
+
+  /* The ring's ground and edge, under the ring: the card colour inside it,
+     and the line's edge a pixel either side of the 2px ring. */
+  .kit-area-ring-casing {
+    fill: var(--surface);
+    stroke: var(--role-edge);
+    stroke-width: 4;
+  }
+
+  .kit-area-ring-casing.is-overlay {
+    stroke: var(--role-2-edge);
   }
 
   .kit-area-casing.is-overlay {

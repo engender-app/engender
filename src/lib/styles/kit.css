@@ -2237,10 +2237,11 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 /* The latest reading, ringed on the line rather than annotated beside it:
-   the mark is the label. Filled with the card colour so the line does not
-   show through it. */
+   the mark is the label. The card colour inside it, which keeps the line
+   from showing through, is its casing's fill (AreaChart.svelte), so the
+   casing's edge can show on both sides of the ring. */
 .kit-area-ring {
-  fill: var(--surface);
+  fill: none;
   stroke: var(--role-draw);
   stroke-width: 2;
 }
