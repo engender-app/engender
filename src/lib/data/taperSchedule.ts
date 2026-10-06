@@ -56,4 +56,31 @@ export function expectedSessionDays(
   return days;
 }
 
+/** A typed-in number, or null when nothing usable was typed. A
+    `type=number bind:value` field hands over null once emptied and '' before
+    it was ever touched, and Number() reads both as 0. */
+function typedNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+/** The schedule editor's stages as a taper stores them, or null when any
+    row is unfinished (dilation/+page.svelte). A frequency of 0 is a real
+    rest stage, so only a missing or negative one is refused, and a stage
+    needs at least one day. A cleared frequency used to read as 0 and save
+    a rest stage nobody asked for (after-release ticket 01). */
+export function stagesFromInput(inputs: readonly { everyNDays: unknown; days: unknown }[]): TaperStage[] | null {
+  if (inputs.length === 0) return null;
+  const stages: TaperStage[] = [];
+  for (const input of inputs) {
+    const everyNDays = typedNumber(input.everyNDays);
+    const days = typedNumber(input.days);
+    if (everyNDays === null || everyNDays < 0 || days === null || days <= 0) return null;
+    stages.push({ everyNDays, days });
+  }
+  return stages;
+}
+
 export type { TaperStage };
