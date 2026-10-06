@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 3dp each side makes the 6dp gap between neighbouring pills; 4dp above
-     and below brings the 48dp view down to a 40dp pill. -->
+     and below brings the 48dp view down to a 40dp pill. The insets are
+     left and right while the layouts pad start and end, so keep them
+     equal or a right-to-left layout moves the pills. -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:insetLeft="3dp"
     android:insetRight="3dp"
