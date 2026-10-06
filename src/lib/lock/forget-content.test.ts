@@ -2,7 +2,7 @@
    (after-release ticket 10; audit L09-02, L09-03 and SEC-08). */
 
 import { afterEach, expect, it, vi } from 'vitest';
-import { forgetJournalContent } from './forget-content.ts';
+import { forgetJournalContent, forgetOnLock } from './forget-content.ts';
 import { handOverQuery, holdSearch, takeHandedQuery, takeHeldSearch, EMPTY_SEARCH } from '../navigation/searchReturn.ts';
 import { holdRoomAnswers, roomAnswersFor } from '../stores/inTheRoom.ts';
 import { peaksFor } from '../media/peaks.ts';
@@ -50,4 +50,21 @@ it('still forgets the rest where session storage refuses', () => {
   holdRoomAnswers({ appointmentId: 'appt-2', answers: [{ question: 'Q', answer: 'A' }], byItemId: { i: 'A' } });
   expect(() => forgetJournalContent()).not.toThrow();
   expect(roomAnswersFor('appt-2')).toEqual([]);
+});
+
+it('runs what a holder registered, so the lock never has to import the holder', () => {
+  stubStorage();
+  let held: string | null = 'a held answer';
+  forgetOnLock(() => {
+    held = null;
+  });
+  forgetJournalContent();
+  expect(held).toBeNull();
+});
+
+it('takes a search held before a reload, when nothing has loaded the search module yet', () => {
+  stubStorage();
+  sessionStorage.setItem('engender-search-return', JSON.stringify({ ...EMPTY_SEARCH, query: 'from before the reload' }));
+  forgetJournalContent();
+  expect(sessionStorage.getItem('engender-search-return')).toBeNull();
 });
