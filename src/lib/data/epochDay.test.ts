@@ -11,6 +11,7 @@ import { test, expect } from 'vitest';
 import {
   todayEpochDay,
   epochDayFromLocalDate,
+  epochDayFromCalendarDate,
   localDateFromEpochDay,
   epochDayFromTimestamp,
   startOfDayTimestamp,
@@ -447,4 +448,13 @@ test(`relativeDayFromToday is "passed" rather than clamped for a day already gon
 
 test(`relativeDayFromToday is "passed" with days: 1 for yesterday under TZ=${tz}`, () => {
   expect(relativeDayFromToday(99, 100)).toEqual({ kind: 'passed', days: 1 });
+});
+
+
+test('calendar fields count skipped local dates and avoid the year 0–99 remapping', () => {
+  expect(epochDayFromCalendarDate(2011, 12, 30)).toBe(15338);
+  expect(epochDayFromCalendarDate(1970, 1, 1)).toBe(0);
+  expect(epochDayFromCalendarDate(0, 1, 1)).toBe(-719528);
+  expect(epochDayFromCalendarDate(2025, 2, 29)).toBeNull();
+  expect(epochDayFromCalendarDate(2024, 2, 29)).toBe(19782);
 });
