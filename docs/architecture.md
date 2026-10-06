@@ -534,7 +534,7 @@ The things the app protects are journal content (the database, photos, voice, vi
 
 | Adversary | Design answer |
 |---|---|
-| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents gets no screenshot. Disguise renames the app. |
+| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless screen capture is off. Disguise renames the app. |
 | Someone holding the unlocked phone | Lock timing, PIN throttle, sensitive-clipboard clearing. |
 | Someone holding the locked phone | Data is encrypted at rest. The data key is behind Keystore or an Argon2id wrap. Launch routes are nonce-gated. |
 | Copy of stored app data | Database and files are ciphertext. Android Keystore keys are outside app-private files. A whole browser-profile copy can include the IndexedDB keys beside the web wraps; non-extractability alone does not protect that copy. |
@@ -664,7 +664,7 @@ stateDiagram-v2
 - `allowBackup="false"`, plus [data_extraction_rules.xml](../android/app/src/main/res/xml/data_extraction_rules.xml) excluding every domain.
 - No `INTERNET` permission. The declared permissions are notifications, exact alarms, boot-completed, audio record and settings, and camera.
 - `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`. Capture output is deleted after consumption or cancellation, at the next app start, and when device stores are wiped.
-- Recents: `setRecentsScreenshotEnabled(false)` on Android 13+ whenever a lock exists, and `FLAG_SECURE` on leave below 13.
+- Screen capture and Recents follow one per-device switch, `allowScreenCapture` (on by default). On, screenshots and the Recents preview both show, with or without a lock. Off, `FLAG_SECURE` hides both, and Android 13+ also gets `setRecentsScreenshotEnabled(false)`.
 - Notifications use `VISIBILITY_PRIVATE`, PendingIntents are immutable, and Capacitor logging is off (`loggingBehavior: 'none'`).
 - Launch routes need a nonce (section 9).
 
