@@ -10,9 +10,9 @@
    person came back.
 
    Two calls, and they are separate on purpose rather than for tidiness.
-   `readReturnGap` is one query - eighteen bounded `MAX`es through
-   `lastWrite.ts` - and almost every boot ends there, because almost every
-   boot is not a return. `readWhatIsWaiting` then costs five reads and is
+   `readReturnGap` asks for the bounded last writes. A gap reaching the
+   three-week floor also asks for distinct entry and dose days in the last
+   year, in one bounded query, to measure the journal's rhythm. `readWhatIsWaiting` then costs five reads and is
    asked *about a gap it is handed*, so the caller decides which gap it is
    asking about and can go on asking about the same one.
 
@@ -85,7 +85,10 @@ export async function readReturnGap(
   areas: Pick<ComingBackAreas, 'lastWrite'>,
   todayEpochDay: number
 ): Promise<number | null> {
-  return returnGap(await areas.lastWrite.getLastWrites(todayEpochDay), todayEpochDay);
+  const lastWrites = await areas.lastWrite.getLastWrites(todayEpochDay);
+  // A short gap cannot meet even the floor, so avoid its history read.
+  if (returnGap(lastWrites, todayEpochDay) === null) return null;
+  return returnGap(lastWrites, todayEpochDay, await areas.lastWrite.getWritingDays(todayEpochDay));
 }
 
 /** What is waiting in `sinceEpochDay`'s gap, or null when nothing is. */

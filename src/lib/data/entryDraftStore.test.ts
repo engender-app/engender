@@ -236,3 +236,10 @@ test('clear takes the mirror without waiting for a key', () => {
   assert.equal(values.has(ENTRY_DRAFT_STORE_KEY), false);
   vi.unstubAllGlobals();
 });
+
+for (const field of ['removedRecordingIds', 'removedVideoIds', 'tags'] as const) {
+  test(`malformed draft ${field} is discarded before reaching editor`, () => {
+    assert.equal(isPersistedEntryDraft({ ...draft({}), [field]: undefined }), false);
+    assert.equal(isPersistedEntryDraft({ ...draft({}), [field]: [12] }), false);
+  });
+}

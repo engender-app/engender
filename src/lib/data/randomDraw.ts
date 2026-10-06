@@ -21,12 +21,14 @@ export function drawRandomEntry(
   if (hits.length === 0) return null;
 
   const remaining = hits.filter((entry) => !drawnIds.has(entry.id));
-  // Exhausted (or a first draw): every entry is eligible again, the ticket's
-  // own "until the set is exhausted or the question changes".
-  const pool = remaining.length > 0 ? remaining : hits;
+  // Start another cycle without repeating its last draw across the boundary.
+  const exhausted = remaining.length === 0;
+  const drawn = [...drawnIds];
+  const lastId = drawn[drawn.length - 1];
+  const pool = exhausted && hits.length > 1 ? hits.filter(entry => entry.id !== lastId) : exhausted ? hits : remaining;
 
   const picked = pool[Math.floor(random() * pool.length)];
-  const nextDrawn = pool === hits ? new Set<number>() : new Set(drawnIds);
+  const nextDrawn = exhausted ? new Set<number>() : new Set(drawnIds);
   nextDrawn.add(picked.id);
 
   return { entry: picked, drawnIds: nextDrawn };

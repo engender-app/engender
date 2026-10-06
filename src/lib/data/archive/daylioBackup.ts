@@ -216,11 +216,11 @@ function zipNames(reader: ZipReader): string[] {
     the reader matches names literally, so the raw, possibly leading-slash
     form has to be found first. Decompresses that member alone, and only up
     to the shared reader's ceiling, which is what keeps a preview off the
-    500 photos it is not reading, and off a member declaring more than
+    500 full attachments it is not retaining, and off a member declaring more than
     this app will hold in memory at once. */
-function zipRead(reader: ZipReader, name: string): Uint8Array | null {
+function zipRead(reader: ZipReader, name: string, prefix = false): Uint8Array | null {
   const raw = reader.names().find((candidate) => zipName(candidate) === name);
-  return raw ? reader.read(raw) : null;
+  return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
 }
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:
@@ -451,8 +451,9 @@ export async function daylioBackupPreview(
     assetPaths.set(id, path);
   }
 
-  const readAsset = async (id: number): Promise<Uint8Array> => {
-    const bytes = zipRead(reader, assetPaths.get(id)!);
+  const readAsset = async (id: number, prefix = false): Promise<Uint8Array> => {
+    const path = assetPaths.get(id)!;
+    const bytes = zipRead(reader, path, prefix);
     if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };
@@ -491,6 +492,7 @@ export async function daylioBackupPreview(
 
   const groups = new Map<string, ArchiveTagGroup>();
   const tagIds = new Map<number, string>();
+  const createdTagIds = new Set<string>();
   /* Rows the file holds that carry no name of their own. Nothing can be
      imported from a tag or a milestone that is only an id, so they are
      counted for the preview rather than dropped in silence - and the ids
@@ -532,7 +534,10 @@ export async function daylioBackupPreview(
       groups.set(key, group);
     }
     const tagId = await derivedUuid(['daylio-tag', foldText(label)]);
-    group.tags.push({ id: tagId, label, builtIn: false, hidden: false } satisfies ArchiveTag);
+    if (!createdTagIds.has(tagId)) {
+      group.tags.push({ id: tagId, label, builtIn: false, hidden: false } satisfies ArchiveTag);
+      createdTagIds.add(tagId);
+    }
     tagIds.set(id, tagId);
   }
   journal.tagGroups = [...groups.values()];
@@ -668,7 +673,7 @@ export async function daylioBackupPreview(
       mood,
       note,
       dims,
-      tags,
+      tags: [...new Set(tags)],
       photos,
       recordings,
       videos: [],
@@ -792,10 +797,10 @@ export async function daylioBackupPreview(
 async function planAsset(
   id: number,
   asset: AssetRow,
-  readAsset: (id: number) => Promise<Uint8Array>,
+  readAsset: (id: number, prefix?: boolean) => Promise<Uint8Array>,
   missing: Set<number>
 ): Promise<{ kind: 'photo' | 'audio'; id: string; fileName: string; asset: DaylioAsset } | null> {
-  const bytes = await readAsset(id);
+  const bytes = await readAsset(id, true);
   const uuid = await derivedUuid(['daylio-asset', asset.checksum]);
 
   if (asset.type === AUDIO_ASSET) {

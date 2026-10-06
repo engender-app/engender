@@ -32,7 +32,7 @@
 import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
-import type { WebSqlite } from './sqlocal-driver.ts';
+import type { WebSqlite } from './driver.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
 
 /** What every sequenced call carries (ADR-0089). */
