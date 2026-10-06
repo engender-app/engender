@@ -15,13 +15,15 @@ walkthrough, and 125 deletions. Deleted probes are still in history, and a
 few kept files still name them as the source of a pattern:
 `git log --all -- tests/<name>.mjs` finds the last version.
 
-Most of these start their own Vite server or `vite preview`. Anything that
+Most of these start their own Vite server or serve a build. Anything that
 says "demo build" serves `build/`, which has to be a `VITE_DEMO=1` build. A
-probe that takes `--root <built tree>` starts its preview through
-`previewBuild` in browser-harness.mjs, which changes into that tree first:
-SvelteKit's preview reads the built server from the working directory, so a
-`--root` alone used to serve the checkout the probe was started in (ticket
-226).
+probe that takes `--root <built tree>` serves it through `previewBuild` in
+browser-harness.mjs, which changes into that tree first (ticket 226) and
+serves `build/index.html` itself under the production isolation headers
+(`serve-build.mjs`, after-release ticket 31). Until then it was `vite
+preview`, whose document had no CSP and no held module hints. A probe that
+imports vite's `preview` directly, and the walkthrough, still get that
+document.
 
 CI's Node and Android jobs use `scripts/run-ci-checks.mjs`. Independent
 checks continue after a failure; failed prerequisites leave named blocked
@@ -253,7 +255,7 @@ on this page ran green on 2026-09-23.
 ## Helpers
 
 Imported or read by the probes above, never run on their own:
-`browser-harness` (Chromium launch, reporting, `settlePage`),
+`browser-harness` (Chromium launch, reporting, `settlePage`), `serve-build` (build/ as production serves it),
 `cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,

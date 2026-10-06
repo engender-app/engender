@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-palette="trans" data-mood-preset="teal" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
+<html lang="en" data-splash data-palette="trans" data-mood-preset="teal" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
   <head>
     <meta charset="utf-8" />
     <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report anything
@@ -101,14 +101,30 @@
          not sharing the connection with ninety-eight modules nothing waits
          for. They are given back once the document has parsed and the first
          frame has had its turn. Outside the try above, so a browser with no
-         storage still loads its modules. */
-      addEventListener('DOMContentLoaded', () => {
-        requestAnimationFrame(() =>
-          setTimeout(() => {
-            for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
-          })
-        );
-      });
+         storage still loads its modules.
+
+         Over HTTP/1.1 there is no one connection to share: the browser opens
+         six, and holding the hints only queued the modules behind the first
+         frame, which put the first screen 0.3 s later (after-release ticket
+         31, audit PERF-03). There each hint is given back as the parser adds
+         it. Only HTTP/1.x is named, so a page with no protocol to read (the
+         offline shell, the Android WebView) keeps the hold it always had. */
+      {
+        const give = () => {
+          for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
+        };
+        const protocol = globalThis.performance?.getEntriesByType?.('navigation')[0]?.nextHopProtocol;
+        if (protocol === 'http/1.1' || protocol === 'http/1.0') {
+          const watch = new MutationObserver(give);
+          watch.observe(document.documentElement, { childList: true, subtree: true });
+          addEventListener('DOMContentLoaded', () => {
+            watch.disconnect();
+            give();
+          });
+        } else {
+          addEventListener('DOMContentLoaded', () => requestAnimationFrame(() => setTimeout(give)));
+        }
+      }
     </script>
     <style>
       /* The first frame (phase 14 pre-release ticket 13): the ground and the
@@ -119,9 +135,11 @@
          are generated into the block below from palettes.css
          (npm run render:splash), and src/lib/theme/splash.ts says how.
 
-         The mark never moves. The handover is opacity only: lib/splash.ts
-         adds .is-leaving when the app mounts and .is-answered once boot has
-         answered, and takes the element out when the fade is done. It is fixed and inert, so nothing under it
+         The mark never moves. The handover is opacity only, on the blind's
+         soft ease-out (Alicja picked it over a rising edge in after-release
+         ticket 31): lib/splash.ts adds .is-leaving and .is-answered once boot
+         has answered and its screen is showing, and takes the element out
+         when the fade is done. It is fixed and inert, so nothing under it
          can be missed or blocked, and the ground is the app's own --bg so no
          frame of the fade shows a different one. */
       #splash {
@@ -132,7 +150,7 @@
         place-items: center;
         pointer-events: none;
         background: var(--splash-ground, #f4f8fb);
-        transition: opacity 280ms cubic-bezier(0.2, 0, 0, 1);
+        transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
       }
       #splash i {
         --s: 96px;
@@ -151,17 +169,21 @@
       #splash rect { stroke: var(--splash-ink); }
       #splash.is-leaving { opacity: 0; }
       html[data-disguised] #splash i { display: none; }
-      /* The other handover on the table: the ground lets go as the app
-         mounts, so the screen arrives around the mark, and the mark stays
-         until boot has answered and then fades. */
-      html[data-splash-handover='lead'] #splash {
-        transition: background-color 260ms cubic-bezier(0.2, 0, 0, 1);
+      /* The other half of the crossfade (Alicja, after-release ticket 31:
+         "splash with crossfade"). The app's screen waits at opacity 0 under
+         the first frame and fades in on the same curve and length as the
+         first frame fades out, so no part of it sits at full opacity under
+         a half-transparent mark. The layer that fades is the app root, not
+         the body: the body carries the ground, so the ground never dims.
+         lib/splash.ts sets "leaving" with the answer and takes the
+         attribute off with the element. */
+      html[data-splash] [data-app-root] {
+        opacity: 0;
       }
-      html[data-splash-handover='lead'] #splash i {
-        transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+      html[data-splash='leaving'] [data-app-root] {
+        opacity: 1;
+        transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
       }
-      html[data-splash-handover='lead'] #splash.is-leaving { opacity: 1; background-color: transparent; }
-      html[data-splash-handover='lead'] #splash.is-answered i { opacity: 0; }
 /* splash:begin (generated by scripts/render-splash.mjs, do not edit) */
 #splash{--splash-tile:#FFFFFF;--splash-ink:#000;--splash-radius:15%}
 [data-palette=trans]{--splash-rings:#5BCEFA 0% 17%,#000 17% 20%,#F5A9B8 20% 37%,#000 37% 40%,#FFFFFF 40% 57%,#000 57% 60%,#F5A9B8 60% 77%,#000 77% 80%,#5BCEFA 80% 97%,#000 97% 100%,#FFFFFF 100%}
