@@ -769,25 +769,29 @@
         {#if openGroup === 'what'}
           <div class="disclosed" transition:disclose|local>
             {#if editorNeedsDrugPick}
-              <Field label={m.dose_drug_label()} legend>
-                {#snippet children(id)}
-                  <div class="tag-row" role="group" aria-labelledby={id}>
-                    {#each activeDrugChoices as drug (drug)}
-                      <button
-                        type="button"
-                        class="tag-chip press"
-                        class:is-selected={editor!.drug === drug}
-                        aria-pressed={editor!.drug === drug}
-                        data-dose-drug={drug}
-                        onblur={() => { validationTouched = true; }}
-                        onclick={() => pickDrug(drug)}
-                      >
-                        {drug}
-                      </button>
-                    {/each}
-                  </div>
-                {/snippet}
-              </Field>
+              <!-- No visible legend: the line that opened this group already
+                   asks "Which drug was this?", and a legend under it asked
+                   the same question a second time (audit UX-11). The group
+                   keeps the question as its accessible name. Picking one
+                   answers it, so the chips close their own height then
+                   rather than leaving in one frame. -->
+              <div class="field" transition:disclose|local>
+                <div class="tag-row" role="group" aria-label={m.dose_drug_label()}>
+                  {#each activeDrugChoices as drug (drug)}
+                    <button
+                      type="button"
+                      class="tag-chip press"
+                      class:is-selected={editor!.drug === drug}
+                      aria-pressed={editor!.drug === drug}
+                      data-dose-drug={drug}
+                      onblur={() => { validationTouched = true; }}
+                      onclick={() => pickDrug(drug)}
+                    >
+                      {drug}
+                    </button>
+                  {/each}
+                </div>
+              </div>
             {/if}
 
             <!-- One value, one control. The amount and its unit were two
@@ -1033,12 +1037,19 @@
         </Field>
       {/if}
 
-      {#if validationTouched && !editorCanSave}
+      <!-- Beside Save whenever Save is refused, from the first frame: an
+           injection opens with no site picked and a dose that several
+           regimens could own opens with no drug, and a greyed button with
+           no reason was the whole of what those sheets said (audit UX-11).
+           The fields themselves only turn invalid once they have been left. -->
+      {#if !editorCanSave}
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
-          {#if !editorHasAmount}<p>{m.dose_amount_required()}</p>{/if}
-          {#if editorNeedsDrugPick}<p>{m.dose_drug_required()}</p>{/if}
-          {#if editorIsInjection && !editor.injectionSite}<p>{m.dose_injection_site_required()}</p>{/if}
-          {#if editorIsTopical && !editor.applicationSite}<p>{m.dose_app_site_required()}</p>{/if}
+          <!-- The amount comes with the drug where a regimen sets one, so it
+               is not asked for while the drug still is. -->
+          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+          {#if editorNeedsDrugPick}<p transition:disclose|local>{m.dose_drug_required()}</p>{/if}
+          {#if editorIsInjection && !editor.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
+          {#if editorIsTopical && !editor.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}
         </div>
       {/if}
   {/snippet}

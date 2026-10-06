@@ -570,8 +570,11 @@
       aria-expanded={filtersOpen}
       onclick={() => (filtersOpen = true)}
     >
-      <Icon name="tag" size={20} />
-      <span>{m.search_filters_count({ count: activeFilterChips.length })}</span>
+      <!-- A word and, only once there is one, a count. With an icon and
+           "(0)" this button was 152px and left the field 118px to type in
+           (audit UX-11); the chips under the row already show which
+           filters are on. -->
+      <span>{activeFilterChips.length ? m.search_filters_count({ count: activeFilterChips.length }) : m.search_filters()}</span>
     </button>
   </div>
 
@@ -873,5 +876,8 @@
   .search-controls .search-box {
     flex: 1 1 8rem;
     min-width: 0;
+  }
+  .search-controls [data-filter-toggle] {
+    flex: 0 0 auto;
   }
 </style>

@@ -548,3 +548,40 @@ test('a duplicate key never replaces a ready journal or changes its access mode'
   expect(duplicate.machine.boot).toBe(opened.machine.boot);
   expect(KEY).toEqual(before);
 });
+
+/* A mid-session unlock reaches the reopen through `key-obtained` like every
+   other key, so ticket 29's guard against a second key covers it too. */
+function lockedReady() {
+  const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
+  }, { type: 'journal-opened', journal: {} as never });
+  return reduce(opened.machine, { type: 'journal-closed' }).machine;
+}
+
+test('a key while a web lock has the journal closed reopens it, and nothing else', () => {
+  const unlocked = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'pin', unlocked: true });
+  /* No mark-unlocked: the unlock screen lifts the gate itself once the
+     reopen has answered, inside the app's opening transition. */
+  expect(unlocked.effects).toEqual([{ type: 'reopen-journal', dataKey: KEY }]);
+  expect(unlocked.machine.boot.status).toBe('ready');
+  expect(unlocked.machine.boot.accessMode).toBe('passphrase');
+});
+
+test('a second key while the reopen is under way is the duplicate ticket 29 refuses', () => {
+  const first = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true });
+  const second = reduce(first.machine, { type: 'key-obtained', dataKey: new Uint8Array(32), accessMode: 'passphrase', unlocked: true });
+  expect(second.effects).toEqual([]);
+  expect(second.machine.boot).toBe(first.machine.boot);
+});
+
+test('a reopen that failed can be asked for again, and one that landed cannot', () => {
+  const first = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true });
+  const failed = reduce(first.machine, { type: 'journal-reopen-ended' });
+  expect(failed.machine.boot.journal).toBeNull();
+  expect(reduce(failed.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects)
+    .toEqual([{ type: 'reopen-journal', dataKey: KEY }]);
+
+  const landed = reduce(first.machine, { type: 'journal-reopened', journal: {} as never });
+  expect(reduce(landed.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects)
+    .toEqual([]);
+});
