@@ -86,17 +86,23 @@ export function readPickedOverChannel(token: string): Promise<Uint8Array> | null
       port2.close();
     };
     const timer = setTimeout(() => {
-      close();
-      reject(new PhotoChannelTimeoutError('pick'));
+      try {
+        port1.postMessage('cancel');
+      } finally {
+        close();
+        reject(new PhotoChannelTimeoutError('pick'));
+      }
     }, PHOTO_CHANNEL_TIMEOUT_MS);
 
     port1.onmessage = (event: MessageEvent<ArrayBuffer | string>) => {
       if (settled) return;
-      close();
       if (typeof event.data !== 'string') {
+        port1.postMessage('received');
+        close();
         resolve(new Uint8Array(event.data));
         return;
       }
+      close();
       let failure: PickFailure;
       try {
         failure = JSON.parse(event.data) as PickFailure;

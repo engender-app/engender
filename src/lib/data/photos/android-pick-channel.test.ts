@@ -15,7 +15,7 @@ function fakeNativeChannel(reply: () => ArrayBuffer | string) {
   vi.stubGlobal('androidPhotoPickChannel', {
     postMessage(data: string, transfer: Transferable[]) {
       seen.header = JSON.parse(data);
-      const port = transfer[0] as MessagePort;
+      const port = structuredClone(transfer[0], { transfer: [transfer[0]] }) as MessagePort;
       const answer = reply();
       if (typeof answer === 'string') port.postMessage(answer);
       else port.postMessage(answer, [answer]);
@@ -91,4 +91,42 @@ test('a late pick reply after timeout is ignored', async () => {
   expect(port.onmessage).toBeNull();
   expect(port.close).toHaveBeenCalledTimes(1);
   expect(vi.getTimerCount()).toBe(0);
+});
+
+
+test('receipt acknowledgement reaches native even when JS closes its port immediately', async () => {
+  let received: (value: string) => void;
+  const acknowledgement = new Promise<string>((resolve) => { received = resolve; });
+  vi.stubGlobal('androidPhotoPickChannel', {
+    postMessage(_data: string, transfer: Transferable[]) {
+      const port = structuredClone(transfer[0], { transfer: [transfer[0]] }) as MessagePort;
+      port.onmessage = (event: MessageEvent<string>) => {
+        received(event.data);
+        port.close();
+      };
+      port.postMessage(new Uint8Array([1, 2, 3]).buffer);
+    }
+  });
+  expect(await readPickedOverChannel('received')).toEqual(new Uint8Array([1, 2, 3]));
+  expect(await acknowledgement).toBe('received');
+});
+
+test('timeout cancellation reaches native before the JS port closes', async () => {
+  vi.useFakeTimers();
+  let cancelled: (value: string) => void;
+  const cancellation = new Promise<string>((resolve) => { cancelled = resolve; });
+  vi.stubGlobal('androidPhotoPickChannel', {
+    postMessage(_data: string, transfer: Transferable[]) {
+      const port = structuredClone(transfer[0], { transfer: [transfer[0]] }) as MessagePort;
+      port.onmessage = (event: MessageEvent<string>) => {
+        cancelled(event.data);
+        port.close();
+      };
+    }
+  });
+  const answer = readPickedOverChannel('cancelled');
+  const rejected = expect(answer).rejects.toThrow('timed out');
+  await vi.advanceTimersByTimeAsync(30_000);
+  await rejected;
+  expect(await cancellation).toBe('cancel');
 });
