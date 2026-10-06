@@ -277,10 +277,15 @@
         {#if 'runs' in line}
           <div class="vf-line" in:wipe|global={{ authored: true }}>
             <svg viewBox="0 0 100 {SPARK_HEIGHT}" preserveAspectRatio="none" aria-hidden="true">
+              <!-- Each run on its casing, the edge kit.css's --role-edge
+                   gives a line whose stripe is under 3:1 on the page
+                   (phase 15 ticket 20); transparent where it is not. -->
               {#each line.runs as points, at (at)}
+                <polyline class="vf-casing" {points} vector-effect="non-scaling-stroke" />
                 <polyline class="vf-run" {points} vector-effect="non-scaling-stroke" />
               {/each}
               {#each line.second ?? [] as points, at (at)}
+                <polyline class="vf-casing is-second" {points} vector-effect="non-scaling-stroke" />
                 <polyline class="vf-run is-second" {points} vector-effect="non-scaling-stroke" />
               {/each}
             </svg>
@@ -452,6 +457,24 @@
 
   .vf-run.is-second {
     stroke-dasharray: 7 5;
+  }
+
+  /* A pixel of edge either side of the run, and the dashed run's casing
+     dashed with it: its 7px dashes paint 9px with their square caps, so the
+     casing paints those 9px and leaves the gaps empty (kit.css's
+     .kit-area-casing, which this matches). */
+  .vf-casing {
+    fill: none;
+    stroke: var(--role-edge);
+    stroke-width: 4;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+  }
+
+  .vf-casing.is-second {
+    stroke-linecap: butt;
+    stroke-dasharray: 9 3;
+    stroke-dashoffset: 1;
   }
 
   /* The ring on this take. An element over the plot rather than a circle

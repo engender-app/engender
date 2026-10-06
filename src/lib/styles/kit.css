@@ -2157,6 +2157,9 @@ button.kit-strip-day .kit-strip-cell {
      --accent-2 where a screen hands over no role, which is what a second
      line drawn on a card with no section colour has always taken. */
   --role-2-draw: var(--role-2, var(--accent-2));
+  /* Its line's edge, the same way --role-edge is the first's: handed in
+     only where the stripe needs one (Role.pairedEdge). */
+  --role-2-edge: var(--role-2-edge-in, transparent);
 }
 
 /* The one-column state - a plot with no value gutter beside it - lives in
