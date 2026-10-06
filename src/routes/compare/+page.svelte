@@ -17,7 +17,7 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtNumber } from '$lib/data/dates';
   import { precedingWindow } from '$lib/data/compareStretch';
   import {
     customInclusiveRange,
@@ -139,7 +139,7 @@
   let showShortcut = $derived(originSpan !== null && preceding !== null);
 
   function formatSpanLabel(start: number, end: number): string {
-    return m.wrapped_week_range({
+    return m.compare_period_range({
       from: fmtDay(start, { day: 'numeric', month: 'short' }),
       to: fmtDay(end, { day: 'numeric', month: 'short', year: 'numeric' })
     });
@@ -165,11 +165,11 @@
     if (!range || range.end > today) return null;
     return {
       ...range,
-      label: `${fmtDay(range.start, { day: 'numeric', month: 'short' })} to ${fmtDay(range.end, {
+      label: m.compare_period_range({ from: fmtDay(range.start, { day: 'numeric', month: 'short' }), to: fmtDay(range.end, {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
-      })}`
+      }) })
     };
   }
 
@@ -222,7 +222,7 @@
 
   /* An empty cell says nothing rather than drawing a glyph that stands in
      for a sentence: docs/ui-copy.md has no dashes in it. */
-  const fmtMood = (v: number | null) => (v == null ? '' : v.toFixed(1));
+  const fmtMood = (v: number | null) => (v == null ? '' : fmtNumber(v, { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
   const fmtDimension = (v: number | null) => (v == null ? '' : String(Math.round(v)));
 
   /* What the field shows when it has a date, and what it says when it does

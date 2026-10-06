@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale } from '$lib/data/dates';
   import { m } from '$lib/paraglide/messages';
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
@@ -168,7 +169,7 @@
 
   function stampText(at: number | null): string {
     if (at == null) return m.exp_last_backup_never();
-    return new Date(at).toLocaleString();
+    return new Date(at).toLocaleString(intlLocale());
   }
 
   function applyAutoStatus(status: AutoExportStatus) {
