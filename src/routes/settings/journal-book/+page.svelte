@@ -29,6 +29,7 @@
     ongoingWindowRange,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { moodName, severityName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -57,9 +58,9 @@
   import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
-  const today = todayEpochDay();
-  const todayInput = dateInputValueFromEpochDay(today);
-  const defaultRange = ongoingWindowRange(today, 365);
+  const today = $derived(currentDay());
+  const todayInput = $derived(dateInputValueFromEpochDay(today));
+  const defaultRange = ongoingWindowRange(todayEpochDay(), 365); // mount-day: the form starts on the day it opened
 
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));

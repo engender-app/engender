@@ -33,9 +33,9 @@
     calendarDuration,
     dateInputValueFromEpochDay,
     dayRangeEndMin,
-    epochDayFromDateInputValue,
-    todayEpochDay
+    epochDayFromDateInputValue
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { readWrappedEras, readWrappedPeriod } from '$lib/data/wrappedReads';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -71,8 +71,8 @@
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
   import WrappedYear from '$lib/components/WrappedYear.svelte';
 
-  const today = todayEpochDay();
-  const todayInput = dateInputValueFromEpochDay(today);
+  const today = $derived(currentDay());
+  const todayInput = $derived(dateInputValueFromEpochDay(today));
 
   /* Validated against the cadences rather than cast: the segment comes out
      of a URL, which a bookmark, a typo or an old link can put anything in.

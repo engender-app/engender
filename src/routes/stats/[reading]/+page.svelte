@@ -18,7 +18,7 @@
      between two keys, and a plain const would go stale. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { isReading, spanFromSearch, type Reading } from '$lib/data/lookBackReadings';
   import { spanLabel } from '$lib/data/spanLabel';
@@ -47,7 +47,7 @@
     themes: () => m.safe_space_chart_themes_title()
   };
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let key = $derived(page.params.reading);
   let reading = $derived<Reading | null>(isReading(key) ? key : null);
   let span = $derived(spanFromSearch(page.url.searchParams, today));

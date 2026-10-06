@@ -71,7 +71,7 @@
   import { holdFacesWhileStill } from '$lib/motion/holdWhileStill';
 
   let backdateOpen = $state(false);
-  let backdate = $state(dateInputValueFromEpochDay(todayEpochDay() - 1));
+  let backdate = $state('');
 
   /* Which target the pointer is currently over, during a press-and-slide.
      Null in the tap flow, where the browser's own hover and focus do this
@@ -247,6 +247,7 @@
      date before it can go anywhere, so it hands over to a small sheet. */
   function openBackdate() {
     close();
+    backdate = dateInputValueFromEpochDay(todayEpochDay() - 1);
     backdateOpen = true;
   }
 

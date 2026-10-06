@@ -18,7 +18,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { WRAPPED_ENTRY_FLOOR, completedWrappedPeriod, WRAPPED_CADENCES, type WrappedCadence } from '$lib/data/wrapped';
   import {
     wrappedShareContent,
@@ -41,7 +41,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let cadence = $derived(
     (WRAPPED_CADENCES as readonly string[]).includes(page.params.cadence ?? '')

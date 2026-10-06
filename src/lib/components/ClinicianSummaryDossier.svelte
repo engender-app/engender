@@ -14,7 +14,8 @@
   import DossierTable from './DossierTable.svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { epochDayFromTimestamp, todayEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromTimestamp } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     applicationSiteLabel,
     episodeEndReasonLabel,
@@ -63,7 +64,7 @@
   const overflowCount = (rows: readonly unknown[]) =>
     rows.length > PREVIEW_ROW_FLOOR ? rows.length - PREVIEW_ROW_FLOOR : 0;
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const dayShort = (epochDay: number) =>
     fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 

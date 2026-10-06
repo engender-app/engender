@@ -18,7 +18,8 @@
   import { SURGERY_RECOVERY_CUTOFF_DAYS, procedureInArchive, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { dilationEligible } from '$lib/data/taperSchedule';
   import { fmtDay } from '$lib/data/dates';
-  import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
+  import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
@@ -54,7 +55,7 @@
   /* The procedures, and the record kept against whichever one is open. */
   const SECTION_ROLE = { procedures: 0, recovery: 1 };
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
