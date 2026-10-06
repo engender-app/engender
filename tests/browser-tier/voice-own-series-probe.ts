@@ -35,6 +35,7 @@ import { captureChainOf } from '$lib/audio/captureChain';
 import type { BenchmarkForSeries } from '$lib/charts/ownSeries';
 import { OWN_SERIES_METRICS } from '$lib/data/voice/metrics';
 import { readFlagRoles, roleAt } from '$lib/theme/roles';
+import { casingOf } from './casing';
 import VoiceOwnSeries from '$lib/components/VoiceOwnSeries.svelte';
 import { publish } from '../probe-handshake.mjs';
 
@@ -183,6 +184,8 @@ async function run() {
   await pick(unmeasured, 'room');
 
   return {
+    /* Phase 15 ticket 20: the area line sits on a casing in its role's edge. */
+    casing: casingOf(series.querySelector('.kit-area-line:not(.is-overlay)'), roleAt(readFlagRoles(), 0)?.edge ?? null),
     offered,
     registered: OWN_SERIES_METRICS.map((metric) => metric.key),
     figures,

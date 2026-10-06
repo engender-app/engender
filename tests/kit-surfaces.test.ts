@@ -346,14 +346,18 @@ describe('the charts', () => {
        written on top of --role-draw is drawn in - the ink the role's heat
        ramp carries for the step whose fill is the stripe itself - so the
        card still wears one hue and the words on the bar can be read. */
+    /* --role-edge too (phase 15 ticket 20): the casing under a line whose
+       stripe is under 3:1, which is the stripe's own hue moved in lightness
+       the way --role-mark is. The second series' edge rides with the second
+       series. */
     const allowed =
-      /^(--role-ink|--role-mark|--role-draw|--role-fill-ink|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--bar-delay|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
+      /^(--role-ink|--role-mark|--role-draw|--role-edge|--role-fill-ink|--role-wash|--dist-fill|--surface|--surface-2|--outline|--hairline|--text|--text-2|--bar-share|--bar-index|--bar-delay|--stagger-step|--face-mood|--face-size|--mood-\d|--slice-weight|--arc-dash|--arc-rest|--arc-offset|--circ)$/;
     /* The second hue, admitted for the area chart's second series and for
        nothing else. Read per rule rather than over the whole of markCss:
        allowing it globally would let the next bar set or distribution take a
        second colour without anything here noticing, which is the opposite of
        what a named exception is for. */
-    const secondSeries = /^(--role-2|--role-2-draw|--accent-2)$/;
+    const secondSeries = /^(--role-2|--role-2-draw|--role-2-edge|--role-2-edge-in|--accent-2)$/;
     /* The presentation chip's ring (phase 8 features ticket 17, ADR-0048) is
        a third hue, and the same reasoning applies: it names a presentation's
        own role rather than the chart's, resolved through roleAt() by the

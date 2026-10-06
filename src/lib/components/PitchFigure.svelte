@@ -428,6 +428,11 @@
               vector-effect="non-scaling-stroke"
             />
             <polyline
+              class="pf-casing is-outline"
+              points={sidePath(read.side.density, read.direction)}
+              vector-effect="non-scaling-stroke"
+            />
+            <polyline
               class="pf-outline"
               data-pair-outline={read.which}
               points={sidePath(read.side.density, read.direction)}
@@ -475,6 +480,15 @@
         {/if}
 
         {#each runs as points, index (index)}
+          <!-- The casing under the trace: the line's edge where the stripe
+               cannot be found against the field on its own (kit.css's
+               --role-edge), transparent where it can. -->
+          <polyline
+            class="pf-casing is-trace"
+            {points}
+            stroke-width={traceWeight + 2}
+            vector-effect="non-scaling-stroke"
+          />
           <polyline
             class="pf-trace"
             data-pitch-trace
@@ -558,6 +572,7 @@
             />
           {/if}
 
+          <polyline class="pf-casing is-outline" points={densityOutline} vector-effect="non-scaling-stroke" />
           <polyline class="pf-outline" points={densityOutline} vector-effect="non-scaling-stroke" />
         </svg>
       {/if}
@@ -711,6 +726,30 @@
     fill: none;
     stroke: var(--role-draw);
     stroke-width: 2;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+  }
+
+  /* The edge under a line drawn in the stripe (phase 15 ticket 20): the
+     same line a pixel wider each side, in --role-edge, so on a stripe that
+     sits under 3:1 against the field and its bands - nonbinary's yellow is
+     1.13:1 on its own band - the line still has a boundary at 3:1 and the
+     line itself stays the flag's colour. Where the stripe reads, the edge
+     is transparent and nothing changes. Both casings are their line plus
+     2px: the outline's here, the trace's in the markup, since the trace's
+     own weight is a prop. */
+  .pf-casing {
+    fill: none;
+    stroke: var(--role-edge);
+  }
+
+  .pf-casing.is-trace {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .pf-casing.is-outline {
+    stroke-width: 4;
     stroke-linecap: square;
     stroke-linejoin: miter;
   }
