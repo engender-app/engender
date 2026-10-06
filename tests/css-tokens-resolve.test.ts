@@ -44,7 +44,12 @@ function withoutComments(text: string): string {
 function definitions(sources: Source[]) {
   const names = new Set<string>(Object.keys(SET_OUTSIDE_SRC));
   const prefixes = new Set<string>();
-  const add = (name: string, templated: boolean) => (templated ? prefixes : names).add(name);
+  const add = (name: string, templated: boolean) => {
+    // A templated name with nothing before the template (`--${x}`) would
+    // make every property a prefix match, so it defines nothing here.
+    if (templated && name === '--') return;
+    (templated ? prefixes : names).add(name);
+  };
   const forms = [
     new RegExp(String.raw`(?<![\w-])(${NAME})(\$\{[^}]*\})?['"\`]?\s*:(?!:)`, 'g'),
     new RegExp(String.raw`style:(${NAME})(\{)?`, 'g'),
@@ -134,7 +139,8 @@ describe('every custom property a rule reads is defined', () => {
         path: 'c.ts',
         text: 'const a = `var(--mood-${n})`; const b = `var(--heat-${n})`; const c = "var(--font-mono, monospace)";'
       },
-      { path: 'd.css', text: '.d { color: var(--on-soft, var(--never-set)); }' }
+      { path: 'd.css', text: '.d { color: var(--on-soft, var(--never-set)); }' },
+      { path: 'e.ts', text: 'el.style.setProperty(`--${name}`, v);' }
     ];
     expect(unresolved(sources)).toEqual(['c.ts:1 --heat-${...}', 'd.css:1 --never-set']);
   });
