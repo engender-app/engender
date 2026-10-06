@@ -27,6 +27,10 @@ import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
 import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
+import { mountHome } from './mount-home.svelte';
+import { prepareScreenJournal } from '../browser-tier/screen-journal';
+import { installWorkerReadRecorder } from './worker-reads';
+const workerReads = installWorkerReadRecorder();
 import { compareJournalSizes } from './scaling.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 import { publish as publishResult } from '../probe-handshake.mjs';
@@ -239,7 +243,14 @@ async function run(days: number) {
   const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
-    recorder
+    recorder, mountHome: async (journal) => {
+      await prepareScreenJournal(journal);
+      // End the preceding benchmark's read generation before the cold mount.
+      await recorder.driver.readSnapshot(async () => {});
+      const { result, crossings } = await workerReads.record(() => mountHome());
+      if (crossings.duplicates) throw new Error(`Mounted Home sent ${crossings.duplicates} duplicate SQL statements`);
+      return { ...result, crossings };
+    }
   });
 
   stage('measured-close', days);
@@ -257,4 +268,4 @@ async function main() {
   publish({ ...tenYears, oneYear, scaling: compareJournalSizes(oneYear, tenYears) });
 }
 
-main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));
+main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) })).finally(() => workerReads.restore());
