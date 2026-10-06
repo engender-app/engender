@@ -1,7 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { flip } from 'svelte/animate';
-  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -72,6 +71,14 @@
       key: procedure.id, group: group.key, heading: null, procedure
     }))
   ]));
+
+  /* A procedure moving between Ongoing and the archive travels there
+     instead of cutting; headings and cards that come or go disclose. */
+  travelOnChange(
+    () => [...document.querySelectorAll<HTMLElement>('.procedure-row[data-travel-key]')],
+    (el) => el.dataset.travelKey ?? '',
+    () => procedureRows
+  );
 
   let sourceId = $derived(page.url.searchParams.get('procedure'));
   let sourceProcedure = $derived(procedures.find((p) => p.id === sourceId));
@@ -302,9 +309,8 @@
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
       {#each procedureRows as { key, procedure, group, heading } (key)}
-        <div data-procedure-group={procedure ? group : undefined} data-procedure-heading={heading ? key : undefined}
-          use:resize transition:disclose
-          animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
+        <div class="procedure-row" data-procedure-group={procedure ? group : undefined} data-procedure-heading={heading ? key : undefined}
+          data-travel-key={key} use:resize transition:disclose>
           {#if heading}
             <SectionHeading text={heading} />
           {:else if procedure}
@@ -855,6 +861,10 @@
 </div>
 
 <style>
+  .procedure-row {
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
   .recovery {
     margin-top: var(--space-4);
   }

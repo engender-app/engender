@@ -23,8 +23,7 @@
      episode with nothing else to update. `drug` only exists to break a
      tie when more than one episode is active at once for different drugs
      (regimenEpisode.ts). */
-  import { flip } from 'svelte/animate';
-  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -139,6 +138,15 @@
       ];
     });
   }
+
+  /* A dose saved to another day travels to its new heading rather than
+     cutting there; rows that arrive or leave disclose (no-yank clause). */
+  let doseLog = $state<HTMLElement>();
+  travelOnChange(
+    () => [...(doseLog?.querySelectorAll<HTMLElement>('[data-travel-key]') ?? [])],
+    (el) => el.dataset.travelKey ?? '',
+    () => logRows
+  );
 
   function loadEarlier() {
     windowDays += DOSE_LOG_WINDOW_DAYS;
@@ -479,13 +487,13 @@
       {#if doses.length}
         <div class="screen-part">
           <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
-          <div data-dose-log>
+          <div data-dose-log bind:this={doseLog}>
             <BatchedList items={logRows} key="doses" autoGrow={false}
               focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
               {#snippet rows(shownRows)}
                 {#each dayRows(shownRows) as item (item.key)}
-                  <div class="rows-divide" class:is-day={item.row === null} data-dose-row={item.row?.dose.id} transition:disclose
-                    animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
+                  <div class="rows-divide dose-log-row" class:is-day={item.row === null} data-dose-row={item.row?.dose.id}
+                    data-travel-key={item.key} transition:disclose>
                     {#if item.row}
                       {@const { dose, attribution, drug, showAttribution, offersSkip } = item.row}
                       {@const site = siteOf(dose)}
@@ -1073,6 +1081,10 @@
   /* A day is a group of rows, said by space and a heading rather than by
      more hairlines: the rule above and below a heading row would sit one
      heading-height apart and read as a stray box. */
+  .dose-log-row {
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
   .rows-divide.is-day::before,
   .is-day + .rows-divide::before {
     content: none;
