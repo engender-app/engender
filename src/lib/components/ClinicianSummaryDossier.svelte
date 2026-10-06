@@ -93,6 +93,11 @@
   );
 </script>
 
+<!-- A date in a table cell never breaks between its words on screen ("11 /
+     Jul / 2026" stacked one word a line at 390, after-release 22). Print
+     keeps its own wrapping: clinician-print.css scopes the rule to screen. -->
+{#snippet date(epochDay: number)}<span class="dossier-date">{dayShort(epochDay)}</span>{/snippet}
+
 {#snippet truncateNote(hidden: number)}
   <p class="dossier-truncate-note no-print" data-dossier-truncate>
     {m.clinician_summary_section_truncated({ count: hidden })}
@@ -167,14 +172,14 @@
               {#each dossier.regimen.current as ep, i (ep.id)}
                 {@const ester = regimenEsterNote(ep.drug, ep.ester)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>
+                  <td data-label={m.regimen_drug_label()}>
                     <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
                     {#if ester}<span class="muted small">({ester})</span>{/if}
                   </td>
-                  <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{routeLabel(ep.route as DoseRoute)}</td>
-                  <td>{ep.interval}</td>
-                  <td class="num">{episodeSpan(ep)}</td>
+                  <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(ep.route as DoseRoute)}</td>
+                  <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
+                  <td data-label={m.clinician_summary_dates_active()} class="num">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -206,15 +211,15 @@
               {#each pastEpisodes as ep, i (ep.id)}
                 {@const ester = regimenEsterNote(ep.drug, ep.ester)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>
+                  <td data-label={m.regimen_drug_label()}>
                     <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ester
                       ? ` (${ester})`
                       : ''}
                   </td>
-                  <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{routeLabel(ep.route as DoseRoute)}</td>
-                  <td>{ep.interval}</td>
-                  <td class="num">{episodeSpan(ep)}</td>
+                  <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(ep.route as DoseRoute)}</td>
+                  <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
+                  <td data-label={m.clinician_summary_dates_active()} class="num">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -245,20 +250,20 @@
                 {@const doseDay = epochDayFromTimestamp(dose.timestamp)}
                 {@const site = siteOf(dose)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">{dayShort(doseDay)}</td>
-                  <td class="num">{fmtTime(dose.timestamp)}</td>
-                  <td class="num">
+                  <td data-label={m.dose_day_label()} class="num">{@render date(doseDay)}</td>
+                  <td data-label={m.dose_time_label()} class="num"><span class="dossier-date">{fmtTime(dose.timestamp)}</span></td>
+                  <td data-label={m.regimen_dose_label()} class="num">
                     <a class="dossier-row-link" href={`/care/doses#${dose.id}`}><strong>{dose.dose} {dose.doseUnit}</strong></a>
                     {#if dose.drug}<span class="muted small">· {dose.drug}</span>{/if}
                   </td>
-                  <td>{routeLabel(dose.route)}</td>
-                  <td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(dose.route)}</td>
+                  <td data-label={m.dose_injection_site_label()}>
                     {site ?? '—'}
                     {#if isInjectionDose(dose) && dose.vehicle}
                       <span class="muted small">({vehicleLabel(dose.vehicle)})</span>
                     {/if}
                   </td>
-                  <td>
+                  <td data-label={m.clinician_summary_status_label()}>
                     {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
                     <!-- The footnote marker for a dose a schedule wrote
                          rather than the person (phase 11 ticket 11,
@@ -314,9 +319,9 @@
             <tbody>
               {#each dossier.exposure.doseTotals as dt, i (JSON.stringify([dt.drug, dt.route, dt.doseUnit]))}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td><strong>{dt.drug}</strong></td>
-                  <td>{routeLabel(dt.route)}</td>
-                  <td class="num">{dt.total} {dt.doseUnit}</td>
+                  <td data-label={m.regimen_drug_label()}><strong>{dt.drug}</strong></td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(dt.route)}</td>
+                  <td data-label={m.exposure_dose_totals_title()} class="num">{dt.total} {dt.doseUnit}</td>
                 </tr>
               {/each}
             </tbody>
@@ -340,8 +345,8 @@
             <tbody>
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>{routeLabel(rd.route as DoseRoute)}</td>
-                  <td class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(rd.route as DoseRoute)}</td>
+                  <td data-label={m.exposure_route_days_title()} class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -370,10 +375,10 @@
             <tbody>
               {#each dossier.exposure.regimenDays as regd, i (regd.episodeId)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td><strong>{regd.drug}</strong></td>
-                  <td class="num">{regd.dose} {regd.doseUnit}</td>
-                  <td>{routeLabel(regd.route as DoseRoute)}</td>
-                  <td class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
+                  <td data-label={m.regimen_drug_label()}><strong>{regd.drug}</strong></td>
+                  <td data-label={m.regimen_dose_label()} class="num">{regd.dose} {regd.doseUnit}</td>
+                  <td data-label={m.regimen_route_label()}>{routeLabel(regd.route as DoseRoute)}</td>
+                  <td data-label={m.exposure_regimen_days_title()} class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -412,23 +417,23 @@
             <tbody>
               {#each dossier.labs as lab, i (lab.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">
-                    {dayShort(lab.epochDay)}
-                    {#if lab.drawTime}<span class="muted small">· {lab.drawTime}</span>{/if}
+                  <td data-label={m.labs_date_label()} class="num">
+                    {@render date(lab.epochDay)}
+                    {#if lab.drawTime}<span class="muted small dossier-date">· {lab.drawTime}</span>{/if}
                   </td>
-                  <td><strong>{lab.analyte}</strong></td>
-                  <td class="num">
+                  <td data-label={m.labs_analyte_label()}><strong>{lab.analyte}</strong></td>
+                  <td data-label={m.labs_value_label()} class="num">
                     <strong>{lab.value}</strong> <span class="muted small">{lab.unit}</span>
                   </td>
-                  <td>
+                  <td data-label={m.clinician_summary_timing_header()}>
                     {#if lab.timing}
                       <span class="dossier-timing-badge">{labTimingLabel(lab.timing)}</span>
                     {:else}
                       <span class="muted small">—</span>
                     {/if}
                   </td>
-                  <td>{lab.provider.trim() || '—'}</td>
-                  <td>{lab.note.trim() || '—'}</td>
+                  <td data-label={m.labs_provider_label()}>{lab.provider.trim() || '—'}</td>
+                  <td data-label={m.labs_note_label()}>{lab.note.trim() || '—'}</td>
                 </tr>
               {/each}
             </tbody>
@@ -463,9 +468,9 @@
             <tbody>
               {#each dossier.sideEffects as effect, i (effect.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">{dayShort(effect.epochDay)}</td>
-                  <td><strong>{effect.name}</strong></td>
-                  <td>
+                  <td data-label={m.side_effect_date_label()} class="num">{@render date(effect.epochDay)}</td>
+                  <td data-label={m.side_effect_name_label()}><strong>{effect.name}</strong></td>
+                  <td data-label={m.side_effect_severity_label()}>
                     {#if effect.severity === null}
                       {m.clinician_summary_not_set()}
                     {:else}
@@ -505,8 +510,8 @@
             <tbody>
               {#each dossier.cycleEvents as event, i (event.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td class="num">{dayShort(event.epochDay)}</td>
-                  <td><strong>{cycleEventKindName(event.kind)}</strong></td>
+                  <td data-label={m.cycle_event_date_label()} class="num">{@render date(event.epochDay)}</td>
+                  <td data-label={m.cycle_event_kind_label()}><strong>{cycleEventKindName(event.kind)}</strong></td>
                 </tr>
               {/each}
             </tbody>
@@ -540,7 +545,7 @@
             <tbody>
               {#each dossier.appointmentPrep as item, i (item.id)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td style="width: 130px;">
+                  <td data-label={m.clinician_summary_status_label()} style="width: 130px;">
                     {#if item.checked}
                       <span class="dossier-timing-badge" style="text-decoration: line-through;">{m.clinician_summary_prep_done()}</span>
                     {:else}
@@ -550,7 +555,7 @@
                       <span class="muted small">· {m.appointment_prep_carried_forward_badge()}</span>
                     {/if}
                   </td>
-                  <td style={item.checked ? 'text-decoration: line-through;' : ''}>
+                  <td data-label={m.appointment_prep_title()} style={item.checked ? 'text-decoration: line-through;' : ''}>
                     {item.content}
                   </td>
                 </tr>
@@ -588,10 +593,10 @@
             {#each dossier.procedures as proc, i (proc.id)}
               {@const day = recoveryDay(proc.surgeryEpochDay, today)}
               <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                <td><strong>{proc.name}</strong></td>
-                <td>
+                <td data-label={m.surgery_name_label()}><strong>{proc.name}</strong></td>
+                <td data-label={m.surgery_date_label()}>
                   {#if proc.surgeryEpochDay !== null}
-                    <span class="num">{dayShort(proc.surgeryEpochDay)}</span>
+                    <span class="num">{@render date(proc.surgeryEpochDay)}</span>
                     {#if day.type === 'since'}
                       <span class="muted small">· {m.surgery_day_since({ days: m.n_days({ n: day.days }) })}</span>
                     {:else if day.type === 'upcoming'}
@@ -603,14 +608,14 @@
                     <span class="muted small">{m.surgery_date_none()}</span>
                   {/if}
                 </td>
-                <td>
+                <td data-label={m.surgery_consults_title()}>
                   {#if proc.consults.length}
-                    {proc.consults.map((c) => dayShort(c.epochDay)).join(', ')}
+                    {#each proc.consults as consult, k (consult)}{k > 0 ? ', ' : ''}{@render date(consult.epochDay)}{/each}
                   {:else}
                     —
                   {/if}
                 </td>
-                <td>
+                <td data-label={m.surgery_notes_title()}>
                   {proc.notes.trim() || '—'}
                   {#if proc.checklistItems.length}
                     <div class="dossier-sub-list">
@@ -654,8 +659,8 @@
             <tbody>
               {#each dossier.finishedAreas as area, i (area.key)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td><strong>{areaGroupName(area.key)}</strong></td>
-                  <td class="num">{dayShort(area.epochDay)}</td>
+                  <td data-label={m.area_finish_table_area()}><strong>{areaGroupName(area.key)}</strong></td>
+                  <td data-label={m.area_finish_table_ended()} class="num">{@render date(area.epochDay)}</td>
                 </tr>
               {/each}
             </tbody>

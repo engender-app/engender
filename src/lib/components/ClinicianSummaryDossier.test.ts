@@ -209,3 +209,29 @@ describe('ClinicianSummaryDossier says only what the person told it (after-relea
     expect(dossierComponent).not.toContain('ep.ester\n');
   });
 });
+
+/* After-release 22 (UI-11): at phone width a wide table reads as stacked
+   rows, and paper keeps the table. The rendered check (every column on
+   screen at 320 and 390, dates on one line) is the ticket's browser probe;
+   this pins the parts a later edit could quietly break. */
+describe('stacked rows at phone width (after-release 22)', () => {
+  const screenBlock = printCss.slice(printCss.indexOf('@media screen'));
+
+  it('labels every table cell with its column header', () => {
+    const cells = dossierComponent.match(/<td\b/g) ?? [];
+    const labelled = dossierComponent.match(/<td data-label=\{m\.[a-z_0-9]+\(\)\}/g) ?? [];
+    expect(cells.length).toBeGreaterThan(0);
+    expect(labelled.length).toBe(cells.length);
+  });
+
+  it('stacks only on screen, and keeps the printed label out of the accessible name', () => {
+    expect(screenBlock).toContain('@container dossier-table');
+    expect(screenBlock).toContain("content: attr(data-label) / '';");
+    expect(printCss.slice(0, printCss.indexOf('@media screen'))).not.toContain('data-label');
+  });
+
+  it('keeps a table date on one line on screen only', () => {
+    expect(dossierComponent).toContain('<span class="dossier-date">{dayShort(epochDay)}</span>');
+    expect(screenBlock).toMatch(/\.dossier-date\s*{\s*white-space:\s*nowrap;/);
+  });
+});
