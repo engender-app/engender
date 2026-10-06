@@ -1,27 +1,10 @@
-<script module lang="ts">
-  import type { EntryDraft } from '$lib/data/entryDraft';
-
-  type EntrySaveRecovery = {
-    entryId: number | undefined;
-    epochDay: number;
-    draft: EntryDraft;
-    starred: boolean;
-    destination: string;
-    settled: Promise<void>;
-  };
-
-  // A privacy gate can unmount the editor while storage still owns its save.
-  // Retain that draft, including media, until the same editor resumes.
-  let detachedEntrySave: EntrySaveRecovery | undefined;
-</script>
-
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { onDestroy, tick, untrack } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import {
@@ -33,11 +16,10 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { createEntryDraft } from '$lib/data/entryDraft';
+  import { entrySession } from '$lib/components/entrySession.svelte';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
-  import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
   import { isLockedNow } from '$lib/stores/lock.svelte';
@@ -81,7 +63,6 @@
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
-  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
   import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -129,105 +110,33 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
 
-  /* Local draft; committed as one action on Save (F1), and filled from the
-     stored entry the moment it arrives (entryDraft.ts, ticket 29). */
-  // Captured once on purpose: the route wraps this component in {#key}, so a
-  // different entry or day mounts a fresh editor with a fresh draft.
+  // Route keys mount a new session for each entry or day.
   // svelte-ignore state_referenced_locally
-  let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay(), undefined, seedMood));
-
-  let saving = $state(false);
-  let pendingDraftOperations = $state(0);
-  let saveRecovery: EntrySaveRecovery | undefined;
-  let destroyed = false;
-
-  // Media preparation and prefills must finish before the save snapshots the draft.
-  async function prepareDraft(operation: () => Promise<void>) {
-    if (saving || entryDraft.savedId !== undefined) return;
-    pendingDraftOperations++;
-    try {
-      await operation();
-    } finally {
-      pendingDraftOperations--;
+  const session = entrySession({
+    entryId, epochDay: epochDay ?? todayEpochDay(), seedMood,
+    entries: journal.entries,
+    draftStore: localStorageEntryDraft(journalDataKey),
+    preparing: () => loaded.loading || mediaPreparing,
+    creation: () => ({ debriefForAppointment }),
+    destination: (moodOnly) => {
+      const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
+      const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
+      return (id) => target ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+    },
+    navigate: async (destination) => {
+      const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
+      if (target) await smartBackSettled(target);
+      else await replaceRoute(destination);
     }
-  }
-
-  /* What the draft held when it was loaded (CONTEXT: "Draft"): the stored
-     entry for an edit, the blank or prefilled one for a new entry. Taken
-     before any process-death mirror is laid over it, so text restored from
-     the mirror counts as unsaved, which it is. Null until it is known. */
-  let baseline = $state<string | null>(null);
-
-  /* Back, the header arrow, Android back and a nav tab all used to drop a
-     changed draft without a word: the only guard here cancelled while a
-     save was in flight, and onDestroy cleared the mirror on every normal
-     departure (ticket 04, audit UX-01). Leaving now asks whenever the
-     draft differs from what was loaded. A saved draft is consumed and
-     never asks. */
-  const guard = leaveGuard({
-    holding: () =>
-      baseline !== null && entryDraft.savedId === undefined && entryDraftFingerprint(entryDraft) !== baseline,
-    busy: () => saving
   });
-
-  /* Mirrored to localStorage on every change. Normal departure discards
-     the mirror; a privacy lock during a pending save retains it until the
-     save succeeds or the editor resumes. A killed process can recover the
-     serializable fields; the in-memory recovery also retains pending media.
-
-     What is written there is ciphertext under the open journal's data key
-     (sec-audit 02), which makes both halves async. */
-  const draftStore = localStorageEntryDraft(journalDataKey);
-
-  /* Nothing is mirrored until the first read has been attempted: the write
-     effect below would otherwise fire on mount and put the empty draft over
-     the very snapshot this is about to restore. */
-  let mirrorRead = $state(false);
-
-  async function restoreIfPersisted(target: EntryDraft): Promise<EntryDraft> {
-    const recovery = detachedEntrySave;
-    if (recovery && recovery.entryId === entryId && (entryId != null || recovery.epochDay === target.epochDay)) {
-      baseline ??= entryDraftFingerprint(target);
-      entryDraft = recovery.draft;
-      saving = true;
-      try {
-        await recovery.settled;
-      } finally {
-        saving = false;
-      }
-      if (!destroyed && recovery.draft.savedId !== undefined) draftStore.clear();
-      starred = recovery.starred;
-      savedDestination = recovery.destination;
-      if (!destroyed && detachedEntrySave === recovery) detachedEntrySave = undefined;
-      return recovery.draft;
-    }
-    const persisted = await draftStore.read();
-    if (!persisted) return target;
-    if (draftMatchesRoute(persisted, entryId, target.epochDay)) {
-      baseline ??= entryDraftFingerprint(target);
-      applyPersistedDraft(target, persisted);
-    } else draftStore.clear(); // a different editor's leftovers - not this one's to resume
-    return target;
-  }
-
-  // Existing entries restore once, onto their loaded draft. Mirroring starts
-  // only after that draft is installed, so the blank draft cannot overwrite recovery.
+  let entryDraft = $derived(session.draft);
+  let saving = $derived(session.saving);
+  const guard = session.guard;
+  const prepareDraft = session.prepare;
+  const leave = session.leave;
   // svelte-ignore state_referenced_locally
-  const persistedRestore = entryId == null
-    ? restoreIfPersisted(entryDraft).then((draft) => { entryDraft = draft; }).finally(() => { mirrorRead = true; })
-    : Promise.resolve();
-
-  onFirstResult(loaded, (entry) => prepareDraft(async () => {
-    if (entryId == null) return;
-    const fresh = entry ? createEntryDraft(entry.epochDay, entry) : entryDraft;
-    baseline = entryDraftFingerprint(fresh);
-    try {
-      entryDraft = await restoreIfPersisted(fresh);
-      if (entry) starred = entry.starred;
-    } finally {
-      mirrorRead = true;
-    }
-  }));
+  const persistedRestore = entryId == null ? session.resume() : Promise.resolve();
+  onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
      `existing` and kept in its own local state rather than `entryDraft`:
@@ -240,11 +149,11 @@
      18's "starred before it is saved". The journal includes that flag in
      the creation transaction. An existing entry keeps writing
      immediately, the same as it always has. */
-  let starred = $state(false);
+  let starred = $derived(session.starred);
 
   async function toggleStarred() {
     const next = !starred;
-    starred = next;
+    session.starred = next;
     if (!existing) return;
     await journal.entries.setEntryStarred(existing.id, next);
   }
@@ -314,28 +223,7 @@
     );
   }
 
-  $effect(() => {
-    if (entryDraft.savedId !== undefined) return;
-    const snapshot = serializeDraft(entryDraft);
-    if (!mirrorRead) return;
-    void draftStore.write(snapshot);
-  });
-
-  /* A lock is not leaving. It unmounts this editor the way a departure
-     does, but the unlock comes back to this same address, and the draft
-     the person was typing is what should be there (after-release ticket
-     10). The mirror is ciphertext under the data key, so keeping it costs
-     nothing a lock is meant to take away; the remount reads it back once
-     the unlock has opened the journal and handed the key out again. The
-     same holds on Android, whose lock unmounts the editor the same way.
-     A mode with no secret never locks, so it never reaches this. Read
-     through `isLockedNow`: a teardown sees reactive state as it was before
-     the change that caused it, which here is still unlocked. */
-  onDestroy(() => {
-    destroyed = true;
-    if (saveRecovery) detachedEntrySave = saveRecovery;
-    else if (!saving && !isLockedNow(bootState.accessMode)) draftStore.clear();
-  });
+  onDestroy(() => session.dispose(isLockedNow(bootState.accessMode)));
 
   let deleteOpen = $state(false);
   let templateSheetOpen = $state(false);
@@ -812,99 +700,45 @@
     activeVideo?.stop();
   });
 
-  let draftPreparing = $derived(
-    !mirrorRead || loaded.loading || pendingDraftOperations > 0 ||
+  let mediaPreparing = $derived(
     activeRecording !== null || activeVideo !== null || compressingVideo ||
     dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
   );
+  let draftPreparing = $derived(session.preparing);
   let moodMissing = $derived(entryDraft.mood == null);
-
-  /* A new entry's baseline is the draft once every prefill (a template, a
-     debrief's notes) has landed and nothing restored it from the mirror. */
-  $effect(() => {
-    if (baseline !== null || draftPreparing) return;
-    baseline = untrack(() => entryDraftFingerprint(entryDraft));
-  });
-  let savedDestination = $state('/');
-  let navigationFailed = $state(false);
-
-  /* Where saving or deleting goes: the list the entry was opened from
-     (`from`) or the source record that sent it here (`returnTo`), through
-     the app's own history so that list comes back as it was left; anything
-     else replaces the editor with the destination saving chose, so Back
-     does not bounce into it. */
-  async function leave() {
-    const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
-    if (target) await smartBackSettled(target);
-    else await replaceRoute(savedDestination);
-  }
-
-  async function leaveSavedEntry() {
-    try {
-      await leave();
-      return true;
-    } catch (error) {
-      console.error('could not navigate after saving the entry', error);
-      navigationFailed = true;
-      await tick();
-      document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
-      return false;
-    }
-  }
+  let savedDestination = $derived(session.savedDestination);
+  let navigationFailed = $derived(session.navigationFailed);
 
   async function saveEntry() {
     if (saving || draftPreparing) return;
-    if (entryDraft.savedId !== undefined) {
-      await leaveSavedEntry();
-      return;
-    }
-    /* The requirement is on the button's own label while it is unmet
-       ("Pick a mood to save"), so a tap here fires no toast: it hands the
-       focus to the faces, which are on the same bar, and that is the whole
-       answer. The toast's own string (entry_needs_mood) had no caller left
-       and is gone from both catalogues. */
-    if (moodMissing) {
+    if (entryDraft.savedId === undefined && moodMissing) {
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    saving = true;
-    let settle!: () => void;
-    const recovery: EntrySaveRecovery = {
-      entryId, epochDay: entryDraft.epochDay, draft: entryDraft, starred, destination: '/',
-      settled: new Promise<void>((resolve) => { settle = resolve; })
-    };
-    saveRecovery = recovery;
-    const moodOnly = entryDraft.hasMoodOnlyContent;
-    const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
-    let id: number;
-    try {
-      id = await entryDraft.save(journal.entries, { starred, debriefForAppointment });
-    } catch (error) {
+    const offerDims = seedMood != null && entryDraft.hasMoodOnlyContent && vocabulary.activeDimensions.length > 0;
+    let result;
+    try { result = await session.save(); }
+    catch (error) {
       console.error('could not save the entry', error);
       toast(m.entry_save_failed());
       return;
-    } finally {
-      saving = false;
-      saveRecovery = undefined;
-      settle();
     }
-    draftStore.clear();
-    savedDestination = listReturnTo(page.url) ?? sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
-    recovery.destination = savedDestination;
-    if (destroyed) return;
-    if (!await leaveSavedEntry()) return;
+    if (session.navigationFailed) {
+      await tick();
+      document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
+    }
+    if (!result?.navigated) return;
+    const { id, moodOnly } = result;
     if (!offerDims && prefs.entryNudges && moodOnly) {
       toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
-    } else {
-      toast(m.saved(), { kind: 'saved' });
-    }
+    } else toast(m.saved(), { kind: 'saved' });
   }
 
   async function confirmDelete() {
     deleteOpen = false;
     if (!existing) {
       // Deleting answered the question leaving would have asked.
-      baseline = entryDraftFingerprint(entryDraft);
+      session.acceptDiscard();
       await leave();
       return;
     }
@@ -916,7 +750,7 @@
       toast(m.entry_delete_failed());
       return;
     }
-    baseline = entryDraftFingerprint(entryDraft);
+    session.acceptDiscard();
     try {
       await leave();
     } catch (error) {
