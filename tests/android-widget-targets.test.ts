@@ -81,6 +81,14 @@ const WIDGETS = [
   { layout: 'widget_doubt', info: 'doubt_widget_info', buttons: 1 }
 ];
 
+/* The doubt widget asked Android 12 and later for one cell, 57 dp at the
+   default portrait size. At that width "Log a doubt" wraps to four lines and
+   pushes the button almost out of the cell, so its default is two cells. */
+it('places the doubt widget two cells wide by default', () => {
+  const provider = attrsOf(/<appwidget-provider\b[^>]*>/.exec(read('xml/doubt_widget_info.xml'))![0]);
+  expect(Number(provider.targetCellWidth)).toBeGreaterThanOrEqual(2);
+});
+
 /* The drawing before this ticket, measured from the 40 dp layout: every
    pill 12 dp in from the widget's sides, 6 dp apart, 40 dp tall, 8 dp under
    the header, 12 dp above the widget's bottom edge, and 12 dp under its top
