@@ -461,6 +461,8 @@
   "clinician_summary_preview_title": "Podgląd",
   "clinician_summary_print": "Drukuj",
   "clinician_summary_pronouns_label": "Zaimki",
+  "clinician_summary_pronouns_optional": "Zaimki (opcjonalnie)",
+  "clinician_summary_pronouns_placeholder": "np. ona/jej, onu/jenu",
   "clinician_summary_range_end_label": "Data końcowa",
   "clinician_summary_range_required": "Wybierz datę początkową i końcową, żeby zobaczyć podsumowanie.",
   "clinician_summary_range_start_label": "Data początkowa",

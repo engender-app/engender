@@ -28,7 +28,8 @@
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
-  import type { ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
+  import { regimenEsterNote, type ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
+  import { disclose } from '$lib/motion/reveal';
   import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
   import '$lib/styles/clinician-print.css';
 
@@ -92,11 +93,6 @@
   );
 </script>
 
-{#snippet routeName(route: string)}
-  <span class="no-print">{routeLabel(route as DoseRoute)}</span>
-  <span class="dossier-route-print">{route}</span>
-{/snippet}
-
 {#snippet truncateNote(hidden: number)}
   <p class="dossier-truncate-note no-print" data-dossier-truncate>
     {m.clinician_summary_section_truncated({ count: hidden })}
@@ -114,14 +110,18 @@
             {dossier.demographics.name.trim() || m.clinician_summary_not_set()}
           </span>
         </div>
-        <div class="dossier-profile-item">
-          <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>
-          <span class="dossier-profile-value">
-            {dossier.demographics.pronouns?.trim() || m.clinician_summary_not_set()}
-          </span>
-        </div>
+        <!-- Drawn only when given, like the date of birth under it: both
+             come from a field on this screen that is empty by default, and a
+             row reading "Not specified" told the doctor something the
+             person never said (after-release 22). -->
+        {#if dossier.demographics.pronouns?.trim()}
+          <div class="dossier-profile-item" transition:disclose>
+            <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>
+            <span class="dossier-profile-value">{dossier.demographics.pronouns.trim()}</span>
+          </div>
+        {/if}
         {#if dossier.demographics.dob}
-          <div class="dossier-profile-item">
+          <div class="dossier-profile-item" transition:disclose>
             <span class="dossier-profile-label">{m.clinician_summary_dob_label()}</span>
             <span class="dossier-profile-value">{dossier.demographics.dob}</span>
           </div>
@@ -165,13 +165,14 @@
             </thead>
             <tbody>
               {#each dossier.regimen.current as ep, i (ep.id)}
+                {@const ester = regimenEsterNote(ep.drug, ep.ester)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>
                     <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}><strong>{ep.drug}</strong></a>
-                    {#if ep.ester}<span class="muted small">({ep.ester})</span>{/if}
+                    {#if ester}<span class="muted small">({ester})</span>{/if}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{@render routeName(ep.route)}</td>
+                  <td>{routeLabel(ep.route as DoseRoute)}</td>
                   <td>{ep.interval}</td>
                   <td class="num">{episodeSpan(ep)}</td>
                 </tr>
@@ -203,14 +204,15 @@
             </thead>
             <tbody>
               {#each pastEpisodes as ep, i (ep.id)}
+                {@const ester = regimenEsterNote(ep.drug, ep.ester)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>
-                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ep.ester
-                      ? ` (${ep.ester})`
+                    <a class="dossier-row-link" href={`/care/regimen#${ep.id}`}>{ep.drug}</a>{ester
+                      ? ` (${ester})`
                       : ''}
                   </td>
                   <td class="num">{ep.dose} {ep.doseUnit}</td>
-                  <td>{@render routeName(ep.route)}</td>
+                  <td>{routeLabel(ep.route as DoseRoute)}</td>
                   <td>{ep.interval}</td>
                   <td class="num">{episodeSpan(ep)}</td>
                 </tr>
@@ -338,7 +340,7 @@
             <tbody>
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
-                  <td>{@render routeName(rd.route)}</td>
+                  <td>{routeLabel(rd.route as DoseRoute)}</td>
                   <td class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
                 </tr>
               {/each}
@@ -370,7 +372,7 @@
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td><strong>{regd.drug}</strong></td>
                   <td class="num">{regd.dose} {regd.doseUnit}</td>
-                  <td>{@render routeName(regd.route)}</td>
+                  <td>{routeLabel(regd.route as DoseRoute)}</td>
                   <td class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
                 </tr>
               {/each}

@@ -54,6 +54,9 @@
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));
   let dobInput = $state('');
+  /* Transient like the date of birth: typed for this summary, never kept as
+     a preference (after-release 22, confirmed in pre-release-human 03). */
+  let pronounsInput = $state('');
   let inclusion = $state<ClinicianDossierInclusion>({ ...DEFAULT_CLINICIAN_DOSSIER_INCLUSION });
 
   /* Ticket 08: the range, the sections and the drugs are all still set on
@@ -111,6 +114,7 @@
           toEpochDay: range.end,
           demographics: {
             name: prefs.name,
+            pronouns: pronounsInput.trim() || null,
             dob: dobInput.trim() || null
           },
           inclusion,
@@ -278,7 +282,18 @@
     <p class="muted small">{m.clinician_summary_range_required()}</p>
   {/if}
 
-  <div style="margin-bottom:var(--space-4)">
+  <div class="cd-person">
+    <Field label={m.clinician_summary_pronouns_optional()} id="clinician-summary-pronouns">
+      {#snippet children(id)}
+        <input
+          {id}
+          type="text"
+          class="input"
+          placeholder={m.clinician_summary_pronouns_placeholder()}
+          bind:value={pronounsInput}
+        />
+      {/snippet}
+    </Field>
     <Field label={m.clinician_summary_dob_optional()} id="clinician-summary-dob">
       {#snippet children(id)}
         <input
@@ -347,6 +362,16 @@
      the wrap's own 8 under it. */
   .settings-row-wrap :global(.read-reserve-body > *) {
     margin-bottom: 0;
+  }
+
+  /* The two facts about the person this summary asks for, one under the
+     other: side by side, "Date of birth (optional)" wrapped and set its
+     input lower than its neighbour's at phone width. */
+  .cd-person {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
   }
 
   .cd-since-appointment {

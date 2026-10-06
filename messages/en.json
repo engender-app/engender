@@ -459,6 +459,8 @@
   "clinician_summary_preview_title": "Preview",
   "clinician_summary_print": "Print",
   "clinician_summary_pronouns_label": "Pronouns",
+  "clinician_summary_pronouns_optional": "Pronouns (optional)",
+  "clinician_summary_pronouns_placeholder": "e.g. she/her, they/them",
   "clinician_summary_range_end_label": "End date",
   "clinician_summary_range_required": "Pick a start and end date to see the summary.",
   "clinician_summary_range_start_label": "Start date",
