@@ -263,10 +263,10 @@ test('formats review values for the selected language', () => {
 });
 
 test.each(['en-GB', 'pl-PL'])('localized OCR review values round-trip through the editor validator (%s)', (locale) => {
-    for (const value of [1234.5, 12345.6, -12345.6, 0]) {
-      const parsed = [{ analyte: 'estradiol', value, unit: 'pg/mL', date: '2026-01-15', note: '', lowConfidence: false, unresolvedAnalyte: false, line: '' }];
-      const review = makeReviewRows(parsed, new Set(), (value) => formatLabReviewValue(value, locale));
-      expect(parseLabNumeric(review[0].value)).toBe(value);
-      expect(validateRowsForSave(review).ok).toBe(true);
-    }
+  for (const value of [1234.5, 12345.6, -12345.6, 0]) {
+    const parsed = [{ analyte: 'estradiol', value, unit: 'pg/mL', date: '2026-01-15', note: '', lowConfidence: false, unresolvedAnalyte: false, line: '' }];
+    const review = makeReviewRows(parsed, new Set(), (value) => formatLabReviewValue(value, locale));
+    expect(parseLabNumeric(review[0].value)).toBe(value);
+    expect(validateRowsForSave(review).ok).toBe(true);
+  }
 });

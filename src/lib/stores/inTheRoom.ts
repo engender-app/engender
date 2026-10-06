@@ -24,6 +24,7 @@
    two visits holds two answer sets, and which one a debrief means is
    settled by the appointment id the deep link already carries. */
 import type { DebriefAnswer } from '../data/journal/debriefNote';
+import { forgetOnLock } from '../lock/forget-content';
 
 interface HeldRoomAnswers {
   appointmentId: string;
@@ -53,6 +54,7 @@ export function holdRoomAnswers(entry: HeldRoomAnswers): void {
 export function forgetRoomAnswers(): void {
   held.clear();
 }
+forgetOnLock(forgetRoomAnswers);
 
 /** What was jotted for this appointment, or nothing. */
 export function roomAnswersFor(appointmentId: string): DebriefAnswer[] {
