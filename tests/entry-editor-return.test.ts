@@ -43,10 +43,12 @@ describe('entry editor Save, date and delete', () => {
   });
 
   it('leaves through one function: the list it came from, else the place saving chose', () => {
-    const body = editor.slice(editor.indexOf('async function leave()'), editor.indexOf('async function saveEntry'));
+    const body = editor.slice(editor.indexOf('navigate: async (destination)'), editor.indexOf('let entryDraft'));
     expect(body).toContain('listReturnTo(page.url)');
     expect(body).toContain('smartBackSettled(target)');
-    expect(body).toContain('replaceRoute(savedDestination)');
+    expect(body).toContain('replaceRoute(destination)');
+    expect(editor).toContain('const leave = session.leave;');
+    expect(editor).toContain('await session.save()');
     expect(editor).not.toContain('goBackToSource');
   });
 

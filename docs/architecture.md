@@ -423,13 +423,15 @@ flowchart LR
 ```mermaid
 sequenceDiagram
   participant Ed as EntryEditor
+  participant S as entrySession
   participant D as entryDraft
   participant J as journal proxy
   participant E as entries area
   participant Dr as driver/worker
   participant V as tableVersions
   participant H as Home liveQuery
-  Ed->>D: save(journal.entries)
+  Ed->>S: save()
+  S->>D: save(journal.entries)
   D->>J: entries.upsertEntry(input)
   J->>E: upsertEntry
   E->>Dr: transaction: entry, tags,<br/>dimensions, fts
@@ -439,10 +441,25 @@ sequenceDiagram
   V-->>H: version changed
   H->>J: re-run read
   J-->>H: rows
-  Ed->>Ed: draftStore.clear(), toast, navigate
+  S->>S: draftStore.clear(), navigate
+  S-->>Ed: saved result
+  Ed->>Ed: toast
 ```
 
-The draft survives an Android process death through a sealed `localStorage` mirror ([data/entryDraftStore.ts](../src/lib/data/entryDraftStore.ts), [entryDraftPersistence.ts](../src/lib/data/entryDraftPersistence.ts)).
+[components/entrySession.svelte.ts](../src/lib/components/entrySession.svelte.ts)
+binds reactive state and the shared leave guard to the Node-tested lifecycle
+in [entrySession.ts](../src/lib/components/entrySession.ts). The session waits
+for draft restoration and media preparation before saving, retains an in-flight
+save across a privacy lock, and resumes its draft only on the same route. A
+failed first read leaves an existing entry uninitialized until a successful
+retry, so saving cannot replace its content with a blank draft. The component
+keeps capture, layout, focus and saved notifications.
+
+The draft survives an Android process death through a sealed `localStorage`
+mirror ([data/entryDraftStore.ts](../src/lib/data/entryDraftStore.ts),
+[entryDraftPersistence.ts](../src/lib/data/entryDraftPersistence.ts)). Only the
+current editor owns that mirror; a detached save cannot overwrite or clear a
+newer editor's recovery.
 
 ### 6.6 Data lifecycle
 
