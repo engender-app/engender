@@ -109,7 +109,10 @@ describe('the handover', () => {
       }
     };
   }
-  const docOf = (splash: unknown) => ({ getElementById: () => splash }) as unknown as Document;
+  const docOf = (splash: unknown) => {
+    const documentElement = { dataset: { splash: '' } as Record<string, string> };
+    return { getElementById: () => splash, documentElement } as unknown as Document;
+  };
 
   /* After-release ticket 31. It used to start leaving when the layout
      mounted, while boot was still working. On a first visit boot then
@@ -124,17 +127,32 @@ describe('the handover', () => {
     expect(splashMayLeave('error', false)).toBe(true);
   });
 
-  it('is gone 800 ms after boot answers, and not before', () => {
+  /* Alicja, on the flipbooks: "splash with crossfade". The screen waits at
+     opacity 0 under the first frame (html[data-splash]) and fades in while
+     the first frame fades out, so nothing of the app sits at full opacity
+     under a half-transparent mark. */
+  it('crossfades: the answer starts the screen fading in with the first frame fading out, and both end together', () => {
     vi.useFakeTimers();
     const splash = fakeSplash();
-    answerSplash(docOf(splash));
+    const doc = docOf(splash);
+    answerSplash(doc);
     expect(splash.classes.has('is-leaving')).toBe(true);
     expect(splash.classes.has('is-answered')).toBe(true);
+    expect(doc.documentElement.dataset.splash).toBe('leaving');
     vi.advanceTimersByTime(799);
     expect(splash.removed).toBe(false);
     vi.advanceTimersByTime(1);
     expect(splash.removed).toBe(true);
+    expect('splash' in doc.documentElement.dataset).toBe(false);
     vi.useRealTimers();
+  });
+
+  it('holds the screen at opacity 0 under the first frame and fades it in on the same curve and length', () => {
+    expect(html).toMatch(/<html [^>]*data-splash[ >]/);
+    expect(handwritten).toMatch(/html\[data-splash\] \[data-app-root\] \{\s*opacity: 0;\s*\}/);
+    expect(handwritten).toMatch(
+      /html\[data-splash='leaving'\] \[data-app-root\] \{\s*opacity: 1;\s*transition: opacity 280ms var\(--ease-out-soft, [^)]+\)\);\s*\}/
+    );
   });
 
   it('a second answer does nothing', () => {
@@ -148,9 +166,9 @@ describe('the handover', () => {
     vi.useRealTimers();
   });
 
-  it('does nothing when there is no first frame', () => {
-    expect(() => {
-      answerSplash(docOf(null));
-    }).not.toThrow();
+  it('with no first frame, lets the screen show at once rather than holding it at 0', () => {
+    const doc = docOf(null);
+    expect(() => answerSplash(doc)).not.toThrow();
+    expect('splash' in doc.documentElement.dataset).toBe(false);
   });
 });
