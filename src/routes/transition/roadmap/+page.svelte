@@ -815,6 +815,7 @@
     padding: 0 var(--space-2);
     margin-right: calc(var(--space-2) * -1);
     border-radius: var(--r-block);
+    transition: color var(--dur-fast) var(--ease-out);
   }
 
   /* Track name, remaining count and dismissal stay one header. At narrow
@@ -845,6 +846,6 @@
      would not resolve here, and reaching for `--accent` instead puts a flag
      stripe's own colour beside a display heading for no reason. */
   .roadmap-track-btn[data-dismissed='true'] {
-    color: var(--text-1);
+    color: var(--text);
   }
 </style>
