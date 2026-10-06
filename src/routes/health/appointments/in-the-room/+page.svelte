@@ -55,7 +55,10 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const today = todayEpochDay();
+  /* The day the visit opened on, held on purpose: an appointment that runs
+     past midnight is still the one in the room, and following the clock
+     would drop the chosen appointment and the answer being typed. */
+  let today = $state(todayEpochDay());
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);

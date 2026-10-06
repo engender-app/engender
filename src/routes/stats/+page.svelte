@@ -41,7 +41,7 @@
      the retrospective the "wrapped for this span" link opens, which is
      /wrapped/range at the same query the range picker writes. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -113,7 +113,7 @@
 
   /* Read on recompute rather than captured, so a session open across
      midnight moves on (ticket 10). */
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   /* The rail (redesign ticket 11): where the person's history starts, from
      the three things the journal already dates - its own entry bounds, the
