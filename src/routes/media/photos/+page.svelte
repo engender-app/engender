@@ -570,7 +570,7 @@
   .photo-edit-day {
     position: absolute; bottom: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
-    border: none; cursor: pointer; background: none; color: var(--text-1);
+    border: none; cursor: pointer; background: none; color: var(--text);
     display: flex; align-items: center; justify-content: center;
   }
   .photo-edit-day :global(.icon) { position: relative; }
@@ -645,12 +645,13 @@
     line-height: 1;
     writing-mode: vertical-rl;
     color: var(--text-2);
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   }
   /* The drawn tab is 18px; the target is the 48px floor, reaching left
      over the grid's edge. Only a target, never paint, and only while the
      rail is awake: at rest the rail takes no pointer at all. */
   .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
-  .photo-year:hover { color: var(--text-1); border-color: var(--accent-border); }
+  .photo-year:hover { color: var(--text); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
      placeholder takes (PhotoThumb.svelte), because this one is not a
@@ -664,7 +665,7 @@
 
   .photo-count {
     font-size: var(--text-sm);
-    color: var(--text-1);
+    color: var(--text);
     margin: 0 0 var(--space-1);
   }
 
