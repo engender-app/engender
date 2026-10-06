@@ -97,6 +97,8 @@ Disguise mode uses a neutral name and icon and hides pride motifs. An app
 lock controls access to the journal, and lock screens show no entries or
 other journal data. Lock timing decides when the lock comes back: as soon as
 you leave the app, after one or five minutes away, or only on a restart.
+On the web, locking also closes the journal's database and lets go of its
+key until you unlock again.
 Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
@@ -258,8 +260,8 @@ literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
 The browser suites use Chromium. Set `CHROMIUM_PATH` if its executable is
-not at the harness's default location. They cover storage contracts, complete
-user flows and offline startup of the production build:
+not at the harness's default location. They cover storage contracts, rendered screens, complete user flows and
+offline startup of the production build:
 
 ```sh
 npm run test:browser

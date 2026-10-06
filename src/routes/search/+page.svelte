@@ -100,7 +100,7 @@
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
-  import { EMPTY_SEARCH, holdSearch, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
+  import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
@@ -159,9 +159,14 @@
      falls back to: `?starred=1` above, and `?q=` from the Transition door's
      "finish this search" row, which linked here with the query and landed
      on an empty box (ticket 16). */
+  /* More's search hands its query over in memory rather than in the
+     address, so what was typed stays out of the browser's history
+     (after-release ticket 10). `?q=` still works for an address typed or
+     bookmarked by hand. */
+  const handedQuery = takeHandedQuery();
   const asked = (): SearchSnapshot => ({
     ...EMPTY_SEARCH,
-    query: page.url.searchParams.get('q') ?? '',
+    query: handedQuery ?? page.url.searchParams.get('q') ?? '',
     starredOnly: page.url.searchParams.has('starred')
   });
   /* Saving a question keeps the query and every filter that is on, never

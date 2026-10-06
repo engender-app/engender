@@ -84,7 +84,13 @@ export type BootEvent =
   | { type: 'boot-failed'; message: string }
   /** Settings, not boot: the access mode was changed while the journal was
       open, so the same data key is now wrapped under a different secret. */
-  | { type: 'access-mode-changed'; accessMode: JournalAccessMode };
+  | { type: 'access-mode-changed'; accessMode: JournalAccessMode }
+  /** A web lock closed the journal (after-release ticket 10). The boot is
+      still done - nothing is surveyed or migrated again - but the handle it
+      published is built over the key the lock lets go of, so it goes too. */
+  | { type: 'journal-closed' }
+  /** The unlock after that lock opened it again under the same key. */
+  | { type: 'journal-reopened'; journal: Journal };
 
 export type BootEffect =
   | { type: 'apply-cached-preferences' }
@@ -311,6 +317,14 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 
     case 'access-mode-changed':
       return step(machine, bootTransitions.setAccessMode(machine.boot, event.accessMode));
+
+    /* Only from ready: a lock or an unlock landing after the boot moved
+       somewhere else has no handle to take or give back. */
+    case 'journal-closed':
+      return step(machine, bootTransitions.withJournal(machine.boot, null));
+
+    case 'journal-reopened':
+      return step(machine, bootTransitions.withJournal(machine.boot, event.journal));
   }
 }
 

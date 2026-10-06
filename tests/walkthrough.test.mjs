@@ -4027,6 +4027,29 @@ try {
   if (returnedTo !== 0) throw new Error('unlocking landed part-way down the screen rather than at its top: ' + returnedTo);
   if (page.url() !== reading) throw new Error(`unlocking moved the URL: ${reading} -> ${page.url()}`);
 
+  /* A draft typed before a lock is there after it (after-release ticket 10).
+     On the web the lock closes the database and lets go of the key, and
+     unmounting the editor used to clear its encrypted mirror as if the
+     person had left; the unlock reopens the journal and the remounted
+     editor reads the mirror back. Cleared again afterwards, so the leave
+     guard has nothing to hold the next navigation for. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  const keptNote = 'Typed just before the lock, and still here after it.';
+  await page.locator('#ed-note').fill(keptNote);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
+  });
+  await page.waitForSelector('[data-applock]');
+  if (await page.locator('#ed-note').count()) throw new Error('the editor is still mounted under the lock screen');
+  await sessionPassphrase();
+  await page.waitForFunction((text) => document.querySelector('#ed-note')?.value === text, keptNote, { timeout: 10000 }).catch(async () => {
+    throw new Error('the draft did not come back after the unlock: ' + JSON.stringify(await page.locator('#ed-note').inputValue().catch(() => null)));
+  });
+  await page.locator('#ed-note').fill('');
+
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-settings-list]');
