@@ -243,6 +243,7 @@
     const tab = tabIdentity({
       disguised: prefs.disguise,
       appName: m.app_name(),
+      decoyName: m.disguise_name(),
       icon: chrome.icon
     });
     document.title = tab.title;

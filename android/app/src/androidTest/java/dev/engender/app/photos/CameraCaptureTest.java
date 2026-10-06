@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.provider.MediaStore;
 
 import androidx.core.content.FileProvider;
+import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -24,6 +25,8 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.OutputStream;
+
+import dev.engender.app.MainActivity;
 
 @RunWith(AndroidJUnit4.class)
 public class CameraCaptureTest {
@@ -70,6 +73,17 @@ public class CameraCaptureTest {
         CameraCapture.prepare(context);
         CameraCapture.cancel(context);
         assertFalse(new File(context.getCacheDir(), "camera-capture/capture.jpg").exists());
+    }
+
+    @Test
+    public void nextAppStartDeletesAnAbandonedCapture() throws Exception {
+        CameraCapture.prepare(context);
+        File output = new File(context.getCacheDir(), "camera-capture/capture.jpg");
+        java.nio.file.Files.write(output.toPath(), new byte[] { 1, 2, 3 });
+        assertTrue(output.exists());
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> assertFalse("abandoned capture survived startup", output.exists()));
+        }
     }
 
     @Test

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name_disguised">Notatki</string>
     <string name="widget_quick_log_title">Jak się czujesz?</string>
     <string name="widget_quick_log_description">Wybierz jedną z pięciu ocen, aby otworzyć wpis.</string>
     <string-array name="widget_mood_names">

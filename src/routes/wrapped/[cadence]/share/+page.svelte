@@ -106,7 +106,7 @@
   async function share() {
     if (!showing) return;
     try {
-      const delivery = await deliverBlob(wrappedShareFileName(prefs.name), showing.blob);
+      const delivery = await deliverBlob(wrappedShareFileName(prefs.name, undefined, prefs.disguise), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
         return;
