@@ -7,7 +7,9 @@
 
    Widths are taken at the default portrait size Android documents for the
    widget's targetCellWidth, (73n - 16) dp: 57 for one cell, 130 for two,
-   276 for four. A launcher with a denser grid gives less. */
+   276 for four. A launcher with a denser grid gives less, and so does
+   resizing a widget below its default: the providers' minResizeWidth was
+   kept as it was, so quick-log at its 180dp minimum has 32dp buttons. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
