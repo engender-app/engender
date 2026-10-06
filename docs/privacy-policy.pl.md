@@ -10,7 +10,7 @@ Androida i plików, które z nich eksportujesz lub udostępniasz.
 
 Pytania o tę politykę albo o twoje dane:
 
-- e-mail: [OPEN: adres kontaktowy, do wybrania przed wydaniem]
+- e-mail: engender-app@pm.me
 - błędy i ogólne pytania: https://github.com/engender-app/engender/issues
 - problemy z bezpieczeństwem: https://github.com/engender-app/engender/blob/main/SECURITY.md
 
