@@ -262,6 +262,16 @@ const SCHEMA_V87 = `
 ALTER TABLE medication_stock ADD COLUMN doses_per_unit REAL;
 `;
 
+/* v88: a saved question keeps the Starred filter (after-release ticket 16,
+   audit L08-01). /search offered Save with Starred on, and the row had no
+   column for it, so the question came back answering with unstarred entries
+   too. Every question saved before this was stored without the filter
+   whatever the screen showed, so 0 is the only reading an existing row can
+   be given. */
+const SCHEMA_V88 = `
+ALTER TABLE saved_question ADD COLUMN starred INTEGER NOT NULL DEFAULT 0;
+`;
+
 export const migrations: Migration[] = [
   { version: 78, sql: BASELINE_SCHEMA, baseline: true },
   { version: 79, sql: SCHEMA_V79 },
@@ -272,5 +282,6 @@ export const migrations: Migration[] = [
   { version: 84, sql: SCHEMA_V84 },
   { version: 85, sql: SCHEMA_V85 },
   { version: 86, sql: SCHEMA_V86 },
-  { version: 87, sql: SCHEMA_V87 }
+  { version: 87, sql: SCHEMA_V87 },
+  { version: 88, sql: SCHEMA_V88 }
 ];

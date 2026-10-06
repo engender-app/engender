@@ -521,7 +521,10 @@ const SECTIONS = [
       start_epoch_day: 'startEpochDay',
       end_epoch_day: 'endEpochDay',
       has_note: { field: 'hasNote', bool: true },
-      has_photo: { field: 'hasPhoto', bool: true }
+      has_photo: { field: 'hasPhoto', bool: true },
+      // Added in v88 (after-release ticket 16). A bool column writes 0 when
+      // the field is absent, so an older archive restores it as not starred.
+      starred: { field: 'starred', bool: true }
     }
   }),
   section({
