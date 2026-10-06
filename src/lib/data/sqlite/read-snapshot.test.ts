@@ -73,6 +73,32 @@ test('failed snapshots release waiting writes and do not poison later snapshots'
   await db.close();
 });
 
+test('a primed shared read waits until a held snapshot releases the connection', async () => {
+  const db = await migratedDb();
+  const sql = 'SELECT value FROM pref';
+  await db.query(sql);
+  const entered = latch();
+  const release = latch();
+  const snapshot = db.readSnapshot(async (reader) => {
+    await reader.query(sql);
+    entered.release();
+    await release.promise;
+  });
+  await entered.promise;
+  let answered = false;
+  const reading = db.query(sql).then((rows) => {
+    answered = true;
+    return rows;
+  });
+  await yieldTurn();
+  const answeredInsideSnapshot = answered;
+  release.release();
+  await snapshot;
+  assert.deepEqual(await reading, []);
+  assert.equal(answeredInsideSnapshot, false);
+  await db.close();
+});
+
 test('identical reads share one statement until a write, with independent result rows', async () => {
   const db = await migratedDb();
   await db.run("INSERT INTO pref (key, value) VALUES ('answer', 'before')");
