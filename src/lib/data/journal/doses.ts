@@ -37,6 +37,7 @@ import {
   expectedSlots,
   isInjectionDose,
   isTopicalDose,
+  slotToleranceDays,
   type Adherence,
   type ApplicationSiteKey,
   type InjectionSiteKey,
@@ -186,15 +187,34 @@ export function compareDoseSchedule(
      than filtered by date, so the split is the one every other screen
      makes. */
   const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === activeEpisode.id);
-  const slots = expectedSlots(schedule, activeEpisode.startEpochDay, fromEpochDay, toEpochDay);
+
+  /* Paired over the range widened by the schedule's tolerance on both sides
+     (after-release ticket 01): a dose inside the range can be a day late for
+     a slot just before it, and reading that dose as an extra would say
+     something that did not happen. Only the range's own rows and the range's
+     own unpaired doses come back. */
+  const tolerance = slotToleranceDays(schedule);
+  const slots = expectedSlots(schedule, activeEpisode.startEpochDay, fromEpochDay - tolerance, toEpochDay + tolerance);
+  const paired = adherence(slots, episodeDoses, episodePauses, tolerance);
+  const inRange = (day: number) => day >= fromEpochDay && day <= toEpochDay;
 
   return {
     reason: null,
     activeEpisode,
     schedule,
     pauses: episodePauses,
-    comparison: adherence(slots, episodeDoses, episodePauses)
+    comparison: {
+      rows: paired.rows.filter((row) => inRange(row.slot.epochDay)),
+      unmatched: paired.unmatched.filter((dose) => inRange(epochDayFromTimestamp(dose.timestamp)))
+    }
   };
+}
+
+/** The widest slotToleranceDays across `schedules`: how far either side of
+    a range the dose log has to be read for every late or early dose to find
+    its slot. */
+function widestTolerance(schedules: readonly DoseSchedule[]): number {
+  return schedules.reduce((widest, schedule) => Math.max(widest, slotToleranceDays(schedule)), 0);
 }
 
 export interface DosesArea {
@@ -591,7 +611,11 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
            attributes them: a concurrent episode's dose must not fill this
            one's slot, and a dose logged under an episode that has since been
            backdated away is not this one's either. */
-        const logged = await area.getDoses(from, until);
+        /* Read past both ends by the schedule's tolerance, so a dose logged
+           a few days late (today's included) still fills the slot it was for
+           rather than leaving it open for this pass to fill a second time. */
+        const tolerance = slotToleranceDays(schedule);
+        const logged = await area.getDoses(from - tolerance, until + tolerance);
         const ownDoses = logged.filter((dose) => attributeDose(episodes, dose).episode?.id === episode.id);
 
         const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
@@ -801,12 +825,15 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async getComparison({ fromEpochDay, toEpochDay, drug }) {
-      const [episodes, doses, schedules, pauses] = await Promise.all([
+      const [episodes, schedules, pauses] = await Promise.all([
         regimen.getEpisodes(),
-        area.getDoses(fromEpochDay, toEpochDay),
         area.getSchedules(),
         area.getPauses()
       ]);
+      /* After the schedules rather than beside them: how far past the range
+         to read depends on their tolerance (compareDoseSchedule). */
+      const tolerance = widestTolerance(schedules);
+      const doses = await area.getDoses(fromEpochDay - tolerance, toEpochDay + tolerance);
       return compareDoseSchedule(episodes, doses, schedules, pauses, { fromEpochDay, toEpochDay, drug });
     }
   };

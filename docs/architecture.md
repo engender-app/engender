@@ -270,11 +270,13 @@ timeline
   v83 : taper rebuilt without its own surgery day
   v84 : procedure archived flag
   v85 : clear orphans, foreign keys enforced
+  v87 : stock doses per unit
 ```
 
 The rules:
 
 - **Append only.** Never edit a shipped migration or the baseline. A journal whose `user_version` is above `LATEST_SCHEMA_VERSION` is refused with `SchemaTooNewError`, and the app shows [SchemaTooNew.svelte](../src/lib/components/SchemaTooNew.svelte) instead of guessing.
+- **Nothing below the baseline.** A journal with a schema between 1 and the baseline comes from a development build from before the squash. The runner refuses it with `JournalBelowBaselineError` before copying or writing anything, and the boot-failure notice ([BootFailureNotice.svelte](../src/lib/components/BootFailureNotice.svelte)) says where it came from and offers the start-over way out instead of a retry. The notice speaks one sentence per failure kind (`BootFailure` in [boot-state.ts](../src/lib/stores/boot-state.ts)) and keeps the driver's text behind "Copy details for a bug report".
 - **Copy before migrating.** Before migrating, the runner makes an encrypted pre-migration copy. A failed step rolls back and leaves that copy in place (ADR-0006).
 - **Foreign keys are on.** Both drivers set `PRAGMA foreign_keys = ON` (the web worker and [SqliteConnection.java](../android/app/src/main/java/dev/engender/app/sqlite/SqliteConnection.java)). The migration runner turns them off only while it migrates. v85 cleared rows that had been orphaned while enforcement was off.
 - **Two identities per row.** Each row has a local `INTEGER` rowid and a travelling identity: a minted `uuid` for the person's own rows, a seeded `key` for built-ins (ADR-0002). Archives and merges match on the travelling identity.
@@ -322,7 +324,7 @@ erDiagram
   lab_result
 ```
 
-`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](../src/lib/data/stockProjection.ts)). `taper` and `taper_session` belong to a procedure.
+`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](../src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
 
 **Body, transition and the rest**
 

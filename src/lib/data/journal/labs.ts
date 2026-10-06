@@ -270,9 +270,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
 
        That is the whole of ticket 03's box 6: editing or correcting a dose
        event months later cannot reach a context already saved, because no
-       edit to a dose passes through here. Correcting the draw's own day or
-       time does recompute, because moving the draw voids the old figure
-       outright rather than adjusting what it was measured from - and
+       edit to a dose passes through here. Correcting the draw's own day,
+       time or analyte does recompute, because moving the draw voids the
+       old figure outright rather than adjusting what it was measured from
+       (and an analyte can be timed from another drug's dose) - and
        without that, a result saved with no draw time could never be given
        one afterwards, since the hours figure that unlocks would never be
        derived. */
@@ -282,8 +283,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
 
       if (input.id) {
         const existing = (
-          await driver.query<Pick<LabRow, 'epoch_day' | 'draw_time' | 'timing_route' | 'timing_hours' | 'timing_day_of_interval'>>(
-            'SELECT epoch_day, draw_time, timing_route, timing_hours, timing_day_of_interval FROM lab_result WHERE uuid = ?',
+          await driver.query<
+            Pick<LabRow, 'epoch_day' | 'draw_time' | 'analyte' | 'timing_route' | 'timing_hours' | 'timing_day_of_interval'>
+          >(
+            'SELECT epoch_day, draw_time, analyte, timing_route, timing_hours, timing_day_of_interval FROM lab_result WHERE uuid = ?',
             [input.id]
           )
         )[0];
@@ -292,7 +295,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
            at the write, it named a result that is not there. */
         if (!existing) throw new Error(`unknown lab result: ${input.id}`);
 
-        const moved = existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime;
+        /* A different analyte can be timed from a different drug's dose
+           (selectTimingDose), so it voids the old figure the same way. */
+        const moved =
+          existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime || existing.analyte !== input.analyte;
         const timing = moved
           ? timingColumns(await deriveTiming(draw, input.analyte))
           : ([existing.timing_route, existing.timing_hours, existing.timing_day_of_interval] as const);

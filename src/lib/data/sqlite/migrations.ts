@@ -11,11 +11,13 @@
    was the price of squashing before the 1.0.0 cutoff. From 1.0.0 on, every
    released migration stays in the chain and cannot be edited or squashed.
    Such a journal is behind, not ahead, so SchemaTooNewError never fires for
-   it: the baseline is pending, it runs against tables that are already there,
-   and the step fails inside its transaction. Nothing is written and the
-   pre-migration copy is left where it is (ADR-0006's ticket 04 amendment), so
-   the failure is loud and the journal is intact, which is the most this can be
-   made to do once the steps that would have carried it forward are gone. */
+   it. `baseline: true` is what lets the runner tell it apart from a first run:
+   a journal with a schema below the baseline is refused with
+   JournalBelowBaselineError before anything is copied or written, and the
+   failure screen says it comes from a development build and offers the way
+   out (after-release ticket 09). The journal is intact, which is the most
+   this can be made to do once the steps that would have carried it forward
+   are gone. */
 
 import type { Migration } from './migration-runner.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
@@ -250,8 +252,18 @@ BEGIN
 END;
 `;
 
+/* v87: how many doses one unit of stock holds (after-release ticket 01).
+   Stock subtracted one unit per dose whatever the unit was, so two vials of
+   injectable estradiol were counted out after two injections. Nullable, and
+   NULL keeps that one-dose-per-unit reading, which is right for every row
+   counted in pills or doses and the only reading an existing row can be
+   given without asking. REAL because a quantity is REAL already. */
+const SCHEMA_V87 = `
+ALTER TABLE medication_stock ADD COLUMN doses_per_unit REAL;
+`;
+
 export const migrations: Migration[] = [
-  { version: 78, sql: BASELINE_SCHEMA },
+  { version: 78, sql: BASELINE_SCHEMA, baseline: true },
   { version: 79, sql: SCHEMA_V79 },
   { version: 80, sql: SCHEMA_V80 },
   { version: 81, sql: SCHEMA_V81 },
@@ -259,5 +271,6 @@ export const migrations: Migration[] = [
   { version: 83, sql: SCHEMA_V83 },
   { version: 84, sql: SCHEMA_V84 },
   { version: 85, sql: SCHEMA_V85 },
-  { version: 86, sql: SCHEMA_V86 }
+  { version: 86, sql: SCHEMA_V86 },
+  { version: 87, sql: SCHEMA_V87 }
 ];

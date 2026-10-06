@@ -174,6 +174,11 @@
     "holds": "tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes"
   },
   {
+    "name": "tryout-milestone-felt-check",
+    "tier": "dev",
+    "holds": "tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes"
+  },
+  {
     "name": "regimen-editor-check",
     "tier": "dev",
     "holds": "independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment"
@@ -446,7 +451,7 @@
   {
     "name": "boot-error-alone",
     "tier": "built",
-    "holds": "a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today"
+    "holds": "a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; the notice names the failure in words rather than the driver's, and a development build's journal (below the baseline) gets the start-over way out and no retry; a normal boot, and one at 6x CPU, still reach Today"
   },
   {
     "name": "restore-previous-journal",

@@ -789,6 +789,9 @@ interface ArchiveMedicationStock {
   /** How many days a restock takes (redesign phase 10 ticket 01). Absent on
       an archive written before this ticket, read as null the same way. */
   leadTimeDays: number | null;
+  /** Doses one unit holds (after-release ticket 01). Absent on an archive
+      written before it, read as null the same way. */
+  dosesPerUnit: number | null;
 }
 
 /** A wear session as it travels (phase 5 ticket 04). No reminder-handoff

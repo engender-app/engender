@@ -320,3 +320,57 @@ test('selected kinds read only their own facts and preserve default marks', asyn
   assert.deepEqual(calls, ['appointment', 'doseSlot']);
   assert.deepEqual(all.map((mark) => mark.kind), ['appointment', 'doseSlot', 'doseSlot']);
 });
+
+/* An episode's own span bounds its marks (after-release ticket 01, L01-09):
+   a planned end stops them, and an episode that starts later in the range
+   marks its days even though it is not active today. */
+async function weeklyFrom(journal: Awaited<ReturnType<typeof journalWithBuiltIns>>['journal'], startEpochDay: number, endEpochDay: number | null) {
+  const episodeId = await journal.regimen.upsertEpisode({
+    drug: 'testosterone',
+    ester: 'cypionate',
+    dose: 50,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'weekly',
+    startEpochDay,
+    endEpochDay,
+    endReason: null
+  });
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 7 },
+    dosesPerDay: 1,
+    doseAmounts: null,
+    autoLogFromEpochDay: null
+  });
+}
+
+test('no coming-up dose mark falls after the episode’s planned end', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyFrom(journal, TODAY - 7, TODAY + 10);
+
+  const marks = await journal.dayAhead.getDayAhead(TODAY, TODAY + 30, TODAY);
+  assert.deepEqual(
+    marks.filter((m) => m.kind === 'doseSlot').map((m) => m.epochDay),
+    [TODAY, TODAY + 7]
+  );
+});
+
+test('an episode starting next week marks its own days', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyFrom(journal, TODAY + 5, null);
+
+  const marks = await journal.dayAhead.getDayAhead(TODAY, TODAY + 20, TODAY);
+  assert.deepEqual(
+    marks.filter((m) => m.kind === 'doseSlot').map((m) => m.epochDay),
+    [TODAY + 5, TODAY + 12, TODAY + 19]
+  );
+});
+
+test('an episode that ended before the range marks nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyFrom(journal, TODAY - 30, TODAY - 1);
+
+  const marks = await journal.dayAhead.getDayAhead(TODAY, TODAY + 20, TODAY);
+  assert.deepEqual(marks.filter((m) => m.kind === 'doseSlot'), []);
+});

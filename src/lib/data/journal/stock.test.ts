@@ -71,7 +71,8 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
       openedEpochDay: null,
       inUseWindowDays: null,
       inUseEndEpochDay: null,
-      leadTimeDays: null
+      leadTimeDays: null,
+      dosesPerUnit: null
     }
   ]);
 });
@@ -578,4 +579,82 @@ test('an entry counted after the day asked about consumes nothing and has no rat
 
   const [row] = await journal.stock.getProjections(200);
   assert.deepEqual(row.projection, { remaining: 20, dailyRate: null, runOutEpochDay: null, excludedDoses: 0 });
+});
+
+/* Renaming a drug in the stock editor (after-release ticket 01, L07-01).
+   The save matched on the drug name alone, so a new name inserted a second
+   row and run-out and the reminder then tracked both. */
+
+test('renaming a stock drug by its id leaves one row, under the new name', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.stock.upsertEntry({ drug: 'estradoil', quantity: 10, unit: 'vials', recordedEpochDay: 19000 });
+
+  const again = await journal.stock.upsertEntry({ id, drug: 'estradiol', quantity: 10, unit: 'vials', recordedEpochDay: 19000 });
+
+  assert.equal(again, id);
+  const entries = await journal.stock.getEntries();
+  assert.deepEqual(entries.map((entry) => [entry.id, entry.drug]), [[id, 'estradiol']]);
+});
+
+test('renaming a drug drops the run-out reminder the old name was keeping', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol');
+  const id = await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 3, unit: 'pills', recordedEpochDay: 19000 });
+  for (let day = 19000; day <= 19002; day++) {
+    await journal.doses.upsertDose({ timestamp: at(day), route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+  await journal.stock.reconcileRunOutReminders(19002);
+  assert.equal((await journal.reminders.getReminders()).length, 1);
+
+  await journal.stock.upsertEntry({ id, drug: 'estradiol hemihydrate', quantity: 3, unit: 'pills', recordedEpochDay: 19000 });
+
+  assert.deepEqual(
+    (await journal.reminders.getReminders()).map((reminder) => reminder.autoSource),
+    []
+  );
+});
+
+test('renaming onto a drug that already has a count replaces that count, still one row per drug', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const kept = await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 5, unit: 'pills', recordedEpochDay: 19000 });
+  const renamed = await journal.stock.upsertEntry({ drug: 'E2', quantity: 20, unit: 'pills', recordedEpochDay: 19001 });
+
+  await journal.stock.upsertEntry({ id: renamed, drug: 'estradiol', quantity: 20, unit: 'pills', recordedEpochDay: 19001 });
+
+  const entries = await journal.stock.getEntries();
+  assert.deepEqual(entries.map((entry) => [entry.id, entry.drug, entry.quantity]), [[renamed, 'estradiol', 20]]);
+  assert.notEqual(kept, renamed);
+});
+
+test('saving with an id that names no entry refuses rather than inventing one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.stock.upsertEntry({ id: 'no-such-id', drug: 'estradiol', quantity: 5, unit: 'pills', recordedEpochDay: 19000 }),
+    /unknown stock entry/
+  );
+  assert.deepEqual(await journal.stock.getEntries(), []);
+});
+
+/* Doses per unit (after-release ticket 01, L03-04): stored on the entry and
+   divided into the projection, so two vials at five doses each last ten. */
+
+test('doses per unit round-trips and divides each dose into the remaining count', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await episode(journal, 19000, 'estradiol valerate');
+  await journal.stock.upsertEntry({ drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: 19000, dosesPerUnit: 5 });
+  for (const day of [19000, 19007, 19014]) {
+    await journal.doses.upsertDose({ timestamp: at(day), route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+
+  const [row] = await journal.stock.getProjections(19020);
+
+  assert.equal(row.entry.dosesPerUnit, 5);
+  assert.equal(row.projection.remaining, 1.4);
+  assert.equal(row.projection.runOutEpochDay, 19020 + 49);
+});
+
+test('an entry saved without doses per unit reads back null, one dose per unit', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 30, unit: 'pills', recordedEpochDay: 19000 });
+  assert.equal((await journal.stock.getEntries())[0].dosesPerUnit, null);
 });
