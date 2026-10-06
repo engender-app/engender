@@ -666,4 +666,38 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(windowListeners.focus ?? []).toHaveLength(0);
     expect(documentListeners.visibilitychange ?? []).toHaveLength(0);
   });
+  test('permanent write listeners and queued work do nothing after stop', async () => {
+    const listeners: ((tables: string[]) => void)[] = [];
+    const deps = makeDeps({ onTablesWritten: (listener) => listeners.push(listener) });
+    let finishRead: (value: typeof REMINDER[]) => void;
+    vi.mocked(deps.journal.reminders.getReminders).mockReturnValue(new Promise((resolve) => { finishRead = resolve; }));
+    platformSync.startAndroidPlatformSync(deps);
+    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    await flush();
+    platformSync.stopAndroidPlatformSync();
+    const reconciles = vi.mocked(deps.journal.stock.reconcileRunOutReminders).mock.calls.length;
+    finishRead!([REMINDER]);
+    await flush();
+    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    await flush();
+    expect(deps.androidReminders.sync).not.toHaveBeenCalled();
+    expect(deps.journal.reminders.getReminders).toHaveBeenCalledTimes(1);
+    expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledTimes(reconciles);
+  });
+
+  test('preference bridge failures are caught and reported', async () => {
+    const error = new Error('bridge failed');
+    const deps = makeDeps();
+    vi.mocked(deps.androidDisguise.setLauncherIdentity).mockRejectedValue(error);
+    vi.mocked(deps.androidLockTiming.setTiming).mockRejectedValue(error);
+    vi.mocked(deps.androidScreenCapture.setAllowed).mockRejectedValue(error);
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      platformSync.startAndroidPlatformSync(deps);
+      await flush();
+      expect(report).toHaveBeenCalledTimes(3);
+      expect(report).toHaveBeenCalledWith(error);
+    } finally { report.mockRestore(); }
+  });
+
 });

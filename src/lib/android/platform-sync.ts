@@ -229,6 +229,7 @@ function activeDeps(): PlatformSyncDeps {
 
 const syncReminderSchedules = coalescing(
   async () => {
+    if (!active) return;
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
     const [reminders, recentEntries, pauses, areaStates] = await Promise.all([
@@ -237,6 +238,7 @@ const syncReminderSchedules = coalescing(
       deps.journal.journalingPauses.getPauses(),
       deps.journal.areaStates.getAreaStates()
     ]);
+    if (!active || currentDeps !== deps || !deps.isReady()) return;
     await deps.androidReminders.sync(
       assembleReminderSyncPayload({
         reminders,
@@ -261,6 +263,7 @@ const syncReminderSchedules = coalescing(
 
 const reconcileStockRunOutReminders = coalescing(
   async () => {
+    if (!active) return;
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
     await deps.journal.stock.reconcileRunOutReminders(deps.todayEpochDay());
@@ -354,9 +357,9 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     disguised: deps.prefs.disguise,
     palette: deps.prefs.palette,
     shape: deps.prefs.launcherIconShape
-  });
-  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter, enabled: deps.lockEnabled });
-  void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture });
+  }).catch(console.error);
+  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter, enabled: deps.lockEnabled }).catch(console.error);
+  void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture }).catch(console.error);
 
   stopCurrent = () => {
     if (!active) return;
