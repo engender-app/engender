@@ -3456,6 +3456,8 @@
   "tile_measurements_prompt": "Monthly check-in",
   "tile_measurements_sub": "Monthly prompt to record body measurements.",
   "tile_measurements_title": "Body measurements",
+  "tile_patch_schedule_amount": "{dose} {unit}",
+  "tile_patch_schedule_detail": "{amount} · {route}",
   "tile_patch_schedule_sub": "Shows the next scheduled non-daily dose.",
   "tile_patch_schedule_title": "Scheduled dose",
   "tile_pause_active_sub": "Shows your current journaling pause on Today.",

@@ -3514,6 +3514,8 @@
   "tile_measurements_prompt": "Miesięczna aktualizacja",
   "tile_measurements_sub": "Comiesięczne przypomnienie o zapisaniu wymiarów ciała.",
   "tile_measurements_title": "Pomiary ciała",
+  "tile_patch_schedule_amount": "{dose} {unit}",
+  "tile_patch_schedule_detail": "{amount} · {route}",
   "tile_patch_schedule_sub": "Pokazuje następną zaplanowaną dawkę leku przyjmowanego niecodziennie.",
   "tile_patch_schedule_title": "Zaplanowana dawka",
   "tile_pause_active_sub": "Pokazuje trwającą przerwę od dziennika na ekranie Dzisiaj.",
