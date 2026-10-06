@@ -54,8 +54,8 @@
        is `--text-xs` with tight padding, so making it a link needs a touch
        target as well as an href.
 
-     `day` still accepts `today` or an epoch-day number, and still reads it as
-     a `$derived` rather than a const: a same-route navigation between two
+     `day` accepts `today`, an epoch-day integer or a valid ISO date. It
+     reads the parameter as a `$derived` rather than a const: a same-route navigation between two
      days reuses this component, and a plain const would keep the first day it
      saw (see the stale-params note on /entry/[id]).
 
@@ -92,6 +92,7 @@
   import { m } from '$lib/paraglide/messages';
   import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
   import { fmtDay } from '$lib/data/dates';
+  import { parseDayParam } from '$lib/data/dayParam';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
   import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -107,7 +108,8 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
-  let epochDay = $derived(page.params.day === 'today' ? todayEpochDay() : Number(page.params.day));
+  let parsedDay = $derived(parseDayParam(page.params.day, todayEpochDay()));
+  let epochDay = $derived(parsedDay ?? 0);
   let isToday = $derived(epochDay === todayEpochDay());
   let isFuture = $derived(epochDay > todayEpochDay());
 
@@ -116,13 +118,17 @@
      screen rather than one per area: the registry reads its sections
      concurrently underneath, and seventeen subscriptions here would be
      seventeen re-runs on a write that any one of them cares about. */
-  let dayRead = liveQuery((j) => j.day.getDay(epochDay));
+  let dayRead = liveQuery((j) =>
+    parsedDay === null ? Promise.resolve(null) : j.day.getDay(epochDay)
+  );
   let day = $derived(dayRead.value);
 
   /* One mark's worth of range - `fromEpochDay` and `toEpochDay` are both
      this screen's own day, the same reason HeatMap asks for a month and
      Home (ticket 63) will ask for just today. */
-  let dayAheadRead = liveList((j) => j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay()));
+  let dayAheadRead = liveList((j) =>
+    parsedDay === null ? Promise.resolve([]) : j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay())
+  );
 
   /* What the schedules expect on this day, which a mark cannot say
      (audit item 12): a mark is a day and a kind, never an amount
@@ -138,7 +144,7 @@
      already draws them. */
   let expectedDosesRead = liveQuery(async (j) => {
     const asked = epochDay;
-    if (asked <= todayEpochDay()) return [];
+    if (parsedDay === null || asked <= todayEpochDay()) return [];
     const [episodes, schedules, pauses] = await Promise.all([
       j.regimen.getEpisodes(),
       j.doses.getSchedules(),
@@ -186,7 +192,7 @@
      what happened and answers with nothing. Off DAY_SECTION_KEYS rather
      than a list here, the same reason `everythingLogged` below is. */
   let hasRecords = $derived(
-    day !== undefined && DAY_SECTION_KEYS.some((key) => (day![key] as unknown[]).length > 0)
+    day != null && DAY_SECTION_KEYS.some((key) => (day![key] as unknown[]).length > 0)
   );
 
   /* Whether a chained read's landed value actually answers for the ids the
@@ -262,7 +268,7 @@
      to the registry counts towards "is this day empty" without this line
      being touched. */
   let everythingLogged = liveListIn(dayRead, (records) =>
-    DAY_SECTION_KEYS.flatMap((key) => records[key] as unknown[])
+    records ? DAY_SECTION_KEYS.flatMap((key) => records[key] as unknown[]) : []
   );
 
   /* `everythingLogged` widened to also hold for the day's two chained reads,
@@ -308,7 +314,9 @@
 
 <div class="screen" data-screen>
   <ScreenHeader
-    title={isToday
+    title={parsedDay === null
+      ? m.nav_calendar()
+      : isToday
       ? m.today()
       : fmtDay(epochDay, {
           weekday: 'long',
@@ -320,6 +328,9 @@
     back="/calendar"
   />
 
+  {#if parsedDay === null}
+    <Notice key="day-unavailable" title={m.source_record_unavailable()} />
+  {:else}
   <!-- What is coming (ADR-0067): today and a future day both read it, a
        past day never does (dayAhead.ts's own floor leaves `comingRows`
        empty there, so nothing below ever draws). The heading is the
@@ -402,5 +413,6 @@
         <Icon name="columns" size={20} /><span>{m.era_start_here()}</span>
       </a>
     </div>
+  {/if}
   {/if}
 </div>
