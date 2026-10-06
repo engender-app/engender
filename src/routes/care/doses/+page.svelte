@@ -1044,7 +1044,9 @@
            The fields themselves only turn invalid once they have been left. -->
       {#if !editorCanSave}
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
-          {#if !editorHasAmount}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+          <!-- The amount comes with the drug where a regimen sets one, so it
+               is not asked for while the drug still is. -->
+          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
           {#if editorNeedsDrugPick}<p transition:disclose|local>{m.dose_drug_required()}</p>{/if}
           {#if editorIsInjection && !editor.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
           {#if editorIsTopical && !editor.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}
