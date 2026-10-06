@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf } from '../src/lib/theme/colour';
+import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, toRgb } from '../src/lib/theme/colour';
 import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
@@ -631,6 +631,110 @@ describe('the field and the fills (phase 10)', () => {
         }
       }
     }
+  });
+
+  /* Phase 15 ticket 20, WCAG 1.4.11: a chart line that carries the reading
+     answers to 3:1 against everything it is drawn over. The stripe itself
+     stays the line's colour (the test above holds that), and where it cannot
+     reach 3:1 on its own the line is edged in role.edge, which is what an
+     eye finds the line by. So the line's boundary is the edge where there is
+     one and the stripe where there is not, and that boundary is what is
+     measured here, on every role of every flag, both themes. */
+  describe('essential chart graphics (WCAG 1.4.11)', () => {
+    const pitchCss = readFileSync('src/lib/components/PitchFigure.svelte', 'utf8');
+    const kitCss = readFileSync('src/lib/styles/kit.css', 'utf8');
+    const bandCss = readFileSync('src/lib/components/HormoneBandChart.svelte', 'utf8');
+
+    /** A `color-mix(in oklab, var(--x) N%, transparent)` fill painted over
+        a ground: the colour at N% alpha, composited in sRGB the way the
+        browser paints it. */
+    function over(hex: string, pct: number, ground: string) {
+      const [a, g] = [toRgb(hex), toRgb(ground)];
+      const t = pct / 100;
+      const channel = (x: number, y: number) =>
+        Math.round(x * t + y * (1 - t))
+          .toString(16)
+          .padStart(2, '0');
+      return `#${channel(a.r, g.r)}${channel(a.g, g.g)}${channel(a.b, g.b)}`;
+    }
+
+    /** The N in a rule's `color-mix(... N%, transparent)`, read out of the
+        component so a change to the wash is a change to what is measured. */
+    function washPercent(source: string, selector: string) {
+      const rule = new RegExp(String.raw`${selector}\s*\{([^}]*)\}`).exec(source)?.[1] ?? '';
+      const match = /(\d+)%,\s*transparent/.exec(rule);
+      if (!match) throw new Error(`No transparent wash in ${selector}`);
+      return Number(match[1]);
+    }
+
+    function eachRole(fn: (where: string, role: ReturnType<typeof flagRoles>[number], t: Record<string, string>) => void) {
+      for (const palette of PALETTES) {
+        for (const theme of THEMES) {
+          const t = tokenMap(palette, theme);
+          for (const role of flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']])) {
+            fn(`${palette}/${theme} ${role.stripe}`, role, t);
+          }
+        }
+      }
+    }
+
+    function expectBoundary(where: string, line: string, grounds: Array<[string, string]>) {
+      for (const [what, ground] of grounds) {
+        const ratio = contrast(line, ground);
+        expect(ratio, `${where}: line edge ${line} on ${what} (${ground}) has ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+      }
+    }
+
+    it("draws the voice figure's trace and contour at 3:1 against the bands they cross", () => {
+      const band = washPercent(pitchCss, String.raw`\.pf-band`);
+      const middle = washPercent(pitchCss, String.raw`\.pf-middle`);
+      eachRole((where, role, t) =>
+        expectBoundary(where, role.edge ?? role.stripe, [
+          ['the bare field', t.surface],
+          ['a reference band', over(role.stripe, band, t.surface)],
+          ['the middle band', over(role.stripe, middle, t.surface)]
+        ])
+      );
+    });
+
+    it("draws an area chart's line at 3:1 against its own fill and every page it sits on", () => {
+      const fill = washPercent(kitCss, String.raw`\.kit-area-fill`);
+      const annotation = washPercent(kitCss, String.raw`\n\.kit-annotation-band`);
+      eachRole((where, role, t) => {
+        const grounds: Array<[string, string]> = [];
+        for (const surface of ['bg', 'surface', 'surface-2']) {
+          const marked = over(t.text, annotation, t[surface]);
+          grounds.push(
+            [surface, t[surface]],
+            [`${surface} under the fill`, over(role.stripe, fill, t[surface])],
+            [`${surface} under an annotation band`, marked],
+            [`${surface} under both`, over(role.stripe, fill, marked)]
+          );
+        }
+        expectBoundary(where, role.edge ?? role.stripe, grounds);
+        /* The second series is drawn in `paired` and carries no fill. */
+        const second = role.pairedEdge ?? role.paired;
+        expectBoundary(`${where} as the second series`, second, grounds.filter(([what]) => !what.includes('fill') && !what.includes('both')));
+      });
+    });
+
+    it("edges the hormone curve's band at 3:1 against the page and the card", () => {
+      const rule = /\.band-edge\s*\{([^}]*)\}/.exec(bandCss)?.[1] ?? '';
+      const opacity = Number(/opacity:\s*([\d.]+)/.exec(rule)?.[1] ?? 1);
+      for (const palette of PALETTES) {
+        for (const theme of THEMES) {
+          const t = tokenMap(palette, theme);
+          for (const surface of ['bg', 'surface', 'surface-2']) {
+            const edge = over(t.accent, opacity * 100, t[surface]);
+            const ratio = contrast(edge, t[surface]);
+            expect(
+              ratio,
+              `${palette}/${theme}: the band's edge ${edge} on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1`
+            ).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    });
   });
 
   /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date
