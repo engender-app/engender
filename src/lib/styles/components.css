@@ -1561,7 +1561,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   width: calc(var(--percentage) + var(--slider-inset));
   border-radius: var(--r-block);
   background: var(--accent);
-  transition: opacity var(--dur-fast) var(--ease-out);
+  transition: opacity var(--dur-med) var(--ease-in-out);
 }
 
 /* The ruler. Every stop the thumb can rest on is marked, which is what makes
@@ -1614,7 +1614,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   border-radius: 50%;
   background: var(--surface);
   border: 3px solid var(--accent);
-  transition: box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  transition: box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-med) var(--ease-in-out);
 }
 /* Held, the thumb takes the wash the row's press takes, drawn as a ring
    because a ring is the only thing box-shadow spells (kit.css says the same
@@ -1637,7 +1637,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    way, so a mid-track thumb would otherwise read as a middling score. Ticket
    31 dimmed it; dimmed, a half-filled track beside a "-" still read as a
    value (audit UX-17), so the thumb and the fill are not drawn at all until
-   the first touch, and fade in under the finger when it lands. The groove
+   the first touch, and fade in under the finger when it lands, over 240ms
+   in-out: at 150ms ease-out the first frame took 44% of the fade. The groove
    and the ruler stay: they are the control, and the scale is true whether
    or not there is a value on it yet. */
 .slider.is-unset .slider-fill,

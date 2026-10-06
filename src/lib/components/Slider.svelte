@@ -16,6 +16,7 @@
   import { untrack } from 'svelte';
   import { Slider as MeltSlider } from 'melt/builders';
   import { displayValue, sliderScaleStops, snapToStop } from './sliderScale';
+  import { m } from '$lib/paraglide/messages';
 
   let {
     min = 0,
@@ -39,8 +40,8 @@
         fallback and the accessible name where the two differ, as they do on a
         dimension, whose spoken name carries both endpoints. */
     labelledBy?: string;
-    /** Dims the instrument without hiding it: there is a thumb position but
-        no value behind it yet. */
+    /** No value yet: the thumb and fill are not drawn, and a screen reader
+        hears "Not set" rather than the midpoint the thumb rests on. */
     unset?: boolean;
     /** True while the control is being operated - a finger is down on it, or
         it holds keyboard focus. Bindable so a label outside the control can
@@ -145,6 +146,7 @@
   data-slider
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}
+  aria-valuetext={unset ? m.slider_unset_aria() : undefined}
   onpointerdowncapture={() => { pressing = true; holding = true; }}
   onpointercancel={cancelDrag}
   onfocus={onFocus}
