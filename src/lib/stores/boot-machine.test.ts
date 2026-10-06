@@ -42,8 +42,7 @@ function surveyedWeb(survey: Partial<Extract<BootEvent, { type: 'web-surveyed' }
     type: 'web-surveyed',
     keystoreSecretSource: null,
     deviceBoundKeystoreExists: false,
-    plaintextJournalPresent: false,
-    marker: null,
+    legacyStoragePresent: false,
     ...survey
   };
 }
@@ -76,7 +75,6 @@ test('a web first run reaches the setup gate with no access mode yet', () => {
 
   expect(machine.boot.status).toBe('needs-setup');
   expect(machine.boot.accessMode).toBeNull();
-  expect(machine.boot.conversion).toBeNull();
   expect(effects).toEqual([]);
 });
 
@@ -110,76 +108,6 @@ test('a device-bound key the browser will not hand over reaches the recovery gat
   );
 
   expect(machine.boot.status).toBe('needs-device-recovery');
-});
-
-test('plaintext left behind by a finished conversion is retired once, then surveyed again', () => {
-  const retire = surveyedWeb({ keystoreSecretSource: 'passphrase', plaintextJournalPresent: true });
-  const first = walk(started('web'), retire);
-
-  expect(first.effects).toEqual([{ type: 'finish-retirement' }]);
-
-  /* The second survey is the one the retirement itself asked for. Even if it
-     still reads as retire - a delete that did not take - the sequence moves on
-     rather than retiring in a circle. */
-  const second = walk(started('web'), retire, retire);
-  expect(second.effects).toEqual([]);
-  expect(second.machine.boot.status).toBe('needs-unlock');
-});
-
-test('a plaintext journal is prechecked before anyone is asked for a passphrase', () => {
-  const { machine, effects } = walk(
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true })
-  );
-
-  expect(machine.boot.status).toBe('booting');
-  expect(effects).toEqual([{ type: 'precheck-conversion' }]);
-});
-
-test('a refused conversion reaches the refusal screen with its reason', () => {
-  const { machine } = walk(started('web'), surveyedWeb({ plaintextJournalPresent: true }), {
-    type: 'conversion-prechecked',
-    result: { ok: false, reason: 'not-enough-space', needBytes: 500, freeBytes: 120 }
-  });
-
-  expect(machine.boot.status).toBe('conversion-refused');
-  expect(machine.boot.conversionRefusal).toMatchObject({
-    reason: 'not-enough-space',
-    needBytes: 500,
-    freeBytes: 120
-  });
-});
-
-test('an accepted conversion asks for a new passphrase, or for the saved one when resuming', () => {
-  const fresh = walk(started('web'), surveyedWeb({ plaintextJournalPresent: true }), {
-    type: 'conversion-prechecked',
-    result: { ok: true }
-  });
-
-  expect(fresh.machine.boot.status).toBe('needs-setup');
-  expect(fresh.machine.boot.accessMode).toBe('passphrase');
-  expect(fresh.machine.boot.conversion).toEqual({ progress: null });
-
-  const resuming = walk(
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true, keystoreSecretSource: 'passphrase', marker: 'database' }),
-    { type: 'conversion-prechecked', result: { ok: true } }
-  );
-
-  expect(resuming.machine.boot.status).toBe('needs-unlock');
-  expect(resuming.machine.boot.conversion).toEqual({ progress: null });
-});
-
-test('a demo build wipes a plaintext journal rather than converting it, then sets up', () => {
-  const wiping = walk(started('web', true), surveyedWeb({ plaintextJournalPresent: true }));
-  expect(wiping.effects).toEqual([{ type: 'wipe-demo-journal' }]);
-
-  const afterWipe = walk(
-    started('web', true),
-    surveyedWeb({ plaintextJournalPresent: true }),
-    { type: 'demo-journal-wiped' }
-  );
-  expect(afterWipe.effects).toEqual([{ type: 'demo-setup' }]);
 });
 
 test('a demo build unlocks itself, and falls back to the gate when the passphrase changed', () => {
@@ -270,7 +198,7 @@ test('a key nobody authenticated for leaves app lock its own question to ask', (
   expect(effects).toEqual([{ type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }]);
 });
 
-test('a key with no conversion waiting opens the journal straight away', () => {
+test('a key opens the journal straight away', () => {
   const { machine, effects } = walk(
     started('android'),
     surveyedAndroid({ nativeDeviceKeyExists: true }),
@@ -280,36 +208,6 @@ test('a key with no conversion waiting opens the journal straight away', () => {
   expect(machine.boot.status).toBe('booting');
   expect(machine.boot.accessMode).toBe('device-bound');
   expect(effects).toEqual([{ type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }]);
-});
-
-test('a key with a conversion waiting converts first, reporting progress, then opens', () => {
-  const upToKey: BootEvent[] = [
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true }),
-    { type: 'conversion-prechecked', result: { ok: true } },
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }
-  ];
-
-  const converting = walk(...upToKey);
-  expect(converting.machine.boot.status).toBe('converting');
-  expect(converting.effects).toEqual([
-    { type: 'mark-unlocked' },
-    { type: 'run-conversion', dataKey: KEY, accessMode: 'passphrase' }
-  ]);
-
-  const progressed = walk(...upToKey, {
-    type: 'conversion-progressed',
-    progress: { stage: 'photos', done: 2, total: 5 }
-  });
-  expect(progressed.machine.boot.conversion).toEqual({
-    progress: { stage: 'photos', done: 2, total: 5 }
-  });
-
-  const opened = walk(...upToKey, { type: 'converted', dataKey: KEY, accessMode: 'passphrase' });
-  expect(opened.machine.boot.status).toBe('booting');
-  expect(opened.effects).toEqual([
-    { type: 'open-journal', dataKey: KEY, accessMode: 'passphrase' }
-  ]);
 });
 
 test('an opened journal is ready, and journal-opened alone asks for no warning', () => {
@@ -512,31 +410,6 @@ test('a PIN keystore beside a leftover device key still boots as PIN', () => {
   expect(effects).toEqual([]);
 });
 
-test('illegal events throw rather than moving the boot somewhere it cannot be', () => {
-  const setup = walk(started('web'), surveyedWeb()).machine;
-
-  expect(() =>
-    reduce(setup, { type: 'conversion-progressed', progress: { stage: 'database' } })
-  ).toThrow(/invalid transition/i);
-  expect(() =>
-    reduce(setup, { type: 'journal-opened', journal: {} as never })
-  ).toThrow(/invalid transition/i);
-  expect(() => reduce(setup, { type: 'pre-migration-copy-checked', usable: true })).toThrow(
-    /invalid transition/i
-  );
-  /* The one the gates make hardest to reach and the adapter now nets: a
-     second submit landing while the first is already converting. */
-  const converting = walk(
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true }),
-    { type: 'conversion-prechecked', result: { ok: true } },
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }
-  ).machine;
-  expect(() =>
-    reduce(converting, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true })
-  ).toThrow(/invalid transition/i);
-});
-
 test('choosing device-bound mode names what the android refusal leaves to do', () => {
   expect(deviceBoundSetupOutcome({ kind: 'key', dataKey: KEY })).toBe('ok');
   expect(
@@ -602,20 +475,6 @@ test.each(['pin', 'passphrase'] as const)(
    uncached boot already reaches (see the equivalent uncached tests further
    up), to prove a stale or merely unconfirmed cache doesn't trade a proper
    refusal screen for the generic boot-failed one. */
-test('a cached access mode does not block a refused conversion from reaching its screen', () => {
-  const seeded = reduce(initialBoot('pin'), started('web'));
-  const surveyed = reduce(seeded.machine, surveyedWeb({ plaintextJournalPresent: true }));
-  expect(surveyed.machine.boot.status).toBe('needs-unlock');
-
-  const { machine } = reduce(surveyed.machine, {
-    type: 'conversion-prechecked',
-    result: { ok: false, reason: 'not-enough-space', needBytes: 500, freeBytes: 120 }
-  });
-
-  expect(machine.boot.status).toBe('conversion-refused');
-  expect(machine.boot.conversionRefusal).toMatchObject({ reason: 'not-enough-space' });
-});
-
 test('a cached access mode does not block a device-key refusal from reaching its screen', () => {
   const seeded = reduce(initialBoot('pin'), started('web'));
   const surveyed = reduce(seeded.machine, surveyedWeb({ deviceBoundKeystoreExists: true }));
@@ -625,3 +484,14 @@ test('a cached access mode does not block a device-key refusal from reaching its
 
   expect(machine.boot.status).toBe('needs-device-recovery');
 });
+
+for (const demo of [false, true]) {
+  for (const keystoreSecretSource of [null, 'passphrase'] as const) {
+    test(`legacy storage refuses boot without write effects, demo=${demo}, keystore=${keystoreSecretSource}`, () => {
+      const { machine, effects } = walk(started('web', demo), surveyedWeb({ legacyStoragePresent: true, keystoreSecretSource }));
+      expect(machine.boot.status).toBe('legacy-refused');
+      expect(effects).toEqual([]);
+      expect(reduce(machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects).toEqual([]);
+    });
+  }
+}

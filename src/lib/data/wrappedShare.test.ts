@@ -33,3 +33,7 @@ test('the file is named for the wrapped, not the journal', () => {
   assert.equal(wrappedShareFileName('Alicja', 20313), 'alicja-wrapped-2025-08-13.png');
   assert.equal(wrappedShareFileName('', 20313), 'wrapped-2025-08-13.png');
 });
+
+test('disguised wrapped exports omit the name slug', () => {
+  assert.equal(wrappedShareFileName('Alicja', 20313, true), 'wrapped-2025-08-13.png');
+});

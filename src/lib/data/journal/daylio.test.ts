@@ -23,6 +23,18 @@ const naming = {
 
 const daylioHeader = 'full_date,date,weekday,time,mood,activities,note_title,note';
 
+test('Daylio preview resolves built-in aliases to one tag per entry', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const preview = await journal.archive.previewDaylioImport(
+    [daylioHeader, '2026-01-15,January 15,Thursday,09:00,Rad,exercise | ruch,,walk'].join('\n'),
+    naming
+  );
+
+  assert.deepEqual(preview.journal.entries[0].tags, ['a-exercise']);
+  await journal.archive.commitDaylioImport(preview);
+  assert.deepEqual((await journal.entries.recentDays(1))[0].tags, ['a-exercise']);
+});
+
 function daylioCsv(entryCount: number): string {
   const start = Date.UTC(2026, 0, 1, 7, 15);
   const rows: string[] = [];

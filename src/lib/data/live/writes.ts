@@ -1008,7 +1008,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
      an area registered after this line was written. */
   lastWrite: classify<Journal['lastWrite']>()({
     writes: {},
-    reads: { getLastWrites: LAST_WRITE_TABLES }
+    reads: { getLastWrites: LAST_WRITE_TABLES, getWritingDays: ['entry', 'dose'] }
   }),
   /* Read-only, and its table list is its own registry's for the reason
      day's is (dayAhead.ts's DAY_AHEAD_TABLES): a kind registered there

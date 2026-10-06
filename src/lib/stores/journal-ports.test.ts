@@ -16,7 +16,7 @@ import {
   closeActiveDriver
 } from './journal-ports';
 import type { SqliteDriver } from '../data/sqlite/driver';
-import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
+import type { WebSqlite } from '../data/sqlite/driver';
 
 
 test('photoFiles store creation is decoupled from SQLite driver creation', () => {

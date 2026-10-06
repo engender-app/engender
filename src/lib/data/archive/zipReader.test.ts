@@ -157,3 +157,24 @@ test('many distinct members exhaust the shared budget without charging cached re
   assert.throws(() => reader.read('10.txt'), ZipTooLargeError);
   assert.throws(() => reader.read('99.txt'), ZipTooLargeError);
 });
+
+test('prefix sniffing leaves assets uncached and bills each member once', () => {
+  const bytes = zipSync({
+    'before.bin': new Uint8Array(1024 * 1024),
+    'photo.bin': new Uint8Array(1024 * 1024).fill(42),
+    'after.bin': new Uint8Array(1024 * 1024)
+  });
+  const reader = openZip(bytes, 3 * 1024 * 1024);
+  const first = reader.readPrefix('photo.bin', 12)!;
+  assert.equal(first.length, 12);
+  assert.deepEqual([...first], Array(12).fill(42));
+  first.fill(0);
+  assert.deepEqual([...reader.readPrefix('photo.bin', 12)!], Array(12).fill(42));
+  assert.equal(reader.read('photo.bin')!.length, 1024 * 1024);
+  assert.equal(reader.read('before.bin')!.length, 1024 * 1024);
+  assert.equal(reader.read('after.bin')!.length, 1024 * 1024);
+});
+
+test('prefix sniffing refuses a forged oversized member before inflating', () => {
+  assert.throws(() => openZip(declaring('photo.bin', 'JPEG', 4_000_000_000), 100).readPrefix('photo.bin', 12), ZipTooLargeError);
+});

@@ -385,7 +385,7 @@ export async function dayonePreview(
     builtIn: true,
     tags: [...newTags.values()]
   };
-  const entries = candidates.map((c) => c.entry);
+  const entries = candidates.map(({ entry }) => ({ ...entry, tags: [...new Set(entry.tags)] }));
   return {
     entryCount: entries.length,
     matchedTagCount: matchedTags.size,

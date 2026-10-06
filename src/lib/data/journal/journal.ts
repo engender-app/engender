@@ -567,7 +567,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       procedures,
       tryouts,
       documents
-    }),
+    }, driver),
     dayAhead: makeDayAheadArea({
       appointments,
       procedures,
