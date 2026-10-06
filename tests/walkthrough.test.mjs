@@ -4340,11 +4340,11 @@ try {
     .evaluate((el) => el.open);
   if (!groupStillOpen) throw new Error('hiding a tag closed its own still-open group');
 
-  const tomorrow = await page.evaluate(() => {
+  const unusedPastDay = await page.evaluate(() => {
     const d = new Date();
-    return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1) / 86400000);
+    return Math.floor(Date.UTC(d.getFullYear() - 2, 0, 1) / 86400000);
   });
-  await page.goto(BASE + `/entry/new/${tomorrow}`, { waitUntil: 'networkidle' });
+  await page.goto(BASE + `/entry/new/${unusedPastDay}`, { waitUntil: 'networkidle' });
   await booted();
   await openSection('tags');
   const afterHide = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());

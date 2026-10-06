@@ -267,6 +267,7 @@ available for the surface or device it measures.
 
 | Probe | Purpose |
 | --- | --- |
+| `device-bound-writes` | verify wrapping-key reuse and failed metadata writes on real OPFS and IndexedDB; run with `node tests/device-bound-writes.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |

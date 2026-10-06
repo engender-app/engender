@@ -1293,6 +1293,7 @@
   "exp_auto_change_destination": "Zmień folder",
   "exp_auto_choose_destination": "Wybierz folder",
   "exp_auto_config_failed": "Nie udało się zaktualizować ustawień kopii.",
+  "exp_auto_destination_chosen": "Wybrany folder",
   "exp_auto_destination_label": "Folder",
   "exp_auto_destination_missing": "Nie wybrano jeszcze folderu",
   "exp_auto_destination_note": "Wybierz folder na tym urządzeniu albo w chmurze. Aplikacja zapisuje tam tylko zaszyfrowane archiwa.",

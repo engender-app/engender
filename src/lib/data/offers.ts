@@ -75,7 +75,7 @@
    The middle answer is a decline of this offer that still writes the
    adoption, so the screen calls `answerOffer` with `createMilestone` false
    rather than with `'decline'` - it is not a refusal of the gesture, only
-   of the record. `adoptTryout` is one transaction either way (ADR-0044).
+   of the record. `adoptTryout` commits the closure and any milestone and summary together.
 
    **Not offering twice is each source's own check, not a rule here.**
    ADR-0045's second half is about a source that already holds the record

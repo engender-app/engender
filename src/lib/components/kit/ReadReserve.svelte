@@ -35,6 +35,7 @@
   import { crossfade, maskHeight } from '$lib/motion/reveal';
   import { EASE_OUT_CSS, isReducedMotion } from '$lib/motion/tokens';
   import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
+  import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
 
   let {
     ready: answered,
@@ -52,15 +53,18 @@
     [attr: `data-${string}`]: unknown;
   } = $props();
 
-  // Once shown, keep the answer visible during later refreshes.
-  let ready = $state(false);
-  $effect.pre(() => {
-    if (answered) ready = true;
-  });
-
   let painted = false;
   $effect(() => {
     requestAnimationFrame(() => setTimeout(() => (painted = true)));
+  });
+
+  /* Once shown, keep the answer visible during later refreshes. An answer
+     too late in an Android tab arrival to reveal within it waits for the
+     field to stop (screenArrival.ts). */
+  const released = holdForArrival(() => answered, () => painted);
+  let ready = $state(false);
+  $effect.pre(() => {
+    if (released()) ready = true;
   });
 
   /* A skeleton block (Skeleton.svelte, `block`) is about 166px with its gap,

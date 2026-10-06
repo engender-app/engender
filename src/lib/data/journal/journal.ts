@@ -439,7 +439,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const wearSessions = makeWearSessionsArea(driver, reminders);
   const hairProgress = makeHairProgressArea(driver, files);
   const hairRemoval = makeHairRemovalArea(driver, files);
-  const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
+  const tryouts = makeTryoutsArea(driver, files);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const journalingPauses = makeJournalingPausesArea(driver);
   const marginNotes = makeMarginNotesArea(driver);
