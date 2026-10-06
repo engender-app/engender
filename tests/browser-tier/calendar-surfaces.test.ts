@@ -47,6 +47,13 @@ export async function calendarContracts(): Promise<Result[]> {
   let screen = await mountScreen('/calendar', f);
   const root = () => screen.target;
   await until(() => root().querySelector('[data-entry-card]'), 'calendar entries');
+  await check(
+    'Calendar keeps named title and shared surfaces',
+    () =>
+      root().querySelector('[data-screen-title="calendar"]') &&
+      !root().querySelector('.card,.list-group,.list-row,.empty-state')
+  );
+
   for (const handle of ['cal-month', 'cal-step', 'cal-open'])
     await check(`Calendar keeps data-${handle}`, () => root().querySelector(`[data-${handle}]`));
   await check(
@@ -179,6 +186,13 @@ export async function calendarContracts(): Promise<Result[]> {
   screen = await mountScreen(`/day/${splitDay}`, f);
   await until(() => root().querySelector('[data-entry-card]'), 'day records');
   await check(
+    'Day keeps named title and shared surfaces',
+    () =>
+      root().querySelector('[data-screen-title="day"]') &&
+      !root().querySelector('.card,.list-group,.list-row,.empty-state')
+  );
+
+  await check(
     'Day keeps add and shared entry handles and named title',
     () =>
       root().querySelector('[data-add]') &&
@@ -209,6 +223,12 @@ export async function calendarContracts(): Promise<Result[]> {
   await until(
     () => root().querySelector<HTMLTextAreaElement>('#ed-note')?.value === entries[0].note,
     'first entry editor'
+  );
+  await check(
+    'Existing Entry keeps named title and shared surfaces',
+    () =>
+      root().querySelector('[data-screen-title="entry"]') &&
+      !root().querySelector('.card,.list-group,.list-row,.empty-state')
   );
   await check('Changing existing entry id remounts editor with second entry data', async () => {
     setScreenRoute(`/entry/${entries[1].id}`);
@@ -245,6 +265,13 @@ export async function calendarContracts(): Promise<Result[]> {
   }
   screen = await mountScreen(`/entry/new/${today}`, f);
   await until(() => root().querySelector('[data-save]'), 'editor ready');
+  await check(
+    'New Entry keeps named title and shared surfaces',
+    () =>
+      root().querySelector('[data-screen-title="entry"]') &&
+      !root().querySelector('.card,.list-group,.list-row,.empty-state')
+  );
+
   await check(
     'Editor keeps save, template, note and shared mood handles',
     () =>
@@ -306,6 +333,13 @@ export async function calendarContracts(): Promise<Result[]> {
   await screen.remove();
   screen = await mountScreen('/search', f);
   await until(() => root().querySelector('.search-input'), 'search');
+  await check(
+    'Search keeps named title and shared surfaces',
+    () =>
+      root().querySelector('[data-screen-title="search"]') &&
+      !root().querySelector('.card,.list-group,.list-row,.empty-state')
+  );
+
   const search = node(root(), '.search-input') as HTMLInputElement;
   search.value = 'Contract';
   search.dispatchEvent(new Event('input', { bubbles: true }));
