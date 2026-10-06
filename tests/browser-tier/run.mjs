@@ -14,6 +14,12 @@ import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
 
+/** A probe's casingOf() reading (casing.ts) says the line is cased: the
+    element under it is stroked in the role's edge, over the same geometry,
+    two pixels wider in all (phase 15 ticket 20). */
+const isCased = (c) =>
+  c?.found && c.expected !== null && c.casing === c.expected && c.widens === 2 && c.sameGeometry === true;
+
 const here = dirname(fileURLToPath(import.meta.url));
 const { ok, fail, finish, block } = createReporter();
 
@@ -72,7 +78,7 @@ const reload = () => page.reload({ waitUntil: 'networkidle' });
 
 await block('rendered screen contracts', 169, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 57, home: 53, calendar: 59 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 53, calendar: 59 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
@@ -2231,7 +2237,7 @@ await block('ticket 27 browser tier', 7, async () => {
 
 /* --- Redesign ticket 42: the pitch density, and the figure blocks that
        replaced the definition list. --- */
-await block('redesign ticket 42 browser tier', 8, async () => {
+await block('redesign ticket 42 browser tier', 9, async () => {
   const r = await load('/voice-density.html', 'voice-density-probe');
   if (r.error) throw new Error(r.error);
   const { drawn, trackless, first, joined, broken } = r;
@@ -2264,6 +2270,14 @@ await block('redesign ticket 42 browser tier', 8, async () => {
     ok(`the shape is a 2px square-capped series with no fill, on a 1px guide spine (${outline.stroke})`);
   else fail('the shape is a 2px square-capped series with no fill, on a 1px guide spine', JSON.stringify({ outline, spine }));
 
+  /* Phase 15 ticket 20: a line whose stripe is under 3:1 on the field is
+     drawn on a casing in the role's edge - the trace, the density's outline
+     and a figure's history line alike. Removing a casing fails here. */
+  const cased = Object.entries(drawn.casings).filter(([, c]) => !isCased(c));
+  if (drawn.edge && cased.length === 0)
+    ok(`the trace, the outline and the history lines each sit on a casing in the role's edge (${drawn.edge})`);
+  else fail("the trace, the outline and the history lines each sit on a casing in the role's edge", JSON.stringify({ edge: drawn.edge, cased }));
+
   if (drawn.bandsBehindShape >= 2)
     ok(`the cited bands run behind the shape as well as the plot (${drawn.bandsBehindShape})`);
   else fail('the cited bands run behind the shape as well as the plot', JSON.stringify(drawn.bandsBehindShape));
@@ -2295,10 +2309,13 @@ await block('redesign ticket 42 browser tier', 8, async () => {
 
 /* --- Ticket 29 (phase 8 features): the own-series trends, and that a
        change of capture chain arrives as a break with a reason in it. --- */
-await block('ticket 29 browser tier', 6, async () => {
+await block('ticket 29 browser tier', 7, async () => {
   const r = await load('/voice-own-series.html', 'voice-own-series-probe');
   if (r.error) throw new Error(r.error);
-  const { offered, registered, figures, single, neverMeasured } = r;
+  const { offered, registered, figures, single, neverMeasured, casing } = r;
+
+  if (isCased(casing)) ok(`the area chart's line sits on a casing in its role's edge (${casing.casing})`);
+  else fail("the area chart's line sits on a casing in its role's edge", JSON.stringify(casing));
 
   if (JSON.stringify(offered) === JSON.stringify(registered))
     ok(`the card offers every Own-series figure and nothing else (${offered.join(', ')})`);

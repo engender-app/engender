@@ -24,7 +24,7 @@
    mix toward --text and does wash the colour out; it is a floor rather than
    the intended path, and tests/kit-roles.test.ts holds both to 4.5:1. */
 
-import { chromaOf, colorMixOklab, contrast, lightnessOf, withLightness } from './colour';
+import { chromaOf, colorMixOklab, contrast, lightnessOf, washOver, withLightness } from './colour';
 
 export interface Role {
   /** The flag's own stripe, unchanged. */
@@ -55,6 +55,22 @@ export interface Role {
       this exists: its flag holds one colour and three shades, so a second
       line on it lands on #1A1A1A, which on a dark card is the card. */
   paired: string;
+  /** What a chart line drawn in the stripe is edged in, so it can be found
+      against the ground (WCAG 1.4.11, phase 15 ticket 20): the same hue at
+      the nearest lightness that clears 3:1 against everything a chart draws
+      under a line (see lineEdge), wherever the stripe itself does not. Null
+      where the stripe already reads, so a line that needs no edge is drawn
+      exactly as before.
+
+      An edge rather than a floored line because the line is the flag's
+      colour and stays it; the edge is the boundary the eye finds it by.
+      Nonbinary's yellow is still yellow, now with a darker yellow either
+      side of it, rather than one olive line. */
+  edge: string | null;
+  /** The same for a line drawn in `paired`: the stripe's edge where
+      `paired` is the stripe, and otherwise the edge the shade's mark needs
+      under an annotation band, which its own 3:1 never counted. */
+  pairedEdge: string | null;
   /** The five steps of the heat ramp in this stripe's hue, deepest last.
       A week cell has nothing written on it and a calendar cell has the day
       number, so each step carries the ink that number is written in. */
@@ -244,14 +260,34 @@ export function flagRoles(
   ];
   return ordered.map((stripe) => {
     const mark = legibleInk(stripe, text, grounds, MARK_FLOOR);
+    const paired = chromaOf(stripe) >= ACHROMATIC ? stripe : mark;
     return {
       stripe,
       ink: legibleInk(stripe, text, grounds, TEXT_FLOOR),
       mark,
-      paired: chromaOf(stripe) >= ACHROMATIC ? stripe : mark,
+      paired,
+      edge: lineEdge(stripe, text, grounds),
+      pairedEdge: lineEdge(paired, text, grounds),
       heat: heatRamp(stripe, text, heatGround)
     };
   });
+}
+
+/** What a chart can paint under one of its lines, on top of the surface
+    itself: a wash of the line's own stripe, at most 18% (PitchFigure's
+    reference bands; an area chart's fill is 16%), and the 7% of --text an
+    annotation band lays across the plot. tests/palette-contrast.test.ts
+    reads both out of the CSS and measures the edge against them. */
+const CHART_WASH_PCT = 18;
+const ANNOTATION_PCT = 7;
+
+/** A line's edge: legibleInk at the mark floor, over every ground a chart
+    paints under a line, or null where the stripe clears all of them. */
+function lineEdge(stripe: string, text: string, grounds: string[]): string | null {
+  const shaded = grounds.flatMap((g) => [g, washOver(text, ANNOTATION_PCT, g)]);
+  const under = shaded.flatMap((g) => [g, washOver(stripe, CHART_WASH_PCT, g)]);
+  const edge = legibleInk(stripe, text, under, MARK_FLOOR);
+  return edge === stripe ? null : edge;
 }
 
 /** The role for the nth area of a screen, wrapping where a screen has more

@@ -47,8 +47,12 @@ export function roleAttrs(role: Role | undefined): { 'data-kit-role': ''; style?
      flagRoles() builds every ramp from the same five steps, so the last one
      is always there. */
   const onFill = role.heat[role.heat.length - 1].ink;
+  /* The edge a chart line is drawn with, only where the stripe needs one:
+     kit.css makes a missing edge transparent, so a line whose stripe reads
+     by itself is drawn exactly as it was. */
+  const edge = role.edge ? `; --role-edge-in: ${role.edge}` : '';
   return {
     'data-kit-role': '',
-    style: `--role: ${role.stripe}; --role-ink-in: ${role.ink}; --role-mark-in: ${role.mark}; --role-fill-ink-in: ${onFill}`
+    style: `--role: ${role.stripe}; --role-ink-in: ${role.ink}; --role-mark-in: ${role.mark}; --role-fill-ink-in: ${onFill}${edge}`
   };
 }
