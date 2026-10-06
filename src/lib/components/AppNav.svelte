@@ -15,6 +15,7 @@
      there is no flash of the wrong navigation on a slow first paint. What
      is measured is only whether the bar's four names fit one row of it
      (`rows` below). */
+  import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { activeTabKey } from '$lib/navigation/active-tab';
@@ -343,8 +344,8 @@
     const inner = bar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const cell = inner / (NAV.length + 1);
     const add = bar.querySelector<HTMLElement>('[data-nav-fab]')?.offsetWidth ?? 0;
-    const half = (inner - add - 2 * (parseFloat(style.getPropertyValue('--nav-bar-pad')) || 0)) / 2;
-    const gap = parseFloat(style.getPropertyValue('--space-2')) || 8;
+    const token = (name: string) => parseFloat(style.getPropertyValue(name));
+    const half = (inner - add - 2 * token('--nav-bar-pad')) / 2;
     const icon = bar.querySelector('.nav-icon')?.getBoundingClientRect().width ?? 0;
     const words = document.createRange();
     let widest = 0;
@@ -352,12 +353,19 @@
       words.selectNodeContents(label);
       widest = Math.max(widest, words.getBoundingClientRect().width);
     }
-    // Inline: the icon, --space-2 beside it, and --space-1 at each side of the tab.
-    const next = widest <= cell + 0.5 ? 'one' : icon + widest + 2 * gap <= half ? 'two-inline' : 'two';
+    /* Half a pixel of slack for sub-pixel text widths. Inline, a tab holds
+       the icon, --space-2 between icon and name, and --space-1 each side
+       (the .is-inline rule in app.css). */
+    const inline = icon + token('--space-2') + widest + 2 * token('--space-1');
+    const next = widest <= cell + 0.5 ? 'one' : inline <= half ? 'two-inline' : 'two';
     if (rows !== next) rows = next;
     /* What the scroll region keeps clear under its last row follows the
-       bar's real height, which large text and the second row both grow. */
-    bar.closest<HTMLElement>('.app')?.style.setProperty('--nav-bar-height', `${bar.offsetHeight}px`);
+       bar's real height, which large text and the second row both grow.
+       Read after the class change above has reached the DOM, or the first
+       pass writes the old layout's height for a frame. */
+    void tick().then(() => {
+      if (laidOut(bar)) bar.closest<HTMLElement>('.app')?.style.setProperty('--nav-bar-height', `${bar.offsetHeight}px`);
+    });
   }
 </script>
 

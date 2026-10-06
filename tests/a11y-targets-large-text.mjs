@@ -268,4 +268,4 @@ if (failures.length) {
   console.error(`\n${failures.length} failures:\n${failures.map((f) => `  ${f}`).join('\n')}`);
   process.exit(1);
 }
-console.log('\nevery listed control reaches 48px and every navigation name is whole');
+console.log('\nevery listed control reaches 48px and every navigation name is whole (the calendar at 320px is printed above, not held)');

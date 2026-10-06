@@ -737,7 +737,8 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 ### 8.7 Accessibility conventions
 
 - **Handles for tests.** Screens expose `data-*` handles, and the walkthrough grips those, never structure or wording (ADR-0029).
-- **Touch targets** are 48px. The browser tier measures the touch-target and press-depth geometry of the control kit.
+- **Touch targets** are 48px. A control drawn smaller keeps its drawing and takes `.hit-floor` ([components.css](../src/lib/styles/components.css)), a transparent box that adds only what is missing on each axis. Where that box would cover a neighbour, the control grows instead. The browser tier measures the touch-target and press-depth geometry of the control kit, and `tests/a11y-targets-large-text.mjs` measures the audited controls with `elementFromPoint` at 320 and 390px and 200% text.
+- **Large text.** The bottom bar keeps every name on one line. When a name is wider than a fifth of the bar, as rendered with Android's text zoom, [AppNav.svelte](../src/lib/components/AppNav.svelte) puts the four tabs in two rows around the add button, and the scroll region's clearance follows the bar's measured height.
 - **Contrast** floors are tested: [tests/kit-roles.test.ts](../tests/kit-roles.test.ts) and the palette contrast tests.
 - **Reduced motion** is described in section 8.5.
 - **Visible text first.** `aria-label` doesn't replace a card's visible reading.
