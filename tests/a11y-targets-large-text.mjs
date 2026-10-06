@@ -6,8 +6,11 @@
    control's centre, how far left, right, up and down `elementFromPoint`
    still lands on the control or something inside it. That counts a
    transparent `::after` extension the way a press does, and it counts
-   nothing a neighbour covers. Each extent is capped at 30px, so 61px is
-   "at least 48".
+   nothing a neighbour covers. It steps a quarter of a pixel at a time, so a
+   48px target with its centre between two pixels reads 48 rather than the
+   47 a whole-pixel walk gives it. Each extent is capped at 60px, so 120 is
+   "at least 48"; an extension reaching out on one side only (the photo
+   years') still counts whole.
 
    Every listed control is checked at 320 and 390px wide with the page's
    text at 100% and 200% (the root font size, which every type token is a
@@ -36,6 +39,8 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const FLOOR = 48;
+/** What a quarter-pixel walk can lose off a target's true extent. */
+const SLACK = 0.25;
 const out = flag('out', null);
 const only = flag('only', null)?.split(',');
 
@@ -48,7 +53,24 @@ const SCENES = [
   { key: 'body-map', path: '/body-map', targets: '.tag-chip' },
   { key: 'letters', path: '/transition/letters', targets: '.letter-act' },
   { key: 'eras', path: '/transition/milestones', targets: '[data-tl-era]' },
-  { key: 'photos', path: '/media/photos', targets: '.photo-year' },
+  {
+    /* At rest the year rail takes no pointer at all (it wakes on a scroll,
+       a hover or focus), so it is measured awake, through focus. It is
+       sticky, which scrollIntoView does not move, so the screen is scrolled
+       to its end instead, where the whole rail sits clear of the bar; at
+       200% text on a short grid a mid-scroll position can leave the last
+       year under the bar the way any row scrolls under it. */
+    key: 'photos',
+    path: '/media/photos',
+    targets: '.photo-year',
+    sticky: true,
+    open: (page) =>
+      page.evaluate(() => {
+        const region = document.querySelector('[data-app-scroll-region]');
+        region.scrollTop = region.scrollHeight;
+        document.querySelector('.photo-year')?.focus({ preventScroll: true });
+      })
+  },
   { key: 'clinician', path: '/health/clinician-summary', targets: '.dossier-row-link' },
   {
     key: 'entry',
@@ -100,9 +122,10 @@ async function settle(page, selector) {
 }
 
 /** Hit extents of every visible matching control, measured from its centre. */
-function measure(page, selector) {
-  return page.evaluate((sel) => {
-    const CAP = 30;
+function measure(page, selector, sticky = false) {
+  return page.evaluate(([sel, sticky]) => {
+    const CAP = 60;
+    const STEP = 0.25;
     const shown = (e) => {
       const b = e.getBoundingClientRect();
       const s = getComputedStyle(e);
@@ -110,7 +133,7 @@ function measure(page, selector) {
     };
     const rows = [];
     for (const e of [...document.querySelectorAll(sel)].filter(shown)) {
-      e.scrollIntoView({ block: 'center', inline: 'nearest' });
+      if (!sticky) e.scrollIntoView({ block: 'center', inline: 'nearest' });
       const b = e.getBoundingClientRect();
       const cx = b.left + b.width / 2;
       const cy = b.top + b.height / 2;
@@ -125,14 +148,14 @@ function measure(page, selector) {
         continue;
       }
       let l = 0, r = 0, t = 0, d = 0;
-      while (l < CAP && owns(cx - l - 1, cy)) l++;
-      while (r < CAP && owns(cx + r + 1, cy)) r++;
-      while (t < CAP && owns(cx, cy - t - 1)) t++;
-      while (d < CAP && owns(cx, cy + d + 1)) d++;
-      rows.push({ name, box: `${Math.round(b.width)}x${Math.round(b.height)}`, w: l + r + 1, h: t + d + 1 });
+      while (l < CAP && owns(cx - l - STEP, cy)) l += STEP;
+      while (r < CAP && owns(cx + r + STEP, cy)) r += STEP;
+      while (t < CAP && owns(cx, cy - t - STEP)) t += STEP;
+      while (d < CAP && owns(cx, cy + d + STEP)) d += STEP;
+      rows.push({ name, box: `${Math.round(b.width)}x${Math.round(b.height)}`, w: l + r + STEP, h: t + d + STEP });
     }
     return rows;
-  }, selector);
+  }, [selector, sticky]);
 }
 
 /** Every nav label whole: no clipped text, no word split across lines, the
@@ -153,8 +176,10 @@ function measureNav(page) {
       const outside = lb.left < ib.left - 0.5 || lb.right > ib.right + 0.5 || lb.top < ib.top - 0.5 || lb.bottom > ib.bottom + 0.5;
       rows.push({ name: text, w: Math.round(ib.width), h: Math.round(ib.height), lines, words, clipped, outside });
     }
-    const bar = document.querySelector('[data-app-nav]').getBoundingClientRect();
-    return { bar: { top: Math.round(bar.top), height: Math.round(bar.height), bottom: Math.round(bar.bottom) }, rows };
+    const nav = document.querySelector('[data-app-nav]');
+    const bar = nav.getBoundingClientRect();
+    const layout = nav.classList.contains('is-inline') ? 'two rows, inline' : nav.classList.contains('is-two-rows') ? 'two rows' : '';
+    return { bar: { top: Math.round(bar.top), height: Math.round(bar.height), bottom: Math.round(bar.bottom) }, layout, rows };
   });
 }
 
@@ -187,33 +212,35 @@ try {
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         if (scene.open) await scene.open(page);
         await settle(page, scene.targets);
-        const rows = await measure(page, scene.targets);
+        const rows = await measure(page, scene.targets, scene.sticky);
         const label = `${scene.key} ${width}px ${text}%`;
         if (!rows.length) failures.push(`${label}: no listed controls found`);
         for (const row of rows) {
           if (row.covered) failures.push(`${label}: "${row.name}" ${row.box}, centre covered by ${row.covered}`);
-          else if (row.w < FLOOR || row.h < FLOOR) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
+          else if (row.w < FLOOR - SLACK || row.h < FLOOR - SLACK) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
         }
         results.scenes.push({ scene: scene.key, width, text, rows });
-        console.log(`${label}: ${rows.length} controls, ${rows.filter((r) => r.covered || r.w < FLOOR || r.h < FLOOR).length} under ${FLOOR}`);
+        console.log(`${label}: ${rows.length} controls, ${rows.filter((r) => r.covered || r.w < FLOOR - SLACK || r.h < FLOOR - SLACK).length} under ${FLOOR}`);
       }
     }
     if (!only || only.includes('nav')) {
-      for (const text of NAV_TEXT) {
+      for (const lang of ['en', 'pl']) for (const text of NAV_TEXT) {
+        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), lang);
         await settlePage(page, base, '/', 'light');
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         await settle(page, '[data-app-nav] [data-nav-item]');
         const nav = await measureNav(page);
-        const label = `nav ${width}px ${text}%`;
+        const label = `nav ${lang} ${width}px ${text}%`;
         for (const row of nav.rows) {
           if (row.clipped) failures.push(`${label}: "${row.name}" is clipped`);
           if (row.outside) failures.push(`${label}: "${row.name}" runs outside its tab`);
           if (row.lines > row.words) failures.push(`${label}: "${row.name}" breaks a word across ${row.lines} lines`);
           if (row.w < FLOOR || row.h < FLOOR) failures.push(`${label}: "${row.name}" tab ${row.w}x${row.h}`);
         }
-        results.nav.push({ width, text, ...nav });
-        console.log(`${label}: bar ${nav.bar.height}px, ${nav.rows.map((r) => `${r.name} ${r.w}x${r.h} ${r.lines}l${r.clipped ? ' CLIPPED' : ''}`).join(', ')}`);
+        results.nav.push({ lang, width, text, ...nav });
+        console.log(`${label}: bar ${nav.bar.height}px${nav.layout ? ` (${nav.layout})` : ''}, ${nav.rows.map((r) => `${r.name} ${r.w}x${r.h} ${r.lines}l${r.clipped ? ' CLIPPED' : ''}`).join(', ')}`);
       }
+      await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
     }
   }
 

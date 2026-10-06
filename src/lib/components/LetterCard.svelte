@@ -383,16 +383,21 @@
     overflow: hidden;
   }
 
+  /* The two actions are the touch floor square (after-release 18; they
+     were 36px). The negative margin hands the extra height back to the
+     card's own vertical padding, so the first line of the letter keeps its
+     place beside them. */
   .letter-acts {
     display: flex;
     gap: var(--space-1);
+    margin-block: -6px;
   }
 
   .letter-act {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     background: none;
     border: 0;
     border-radius: var(--r-block);
