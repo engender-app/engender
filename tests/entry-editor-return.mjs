@@ -178,7 +178,7 @@ try {
       }
     });
     if (width === 390) {
-      await block('an untouched scale draws nothing and stores nothing', 3, async () => {
+      await block('an untouched scale draws nothing and stores nothing', 4, async () => {
         await go(page, '/entry/new/today');
         await page.waitForSelector('.dim-slider');
         await settled(page);
@@ -190,6 +190,9 @@ try {
         );
         if (drawn.length && drawn.every((d) => d.thumb === '0' && d.fill === '0')) ok('an unset scale draws no thumb and no fill');
         else fail('an unset scale draws no thumb and no fill', JSON.stringify(drawn));
+        const spoken = await page.locator('.dim-slider.is-unset [role="slider"]').evaluateAll((els) => els.map((el) => el.getAttribute('aria-valuetext')));
+        if (spoken.length && spoken.every((t) => t === 'Not set')) ok('an unset scale is announced as not set, not as its midpoint');
+        else fail('an unset scale is announced as not set, not as its midpoint', JSON.stringify(spoken));
         const note = `untouched scales ${Date.now()}`;
         await page.fill('#ed-note', note);
         await page.locator('[data-save-moods] [data-mood]').nth(3).click();

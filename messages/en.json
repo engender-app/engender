@@ -3091,6 +3091,7 @@
   "skip": "Skip",
   "slider_aria": "{name}: {low} to {high}",
   "slider_unset": "-",
+  "slider_unset_aria": "Not set",
   "source_record_return": "Back to source",
   "source_record_unavailable": "This record is unavailable",
   "source_record_unavailable_hint": "It may have been deleted from this journal.",
