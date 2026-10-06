@@ -4340,11 +4340,11 @@ try {
     .evaluate((el) => el.open);
   if (!groupStillOpen) throw new Error('hiding a tag closed its own still-open group');
 
-  const tomorrow = await page.evaluate(() => {
+  const unusedPastDay = await page.evaluate(() => {
     const d = new Date();
-    return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1) / 86400000);
+    return Math.floor(Date.UTC(d.getFullYear() - 2, 0, 1) / 86400000);
   });
-  await page.goto(BASE + `/entry/new/${tomorrow}`, { waitUntil: 'networkidle' });
+  await page.goto(BASE + `/entry/new/${unusedPastDay}`, { waitUntil: 'networkidle' });
   await booted();
   await openSection('tags');
   const afterHide = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());
@@ -6209,8 +6209,9 @@ try {
   // depends on the ~50 flows already run against this journal, so both
   // outcomes are legitimate and both are checked.
   await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
-  await page.locator('[data-procedure]').first().click();
-  await page.waitForSelector('[data-phase="archived"]');
+  /* By phase, not position: a procedure past its recovery window is listed
+     under the archive now (after-release 05), below the ongoing ones. */
+  await page.locator('[data-procedure][data-phase="archived"]').first().click();
   const procedureNotice = page.locator('[data-notice="surgery-compare"]');
   await procedureNotice.waitFor();
   const procedureAction = procedureNotice.locator('[data-notice-action]');

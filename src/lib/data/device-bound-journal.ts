@@ -51,11 +51,15 @@ export function browserKeySlot(slot: string): DeviceKeySlot {
     },
     async save(key) {
       const db = await openDeviceKeyDatabase();
-      await runRequest(db.transaction(DEVICE_BOUND_STORE, 'readwrite').objectStore(DEVICE_BOUND_STORE).put(key, slot));
+      const transaction = db.transaction(DEVICE_BOUND_STORE, 'readwrite');
+      transaction.objectStore(DEVICE_BOUND_STORE).put(key, slot);
+      await committed(transaction);
     },
     async remove() {
       const db = await openDeviceKeyDatabase();
-      await runRequest(db.transaction(DEVICE_BOUND_STORE, 'readwrite').objectStore(DEVICE_BOUND_STORE).delete(slot));
+      const transaction = db.transaction(DEVICE_BOUND_STORE, 'readwrite');
+      transaction.objectStore(DEVICE_BOUND_STORE).delete(slot);
+      await committed(transaction);
     }
   };
 }
@@ -90,6 +94,22 @@ function runRequest<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+function committed(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error ?? new Error('the browser key-store transaction failed'));
+    transaction.onerror = () => reject(transaction.error ?? new Error('the browser key-store transaction failed'));
+  });
+}
+
+async function wrappingKeyFor(slot: DeviceKeySlot): Promise<CryptoKey> {
+  const existing = await slot.load();
+  if (existing) return existing;
+  const key = await generateWrappingKey();
+  await slot.save(key);
+  return key;
+}
+
 async function generateWrappingKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
@@ -102,7 +122,7 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
 }
 
 /** Moves an already-open journal to device-bound mode from Settings: the
-    same data key, a fresh wrapping key, so nothing is re-encrypted.
+    same data key and the stored wrapping key, so nothing is re-encrypted.
 
     Web only. Android's device-bound key lives in Keystore behind a bridge
     that mints its own data key (`create()`) and cannot be asked to wrap
@@ -111,9 +131,8 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
     that as the follow-up it is. */
 export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   const slot = browserDeviceKeySlot();
-  const wrappingKey = await generateWrappingKey();
+  const wrappingKey = await wrappingKeyFor(slot);
   const metadata = await wrapDeviceBoundDataKey(dataKey, wrappingKey);
-  await slot.save(wrappingKey);
   await writeDeviceBoundMetadata(metadata);
 }
 
@@ -127,16 +146,7 @@ export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer
     throw new DeviceBoundKeyUnavailableError('there is no device-bound journal metadata to unlock');
   }
 
-  const wrappingKey = await browserDeviceKeySlot().load();
-  if (wrappingKey === null) {
-    throw new DeviceBoundKeyUnavailableError('the browser no longer has the local key this journal was tied to');
-  }
-
-  try {
-    return decryptWithCryptoKey(wrappingKey, metadata.nonce, metadata.wrappedKey);
-  } catch {
-    throw new DeviceBoundKeyUnavailableError('the browser no longer has the local key this journal was tied to');
-  }
+  return unlockDeviceBoundMetadata(metadata, browserDeviceKeySlot());
 }
 
 export async function removeDeviceBoundJournal(): Promise<void> {
@@ -158,10 +168,9 @@ export async function deleteDeviceKeyDatabase(): Promise<void> {
 export async function createDeviceBoundMetadata(
   slot: DeviceKeySlot
 ): Promise<{ dataKey: Uint8Array<ArrayBuffer>; metadata: DeviceBoundMetadata }> {
-  const wrappingKey = await generateWrappingKey();
+  const wrappingKey = await wrappingKeyFor(slot);
   const dataKey = crypto.getRandomValues(new Uint8Array(DATA_KEY_LENGTH));
   const metadata = await wrapDeviceBoundDataKey(dataKey, wrappingKey);
-  await slot.save(wrappingKey);
   return { dataKey, metadata };
 }
 
@@ -237,8 +246,10 @@ async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata): Promise<
   const writable = await handle.createWritable();
   try {
     await writable.write(serializeDeviceBoundMetadata(metadata));
-  } finally {
     await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
   }
 }
 
