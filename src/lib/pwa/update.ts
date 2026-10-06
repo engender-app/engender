@@ -32,6 +32,8 @@ import { onJournalBusyChange, journalIsBusy } from '../data/journal-busy';
 /* WatchedRegistration stays exported only for its own test (AU-09 test-only
    review). */
 export interface WatchedRegistration {
+  /** The release this page runs on; null until a first install activates. */
+  readonly active: object | null;
   readonly waiting: { postMessage(message: unknown): void } | null;
   /** The release currently being fetched and precached, if any. */
   readonly installing: InstallingWorker | null;
@@ -69,9 +71,14 @@ const listeners = new Set<(ready: boolean) => void>();
 let stopWatchingWrites: (() => void) | null = null;
 
 /** True when a new release is installed and waiting and the journal is idle -
-    which is exactly when the update action may be on screen. */
+    which is exactly when the update action may be on screen.
+
+    Waiting behind an active release, that is. A first install passes through
+    `waiting` too: the browser reports it 'installed' and only then activates
+    it, because nothing is running for it to wait behind. Offered at that
+    moment, the notice stayed for the whole visit with nothing to apply. */
 export function updateReady(): boolean {
-  return watched?.waiting != null && !journalIsBusy();
+  return watched?.waiting != null && watched.active != null && !journalIsBusy();
 }
 
 /** Called on the edges of that answer. Returns the way to stop listening. */
