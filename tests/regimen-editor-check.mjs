@@ -246,6 +246,8 @@ try {
   assert.equal(await page.locator('#regimen-every').inputValue(), '9');
   await fault('deletePause', 'fail');
   await page.locator('[data-delete-pause]').click();
+  // Deleting a pause asks first (UI 07); the write runs on the confirm.
+  await page.locator('[data-confirm-delete-pause]').click();
   await failed();
   assert.equal((await stored()).pauses.length, 1);
   await page.locator('[data-end-reason="pausedForNow"]').click();
@@ -270,6 +272,7 @@ try {
   await open();
   await fault('deletePause', 'pass');
   await page.locator('[data-delete-pause]').click();
+  await page.locator('[data-confirm-delete-pause]').click();
   await page.locator('[data-delete-pause]').waitFor({ state: 'detached' });
   await page.locator('[data-close-regimen]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
