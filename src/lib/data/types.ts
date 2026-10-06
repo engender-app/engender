@@ -1038,6 +1038,9 @@ export interface MedicationStock {
       types one. Feeds `reorderByEpochDay` (stockProjection.ts) alongside the
       run-out day; never folded into the run-out projection itself. */
   leadTimeDays: number | null;
+  /** How many doses one unit holds - five to a vial, say (after-release
+      ticket 01). Null means one dose per unit (stockProjection.ts). */
+  dosesPerUnit: number | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind

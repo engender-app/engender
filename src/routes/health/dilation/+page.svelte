@@ -56,7 +56,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import { dilationEligible, expectedSessionDays } from '$lib/data/taperSchedule';
+  import { dilationEligible, expectedSessionDays, stagesFromInput } from '$lib/data/taperSchedule';
   import type { TaperSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -121,21 +121,18 @@
   }
 
   /* A frequency of 0 is a real stage - a rest stretch a surgeon writes into
-     the plan, expecting nothing for its days (taperSchedule.ts) - so this
-     only rules out a negative or blank one, never zero. */
-  let scheduleCanSave = $derived(
-    selectedProcedureId !== null &&
-      stagesInput.length > 0 &&
-      stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
-  );
+     the plan, expecting nothing for its days (taperSchedule.ts) - so
+     stagesFromInput only rules out a negative or missing one, never zero. */
+  let stagesToSave = $derived(stagesFromInput(stagesInput));
+  let scheduleCanSave = $derived(selectedProcedureId !== null && stagesToSave !== null);
 
   async function saveSchedule() {
-    if (!scheduleCanSave || !selectedProcedureId) return;
+    if (!selectedProcedureId || !stagesToSave) return;
     await journal.taper.upsertTaper({
       id: taper?.id,
       procedureId: selectedProcedureId,
       startEpochDay: epochDayFromDateInputValueOrToday(startDayInput),
-      stages: stagesInput.map((s) => ({ everyNDays: Number(s.everyNDays), days: Number(s.days) }))
+      stages: stagesToSave
     });
     editingSchedule = false;
   }

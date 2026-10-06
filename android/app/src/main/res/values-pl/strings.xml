@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_quick_log_title">Jak się czujesz?</string>
-    <string name="widget_quick_log_description">Wybierz jedną z pięciu ocen, aby otworzyć wpis.</string>
+    <string name="widget_quick_log_description">Otwiera wpis z już zaznaczoną jedną z pięciu ocen.</string>
     <string-array name="widget_mood_names">
         <item>Okropnie</item>
         <item>Źle</item>
@@ -9,15 +9,15 @@
         <item>Dobrze</item>
         <item>Świetnie</item>
     </string-array>
-    <string name="widget_tally_title">Zapisz moment</string>
-    <string name="widget_tally_description">Zapisz jedną z dwóch opcji.</string>
+    <string name="widget_tally_title">Zapisz chwilę</string>
+    <string name="widget_tally_description">Zapisuje jedną z dwóch szybkich opcji.</string>
     <string-array name="widget_tally_labels">
         <item>Misgenderowanie</item>
-        <item>Właściwe formy</item>
+        <item>Dobre zaimki</item>
     </string-array>
     <string name="widget_doubt_title">Zapisz wątpliwość</string>
-    <string name="widget_doubt_description">Otwórz miejsce na wpis.</string>
+    <string name="widget_doubt_description">Otwiera miejsce do pisania.</string>
     <string name="backup_failure_channel">Kopie zapasowe</string>
-    <string name="backup_failure_description">Nieudane zaplanowane kopie, które wymagają zmiany folderu lub ponownej próby.</string>
+    <string name="backup_failure_description">Gdy zaplanowana kopia się nie uda i trzeba wybrać inny folder albo spróbować ponownie.</string>
     <string name="backup_failure_title">Zaplanowana kopia się nie udała</string>
 </resources>

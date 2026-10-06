@@ -62,14 +62,31 @@ export interface StockEntry {
   quantity: number;
   unit: string;
   recordedEpochDay: number;
+  /** How many doses one unit holds (after-release ticket 01): five doses to
+      a vial, 28 to a blister. Null or missing means one dose per unit, the
+      only reading there was before. */
+  dosesPerUnit?: number | null;
+}
+
+/** The doses one unit of `stock` holds: its own figure when one was typed
+    and is usable, one otherwise. */
+const dosesInOneUnit = (stock: Pick<StockEntry, 'dosesPerUnit'>): number =>
+  stock.dosesPerUnit != null && stock.dosesPerUnit > 0 ? stock.dosesPerUnit : 1;
+
+/** What one more dose would leave, in the entry's own unit: the entry
+    editor's quick-log chip states this before the dose is logged. */
+export function remainingAfterOneDose(remaining: number, stock: Pick<StockEntry, 'dosesPerUnit'>): number {
+  return remaining - 1 / dosesInOneUnit(stock);
 }
 
 export interface StockProjection {
   /** `quantity` minus every non-skipped dose logged against this drug on
-      or after `recordedEpochDay`. Can go negative - the count that was
+      or after `recordedEpochDay`, in the entry's own unit: each dose takes
+      1 / `dosesPerUnit` of a unit. Can go negative - the count that was
       recorded has already been outrun. */
   remaining: number;
-  /** Non-skipped doses per calendar day over the trailing window, or null
+  /** Units used per calendar day over the trailing window (non-skipped
+      doses per day, divided by `dosesPerUnit`), or null
       when the window held no calendar days to average over (a stock entry
       recorded after `asOfEpochDay`, which only backdating could produce). */
   dailyRate: number | null;
@@ -140,15 +157,24 @@ function projectStockFromCounts(
   counts: StockDoseCounts,
   asOfEpochDay: number
 ): StockProjection {
-  const remaining = stock.quantity - counts.consumed;
+  /* Worked in doses and turned into units only at the end, so the run-out
+     day comes out of whole-number arithmetic: 7 doses left at 3 doses in
+     21 days is 7 * 21 / 3 = 49 days, where dividing by a rate of 3/21
+     first lands a hair over 49 and ceil() adds a day. */
+  const perUnit = dosesInOneUnit(stock);
+  const remainingDoses = stock.quantity * perUnit - counts.consumed;
+  const remaining = remainingDoses / perUnit;
   const excludedDoses = counts.excluded;
 
   const windowDays = asOfEpochDay - trailingWindowStart(stock, asOfEpochDay) + 1;
-  const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays : null;
+  const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays / perUnit : null;
 
-  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
+  // Asked of the dose count, not the divided figure, so a fractional
+  // quantity cannot leave 1e-16 standing in for "out".
+  if (remainingDoses <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
   if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
-  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+  const daysLeft = Math.ceil((remainingDoses * windowDays) / counts.consumedInTrailingWindow);
+  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + daysLeft, excludedDoses };
 }
 
 /** How many non-skipped doses carry each stored `drug` value in each of

@@ -5,7 +5,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { attributeDose } from '../regimenEpisode.ts';
-import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay.ts';
+import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay.ts';
+import { mostRecentPassedSlot } from '../doseSchedule.ts';
 import { countingDriver, journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 import { makeDosesArea } from './doses.ts';
 import type { Journal } from './journal.ts';
@@ -971,4 +972,108 @@ test('schedule hydration stays three reads as schedules and their children grow'
   const doses = makeDosesArea(counted.driver, journal.regimen);
   assert.deepEqual(await doses.getSchedules(), expected);
   assert.equal(counted.roundTrips().query, 3, 'schedule children are batched, never read per schedule');
+});
+
+/* A dose taken a day late (after-release ticket 01, L03-02). The probe's own
+   case: a weekly IM injection anchored on Monday 28 September 2026, the dose
+   logged on Tuesday 29. */
+
+const MONDAY = epochDayFromLocalDate(new Date(2026, 8, 28));
+
+async function weeklyInjection(journal: Journal, fromEpochDay: number | null = MONDAY) {
+  const episodeId = await journal.regimen.upsertEpisode({
+    drug: 'estradiol valerate',
+    ester: 'valerate',
+    dose: 5,
+    doseUnit: 'mg',
+    route: 'im',
+    interval: 'weekly',
+    startEpochDay: MONDAY,
+    endEpochDay: null,
+    endReason: null
+  });
+  await journal.doses.upsertSchedule({
+    episodeId,
+    recurrence: { kind: 'everyNDays', everyNDays: 7 },
+    dosesPerDay: 1,
+    doseAmounts: [{ dose: 5, doseUnit: 'mg' }],
+    autoLogFromEpochDay: fromEpochDay
+  });
+}
+
+const lateDose = (journal: Journal, epochDay: number) =>
+  journal.doses.upsertDose({ timestamp: at(epochDay, 19), route: 'im', dose: 5, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
+
+test('the auto-log pass writes nothing for a Monday slot whose dose was logged on Tuesday', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal);
+  await lateDose(journal, MONDAY + 1);
+
+  assert.equal(await journal.doses.autoLogDueDoses(MONDAY + 2, []), 0);
+  assert.equal((await journal.doses.getDoses(MONDAY - 7, MONDAY + 7)).length, 1);
+});
+
+test('the auto-log pass sees a late dose logged today, before yesterday’s slot is written', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal);
+  await lateDose(journal, MONDAY + 1);
+
+  assert.equal(await journal.doses.autoLogDueDoses(MONDAY + 1, []), 0);
+});
+
+test('a dose past the tolerance still leaves the auto-log pass its slot to write', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal);
+  await lateDose(journal, MONDAY + 4);
+
+  assert.equal(await journal.doses.autoLogDueDoses(MONDAY + 5, []), 1);
+});
+
+test('the comparison counts a slot taken when its dose came a day late, and calls the dose no extra', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal, null);
+  await lateDose(journal, MONDAY + 1);
+
+  /* The agenda's own window on Wednesday: the week behind, up to yesterday. */
+  const comparison = await journal.doses.getComparison({ fromEpochDay: MONDAY - 5, toEpochDay: MONDAY + 1 });
+  assert.equal(comparison.reason, null);
+  if (comparison.reason !== null) return;
+  assert.equal(mostRecentPassedSlot(comparison.comparison, MONDAY + 2), null);
+  assert.deepEqual(comparison.comparison.unmatched, []);
+});
+
+test('a dose inside the range that was late for a slot before it is not read as an extra', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal, null);
+  await lateDose(journal, MONDAY + 1);
+
+  const comparison = await journal.doses.getComparison({ fromEpochDay: MONDAY + 1, toEpochDay: MONDAY + 3 });
+  assert.equal(comparison.reason, null);
+  if (comparison.reason !== null) return;
+  assert.deepEqual(comparison.comparison.rows, []);
+  assert.deepEqual(comparison.comparison.unmatched, []);
+});
+
+test('the comparison still reports a dose with no slot in reach as unmatched', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal, null);
+  await lateDose(journal, MONDAY);
+  await lateDose(journal, MONDAY + 3);
+
+  const comparison = await journal.doses.getComparison({ fromEpochDay: MONDAY, toEpochDay: MONDAY + 6 });
+  assert.equal(comparison.reason, null);
+  if (comparison.reason !== null) return;
+  assert.equal(comparison.comparison.unmatched.length, 1);
+});
+
+test('on the day a late dose is logged, the agenda’s week behind already counts its slot taken', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await weeklyInjection(journal, null);
+  await lateDose(journal, MONDAY + 1);
+
+  /* Tuesday's window ends on Monday; the dose that filled Monday is Tuesday's. */
+  const comparison = await journal.doses.getComparison({ fromEpochDay: MONDAY - 6, toEpochDay: MONDAY });
+  assert.equal(comparison.reason, null);
+  if (comparison.reason !== null) return;
+  assert.equal(mostRecentPassedSlot(comparison.comparison, MONDAY + 1), null);
 });
