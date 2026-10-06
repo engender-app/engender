@@ -392,7 +392,9 @@
 
   /* A pause goes back to expecting doses on its days once it is deleted,
      so the trash button asks first, over the editor (after-release 07).
-     The editor's own status line still says it happened. */
+     What it did is said in a toast rather than the editor's status line:
+     the line arrived at full height and full ink in one frame, while the
+     row above it was still closing. */
   let pauseDeleteTarget = $state<DosePause | null>(null);
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -401,7 +403,7 @@
     if (!target) return;
     pauseDeleteTarget = null;
     if (!await write('pause', () => journal.doses.deletePause(target.id), m.regimen_pause_delete_failed())) return;
-    status = m.regimen_pause_deleted();
+    toast(m.regimen_pause_deleted());
   }
 
   /* Hiding is the episode's only removal (phase 4 ticket 01: hide, never
@@ -501,30 +503,6 @@
     {/snippet}
   </ReadGate>
 
-  {#if hiddenEpisodes.length}
-    <div class="regimen-hidden" data-hidden-episodes transition:collapse>
-      <SectionHeading text={m.regimen_hidden_title()} />
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-        {#each hiddenEpisodes as episode (episode.id)}
-          <div class="rows-divide" transition:collapse>
-            <ListRow
-              static
-              key={episode.id}
-              data-hidden-episode={episode.id}
-              title={episode.drug}
-              subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
-              action={{
-                icon: 'eye',
-                label: m.regimen_show_aria({ drug: episode.drug }),
-                onclick: () => void setHidden(episode, false),
-                attrs: { 'data-show-episode': episode.id }
-              }}
-            />
-          </div>
-        {/each}
-      </ListCard>
-    </div>
-  {/if}
 
   <!-- Keep this regimen-specific offer beside an active testosterone
        episode, subject to the same cycle choice as other offers. -->
@@ -555,6 +533,33 @@
       <ListRow key="doses" icon="timeline" title={m.regimen_doses_link()} subtitle={m.doses_row_sub()} href="/care/doses" />
     </ListCard>
   </div>
+
+  <!-- Last on the screen, so its arrival and its leaving push nothing
+       under it. -->
+  {#if hiddenEpisodes.length}
+    <div class="regimen-hidden" data-hidden-episodes transition:collapse>
+      <SectionHeading text={m.regimen_hidden_title()} />
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+        {#each hiddenEpisodes as episode (episode.id)}
+          <div class="rows-divide" transition:collapse>
+            <ListRow
+              static
+              key={episode.id}
+              data-hidden-episode={episode.id}
+              title={episode.drug}
+              subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
+              action={{
+                icon: 'eye',
+                label: m.regimen_show_aria({ drug: episode.drug }),
+                onclick: () => void setHidden(episode, false),
+                attrs: { 'data-show-episode': episode.id }
+              }}
+            />
+          </div>
+        {/each}
+      </ListCard>
+    </div>
+  {/if}
 
   <Sheet
     open={templatePicker}
@@ -816,35 +821,37 @@
             <FieldGroupHeading legend={m.regimen_pauses_legend()} hint={m.regimen_pauses_hint()} />
             <p class="muted small">{m.regimen_pause_immediate_hint()}</p>
             {#if editorPauses.length}
-              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
-                {#each editorPauses as pause (pause.id)}
-                  <!-- Hand-rolled rather than ListRow's action/is-split shape
-                       (ticket 16): that shape always renders the main span as a
-                       button or a link, and this one names nothing to press -
-                       it only states a pause. Routing it through would add
-                       .kit-row-main's :active wash and a tab stop to text that
-                       does nothing when pressed. -->
-                  <div class="kit-row is-split" transition:collapse>
-                    <span class="kit-row-main">
-                      <span class="kit-row-title">
-                        {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {pause.endEpochDay === null
-                          ? `· ${m.regimen_pause_ongoing()}`
-                          : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
+              <div transition:collapse>
+                <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+                  {#each editorPauses as pause (pause.id)}
+                    <!-- Hand-rolled rather than ListRow's action/is-split shape
+                         (ticket 16): that shape always renders the main span as a
+                         button or a link, and this one names nothing to press -
+                         it only states a pause. Routing it through would add
+                         .kit-row-main's :active wash and a tab stop to text that
+                         does nothing when pressed. -->
+                    <div class="kit-row is-split" transition:collapse>
+                      <span class="kit-row-main">
+                        <span class="kit-row-title">
+                          {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {pause.endEpochDay === null
+                            ? `· ${m.regimen_pause_ongoing()}`
+                            : `– ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                        </span>
+                        <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
                       </span>
-                      <span class="kit-row-sub">{pauseReasonLabel(pause.reason)}</span>
-                    </span>
-                    <button
-                      class="kit-row-act press"
-                      data-delete-pause={pause.id}
-                      aria-label={m.regimen_pause_delete_aria({ from: longDay(pause.startEpochDay) })}
-                      onclick={() => (pauseDeleteTarget = pause)}
-                    >
-                      <Icon name="trash" size={18} />
-                    </button>
-                  </div>
-                {/each}
-              </ListCard>
+                      <button
+                        class="kit-row-act press"
+                        data-delete-pause={pause.id}
+                        aria-label={m.regimen_pause_delete_aria({ from: longDay(pause.startEpochDay) })}
+                        onclick={() => (pauseDeleteTarget = pause)}
+                      >
+                        <Icon name="trash" size={18} />
+                      </button>
+                    </div>
+                  {/each}
+                </ListCard>
+              </div>
             {/if}
             {#if newPause}
               <div class="cd-endpoints">
