@@ -41,7 +41,7 @@ export function nativeAmount(metric: string, value: number): number {
     wants a decimal place; a dimension arrives in its own range and does not. */
 export function nativeValue(metric: string, value: number): string {
   const amount = nativeAmount(metric, value);
-  return fmtNumber(amount, metric === 'mood' ? { minimumFractionDigits: 1, maximumFractionDigits: 1 } : { maximumFractionDigits: 0 });
+  return fmtNumber(amount === 0 ? 0 : amount, metric === 'mood' ? { minimumFractionDigits: 1, maximumFractionDigits: 1 } : { maximumFractionDigits: 0 });
 }
 
 /** A day's two ends in words, or null for a day that covered no ground
