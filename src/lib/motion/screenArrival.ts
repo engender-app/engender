@@ -15,11 +15,30 @@ export function endTabArrival(): void {
   tabRevealBy = undefined;
 }
 
+/* A read answering during the field's travel shares what is left of it,
+   but never below --dur-fast. Look back's rail used to be squeezed into
+   whatever remained: answering about 40ms before the stop, it went from
+   skeleton to almost fully drawn in one frame, which Alicja rejected on
+   sight ("looks shit and yanks"). An answer with less than that left keeps
+   its placeholder until the field stops and then reveals at full length
+   (arrivalHold.svelte.ts); one with more is fitted into the travel, no
+   shorter than --dur-fast. */
+function revealFloor(): number {
+  return motionDuration('--dur-fast');
+}
+
+/** Whether so little of the tab arrival under way is left that a reveal
+    starting now would have to be squeezed below --dur-fast to end with
+    it. False outside a tab arrival. */
+export function arrivalTooShortToReveal(): boolean {
+  return tabRevealBy !== undefined && tabRevealBy - performance.now() < revealFloor();
+}
+
 export function readRevealDuration(token: '--dur-fast' | '--dur-med'): number {
   const duration = motionDuration(token);
   return tabRevealBy === undefined
     ? duration
-    : Math.min(duration, Math.max(0, tabRevealBy - performance.now()));
+    : Math.min(duration, Math.max(revealFloor(), tabRevealBy - performance.now()));
 }
 
 /** Fit nested entrances, including their stagger, into the field's remaining movement. */
@@ -29,14 +48,10 @@ export function fitReadArrival(animations: Animation[]): void {
 }
 
 function fitBefore(animations: Animation[], deadline: number): void {
-  const remaining = Math.max(0, deadline - performance.now());
+  const remaining = Math.max(revealFloor(), deadline - performance.now());
   for (const animation of animations) {
     const timing = animation.effect?.getComputedTiming();
     if (!timing || timing.iterations === Infinity || animation.playState === 'finished') continue;
-    if (remaining === 0) {
-      animation.finish();
-      continue;
-    }
     const left = Number(timing.endTime) - Number(animation.currentTime ?? 0);
     animation.playbackRate = Math.max(animation.playbackRate, left / remaining);
   }

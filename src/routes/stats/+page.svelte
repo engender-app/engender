@@ -99,6 +99,7 @@
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
+  import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -120,9 +121,18 @@
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
+  /* A rail answering with less than its fade's length of an Android tab
+     arrival left keeps its skeleton until the field stops, then fades in
+     at full length (screenArrival.ts). Before anything has painted there
+     is no skeleton to hold. */
+  let railPainted = false;
+  $effect(() => {
+    requestAnimationFrame(() => setTimeout(() => (railPainted = true)));
+  });
+  const railReleased = holdForArrival(() => !railLoading, () => railPainted);
   let railRevealed = $state(false);
   $effect.pre(() => {
-    if (!railLoading) railRevealed = true;
+    if (railReleased()) railRevealed = true;
   });
   let railStart = $derived(
     railLoading
@@ -379,10 +389,9 @@
     }
     if (whileLoading.size === 0) return;
     /* Inside a tab's arrival the fade shares the field's deadline, as
-       ReadGate's and ReadReserve's do: a rail that answered late in the
-       field's travel went on fading for a full --dur-fast after the field
-       had stopped, the last of Look back still arriving on a screen that
-       had come to rest. */
+       ReadGate's and ReadReserve's do, never shorter than --dur-fast: an
+       answer with less than that left was held above until the field
+       stopped. */
     const duration = readRevealDuration('--dur-fast');
     if (duration > 0) {
       const animations: Animation[] = [];
