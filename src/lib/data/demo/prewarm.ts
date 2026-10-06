@@ -11,7 +11,7 @@ if (!isAndroid()) {
     });
   void Promise.all([
     import('../sqlite/mc-driver'),
-    import('../conversion/plaintext-journal')
+    import('../legacy-journal')
   ]).then(([{ prewarmJournalWorker }, { JOURNAL_DATABASE }]) =>
     prewarmJournalWorker(JOURNAL_DATABASE, binary)
   ).catch(() => {});

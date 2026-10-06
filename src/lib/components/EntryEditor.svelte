@@ -40,10 +40,10 @@
   import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { journalDataKey } from '$lib/stores/boot.svelte';
-  import { activeEpisodesAt, episodesWithNoDoseLogged } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { episodesWithNoDoseLogged, remainingAfterOneDose } from '$lib/data/quickLogChip';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
-  import { remainingAfterOneDose } from '$lib/data/stockProjection';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { areaQuiet } from '$lib/data/areaState';
