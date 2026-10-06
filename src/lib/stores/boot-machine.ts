@@ -33,9 +33,14 @@ import {
 import type { CachedAccessMode } from '../data/prefs/boot-cache.ts';
 import type { JournalSecretSource } from '../crypto/keystore.ts';
 import type { Journal } from '../data/journal/journal.ts';
-import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
+import {
+  Fts5UnavailableError,
+  InterruptedRestoreError,
+  JournalBelowBaselineError,
+  SchemaTooNewError
+} from '../data/sqlite/migration-runner.ts';
 import type { AndroidKeyResult } from '../lock/android-key.ts';
-import { bootStates, bootTransitions, type BootState } from './boot-state.ts';
+import { bootStates, bootTransitions, type BootFailure, type BootState } from './boot-state.ts';
 
 type BootPlatform = 'web' | 'android';
 
@@ -279,7 +284,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         /* Rendered through i18n in +layout: this path is expected and needs a
            user sentence, not a raw SQLite failure string. */
         case 'plaintext-error':
-          return step(machine, bootTransitions.toError(surveyed, 'android-plaintext-journal'));
+          return step(machine, bootTransitions.toError(surveyed, 'android-plaintext-journal', 'android-plaintext'));
         case 'needs-unlock':
           return step(machine, bootTransitions.toNeedsUnlock(surveyed));
         case 'needs-authentication':
@@ -370,28 +375,52 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         return step(machine, machine.boot, [{ type: 'restore-previous-journal' }]);
       }
 
+      /* A development build's journal: the copy a restore would put back is
+         the same old journal, so there is nothing to ask the disk about. The
+         screen offers the way out instead (after-release ticket 09). */
+      if (event.error instanceof JournalBelowBaselineError) {
+        return step(machine, bootTransitions.toError(machine.boot, describeError(event.error), 'below-baseline'));
+      }
+
       /* Whether the failure screen can offer a way back is asked of the disk
          rather than assumed from the failure, so the error lands first and
          the answer follows. */
-      return step(machine, bootTransitions.toError(machine.boot, describeError(event.error)), [
-        { type: 'check-pre-migration-copy' }
-      ]);
+      return step(
+        machine,
+        bootTransitions.toError(machine.boot, describeError(event.error), classifyFailure(event.error)),
+        [{ type: 'check-pre-migration-copy' }]
+      );
     }
 
     case 'pre-migration-copy-checked':
       return step(machine, bootTransitions.markErrorRecoverable(machine.boot, event.usable));
 
     case 'boot-failed':
-      return step(machine, bootTransitions.toError(machine.boot, event.message));
+      return step(machine, bootTransitions.toError(machine.boot, event.message, classifyFailure(event.message)));
 
     case 'access-mode-changed':
       return step(machine, bootTransitions.setAccessMode(machine.boot, event.accessMode));
   }
 }
 
-/** The one place a thrown value becomes a sentence for the error screen. */
+/** The one place a thrown value becomes text. Not a sentence for anybody to
+    read on the failure screen any more (after-release ticket 09): it is the
+    detail a bug report carries, and `classifyFailure` is what the screen
+    speaks from. */
 export function describeError(error: unknown): string {
   return String((error as Error)?.message ?? error);
+}
+
+/** Which named failure a thrown value or its text is. By type where the type
+    survives - a failure from a worker or a bridge arrives as text only, so
+    the text is read too. Unnamed text is `unknown`, never a guess. */
+function classifyFailure(error: unknown): BootFailure {
+  if (error instanceof JournalBelowBaselineError) return 'below-baseline';
+  if (error instanceof Fts5UnavailableError) return 'engine';
+  const text = typeof error === 'string' ? error : describeError(error);
+  if (/not a database|SQLITE_NOTADB/i.test(text)) return 'unreadable';
+  if (/database worker stopped|FTS5 is not available/i.test(text)) return 'engine';
+  return 'unknown';
 }
 
 export type DeviceBoundSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';

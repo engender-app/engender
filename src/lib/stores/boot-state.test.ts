@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import {
   bootStates,
   bootTransitions,
-  journalIsUnreadable,
   midSessionLockApplies,
   needsOnboardingAccessMode
 } from './boot-state.ts';
@@ -64,7 +63,7 @@ test('represents schema-too-new, authentication-required, recovery-required, and
   expect(bootTransitions.toNeedsAuthentication(base).status).toBe('needs-authentication');
   expect(bootTransitions.toNeedsDeviceRecovery(base).status).toBe('needs-device-recovery');
 
-  const failure = bootTransitions.toError(base, 'boot failed');
+  const failure = bootTransitions.toError(base, 'boot failed', 'unknown');
   expect(failure.status).toBe('error');
   expect(failure.error).toBe('boot failed');
   expect(failure.recoverable).toBe(false);
@@ -181,17 +180,3 @@ test('needsOnboardingAccessMode is true only for a first run with no keystore', 
   ).toBe(false);
 });
 
-/* ux-carpet 210: a journal the key cannot read never opens by retrying, so
-   the error screen has to know which failure this is to offer a way out. */
-test('names the failures where the key cannot read the journal', () => {
-  const failed = (message: string) => bootTransitions.toError(bootStates.booting(), message);
-  expect(
-    journalIsUnreadable(
-      failed('file is not a database (code 26): , while compiling: SELECT COUNT(*) FROM sqlite_schema;')
-    )
-  ).toBe(true);
-  expect(journalIsUnreadable(failed('SQLITE_NOTADB: file is not a database'))).toBe(true);
-  expect(journalIsUnreadable(failed('android-plaintext-journal'))).toBe(false);
-  expect(journalIsUnreadable(failed('database is locked'))).toBe(false);
-  expect(journalIsUnreadable(bootStates.booting())).toBe(false);
-});
