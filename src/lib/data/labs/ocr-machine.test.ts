@@ -711,3 +711,67 @@ describe('OcrMachine – a partial save', () => {
     expect(m.state).toEqual({ tag: 'saved', count: 2 });
   });
 });
+
+describe('OcrMachine – review findings', () => {
+  test('the saved count survives a retry, so the toast counts every row that landed', async () => {
+    let failNext = true;
+    const saved: string[] = [];
+    const saver: OcrSaver = {
+      async getExistingResults() { return []; },
+      async saveResult(params) {
+        if (saved.length === 1 && failNext) { failNext = false; throw new Error('disk full'); }
+        saved.push(params.analyte);
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(TWO_ROWS_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    await m.save();
+    m.retry();
+    await m.save();
+    expect(m.state).toEqual({ tag: 'saved', count: 2 });
+  });
+
+  test('closing mid-save stops writing the rows that are left', async () => {
+    const first = deferred<void>();
+    const saved: string[] = [];
+    const saver: OcrSaver = {
+      async getExistingResults() { return []; },
+      async saveResult(params) {
+        saved.push(params.analyte);
+        if (saved.length === 1) await first.promise;
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(TWO_ROWS_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    const saving = m.save();
+    m.close();
+    first.resolve();
+    await saving;
+    expect(saved).toEqual(['estradiol']);
+    expect(m.state).toEqual({ tag: 'idle' });
+  });
+
+  test('a late progress report from a closed pass does not reach the next one', async () => {
+    let oldReport: ((f: number | null) => void) | undefined;
+    let calls = 0;
+    const recognizer: OcrRecognizer = {
+      recognize(_image, watch) {
+        calls += 1;
+        if (calls === 1) { oldReport = watch?.onProgress; return new Promise(() => {}); }
+        return new Promise(() => {});
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizer, saverWith());
+    m.open();
+    void m.pickSource('gallery');
+    await new Promise((r) => setTimeout(r, 0));
+    m.close();
+    m.open();
+    void m.pickSource('gallery');
+    await new Promise((r) => setTimeout(r, 0));
+    oldReport?.(0.9);
+    expect(m.state).toEqual({ tag: 'recognizing', fraction: null });
+  });
+});
