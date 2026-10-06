@@ -1501,6 +1501,41 @@ try {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
 
+// --- after-release 10: a web lock closes the database and lets go of the key ---
+for (const cpu of [1, 4]) {
+  const label = cpu === 1 ? 'web lock' : 'web lock, CPU throttled 4x';
+  await block(label, 8, async () => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
+    let lock;
+    try {
+      lock = await load('/session-lock.html', 'session-lock-probe');
+    } finally {
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      await cdp.detach();
+    }
+    if (lock.error) throw new Error(lock.error);
+    if (lock.heldOverLanded) ok(`${label}: a save in flight lands before the database closes`);
+    else fail(`${label}: a save in flight lands before the database closes`, 'still pending after the lock');
+    if (lock.oldDriverRefuses) ok(`${label}: the closed database answers nothing (${lock.oldDriverRefuses})`);
+    else fail(`${label}: the closed database answers nothing`, 'the old driver still answered a query');
+    if (!lock.keyHandedOut) ok(`${label}: the locked session hands out no key`);
+    else fail(`${label}: the locked session hands out no key`, 'session.key.current was still set');
+    if (!lock.mirrorWhileLocked.ready && lock.mirrorWhileLocked.tags === 0) ok(`${label}: the vocabulary mirror is empty while locked`);
+    else fail(`${label}: the vocabulary mirror is empty while locked`, JSON.stringify(lock.mirrorWhileLocked));
+    if (lock.whileLockedWaited && lock.stored.includes('written while locked') && lock.stored.includes('held over the lock'))
+      ok(`${label}: a save made while locked waits and lands on the reopened journal`);
+    else fail(`${label}: a save made while locked waits and lands on the reopened journal`, JSON.stringify({ waited: lock.whileLockedWaited, stored: lock.stored }));
+    if (lock.mirrorFollowed === null) ok(`${label}: the mirror refreshes against the reopened journal`);
+    else fail(`${label}: the mirror refreshes against the reopened journal`, lock.mirrorFollowed);
+    if (lock.roundsLanded) ok(`${label}: five lock and unlock rounds lose no write`);
+    else fail(`${label}: five lock and unlock rounds lose no write`, JSON.stringify(lock.rounds));
+    const reopen = lock.rounds.map((round) => Math.round(round.reopenMs)).sort((a, b) => a - b);
+    const closing = lock.rounds.map((round) => Math.round(round.lockMs)).sort((a, b) => a - b);
+    ok(`${label}: reopen ${reopen.join('/')} ms (median ${reopen[2]}), lock ${closing.join('/')} ms`);
+  });
+}
+
 // --- ux-carpet 201: a revisit paints the last answer, a lock forgets it ----
 try {
   const live = await load('/live-reads.html', 'live-reads-probe');

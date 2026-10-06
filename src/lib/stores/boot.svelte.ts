@@ -37,11 +37,11 @@ import type { MigrationFileOps } from '../data/sqlite/migration-runner';
 import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
-import { attachJournal, journalIsOpen } from '../data/live/journal.svelte';
+import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
 import { todayEpochDay } from '../data/epochDay';
-import { hydrateReference } from '../data/live/reference.svelte';
+import { forgetReference, hydrateReference } from '../data/live/reference.svelte';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import {
   closeActiveDriver,
@@ -67,7 +67,7 @@ import {
 } from '../data/device-bound-journal';
 import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
-import type { JournalAccessMode } from '../data/journal-access-mode';
+import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { setVideoFiles, setVoiceFiles } from './voiceFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
@@ -75,14 +75,16 @@ import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
-import { applyCachedBootPreferences, attachPreferences } from '../data/prefs/store.svelte';
+import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { markUnlocked } from './lock.svelte';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { toast } from './toasts.svelte';
 import { demoPreferences, persona } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
-import { bootGate, type BootState } from './boot-state';
+import { bootGate, isReadyState, type BootState } from './boot-state';
+import { journalSession } from './journal-session';
+import { forgetJournalContent } from '../lock/forget-content';
 import { crossBootFailure, openApp } from '../motion/appOpening';
 import { ui } from './ui.svelte';
 import { performPlatformEffect } from './boot-platform';
@@ -204,10 +206,32 @@ let started = false;
    will let go of the file. Nothing else reaches for it: screens go through
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
-let sessionDataKey: Uint8Array<ArrayBuffer> | null = null;
-let announceDataKey: (key: Uint8Array<ArrayBuffer>) => void;
-const dataKeyOpened = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
-  announceDataKey = resolve;
+/* The open journal's data key and its database, for as long as the journal
+   is open - which on the web, since after-release ticket 10, is until the
+   next lock rather than until the tab closes (journal-session.ts says what
+   a lock does and why). */
+const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
+  async suspend() {
+    /* The handle boot state published goes first: it holds the driver and
+       the photo store, both built over the key. */
+    dispatch({ type: 'journal-closed' });
+    await journalIsClosing();
+    await detachPreferences();
+  },
+  open: reopenJournal,
+  release() {
+    openDriver = null;
+    openFileOps = null;
+    setActiveDriver(null);
+    setPhotoFiles(null);
+    setVoiceFiles(null);
+    setVideoFiles(null);
+    forgetReference();
+    forgetJournalContent();
+  },
+  prewarm() {
+    prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
+  }
 });
 
 /** The key the open journal is encrypted under, for the two things outside
@@ -218,13 +242,64 @@ const dataKeyOpened = new Promise<Uint8Array<ArrayBuffer>>((resolve) => {
     (ADR-0054).
 
     Awaited rather than read, the way data/live/journal.svelte.ts queues on
-    its own `opened`: a screen renders during boot - the entry editor is one
+    its own gate: a screen renders during boot - the entry editor is one
     route away at first paint, and it mounts a good 70ms before the key
     exists - so a caller reading this synchronously would find nothing and
-    conclude there was no draft to restore. Resolved once per page, which is
-    all a reset needs, since a reset reloads. */
+    conclude there was no draft to restore. While the web journal is locked
+    the answer waits for the unlock, so a draft write that was on its way
+    when the lock came lands under the same key afterwards. */
 export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
-  return sessionDataKey ? Promise.resolve(sessionDataKey) : dataKeyOpened;
+  return session.key.next();
+}
+
+/** The mid-session lock's half on the web (after-release ticket 10). Closes
+    the database and releases the key in a mode a secret reopens; in any
+    other - web device-bound and unlocked, which never lock, and Android,
+    whose lock path is its own - and before the journal is open, it does
+    nothing. */
+export function closeJournalForLock(): Promise<void> {
+  if (isAndroid() || !isReadyState(bootState) || !accessModeHasSecret(bootState.accessMode, false)) {
+    return Promise.resolve();
+  }
+  return session.lock();
+}
+
+/** The mid-session unlock's half: the gate has derived the key from the
+    access mode's own secret, the same derivation a cold start makes, and
+    this opens the journal again under it. Does nothing where no lock closed
+    the journal. Rejects if the database will not open - most likely because
+    another tab has it now - and the gate says so. */
+export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  return session.unlock(dataKey);
+}
+
+/* A lock's reopen: the boot's own construction without the boot. The
+   journal was open and migrated minutes ago in this same page, so there is
+   nothing to migrate, reconcile or sweep; what is left is a driver over the
+   key, the preferences and the vocabulary read back, and the facade opened
+   on the new handle. The prewarmed worker the lock started is what the
+   driver takes over, so the wait is an `open` and a few reads. */
+async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDriver> {
+  const photoFiles = journalPhotoFiles(dataKey);
+  const sqlite = createJournalSqlite(dataKey);
+  try {
+    const journal = attachJournal(openJournal(sqlite.driver, photoFiles));
+    const preferences = await openPreferences(sqlite.driver, bootCache);
+    await hydrateReference(journal);
+    openDriver = sqlite.driver;
+    openFileOps = sqlite.fileOps;
+    setActiveDriver(sqlite.driver);
+    setPhotoFiles(photoFiles);
+    setVoiceFiles(photoFiles);
+    setVideoFiles(photoFiles);
+    await attachPreferences(preferences);
+    journalIsOpen();
+    dispatch({ type: 'journal-reopened', journal });
+    return sqlite.driver;
+  } catch (error) {
+    await sqlite.driver.close().catch(() => {});
+    throw error;
+  }
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
@@ -275,7 +350,14 @@ export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome')
           wipeDeviceState: () => androidDeviceReset.wipe()
         })
       : {}),
-    clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
+    /* And the tab's session storage, where Search holds the query and filters
+       it was showing for the way back from an entry: a wiped journal's search
+       turned up in the next journal's Search (after-release ticket 10, audit
+       L09-02). */
+    clearBrowserMirrors: () => {
+      clearBrowserMirrors(localStorage);
+      clearBrowserMirrors(sessionStorage);
+    },
     clearBootCache: () => bootCache.clear()
   });
   /* Biometric mode's credential is the one piece of key material a reset
@@ -352,10 +434,11 @@ export async function retryBoot(): Promise<void> {
     openFileOps = null;
   }
   await closeActiveDriver();
-  if (sessionDataKey) {
+  const heldKey = session.key.current;
+  if (heldKey) {
     dispatch({
       type: 'key-obtained',
-      dataKey: sessionDataKey,
+      dataKey: heldKey,
       accessMode: bootState.accessMode ?? 'device-bound',
       unlocked: true
     });
@@ -538,6 +621,7 @@ export async function submitAccessModeSetup(
     device-bound material - so an interruption anywhere in here leaves a
     journal that still opens, under one mode or the other, never neither. */
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
+  const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
   if (target === 'device-bound' || target === 'unlocked') {
@@ -692,8 +776,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   }
   await closeActiveDriver();
 
-  sessionDataKey = dataKey;
-  announceDataKey(dataKey);
+  session.key.open(dataKey);
   const photoFiles = journalPhotoFiles(dataKey);
 
   // Set before boot() rather than after, so the first screen to render a
@@ -814,6 +897,7 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
      screens that are already mounted would re-run Home's list once per
      seeded entry. */
   journalIsOpen();
+  session.adopt(dataKey, result.driver);
 
   dispatch({ type: 'journal-opened', journal: journal! });
 }

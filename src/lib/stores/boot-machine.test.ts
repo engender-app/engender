@@ -495,3 +495,32 @@ for (const demo of [false, true]) {
     });
   }
 }
+
+/* After-release ticket 10: a web lock closes the journal, and the handle
+   boot state held for the page is built over the key a lock lets go of. */
+test('a lock takes the journal handle out of ready state and the unlock puts the new one in', () => {
+  const before = {} as never;
+  const after = {} as never;
+  const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained',
+    dataKey: KEY,
+    accessMode: 'passphrase',
+    unlocked: true
+  }, { type: 'journal-opened', journal: before });
+
+  const closed = reduce(opened.machine, { type: 'journal-closed' });
+  expect(closed.machine.boot.status).toBe('ready');
+  expect(closed.machine.boot.journal).toBeNull();
+  expect(closed.effects).toEqual([]);
+
+  const reopened = reduce(closed.machine, { type: 'journal-reopened', journal: after });
+  expect(reopened.machine.boot.status).toBe('ready');
+  expect(reopened.machine.boot.journal).toBe(after);
+  expect(reopened.effects).toEqual([]);
+});
+
+test('a lock that lands after the boot left ready changes nothing', () => {
+  const failed = walk(started('web'), { type: 'boot-failed', message: 'the database worker stopped' });
+  expect(reduce(failed.machine, { type: 'journal-closed' }).machine).toEqual(failed.machine);
+  expect(reduce(failed.machine, { type: 'journal-reopened', journal: {} as never }).machine).toEqual(failed.machine);
+});
