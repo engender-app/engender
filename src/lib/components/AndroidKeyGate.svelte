@@ -33,11 +33,18 @@
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
 
   let busy = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
   /* Read once on mount, like the web gate's (ADR-0054, ticket sec-02). It
      matters more here: the invalidated screen below is the state
      JournalKeystore.java calls the cliff, and a recovery key is the one
@@ -114,7 +121,6 @@
     } catch (e) {
       console.error('the app reset failed', e);
       resetting = false;
-      resetOpen = false;
       resetError = m.reset_failed();
     }
   }
@@ -205,9 +211,6 @@
       <button class="btn btn-ghost" data-forgot-key onclick={() => (resetOpen = true)}>
         <span>{m.ak_forgot()}</span>
       </button>
-      {#if resetError}
-        <p class="pin-status small" role="alert" data-key-reset-failed>{resetError}</p>
-      {/if}
     </div>
   </GateScreen>
 {/if}
@@ -218,10 +221,16 @@
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      {m.ak_forgot_key_note()}
+      {m.ak_forgot_gate_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {#if resetError}
+    <!-- In the sheet, which stays open: the sheet is where the button was
+         pressed, and closing it on a failure left the gate looking as if
+         nothing had happened (after-release ticket 09). -->
+    <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
+  {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
       <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>

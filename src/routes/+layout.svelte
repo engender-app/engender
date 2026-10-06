@@ -32,12 +32,11 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
-  import { bootState, recoveryUnlock, restorePreviousJournal, retryBoot, startBoot } from '$lib/stores/boot.svelte';
+  import { bootState, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
     isReadyState,
-    journalIsUnreadable,
     midSessionLockApplies,
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
@@ -67,8 +66,7 @@
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { createProgress } from '$lib/components/progress.svelte';
+  import BootFailureNotice from '$lib/components/BootFailureNotice.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
   import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
@@ -334,44 +332,6 @@
     if (isReadyState(bootState) && !locked && isAndroid()) return startBackgroundSchedulers();
   });
 
-  /* Putting the pre-migration copy back (ticket 04). Only reachable from the
-     boot-failure notice, and only when boot found a copy to put back. */
-  let restoring = $state(false);
-  let restoreFailed = $state(false);
-  /* Indeterminate, and it will stay that way (phase 9 audit ticket 11): the
-     restore is one file copy inside the SQLite worker or the native driver
-     (mc-worker.ts, android-driver.ts) with no callback out of it and no unit
-     of work anywhere on this side to count. A sweep says the honest thing -
-     still working, no idea how much longer - where a bar would have to make
-     a number up. Immediate rather than delayed, because this notice is the
-     failed boot and there is nothing else on the screen for a bar to flash
-     over. */
-  const restoreProgress = createProgress();
-  async function restore() {
-    restoring = true;
-    restoreFailed = false;
-    restoreProgress.start({ immediate: true });
-    try {
-      // Reloads on success, so nothing after this runs.
-      await restorePreviousJournal();
-    } catch (e) {
-      console.error('restoring the pre-migration copy failed', e);
-      restoreProgress.abandon();
-      restoring = false;
-      restoreFailed = true;
-    }
-  }
-
-  let retrying = $state(false);
-  async function retry() {
-    retrying = true;
-    try {
-      await retryBoot();
-    } finally {
-      retrying = false;
-    }
-  }
-
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
@@ -531,45 +491,9 @@
     data-boot={bootState.status}
   >
     {#if isErrorState(bootState)}
-      <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
-        <Icon name="alert" size={20} />
-        <div class="notice-body">
-          <span class="notice-title">{m.boot_db_failed_title()}</span>
-          {bootState.error === 'android-plaintext-journal' ? m.ak_plaintext_journal() : bootState.error}
-          <!-- The way back out of a migration that could not finish (ticket
-               04, ADR-0006): the copy taken before it started is still on the
-               device, and this puts it back. Offered only when there is one,
-               so the button never lies about having something to restore. -->
-          {#if bootState.recoverable}
-            <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
-            <!-- The button keeps naming its action while it is disabled and
-                 the bar under it says what is happening, rather than the
-                 two of them saying the same sentence twice. -->
-            <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
-              <span>{m.boot_restore_action()}</span>
-            </button>
-            {#await import('$lib/components/Progress.svelte') then { default: Progress }}
-              <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
-            {/await}
-            {#if restoreFailed}
-              <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
-            {/if}
-          {/if}
-          <div style="margin-top:var(--space-2)">
-            <button class="btn btn-soft" data-retry-boot disabled={retrying} onclick={retry}>
-              <span>{m.boot_retry_action()}</span>
-            </button>
-          </div>
-          <!-- Retrying never opens a file the key cannot read (ux-carpet 210).
-               Imported here, like Progress above, so a boot that never fails
-               does not carry it. -->
-          {#if journalIsUnreadable(bootState)}
-            {#await import('$lib/components/UnreadableJournalWayOut.svelte') then { default: UnreadableJournalWayOut }}
-              <UnreadableJournalWayOut />
-            {/await}
-          {/if}
-        </div>
-      </div>
+      <!-- What happened, in the person's words, and the doors that failure
+           leaves (after-release ticket 09). -->
+      <BootFailureNotice />
     {/if}
     <!-- Only over a Journal that is open and unlocked. The notice is not
          urgent enough to sit above a passphrase gate or a lock screen, and

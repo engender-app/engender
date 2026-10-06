@@ -133,6 +133,16 @@
   let pin = $state('');
   let chosenPin = $state('');
   let localError = $state('');
+  /* Which mode the parent's `error` answers. The parent owns that text and
+     keeps it until its next attempt, so without this a refusal of one mode
+     ("needs a device lock") sat under the next mode's form (after-release
+     ticket 09). Choosing again, or going back, lets go of it here. */
+  let attempted = $state<Mode | null>(null);
+
+  function submit(mode: Mode, secret: string) {
+    attempted = mode;
+    onChoose(mode, secret);
+  }
   let refusals = $state(0);
 
   /* The two screens (ticket 30), as one state machine: accessModeSetup.ts
@@ -225,6 +235,7 @@
   function select(mode: Mode) {
     screen = chooseMode(mode);
     chosen = mode;
+    attempted = null;
   }
 
   /** Screen one to screen two, for the two modes that have something to
@@ -243,6 +254,7 @@
     pin = '';
     chosenPin = '';
     localError = '';
+    attempted = null;
   }
 
   /** Screen two back to screen one, the mode still chosen (ticket 30) - only
@@ -271,7 +283,7 @@
       localError = m.pp_mismatch();
       return;
     }
-    onChoose('passphrase', passphrase);
+    submit('passphrase', passphrase);
   }
 
   function completePin(entered: string) {
@@ -288,10 +300,12 @@
       pin = '';
       return;
     }
-    onChoose('pin', entered);
+    submit('pin', entered);
   }
 
-  let shownError = $derived(error || localError);
+  let shownError = $derived(
+    (screen.screen !== 'list' && screen.mode === attempted ? error : '') || localError
+  );
 </script>
 
 <!-- One step in three states, and a state change moves (ADR-0078). The
@@ -377,21 +391,21 @@
            screen, because a mode with nothing to type has nothing a second
            screen could show. -->
       <div class="gate-actions">
-        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('biometric', '')}>
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('biometric', '')}>
           <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else if screen.mode === 'unlocked'}
       <div class="gate-actions">
-        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('unlocked', '')}>
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('unlocked', '')}>
           <span>{busy ? m.pp_encrypting() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else}
       <div class="gate-actions">
-        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => onChoose('device-bound', '')}>
+        <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('device-bound', '')}>
           <span>{busy ? m.pp_encrypting() : android ? m.am_confirm_device() : m.am_confirm_unlocked()}</span>
         </button>
       </div>

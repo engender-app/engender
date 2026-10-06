@@ -110,6 +110,7 @@ To run one on its own, use
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
 | `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
 | `tryout-save-check` | tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes |
+| `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
 | `lab-entry-check` | lab result field order, saved values, draft dismissal, failures and privacy in English and Polish |
@@ -156,7 +157,7 @@ To run one on its own, use
 | `documents-rows-settle` | the documents list's first group never changes height after it paints on a cold load (row link lines and the size line land with the list), at 4x CPU |
 | `tile-arrival-timing` | Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, and a revisit paints them in its first frame with no placeholder and nothing moving, on the web tier (the Android bridge is ADR-0089's device record, not this) |
 | `home-idle-raster` | Home at idle rasters nothing beyond a timer's tick, and wakes the main thread only while a mood face moves: the flag sun's breath runs on the compositor, and the faces pause their loops between moves |
-| `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today |
+| `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; the notice names the failure in words rather than the driver's, and a development build's journal (below the baseline) gets the start-over way out and no retry; a normal boot, and one at 6x CPU, still reach Today |
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
 | `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
@@ -171,9 +172,9 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 | --- | --- |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
 
-`browser-tier/run.mjs` also imports six probes (`care-read`,
+`browser-tier/run.mjs` also imports seven probes (`care-read`,
 `care-spine-links`, `read-failures`, `source-record-links`,
-`timeline-fact-selection`, `pin-progress-status`), so they run in the browser job with
+`timeline-fact-selection`, `pin-progress-status`, `gates-say-what-happened`), so they run in the browser job with
 `npm run test:browser`. Three of them take `--gallery` as well.
 
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
