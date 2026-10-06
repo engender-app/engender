@@ -1230,7 +1230,6 @@ beforeAll(async () => {
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
   await driveRead('stats', 'tagInsights', () => journal.stats.tagInsights('mood', 19000, 21000));
-  await driveRead('stats', 'metricInsights', () => journal.stats.metricInsights(['mood', 'femininity'], 19000, 21000));
   await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000));
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));

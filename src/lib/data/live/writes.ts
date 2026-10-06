@@ -1068,7 +1068,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // never changes when a presentation is renamed, recoloured or hidden.
       presentationDays: ['entry'],
       tagInsights: ['entry', 'dimension', 'tag'],
-      metricInsights: ['entry', 'dimension', 'tag'],
       // No dimension: a share by tag counts entries, not values on them.
       tagShare: ['entry', 'tag'],
       recap: ['entry', 'dimension', 'tag', 'milestone', 'photo'],
