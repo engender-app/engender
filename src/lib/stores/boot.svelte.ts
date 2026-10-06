@@ -277,6 +277,10 @@ export function closeJournalForLock(): Promise<void> {
      locked screen's to keep. */
   forgetJournalContent();
   if (android) return Promise.resolve();
+  /* Published now as well as when the lock's turn comes: a lock can wait
+     behind a reopen still under way, and the boot machine has to treat the
+     next key as an unlock from the moment the gate is drawn. */
+  dispatch({ type: 'journal-closed' });
   return session.lock();
 }
 
@@ -292,10 +296,22 @@ function useJournalFiles(files: PhotoFileStore | null): void {
     access mode's own secret, the same derivation a cold start makes, and
     this opens the journal again under it. Does nothing where no lock closed
     the journal. Rejects if the database will not open - most likely because
-    another tab has it now - and the gate says so. */
+    another tab has it now - and the gate says so.
+
+    Through the boot machine's `key-obtained`, like every other key, so the
+    guard ticket 29 put there sees this one too: a second key while a reopen
+    is under way starts nothing and waits on the first. */
 export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
-  return session.unlock(dataKey);
+  /* The unlock screen only draws over a ready journal, but its derivation
+     can outlast that; a key arriving anywhere else would start a boot. */
+  if (machine.boot.status !== 'ready') return Promise.resolve();
+  dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
+  return reopening;
 }
+
+/* The reopen the machine last asked for, for the unlock screen to wait on.
+   Set by the effect synchronously, inside the dispatch above. */
+let reopening: Promise<void> = Promise.resolve();
 
 /* A lock's reopen: the boot's own construction without the boot. The
    journal was open and migrated minutes ago in this same page, so there is
@@ -758,6 +774,15 @@ async function perform(effect: BootEffect): Promise<void> {
 
     case 'mark-unlocked':
       markUnlocked();
+      return;
+
+    /* Not thrown into run()'s net: a reopen that fails is the unlock
+       screen's sentence to say, with the journal still locked, not a boot
+       failure. */
+    case 'reopen-journal':
+      reopening = session.unlock(effect.dataKey);
+      await reopening.catch(() => {});
+      dispatch({ type: 'journal-reopen-ended' });
       return;
 
     case 'open-journal':
