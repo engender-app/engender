@@ -17,6 +17,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 
+/** @type {Record<string, string>} */
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
@@ -39,7 +40,9 @@ const ISOLATION = {
 
 /** Starts the server on `port` (0 picks a free one) and resolves once it
     listens. The result has the two members callers of vite's preview server
-    used, `httpServer` and `close()`. */
+    used, `httpServer` and `close()`.
+    @param {string} root
+    @param {{ port?: number }} [options] */
 export async function serveBuild(root, { port = 0 } = {}) {
   const build = resolve(root, 'build');
   const documentPath = join(build, 'index.html');
@@ -72,17 +75,21 @@ export async function serveBuild(root, { port = 0 } = {}) {
     res.end(req.method === 'HEAD' ? undefined : body);
   });
 
-  await new Promise((resolveListen, reject) => {
-    httpServer.once('error', reject);
-    httpServer.listen(port, 'localhost', resolveListen);
-  });
+  await /** @type {Promise<void>} */ (
+    new Promise((resolveListen, reject) => {
+      httpServer.once('error', reject);
+      httpServer.listen(port, 'localhost', () => resolveListen());
+    })
+  );
 
   return {
     httpServer,
     close: () =>
-      new Promise((resolveClose) => {
-        httpServer.closeAllConnections?.();
-        httpServer.close(() => resolveClose());
-      })
+      /** @type {Promise<void>} */ (
+        new Promise((resolveClose) => {
+          httpServer.closeAllConnections?.();
+          httpServer.close(() => resolveClose());
+        })
+      )
   };
 }

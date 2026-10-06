@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SPLASH_INK, SPLASH_BEGIN, SPLASH_END, readSplashPalettes, splashBlock, sunStops } from '../src/lib/theme/splash.ts';
 import { MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS } from '../src/lib/components/mark.ts';
 import { holdModulePreloads } from '../src/lib/document/holdModulePreloads.ts';
-import { answerSplash, releaseSplash } from '../src/lib/splash.ts';
+import { answerSplash, splashMayLeave } from '../src/lib/splash.ts';
 
 const html = readFileSync(new URL('../src/app.html', import.meta.url), 'utf8');
 const palettesCss = readFileSync(new URL('../src/lib/theme/palettes.css', import.meta.url), 'utf8');
@@ -116,19 +116,24 @@ describe('the handover', () => {
   }
   const docOf = (splash: unknown) => ({ getElementById: () => splash }) as unknown as Document;
 
-  it('starts leaving the moment the layout mounts, in that same call', () => {
-    const splash = fakeSplash();
-    releaseSplash(docOf(splash));
-    expect(splash.classes.has('is-leaving')).toBe(true);
-    expect(splash.classes.has('is-answered')).toBe(false);
-    expect(splash.removed).toBe(false);
+  /* After-release ticket 31. It used to start leaving when the layout
+     mounted, while boot was still working. On a first visit boot then
+     answered "set up", the layout unmounted Home and drew nothing while it
+     navigated to onboarding, so the first frame faded onto an empty ground
+     and onboarding appeared whole in one frame 0.5 s later. */
+  it('waits for boot to answer, and for the screen it answered with to be the one on show', () => {
+    expect(splashMayLeave('booting', false)).toBe(false);
+    expect(splashMayLeave('needs-setup', true)).toBe(false);
+    expect(splashMayLeave('needs-setup', false)).toBe(true);
+    expect(splashMayLeave('ready', false)).toBe(true);
+    expect(splashMayLeave('error', false)).toBe(true);
   });
 
   it('is gone 800 ms after boot answers, and not before', () => {
     vi.useFakeTimers();
     const splash = fakeSplash();
-    releaseSplash(docOf(splash));
     answerSplash(docOf(splash));
+    expect(splash.classes.has('is-leaving')).toBe(true);
     expect(splash.classes.has('is-answered')).toBe(true);
     vi.advanceTimersByTime(799);
     expect(splash.removed).toBe(false);
@@ -137,7 +142,7 @@ describe('the handover', () => {
     vi.useRealTimers();
   });
 
-  it('answering with no release first still leaves, and a second answer does nothing', () => {
+  it('a second answer does nothing', () => {
     vi.useFakeTimers();
     const splash = fakeSplash();
     answerSplash(docOf(splash));
@@ -150,7 +155,6 @@ describe('the handover', () => {
 
   it('does nothing when there is no first frame', () => {
     expect(() => {
-      releaseSplash(docOf(null));
       answerSplash(docOf(null));
     }).not.toThrow();
   });
