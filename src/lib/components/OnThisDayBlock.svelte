@@ -31,7 +31,7 @@
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
   import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
-  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { Entry } from '$lib/data/types';
@@ -72,16 +72,12 @@
 
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
-    const [letters, eras, mutedEraUuids] = await Promise.all([
+    const [letters, consent] = await Promise.all([
       j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
-      j.eras.getEras(),
-      j.eraMutes.getMutedEraUuids()
+      resurfacing('on-this-day', j)
     ]);
     const results = await Promise.all(
-      candidates.map(async (c): Promise<QualifyingDay | null> => {
-        // A muted era's day resurfaces nothing at all - not the entries,
-        // not the letters - so this is checked before either read.
-        if (touchesMutedEra(eras, mutedEraUuids, c.epochDay, c.epochDay)) return null;
+      consent.allowedDays(candidates).map(async (c): Promise<QualifyingDay | null> => {
         const dayLetters = onThisDayLetters(letters, c.epochDay, today);
         const good = await j.stats.isGoodDay(c.epochDay);
         if (!good && dayLetters.length === 0) return null;
