@@ -241,7 +241,7 @@
   /* Single-consumer classes live with their consumer (scripts/check-screens-classes.mjs). */
   .rk-shown-title {
     font-size: var(--text-lg);
-    font-weight: var(--weight-strong);
+    font-weight: var(--weight-bold);
     margin: 0 0 var(--space-3);
   }
 

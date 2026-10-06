@@ -370,9 +370,9 @@
     border: 1px solid var(--outline);
     border-top: 0;
     border-radius: 0 0 var(--r-block) var(--r-block);
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
   }
 
@@ -403,9 +403,9 @@
 
   .vf-name {
     margin: 0;
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
   }
 
   .vf-value {
@@ -420,10 +420,10 @@
 
   .vf-value.is-absent {
     font-family: inherit;
-    font-size: var(--text-base);
+    font-size: var(--text-md);
     font-weight: var(--weight-regular);
     letter-spacing: normal;
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   /* The ring sits on the last reading, which is the right edge of the plot,
@@ -505,9 +505,9 @@
 
   .vf-against {
     margin: var(--space-2) 0 0;
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
   }
 
   .vf-more {

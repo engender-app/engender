@@ -759,7 +759,9 @@
   min-width: 0;
   background: var(--surface-2);
   /* A square track (phase 10, rule 5): 8px around 6px segments, so the
-     corners stay concentric at a 3px inset. */
+     corners stay concentric at a 3px inset. Both are raw on purpose: they
+     are derived from --r-block, and neither is on the radius or spacing
+     scale. */
   border-radius: 8px;
   padding: 3px;
   overflow-x: auto;
@@ -1704,7 +1706,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .tag-chip {
   position: relative;
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 8px 14px; min-height: 36px;
+  /* 14px across has no spacing token (it falls between --space-3 and
+     --space-4), so it stays as drawn; 8px is --space-2. */
+  padding: var(--space-2) 14px; min-height: 36px;
   /* A tag is the one capsule left (phase 10, rule 5). */
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--outline);
