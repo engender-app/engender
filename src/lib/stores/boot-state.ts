@@ -98,7 +98,8 @@ type ReadyState = BootShape & {
   status: 'ready';
   error: null;
   recoverable: false;
-  journal: Journal;
+  /** Null while a web lock has the journal closed (after-release ticket 10). */
+  journal: Journal | null;
   androidKey: null;
 };
 
@@ -244,6 +245,14 @@ function ready(state: BootState, payload: { journal: Journal }): ReadyState {
   };
 }
 
+/** Swaps the journal handle a ready boot holds: null when a web lock closes
+    it, the reopened one after the unlock (after-release ticket 10). Any
+    other state is left as it is. */
+function withJournal(state: BootState, journal: Journal | null): BootState {
+  if (state.status !== 'ready') return state;
+  return { ...state, journal };
+}
+
 /** The persistence request's answer, arriving whenever the browser gets to
     it (ticket 202: no longer awaited before `ready`). A no-op once the
     journal has moved past `ready` - a late answer is still true, but there
@@ -387,5 +396,6 @@ export const bootTransitions = {
   toReady: ready,
   toError: failure,
   markErrorRecoverable: errorRecoverable,
-  markPersistDenied
+  markPersistDenied,
+  withJournal
 };

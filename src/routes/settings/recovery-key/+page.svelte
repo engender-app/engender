@@ -191,7 +191,10 @@
        key stops opening the journal at once. What survives unchanged is the
        session already open, which holds the data key in memory and consults
        neither file again - and that is not what somebody at this confirm is
-       asking about. The two bodies already say what stops working. -->
+       asking about. The two bodies already say what stops working, and
+       since after-release ticket 10 what does not: the data key is not
+       rotated, so a copy of the journal's files taken earlier still opens
+       with the old key. -->
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
   <!-- Danger, with a way back: both confirms make the written key stop
        opening the journal at once, and the sheet used to offer them as the
