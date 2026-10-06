@@ -229,8 +229,9 @@ const SECTIONS = [
         doses.getPauses()
       ]);
       /* Every episode whose span meets the range, not only the ones running
-         today, each one's slots stopped at its own planned end
-         (lastDayWithin). */
+         today: a course that starts next week still expects its first dose
+         there. Each one's slots stop at its own planned end; see
+         lastDayWithin. */
       const days: number[] = [];
       for (const episode of episodes) {
         const to = lastDayWithin(episode, range.from, range.to);

@@ -22,6 +22,10 @@ const episode = (
   endReason: null
 });
 
+/* The editor's quick-log chip (after-release ticket 01, L04-09). It used to
+   read a dose's own `drug`, which is null on most doses, so a dose logged
+   from the dose sheet left the chip up and one tap logged a second. */
+
 const dayDose = (epochDay: number, drug: string | null = null) => ({
   drug,
   timestamp: startOfDayTimestamp(epochDay) + 9 * 3600000
