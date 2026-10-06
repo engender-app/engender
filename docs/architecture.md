@@ -354,6 +354,14 @@ The rest, without SQL edges:
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
 | Housekeeping | `reminder`, `pref`, `word_frequency_ignore`, `saved_question`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |
 
+[unprompted/resurfacing.ts](../src/lib/unprompted/resurfacing.ts) loads eras
+and mutes for each registered resurfacing surface. On this day filters out
+muted candidates before reading their content. Wrapped rejects the whole
+period if it overlaps a muted era, including notifications and direct share
+URLs. The interface requires a registered surface key; its type check rejects
+missing and unknown keys. Direct Journal reads remain possible; code review
+must check that resurfacing surfaces use this interface.
+
 Count the tables with `grep -c '^CREATE TABLE' src/lib/data/sqlite/schema.ts`.
 
 ### 6.3 The journal facade
