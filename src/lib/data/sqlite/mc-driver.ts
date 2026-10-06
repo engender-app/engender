@@ -96,13 +96,22 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
       /* In the order posted: every post waits on the same promise, and its
          callbacks run in the order they were attached. Straight through when
          no recovery or supplied module is pending. */
+      /* postMessage throws when it cannot clone what it is given. The worker
+         never sees that message, so the statement fails here rather than
+         waiting for an answer, and a throw inside the deferred send below
+         is not left as an unhandled error. */
       function send() {
         if (op === 'attach' && suppliedWasm) {
           args = { ...args, wasmBinary: suppliedWasm };
           transfer = [suppliedWasm];
           suppliedWasm = undefined;
         }
-        worker.postMessage({ id, op, args }, transfer);
+        try {
+          worker.postMessage({ id, op, args }, transfer);
+        } catch (error) {
+          pending.delete(id);
+          reject(error);
+        }
       }
       if (!poolFree) send();
       else
