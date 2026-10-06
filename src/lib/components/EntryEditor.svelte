@@ -1850,7 +1850,7 @@
   }
   .contextual-chip.is-active {
     background: var(--accent-soft, var(--accent));
-    color: var(--on-accent-soft, var(--accent-fg));
+    color: var(--on-accent-soft);
     border-color: var(--accent);
   }
 

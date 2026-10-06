@@ -33,6 +33,26 @@ import java.util.List;
  */
 public class PickedFilesTest {
 
+    @Test
+    public void photoChannelAcceptsThirtyMiB() throws Exception {
+        byte[] photo = new byte[30 * 1024 * 1024];
+        assertEquals(photo.length, PhotoPickChannel.readFully(
+            PhotoPickChannel.limit(new ByteArrayInputStream(photo), 32L * 1024 * 1024)).length);
+    }
+
+    @Test
+    public void sourceCeilingAlsoBoundsChunkedAndUnknownSizeReads() throws Exception {
+        InputStream source = PhotoPickChannel.limit(new ByteArrayInputStream(new byte[4]), 3);
+        byte[] chunk = new byte[3];
+        assertEquals(3, source.read(chunk, 0, chunk.length));
+        try {
+            source.read();
+            fail("expected size refusal");
+        } catch (IOException error) {
+            assertEquals("too-large", error.getMessage());
+        }
+    }
+
     private static PickedFiles.Source bytes(int... values) {
         byte[] payload = new byte[values.length];
         for (int i = 0; i < values.length; i++) payload[i] = (byte) values[i];

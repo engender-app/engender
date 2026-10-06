@@ -304,7 +304,7 @@
   {#if valueRows.length}
     <ul class="visually-hidden" data-values-list aria-label={valuesLabel}>
       {#each valueRows as row (row.key)}
-        <li>{row.name}: {row.value}{row.note ? `, ${row.note}` : ''}</li>
+        <li>{row.note ? m.reading_day_value_with_note({ day: row.name, value: row.value, note: row.note }) : m.reading_day_value({ day: row.name, value: row.value })}</li>
       {/each}
     </ul>
   {/if}

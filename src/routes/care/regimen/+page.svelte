@@ -19,7 +19,7 @@
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { cycleTrackingVisible, testosteroneActive } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtNumber, fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { episodeEndReasonLabel, pauseReasonLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
@@ -88,7 +88,7 @@
   function rangeLabel(episode: RegimenEpisode): string {
     const start = fmtDay(episode.startEpochDay, { month: 'short', year: 'numeric' });
     const end = episode.endEpochDay === null ? m.regimen_ongoing() : fmtDay(episode.endEpochDay, { month: 'short', year: 'numeric' });
-    return `${start} – ${end}`;
+    return m.regimen_period_range({ from: start, to: end });
   }
 
   let editor = $state<{
@@ -472,7 +472,7 @@
                 id={episode.id}
                 icon="flask"
                 title={episode.drug}
-                subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
+                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: episode.route, interval: episode.interval, period: rangeLabel(episode) })}
                 chevron={false}
                 onclick={() => openEditor(episode)}
               >
