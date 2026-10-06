@@ -24,12 +24,15 @@
   import { episodeEndReasonLabel, pauseReasonLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
+  import type { DosePause, DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import BatchedList from '$lib/components/kit/BatchedList.svelte';
@@ -50,6 +53,11 @@
 
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
+  /* Put away by mistake or as a duplicate (after-release 07): out of every
+     read but this one, which is the way back. Newest first, like the list
+     above it. */
+  let hiddenQuery = liveList((j) => j.regimen.getHiddenEpisodes());
+  let hiddenEpisodes = $derived([...hiddenQuery.rows].reverse());
   /* Newest first, the same order the rows render in - and what
      `deepLinkedEpisodeIndex` below resolves a hash's id against, since
      BatchedList's `focusIndex` names a position in this exact array. */
@@ -382,9 +390,45 @@
     status = m.regimen_pause_saved();
   }
 
-  async function deletePause(id: string) {
-    if (!await write('pause', () => journal.doses.deletePause(id), m.regimen_pause_delete_failed())) return;
+  /* A pause goes back to expecting doses on its days once it is deleted,
+     so the trash button asks first, over the editor (after-release 07).
+     The editor's own status line still says it happened. */
+  let pauseDeleteTarget = $state<DosePause | null>(null);
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  async function deletePause() {
+    const target = pauseDeleteTarget;
+    if (!target) return;
+    pauseDeleteTarget = null;
+    if (!await write('pause', () => journal.doses.deletePause(target.id), m.regimen_pause_delete_failed())) return;
     status = m.regimen_pause_deleted();
+  }
+
+  /* Hiding is the episode's only removal (phase 4 ticket 01: hide, never
+     delete). It closes the editor through the same guard as Close, so a
+     draft is never thrown away without asking, and the toast carries the
+     way back for anyone who tapped it by mistake. */
+  async function setHidden(episode: Pick<RegimenEpisode, 'id' | 'drug'>, hidden: boolean) {
+    await journal.regimen.setEpisodeHidden(episode.id, hidden);
+    if (hidden) {
+      toast(m.regimen_hidden_toast({ drug: episode.drug }), {
+        actionLabel: m.regimen_hide_undo(),
+        onAction: () => void setHidden(episode, false),
+        kind: 'episode-hidden'
+      });
+    } else {
+      toast(m.regimen_shown_toast({ drug: episode.drug }));
+    }
+  }
+
+  function hideEditedEpisode() {
+    if (!editor?.id || saving) return;
+    const episode = episodes.find((e) => e.id === editor!.id);
+    if (!episode) return;
+    requestDismiss(() => {
+      editor = null;
+      void setHidden(episode, true);
+    });
   }
 
 </script>
@@ -416,26 +460,31 @@
       >
         {#snippet rows(shownEpisodes)}
           {#each shownEpisodes as episode (episode.id)}
-            <ListRow
-              key={episode.id}
-              data-episode={episode.id}
-              id={episode.id}
-              icon="flask"
-              title={episode.drug}
-              subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
-              chevron={false}
-              onclick={() => openEditor(episode)}
-            >
-              {#snippet trailing()}
-                <!-- Which episodes are running, at the end of the row rather
-                     than wedged into the drug's own name. A badge inside a
-                     title pushes the name it belongs to onto a second line as
-                     soon as the name is long, which every ester is. -->
-                {#if activeIds.has(episode.id)}
-                  <span class="regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
-                {/if}
-              {/snippet}
-            </ListRow>
+            <!-- Wrapped so a hidden episode closes its own height and one
+                 shown again opens it, rather than cutting and moving every
+                 row under it in one frame. -->
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                key={episode.id}
+                data-episode={episode.id}
+                id={episode.id}
+                icon="flask"
+                title={episode.drug}
+                subtitle={`${episode.dose} ${episode.doseUnit} · ${episode.route} · ${episode.interval} · ${rangeLabel(episode)}`}
+                chevron={false}
+                onclick={() => openEditor(episode)}
+              >
+                {#snippet trailing()}
+                  <!-- Which episodes are running, at the end of the row rather
+                       than wedged into the drug's own name. A badge inside a
+                       title pushes the name it belongs to onto a second line as
+                       soon as the name is long, which every ester is. -->
+                  {#if activeIds.has(episode.id)}
+                    <span class="regimen-badge" data-active-badge>{m.regimen_active_badge()}</span>
+                  {/if}
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         {/snippet}
       </BatchedList>
@@ -451,6 +500,31 @@
       />
     {/snippet}
   </ReadGate>
+
+  {#if hiddenEpisodes.length}
+    <div class="regimen-hidden" data-hidden-episodes transition:collapse>
+      <SectionHeading text={m.regimen_hidden_title()} />
+      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+        {#each hiddenEpisodes as episode (episode.id)}
+          <div class="rows-divide" transition:collapse>
+            <ListRow
+              static
+              key={episode.id}
+              data-hidden-episode={episode.id}
+              title={episode.drug}
+              subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
+              action={{
+                icon: 'eye',
+                label: m.regimen_show_aria({ drug: episode.drug }),
+                onclick: () => void setHidden(episode, false),
+                attrs: { 'data-show-episode': episode.id }
+              }}
+            />
+          </div>
+        {/each}
+      </ListCard>
+    </div>
+  {/if}
 
   <!-- Keep this regimen-specific offer beside an active testosterone
        episode, subject to the same cycle choice as other offers. -->
@@ -750,7 +824,7 @@
                        it only states a pause. Routing it through would add
                        .kit-row-main's :active wash and a tab stop to text that
                        does nothing when pressed. -->
-                  <div class="kit-row is-split">
+                  <div class="kit-row is-split" transition:collapse>
                     <span class="kit-row-main">
                       <span class="kit-row-title">
                         {fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -763,10 +837,8 @@
                     <button
                       class="kit-row-act press"
                       data-delete-pause={pause.id}
-                      aria-label={m.regimen_pause_delete_aria({
-                        from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                      })}
-                      onclick={() => deletePause(pause.id)}
+                      aria-label={m.regimen_pause_delete_aria({ from: longDay(pause.startEpochDay) })}
+                      onclick={() => (pauseDeleteTarget = pause)}
                     >
                       <Icon name="trash" size={18} />
                     </button>
@@ -861,6 +933,12 @@
             {/if}
             {@render feedback('end')}
           </section>
+          <section class="regimen-group">
+            <FieldGroupHeading legend={m.regimen_hide_legend()} hint={m.regimen_hide_hint()} />
+            <button class="btn btn-ghost" data-hide-episode onclick={hideEditedEpisode}>
+              <span>{m.regimen_hide_action()}</span>
+            </button>
+          </section>
         {/if}
 
         {#if editor.id}
@@ -877,6 +955,17 @@
     {/if}
   </Sheet>
   <DiscardSheet {guard} body={m.regimen_discard_body()} />
+  <ConfirmDeleteSheet
+    open={pauseDeleteTarget !== null}
+    title={m.regimen_pause_delete_sheet()}
+    question={pauseDeleteTarget ? m.regimen_pause_delete_q({ from: longDay(pauseDeleteTarget.startEpochDay) }) : ''}
+    hint={m.regimen_pause_delete_hint()}
+    confirmLabel={m.regimen_pause_delete_sheet()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-pause': '' }}
+    onConfirm={deletePause}
+    onCancel={() => (pauseDeleteTarget = null)}
+  />
 </div>
 
 <style>
@@ -900,7 +989,8 @@
     }
   }
 
-  .regimen-elsewhere {
+  .regimen-elsewhere,
+  .regimen-hidden {
     margin-top: var(--space-6);
   }
 

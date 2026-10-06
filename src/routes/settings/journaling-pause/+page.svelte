@@ -5,7 +5,8 @@
      does - there is no episode to attach it to. Ending a running pause is
      an explicit "resume" action (upsertPause with today as the end day),
      distinct from deleting the row outright, which erases that the pause
-     ever happened rather than closing it out. */
+     ever happened rather than closing it out - so a delete asks first and
+     says it happened (after-release 07). */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -19,7 +20,11 @@
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
-  import { resize } from '$lib/motion/reveal';
+  import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
+  import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import { collapse, resize } from '$lib/motion/reveal';
+  import { toast } from '$lib/stores/toasts.svelte';
+  import type { JournalingPause } from '$lib/data/types';
 
   const today = todayEpochDay();
 
@@ -61,9 +66,15 @@
     });
   }
 
-  async function deletePause(id: string) {
-    await journal.journalingPauses.deletePause(id);
-  }
+  const pauseRecord = recordEditor<JournalingPause>({
+    remove: async (id) => {
+      await journal.journalingPauses.deletePause(id);
+      toast(m.journaling_pause_deleted());
+    },
+    findById: (id) => pauses.find((pause) => pause.id === id)
+  });
+
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
   let pausesRevealed = $state(false);
@@ -126,28 +137,44 @@
       {/if}
     </div>
 
+    <!-- A deleted pause closes its own height and the rows under it follow;
+         the last one takes the heading and the card with it. -->
     {#if history.length}
-      <SectionTitle text={m.journaling_pause_history_title()} />
-      <ListCard>
-        {#each history as pause (pause.id)}
-          <ListRow
-            static
-            title={`${fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })} ${
-              pause.endEpochDay === null
-                ? `· ${m.journaling_pause_ongoing()}`
-                : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`
-            }`}
-            action={{
-              icon: 'trash',
-              label: m.journaling_pause_delete_aria({
-                from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-              }),
-              onclick: () => deletePause(pause.id),
-              attrs: { 'data-delete-pause': pause.id }
-            }}
-          />
-        {/each}
-      </ListCard>
+      <div transition:collapse>
+        <SectionTitle text={m.journaling_pause_history_title()} />
+        <ListCard>
+          {#each history as pause (pause.id)}
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                static
+                title={`${fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })} ${
+                  pause.endEpochDay === null
+                    ? `· ${m.journaling_pause_ongoing()}`
+                    : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`
+                }`}
+                action={{
+                  icon: 'trash',
+                  label: m.journaling_pause_delete_aria({ from: longDay(pause.startEpochDay) }),
+                  onclick: () => pauseRecord.askToDelete(pause),
+                  attrs: { 'data-delete-pause': pause.id }
+                }}
+              />
+            </div>
+          {/each}
+        </ListCard>
+      </div>
     {/if}
   </ReadReserve>
+
+  <RecordSheet
+    record={pauseRecord}
+    handle="pause"
+    confirm={{
+      title: m.journaling_pause_delete_sheet(),
+      question: (pause) => m.journaling_pause_delete_q({ from: longDay(pause.startEpochDay) }),
+      hint: () => m.journaling_pause_delete_hint(),
+      confirmLabel: m.journaling_pause_delete_sheet(),
+      cancelLabel: m.keep_it()
+    }}
+  />
 </div>
