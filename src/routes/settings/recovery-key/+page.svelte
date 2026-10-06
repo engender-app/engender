@@ -193,15 +193,24 @@
        neither file again - and that is not what somebody at this confirm is
        asking about. The two bodies already say what stops working. -->
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
-  {#if confirming === 'revoke'}
-    <button class="btn btn-primary" type="button" data-confirm-revoke disabled={busy} onclick={revoke}>
-      {m.rk_revoke_confirm()}
+  <!-- Danger, with a way back: both confirms make the written key stop
+       opening the journal at once, and the sheet used to offer them as the
+       primary action with only a drag or the scrim to say no (after-release
+       ticket 09). -->
+  <div class="stack-3" style="margin-top:var(--space-4)">
+    {#if confirming === 'revoke'}
+      <button class="btn btn-danger" type="button" data-confirm-revoke disabled={busy} onclick={revoke}>
+        {m.rk_revoke_confirm()}
+      </button>
+    {:else}
+      <button class="btn btn-danger" type="button" data-confirm-replace disabled={busy} onclick={mint}>
+        {m.rk_replace_confirm()}
+      </button>
+    {/if}
+    <button class="btn btn-ghost" type="button" data-cancel-recovery-key disabled={busy} onclick={() => (confirming = null)}>
+      {m.cancel()}
     </button>
-  {:else}
-    <button class="btn btn-primary" type="button" data-confirm-replace disabled={busy} onclick={mint}>
-      {m.rk_replace_confirm()}
-    </button>
-  {/if}
+  </div>
 </Sheet>
 
 <Sheet

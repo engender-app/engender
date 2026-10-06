@@ -244,6 +244,11 @@
       <!-- Changing the secret without changing the mode. Two rows rather than
            one, because only one of them applies at a time and a disabled row
            explaining why would be a third thing to read. -->
+      <!-- Only for a mode with a secret to change: the other three drew an
+           empty card here (after-release ticket 09). Opens and closes by its
+           height when a change of mode adds or takes away the secret. -->
+      {#if current === 'passphrase' || current === 'pin'}
+      <div transition:disclose>
       <ListCard>
         {#if current === 'passphrase'}
           <ListRow
@@ -264,6 +269,8 @@
           />
         {/if}
       </ListCard>
+      </div>
+      {/if}
     </ReadReserve>
   {/if}
 </div>
