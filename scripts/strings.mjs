@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { serializeCatalogue } from './catalogue.mjs';
 import { catalogueFindings, collectReferenceSites, copySourceFiles } from './check-copy.mjs';
+import { isOutside, readOutside, replaceOutside } from './strings-outside.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PAGE = fileURLToPath(new URL('./strings.html', import.meta.url));
@@ -55,12 +56,14 @@ export function writeReviews(root, review) {
   const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
   const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
   const approved = readReviews(root);
+  const outside = readOutside(root);
   for (const entry of keys) {
+    const other = entry && typeof entry.key === 'string' ? outside.get(entry.key) : undefined;
     if (!entry || typeof entry.key !== 'string' || entry.key.startsWith('$') ||
-        (!Object.hasOwn(en, entry.key) && !Object.hasOwn(pl, entry.key))) {
+        (!other && !Object.hasOwn(en, entry.key) && !Object.hasOwn(pl, entry.key))) {
       throw new RequestError(400, 'Key does not exist.');
     }
-    const current = { en: en[entry.key] ?? null, pl: pl[entry.key] ?? null };
+    const current = other ? { en: other.en, pl: other.pl } : { en: en[entry.key] ?? null, pl: pl[entry.key] ?? null };
     if (!isDeepStrictEqual(entry.en, current.en) || !isDeepStrictEqual(entry.pl, current.pl)) {
       throw new RequestError(409, `Copy changed for ${entry.key}. Reload before reviewing.`);
     }
@@ -85,7 +88,24 @@ export function readStrings(root = ROOT) {
   const previousPl = JSON.parse(execFileSync('git', ['show', `${base}:messages/pl.json`], { cwd: root, encoding: 'utf8' }));
   const sites = collectReferenceSites(copySourceFiles(root));
   const findings = catalogueFindings(en, pl, new Set(sites.keys()));
-  return Object.keys({ ...previousEn, ...previousPl, ...en, ...pl }).filter((key) => !key.startsWith('$')).sort().map((key) => ({
+  const site = (/** @type {{ file: string, line: number }} */ { file, line }) => ({
+    file, line, href: `vscode://file${pathToFileURL(join(root, file)).pathname}:${line}`
+  });
+  const outside = readOutside(root);
+  const outsidePrevious = readOutside(root, base);
+  const outsideRows = [...new Set([...outsidePrevious.keys(), ...outside.keys()])].sort().map((key) => {
+    const now = outside.get(key);
+    const before = outsidePrevious.get(key);
+    const values = { en: now?.en ?? null, pl: now?.pl ?? null };
+    const previous = { en: before?.en ?? null, pl: before?.pl ?? null };
+    return {
+      key, theme: (now ?? before)?.theme ?? 'Unassigned copy', ...values,
+      reviewed: approved[key] === revision(values.en, values.pl), previous,
+      change: !before ? 'added' : !now ? 'removed' : isDeepStrictEqual(values, previous) ? null : 'changed',
+      findings: [], sites: (now?.sites ?? []).map(site)
+    };
+  });
+  return [...Object.keys({ ...previousEn, ...previousPl, ...en, ...pl }).filter((key) => !key.startsWith('$')).sort().map((key) => ({
     key,
     theme: THEMES[coverage[key]?.owner] ?? 'Unassigned copy',
     en: en[key] ?? null,
@@ -99,7 +119,7 @@ export function readStrings(root = ROOT) {
     sites: (sites.get(key) ?? []).map(({ file, line }) => ({
       file: relative(root, file), line, href: `vscode://file${pathToFileURL(file).pathname}:${line}`
     }))
-  }));
+  })), ...outsideRows];
 }
 
 /** Edit only an existing string or one declared match form. Reload before
@@ -111,6 +131,13 @@ export function writeString(root, edit) {
   if ((locale !== 'en' && locale !== 'pl') || typeof key !== 'string' || key.startsWith('$') ||
       typeof text !== 'string' || typeof previous !== 'string') {
     throw new RequestError(400, 'Invalid locale, key or text.');
+  }
+  if (isOutside(key)) {
+    if (variant !== null || form !== null) throw new RequestError(400, 'Plain values have no form.');
+    const result = replaceOutside(root, locale, key, previous, text);
+    if ('error' in result) throw new RequestError(result.error, result.message);
+    writeAtomic(result.file, result.text);
+    return;
   }
   const file = join(root, `messages/${locale}.json`);
   const catalogue = JSON.parse(readFileSync(file, 'utf8'));
