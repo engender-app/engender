@@ -25,6 +25,7 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
+  import { wordsReturnPath } from '$lib/navigation/wordsReturn';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -36,7 +37,7 @@
 
   let ignoredQuery = liveQuery((j) => j.wordIgnore.getIgnoredWords());
   let words = $derived([...(ignoredQuery.value ?? new Set<string>())].sort());
-  let returnParam = $derived(page.url.searchParams.get('return'));
+  let returnParam = $derived(wordsReturnPath(page.url.searchParams.get('return')));
   let returnHref = $derived(returnParam || '/stats/words');
 
   /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */

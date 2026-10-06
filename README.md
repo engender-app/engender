@@ -299,6 +299,11 @@ container queries. User-facing strings live in
 
 For copy review, run `npm run strings` and open the local URL it prints.
 The editor shows English and Polish together, with theme and review filters.
+Besides the catalogues it lists the copy kept elsewhere: Android widget and
+notification strings, both web manifests, the Play Store listing and the
+privacy policy, one paragraph per row. Those rows are keyed `android:`,
+`manifest:`, `notes-manifest:`, `store:` and `privacy:`, and a save rewrites
+only that value in its own file.
 Save individual fields or use **Save all changes**, which includes edits
 hidden by filters. Review checkboxes work per key or for the shown keys in a
 group. Progress is saved in `.scratch/copy-review.json`; changing either

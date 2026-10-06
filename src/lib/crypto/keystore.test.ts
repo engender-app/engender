@@ -218,3 +218,14 @@ test('a keystore that is not a PIN one neither needs nor gains a binding', async
 
   expect(reparsed.pinBinding).toBeUndefined();
 });
+
+
+test.each(['credentialId', 'prfSalt'])('malformed biometric %s reports KeystoreUnreadableError', async (field) => {
+  const { metadata } = await createKeystore('biometric secret', CHEAP, 'biometric');
+  const raw = JSON.parse(serializeKeystore({
+    ...metadata,
+    biometric: { credentialId: new Uint8Array([1]), prfSalt: new Uint8Array([2]) }
+  }));
+  raw[field] = 'not base64 !!!';
+  expect(() => parseKeystore(JSON.stringify(raw))).toThrow(KeystoreUnreadableError);
+});

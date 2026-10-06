@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Base64;
 
 import java.nio.charset.StandardCharsets;
@@ -93,6 +94,9 @@ public final class SensitiveClipboard {
         still the ordinary trigger; this is what decides whether it is time. */
     private static final String KEY_DUE_AT = "dueAtRealtime";
 
+    /** An elapsed-realtime deadline from an earlier boot is already due. */
+    private static final String KEY_BOOT_COUNT = "bootCount";
+
     private static Runnable armedClear;
 
     /**
@@ -111,6 +115,7 @@ public final class SensitiveClipboard {
             .edit()
             .putString(KEY_DIGEST, Base64.encodeToString(digest(value), Base64.NO_WRAP))
             .putLong(KEY_DUE_AT, SystemClock.elapsedRealtime() + clearAfterMs)
+            .putInt(KEY_BOOT_COUNT, bootCount(context))
             .apply();
 
         Handler handler = new Handler(Looper.getMainLooper());
@@ -133,7 +138,8 @@ public final class SensitiveClipboard {
     public static void clearIfDue(Context context) {
         String digest = prefs(context).getString(KEY_DIGEST, null);
         if (digest == null) return;
-        if (SystemClock.elapsedRealtime() < prefs(context).getLong(KEY_DUE_AT, 0)) return;
+        boolean sameBoot = prefs(context).getInt(KEY_BOOT_COUNT, -1) == bootCount(context);
+        if (sameBoot && SystemClock.elapsedRealtime() < prefs(context).getLong(KEY_DUE_AT, 0)) return;
 
         ClipboardManager clipboard = clipboardOf(context);
         ClipData clip = clipboard.getPrimaryClip();
@@ -209,6 +215,10 @@ public final class SensitiveClipboard {
             (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboard == null) throw new IllegalStateException("this device has no clipboard");
         return clipboard;
+    }
+
+    private static int bootCount(Context context) {
+        return Settings.Global.getInt(context.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
     }
 
     private static SharedPreferences prefs(Context context) {

@@ -3,9 +3,9 @@
    to lose the journal has to be one the user chose (the reset action on
    the lock screen), not one a bored kid can trip into.
 
-   Epoch time comes in as an argument for restoring persisted waits. Within
-   the session, performance.now() measures elapsed time independently of the
-   device clock. The throttle knows nothing about PINs.
+   Epoch time labels a pending wait but cannot prove that it was paid.
+   A reload owes the full delay unless a monotonic mirror can prove what
+   remains. performance.now() measures elapsed time within the session.
 
    The count outlives the page, through the injected store. In memory it
    would not have raised the cost of guessing at all: the guesser is
@@ -34,7 +34,7 @@ export function delayAfterWrongAttempts(wrongAttempts: number): number {
 
 export interface AttemptState {
   wrongAttempts: number;
-  /** Epoch milliseconds: the moment the next attempt starts counting. */
+  /** Pending epoch deadline; zero means monotonic time proved the wait complete. */
   acceptingFrom: number;
 }
 
@@ -48,28 +48,33 @@ export interface AttemptStore {
 }
 
 interface AttemptThrottle {
-  /** Milliseconds still to wait at `now` before another attempt counts. */
+  /** Milliseconds still owed on the monotonic clock before another attempt counts. */
   remainingMs(now: number): number;
+  delayMs(): number;
   recordWrong(now: number): void;
   reset(): void;
 }
 
-export function createAttemptThrottle(store?: AttemptStore, mirroredWaitMs = 0): AttemptThrottle {
+export function createAttemptThrottle(store?: AttemptStore, mirroredWaitMs?: number): AttemptThrottle {
   const restored = store?.read();
   let wrongAttempts = restored?.wrongAttempts ?? 0;
   let acceptingFrom = restored?.acceptingFrom ?? 0;
   let elapsedDeadline: number | null = null;
 
   return {
-    remainingMs(now) {
+    remainingMs(_now) {
       if (elapsedDeadline === null) {
-        // Epoch time restores the wait once. Clock changes after that cannot
-        // shorten it; Android also mirrors the wait outside the WebView.
-        const restoredWait = Math.min(Math.max(0, acceptingFrom - now), delayAfterWrongAttempts(wrongAttempts));
-        elapsedDeadline = performance.now() + Math.max(restoredWait, mirroredWaitMs);
+        const restoredWait = acceptingFrom === 0 ? 0 : delayAfterWrongAttempts(wrongAttempts);
+        elapsedDeadline = performance.now() + (mirroredWaitMs ?? restoredWait);
       }
-      return Math.max(0, elapsedDeadline - performance.now());
+      const remaining = Math.max(0, elapsedDeadline - performance.now());
+      if (remaining === 0 && acceptingFrom !== 0) {
+        acceptingFrom = 0;
+        store?.write({ wrongAttempts, acceptingFrom });
+      }
+      return remaining;
     },
+    delayMs: () => delayAfterWrongAttempts(wrongAttempts),
     recordWrong(now) {
       wrongAttempts++;
       const delay = delayAfterWrongAttempts(wrongAttempts);

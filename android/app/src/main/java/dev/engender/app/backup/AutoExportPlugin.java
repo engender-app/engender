@@ -10,6 +10,8 @@ import android.content.SharedPreferences;
 import android.content.UriPermission;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.database.Cursor;
+import android.provider.DocumentsContract;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -385,8 +387,18 @@ public class AutoExportPlugin extends Plugin {
                 public boolean delete() { return file.delete(); }
             });
         }
-        BackupRetention.prune(verified, documents);
+        BackupRetention.prune(verified, documents, this::verifiedDocumentStillExists);
         prefs.edit().putString(KEY_VERIFIED_BACKUPS, new JSONArray(verified).toString()).apply();
+    }
+
+    private boolean verifiedDocumentStillExists(String uri) {
+        try (Cursor rows = getContext().getContentResolver().query(Uri.parse(uri),
+            new String[] { DocumentsContract.Document.COLUMN_DOCUMENT_ID }, null, null, null)) {
+            // No answer or a provider failure cannot prove a document was deleted.
+            return rows == null || rows.moveToFirst();
+        } catch (RuntimeException unavailable) {
+            return true;
+        }
     }
 
     @PluginMethod
