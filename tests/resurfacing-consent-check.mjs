@@ -43,7 +43,7 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-notice="wrapped-muted"]');
   assert.equal(await page.locator('[data-generate], [data-share], [data-wrapped-card]').count(), 0);
-  assert.equal(await page.locator('[data-notice="wrapped-muted"]').innerText(), 'Kept out of view\nThis period includes an era you keep out of resurfacing.\nEras');
+  assert.equal((await page.locator('[data-notice="wrapped-muted"]').innerText()).replace(/\n+/g, '\n'), 'Kept out of view\nThis period includes an era you keep out of resurfacing.\nEras');
   console.log('PASS direct share URL shows existing muted notice and no share controls');
 
   await page.goto(`${base}/wrapped/week`, { waitUntil: 'networkidle' });
