@@ -25,7 +25,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import { tryoutReading } from '$lib/data/tryoutReading';
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
@@ -58,7 +58,7 @@
   let feltQuery = liveQuery((j) => j.feltSense.byTryout());
   let feltByTryout = $derived(feltQuery.value ?? new Map<string, FeltSenseEntry[]>());
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let running = $derived(tryouts.filter((t) => t.endEpochDay == null));
   let ended = $derived(tryouts.filter((t) => t.endEpochDay != null));
 

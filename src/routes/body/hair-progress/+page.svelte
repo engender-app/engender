@@ -25,7 +25,8 @@
   import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
   import { HAIR_SCALES, gradesOfScale, isGradedScale, stagesByScale } from '$lib/data/hairStageScales';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { HairStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { ComparePair } from '$lib/data/photos/compare-state';
@@ -56,7 +57,7 @@
      all, which is the call Home's backup notice makes. */
   const SECTION_ROLE = { stages: 0, photos: 1 };
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /* Bounded from epoch day 0 rather than from the anchor itself: getDoses
      needs a range (doses.ts has no unbounded read). No dose can predate
@@ -179,7 +180,7 @@
   }
 
   async function storePhoto(photo: NormalizedPhoto): Promise<void> {
-    await journal.hairProgress.addPhoto(today, photo);
+    await journal.hairProgress.addPhoto(todayEpochDay(), photo);
   }
 
   const hairPhotos = photoSection<HairPhoto>({

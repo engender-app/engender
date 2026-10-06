@@ -102,7 +102,15 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
           transfer = [suppliedWasm];
           suppliedWasm = undefined;
         }
-        worker.postMessage({ id, op, args }, transfer);
+        /* A message that will not clone throws here. Sent from the .then
+           below, that throw was nobody's: the caller waited forever and the
+           page logged an uncaught error. It is this post's failure. */
+        try {
+          worker.postMessage({ id, op, args }, transfer);
+        } catch (error) {
+          pending.delete(id);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
       }
       if (!poolFree) send();
       else

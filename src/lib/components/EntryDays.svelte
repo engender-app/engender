@@ -27,7 +27,8 @@
      entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
      where a card's first and last entry are (kit.css). */
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
+  import { crossesCalendarYear } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
@@ -71,7 +72,7 @@
      every heading brought a comma with it in English ("Thursday, 1
      October 2026") that no other day heading in the app carries (audit
      UX-11). */
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 </script>
 
 <div class="entry-days" class:is-arriving={arrive}>

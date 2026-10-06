@@ -93,9 +93,11 @@ function noiseTile(): OffscreenCanvas {
 
 function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   const tile = noiseTile();
+  const fullCanvas = new OffscreenCanvas(FULL.width, FULL.height);
+  const thumbCanvas = new OffscreenCanvas(THUMB.width, THUMB.height);
 
-  const draw = async (size: { width: number; height: number }, hue: number): Promise<Uint8Array> => {
-    const canvas = new OffscreenCanvas(size.width, size.height);
+  const draw = async (canvas: OffscreenCanvas, hue: number): Promise<Uint8Array> => {
+    const size = canvas;
     const context = canvas.getContext('2d')!;
     const gradient = context.createLinearGradient(0, 0, size.width, size.height);
     gradient.addColorStop(0, `hsl(${hue} 45% 72%)`);
@@ -119,7 +121,7 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
 
   return async (n) => {
     const hue = (n * 37) % 360;
-    return { full: await draw(FULL, hue), thumb: await draw(THUMB, hue) };
+    return { full: await draw(fullCanvas, hue), thumb: await draw(thumbCanvas, hue) };
   };
 }
 
@@ -141,8 +143,14 @@ async function run(days: number) {
   stage('generate', days);
   // Fixture writes are setup, before any scored operation. Keep the public
   // journal transactions and defer SQLite durability syncs during generation.
-  // Restore the captured setting and commit a header write before reopening.
+  // The rollback journal goes to memory for the same reason: with it on the
+  // OPFS pool, every page a transaction first touches is written out to a
+  // second encrypted file, and that was most of generation (ten years:
+  // in-transaction statements 118s of 238s on a hosted runner, 1.9s locally
+  // once the journal was in memory). Neither changes a row or a photo byte.
+  // Restore the captured settings and commit a header write before reopening.
   const [{ synchronous }] = await booted.driver.query<{ synchronous: number }>('PRAGMA synchronous');
+  const [{ journal_mode: journalMode }] = await booted.driver.query<{ journal_mode: string }>('PRAGMA journal_mode');
   const startedAt = performance.now();
   // Setup counters show whether fixture work advances or waits on one operation.
   // The adapter keeps the same journal writes and photo bytes; scored reads use
@@ -176,8 +184,10 @@ async function run(days: number) {
   let summary: LongJournalSummary;
   try {
     await booted.driver.exec('PRAGMA synchronous = OFF');
+    await booted.driver.exec('PRAGMA journal_mode = MEMORY');
     summary = await generateLongJournal(generatingJournal, { days, makePhoto: generatingPhoto });
   } finally {
+    await booted.driver.exec(`PRAGMA journal_mode = ${journalMode}`);
     await booted.driver.exec(`PRAGMA synchronous = ${synchronous}`);
     const version = await booted.driver.getUserVersion();
     await booted.driver.transaction((scope) => scope.setUserVersion(version));
