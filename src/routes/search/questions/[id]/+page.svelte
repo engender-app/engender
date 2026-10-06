@@ -2,12 +2,14 @@
   /* One saved question, answered as a run (phase 8 features ticket 06,
      CONTEXT: "Saved question").
 
-     Two reads, the same two `/search` makes and with the same shape - the
+     Three reads, the same three `/search` makes and with the same shape - the
      acceptance criterion is that a saved question's results equal the
      equivalent ad hoc search's results, and the only way that is true by
      construction rather than by careful copying is to call the same two
      functions with filters read straight off the saved row
-     (entrySearchFiltersOf, savedQuestionQuery.ts). No filter sheet here:
+     (entrySearchFiltersOf, savedQuestionQuery.ts). The third is the starred
+     photos a Starred question also answers with, read and counted through
+     the same helpers /search uses. No filter sheet here:
      what narrows the read is what the question was saved with, not
      something this screen offers to change.
 
@@ -28,7 +30,7 @@
   import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { disclose } from '$lib/motion/reveal';
   import { whileStaying } from '$lib/motion/whileStaying';
-  import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
+  import { answerTotal, entrySearchFiltersOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -45,6 +47,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
 
   const PAGE = 30;
@@ -164,16 +167,33 @@
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, stableSearch?.queryText.trim() ?? ''));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
-  let foundTotal = $derived(total + elsewhereResults.total);
-  let loading = $derived(search.loading || elsewhere.loading);
-  let foundNothing = $derived(hits.length === 0 && hitRows.length === 0);
+  /* A Starred question also answers with every starred photo, the grid
+     /search shows under the same filter, and counts them in its total. */
+  let photosAttempt = $state<typeof stableSearch>(null);
+  let photos = liveQuery((j) => {
+    const criteria = stableSearch;
+    photosAttempt = criteria;
+    if (!criteria) return Promise.resolve(null);
+    return starredPhotosAsked(j.photoLibrary, criteria.filters).then((rows) => ({ criteria, rows }));
+  });
+  let starredPhotos = $derived.by(() => {
+    const value = photos.value;
+    return value?.criteria === stableSearch ? value.rows : [];
+  });
+  let photosShown = $derived(starredPhotos.length > 0);
+
+  let foundTotal = $derived(answerTotal(total, elsewhereResults.total, starredPhotos.length));
+  let loading = $derived(search.loading || elsewhere.loading || photos.loading);
+  let anyFailed = $derived(search.failed || elsewhere.failed || photos.failed);
+  let foundNothing = $derived(hits.length === 0 && hitRows.length === 0 && !photosShown);
   /* Reads retain old values and failures during a new run. Wait for both
      attempts to use this question's criteria before showing an answer. */
   let resultsReady = $derived(
     !!stableSearch && stableSearch.signature === searchSignature &&
-    searchAttempt === stableSearch && elsewhereAttempt === stableSearch &&
+    searchAttempt === stableSearch && elsewhereAttempt === stableSearch && photosAttempt === stableSearch &&
     (search.value?.criteria === stableSearch || (search.failed && !search.running)) &&
-    (elsewhere.value?.criteria === stableSearch || (elsewhere.failed && !elsewhere.running)) && !loading
+    (elsewhere.value?.criteria === stableSearch || (elsewhere.failed && !elsewhere.running)) &&
+    (photos.value?.criteria === stableSearch || (photos.failed && !photos.running)) && !loading
   );
   let revealedCriteria = $state<typeof stableSearch>(null);
   $effect.pre(() => {
@@ -259,16 +279,28 @@
     <div aria-live="polite">
       {#key searchSignature}
       <ReadReserve ready={!!stableSearch && (resultsReady || revealedCriteria === stableSearch)} estimate={240}>
-      {#if search.failed || elsewhere.failed}
+      {#if anyFailed}
         <Notice
           title={m.read_failed()}
-          action={{ label: m.read_retry(), onclick: () => { search.retry(); elsewhere.retry(); } }}
+          action={{ label: m.read_retry(), onclick: () => { search.retry(); elsewhere.retry(); photos.retry(); } }}
         />
       {/if}
       {#if !foundNothing}
 
+        {#if photosShown}
+          <!-- The same grid and the same headings as /search's: photos
+               lead, named only when entries or other records follow. -->
+          <div transition:disclose={whileStaying}>
+            {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
+            <StarredPhotoGrid photos={starredPhotos} />
+          </div>
+        {/if}
+
         {#if hits.length}
           <div transition:disclose={whileStaying}>
+            {#if photosShown}
+              <div transition:disclose={whileStaying}><SectionHeading text={m.search_entries_heading()} /></div>
+            {/if}
             <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
             {#if remaining > 0}
               <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
@@ -280,9 +312,9 @@
 
         {#if hitRows.length}
           <div transition:disclose={whileStaying}>
-            <!-- Named only under entries, to be elsewhere from: the call
-                 /search makes about the same two lists (ticket 16). -->
-            {#if hits.length}<SectionHeading text={m.search_elsewhere_heading()} />{/if}
+            <!-- Named only under entries or photos, to be elsewhere from:
+                 the call /search makes about the same lists (ticket 16). -->
+            {#if hits.length || photosShown}<SectionHeading text={m.search_elsewhere_heading()} />{/if}
             <ListCard role={hitsRole}>
               {#each hitRows as row (row.key)}
                 <ListRow
@@ -310,7 +342,7 @@
         <!-- One count, the total, in the same words and the same place as
              /search's: under the results (ticket 16). -->
         <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
-      {:else if !search.failed && !elsewhere.failed}
+      {:else if !anyFailed}
         <Notice icon="bookmark" key="saved-question-none" title={m.no_results()} text={m.saved_question_no_results()} />
       {/if}
       </ReadReserve>

@@ -109,19 +109,17 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { listRecentSearches, recordRecentSearch } from '$lib/data/recentSearches';
-  import { savedQuestionInputOf } from '$lib/data/savedQuestionQuery';
+  import { answerTotal, savedQuestionInputOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { photoCaptionDate } from '$lib/data/dates';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SearchActions from '$lib/components/SearchActions.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
@@ -415,18 +413,14 @@
      self-limiting by how much a person actually stars, not by how large
      the journal is (ADR-0004's concern is a per-render bound, not a floor
      under every read). */
-  let starredPhotosQuery = liveList((j) => (starredOnly ? j.photoLibrary.starred() : Promise.resolve([])));
+  let starredPhotosQuery = liveList((j) => starredPhotosAsked(j.photoLibrary, { starred: starredOnly }));
   let starredPhotos = $derived(starredPhotosQuery.rows);
-
-  async function unstarPhoto(id: string) {
-    await journal.photos.setStarred(id, false);
-  }
 
   /* One count over both reads, and the starred photo grid when that filter
      is on - stating the entries' total alone while five letters or a row of
      photos sat underneath it would be the screen describing part of what it
      found. */
-  let foundTotal = $derived(total + elsewhereResults.total + (starredOnly ? starredPhotos.length : 0));
+  let foundTotal = $derived(answerTotal(total, elsewhereResults.total, starredOnly ? starredPhotos.length : 0));
   let loading = $derived(search.loading || elsewhere.loading);
   let foundNothing = $derived(
     hits.length === 0 && hitRows.length === 0 && (!starredOnly || starredPhotos.length === 0)
@@ -678,18 +672,7 @@
                Starred toggle instead of behind a second door. -->
           <div transition:disclose={whileStaying}>
             {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
-            <p class="search-hint">{m.search_starred_photos_scope()}</p>
-            <div class="photo-grid" data-starred-photos>
-              {#each starredPhotos as p (p.id)}
-                <div class="starred-photo-cell">
-                  <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                  <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
-                  <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
-                    <Icon name="star" size={16} cls="is-starred" />
-                  </button>
-                </div>
-              {/each}
-            </div>
+            <StarredPhotoGrid photos={starredPhotos} />
           </div>
         {/if}
 
