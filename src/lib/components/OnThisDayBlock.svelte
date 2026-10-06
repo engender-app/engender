@@ -104,8 +104,13 @@
     }))
   );
 
+  /* Once per target: `days` is replaced on every refresh of the query, and
+     scrolling again each time would pull the page back from wherever the
+     reader had moved on to. */
+  let scrolledTo: string | null = null;
   $effect(() => {
-    if (!days.length || !scrollTo) return;
+    if (!days.length || !scrollTo || scrolledTo === scrollTo) return;
+    scrolledTo = scrollTo;
     document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 

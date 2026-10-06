@@ -43,6 +43,7 @@
     epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { EditorPhoto } from '$lib/stores/photoPicking';
@@ -299,7 +300,7 @@
   let anniversaries = $derived.by(() => {
     const answered = answeredToday.value;
     if (!answered) return [];
-    const today = todayEpochDay();
+    const today = currentDay();
     return sorted.flatMap((mi) => {
       const s = milestoneStatus(mi, today);
       return s.isAnnivToday && !answered.has(mi.id) && !skippedAnniv.includes(mi.id) ? [{ mi, years: s.years ?? 0 }] : [];
