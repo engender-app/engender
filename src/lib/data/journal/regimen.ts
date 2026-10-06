@@ -4,7 +4,14 @@
    has no built-in counterpart to key by, unlike tags or gender dimensions.
    Episodes are never deleted: every entry, photo, measurement and lab
    result attributed to one by timestamp (regimenEpisode.ts) must keep
-   resolving to it. */
+   resolving to it.
+
+   A mistaken or duplicate episode is put away instead (after-release 07,
+   the write phase 4 ticket 01 promised): `setEpisodeHidden` is the only
+   such write, and `getEpisodes` is the one read every surface draws the
+   history from, so leaving a hidden row out there takes it out of Care,
+   the curve, dose attribution and the clinician summary at once. The
+   regimen screen asks `getHiddenEpisodes` for the way back. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { EpisodeEndReason, RegimenEpisode } from '../types';
@@ -14,11 +21,15 @@ type RegimenEpisodeInput = Omit<RegimenEpisode, 'id'> & { id?: string };
 
 export interface RegimenArea {
   /** Ordered by start day, ties broken by insertion order - the order
-      earliestEpisode (regimenEpisode.ts) requires. */
+      earliestEpisode (regimenEpisode.ts) requires. Hidden episodes are left
+      out. */
   getEpisodes(): Promise<RegimenEpisode[]>;
-  /** Whether any episode is stored, running or ended. One `EXISTS`, for the
-      surface that only asks whether a regimen was ever started (Home's
-      Getting started row). */
+  /** Only the hidden ones, in the same order: what the regimen screen
+      offers to show again. */
+  getHiddenEpisodes(): Promise<RegimenEpisode[]>;
+  /** Whether any episode is stored and not hidden, running or ended. One
+      `EXISTS`, for the surface that only asks whether a regimen was ever
+      started (Home's Getting started row). */
   hasAny(): Promise<boolean>;
   /** Returns the episode's id. Updating an unknown id throws. Carries
       `endEpochDay` through like any other field - a straight edit of an
@@ -33,6 +44,8 @@ export interface RegimenArea {
       an unknown id throws. `endReason` is optional and defaults to null
       (ticket 43): ending an episode with no reason chosen stays valid. */
   endEpisode(id: string, endEpochDay: number, endReason?: EpisodeEndReason | null): Promise<void>;
+  /** Puts an episode away, or brings it back. Hiding an unknown id throws. */
+  setEpisodeHidden(id: string, hidden: boolean): Promise<void>;
 }
 
 type EpisodeRow = {
@@ -62,19 +75,24 @@ const toEpisode = (row: EpisodeRow): RegimenEpisode => ({
 });
 
 export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
-  const getEpisodes = async (): Promise<RegimenEpisode[]> => {
+  const episodesWhere = async (hidden: boolean): Promise<RegimenEpisode[]> => {
     const rows = await driver.query<EpisodeRow>(
       `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason
-       FROM regimen_episode ORDER BY start_epoch_day, id`
+       FROM regimen_episode WHERE hidden = ? ORDER BY start_epoch_day, id`,
+      [hidden ? 1 : 0]
     );
     return rows.map(toEpisode);
   };
 
   return {
-    getEpisodes,
+    getEpisodes: () => episodesWhere(false),
+
+    getHiddenEpisodes: () => episodesWhere(true),
 
     async hasAny() {
-      const rows = await driver.query<{ found: number }>('SELECT EXISTS(SELECT 1 FROM regimen_episode) AS found');
+      const rows = await driver.query<{ found: number }>(
+        'SELECT EXISTS(SELECT 1 FROM regimen_episode WHERE hidden = 0) AS found'
+      );
       return bool(rows[0].found);
     },
 
@@ -133,6 +151,15 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
         'UPDATE regimen_episode SET end_epoch_day = ?, end_reason = ?, updated_at = ? WHERE uuid = ?',
         [endEpochDay, endReason, now(), id]
       );
+      assertChanged(result, `regimen episode: ${id}`);
+    },
+
+    async setEpisodeHidden(id, hidden) {
+      const result = await driver.run('UPDATE regimen_episode SET hidden = ?, updated_at = ? WHERE uuid = ?', [
+        hidden ? 1 : 0,
+        now(),
+        id
+      ]);
       assertChanged(result, `regimen episode: ${id}`);
     }
   };
