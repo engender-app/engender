@@ -98,6 +98,7 @@ export interface ProceduresArea {
   /** Every procedure, the ones with a surgery date first and oldest first,
       then the undated ones - which have nowhere to sort to but the end. */
   getProcedures(): Promise<Procedure[]>;
+  getSurgeryDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /** Returns the procedure's id. Updating an unknown id throws. */
   upsertProcedure(input: ProcedureInput): Promise<string>;
   /** Idempotent. Takes the procedure's consults, photos, photo files and
@@ -186,6 +187,14 @@ export function makeProceduresArea(
   };
 
   return {
+    async getSurgeryDaysInRange(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ surgery_epoch_day: number }>(
+        'SELECT DISTINCT surgery_epoch_day FROM procedure WHERE surgery_epoch_day BETWEEN ? AND ? ORDER BY surgery_epoch_day',
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map((row) => row.surgery_epoch_day);
+    },
+
     async getProcedures() {
       // Undated last rather than first: `ORDER BY surgery_epoch_day` alone
       // would sort NULL to the front in SQLite, putting a procedure with no
@@ -401,7 +410,7 @@ export function makeProceduresArea(
         [procedureId]
       );
       if (rows.length === 0) return null;
-      const photos = await photosByMilestone(driver);
+      const photos = await photosByMilestone(driver, [rows[0].id]);
       return {
         id: rows[0].uuid,
         name: rows[0].name,

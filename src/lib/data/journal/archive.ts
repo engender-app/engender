@@ -226,7 +226,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     merge: (contents, onProgress) => restoreArchive(driver, files, 'merge', contents, onProgress),
 
     async previewDaylioImport(csv, naming) {
-      return daylioPreview(csv, (await area.snapshot()).journal, naming);
+      return daylioPreview(csv, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))), naming);
     },
 
     async commitDaylioImport(preview, onProgress) {
@@ -254,7 +254,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async previewDaylioBackupImport(file, naming) {
-      return daylioBackupPreview(file, (await area.snapshot()).journal, naming);
+      return daylioBackupPreview(file, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))), naming);
     },
 
     async commitDaylioBackupImport(preview, normalize, onProgress) {
@@ -321,7 +321,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async previewTransTracksImport(bytes) {
-      return transTracksPreview(bytes, (await area.snapshot()).journal);
+      return transTracksPreview(bytes, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
     },
 
     async commitTransTracksImport(preview, normalize) {
@@ -344,7 +344,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async previewDayOneImport(bytes, naming) {
-      return dayonePreview(bytes, (await area.snapshot()).journal, naming);
+      return dayonePreview(bytes, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))), naming);
     },
 
     async commitDayOneImport(preview, normalize) {
@@ -367,7 +367,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async previewTrackAndGraphImport(csv) {
-      return trackAndGraphPreview(csv, (await area.snapshot()).journal);
+      return trackAndGraphPreview(csv, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
     },
 
     async commitTrackAndGraphImport(preview) {
@@ -381,7 +381,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
     },
 
     async previewPixelsImport(file) {
-      return pixelsPreview(file, (await area.snapshot()).journal);
+      return pixelsPreview(file, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
     },
 
     async commitPixelsImport(preview) {
