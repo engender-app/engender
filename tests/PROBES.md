@@ -164,6 +164,10 @@ To run one on its own, use
 
 ### Written as a guard, not in CI yet
 
+`resurfacing-consent-check` requires a demo build. It checks that muting an
+era removes retrospective offers and sharing controls, direct Wrapped share
+URLs show the muted notice, and unmuting restores the offers and sharing.
+
 | Probe | Why not |
 | --- | --- |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
