@@ -31,10 +31,9 @@
    same seven tables column-by-column and looks like the same declaration
    written twice. It is not: that one says what **travels**, this one says
    what is **stored**, and the two legitimately differ - `tally_event.context`
-   is a stored column no archive carries, `regimen_episode.hidden` the same
-   shape again, and an archive descriptor also carries the wire concerns
-   (`bool`, `whenAbsent`, `whenNull`) that a local write has no opinion
-   about. Folding them into one declaration would need an option per
+   is a stored column no archive carries, and an archive descriptor also
+   carries the wire concerns (`bool`, `whenAbsent`, `whenNull`) that a local
+   write has no opinion about. Folding them into one declaration would need an option per
    divergence, which is the descriptor-as-policy-language ADR-0027 refused.
    They agree today, and nothing here depends on them agreeing.
 
