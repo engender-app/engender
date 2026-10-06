@@ -607,8 +607,10 @@ try {
   await page.locator('[data-nav-item="settings"]').click();
   await waitFor(`location.pathname === '/more'`);
   await page.waitForTimeout(300);
-  await page.evaluate(() => { window.__scopeQueries = []; window.__scopeFailWear = true; });
-  await page.locator('[data-nav-item="home"]').click();
+  // A fresh document drops the driver read cache while retaining the journal
+  // and pins. A warm visit can reuse wear data without reaching this fault.
+  await page.addInitScript(() => { window.__scopeFailWear = true; });
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
   await waitFor(`${TILES['/']} && window.__scopeReadFailed === true`);
   await page.waitForTimeout(100);
   const pinSql = await page.evaluate(() => window.__scopeQueries);
@@ -638,7 +640,10 @@ try {
   await waitFor(`!!document.querySelector('[data-today-editor]')`);
   const expandedSql = await page.evaluate(() => window.__scopeQueries);
   const expandedInventory = await page.locator('[data-edit-pinned-row], [data-edit-add]').evaluateAll((rows) => rows.map((row) => row.dataset.editPinnedRow ?? row.dataset.editAdd).sort());
-  scopeCheck(expandedSql.some(cycleLastWrite) && JSON.stringify(expandedInventory) === JSON.stringify(inventory), 'Editor expands reads and retains complete pin inventory');
+  // The layout already cached cycle data. Voice last-write is absent from
+  // the pin-only reads, so it proves the editor requested expanded data.
+  const voiceLastWrite = (query) => query.sql.includes('MAX(e.epoch_day) AS day') && query.sql.includes('FROM voice_recording');
+  scopeCheck(!pinSql.some(voiceLastWrite) && expandedSql.some(voiceLastWrite) && JSON.stringify(expandedInventory) === JSON.stringify(inventory), 'Editor expands reads and retains complete pin inventory');
   const careLine = await page.locator('[data-edit-add="care"]').innerText();
   await page.locator('[data-edit-add="voice-benchmark"]').click();
   await page.locator('[data-edit-grip="voice-benchmark"]').press('ArrowUp');

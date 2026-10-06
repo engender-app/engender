@@ -90,7 +90,11 @@ export type BootEvent =
       published is built over the key the lock lets go of, so it goes too. */
   | { type: 'journal-closed' }
   /** The unlock after that lock opened it again under the same key. */
-  | { type: 'journal-reopened'; journal: Journal };
+  | { type: 'journal-reopened'; journal: Journal }
+  /** The reopen a key asked for is over, whether or not it opened the
+      database. If it did not, the journal is still locked and another key
+      may try again. */
+  | { type: 'journal-reopen-ended' };
 
 export type BootEffect =
   | { type: 'apply-cached-preferences' }
@@ -102,6 +106,8 @@ export type BootEffect =
   | { type: 'auto-unlock-device-bound' }
   | { type: 'auto-unlock-android' }
   | { type: 'open-journal'; dataKey: DataKey; accessMode: JournalAccessMode }
+  /** A mid-session unlock's key, for the journal a web lock closed. */
+  | { type: 'reopen-journal'; dataKey: DataKey }
   | { type: 'restore-previous-journal' }
   | { type: 'check-pre-migration-copy' }
   | { type: 'warn-persist-denied' };
@@ -119,6 +125,8 @@ export interface BootMachine {
   persistDeniedPending: boolean;
   /** Distinguishes the initial survey from an open already using a key. */
   journalOpening: boolean;
+  /** The same for a mid-session unlock: a reopen is already using a key. */
+  journalReopening: boolean;
 }
 
 interface BootStep {
@@ -134,7 +142,8 @@ export function initialBoot(cachedAccessMode: CachedAccessMode | null = null): B
         : bootStates.needsUnlock(cachedAccessMode),
     demo: false,
     persistDeniedPending: false,
-    journalOpening: false
+    journalOpening: false,
+    journalReopening: false
   };
 }
 
@@ -153,6 +162,16 @@ function withDataKey(
   unlocked: boolean
 ): BootStep {
   const unlocking: BootEffect[] = unlocked ? [{ type: 'mark-unlocked' }] : [];
+  /* Ready with no journal is a web lock's doing (after-release ticket 10),
+     and the key is the unlock screen's: it reopens what the lock closed. A
+     key while that reopen is under way is a second submit, refused like
+     the duplicates below. No mark-unlocked and no access mode: the screen
+     lifts the gate itself once the reopen answers, inside the app's
+     opening transition, and the mode is the one the journal already has. */
+  if (machine.boot.status === 'ready' && machine.boot.journal === null) {
+    if (machine.journalReopening) return step(machine, machine.boot);
+    return step({ ...machine, journalReopening: true }, machine.boot, [{ type: 'reopen-journal', dataKey }]);
+  }
   if (machine.boot.status === 'legacy-refused' || machine.boot.status === 'ready' ||
       machine.boot.status === 'schema-too-new' ||
       (machine.boot.status === 'booting' && machine.journalOpening)) return step(machine, machine.boot);
@@ -329,7 +348,10 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       return step(machine, bootTransitions.withJournal(machine.boot, null));
 
     case 'journal-reopened':
-      return step(machine, bootTransitions.withJournal(machine.boot, event.journal));
+      return step({ ...machine, journalReopening: false }, bootTransitions.withJournal(machine.boot, event.journal));
+
+    case 'journal-reopen-ended':
+      return step({ ...machine, journalReopening: false }, machine.boot);
   }
 }
 

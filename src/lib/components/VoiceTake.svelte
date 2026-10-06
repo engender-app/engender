@@ -122,13 +122,13 @@
     margin: 0;
     font-size: var(--text-xs);
     line-height: 1.5;
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .vt-none {
     margin: 0;
     font-size: var(--text-sm);
     line-height: 1.5;
-    color: var(--muted);
+    color: var(--text-2);
   }
 </style>

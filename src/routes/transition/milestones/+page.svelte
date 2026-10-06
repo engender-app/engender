@@ -627,6 +627,7 @@
     open={pendingMilestonePhoto !== null}
     bind:day={pendingMilestoneDay}
     fieldId="milestone-photo-day-prompt"
+    hint={m.photo_day_prompt_hint_milestone()}
     onSave={() => resolveMilestonePhotoDay(pendingMilestoneDay)}
     onSkip={() => resolveMilestonePhotoDay(null)}
   />

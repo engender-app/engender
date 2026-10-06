@@ -240,7 +240,17 @@ try {
   });
   await page.locator('#letter-text').waitFor({ state: 'detached' });
   assert.equal(await page.locator('[data-discard-record]').count(), 0);
-  assert.equal((await stored()).length, 3);
+  // A web lock closes the journal (after-release ticket 10): while the gate is
+  // up there is no handle to read letters through. Waited for rather than read
+  // once: the gate is drawn a moment before the lock lets go of the handle.
+  await page.waitForFunction(async () => {
+    const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+    return bootState.journal === null;
+  });
+  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('[data-session-submit]').click();
+  await page.locator('[data-applock]').waitFor({ state: 'detached' });
+  assert.equal((await stored()).length, 3, 'the letters saved before the lock read back through the reopened journal');
   console.log('PASS Polish labels and discard at 200% zoom; disguise lock conceals unsaved text');
   assert.deepEqual(errors, []);
 } catch (error) {

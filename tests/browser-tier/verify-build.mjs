@@ -2,8 +2,9 @@
    confirms the production build (`npm run build`) is a static SPA that
    makes zero requests off its own origin - the SQLite .wasm/worker in
    particular, which Rive's canvas package already gets wrong by
-   defaulting to a CDN. Serves build/ with `vite preview` and drives a
-   real Chromium through it with Playwright.
+   defaulting to a CDN. Serves build/ as production does (serve-build.mjs:
+   build/index.html itself, under the isolation headers) and drives a real
+   Chromium through it with Playwright.
 
    It also reads the emitted JavaScript from disk (ticket 05): the Alice
    persona and the demo bar have to be absent from a production build, and
@@ -15,12 +16,13 @@
    service worker and precached shell, then kills the network and starts the
    app again. That is the check no test against a dev server can make -
    neither the worker nor the manifest exists until something is built. */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { preview } from 'vite';
 import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
+import { serveBuild } from '../serve-build.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
 
 /* --- Phase 5 performance ticket 01: the OCR engine, online then offline ---
@@ -139,7 +141,7 @@ function releasePaths() {
   return walk('build').map((file) => `/${relative('build', file)}`);
 }
 
-const server = await preview({ preview: { port: 0 } });
+const server = await serveBuild('.');
 const address = server.httpServer.address();
 const origin = `http://localhost:${address.port}`;
 
@@ -188,6 +190,13 @@ try {
     new MutationObserver(record).observe(document, { childList: true, subtree: true });
     record();
   });
+
+  /* The page every check below loads is the document that ships (ticket
+     31, audit PERF-05): vite preview rendered its own, with no CSP and no
+     held module hints, so nothing here ever ran under either. */
+  const served = await (await fetch(`${origin}/`)).text();
+  if (served === readFileSync('build/index.html', 'utf8')) ok('the served document is build/index.html, byte for byte');
+  else fail('the served document is build/index.html, byte for byte', `${served.length}B served against ${statSync('build/index.html').size}B on disk`);
 
   await page.goto(origin, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-next]', { timeout: 10000 });
@@ -581,6 +590,28 @@ try {
       ['/manifest.webmanifest', '/manifest-notes.webmanifest'].every((path) => shell.paths.includes(path)) &&
       readdirSync(new URL('../../static/icons/', import.meta.url)).every((icon) => shell.paths.includes(`/icons/${icon}`))
   };
+  /* Nothing is stored twice (ticket 31, audit PERF-04). The SQLocal stack
+     shipped one chunk under both chunks/ and workers/chunks/, the same 64 KB
+     brotli each, and before ticket 13 its wasm twice the same way. The route
+     stubs under nodes/ are SvelteKit's and identical on purpose, so they are
+     left out. */
+  const byContent = new Map();
+  for (const path of shell.paths.filter((p) => p.startsWith('/_app/immutable/') && !p.startsWith('/_app/immutable/nodes/'))) {
+    const key = createHash('sha256').update(readFileSync(`build${path}`)).digest('hex');
+    byContent.set(key, [...(byContent.get(key) ?? []), path]);
+  }
+  const twins = [...byContent.values()].filter((paths) => paths.length > 1);
+  if (twins.length === 0) ok('the shell stores no file twice under two names');
+  else fail('the shell stores no file twice under two names', twins.map((paths) => paths.join(' = ')).join('; '));
+
+  /* And none of the SQLocal stack by name: its worker was
+     workers/sqlite3-worker1-<hash>.js. The package's own worker1 promiser
+     file shares the prefix and is kept out of the install already
+     (UNUSED_WORKER), so any match here is a stack nothing should load. */
+  const sqlocal = shell.paths.filter((p) => /\/sqlite3-worker1-|sqlocal/i.test(p));
+  if (sqlocal.length === 0) ok('the shell holds no file of the SQLocal stack');
+  else fail('the shell holds no file of the SQLocal stack', sqlocal.join(', '));
+
   const absent = Object.keys(kinds).filter((kind) => !kinds[kind]);
   if (absent.length === 0) ok('the shell names what an offline boot reaches for first: worker, WASM, fonts, manifests, icons');
   else fail('the shell names what an offline boot reaches for first', `no ${absent.join(', no ')}`);

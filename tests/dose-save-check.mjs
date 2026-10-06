@@ -43,8 +43,9 @@ try {
     if (entry === 'today') await page.locator('[data-dose-add]').click();
     await page.locator('[data-save-dose]').waitFor();
     const before = await page.locator('[data-dose]').count();
-    assert.equal(await page.locator('#dose-requirements').count(), 0, 'Opening has no validation announcement');
+    assert.match(await page.locator('#dose-requirements').innerText(), /Choose an injection site/, 'Opening says why Save is refused');
     await page.locator('button[data-site="thigh-left"]').click();
+    await page.locator('#dose-requirements').waitFor({ state: 'detached' });
     assert.equal(await page.locator('[data-app-root]').evaluate((node) => node.scrollTop), 0, 'Sheet cannot scroll the fixed app frame');
     if (entry === 'care') {
       const main = page.locator('[data-app-scroll-region]');
