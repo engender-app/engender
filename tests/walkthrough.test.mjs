@@ -1,7 +1,7 @@
 /* Walkable-flow tests (ticket 20's acceptance for tickets 01/07/08) against
    the real app, not a probe page - so this serves the app's own production
    build rather than sharing browser-tier/run.mjs's probe-page dev server.
-   It's `vite preview`, like verify-build.mjs, not `vite dev`: the dev
+   It's `vite preview`, not `vite dev`: the dev
    server's dependency re-optimization forces a full-page reload the first
    time it discovers a new dependency deep in boot() (SQLocal's worker,
    hash-wasm, ...), which raced every flow here and hung page.evaluate calls
@@ -9,7 +9,11 @@
    port (falling back off its 5173 default if that's taken), so there's no
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
-   #demo-jump control), then serves that build. */
+   #demo-jump control), then serves that build. vite preview renders its own
+   document, without the CSP meta or the held module hints that
+   build/index.html carries; verify-build and previewBuild serve the real
+   file through serve-build.mjs since after-release ticket 31, and this
+   runner has not moved yet. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
