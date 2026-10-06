@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
 import { appVersion } from './scripts/app-version.mjs';
 import { lockfilePackages } from './scripts/check-licences.mjs';
 import { noticesFromDisk, packagePathOf } from './scripts/licence-notices.mjs';
@@ -9,7 +9,7 @@ import capacitorConfig from './capacitor.config';
 
 /* What the client build actually emitted, written where src/service-worker.ts
    can import it - the shell cannot be precached from SvelteKit's own `build`
-   list, which omits SQLocal's worker and the worker's copy of the SQLite
+   list, which omits the database worker and its copy of the SQLite
    WASM. verify-build.mjs fails if anything the build wrote is missing from
    the cache the worker fills. */
 const GENERATED = 'src/lib/pwa/emitted-client-assets.generated.ts';
@@ -252,9 +252,17 @@ const { minWebViewVersion } = capacitorConfig.android ?? {};
 if (!minWebViewVersion) throw new Error('capacitor.config.ts names no minWebViewVersion to compile the bundle to');
 const BUILD_TARGET = ['es2020', 'edge88', `chrome${minWebViewVersion}`, 'firefox78', 'safari14'];
 
+function isolateServer(server: ViteDevServer | PreviewServer): void {
+  server.middlewares.use((_req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    next();
+  });
+}
+
 export default defineConfig(({ command }) => ({
   build: { target: BUILD_TARGET },
-  worker: { plugins: () => [notices.worker] },
+  worker: { format: 'es', plugins: () => [notices.worker] },
   // A literal, not an exported const, so Rollup can fold `if (__DEMO__)`
   // and drop the Alice persona and the demo bar from a production bundle
   // rather than shipping them behind a runtime flag. True while developing,
@@ -288,22 +296,12 @@ export default defineConfig(({ command }) => ({
     sharedWasmAssets(),
     notices.main,
     writeEmittedClientAssets(),
-    // `vite preview` is what the walkthrough suite serves the built app
-    // from, and it got neither header. Without them this Chromium has no
-    // SharedArrayBuffer, the SQLite worker cannot install its OPFS VFS, and
-    // opening the database fails outright with "Value at index 0 does not
-    // have a transferable type" - which nothing caught while no screen
-    // read from the database. Now that preferences live there too, the
-    // preview server needs the headers the dev server already had.
+    // SQLite needs isolation in both Vite servers. Production hosting
+    // supplies these headers in its own server configuration.
     {
-      name: 'engender:cross-origin-isolate-preview',
-      configurePreviewServer(server) {
-        server.middlewares.use((_req, res, next) => {
-          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-          next();
-        });
-      }
+      name: 'engender:cross-origin-isolate',
+      configureServer: isolateServer,
+      configurePreviewServer: isolateServer
     },
   ],
 }));
