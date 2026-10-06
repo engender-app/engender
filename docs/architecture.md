@@ -270,6 +270,7 @@ timeline
   v83 : taper rebuilt without its own surgery day
   v84 : procedure archived flag
   v85 : clear orphans, foreign keys enforced
+  v87 : stock doses per unit
 ```
 
 The rules:
@@ -322,7 +323,7 @@ erDiagram
   lab_result
 ```
 
-`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](../src/lib/data/stockProjection.ts)). `taper` and `taper_session` belong to a procedure.
+`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](../src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
 
 **Body, transition and the rest**
 
