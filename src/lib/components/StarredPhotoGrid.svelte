@@ -27,7 +27,9 @@
      each change of `photos` reaches the DOM and walked after it. In the next
      animation frame, because that is where Svelte starts the leaving cell's
      outro and so pins it out of the flow; measured any sooner, the
-     survivors still stand where they were and jump once the pin lands. */
+     survivors still stand where they were and jump once the pin lands.
+     `painted` turns true after the first run, so the photos that come with
+     the grid arrive with it and only later ones fade in by `tileIn`. */
   let grid = $state<HTMLElement>();
   let painted = $state(false);
   let before: CellBox[] = [];
@@ -57,7 +59,7 @@
 </div>
 
 <style>
-  /* Was /search's own rule; the saved question screen carries the same line. */
+  /* The same rule as /search's own; scoped styles do not cross into a component. */
   .search-hint {
     font-size: var(--text-sm);
     color: var(--text-2);
