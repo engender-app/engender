@@ -93,9 +93,11 @@ function noiseTile(): OffscreenCanvas {
 
 function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   const tile = noiseTile();
+  const fullCanvas = new OffscreenCanvas(FULL.width, FULL.height);
+  const thumbCanvas = new OffscreenCanvas(THUMB.width, THUMB.height);
 
-  const draw = async (size: { width: number; height: number }, hue: number): Promise<Uint8Array> => {
-    const canvas = new OffscreenCanvas(size.width, size.height);
+  const draw = async (canvas: OffscreenCanvas, hue: number): Promise<Uint8Array> => {
+    const size = canvas;
     const context = canvas.getContext('2d')!;
     const gradient = context.createLinearGradient(0, 0, size.width, size.height);
     gradient.addColorStop(0, `hsl(${hue} 45% 72%)`);
@@ -119,7 +121,7 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
 
   return async (n) => {
     const hue = (n * 37) % 360;
-    return { full: await draw(FULL, hue), thumb: await draw(THUMB, hue) };
+    return { full: await draw(fullCanvas, hue), thumb: await draw(thumbCanvas, hue) };
   };
 }
 
