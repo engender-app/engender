@@ -135,10 +135,11 @@ try {
       const { vocabulary } = await import('/src/lib/data/vocabulary/vocabulary.ts');
       const question = (await journal.savedQuestions.getSavedQuestions()).find(q => q.name === title);
       const tag = vocabulary.tags[0];
-      await journal.savedQuestions.upsertSavedQuestion({ ...question, tagIds: [tag.id], moods: [2], startEpochDay: 19999, endEpochDay: 20001, hasNote: true, hasPhoto: true });
+      await journal.savedQuestions.upsertSavedQuestion({ ...question, tagIds: [tag.id], moods: [2], startEpochDay: 19999, endEpochDay: 20001, hasNote: true, hasPhoto: true, starred: true });
       return [m.saved_question_tag({ tag: tag.label }), m.search_filter_mood_chip({ mood: moodName(2) }),
         m.search_filter_start_chip({ date: dateInputValueFromEpochDay(19999) }),
-        m.search_filter_end_chip({ date: dateInputValueFromEpochDay(20001) }), m.search_filter_has_note(), m.search_filter_has_photo()];
+        m.search_filter_end_chip({ date: dateInputValueFromEpochDay(20001) }), m.search_filter_has_note(), m.search_filter_has_photo(),
+        m.search_filter_starred()];
     }, title);
     for (const label of storedLabels) await page.locator('[data-saved-question-definition]').getByText(label, { exact: true }).waitFor();
     await counts(0, 1);
