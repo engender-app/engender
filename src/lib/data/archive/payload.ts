@@ -332,6 +332,9 @@ interface ArchiveSavedQuestion {
   endEpochDay: number | null;
   hasNote: boolean;
   hasPhoto: boolean;
+  /** After-release ticket 16. Absent on an archive written before it, which
+      restores as false. */
+  starred: boolean;
 }
 
 /** A day chosen to see one entry again (phase 8 features ticket 08,
