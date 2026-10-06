@@ -236,17 +236,53 @@ export async function homeContracts(): Promise<Result[]> {
     unlockEpochDay: today - 1,
     text: 'Sealed contract letter'
   });
-  const held = heldReads(f, ['procedures']);
-  screen = await mountScreen('/', held.fixture);
-  await check('Home holds live tile composition until slowest initial read settles', async () => {
-    await until(() => root().querySelector('[data-home-log]'), 'held Home');
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return (
-      !root().querySelector('[data-live-tile],[data-home-tiles-fold],[data-home-agenda]') &&
-      root().querySelector('[data-read-reserve-hold]')
+  const initialReads: [string, string, number?][] = [
+    ['wearSessions', 'getRunningSession'],
+    ['regimen', 'getEpisodes'],
+    ['procedures', 'getProcedures'],
+    ['letters', 'getLetterSeals'],
+    ['revisits', 'getDueRevisits'],
+    ['entries', 'latestBadMomentEntryId'],
+    ['tryouts', 'getTryouts'],
+    ['feltSense', 'latestDaysForTryouts'],
+    ['doses', 'getSchedules'],
+    ['doses', 'getPauses'],
+    ['doses', 'getDoses', today],
+    ['doses', 'getDoses', today - 1],
+    ['voiceBenchmarks', 'lastWriteEpochDay'],
+    ['journalingPauses', 'getPauses'],
+    ['areaStates', 'getAreaStates'],
+    ['hairRemoval', 'latestSession'],
+    ['measurements', 'countAll'],
+    ['measurements', 'lastWriteEpochDay'],
+    ['appointments', 'getDayRecords']
+  ];
+  for (const [area, operation, day] of initialReads) {
+    const held = heldReads(
+      f,
+      [area],
+      (method, args) => method === operation && (day === undefined || args[0] === day)
     );
-  });
-  held.release();
+    screen = await mountScreen('/', held.fixture);
+    await check(
+      `Home waits for initial ${area}.${operation}${day === undefined ? '' : `(${day})`}`,
+      async () => {
+        await until(() => root().querySelector('[data-home-log]'), 'held Home');
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return (
+          !root().querySelector('[data-live-tile],[data-home-tiles-fold],[data-home-agenda]') &&
+          root().querySelector('[data-read-reserve-hold]')
+        );
+      }
+    );
+    held.release();
+    await until(
+      () => root().querySelector('[data-live-tile="wear-timer"]'),
+      'settled running wear tile'
+    );
+    await screen.remove();
+  }
+  screen = await mountScreen('/', f);
   await until(() => root().querySelector('[data-live-tile="wear-timer"]'), 'running wear tile');
   await check('Home live tiles retain registry keys and running versus waiting weights', () => {
     const wear = node(root(), '[data-live-tile="wear-timer"]');

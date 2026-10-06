@@ -68,7 +68,11 @@ export function style(root: ParentNode, selector: string, pseudo?: string) {
 }
 
 /** Holds chosen entry-data areas while reference hydration remains synchronous. */
-export function heldReads(source: ScreenFixture, areas: string[]) {
+export function heldReads(
+  source: ScreenFixture,
+  areas: string[],
+  matches: (method: string, args: unknown[]) => boolean = () => true
+) {
   let release!: () => void;
   const ready = new Promise<void>((resolve) => {
     release = resolve;
@@ -82,7 +86,7 @@ export function heldReads(source: ScreenFixture, areas: string[]) {
           const operation = Reflect.get(operations, method);
           return typeof operation === 'function'
             ? async (...args: unknown[]) => {
-                await ready;
+                if (matches(String(method), args)) await ready;
                 return operation(...args);
               }
             : operation;
