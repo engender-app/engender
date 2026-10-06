@@ -266,9 +266,6 @@
      ran out of room rather than the voice running out of frames - and the
      18 units of air are what say the outline is the whole of it. */
   const DENSITY_UNITS = 100;
-  /* How far a line's edge reaches past it on each side, in pixels (the
-     strokes do not scale). */
-  const CASING = 1;
   const DENSITY_MODE = 82;
 
   /** The shape's outline, bottom of the axis upward. A polyline and not a
@@ -489,7 +486,7 @@
           <polyline
             class="pf-casing is-trace"
             {points}
-            stroke-width={traceWeight + CASING * 2}
+            stroke-width={traceWeight + 2}
             vector-effect="non-scaling-stroke"
           />
           <polyline
@@ -738,8 +735,9 @@
      sits under 3:1 against the field and its bands - nonbinary's yellow is
      1.13:1 on its own band - the line still has a boundary at 3:1 and the
      line itself stays the flag's colour. Where the stripe reads, the edge
-     is transparent and nothing changes. The trace's casing takes its width
-     from the markup, since the trace's own weight is a prop. */
+     is transparent and nothing changes. Both casings are their line plus
+     2px: the outline's here, the trace's in the markup, since the trace's
+     own weight is a prop. */
   .pf-casing {
     fill: none;
     stroke: var(--role-edge);

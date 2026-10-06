@@ -445,7 +445,7 @@
     role="img"
     aria-label={ariaLabel}
     style:--role-2={overlay?.role?.paired}
-    style:--role-2-edge-in={overlay?.role?.pairedEdge ?? undefined}
+    style:--role-2-edge-in={overlay?.role?.pairedEdge}
     style:--highlight={highlight?.role.mark}
     in:wipe={{ authored: true }}
     onpointerdown={scrubTo}

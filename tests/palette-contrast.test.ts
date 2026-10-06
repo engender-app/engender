@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, toRgb } from '../src/lib/theme/colour';
+import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, washOver } from '../src/lib/theme/colour';
 import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
@@ -647,19 +647,6 @@ describe('the field and the fills (phase 10)', () => {
     const kitCss = readFileSync('src/lib/styles/kit.css', 'utf8');
     const bandCss = readFileSync('src/lib/components/HormoneBandChart.svelte', 'utf8');
 
-    /** A `color-mix(in oklab, var(--x) N%, transparent)` fill painted over
-        a ground: the colour at N% alpha, composited in sRGB the way the
-        browser paints it. */
-    function over(hex: string, pct: number, ground: string) {
-      const [a, g] = [toRgb(hex), toRgb(ground)];
-      const t = pct / 100;
-      const channel = (x: number, y: number) =>
-        Math.round(x * t + y * (1 - t))
-          .toString(16)
-          .padStart(2, '0');
-      return `#${channel(a.r, g.r)}${channel(a.g, g.g)}${channel(a.b, g.b)}`;
-    }
-
     /** The N in a rule's `color-mix(... N%, transparent)`, read out of the
         component so a change to the wash is a change to what is measured. */
     function washPercent(source: string, selector: string) {
@@ -687,14 +674,16 @@ describe('the field and the fills (phase 10)', () => {
       }
     }
 
+    /* The field is --surface on every theme (PitchFigure's .pf-field) and
+       carries no annotation band, so these three are every ground there. */
     it("draws the voice figure's trace and contour at 3:1 against the bands they cross", () => {
       const band = washPercent(pitchCss, String.raw`\.pf-band`);
       const middle = washPercent(pitchCss, String.raw`\.pf-middle`);
       eachRole((where, role, t) =>
         expectBoundary(where, role.edge ?? role.stripe, [
           ['the bare field', t.surface],
-          ['a reference band', over(role.stripe, band, t.surface)],
-          ['the middle band', over(role.stripe, middle, t.surface)]
+          ['a reference band', washOver(role.stripe, band, t.surface)],
+          ['the middle band', washOver(role.stripe, middle, t.surface)]
         ])
       );
     });
@@ -705,12 +694,12 @@ describe('the field and the fills (phase 10)', () => {
       eachRole((where, role, t) => {
         const grounds: Array<[string, string]> = [];
         for (const surface of ['bg', 'surface', 'surface-2']) {
-          const marked = over(t.text, annotation, t[surface]);
+          const marked = washOver(t.text, annotation, t[surface]);
           grounds.push(
             [surface, t[surface]],
-            [`${surface} under the fill`, over(role.stripe, fill, t[surface])],
+            [`${surface} under the fill`, washOver(role.stripe, fill, t[surface])],
             [`${surface} under an annotation band`, marked],
-            [`${surface} under both`, over(role.stripe, fill, marked)]
+            [`${surface} under both`, washOver(role.stripe, fill, marked)]
           );
         }
         expectBoundary(where, role.edge ?? role.stripe, grounds);
@@ -723,11 +712,15 @@ describe('the field and the fills (phase 10)', () => {
     it("edges the hormone curve's band at 3:1 against the page and the card", () => {
       const rule = /\.band-edge\s*\{([^}]*)\}/.exec(bandCss)?.[1] ?? '';
       const opacity = Number(/opacity:\s*([\d.]+)/.exec(rule)?.[1] ?? 1);
+      /* The band is drawn in --chart-line, which palettes.css points at the
+         accent; read rather than assumed, so a new chart colour is measured. */
+      expect(rule).toMatch(/stroke:\s*var\(--chart-line\)/);
+      expect(rawDeclaration(blockBody(':root'), 'chart-line')).toBe('var(--accent)');
       for (const palette of PALETTES) {
         for (const theme of THEMES) {
           const t = tokenMap(palette, theme);
           for (const surface of ['bg', 'surface', 'surface-2']) {
-            const edge = over(t.accent, opacity * 100, t[surface]);
+            const edge = washOver(t.accent, opacity * 100, t[surface]);
             const ratio = contrast(edge, t[surface]);
             expect(
               ratio,
