@@ -253,7 +253,7 @@ on this page ran green on 2026-09-23.
 ## Helpers
 
 Imported or read by the probes above, never run on their own:
-`browser-harness` (Chromium launch, reporting, `settlePage`),
+`browser-harness` (Chromium launch, reporting, `settlePage`), `serve-build` (build/ as production serves it),
 `cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
