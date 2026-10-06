@@ -12,7 +12,7 @@
    ticket rules out, written by the label rather than by the data. */
 
 import { m } from '$lib/paraglide/messages';
-import { fmtDay } from '$lib/data/dates';
+import { fmtNumber, fmtDay } from '$lib/data/dates';
 import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
 import { episodeEndReasonLabel, injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
 import { severityName } from '$lib/data/vocabulary/labels';
@@ -165,11 +165,10 @@ function annotationNote(annotation: ChartAnnotation): string | undefined {
     case 'severity':
       return severityName(detail.severity) ?? undefined;
     case 'dose': {
-      // The amount as the dose log writes it, and where it went. Joined with
-      // a comma here rather than through the catalogue, the same as the
-      // caption's own list of names: there is no word in it to translate.
-      const amount = `${detail.amount} ${detail.unit}`;
-      return detail.site ? `${amount}, ${injectionSiteLabel(detail.site)}` : amount;
+      const amount = fmtNumber(detail.amount);
+      return detail.site
+        ? m.chart_annotation_dose_site({ amount, unit: detail.unit, site: injectionSiteLabel(detail.site) })
+        : m.chart_annotation_dose({ amount, unit: detail.unit });
     }
   }
 }

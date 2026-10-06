@@ -11,6 +11,8 @@ import { test, vi } from 'vitest';
 // rather than a hand-written fake that could drift from the actual copy.
 vi.mock('$lib/paraglide/messages', async () => await import('../paraglide/messages.js'));
 
+vi.mock('./dates', () => ({ fmtNumber: (value: number, options: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-GB', options).format(value) }));
+
 import type { WrappedTagInsight } from './wrappedSections.ts';
 
 const { nativeAmount, tagInsightRows } = await import('./wrappedDisplay.ts');

@@ -210,7 +210,7 @@
       <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
         <PrintLetterhead />
         <h1>{m.clinician_summary_title()}</h1>
-        <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
+        <p>{m.clinician_summary_period_range({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
       </div>
       {#if dossierQuery.loading || !dossier}

@@ -153,6 +153,31 @@ public final class PhotoPickChannel {
         }
     }
 
+    static InputStream limit(InputStream input, long ceiling) {
+        return new java.io.FilterInputStream(input) {
+            private long readBytes;
+
+            private void count(int count) throws java.io.IOException {
+                if (count > 0) readBytes += count;
+                if (readBytes > ceiling) throw new java.io.IOException("too-large");
+            }
+
+            @Override
+            public int read() throws java.io.IOException {
+                int value = in.read();
+                count(value == -1 ? 0 : 1);
+                return value;
+            }
+
+            @Override
+            public int read(byte[] bytes, int offset, int length) throws java.io.IOException {
+                int count = in.read(bytes, offset, length);
+                count(count);
+                return count;
+            }
+        };
+    }
+
     /** The one buffer the bytes pass through. The size a content provider
         declares is not trusted to size it: {@code PhotosPlugin} has already
         refused anything declaring more than the ceiling, and a provider that
@@ -164,8 +189,8 @@ public final class PhotoPickChannel {
         byte[] buffer = new byte[8192];
         int read;
         while ((read = input.read(buffer)) != -1) {
-            if (read > 25 * 1024 * 1024 - collected.size()) {
-                throw new java.io.IOException("selected file exceeds 25 MB");
+            if (read > 32 * 1024 * 1024 - collected.size()) {
+                throw new java.io.IOException("too-large");
             }
             collected.write(buffer, 0, read);
         }

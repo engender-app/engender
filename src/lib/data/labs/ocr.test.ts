@@ -253,3 +253,10 @@ PRL 18,5 ng/mL
     expect(prolactin[0].value).toBe(18.5);
   });
 });
+
+test('formats review values for the selected language', () => {
+  const parsed = [{ analyte: 'estradiol', value: 123.4, unit: 'pg/mL', date: '2026-01-15', note: '', lowConfidence: false, unresolvedAnalyte: false, line: '' }];
+  const format = (locale: string) => (value: number) => new Intl.NumberFormat(locale).format(value);
+  expect(makeReviewRows(parsed, new Set(), format('en-GB'))[0].value).toBe('123.4');
+  expect(makeReviewRows(parsed, new Set(), format('pl-PL'))[0].value).toBe('123,4');
+});
