@@ -497,9 +497,11 @@ flowchart TD
 
 [journal/restore.ts](../src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion and section application run inside the transaction. A failure rolls back those database changes. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
-Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. [journal/restoreFlow.ts](../src/lib/data/journal/restoreFlow.ts) applies portable preferences only after Replace returns, outside the row transaction. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
+Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. [journal/restoreFlow.ts](../src/lib/data/journal/restoreFlow.ts) applies portable preferences only after Replace returns, outside the row transaction. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
 **External importers** sit in [data/archive/sources.ts](../src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](../src/lib/data/archive/plain.ts)) are readable files, not backups.
+
+Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.
 
 The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
 The shared [ZIP reader](../src/lib/data/archive/zipReader.ts) allows at most
@@ -674,6 +676,8 @@ stateDiagram-v2
 | [navigation/smart-back.ts](../src/lib/navigation/smart-back.ts), [sourceRecord.ts](../src/lib/navigation/sourceRecord.ts), [searchReturn.ts](../src/lib/navigation/searchReturn.ts), [scroll-region.ts](../src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
 | [data/backgroundSchedulers.ts](../src/lib/data/backgroundSchedulers.ts) | When the Android auto-export and retrospective-notification checks run: on start, every 15 minutes and on return to the foreground |
 | [android/platform-sync.ts](../src/lib/android/platform-sync.ts) | Everything that runs only on Android while the journal is open: reminder sync, stock run-out, launch routes, the back button, the disguise alias, the lock-timing mirror |
+
+The return gap uses the median interval between distinct entry and dose writing days in the last year. One bounded query supplies those days; future records do not count.
 
 ### 8.3 The four doors
 
