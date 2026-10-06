@@ -53,6 +53,7 @@
     "noticed-effects-picker-check": 31.66,
     "breathing-frames": 76.6,
     "tryout-save-check": 30.47,
+    "tryout-milestone-felt-check": 20,
     "regimen-editor-check": 16.43,
     "document-import-check": 14.12,
     "lab-entry-check": 17.73,
@@ -190,6 +191,9 @@
     ],
     "tryout-save-check": [
       30.47
+    ],
+    "tryout-milestone-felt-check": [
+      20
     ],
     "regimen-editor-check": [
       16.43
