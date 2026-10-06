@@ -25,7 +25,6 @@ import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -271,12 +270,20 @@ public class PhotosPlugin extends Plugin {
         }
         try {
             File target = fileFor(call, name);
-            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            try (FileOutputStream out = new FileOutputStream(target, false)) {
-                out.write(bytes);
-                out.getFD().sync();
+            PhotoWriteOrder.Request request = PhotoFiles.reserveWrite(target);
+            try {
+                request.accept(Base64.decode(base64, Base64.DEFAULT));
+            } catch (Exception error) {
+                request.fail(error);
+                throw error;
             }
-            call.resolve();
+            request.result.whenComplete((ignored, error) -> {
+                if (error == null) call.resolve();
+                else {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    call.reject(PhotoFiles.message(cause));
+                }
+            });
         } catch (Exception e) {
             call.reject(message(e), e);
         }

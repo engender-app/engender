@@ -117,6 +117,8 @@ export interface BootMachine {
       `journal-opened` arrives; a denial seen after `ready` is applied right
       away instead, without ever setting this. */
   persistDeniedPending: boolean;
+  /** Distinguishes the initial survey from an open already using a key. */
+  journalOpening: boolean;
 }
 
 interface BootStep {
@@ -131,7 +133,8 @@ export function initialBoot(cachedAccessMode: CachedAccessMode | null = null): B
         ? bootStates.booting(cachedAccessMode)
         : bootStates.needsUnlock(cachedAccessMode),
     demo: false,
-    persistDeniedPending: false
+    persistDeniedPending: false,
+    journalOpening: false
   };
 }
 
@@ -150,7 +153,9 @@ function withDataKey(
   unlocked: boolean
 ): BootStep {
   const unlocking: BootEffect[] = unlocked ? [{ type: 'mark-unlocked' }] : [];
-  if (machine.boot.status === 'legacy-refused') return step(machine, machine.boot);
+  if (machine.boot.status === 'legacy-refused' || machine.boot.status === 'ready' ||
+      machine.boot.status === 'schema-too-new' ||
+      (machine.boot.status === 'booting' && machine.journalOpening)) return step(machine, machine.boot);
   return openingJournal(machine, dataKey, accessMode, unlocking);
 }
 
@@ -160,7 +165,7 @@ function openingJournal(
   accessMode: JournalAccessMode,
   before: BootEffect[] = []
 ): BootStep {
-  return step(machine, bootTransitions.toBooting(bootTransitions.setAccessMode(machine.boot, accessMode)), [
+  return step({ ...machine, journalOpening: true }, bootTransitions.toBooting(bootTransitions.setAccessMode(machine.boot, accessMode)), [
     ...before,
     { type: 'open-journal', dataKey, accessMode }
   ]);

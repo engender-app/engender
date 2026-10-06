@@ -3,6 +3,7 @@ package dev.engender.app.photos;
 import android.content.Context;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -15,7 +16,18 @@ import java.io.IOException;
 final class PhotoFiles {
     static final String DEFAULT_DIRECTORY = "photos";
 
+    private static final PhotoWriteOrder writes = new PhotoWriteOrder();
+
     private PhotoFiles() {}
+
+    static PhotoWriteOrder.Request reserveWrite(File target) {
+        return writes.reserve(target.getAbsolutePath(), bytes -> {
+            try (FileOutputStream out = new FileOutputStream(target, false)) {
+                out.write(bytes);
+                out.getFD().sync();
+            }
+        });
+    }
 
     static File directory(Context context, String directoryName) {
         if (directoryName == null) directoryName = DEFAULT_DIRECTORY;
@@ -92,7 +104,7 @@ final class PhotoFiles {
     /** Shared by both transports so a failure looks the same to either
         caller: a message when the exception has one, the exception's own
         class name when it does not. */
-    static String message(Exception e) {
+    static String message(Throwable e) {
         String detail = e.getMessage();
         return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
     }

@@ -35,15 +35,11 @@ export function makeCorrelationCardsArea(stats: StatsArea, doses: DosesArea, dim
         ...dims.filter((d) => !d.hidden).map((d) => ({ key: d.key, range: { min: d.min, max: d.max } }))
       ];
 
-      const metrics: MetricInsights[] = await Promise.all(
-        metricRanges.map(async ({ key, range }) => {
-          const [tagInsights, dayAverages] = await Promise.all([
-            stats.tagInsights(key, fromEpochDay, toEpochDay),
-            stats.dayAverages(key, fromEpochDay, toEpochDay)
-          ]);
-          return { metric: key, range, tagInsights, doseDay: doseDayInsight(dayAverages, doseDays) };
-        })
-      );
+      const inputs = await stats.metricInsights(metricRanges.map((metric) => metric.key), fromEpochDay, toEpochDay);
+      const metrics: MetricInsights[] = metricRanges.map(({ key, range }) => {
+        const { tagInsights, dayAverages } = inputs.get(key)!;
+        return { metric: key, range, tagInsights, doseDay: doseDayInsight(dayAverages, doseDays) };
+      });
 
       return rankCorrelationCards(metrics, CARD_LIMIT);
     }

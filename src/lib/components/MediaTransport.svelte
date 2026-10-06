@@ -214,7 +214,7 @@
 <div class="transport" data-transport>
   <button
     type="button"
-    class="transport-key"
+    class="transport-key hit-floor"
     data-transport-toggle
     aria-label={playing ? m.mt_pause() : m.mt_play()}
     onclick={toggle}

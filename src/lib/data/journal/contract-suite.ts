@@ -535,6 +535,39 @@ export async function runJournalContract(
     r.equal('a table with rows in it is not an empty first run', reopened.openedEmpty(), false);
   });
 
+  await r.section('automatic dose logging', async () => {
+    const { startOfDayTimestamp } = await import('../epochDay.ts');
+    const firstDay = 19000;
+    const episodeId = await journal.regimen.upsertEpisode({
+      drug: 'contract auto-log drug', ester: null, dose: 2, doseUnit: 'mg',
+      route: 'oral', interval: 'daily', startEpochDay: firstDay,
+      endEpochDay: null, endReason: null
+    });
+    await journal.doses.upsertSchedule({
+      episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 2,
+      doseAmounts: [{ dose: 2, doseUnit: 'mg' }, { dose: 3, doseUnit: 'mg' }],
+      autoLogFromEpochDay: firstDay
+    });
+    await journal.doses.upsertDose({
+      timestamp: startOfDayTimestamp(firstDay) + 8 * 3600000,
+      route: 'oral', dose: 2, doseUnit: 'mg', status: 'taken',
+      drug: 'contract auto-log drug'
+    });
+    r.equal('automatic logging fills empty and partially filled days',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 5);
+    r.equal('an unchanged automatic logging pass writes nothing',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 0);
+    const doses = await journal.doses.getDoses(firstDay, firstDay + 2);
+    r.equal('automatic logging leaves two doses on each expected day', doses.length, 6);
+    const old = doses.find((dose) => dose.source === 'schedule');
+    if (!old) throw new Error('No automatic dose was written');
+    await journal.doses.deleteDose(old.id);
+    r.equal('automatic logging recreates a deleted historical dose',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 1);
+    r.equal('historical replay is idempotent',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 0);
+  });
+
   return r.checks;
 }
 

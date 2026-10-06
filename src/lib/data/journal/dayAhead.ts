@@ -168,13 +168,7 @@ const SECTIONS = [
     read: async (reading) => {
       const range = stillAhead(reading);
       if (!range) return [];
-      const rows = await reading.procedures.getProcedures();
-      return distinctSorted(
-        rows
-          .filter((p): p is typeof p & { surgeryEpochDay: number } => p.surgeryEpochDay !== null)
-          .filter((p) => p.surgeryEpochDay >= range.from && p.surgeryEpochDay <= range.to)
-          .map((p) => p.surgeryEpochDay)
-      );
+      return reading.procedures.getSurgeryDaysInRange(range.from, range.to);
     }
   }),
   /* A milestone whose day is still ahead - every one except a procedure's
@@ -186,13 +180,7 @@ const SECTIONS = [
     read: async (reading) => {
       const range = stillAhead(reading);
       if (!range) return [];
-      const rows = await reading.milestones.getMilestones();
-      return distinctSorted(
-        rows
-          .filter((m) => m.procedureId === null)
-          .filter((m) => m.epochDay >= range.from && m.epochDay <= range.to)
-          .map((m) => m.epochDay)
-      );
+      return reading.milestones.getNonProcedureDaysInRange(range.from, range.to);
     }
   }),
   /* A letter's unlock day, and never which letter: `getUnlockDaysInRange`

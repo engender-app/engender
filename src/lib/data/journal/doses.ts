@@ -35,6 +35,7 @@ import {
   autoLogSlots,
   matchDoseRoute,
   expectedSlots,
+  pauseCoversDay,
   isInjectionDose,
   isTopicalDose,
   slotToleranceDays,
@@ -45,6 +46,7 @@ import {
 } from '../doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { activeEpisodesAt, attributeDose } from '../regimenEpisode';
+import { rangesFromCuts } from '../span';
 import type { RegimenArea } from './regimen';
 import { assertChanged, mintUuid, now } from './support';
 
@@ -420,6 +422,62 @@ function routeColumns(input: {
 const DOSE_COLUMNS = `uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
                       status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, source`;
 
+const AUTO_LOG_BATCH_DAYS = 1024;
+
+/** Find underfilled slot days without transferring the historical dose log.
+    Attribution still comes from attributeDose, evaluated where episode
+    boundaries make its answer change. JSON binds keep each batch at four
+    parameters even on drivers with SQLite's 999-variable limit. */
+async function missingAutoLogDays(
+  driver: SqliteDriver,
+  schedule: DoseSchedule,
+  episode: RegimenEpisode,
+  episodes: RegimenEpisode[],
+  pauses: DosePause[],
+  from: number,
+  until: number
+): Promise<number[]> {
+  const days = [...new Set(expectedSlots(schedule, episode.startEpochDay, from, until)
+    .filter((slot) => !pauses.some((pause) => pauseCoversDay(pause, slot.epochDay)))
+    .map((slot) => slot.epochDay))];
+  if (days.length === 0) return [];
+  const tolerance = slotToleranceDays(schedule);
+  const windows = days.map((day) => [day, startOfDayTimestamp(day - tolerance), startOfDayTimestamp(day + tolerance + 1)]);
+  const drugs = await driver.query<{ drug: string | null }>(
+    'SELECT DISTINCT drug FROM dose_event WHERE timestamp >= ? AND timestamp < ?',
+    [windows[0][1], windows[windows.length - 1][2]]
+  );
+  const cuts = episodes.flatMap((episode) => episode.endEpochDay === null
+    ? [episode.startEpochDay] : [episode.startEpochDay, episode.endEpochDay + 1]);
+  const eligible = rangesFromCuts(cuts, days[0] - tolerance, days[days.length - 1] + tolerance)
+    .flatMap((span) => {
+      const timestamp = startOfDayTimestamp(span.fromEpochDay);
+      return drugs.filter(({ drug }) => attributeDose(episodes, { drug, timestamp }).episode?.id === episode.id)
+        .map(({ drug }) => [timestamp, startOfDayTimestamp(span.toEpochDay + 1), drug]);
+    });
+  const missing: number[] = [];
+  for (let offset = 0; offset < windows.length; offset += AUTO_LOG_BATCH_DAYS) {
+    const rows = await driver.query<{ day: number }>(
+      `WITH windows AS (
+         SELECT json_extract(value, '$[0]') AS day, json_extract(value, '$[1]') AS from_ts,
+                json_extract(value, '$[2]') AS until_ts FROM json_each(?)),
+            eligible AS (
+         SELECT json_extract(value, '$[0]') AS from_ts, json_extract(value, '$[1]') AS until_ts,
+                json_extract(value, '$[2]') AS drug FROM json_each(?))
+       SELECT day FROM windows WHERE (SELECT COUNT(*) FROM (
+         SELECT 1 FROM dose_event dose
+         WHERE dose.timestamp >= windows.from_ts AND dose.timestamp < windows.until_ts
+           AND EXISTS (SELECT 1 FROM eligible
+             WHERE dose.timestamp >= eligible.from_ts AND dose.timestamp < eligible.until_ts
+               AND dose.drug IS eligible.drug)
+         LIMIT ?)) < ?`,
+      [JSON.stringify(windows.slice(offset, offset + AUTO_LOG_BATCH_DAYS)), JSON.stringify(eligible), schedule.dosesPerDay, schedule.dosesPerDay]
+    );
+    missing.push(...rows.map((row) => row.day));
+  }
+  return missing;
+}
+
 export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): DosesArea {
   /** An episode's rowid, by its travelling uuid. Refused here rather than
       at the foreign key, and worded the way the regimen area words it, so a
@@ -615,11 +673,33 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
            a few days late (today's included) still fills the slot it was for
            rather than leaving it open for this pass to fill a second time. */
         const tolerance = slotToleranceDays(schedule);
-        const logged = await area.getDoses(from - tolerance, until + tolerance);
-        const ownDoses = logged.filter((dose) => attributeDose(episodes, dose).episode?.id === episode.id);
-
         const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
-        const slots = autoLogSlots(schedule, episode.startEpochDay, ownDoses, ownPauses, until + 1);
+        const days = await missingAutoLogDays(driver, schedule, episode, episodes, ownPauses, from, until);
+        const slots = [];
+        for (let offset = 0; offset < days.length; offset += AUTO_LOG_BATCH_DAYS) {
+          const batch = days.slice(offset, offset + AUTO_LOG_BATCH_DAYS);
+          const logged = await driver.query<DoseRow & { slot_day: number }>(
+            `WITH windows AS (
+               SELECT json_extract(value, '$[0]') AS day, json_extract(value, '$[1]') AS from_ts,
+                      json_extract(value, '$[2]') AS until_ts FROM json_each(?))
+             SELECT windows.day AS slot_day, ${DOSE_COLUMNS} FROM windows JOIN dose_event
+               ON dose_event.timestamp >= windows.from_ts AND dose_event.timestamp < windows.until_ts
+             ORDER BY dose_event.timestamp, dose_event.id`,
+            [JSON.stringify(batch.map((day) => [day, startOfDayTimestamp(day - tolerance), startOfDayTimestamp(day + tolerance + 1)]))]
+          );
+          const byDay = new Map<number, DoseEvent[]>();
+          for (const row of logged) {
+            const dose = toDoseEvent(row);
+            if (attributeDose(episodes, dose).episode?.id !== episode.id) continue;
+            const onDay = byDay.get(row.slot_day) ?? [];
+            onDay.push(dose);
+            byDay.set(row.slot_day, onDay);
+          }
+          for (const day of batch) slots.push(...autoLogSlots(
+            { ...schedule, autoLogFromEpochDay: day }, episode.startEpochDay,
+            byDay.get(day) ?? [], ownPauses, day + 1
+          ));
+        }
 
         for (const { slot, timestamp } of slots) {
           /* The schedule's own amount for this slot, so an alternating cycle
