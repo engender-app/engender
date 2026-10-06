@@ -585,7 +585,10 @@
     {#if editor}
       <fieldset class="regimen-editor" disabled={saving} aria-busy={saving}>
         <section class="regimen-group">
-          <FieldGroupHeading legend={m.regimen_episode_legend()} hint={m.regimen_episode_hint()} />
+          <!-- No hint restating what Save episode does: the line under the
+               heading already says whether these details have unsaved
+               changes, and the button names what it saves (audit UX-13). -->
+          <FieldGroupHeading legend={m.regimen_episode_legend()} />
           <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
           <Field label={m.regimen_drug_label()} id="regimen-drug">
             {#snippet children(id)}

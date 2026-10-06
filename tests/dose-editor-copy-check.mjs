@@ -19,13 +19,15 @@ try {
     await page.locator('[data-add]').click();
     await page.locator('#dose-amount').waitFor();
     assert.equal(await page.locator('[data-save-dose]').isDisabled(), true);
-    assert.equal(await page.locator('#dose-requirements').count(), 0);
+    // The reason sits beside the disabled Save from the first frame; only
+    // the field's own invalid state waits for it to be left (after-release 26).
+    assert.match(await page.locator('#dose-requirements').innerText(), locale === 'en' ? /Enter a dose amount/ : /Wpisz dawkę/);
     assert.equal(await page.locator('#dose-amount').getAttribute('aria-invalid'), 'false');
     await page.locator('#dose-amount').focus();
     await page.locator('#dose-unit').focus();
     assert.equal(await page.locator('#dose-amount').getAttribute('aria-invalid'), 'true');
     assert.equal(await page.locator('#dose-amount').getAttribute('aria-describedby'), 'dose-requirements');
-    assert.match(await page.locator('#dose-requirements').innerText(), locale === 'en' ? /Enter a dose amount/ : /Wpisz ilość dawki/);
+    assert.match(await page.locator('#dose-requirements').innerText(), locale === 'en' ? /Enter a dose amount/ : /Wpisz dawkę/);
     for (const zoom of [1, 2]) {
       await page.evaluate((zoom) => { document.documentElement.style.zoom = String(zoom); }, zoom);
       const sheet = page.locator('[data-sheet]');
