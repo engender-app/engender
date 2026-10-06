@@ -1962,7 +1962,7 @@ try {
        flaky under the full suite even though it held reliably alone. The
        toast below is what proves the save actually landed. */
     await page.waitForFunction(
-      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Imported'))
+      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Results saved'))
     );
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
     ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
