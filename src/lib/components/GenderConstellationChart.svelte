@@ -322,6 +322,16 @@
                mode's own colour so the ring answers the same question the
                points do. -->
           <g {...roleAttrs(headMode?.role)} aria-hidden="true">
+            <!-- The ring's ground and its edge: the card colour inside, and
+                 the role's edge a pixel either side of the ring drawn over
+                 it (transparent where the stripe reads by itself). -->
+            <circle
+              class="cn-head-casing"
+              class:is-unset={!headMode}
+              cx={px(at)}
+              cy={py(at)}
+              r={DOT + 3}
+            />
             <circle
               class="cn-head"
               class:is-unset={!headMode}
@@ -446,9 +456,19 @@
   }
 
   .cn-head {
-    fill: var(--surface);
+    fill: none;
     stroke: var(--role-draw);
     stroke-width: 2.5;
+  }
+
+  .cn-head-casing {
+    fill: var(--surface);
+    stroke: var(--role-edge);
+    stroke-width: 4.5;
+  }
+
+  .cn-head-casing.is-unset {
+    stroke: none;
   }
 
   /* An entry carrying no mode is absence and not a category (ADR-0048), so
