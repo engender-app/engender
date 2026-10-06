@@ -55,7 +55,7 @@
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
-  import { activeTabKey } from '$lib/navigation/active-tab';
+  import { litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
@@ -173,7 +173,7 @@
        (ADR-0076, audit item 4) - noted from every settled navigation, not
        only ones into a tab, since a screen already inside settings can
        still carry the tab it borrowed forward (chrome-tab-origin.ts). */
-    if (navigation.to) noteTabVisit(activeTabKey(navigation.to.url.pathname, chromeTabOrigin()));
+    if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */

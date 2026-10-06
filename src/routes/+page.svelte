@@ -45,7 +45,8 @@
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
+  import { backupAgeDays, backupIsStale, storageNoticeShows } from '$lib/data/backupHealth';
+  import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
@@ -500,8 +501,21 @@
      below it shoved down. Waiting means it arrives on a screen that has
      stopped moving, which is where a notice opening its own height reads as
      the change it is. Nothing about the read waits; only the appearing. */
+  /* The browser refused to keep the journal's storage (after-release 17).
+     It asks for a backup too, with the reason, so where both would show
+     only this one does: two notices asking for one export is one too many. */
+  let showStorageNotice = $derived(
+    storageNoticeShows(
+      {
+        persistDenied: storageRisk.persistDenied,
+        dismissed: prefs.storageNoticeDismissed,
+        lastBackupAt: prefs.lastBackupAt
+      },
+      today
+    ) && !ui.appOpening
+  );
   let showBackupNotice = $derived(
-    backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
+    backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening && !showStorageNotice
   );
 
   /* The appointment debrief offer (phase 6 ticket 08, rekeyed to an
@@ -967,6 +981,19 @@
        real preferences, which land when the journal opens, and drawn then
        it shoved the pinned rows 179px in the frame boot went ready. -->
   <ReadReserve ready={foldRevealed} estimate={reserveBelow} onrest={rememberBelow} data-home-reserve="below">
+    {#if showStorageNotice}
+      <Notice
+        icon="download"
+        key="storage"
+        title={m.storage_notice_title()}
+        text={m.storage_notice_body()}
+        action={{ label: m.backup_now(), href: '/settings/export' }}
+        dismiss={{ label: m.dismiss(), onclick: () => (prefs.storageNoticeDismissed = true) }}
+        aria-live="polite"
+        data-storage-notice=""
+      />
+    {/if}
+
     {#if showBackupNotice}
       <Notice
         icon="download"

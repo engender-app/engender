@@ -27,14 +27,13 @@ describe('the grantable list', () => {
     expect(grantRows('android', NOTHING, new Set()).map((row) => row.key)).toEqual(GRANT_KEYS);
   });
 
-  it('keeps the rows the web cannot reach, and marks them unavailable', () => {
-    /* A dead button is worse than an absent one, and a missing row is worse
-       than both: the point of the list is that it is the whole list. */
+  /* After-release 17 (UX-07, UI-07): the web list used to keep
+     Notifications and Exact timing as two rows marked "Android only", on
+     the first-run step and in Settings alike. A row a person can do nothing
+     with on this platform is payload; the web draws what applies to it. */
+  it('draws only what the web can ask for', () => {
     const web = grantRows('web', NOTHING, new Set());
-    expect(web.map((row) => row.key)).toEqual(GRANT_KEYS);
-    expect(rowFor('notifications', 'web', NOTHING, new Set()).state).toBe('unavailable');
-    expect(rowFor('exactAlarms', 'web', NOTHING, new Set()).state).toBe('unavailable');
-    expect(rowFor('notifications', 'web', NOTHING, new Set()).action).toBe('none');
+    expect(web.map((row) => row.key)).toEqual(['microphone', 'camera']);
   });
 
   it('leaves the microphone and the camera askable on the web', () => {
@@ -103,7 +102,7 @@ describe('the note on the one row that can dead-end', () => {
     expect(rowFor('exactAlarms', 'android', NOTHING, new Set()).note).toBe(null);
     expect(rowFor('microphone', 'android', NOTHING, new Set()).note).toBe(null);
     expect(rowFor('microphone', 'android', NOTHING, new Set<GrantKey>(['microphone'])).note).toBe(null);
-    expect(rowFor('notifications', 'web', NOTHING, new Set()).note).toBe(null);
+    expect(rowFor('camera', 'web', NOTHING, new Set()).note).toBe(null);
   });
 
   it('drops the note once the capability is granted after all', () => {

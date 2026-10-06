@@ -18,7 +18,7 @@
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { activeTabKey } from '$lib/navigation/active-tab';
+  import { litTabKey, RAIL_SETTINGS, railTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin } from '$lib/navigation/chrome-tab-origin';
   import { appWordmark, hubTabLabel } from '$lib/disguise/identity';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -74,7 +74,16 @@
   const LEADING = NAV.slice(0, 2);
   const TRAILING = NAV.slice(2);
 
-  let activeKey = $derived(activeTabKey(page.url.pathname, chromeTabOrigin()));
+  /* Per shape (after-release 17): the rail has a Settings row of its own
+     and lights it on every /settings route, where the bar, which has no
+     such row, keeps borrowing the door the gear was pressed from. */
+  let activeKey = $derived(litTabKey(page.url.pathname, chromeTabOrigin()));
+  let railKey = $derived(railTabKey(page.url.pathname, chromeTabOrigin()));
+  let litKey = $derived<Record<string, string>>({ bar: activeKey, rail: railKey });
+  /* A borrowed door is lit so the bar keeps its place, but it is not the
+     page: settings chrome is, so nothing on the bar claims aria-current
+     there (UI-07: screen readers heard Today on /settings). */
+  let onChrome = $derived(page.url.pathname.startsWith('/settings'));
 
   /* Which mark the add control is wearing. All three are rendered and
      stacked rather than swapped, because swapping one <Icon> for another is
@@ -281,7 +290,7 @@
   function measure(shape: Shape, animate: boolean) {
     const { next, dir, anchor } = place(
       pill[shape.key],
-      tabs[shape.key][activeKey],
+      tabs[shape.key][litKey[shape.key]],
       navs[shape.key],
       shape.axis,
       animate
@@ -290,7 +299,7 @@
     /* Cleared as well as set. An icon that goes unrendered mid-swing never
        gets its animationend, because a display: none element fires none, and
        the class would otherwise still be on it when the nav came back. */
-    if (dir && anchor) arriving[shape.key] = { key: activeKey, dir, anchor };
+    if (dir && anchor) arriving[shape.key] = { key: litKey[shape.key], dir, anchor };
     else if (!next.shown && arriving[shape.key]) arriving[shape.key] = null;
   }
 
@@ -432,10 +441,10 @@
     <a
       bind:this={tabs.rail[item.key]}
       class="rail-item press"
-      class:is-active={activeKey === item.key}
+      class:is-active={railKey === item.key}
       data-rail-item={item.key}
       href={item.href}
-      aria-current={activeKey === item.key ? 'page' : undefined}
+      aria-current={railKey === item.key ? 'page' : undefined}
     >
       <span
         class="rail-icon"
@@ -449,14 +458,27 @@
   <!-- Preferences are chrome, not content (ticket 09; ADR-0076): a fifth
        row, sunk to the rail's foot by its own margin and set apart from the
        four doors by a rule, since the rail has room to say "Settings" where
-       the bar does not. Not one of `NAV`'s four - it carries no
-       `data-rail-item` and takes no pill, because activeTabKey already
-       resolves `/settings` to the fourth door's own key (ADR-0036's href/key
-       split) and a second lit row for the same key would be a lie about
-       there being two. Plain text, since "Settings" says nothing about what
+       the bar does not. Not one of `NAV`'s four, so it carries no
+       `data-rail-item`, but it takes the pill on every /settings route
+       (after-release 17, L04-07): it lit nothing there before, while the
+       rail lit Today, so the one row naming the page was the one row that
+       never said so. Plain text, since "Settings" says nothing about what
        the app is under disguise either. -->
-  <a class="rail-item rail-settings press" data-rail-settings href="/settings">
-    <Icon name="settings" size={22} /><span>{m.nav_settings()}</span>
+  <a
+    bind:this={tabs.rail[RAIL_SETTINGS]}
+    class="rail-item rail-settings press"
+    class:is-active={railKey === RAIL_SETTINGS}
+    data-rail-settings
+    href="/settings"
+    aria-current={railKey === RAIL_SETTINGS ? 'page' : undefined}
+  >
+    <span
+      class="rail-icon"
+      class:is-arriving={arriving.rail?.key === RAIL_SETTINGS}
+      style:--nav-swing={arriving.rail?.dir ?? 0}
+      style:--nav-anchor={arriving.rail?.anchor}
+      onanimationend={() => (arriving.rail = null)}><Icon name="settings" size={22} /></span
+    ><span>{m.nav_settings()}</span>
   </a>
 </nav>
 
@@ -471,7 +493,7 @@
     class:is-active={activeKey === item.key}
     data-nav-item={item.key}
     href={item.href}
-    aria-current={activeKey === item.key ? 'page' : undefined}
+    aria-current={activeKey === item.key && !onChrome ? 'page' : undefined}
     inert={ui.chooserOpen}
   >
     <!-- The arrival swing (redesign ticket 26) rides the icon box rather than

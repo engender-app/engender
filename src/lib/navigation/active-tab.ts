@@ -101,3 +101,30 @@ export function activeTabKey(path: string, chromeOrigin = ''): string {
   if (path.startsWith(CHROME_PREFIX)) return chromeOrigin || CHROME_FALLBACK;
   return TAB_ROUTES.find((route) => route.prefixes.some((prefix) => path.startsWith(prefix)))?.key ?? '';
 }
+
+/* What the tab bar and the rail light, which is not quite the table above
+   (after-release 17, UX-18). The entry editor is opened from every door -
+   a mood on Today, a day in Journal, a reading in Look back, a milestone
+   in Transition - and lighting Journal for all of them moved the tab under
+   the person each time. It borrows the door it was opened from, the way
+   settings chrome does, and Journal only when opened cold. Screen
+   transitions keep reading activeTabKey, whose /entry answer the container
+   transform and the Home fade are built around. */
+const BORROWING_PREFIXES = ['/entry'];
+const BORROWING_FALLBACK = 'calendar';
+
+export function litTabKey(path: string, origin = ''): string {
+  if (BORROWING_PREFIXES.some((prefix) => path.startsWith(prefix))) return origin || BORROWING_FALLBACK;
+  return activeTabKey(path, origin);
+}
+
+/** The rail's own key for its Settings row. */
+export const RAIL_SETTINGS = 'rail-settings';
+
+/* The rail has room for a Settings row the bar does not (ADR-0076 keeps it
+   chrome on the bar), so on every /settings route the rail lights that row
+   and borrows nothing (after-release 17, L04-07). */
+export function railTabKey(path: string, origin = ''): string {
+  if (path.startsWith(CHROME_PREFIX)) return RAIL_SETTINGS;
+  return litTabKey(path, origin);
+}

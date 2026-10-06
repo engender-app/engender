@@ -802,7 +802,11 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   if (epochDay === null) return { kind: 'not-yet' };
 
   const daysAgo = reading.todayEpochDay - epochDay;
-  return { kind: daysAgo >= FINISH_SUGGESTION_QUIET_DAYS ? 'quiet' : 'last', epochDay, daysAgo };
+  /* Quiet is the observation the finish offer is made from, so a row with
+     nothing to finish never turns quiet (after-release 17, UX-18): on
+     Documents it read as a nag about a paperwork vault. */
+  const quiet = spec.finishes !== null && daysAgo >= FINISH_SUGGESTION_QUIET_DAYS;
+  return { kind: quiet ? 'quiet' : 'last', epochDay, daysAgo };
 }
 
 /** A row as a screen draws it: what the registry declared, and what its

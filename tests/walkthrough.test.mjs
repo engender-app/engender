@@ -2510,7 +2510,13 @@ try {
   // set this screen chose rather than the one it started with.
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
-  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // scales -> features
+  /* After-release 17 (UX-09): features are their own step before the pins.
+     Measurements arrives off on a new journal. */
+  if ((await page.locator('[data-list-row="feature-measurements"]').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is switched on by default');
+  }
+  await page.locator('[data-next]').click(); // features -> areas
 
   /* Ticket 22: the hub's own groups and rows, met once here and once more on
      the hub - the same headings the More screen draws, in the same order. */
@@ -2530,11 +2536,12 @@ try {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  // The default three arrive ticked. Measurements stays off until chosen.
+  // The default three arrive ticked. Measurements, switched off on the
+  // step before, is not offered as a pin at all.
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  if ((await page.locator('[data-list-row="area-measurements"]').getAttribute('aria-checked')) !== 'false') {
-    throw new Error('measurements is selected by default');
+  if ((await page.locator('[data-list-row="area-measurements"]').count()) !== 0) {
+    throw new Error('measurements is offered as a pin while the feature is off');
   }
   for (const key of ['care', 'milestones', 'tryouts']) {
     if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
@@ -2557,9 +2564,11 @@ try {
   await page.locator('[data-next]').click(); // lock -> permissions
 
   /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
-     step that names everything the app can ask this device for. Four rows
-     it can ask about and a second group it never asks about, and on the web
-     the two Android-only rows say so rather than offering a dead button. */
+     step that names what the app can ask this device for. Since
+     after-release 17 (UX-07, UX-10) it draws only the asks that apply on
+     this platform: on the web that is the microphone and the camera, with
+     no "Android only" rows and none of the no-permission explanations,
+     which stay on /settings/permissions. */
   await page.waitForSelector('[data-permission-list]');
   const grantable = await page.locator('[data-grant]').evaluateAll((els) =>
     els.map((el) => el.dataset.grant)
@@ -2567,37 +2576,13 @@ try {
   if (grantable.join() !== 'microphone,camera') {
     throw new Error('the web build should offer only the two prompts it has: ' + grantable.join());
   }
-  for (const key of ['notifications', 'exactAlarms']) {
-    const row = page.locator(`[data-permission="${key}"]`);
-    if ((await row.count()) !== 1) throw new Error(`the ${key} row is missing from the list`);
-    if ((await row.getAttribute('data-permission-state')) !== 'unavailable') {
-      throw new Error(`${key} should read as unavailable on the web`);
-    }
-    const trailing = await row.textContent();
-    if (!trailing.includes('Android only')) {
-      throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
-    }
-  }
-  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
-    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
-      throw new Error(`the ${key} row is missing from the no-permission group`);
-    }
-  }
-  for (const key of ['backupFolder', 'batteryOptimisation']) {
+  for (const key of ['notifications', 'exactAlarms', 'takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
     if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
-      throw new Error(`the web build has no ${key} and should not list one`);
+      throw new Error(`setup on the web should not list ${key}`);
     }
   }
-  /* The closer is platform copy (UI/UX ticket 09): the web build must not
-     borrow Android's no-internet-permission promise. It says journal
-     content is processed on this device while exports and links can use
-     other services. */
-  const closer = await page.locator('[data-no-internet]').textContent();
-  if (!/processed on this device|przetwarzana na tym urządzeniu/.test(closer)) {
-    throw new Error('the web closer does not state where written data goes: ' + closer);
-  }
-  if (/internet permission|uprawnienia do internetu/.test(closer)) {
-    throw new Error('the web closer borrows the Android-only no-internet-permission claim: ' + closer);
+  if ((await page.locator('[data-no-internet]').count()) !== 0) {
+    throw new Error('setup on the web still carries the explanatory closer');
   }
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
@@ -2653,12 +2638,12 @@ try {
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
   for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
-  const choice = page.locator('[data-list-row="area-measurements"]');
+  const choice = page.locator('[data-list-row="feature-measurements"]');
   if ((await choice.getAttribute('aria-checked')) !== 'false') {
     throw new Error('measurements starts selected in setup');
   }
   await page.locator('[data-skip-step]').click();
-  for (let i = 0; i < 3; i++) await page.locator('[data-next]').click();
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
@@ -5077,9 +5062,8 @@ try {
   const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
     els.map((el) => el.dataset.permission)
   );
+  /* Only what the web can do (after-release 17): no "Android only" rows. */
   const expected = [
-    'notifications',
-    'exactAlarms',
     'microphone',
     'camera',
     'takePhoto',

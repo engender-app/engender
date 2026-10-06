@@ -90,6 +90,7 @@
   import ThemesReading from '$lib/components/readings/ThemesReading.svelte';
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
+  import TallyTile from '$lib/components/readings/TallyTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
@@ -600,6 +601,7 @@
       <HighestReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
+      <TallyTile span={resolvedSpan} />
       <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>
