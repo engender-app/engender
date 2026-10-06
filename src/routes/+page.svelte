@@ -731,7 +731,7 @@
          competed with the wordmark (Alicja, ticket 06 round one). -->
     <div class="home-foot" data-home-foot>
       <div class="home-foot-lines">
-        <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <p class="home-hello" data-home-hello>{prefs.name ? m.home_hello_named({ name: prefs.name, date: fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' }) }) : fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         <!-- How much is here, and since when. The streak stood in this slot
              and was a run that could break; this only grows. Same size as the
              greeting above it, so the foot reads as today, then history, and

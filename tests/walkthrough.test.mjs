@@ -4934,7 +4934,7 @@ try {
   await addOwnEpisode('Estradiol', '4', 'mg');
   await page.waitForSelector('[data-episode]');
   await addOwnEpisode('Spironolactone', '100', 'mg');
-  await page.waitForSelector('[data-episode]:nth-of-type(2)');
+  await spiroRow().waitFor();
 
   if ((await estradiolRow().locator('[data-active-badge]').count()) !== 1 || (await spiroRow().locator('[data-active-badge]').count()) !== 1) {
     throw new Error('both concurrently active episodes should read Current, not just the latest one');

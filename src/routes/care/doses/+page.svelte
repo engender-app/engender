@@ -45,7 +45,7 @@
     siteRecency,
     APPLICATION_SITES
   } from '$lib/data/doseSchedule';
-  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { fmtNumber, fmtDay, fmtTime } from '$lib/data/dates';
   import {
     epochDayFromDateInputValueOrToday,
     epochDayFromTimestamp,
@@ -499,7 +499,8 @@
                       {@const site = siteOf(dose)}
                       {@const sourceNote = sourceNoteOf(dose)}
                       {#key sourceNote}
-                        <div class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
+                        <div class:is-target-dose={dose.id === deepLinkedDoseId}
+                          data-dose-target={dose.id === deepLinkedDoseId ? true : undefined} out:crossfade>
                           <ListRow
                             key={dose.id}
                             data-dose={dose.id}
@@ -511,7 +512,7 @@
                                 .filter(Boolean).join(' · '),
                               sourceNote,
                               showAttribution ? attributionLabel(attribution) : '',
-                              dose.scheduled ? `${m.dose_scheduled_legend()}: ${dose.scheduled.dose} ${dose.doseUnit} · ${routeLabel(dose.scheduled.route)} · ${fmtTime(dose.scheduled.timestamp)}` : ''
+                              dose.scheduled ? m.doses_adherence_detail({ dose: fmtNumber(dose.scheduled.dose), unit: attribution.episode?.doseUnit ?? dose.doseUnit, route: routeLabel(dose.scheduled.route), time: fmtTime(dose.scheduled.timestamp) }) : ''
                             ]}
                             chevron={false}
                             onclick={() => openEditor(dose)}

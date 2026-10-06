@@ -3,6 +3,7 @@
    a pass-through for epochDay.ts — it imports paraglide, which is why it
    has no Node-tier tests (ADR-0016) and why the split exists at all. */
 
+import { formatNumber } from './numbers';
 import { getLocale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
 import { crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
@@ -10,6 +11,10 @@ import type { CalendarDuration, DurationUnit } from './epochDay';
 
 export function intlLocale(): string {
   return getLocale() === 'pl' ? 'pl-PL' : 'en-GB';
+}
+
+export function fmtNumber(value: number, options: Intl.NumberFormatOptions = {}): string {
+  return formatNumber(value, intlLocale(), options);
 }
 
 const formatters = new Map<string, Intl.DateTimeFormat>();

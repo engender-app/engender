@@ -378,7 +378,7 @@
         key="metric"
         icon="palette"
         title={m.home_cal_colour()}
-        subtitle={`${m.coloured_by()} ${metricName}`}
+        subtitle={m.settings_coloured_by({ metric: metricName })}
         chevron={false}
         onclick={() => (metricSheet = true)}
       >

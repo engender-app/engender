@@ -44,7 +44,7 @@ describe('phase 2 accessibility seams', () => {
     expect(stats).toContain('valueRows');
     /* Each row still carries its own name and reading as text, which is the
        property the sheet's bar rows used to provide. */
-    expect(stats).toMatch(/\{row\.name\}: \{row\.value\}/);
+    expect(stats).toMatch(/m\.reading_day_value\(\{ day: row\.name, value: row\.value \}\)/);
     /* And a second scale joins that list rather than only the picture
        (phase 6 ticket 12). The plot is one image to a screen reader and a
        scrub is a way of reading a picture, so a comparison whose numbers

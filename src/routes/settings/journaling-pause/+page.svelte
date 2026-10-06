@@ -147,11 +147,9 @@
             <div class="rows-divide" transition:collapse>
               <ListRow
                 static
-                title={`${fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })} ${
-                  pause.endEpochDay === null
-                    ? `· ${m.journaling_pause_ongoing()}`
-                    : `${m.journaling_pause_range_to()} ${fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })}`
-                }`}
+                title={pause.endEpochDay === null
+                  ? m.journaling_pause_history_ongoing({ from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })
+                  : m.journaling_pause_history_range({ from: fmtDay(pause.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }), to: fmtDay(pause.endEpochDay, { day: 'numeric', month: 'short', year: 'numeric' }) })}
                 action={{
                   icon: 'trash',
                   label: m.journaling_pause_delete_aria({ from: longDay(pause.startEpochDay) }),
