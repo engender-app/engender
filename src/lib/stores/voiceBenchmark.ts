@@ -93,27 +93,36 @@ export async function startTake(
   /* What actually came back, not what was asked for (ADR-0061). Read here,
      before anything is recorded, because the track stops answering once
      the take is over. */
-  const captureChain = await captureChainOfStream(stream);
-
-  if (signal?.aborted) {
+  let captureChain: string;
+  let context: AudioContext | undefined;
+  let analyser: AnalyserNode;
+  let recording;
+  try {
+    captureChain = await captureChainOfStream(stream);
+    if (signal?.aborted) {
+      for (const track of stream.getTracks()) track.stop();
+      return null;
+    }
+    context = new AudioContext({ sampleRate: ANALYSIS_SAMPLE_RATE });
+    analyser = context.createAnalyser();
+    analyser.fftSize = ANALYSER_FFT_SIZE;
+    context.createMediaStreamSource(stream).connect(analyser);
+    recording = recordStream(stream);
+  } catch (error) {
     for (const track of stream.getTracks()) track.stop();
-    return null;
+    await context?.close();
+    throw error;
   }
-
-  const recording = recordStream(stream);
-  const context = new AudioContext({ sampleRate: ANALYSIS_SAMPLE_RATE });
-  const analyser = context.createAnalyser();
-  analyser.fftSize = ANALYSER_FFT_SIZE;
-  context.createMediaStreamSource(stream).connect(analyser);
+  const audioContext = context;
 
   const gauge: LiveGauge = makeLiveGauge(ANALYSIS_SAMPLE_RATE, gate);
   const latest = new Float32Array(analyser.fftSize);
-  let lastPollAt = context.currentTime;
+  let lastPollAt = audioContext.currentTime;
 
   const poll = setInterval(() => {
     analyser.getFloatTimeDomainData(latest);
-    const elapsed = context.currentTime - lastPollAt;
-    lastPollAt = context.currentTime;
+    const elapsed = audioContext.currentTime - lastPollAt;
+    lastPollAt = audioContext.currentTime;
     // Only what arrived since the last poll, taken off the end of the
     // analyser's window: everything before that has already been counted.
     const fresh = Math.min(latest.length, Math.round(elapsed * ANALYSIS_SAMPLE_RATE));
@@ -122,7 +131,7 @@ export async function startTake(
 
   const close = async () => {
     clearInterval(poll);
-    await context.close();
+    await audioContext.close();
   };
 
   return {

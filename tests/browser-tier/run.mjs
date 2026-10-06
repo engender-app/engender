@@ -2072,10 +2072,10 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
 });
 
 // --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
-await block('phase 8 audit ticket 03 mic teardown', 3, async () => {
+await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
   const r = await load('/mic-teardown.html', 'mic-teardown-probe');
   if (r.error) throw new Error(r.error);
-  const { teardown, throwingRecorder } = r;
+  const { teardown, throwingRecorder, practice, benchmark } = r;
 
   if (teardown.streamOpened && teardown.trackStates.every((s) => s === 'ended'))
     ok('a screen destroyed while the microphone is still opening leaves no track running');
@@ -2090,12 +2090,22 @@ await block('phase 8 audit ticket 03 mic teardown', 3, async () => {
   else fail('no poll interval is armed for a take nobody is on screen for', `${teardown.intervalsArmed} armed`);
 
   if (throwingRecorder.threw && throwingRecorder.trackStates.every((s) => s === 'ended'))
-    ok("a recorder that throws on stop() (already inactive) still leaves its tracks stopped");
+    ok("a recorder that throws on stop() still leaves its tracks stopped");
   else
     fail(
       "a recorder that throws on stop() still leaves its tracks stopped",
       JSON.stringify(throwingRecorder)
     );
+
+  for (const [name, take] of [['practice', practice], ['benchmark', benchmark]]) {
+    if (take.opens === 1 && take.disabledWhileOpening)
+      ok(`${name}: two quick taps open one microphone and disable Record while opening`);
+    else fail(`${name}: duplicate microphone open is guarded`, JSON.stringify(take));
+    if (take.trackStates.length > 0 && take.trackStates.every((state) => state === 'ended'))
+      ok(`${name}: leaving the screen closes every microphone track`);
+    else fail(`${name}: microphone tracks close on destroy`, JSON.stringify(take));
+  }
+
 });
 
 // --- Ticket 16 (phase 8 deepening): the draft mirror's stale-removal repro,

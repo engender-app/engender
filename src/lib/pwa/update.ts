@@ -43,6 +43,7 @@ export interface WatchedRegistration {
 interface InstallingWorker {
   readonly state: string;
   addEventListener(type: 'statechange', listener: () => void): void;
+  removeEventListener(type: 'statechange', listener: () => void): void;
 }
 
 /** What only a real page can do, injected so both test tiers can stand in
@@ -59,6 +60,7 @@ interface UpdateEnvironment {
     handler doing work; short enough that a person is not left looking at a
     disabled button. */
 const TAKEOVER_LIMIT_MS = 5000;
+const INSTALL_LIMIT_MS = 30_000;
 
 let watched: WatchedRegistration | null = null;
 let environment: UpdateEnvironment | null = null;
@@ -97,7 +99,22 @@ export function watchForUpdates(registration: WatchedRegistration, updateEnviron
   /* A release that installed before this page existed is already sitting in
      `waiting` and no event is coming for it, so the answer is worked out now
      as well as on every later change. */
-  registration.addEventListener('updatefound', reconsider);
+  const watchInstalling = () => {
+    if (watched !== registration) return;
+    const installing = registration.installing;
+    if (installing) {
+      const changed = () => {
+        if (installing.state === 'installing') return;
+        installing.removeEventListener('statechange', changed);
+        if (watched === registration) reconsider();
+      };
+      installing.addEventListener('statechange', changed);
+      changed();
+    }
+    reconsider();
+  };
+  registration.addEventListener('updatefound', watchInstalling);
+  watchInstalling();
   stopWatchingWrites = onJournalBusyChange(reconsider);
   reconsider();
 }
@@ -122,11 +139,17 @@ export async function checkForNewerRelease(): Promise<boolean> {
   const installing = registration.installing;
   if (installing && installing.state === 'installing') {
     await new Promise<void>((resolve) => {
-      installing.addEventListener('statechange', () => {
-        // Anything but 'installing' is an answer: 'installed' is the release
-        // arriving, 'redundant' is an install that failed.
-        if (installing.state !== 'installing') resolve();
-      });
+      const done = () => {
+        clearTimeout(timer);
+        installing.removeEventListener('statechange', changed);
+        resolve();
+      };
+      const changed = () => {
+        if (installing.state !== 'installing') done();
+      };
+      const timer = setTimeout(done, INSTALL_LIMIT_MS);
+      installing.addEventListener('statechange', changed);
+      changed();
     });
   }
 
