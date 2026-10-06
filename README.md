@@ -97,6 +97,8 @@ Disguise mode uses a neutral name and icon and hides pride motifs. An app
 lock controls access to the journal, and lock screens show no entries or
 other journal data. Lock timing decides when the lock comes back: as soon as
 you leave the app, after one or five minutes away, or only on a restart.
+On the web, locking also closes the journal's database and lets go of its
+key until you unlock again.
 Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
