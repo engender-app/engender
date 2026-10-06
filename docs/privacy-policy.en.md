@@ -11,7 +11,7 @@ either.
 
 Questions about this policy or about your data:
 
-- Email: [OPEN: contact address, to be chosen before release]
+- Email: engender-app@pm.me
 - Bugs and general questions: https://github.com/engender-app/engender/issues
 - Security problems: https://github.com/engender-app/engender/blob/main/SECURITY.md
 
