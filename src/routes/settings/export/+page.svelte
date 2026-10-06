@@ -26,7 +26,7 @@
   import { IMPORT_FILE_SIZE_CEILING_BYTES, ZipTooLargeError } from '$lib/data/archive/zipReader';
   import type { ArchiveImportLogRecord } from '$lib/data/archive/payload';
   import { chooseFiles } from '$lib/data/fileDialog';
-  import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
+  import { dimensionName, moodName, tagLabel } from '$lib/data/vocabulary/labels';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -555,6 +555,7 @@
       daylioName = file.name;
       daylioPreview = null;
       daylioError = '';
+      const { tagLabels } = await import('$lib/data/vocabulary/import-labels');
       daylioPreview = await journal.archive.previewDaylioImport(await file.text(), { tagLabels });
       if (daylioPreview.unmappedMoodLabels.length > 0) {
         daylioError = m.daylio_unmapped({ labels: daylioPreview.unmappedMoodLabels.join(', ') });
@@ -678,6 +679,7 @@
         return;
       }
 
+      const { tagLabels } = await import('$lib/data/vocabulary/import-labels');
       backupPreview = await journal.archive.previewDaylioBackupImport(bytes, { tagLabels });
       if (backupPreview.unmappedMoodNames.length > 0) {
         backupError = m.dlb_unmapped({ names: backupPreview.unmappedMoodNames.join(', ') });
