@@ -1917,7 +1917,7 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
   if (
     ambiguous &&
     ambiguous.title?.startsWith('50 mg') &&
-    ambiguous.subs.some((sub) => sub.includes('More than one regimen was active'))
+    ambiguous.subs.some((sub) => sub.includes('more than one regimen was running'))
   )
     ok('a dose two regimens could both explain says so instead of naming one');
   else fail('a dose two regimens could both explain says so instead of naming one', JSON.stringify(ambiguous));
