@@ -11,9 +11,11 @@ import { test, vi } from 'vitest';
 // rather than a hand-written fake that could drift from the actual copy.
 vi.mock('$lib/paraglide/messages', async () => await import('../paraglide/messages.js'));
 
+vi.mock('./dates', () => ({ fmtNumber: (value: number, options: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-GB', options).format(value) }));
+
 import type { WrappedTagInsight } from './wrappedSections.ts';
 
-const { nativeAmount, tagInsightRows } = await import('./wrappedDisplay.ts');
+const { nativeAmount, nativeValue, tagInsightRows } = await import('./wrappedDisplay.ts');
 
 const insight = (
   overrides: Partial<WrappedTagInsight & { label: string }> = {}
@@ -60,4 +62,8 @@ test('two mood insights that print the same delta draw the same length', () => {
   assert.equal(rows[1].value, '−0.3');
   assert.equal(rows[0].amount, rows[1].amount);
   assert.equal(rows[0].amount, 0.3);
+});
+
+test('a negative dimension rounded to zero does not print a minus sign', () => {
+  assert.equal(nativeValue('femininity', -0.4), '0');
 });

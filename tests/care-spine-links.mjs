@@ -181,7 +181,7 @@ export async function verifyCareSpineLinks() {
     assert.equal(dosesUrl.searchParams.get('dose'), fixture.estradiolDoseId);
 
     // Verify target dose row is highlighted
-    const targetDose = page.locator(`.rows-divide.is-target-dose [data-dose="${fixture.estradiolDoseId}"]`);
+    const targetDose = page.locator(`[data-dose-target] [data-dose="${fixture.estradiolDoseId}"]`);
     await targetDose.waitFor({ timeout: 5000 });
 
     // Verify add modal is NOT open
@@ -210,7 +210,7 @@ export async function verifyCareSpineLinks() {
     const sertralineUrl = new URL(page.url());
     assert.equal(sertralineUrl.searchParams.get('drug'), 'Sertraline');
     assert.equal(sertralineUrl.searchParams.get('dose'), fixture.sertralineDoseId);
-    const sertralineTarget = page.locator(`.rows-divide.is-target-dose [data-dose="${fixture.sertralineDoseId}"]`);
+    const sertralineTarget = page.locator(`[data-dose-target] [data-dose="${fixture.sertralineDoseId}"]`);
     await sertralineTarget.waitFor({ timeout: 5000 });
     await page.locator('[data-screen-back]').click();
     await page.waitForURL('**/care**');
@@ -275,7 +275,7 @@ export async function verifyCareSpineLinks() {
 
     // 5. Test window expansion for historical dose older than 90 days:
     await visit(`/care/doses?date=${fixture.today - 120}&dose=${fixture.oldDoseId}&drug=Estradiol`);
-    const oldTargetDose = page.locator(`.rows-divide.is-target-dose [data-dose="${fixture.oldDoseId}"]`);
+    const oldTargetDose = page.locator(`[data-dose-target] [data-dose="${fixture.oldDoseId}"]`);
     await oldTargetDose.waitFor({ timeout: 5000 });
     assert.equal(await oldTargetDose.count(), 1, 'old dose revealed and highlighted after window expansion');
 

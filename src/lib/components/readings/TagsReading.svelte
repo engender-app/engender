@@ -85,11 +85,11 @@
         without: card.withoutAvg,
         ...bounds,
         gap: signedValue(card.withAvg - card.withoutAvg, (v) => nativeValue(card.metric, v)),
-        note: `${vocabulary.metricNameOf(card.metric)} · ${m.insight_row_sub({
+        note: m.reading_tag_detail({ metric: vocabulary.metricNameOf(card.metric), detail: m.insight_row_sub({
           count: String(card.count),
           with: nativeValue(card.metric, card.withAvg),
           without: nativeValue(card.metric, card.withoutAvg)
-        })}`
+        }) })
       };
     })
   );
@@ -125,7 +125,7 @@
       name={m.stats_tags_moved()}
       href={readingHref('tags', span)}
       headline={topRow.name}
-      note={`${topRow.gap} ${vocabulary.metricNameOf(topCard.metric)}`}
+      note={m.reading_tag_gap({ value: topRow.gap, metric: vocabulary.metricNameOf(topCard.metric) })}
     />
   {/if}
 {:else}

@@ -613,7 +613,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     checklists,
     stats,
     correlationCards: deferredArea<CorrelationCardsArea>(async () =>
-      (await import('./correlationCards')).makeCorrelationCardsArea(stats, doses, dimensions)
+      (await import('./correlationCards')).makeCorrelationCardsArea(driver, doses, dimensions)
     )(['getCards']),
     intervalMoodPattern: deferredArea<IntervalMoodPatternArea>(async () =>
       (await import('./intervalMoodPattern')).makeIntervalMoodPatternArea(stats, doses)

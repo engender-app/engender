@@ -9,6 +9,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
+import { metricInsights } from './correlationCards.ts';
 
 const DAY_0 = 20000;
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
@@ -103,7 +104,7 @@ test('batched metric inputs match independent reads with two statements regardle
   const prepare = db.raw.prepare.bind(db.raw);
   let statements = 0;
   db.raw.prepare = ((sql: string) => { statements++; return prepare(sql); }) as typeof db.raw.prepare;
-  const inputs = await journal.stats.metricInsights(metrics, DAY_0, DAY_0 + 4);
+  const inputs = await metricInsights(db, metrics, DAY_0, DAY_0 + 4);
   assert.equal(statements, 2);
   db.raw.prepare = prepare;
   for (const metric of metrics) {
@@ -112,6 +113,6 @@ test('batched metric inputs match independent reads with two statements regardle
       tagInsights: await journal.stats.tagInsights(metric, DAY_0, DAY_0 + 4)
     });
   }
-  assert.equal((await journal.stats.metricInsights([], DAY_0, DAY_0 + 4)).size, 0);
+  assert.equal((await metricInsights(db, [], DAY_0, DAY_0 + 4)).size, 0);
   await db.close();
 });
