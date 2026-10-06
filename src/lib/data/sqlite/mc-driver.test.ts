@@ -3,7 +3,6 @@
    with it (the browser tier opens real databases). */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  createConversionTarget,
   createEncryptedWebSqlite,
   prewarmJournalWorker,
   releaseOnPageHide,
@@ -112,16 +111,6 @@ describe('the database worker started ahead of the key', () => {
     void prewarmJournalWorker('journal.sqlite3');
     createEncryptedWebSqlite('other.sqlite3', key);
     expect(FakeWorker.made).toHaveLength(2);
-  });
-
-  it('lets go of the pool before a conversion asks for it', async () => {
-    void prewarmJournalWorker('journal.sqlite3');
-    const target = createConversionTarget('journal.sqlite3', key);
-    await target.writeFrom(new Uint8Array([9]));
-    const [early, conversion] = FakeWorker.made;
-    expect(early.posted.map((m) => m.op)).toEqual(['attach', 'close']);
-    expect(early.terminated).toBe(true);
-    expect(conversion.posted.map((m) => m.op)).toEqual(['convert']);
   });
 
   it('fails what is posted after it died instead of leaving it waiting', async () => {

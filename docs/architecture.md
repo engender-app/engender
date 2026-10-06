@@ -104,7 +104,6 @@ Versions are the ones the lockfile installs ([package-lock.json](../package-lock
 | TypeScript | 5.9.3 | `strict: true`. `svelte-check --fail-on-warnings` treats Svelte warnings as errors |
 | Capacitor core / android / app / cli | 8.5.1 / 8.5.2 / 8.1.1 / 8.5.2 | Android shell and bridge. `@capacitor/app` is the only official plugin; the other 16 are local |
 | `@evolu/sqlite-wasm` | 2.2.4 | SQLite3MultipleCiphers WASM build used by the encrypted web driver (ADR-0020) |
-| SQLocal | 0.18.0 | Only reads plaintext journals from before encryption, during conversion. Kept out of first load |
 | SQLCipher for Android | 4.9.0 | Android database. Chosen over the framework SQLite for FTS5, window functions and encryption (ADR-0020) |
 | `hash-wasm` | 4.12.0 | Argon2id on the web, run in [src/lib/crypto/argon2id.worker.ts](../src/lib/crypto/argon2id.worker.ts) |
 | Bouncy Castle | 1.80 | Argon2id on the native side, for scheduled archives made behind the bridge (ADR-0042) |
@@ -180,7 +179,7 @@ Naming conventions you'll meet everywhere:
 
 | `src/lib/...` | Holds |
 |---|---|
-| [data/](../src/lib/data) | The model: SQLite drivers and schema ([sqlite/](../src/lib/data/sqlite)), the journal facade and its areas ([journal/](../src/lib/data/journal)), the reactive layer ([live/](../src/lib/data/live)), preferences ([prefs/](../src/lib/data/prefs)), vocabulary labels ([vocabulary/](../src/lib/data/vocabulary)), the archive and importers ([archive/](../src/lib/data/archive)), media ([photos/](../src/lib/data/photos), [voiceRecordings/](../src/lib/data/voiceRecordings), [videoNotes/](../src/lib/data/videoNotes), [documents/](../src/lib/data/documents)), plaintext-to-encrypted conversion ([conversion/](../src/lib/data/conversion)), the demo persona ([demo/](../src/lib/data/demo)), plus about 100 pure domain modules (stock projection, hormone curves, agenda, wrapped...) |
+| [data/](../src/lib/data) | The model: SQLite drivers and schema ([sqlite/](../src/lib/data/sqlite)), the journal facade and its areas ([journal/](../src/lib/data/journal)), the reactive layer ([live/](../src/lib/data/live)), preferences ([prefs/](../src/lib/data/prefs)), vocabulary labels ([vocabulary/](../src/lib/data/vocabulary)), the archive and importers ([archive/](../src/lib/data/archive)), media ([photos/](../src/lib/data/photos), [voiceRecordings/](../src/lib/data/voiceRecordings), [videoNotes/](../src/lib/data/videoNotes), [documents/](../src/lib/data/documents)), the demo persona ([demo/](../src/lib/data/demo)), plus about 100 pure domain modules (stock projection, hormone curves, agenda, wrapped...) |
 | [crypto/](../src/lib/crypto) | AES-GCM, Argon2id and its worker, KDF profiles, keystore wrap format, recovery key |
 | [lock/](../src/lib/lock) | Lock timing, PIN throttle, Keystore, lock-timing and screen-capture bridges |
 | [stores/](../src/lib/stores) | App-level state in runes: the boot adapter and machine, lock, UI, toasts, media capture |
@@ -237,7 +236,7 @@ flowchart LR
   UI <-- "skip-waiting,<br/>cache-on-demand" --> SW[Service worker]
 ```
 
-**Database worker (web).** [mc-driver.ts](../src/lib/data/sqlite/mc-driver.ts) sends `{ id, op, args }` messages and the worker answers `{ id, ok, result }` or `{ id, ok: false, error }`. The worker handles messages strictly in arrival order through one promise chain. Its handlers include `open`, `convert`, query and run calls, the pre-migration copy (`VACUUM INTO` a URI that carries the same key) and `close`. Error text crosses the boundary as a string and never contains the key. The data key enters the worker once, as hex for `PRAGMA hexkey`.
+**Database worker (web).** [mc-driver.ts](../src/lib/data/sqlite/mc-driver.ts) sends `{ id, op, args }` messages and the worker answers `{ id, ok, result }` or `{ id, ok: false, error }`. The worker handles messages strictly in arrival order through one promise chain. Its handlers include `open`, query and run calls, the pre-migration copy (`VACUUM INTO` a URI that carries the same key) and `close`. Error text crosses the boundary as a string and never contains the key. The data key enters the worker once, as hex for `PRAGMA hexkey`.
 
 **Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](../src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Transactions don't nest.
 
@@ -498,9 +497,11 @@ flowchart TD
 
 [journal/restore.ts](../src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion and section application run inside the transaction. A failure rolls back those database changes. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
-Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. [journal/restoreFlow.ts](../src/lib/data/journal/restoreFlow.ts) applies portable preferences only after Replace returns, outside the row transaction. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
+Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. [journal/restoreFlow.ts](../src/lib/data/journal/restoreFlow.ts) applies portable preferences only after Replace returns, outside the row transaction. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
 **External importers** sit in [data/archive/sources.ts](../src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](../src/lib/data/archive/plain.ts)) are readable files, not backups.
+
+Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.
 
 The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
 The shared [ZIP reader](../src/lib/data/archive/zipReader.ts) allows at most
@@ -579,21 +580,18 @@ stateDiagram-v2
   booting --> needs_unlock: secret wrap exists
   booting --> needs_authentication: Android key<br/>needs a prompt
   booting --> needs_device_recovery: device key unusable
-  booting --> conversion_refused
+  booting --> legacy_refused
   needs_unlock --> needs_authentication
-  needs_unlock --> conversion_refused
-  needs_setup --> converting: plaintext journal (web)
-  needs_unlock --> converting: plaintext journal (web)
+  needs_unlock --> legacy_refused
   needs_setup --> booting: key obtained
   needs_unlock --> booting: key obtained
   needs_authentication --> booting: key obtained
-  converting --> booting: converted
   booting --> ready: journal opened
   booting --> schema_too_new: journal newer<br/>than the app
   booting --> error
 ```
 
-These are the statuses in [stores/boot-state.ts](../src/lib/stores/boot-state.ts), and the edges are the ones its transitions allow. Only `booting` reaches `ready` or `schema_too_new`: a gate hands back to `booting` once a key is obtained (`resetToBooting`), conversion does the same when it finishes, and any state can fail into `error`. [stores/boot-machine.ts](../src/lib/stores/boot-machine.ts) is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. [stores/boot.svelte.ts](../src/lib/stores/boot.svelte.ts) and [boot-platform.ts](../src/lib/stores/boot-platform.ts) are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
+These are the statuses in [stores/boot-state.ts](../src/lib/stores/boot-state.ts), and the edges are the ones its transitions allow. Only `booting` reaches `ready` or `schema_too_new`: a gate hands back to `booting` once a key is obtained (`resetToBooting`), and any state can fail into `error`. [stores/boot-machine.ts](../src/lib/stores/boot-machine.ts) is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. [stores/boot.svelte.ts](../src/lib/stores/boot.svelte.ts) and [boot-platform.ts](../src/lib/stores/boot-platform.ts) are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
 
 ```mermaid
 sequenceDiagram
@@ -621,7 +619,7 @@ sequenceDiagram
 
 The order of the SQLite boot steps in [data/sqlite/boot.ts](../src/lib/data/sqlite/boot.ts) is load-bearing. Boot preferences apply before the database opens, then the database opens and migrates, then the mirror loads, then housekeeping runs off the critical path.
 
-**Conversion** ([data/conversion/](../src/lib/data/conversion)) turns a pre-encryption plaintext web journal into an encrypted one. It is an idempotent, forward-only state machine, and it destroys nothing plaintext until the encrypted copy has been reopened and counted.
+**Unsupported legacy storage.** [data/legacy-journal.ts](../src/lib/data/legacy-journal.ts) detects plaintext-era database files, side files and conversion markers. Boot refuses before creating or opening a journal, even if a keystore exists or the build is a demo. It leaves every legacy file untouched. Conversion and SQLocal have been removed.
 
 ### 7.4 Lock and lock timing
 
@@ -678,6 +676,8 @@ stateDiagram-v2
 | [navigation/smart-back.ts](../src/lib/navigation/smart-back.ts), [sourceRecord.ts](../src/lib/navigation/sourceRecord.ts), [searchReturn.ts](../src/lib/navigation/searchReturn.ts), [scroll-region.ts](../src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
 | [data/backgroundSchedulers.ts](../src/lib/data/backgroundSchedulers.ts) | When the Android auto-export and retrospective-notification checks run: on start, every 15 minutes and on return to the foreground |
 | [android/platform-sync.ts](../src/lib/android/platform-sync.ts) | Everything that runs only on Android while the journal is open: reminder sync, stock run-out, launch routes, the back button, the disguise alias, the lock-timing mirror |
+
+The return gap uses the median interval between distinct entry and dose writing days in the last year. One bounded query supplies those days; future records do not count.
 
 ### 8.3 The four doors
 
@@ -814,7 +814,6 @@ flowchart LR
   subgraph Later[on demand]
     Def[deferred areas:<br/>archive, hormone curve,<br/>roadmap, clinician summary...]
     Mig[migrations.ts]
-    Conv[conversion + SQLocal]
     OCR[tesseract]
     PDF[pdf.js]
     Argon[hash-wasm in worker]
@@ -827,7 +826,6 @@ flowchart LR
 **What stays out of first load:**
 - deferred journal areas (section 6.3)
 - [migrations.ts](../src/lib/data/sqlite/migrations.ts), because a journal already on the current schema never loads it
-- conversion and SQLocal
 - `hash-wasm`, which the Argon2 worker bundles for itself
 - most of the built-in vocabulary ([vocabulary/builtinTemplates.ts](../src/lib/data/vocabulary/builtinTemplates.ts) carries only what boot needs)
 
@@ -898,7 +896,7 @@ flowchart LR
 
 - **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022). [scripts/app-version.mjs](../scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](../scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](../CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](../scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
 - **Hosting.** `npm run deploy:release`, `deploy:rollback` and `deploy:list` drive immutable web releases ([deploy/README.md](../deploy/README.md)). Rollback refuses code that can't open the current schema.
-- **Progressive release.** Shipping goes through stages (`stage1` web beta through `stable`), each with a recorded release matrix: update, migration, encryption conversion, archive round trip, scheduled backup and rollback. These are recorded in [scripts/progressive-release-record.json](../scripts/progressive-release-record.json) and checked by `check:progressive-release` (`docs/progressive-release.md`).
+- **Progressive release.** Shipping goes through stages (`stage1` web beta through `stable`), each with a recorded release matrix: update, migration, archive round trip, scheduled backup and rollback. These are recorded in [scripts/progressive-release-record.json](../scripts/progressive-release-record.json) and checked by `check:progressive-release` (`docs/progressive-release.md`).
 - **F-Droid** rebuilds with its own key, so moving between channels means reinstalling and restoring an archive.
 
 ## 13. Paradigms worth knowing before editing
@@ -907,14 +905,14 @@ flowchart LR
 |---|---|---|
 | Registries checked by tests or types | When something must be listed somewhere, it's one array and a compile-time or test check catches anything left out | [journal/archiveSections.ts](../src/lib/data/journal/archiveSections.ts), [archive/sources.ts](../src/lib/data/archive/sources.ts), [unprompted/registry.ts](../src/lib/unprompted/registry.ts), [android/plugin-registry.ts](../src/lib/android/plugin-registry.ts), [tests/guards.json](../tests/guards.json) |
 | Declarations checked against SQL | Reactive invalidation rests on declared tables, and the declarations are proven against recorded SQL | [data/live/writes.ts](../src/lib/data/live/writes.ts) + [writes.sql.test.ts](../src/lib/data/live/writes.sql.test.ts); composing reads in [live/test-support/composing-reads.ts](../src/lib/data/live/test-support/composing-reads.ts) |
-| Pure machine, effect interpreter | Ordering-heavy flows are reducers returning effects, and a thin rune-bearing adapter performs them | [stores/boot-machine.ts](../src/lib/stores/boot-machine.ts), [data/conversion/conversion.ts](../src/lib/data/conversion/conversion.ts), [data/labs/ocr-machine.ts](../src/lib/data/labs/ocr-machine.ts) |
+| Pure machine, effect interpreter | Ordering-heavy flows are reducers returning effects, and a thin rune-bearing adapter performs them | [stores/boot-machine.ts](../src/lib/stores/boot-machine.ts), [data/labs/ocr-machine.ts](../src/lib/data/labs/ocr-machine.ts) |
 | Ports passed in | Policy modules take their dependencies as arguments so the Node tier can test them with fakes | [navigation/routeGates.ts](../src/lib/navigation/routeGates.ts), [android/platform-sync.ts](../src/lib/android/platform-sync.ts), [stores/android-survey.ts](../src/lib/stores/android-survey.ts), [data/recovery-key.ts](../src/lib/data/recovery-key.ts) |
 | Deferred areas | Heavy areas load on first call behind a static type | [journal/deferredArea.ts](../src/lib/data/journal/deferredArea.ts) |
 | One owner per invariant | A rule lives in one module and everyone asks it | [disguise/identity.ts](../src/lib/disguise/identity.ts) (the name), [theme/activeFlag.svelte.ts](../src/lib/theme/activeFlag.svelte.ts) (the flag), [pwa/update.ts](../src/lib/pwa/update.ts) (when to update), [data/journal-busy.ts](../src/lib/data/journal-busy.ts) |
 | Rune-free core | Anything with a rule is plain TypeScript, and runes sit only at the edge | [readState.ts](../src/lib/data/live/readState.ts) vs [journal.svelte.ts](../src/lib/data/live/journal.svelte.ts) |
 | No derived state stored | Projections are computed, rules are stored | [stockProjection.ts](../src/lib/data/stockProjection.ts), [reminderRule.ts](../src/lib/data/reminderRule.ts) (ADR-0010, ADR-0046) |
 | Travelling identity | uuid or key travels, rowid stays local | ADR-0002, [archive/payload.ts](../src/lib/data/archive/payload.ts) |
-| Failure keeps what it had | Failed reads keep the last answer, failed migrations leave a copy, conversion destroys nothing early, imports preserve existing files and roll back failed row changes | [live/readState.ts](../src/lib/data/live/readState.ts), ADR-0006, ADR-0011 |
+| Failure keeps what it had | Failed reads keep the last answer, failed migrations leave a copy, imports preserve existing files and roll back failed row changes | [live/readState.ts](../src/lib/data/live/readState.ts), ADR-0006, ADR-0011 |
 | Ratchets with named changes | Budgets move only with a named change written beside the number | [scripts/first-load-budget.json](../scripts/first-load-budget.json), [tests/long-journal/budgets.json](../tests/long-journal/budgets.json) |
 
 **Errors and observability.** Nothing reports usage or errors to any service, and there is no analytics. Failures surface to the person as toasts or notices in the app's own words ([archive/failure.ts](../src/lib/data/archive/failure.ts), [failureNotice.ts](../src/lib/data/archive/failureNotice.ts)). On the web, developer diagnostics go to the console only. Native code logs no secrets, and Capacitor's bridge logging is off. Support never needs journal data ([SUPPORT.md](../SUPPORT.md)).

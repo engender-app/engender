@@ -1126,6 +1126,7 @@ beforeAll(async () => {
   await driveRead('clinicianSummary', 'getSummary', () => journal.clinicianSummary.getSummary(0, 30000));
   await driveRead('day', 'getDay', () => journal.day.getDay(20000));
   await driveRead('lastWrite', 'getLastWrites', () => journal.lastWrite.getLastWrites(20000));
+  await driveRead('lastWrite', 'getWritingDays', () => journal.lastWrite.getWritingDays(20000));
   await driveRead('dayAhead', 'getDayAhead', () => journal.dayAhead.getDayAhead(0, 30000, 20000));
   await driveRead('textSearch', 'search', () =>
     journal.textSearch.search({ query: 'good', today: 20000, limit: 10 })

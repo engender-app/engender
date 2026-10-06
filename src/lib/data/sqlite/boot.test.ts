@@ -1,7 +1,7 @@
 import { withReadSnapshots } from './transactor.ts';
 /* Unit tests for the boot sequence's ordering and error handling (ticket
    04). Runs against a fake driver wrapping node:sqlite - the real
-   createWebSqlite() (sqlocal-driver.ts) needs a browser and is proven
+   createWebSqlite() (driver.ts) needs a browser and is proven
    separately in the browser tier. */
 
 import { test } from 'vitest';

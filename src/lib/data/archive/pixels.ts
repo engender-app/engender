@@ -67,6 +67,8 @@ export interface PixelsPreview {
       into the entry's one `mood`, rounded to the nearest whole number - the
       decision this source makes where the file does not (ticket 17). */
   averagedRecordCount: number;
+  /** Records whose supplied mood scores fall outside 1 to 5. */
+  invalidMoodCount: number;
   /** The resolved merge payload. A preview is the exact work committed,
       never an instruction to re-read a file that may have changed by then. */
   journal: ArchiveJournal;
@@ -187,6 +189,7 @@ export async function pixelsPreview(file: Uint8Array, existing: ArchiveJournal):
   let matchedTagCount = 0;
   let newTagCount = 0;
   let averagedRecordCount = 0;
+  let invalidMoodCount = 0;
 
   // New within this one file, matched to an existing tag by folded label
   // first, minting a fresh id only when nothing matches - so a repeated
@@ -233,7 +236,10 @@ export async function pixelsPreview(file: Uint8Array, existing: ArchiveJournal):
 
     const epochDay = pixelsLocalDay(raw.date, index);
     const date = raw.date as string;
-    const scores = parseScores(raw.scores);
+    const suppliedScores = parseScores(raw.scores);
+    const invalidMood = suppliedScores !== null && suppliedScores.some(score => !Number.isFinite(score) || score < 1 || score > 5);
+    if (invalidMood) invalidMoodCount += 1;
+    const scores = invalidMood ? null : suppliedScores;
     if (scores && scores.length > 1) averagedRecordCount += 1;
     const mood = scores ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
     const notes = typeof raw.notes === 'string' ? raw.notes : '';
@@ -250,7 +256,7 @@ export async function pixelsPreview(file: Uint8Array, existing: ArchiveJournal):
       }
     }
 
-    const uuid = await contentUuid([date, type, scores, notes]);
+    const uuid = await contentUuid([date, type, suppliedScores, notes]);
     if (existingEntries.has(uuid) || seenEntryUuids.has(uuid)) continue;
     seenEntryUuids.add(uuid);
     entries.push({
@@ -260,7 +266,7 @@ export async function pixelsPreview(file: Uint8Array, existing: ArchiveJournal):
       mood,
       note: notes,
       dims: {},
-      tags: tagIds,
+      tags: [...new Set(tagIds)],
       photos: [],
       recordings: [],
       videos: [],
@@ -276,6 +282,7 @@ export async function pixelsPreview(file: Uint8Array, existing: ArchiveJournal):
     newTagCount,
     unrecognizedTypes: [...unrecognizedTypes],
     averagedRecordCount,
+    invalidMoodCount,
     journal: emptyImportJournal([...groupsByKey.values()], entries)
   };
 }

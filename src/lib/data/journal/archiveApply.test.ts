@@ -1033,3 +1033,52 @@ test('importLogRow orders its values to match IMPORT_LOG_COLUMNS', () => {
   assert.deepEqual(row, ['rec1', 'pixels', JSON.stringify({ entries: 2 }), 100, 200]);
   assert.equal(IMPORT_LOG_COLUMNS.split(', ').length, row.length);
 });
+
+for (const ownerKind of [null, 'procedure'] as const) {
+  test(`Merge maps ${ownerKind ?? 'standalone'} prep lists onto one readable checklist`, async () => {
+    const driver = await migratedDb();
+    const checklist: ArchiveChecklist = {
+      id: 'local-list', ownerKind, ownerId: ownerKind ? 'procedure' : null,
+      appointmentEpochDay: 20000,
+      items: [{ id: 'local-item', content: 'Local question', checked: false, carriedForward: false }]
+    };
+    await applyChecklists(restoring(driver, { checklists: [checklist] }, 'merge'));
+    await applyChecklists(restoring(driver, { checklists: [{ ...checklist, id: 'remote-list', items: [
+      { id: 'remote-item', content: 'Remote question', checked: false, carriedForward: false }
+    ] }] }, 'merge'));
+    assert.equal((await select(driver, 'SELECT id FROM checklist')).length, 1);
+    assert.deepEqual((await select<{content: string}>(driver, 'SELECT content FROM checklist_item ORDER BY order_index')).map(r => r.content), ['Local question', 'Remote question']);
+  });
+}
+
+test('Merge skips a second taper for the same procedure', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'procedure');
+  const taper: ArchiveTaper = { id: 'local-taper', procedureId: 'procedure', startEpochDay: 20000, stagesJson: '[]' };
+  await applyTaper(restoring(driver, { taper: [taper, { ...taper, id: 'remote-taper' }] }, 'merge'));
+  assert.equal((await select(driver, 'SELECT id FROM taper')).length, 1);
+});
+
+test('duplicate tag definitions and per-entry ids import once; invalid restored mood becomes null', async () => {
+  const driver = await migratedDb();
+  const tag = { id: 'work', label: 'Work', hidden: false, builtIn: false };
+  const group: ArchiveTagGroup = { key: 'imported', name: '', enabled: true, builtIn: true, tags: [tag, tag] };
+  await applyTagGroups(restoring(driver, { tagGroups: [group, group] }, 'merge'));
+  const entry: ArchiveEntry = { uuid: 'entry', epochDay: 20000, timestamp: 0, mood: 9, note: '', dims: {}, tags: ['work', 'work'], photos: [], recordings: [], videos: [], bodyRegions: {}, starred: false, presentationId: null };
+  await applyEntries(restoring(driver, { entries: [entry] }, 'merge'));
+  assert.deepEqual(await select(driver, 'SELECT mood FROM entry'), [{ mood: null }]);
+  assert.equal((await select(driver, 'SELECT * FROM entry_tag')).length, 1);
+});
+
+test('merged standalone prep questions reach both checklist reads and clinician print data', async () => {
+  const { openJournal } = await import('./journal.ts');
+  const { fakeFileStore } = await import('../photos/test-support/fake-file-store.ts');
+  const driver = await migratedDb();
+  const journal = openJournal(driver, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  const checklist = await journal.checklists.createChecklist();
+  await journal.checklists.addItem(checklist.id, 'Local question');
+  await applyChecklists(restoring(driver, { checklists: [{ id: 'other-device', ownerKind: null, ownerId: null, appointmentEpochDay: null, items: [{id: 'remote', content: 'Remote question', checked: false, carriedForward: false}]}] }, 'merge'));
+  assert.deepEqual((await journal.checklists.getStandaloneChecklist())!.items.map(item => item.content), ['Local question', 'Remote question']);
+  assert.deepEqual((await journal.clinicianSummary.getSummary(19000, 20000)).appointmentPrepItems.map(item => item.content), ['Local question', 'Remote question']);
+});

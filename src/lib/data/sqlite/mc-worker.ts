@@ -62,7 +62,7 @@ let db: Database | null = null;
 let databasePath = '';
 let backupPath = '';
 let hexKey = '';
-// A failed attach/open/convert stays failed until this worker closes.
+// A failed attach/open stays failed until this worker closes.
 // Queued statements report that cause instead of reopening or using null `db`.
 let openError: Error | null = null;
 
@@ -95,9 +95,8 @@ function keyAndVerify(target: Database, key: string): void {
 }
 
 /** Brings up the wasm module, the pool and the encryption shim, without
-    opening anything. Split out of `open` because a conversion has to have
-    the VFS before there is a database to open through it (ticket 10), and
-    because `sqlite3mc_vfs_create` may only wrap the pool once. */
+    opening anything. The pool can be prewarmed before a key arrives, and
+    `sqlite3mc_vfs_create` may only wrap the pool once. */
 async function attach(seedPath: string, wasmBinary?: ArrayBuffer): Promise<Sqlite3Static> {
   if (sqlite3 && poolUtil) return sqlite3;
   const options: Parameters<typeof sqlite3InitModule>[0] & { wasmBinary?: ArrayBuffer } = {};
@@ -156,53 +155,6 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     hexKey = args.hexKey;
     db = new api.oo1.DB({ filename: databasePath, flags: 'c', vfs: MC_VFS });
     keyAndVerify(db, hexKey);
-  },
-
-  /* Ticket 10: a plaintext-era database becomes the encrypted Journal.
-
-     Not VACUUM INTO, which is how the pre-migration copy below is made.
-     sqlite3mc decides a destination's cipher from the source connection's,
-     not from the destination URI: with an unencrypted source, VACUUM INTO
-     writes an unencrypted file and ignores the `hexkey` in the URI
-     entirely. Measured, not assumed - the copy came out carrying "SQLite
-     format 3" and the seeded text in the clear. The pre-migration copy is
-     unaffected because there the source is already keyed.
-
-     Rekeying the source in memory first is the obvious next idea and
-     sqlite3mc refuses it outright: "Rekeying not supported for in-memory
-     or temporary databases". So the plaintext goes into the pool under the
-     name the Journal will keep, and PRAGMA hexrekey rewrites every page of
-     it in place.
-
-     The cost is honest and has to be named: between importDb and the end
-     of the rekey there is a readable copy of the Journal in the pool, and
-     the rollback journal that makes the rekey atomic holds plaintext pages
-     while it runs. Both are inside the window where the app has not
-     claimed to be encrypted yet - the source it was copied from is sitting
-     in the OPFS root, readable, the whole time - and both are gone before
-     the conversion reports success. The claim gate reads the pool's bytes
-     afterwards rather than taking that on trust
-     (tests/browser-tier/conversion-probe.ts).
-
-     Both names are unlinked first: importDb will not write over a slot
-     that is in use, and a target left half-written by a killed attempt is
-     thrown away rather than reasoned about, which is what lets the caller
-     resume by simply calling this again. */
-  async convert(args: { path: string; hexKey: string; bytes: Uint8Array }) {
-    const api = await attach(args.path);
-    const target = poolPath(args.path);
-    await poolUtil!.unlink(target);
-    await poolUtil!.unlink(`${target}-journal`);
-
-    await poolUtil!.importDb(target, args.bytes);
-    const imported = new api.oo1.DB({ filename: target, flags: 'c', vfs: MC_VFS });
-    try {
-      imported.exec(`PRAGMA cipher='${MC_CIPHER}'`);
-      imported.exec(`PRAGMA hexrekey='${args.hexKey}'`);
-      imported.exec('PRAGMA foreign_keys = ON');
-    } finally {
-      imported.close();
-    }
   },
 
   exec(args: { sql: string }) {
@@ -374,7 +326,7 @@ onmessage = (event: MessageEvent<Request>) => {
   const { id, op, args } = event.data;
   chain = chain.then(async () => {
     try {
-      // A failed attach/open/convert leaves `db` null; running a
+      // A failed attach/open leaves `db` null; running a
       // later handler against it would fail with an unrelated null-reference
       // error instead of the real cause. Report that cause again instead -
       // except for `close`, which still has to run to release the pool.
@@ -383,7 +335,7 @@ onmessage = (event: MessageEvent<Request>) => {
       const result = await handlers[op](args);
       postMessage({ id, ok: true, result });
     } catch (error) {
-      if (op === 'attach' || op === 'open' || op === 'convert') openError = error as Error;
+      if (op === 'attach' || op === 'open') openError = error as Error;
       /* The message crosses the worker boundary as a string; the key never
          appears in one - SQLite reports codes ("file is not a database"),
          not the PRAGMA text. */
