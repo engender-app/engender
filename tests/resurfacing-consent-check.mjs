@@ -36,6 +36,7 @@ try {
   }, journalUrl);
 
   await page.waitForSelector('[data-notice="wrapped-muted"]');
+  await page.waitForFunction(() => !document.querySelector('[data-generate], [data-share], [data-wrapped-card]'));
   assert.equal(await page.locator('[data-generate], [data-share], [data-wrapped-card]').count(), 0);
   console.log('PASS share content disappears when its period becomes muted');
 
