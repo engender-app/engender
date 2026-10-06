@@ -162,6 +162,11 @@
   };
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+  /* A day heading in the log names the weekday, which is how a person
+     finds "the Tuesday I missed"; the year only when it is not this one. */
+  const yearOf = (epochDay: number) => fmtDay(epochDay, { year: 'numeric' });
+  const dayHeading = (epochDay: number) =>
+    fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long', ...(yearOf(epochDay) === yearOf(today) ? {} : { year: 'numeric' }) });
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
@@ -479,7 +484,7 @@
               focusIndex={deepLinkedDoseIndex} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
               {#snippet rows(shownRows)}
                 {#each dayRows(shownRows) as item (item.key)}
-                  <div class="dose-day-row rows-divide" data-dose-row={item.row?.dose.id} transition:disclose
+                  <div class="dose-day-row rows-divide" class:is-day={item.row === null} data-dose-row={item.row?.dose.id} transition:disclose
                     animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
                     {#if item.row}
                       {@const { dose, attribution, drug, showAttribution, offersSkip } = item.row}
@@ -520,7 +525,7 @@
                         </div>
                       {/key}
                     {:else if item.day !== null}
-                      <h2 class="dose-day" data-dose-day={item.day}>{fmtDayLong(item.day)}</h2>
+                      <h2 class="dose-day" data-dose-day={item.day}>{dayHeading(item.day)}</h2>
                     {/if}
                   </div>
                 {/each}
@@ -1065,8 +1070,16 @@
     transform: rotate(180deg);
   }
 
+  /* A day is a group of rows, said by space and a heading rather than by
+     more hairlines: the rule above and below a heading row would sit one
+     heading-height apart and read as a stray box. */
+  .rows-divide.is-day::before,
+  .is-day + .rows-divide::before {
+    content: none;
+  }
+
   .dose-day {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-5) 0 var(--space-1);
     margin: 0;
     color: var(--text-2);
     font-size: var(--text-sm);
