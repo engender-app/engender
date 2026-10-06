@@ -27,7 +27,10 @@
    A role arrives as three values, all from $lib/theme/roles.ts: --role, the
    flag's own stripe; --role-ink-in, the version of it that carries small
    text at 4.5:1; and --role-mark-in, the version that draws a chart line, a
-   bar, an icon or a display number at 3:1.
+   bar, an icon or a display number at 3:1. A fourth, --role-edge-in,
+   arrives only where the stripe itself is under 3:1 against what a chart
+   draws a line over: the edge a line in the raw stripe is cased in
+   (phase 15 ticket 20, --role-edge below).
 
    Two of them because the floors are different and the difference is
    visible. Holding a mark to the text floor darkens every bright stripe on
@@ -107,6 +110,14 @@
      Drawn from --role-mark, the corrected version, so it is there whatever
      band the area got. */
   --role-hairline: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
+  /* The edge a chart line in --role-draw is cased in, so the line can be
+     found against the ground (WCAG 1.4.11, phase 15 ticket 20). The line
+     stays the stripe; the casing is drawn under it, a pixel wider on each
+     side, in the same hue moved to the lightness that clears 3:1
+     (roles.ts, Role.edge). Transparent where the stripe already reads,
+     which is every role with no edge handed in, the accent fallback
+     included: the accent clears 4.1:1 on every surface. */
+  --role-edge: var(--role-edge-in, transparent);
 }
 
 /* A route's own `<style>` block is free to read --role-mark, --role-ink,
@@ -2149,6 +2160,9 @@ button.kit-strip-day .kit-strip-cell {
      --accent-2 where a screen hands over no role, which is what a second
      line drawn on a card with no section colour has always taken. */
   --role-2-draw: var(--role-2, var(--accent-2));
+  /* Its line's edge, the same way --role-edge is the first's: handed in
+     only where the stripe needs one (Role.pairedEdge). */
+  --role-2-edge: var(--role-2-edge-in, transparent);
 }
 
 /* The one-column state - a plot with no value gutter beside it - lives in
@@ -2226,10 +2240,11 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 /* The latest reading, ringed on the line rather than annotated beside it:
-   the mark is the label. Filled with the card colour so the line does not
-   show through it. */
+   the mark is the label. The card colour inside it, which keeps the line
+   from showing through, is its casing's fill (AreaChart.svelte), so the
+   casing's edge can show on both sides of the ring. */
 .kit-area-ring {
-  fill: var(--surface);
+  fill: none;
   stroke: var(--role-draw);
   stroke-width: 2;
 }
