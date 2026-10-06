@@ -30,6 +30,7 @@ import { openJournal } from './journal.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 import { restoreArchive } from './restore.ts';
+import { entrySearchFiltersOf, savedQuestionInputOf } from '../savedQuestionQuery.ts';
 
 interface ContractCheck {
   name: string;
@@ -380,7 +381,8 @@ export async function runJournalContract(
       startEpochDay: filters.startEpochDay,
       endEpochDay: filters.endEpochDay,
       hasNote: filters.hasNote,
-      hasPhoto: filters.hasPhoto
+      hasPhoto: filters.hasPhoto,
+      starred: false
     });
     const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
     r.equal('the saved row round-trips its comma-joined columns back into arrays', saved?.tagIds, filters.tagIds);
@@ -402,6 +404,36 @@ export async function runJournalContract(
     }
 
     for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
+    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+  });
+
+  /* After-release ticket 16 (audit L08-01): Starred is a filter on /search,
+     and a question saved with it on came back without it, so it answered
+     with every entry carrying the tag. This one goes through the two
+     conversions the screens use, savedQuestionInputOf on the way in and
+     entrySearchFiltersOf on the way out, because the section above builds
+     its filters by hand and so could never notice a field they drop. */
+  await r.section('a saved question keeps Starred and answers with starred entries only', async () => {
+    const group = await journal.tags.addGroup('saved-question-starred-test');
+    const tag = await journal.tags.addTag(group.key, 'binder');
+    const starredId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id], starred: true });
+    const plainId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id] });
+
+    const filters = { tagIds: [tag.id], starred: true };
+    const adHocHits = (await journal.entries.searchEntries('', [], filters)).map((e) => e.id);
+    r.equal('the ad hoc search narrows to the starred entry', adHocHits, [starredId]);
+
+    const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred binder days', '', filters));
+    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
+    r.equal('the saved row keeps Starred', saved?.starred, true);
+    if (saved) {
+      const savedFilters = entrySearchFiltersOf(saved);
+      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
+      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
+      r.equal('and its total says one', await journal.entries.countSearchMatches(saved.queryText, [], savedFilters), 1);
+    }
+
+    for (const id of [starredId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
     await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
   });
 

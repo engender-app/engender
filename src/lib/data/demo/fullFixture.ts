@@ -582,7 +582,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     startEpochDay: null,
     endEpochDay: null,
     hasNote: false,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
   await journal.savedQuestions.upsertSavedQuestion({
     name: 'Laser progress',
@@ -592,7 +593,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     startEpochDay: null,
     endEpochDay: null,
     hasNote: false,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
 
   // One custom entry template, alongside whatever built-ins ship.
