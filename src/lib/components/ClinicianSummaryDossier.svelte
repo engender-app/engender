@@ -339,7 +339,7 @@
               {#each dossier.exposure.routeDays as rd, i (rd.route)}
                 <tr class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}>
                   <td>{@render routeName(rd.route)}</td>
-                  <td class="num">{m.exposure_medication_days_count({ days: String(rd.days) })}</td>
+                  <td class="num">{m.exposure_medication_days_count({ days: rd.days })}</td>
                 </tr>
               {/each}
             </tbody>
@@ -371,7 +371,7 @@
                   <td><strong>{regd.drug}</strong></td>
                   <td class="num">{regd.dose} {regd.doseUnit}</td>
                   <td>{@render routeName(regd.route)}</td>
-                  <td class="num">{m.exposure_medication_days_count({ days: String(regd.days) })}</td>
+                  <td class="num">{m.exposure_medication_days_count({ days: regd.days })}</td>
                 </tr>
               {/each}
             </tbody>

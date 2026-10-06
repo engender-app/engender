@@ -708,7 +708,7 @@
   "dbr_archive_body": "If you have a saved archive, you can restore what it contains using its own password. Anything saved only on this device cannot be recovered without the local key or a recovery key.",
   "dbr_archive_confirm": "Delete local data and open restore",
   "dbr_archive_open": "Restore from a saved archive",
-  "dbr_archive_replace_body": "Deleting every entry, photo and setting on this device cannot be undone. ",
+  "dbr_archive_replace_body": "Deleting every entry, photo and setting on this device cannot be undone.",
   "dbr_body": "This journal opened without a passphrase. This browser or device has lost its local key. engender cannot recover that key, so this copy cannot be reopened.",
   "dbr_body_recoverable": "This journal opened without a passphrase. This browser or device has lost its local key. engender cannot recover that key. Your recovery key can still open this journal.",
   "dbr_open_reset": "Start over on this device",
@@ -1317,7 +1317,21 @@
   "exp_warning_title": "Keep the archive password",
   "export_import": "Export / import",
   "exposure_dose_totals_title": "Dose totals",
-  "exposure_medication_days_count": "{days} medication-days",
+  "exposure_medication_days_count": [
+    {
+      "declarations": [
+        "input days",
+        "local daysPlural = days: plural"
+      ],
+      "selectors": [
+        "daysPlural"
+      ],
+      "match": {
+        "daysPlural=one": "{days} medication-day",
+        "daysPlural=other": "{days} medication-days"
+      }
+    }
+  ],
   "exposure_regimen_days_note": "Each regimen counts its own days. Concurrent medications add up to more than the calendar span.",
   "exposure_regimen_days_title": "Medication-days on each regimen",
   "exposure_route_days_note": "Days on each route sum all concurrent episodes using that route. Concurrent medications add up to more than the calendar span.",
@@ -1325,7 +1339,7 @@
   "exposure_title": "Cumulative exposure",
   "feature_genital_effects": "Genital and sexual effects",
   "features_to_show": "Features to show",
-  "features_to_show_sub": "Turning a feature off hides its entry points and prompts. ",
+  "features_to_show_sub": "Turning a feature off hides its entry points and prompts.",
   "footer_note": "nothing you write is sent anywhere",
   "gender_label": "Gender",
   "gender_scales": "Gender scales",
@@ -2384,7 +2398,7 @@
   "plain_notice_title": "This file is not encrypted",
   "plain_section": "Plain export",
   "plain_sheet_title": "Export unencrypted {format}?",
-  "pp_change_body": "The old passphrase stops opening this journal immediately. Existing copies keep their own passphrases. Save the new one in a password manager: nobody can recover it if you forget it. ",
+  "pp_change_body": "The old passphrase stops opening this journal immediately. Existing copies keep their own passphrases. Save the new one in a password manager: nobody can recover it if you forget it.",
   "pp_change_mismatch": "The new passphrase and its confirmation did not match.",
   "pp_change_running": "Changing…",
   "pp_change_sub": "at least {min} characters",
