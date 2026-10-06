@@ -193,7 +193,7 @@
           ? chosenMode === null
             ? m.am_setup_title()
             : accessModeTitle(chosenMode)
-          : appWordmark(prefs.disguise, m.app_name())
+          : appWordmark(prefs.disguise, m.app_name(), m.disguise_name())
   );
 
   /** The setup module's answer, wired through boot.svelte.ts's own submit

@@ -72,7 +72,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         String route = "/settings/reminders" + (id.isBlank() ? "" : "/" + id);
         Notification notification = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
             .setSmallIcon(DisguiseAlias.isDisguised(context)
-                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_launcher_foreground)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
             .setContentTitle(title)
             .setContentText(time)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -107,7 +107,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_CHECK_IN)
             .setSmallIcon(DisguiseAlias.isDisguised(context)
-                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_launcher_foreground)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

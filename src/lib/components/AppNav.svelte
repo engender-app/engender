@@ -320,7 +320,7 @@
        does - through the module all of them read (disguise/identity.ts). -->
   <div class="rail-brand lockup">
     <Mark size={32} /><span class="lockup-word" translate="no"
-      >{appWordmark(prefs.disguise, m.app_name())}</span
+      >{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span
     >
   </div>
   <button

@@ -639,7 +639,7 @@ stateDiagram-v2
 
 ### 7.5 Disguise
 
-[disguise/identity.ts](../src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](../src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised "Notes" alias with no round version (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise. Export file names become neutral. Setup doesn't change with disguise and offers it last (ADR-0079).
+[disguise/identity.ts](../src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](../src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, journey and wrapped export file names omit the person's name under disguise. Setup doesn't change with disguise and offers it last (ADR-0079).
 
 ### 7.6 Web hardening
 
@@ -652,7 +652,7 @@ stateDiagram-v2
 
 - `allowBackup="false"`, plus [data_extraction_rules.xml](../android/app/src/main/res/xml/data_extraction_rules.xml) excluding every domain.
 - No `INTERNET` permission. The declared permissions are notifications, exact alarms, boot-completed, audio record and settings, and camera.
-- `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`.
+- `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`. Capture output is deleted after consumption or cancellation, at the next app start, and when device stores are wiped.
 - Recents: `setRecentsScreenshotEnabled(false)` on Android 13+ whenever a lock exists, and `FLAG_SECURE` on leave below 13.
 - Notifications use `VISIBILITY_PRIVATE`, PendingIntents are immutable, and Capacitor logging is off (`loggingBehavior: 'none'`).
 - Launch routes need a nonce (section 9).
