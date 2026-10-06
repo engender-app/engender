@@ -432,11 +432,17 @@
     stroke-linecap: round;
   }
 
-  /* The flag's own stripe, undiluted (kit.css's --role-draw). A fill owes
-     no contrast ratio, and applying one is what turned nonbinary's yellow
-     to olive. */
+  /* The flag's own stripe, undiluted (kit.css's --role-draw). Flooring the
+     fill to a contrast ratio is what turned nonbinary's yellow to olive, so
+     the boundary is a ring instead: --role-edge, the stripe's hue at 3:1,
+     where the stripe alone is under it on the plot and transparent where it
+     is not (phase 15 ticket 20). Painted under the fill, so of its 2px only
+     the outer pixel shows and the dot keeps its size and its colour. */
   .cn-dot {
     fill: var(--role-draw);
+    stroke: var(--role-edge);
+    stroke-width: 2;
+    paint-order: stroke;
   }
 
   .cn-head {
@@ -453,6 +459,7 @@
      person had named pink. */
   .cn-dot.is-unset {
     fill: var(--text-2);
+    stroke: none;
   }
 
   .cn-head.is-unset {

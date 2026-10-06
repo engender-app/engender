@@ -445,6 +445,7 @@
     role="img"
     aria-label={ariaLabel}
     style:--role-2={overlay?.role?.paired}
+    style:--role-2-edge-in={overlay?.role?.pairedEdge ?? undefined}
     style:--highlight={highlight?.role.mark}
     in:wipe={{ authored: true }}
     onpointerdown={scrubTo}
@@ -524,6 +525,10 @@
                and neither of these two is the other's footnote - so both are
                plain strokes of equal weight, and the second is dashed. -->
           {#if !overlaid}<path class="kit-area-fill" d={path.fill} />{/if}
+          <!-- Each line sits on its casing: the line's edge where the stripe
+               alone is under 3:1 against the plot, transparent where it is
+               not (kit.css's --role-edge, phase 15 ticket 20). -->
+          <path class="kit-area-casing" d={path.line} />
           <path class="kit-area-line" d={path.line} />
           {#if overlayPath}
             <!-- Faded in and out rather than cut. It has no outgoing shape to
@@ -531,6 +536,12 @@
                  says it arrived is the arrival itself. Tier 3's substitute
                  under reduced motion is an instant cut, which motionDuration
                  gives it for free. -->
+            <path
+              class="kit-area-casing is-overlay"
+              d={overlayPath.line}
+              in:fade={{ duration: motionDuration('--dur-med') }}
+              out:fade={{ duration: motionDuration('--dur-fast') }}
+            />
             <path
               class="kit-area-line is-overlay"
               d={overlayPath.line}
@@ -545,8 +556,14 @@
             {#if !overlaid}
               <path class="kit-area-fill" d={lastMovingPath.fill} out:fade={{ duration: motionDuration('--dur-med') }} />
             {/if}
+            <path class="kit-area-casing" d={lastMovingPath.line} out:fade={{ duration: motionDuration('--dur-med') }} />
             <path class="kit-area-line" d={lastMovingPath.line} out:fade={{ duration: motionDuration('--dur-med') }} />
             {#if lastMovingPath.overlay}
+              <path
+                class="kit-area-casing is-overlay"
+                d={lastMovingPath.overlay}
+                out:fade={{ duration: motionDuration('--dur-med') }}
+              />
               <path
                 class="kit-area-line is-overlay"
                 d={lastMovingPath.overlay}
@@ -760,6 +777,30 @@
 {/if}
 
 <style>
+  /* The casing under each line: the same path a pixel wider each side, in
+     the line's edge (--role-edge, phase 15 ticket 20). It is transparent
+     wherever the stripe clears 3:1 against the plot by itself, so only the
+     lines that could not be found get a boundary, and the line on top stays
+     the flag's own colour. The second series' casing is dashed with it:
+     the line's 7px dashes paint 9px with their square caps, so the casing
+     paints exactly those 9px (butt caps, shifted back the 1px a cap reaches)
+     and leaves the 3px gaps empty, which keeps the dash that tells the two
+     series apart. */
+  .kit-area-casing {
+    fill: none;
+    stroke: var(--role-edge);
+    stroke-width: 4;
+    stroke-linejoin: miter;
+    stroke-linecap: square;
+  }
+
+  .kit-area-casing.is-overlay {
+    stroke: var(--role-2-edge);
+    stroke-linecap: butt;
+    stroke-dasharray: 9 3;
+    stroke-dashoffset: 1;
+  }
+
   /* Whether the plot leaves a column for the value gutter, which is a
      question about the gutter and not about how many lines are up: a pair
      of lines placed against one range keeps its numbers (see `oneScale`),

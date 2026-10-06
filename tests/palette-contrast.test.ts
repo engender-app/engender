@@ -566,8 +566,10 @@ describe('the field and the fills (phase 10)', () => {
      against the 18 per cent band wash, against the 9 per cent middle band,
      and against the bare surface between them. The worst of all three is
      nonbinary's yellow on the light theme at 1.13:1 against its own band -
-     the same 1.16:1 the pitch trace has always had against the surface, and
-     the flag-colour rule working rather than a regression. */
+     the same 1.16:1 the pitch trace has always had against the surface.
+     Since phase 15 ticket 20 that is no longer the whole line: the stripe
+     keeps its colour and an edge drawn under it carries the 3:1, measured in
+     the essential-graphics cases below. */
   it('draws the density in the flag colour itself, never a floored one', () => {
     let worst = { ratio: 99, where: '' };
     for (const palette of PALETTES) {
