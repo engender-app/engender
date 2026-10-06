@@ -996,7 +996,8 @@
       "startEpochDay": null,
       "endEpochDay": null,
       "hasNote": true,
-      "hasPhoto": false
+      "hasPhoto": false,
+      "starred": false
     }
   ],
   "revisits": [
@@ -1828,7 +1829,8 @@
       "interval": "every 2 weeks",
       "startEpochDay": 19000,
       "endEpochDay": null,
-      "endReason": null
+      "endReason": null,
+      "hidden": false
     }
   ],
   "doseEvents": [

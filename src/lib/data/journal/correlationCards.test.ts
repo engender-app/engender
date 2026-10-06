@@ -87,3 +87,31 @@ test('with nothing logged, the range comes back with no cards rather than throwi
 
   assert.deepEqual(cards, []);
 });
+
+test('batched metric inputs match independent reads with two statements regardless of dimension count', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  for (let i = 0; i < 12; i++) {
+    await journal.entries.upsertEntry({
+      epochDay: DAY_0 + Math.floor(i / 2),
+      mood: (i % 5) + 1,
+      tags: i < 6 ? ['e-tired'] : [],
+      dims: i % 3 === 0 ? { femininity: i * 5 } : { femininity: i * 5, masculinity: 100 - i * 5 }
+    });
+  }
+  await journal.entries.upsertEntry({ epochDay: DAY_0 - 1, mood: 5, dims: { femininity: 100 } });
+  const metrics = ['mood', 'femininity', 'masculinity', 'unlogged'];
+  const prepare = db.raw.prepare.bind(db.raw);
+  let statements = 0;
+  db.raw.prepare = ((sql: string) => { statements++; return prepare(sql); }) as typeof db.raw.prepare;
+  const inputs = await journal.stats.metricInsights(metrics, DAY_0, DAY_0 + 4);
+  assert.equal(statements, 2);
+  db.raw.prepare = prepare;
+  for (const metric of metrics) {
+    assert.deepEqual(inputs.get(metric), {
+      dayAverages: await journal.stats.dayAverages(metric, DAY_0, DAY_0 + 4),
+      tagInsights: await journal.stats.tagInsights(metric, DAY_0, DAY_0 + 4)
+    });
+  }
+  assert.equal((await journal.stats.metricInsights([], DAY_0, DAY_0 + 4)).size, 0);
+  await db.close();
+});

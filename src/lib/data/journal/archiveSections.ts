@@ -521,7 +521,10 @@ const SECTIONS = [
       start_epoch_day: 'startEpochDay',
       end_epoch_day: 'endEpochDay',
       has_note: { field: 'hasNote', bool: true },
-      has_photo: { field: 'hasPhoto', bool: true }
+      has_photo: { field: 'hasPhoto', bool: true },
+      // Added in v88 (after-release ticket 16). A bool column writes 0 when
+      // the field is absent, so an older archive restores it as not starred.
+      starred: { field: 'starred', bool: true }
     }
   }),
   section({
@@ -832,7 +835,8 @@ const SECTIONS = [
   // still ongoing, the same as every pre-existing episode's backfill (v40).
   // `end_reason` is absent the same way on an archive from before ticket 43 -
   // read as no reason recorded, which is what every episode ended before
-  // this shipped actually has.
+  // this shipped actually has. `hidden` is absent before after-release 07
+  // and reads as shown, which is all an episode could be then.
   flat({
     name: 'regimenEpisodes',
     travels: 'none',
@@ -849,7 +853,8 @@ const SECTIONS = [
       interval: 'interval',
       start_epoch_day: 'startEpochDay',
       end_epoch_day: { field: 'endEpochDay', whenAbsent: null },
-      end_reason: { field: 'endReason', whenAbsent: null }
+      end_reason: { field: 'endReason', whenAbsent: null },
+      hidden: { field: 'hidden', bool: true }
     }
   }),
   // Carries no episode link: which episode a dose belongs to is resolved

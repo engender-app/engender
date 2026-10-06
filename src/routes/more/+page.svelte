@@ -47,6 +47,7 @@
      about grouping hits by area, and Apple's own settings search, in the
      Mobbin pass). An empty box shows the grouped index, which is the door at
      rest. */
+  import { handOverQuery } from '$lib/navigation/searchReturn';
   import { m } from '$lib/paraglide/messages';
   import { navigating } from '$app/state';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -147,6 +148,9 @@
   let box = $state<HTMLInputElement | undefined>(undefined);
 
   let typed = $derived(query.trim());
+  /* The handoff row's query travels in memory to Search rather than in its
+     address (after-release ticket 10). */
+  const handOffSearch = () => handOverQuery(typed);
   let searching = $derived(typed.length > 0);
 
   /* Clearing the box is the one case that is not waited out: an empty query
@@ -412,7 +416,8 @@
               icon="search"
               title={m.hub_search_handoff({ query: debouncedQuery })}
               subtitle={m.hub_search_handoff_sub()}
-              href={`/search?q=${encodeURIComponent(typed)}`}
+              href="/search"
+              onclick={handOffSearch}
             />
           </div>
         </ListCard>

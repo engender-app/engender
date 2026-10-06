@@ -44,7 +44,10 @@ describe('what the More hub is built from', () => {
     const rowTags = markup.match(/<ListRow\b[^>]*\/>/gs) ?? [];
     expect(rowTags.length).toBe(3);
     expect(markup).toContain('data-hub-search-handoff');
-    expect(markup).toContain('/search?q=');
+    /* In memory, not in the address: a query in `/search?q=` lands in the
+       browser's history (after-release ticket 10, audit L09-02). */
+    expect(markup).not.toContain('/search?q=');
+    expect(markup).toContain('onclick={handOffSearch}');
   });
 
   it('holds no Settings row and no pointer to preferences (redesign tickets 09 and 15)', () => {

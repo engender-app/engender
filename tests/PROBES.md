@@ -179,6 +179,11 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 `timeline-fact-selection`, `pin-progress-status`, `gates-say-what-happened`), so they run in the browser job with
 `npm run test:browser`. Three of them take `--gallery` as well.
 
+`screen-mount.html` renders Home, Calendar, Settings and related routes over
+seeded encrypted journals. The browser runner checks their DOM, computed
+styles, interactions and loading gates, then repeats the narrow layout checks
+at 230px. The three screen contract suites run here rather than in Node.
+
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
 
 ## Galleries and tools

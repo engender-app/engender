@@ -303,6 +303,10 @@ beforeAll(async () => {
     journal.bodyRegions.addCustomRegion('scar tissue')
   )) as { id: string };
   await drive('bodyRegions', 'setRegionHidden', () => journal.bodyRegions.setRegionHidden('hairline', true));
+  await drive('bodyRegions', 'renameCustomRegion', async () => {
+    const region = await journal.bodyRegions.addCustomRegion('scar tisue');
+    await journal.bodyRegions.renameCustomRegion(region.id, 'scar tissue');
+  });
 
   // --- dimensions ---------------------------------------------------------
   const voice = (await drive('dimensions', 'addCustomDimension', () =>
@@ -550,6 +554,10 @@ beforeAll(async () => {
     })
   )) as string;
   await drive('regimen', 'endEpisode', () => journal.regimen.endEpisode(secondEpisodeId, 19400));
+  await drive('regimen', 'setEpisodeHidden', async () => {
+    await journal.regimen.setEpisodeHidden(secondEpisodeId, true);
+    await journal.regimen.setEpisodeHidden(secondEpisodeId, false);
+  });
 
   const doseId = (await drive('doses', 'upsertDose', () =>
     journal.doses.upsertDose({
@@ -667,7 +675,8 @@ beforeAll(async () => {
       startEpochDay: null,
       endEpochDay: null,
       hasNote: true,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: false
     })
   )) as string;
   const secondSavedQuestionId = (await drive('savedQuestions', 'upsertSavedQuestion', () =>
@@ -679,7 +688,8 @@ beforeAll(async () => {
       startEpochDay: null,
       endEpochDay: null,
       hasNote: false,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: false
     })
   )) as string;
   await drive('savedQuestions', 'deleteSavedQuestion', () =>
@@ -1021,6 +1031,7 @@ beforeAll(async () => {
   await driveRead('dimensions', 'getDimensions', () => journal.dimensions.getDimensions());
   await driveRead('dimensions', 'getPresets', () => journal.dimensions.getPresets());
   await driveRead('milestones', 'getMilestones', () => journal.milestones.getMilestones());
+  await driveRead('milestones', 'getNonProcedureDaysInRange', () => journal.milestones.getNonProcedureDaysInRange(19000, 20000));
   await driveRead('milestones', 'getMilestonesOnDay', () => journal.milestones.getMilestonesOnDay(19000));
   await driveRead('milestones', 'lastWriteEpochDay', () => journal.milestones.lastWriteEpochDay(20000));
   await driveRead('photos', 'inJournal', () => journal.photos.inJournal());
@@ -1043,6 +1054,7 @@ beforeAll(async () => {
   await driveRead('labs', 'getLatestResult', () => journal.labs.getLatestResult());
   await driveRead('labs', 'getResults', () => journal.labs.getResults('estradiol'));
   await driveRead('labs', 'getResultsOnDay', () => journal.labs.getResultsOnDay(20004));
+  await driveRead('labs', 'getResultsInRange', () => journal.labs.getResultsInRange(20000, 20004));
   await driveRead('labs', 'getResultById', () => journal.labs.getResultById('11111111-1111-4111-8111-111111111111'));
   await driveRead('labs', 'getSeries', () => journal.labs.getSeries('estradiol'));
   await driveRead('labs', 'lastWriteEpochDay', () => journal.labs.lastWriteEpochDay(20004));
@@ -1069,6 +1081,7 @@ beforeAll(async () => {
   await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
   await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered', 20000));
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
+  await driveRead('regimen', 'getHiddenEpisodes', () => journal.regimen.getHiddenEpisodes());
   await driveRead('regimen', 'hasAny', () => journal.regimen.hasAny());
   await driveRead('doses', 'getDoses', () => journal.doses.getDoses(0, 30000));
   await driveRead('doses', 'getDoseById', () => journal.doses.getDoseById('00000000-0000-0000-0000-000000000000'));
@@ -1161,6 +1174,7 @@ beforeAll(async () => {
   await driveRead('hairRemoval', 'latestSession', () => journal.hairRemoval.latestSession(20000));
   await driveRead('hairRemoval', 'getPhotos', () => journal.hairRemoval.getPhotos(hairRemovalId));
   await driveRead('procedures', 'getProcedures', () => journal.procedures.getProcedures());
+  await driveRead('procedures', 'getSurgeryDaysInRange', () => journal.procedures.getSurgeryDaysInRange(19000, 20000));
   await driveRead('procedures', 'getPhotos', () => journal.procedures.getPhotos(procedureId));
   await driveRead('procedures', 'photosByProcedure', () => journal.procedures.photosByProcedure());
   await driveRead('procedures', 'getDayRecords', () => journal.procedures.getDayRecords(19950));
@@ -1216,6 +1230,7 @@ beforeAll(async () => {
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
   await driveRead('stats', 'tagInsights', () => journal.stats.tagInsights('mood', 19000, 21000));
+  await driveRead('stats', 'metricInsights', () => journal.stats.metricInsights(['mood', 'femininity'], 19000, 21000));
   await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000));
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));

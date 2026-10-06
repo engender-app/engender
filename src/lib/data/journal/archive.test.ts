@@ -375,7 +375,8 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       interval: 'every 2 weeks',
       startEpochDay: 19000,
       endEpochDay: null,
-      endReason: null
+      endReason: null,
+      hidden: false
     }
   ]);
 });
@@ -550,6 +551,42 @@ test('a lead time and doses per unit travel, and a restore keeps them', async ()
   const restored = (await target.stock.getEntries()).find((s) => s.id === stock);
   assert.equal(restored?.leadTimeDays, 21);
   assert.equal(restored?.dosesPerUnit, 5);
+});
+
+/* After-release ticket 16: a saved question's Starred filter is part of
+   what the question asks, so it travels, and an archive written before the
+   field existed restores its questions as not starred - what they answered
+   with when that archive was made. */
+test("a saved question's Starred filter travels, and an older archive restores it off", async () => {
+  const { journal } = await populated();
+  const starredId = await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Starred days',
+    queryText: '',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false,
+    starred: true
+  });
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.savedQuestions.find((q) => q.id === starredId)?.starred, true);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  assert.equal((await target.savedQuestions.getSavedQuestions()).find((q) => q.id === starredId)?.starred, true);
+
+  const older = {
+    ...snapshot.journal,
+    savedQuestions: snapshot.journal.savedQuestions.map(({ starred: _dropped, ...row }) => row)
+  } as typeof snapshot.journal;
+  const olderTarget = openJournal(await migratedDb(), fakeFileStore());
+  await olderTarget.reconcileBuiltIns();
+  await olderTarget.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.equal((await olderTarget.savedQuestions.getSavedQuestions()).find((q) => q.id === starredId)?.starred, false);
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
@@ -730,6 +767,34 @@ test('a regimen episode\'s end reason travels, and a restore keeps it', async ()
 
   const restored = (await target.regimen.getEpisodes()).find((e) => e.id === episode);
   assert.equal(restored?.endReason, 'pausedForNow');
+});
+
+/* After-release 07: an episode put away stays put away across a backup.
+   Hidden is the person's own statement that the row was a mistake, so a
+   restore that brought it back into Care and the curve would undo it. An
+   archive from before the field existed reads as shown. */
+test('a hidden regimen episode travels hidden, and a restore keeps it hidden', async () => {
+  const { journal, episode } = await populated();
+  await journal.regimen.setEpisodeHidden(episode, true);
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.hidden, true);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+
+  assert.equal((await target.regimen.getEpisodes()).some((e) => e.id === episode), false);
+  assert.deepEqual((await target.regimen.getHiddenEpisodes()).map((e) => e.id), [episode]);
+
+  const older = {
+    ...snapshot.journal,
+    regimenEpisodes: snapshot.journal.regimenEpisodes.map(({ hidden: _hidden, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.equal((await fromOlder.regimen.getEpisodes()).some((e) => e.id === episode), true);
 });
 
 /* Ticket 56: a document's link travels as the pair it is stored as, and a
