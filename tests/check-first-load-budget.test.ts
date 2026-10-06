@@ -3,8 +3,30 @@
    is - measured, budgeted, and failing loud rather than waiting for an
    audit to notice they grew. */
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { budgetFailures, firstLoadBudgetFor, firstLoadUrls, gzipTotal } from '../scripts/check-first-load-budget.mjs';
+import { budgetFailures, firstLoadBudgetFor, firstLoadUrls, gzipTotal, localeGraphsForShell } from '../scripts/check-first-load-budget.mjs';
+
+describe('localeGraphsForShell', () => {
+  const html = '<script>const engenderLocaleGraphs = { en: {}, pl: {} };</script>';
+  const metadata = { graph: { en: ['en.js'], pl: ['pl.js'] }, selectorGzipBytes: 12,
+    shellHash: createHash('sha256').update(html).digest('hex'), demo: true };
+
+  it('accepts locale graphs only for the shell they measure', () => {
+    expect(localeGraphsForShell(html, metadata)).toBe(metadata);
+    expect(() => localeGraphsForShell(html + '\n', metadata)).toThrow('metadata is missing or stale');
+  });
+
+  it('refuses to undercount a locale shell without measurement metadata', () => {
+    expect(() => localeGraphsForShell(html, undefined)).toThrow('metadata is missing or stale');
+  });
+
+  it('ignores stale demo exemption metadata after an ordinary build', () => {
+    const ordinary = '<script>import("/_app/immutable/entry/app.new.js")</script>';
+    expect(localeGraphsForShell(ordinary, metadata)).toBeUndefined();
+    expect(firstLoadUrls(ordinary)).toEqual(['/_app/immutable/entry/app.new.js']);
+  });
+});
 
 describe('firstLoadUrls', () => {
   it('reads a modulepreload href and a bootstrap script\'s import(...) call', () => {
