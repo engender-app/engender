@@ -41,7 +41,7 @@
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor';
-import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
+import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
 
 // Exported for tests/browser-tier/legacy-cipher-worker.ts (ticket 04): the
 // compatibility check needs to land in the exact same pool directory this
@@ -259,6 +259,11 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
         return { foundVersion: error.foundVersion, knownVersion: error.knownVersion };
       }
       if (error instanceof InterruptedRestoreError) return { interruptedRestore: true };
+      /* Typed across the boundary like the two above, so a demo build reaches
+         the same development-build sentence a production one does. */
+      if (error instanceof JournalBelowBaselineError) {
+        return { belowBaseline: error.foundVersion, baselineVersion: error.baselineVersion };
+      }
       throw error;
     }
   } } : {}),

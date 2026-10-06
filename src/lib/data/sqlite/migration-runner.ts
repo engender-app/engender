@@ -6,6 +6,10 @@
 export interface Migration {
   version: number;
   sql: string;
+  /** Builds the whole schema rather than stepping from the version before it
+      (the squash, ticket 34). Only an empty database can take it, so a
+      journal that already has a schema below it is refused by name. */
+  baseline?: boolean;
 }
 
 /** Where the runner gets the migrations from.
@@ -58,6 +62,28 @@ export class SchemaTooNewError extends Error {
     this.name = 'SchemaTooNewError';
     this.foundVersion = foundVersion;
     this.knownVersion = knownVersion;
+  }
+}
+
+/** Thrown when the database is a journal from before the chain's first
+    migration, which since the squash (ticket 34) means a development build's
+    journal on a schema between 1 and the baseline. The steps that would carry
+    it forward are gone, so it cannot be opened here, and running the baseline
+    over its tables only fails with a SQLite message nobody can act on. Named
+    so the failure screen can say where the journal came from and offer the
+    way out instead (after-release ticket 09). Thrown before anything is
+    copied or written. */
+export class JournalBelowBaselineError extends Error {
+  foundVersion: number;
+  baselineVersion: number;
+
+  constructor(foundVersion: number, baselineVersion: number) {
+    super(
+      `Database schema version ${foundVersion} is older than this build's baseline (${baselineVersion}). It comes from a development build and cannot be migrated.`
+    );
+    this.name = 'JournalBelowBaselineError';
+    this.foundVersion = foundVersion;
+    this.baselineVersion = baselineVersion;
   }
 }
 
@@ -145,10 +171,17 @@ export async function runMigrations(
 
   /* At the latest version no migration can be pending, so the list is not
      asked for at all - which is the whole point of the lazy source. */
-  const pending =
-    current === latestVersion
-      ? []
-      : [...(await load())].sort((a, b) => a.version - b.version).filter((m) => m.version > current);
+  const chain = current === latestVersion ? [] : [...(await load())].sort((a, b) => a.version - b.version);
+
+  /* A journal that has a schema but sits below the baseline: the baseline
+     would run over tables that are already there. An empty database (version
+     0) is a first run, and the baseline is exactly what it needs. */
+  const baseline = chain[0];
+  if (current > 0 && baseline?.baseline && current < baseline.version) {
+    throw new JournalBelowBaselineError(current, baseline.version);
+  }
+
+  const pending = chain.filter((m) => m.version > current);
 
   async function checkForeignKeys(): Promise<void> {
     const violations = await db.query('PRAGMA foreign_key_check');
