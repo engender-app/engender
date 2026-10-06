@@ -277,10 +277,12 @@
 
   let doseIsInjection = $derived(doseDraft?.route === 'im' || doseDraft?.route === 'sc');
   let doseIsTopical = $derived(doseDraft?.route === 'patch' || doseDraft?.route === 'gel');
+  let doseHasAmount = $derived(
+    doseDraft !== null && !Number.isNaN(parseFloat(doseDraft.dose)) && doseDraft.doseUnit.trim() !== ''
+  );
   let doseCanSave = $derived(
     doseDraft !== null &&
-      !Number.isNaN(parseFloat(doseDraft.dose)) &&
-      doseDraft.doseUnit.trim() !== '' &&
+      doseHasAmount &&
       (!doseIsInjection || doseDraft.injectionSite !== '') &&
       (!doseIsTopical || doseDraft.applicationSite !== '')
   );
@@ -626,7 +628,7 @@
          picked, closing its own height rather than leaving in one frame. -->
     {#if !doseCanSave}
       <div class="muted small coming-back-dose-hint" data-coming-back-dose-hint transition:disclose|local>
-        {#if Number.isNaN(parseFloat(doseDraft.dose)) || doseDraft.doseUnit.trim() === ''}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+        {#if !doseHasAmount}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
         {#if doseIsInjection && !doseDraft.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
         {#if doseIsTopical && !doseDraft.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}
       </div>
