@@ -37,6 +37,8 @@
 
    Rune-free, so the Node tier tests it (lastResults.test.ts). */
 
+import { forgetOnLock } from '../../lock/forget-content';
+
 type Entry = {
   value: unknown;
   versions: [table: string, version: number][];
@@ -97,6 +99,7 @@ export function forgetLastResults(): void {
   entries.clear();
   ambiguous.clear();
 }
+forgetOnLock(forgetLastResults);
 
 /** How many answers are held, for the tests. */
 export function lastResultCount(): number {

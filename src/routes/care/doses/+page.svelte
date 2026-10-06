@@ -499,7 +499,8 @@
                       {@const site = siteOf(dose)}
                       {@const sourceNote = sourceNoteOf(dose)}
                       {#key sourceNote}
-                        <div class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
+                        <div class:is-target-dose={dose.id === deepLinkedDoseId}
+                          data-dose-target={dose.id === deepLinkedDoseId ? true : undefined} out:crossfade>
                           <ListRow
                             key={dose.id}
                             data-dose={dose.id}
