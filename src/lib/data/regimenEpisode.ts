@@ -129,6 +129,22 @@ export function attributeDrug(
   return drugs.size === 1 ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
 }
 
+/** The last day of `from`..`to` on which `episode` can expect a dose: `to`
+    itself, or the episode's own planned end when that comes first. Null
+    when the episode misses the range, starting after it or ending before
+    it. The day-ahead marks read every episode through this (after-release
+    ticket 01), so a course that ends on Friday expects nothing the week
+    after and one that starts next week still has its first dose there. */
+export function lastDayWithin(
+  episode: Pick<RegimenEpisode, 'startEpochDay' | 'endEpochDay'>,
+  from: number,
+  to: number
+): number | null {
+  if (episode.startEpochDay > to) return null;
+  const last = Math.min(to, episode.endEpochDay ?? to);
+  return last < from ? null : last;
+}
+
 /** Which of `candidates` have no dose logged against their drug among
     `dayDoses` - the entry editor's quick-log chip, which offers a dose only
     for a drug not already logged that day (after-release ticket 01).

@@ -9,6 +9,7 @@ import {
   earliestEpisode,
   episodesWithNoDoseLogged,
   expectedDosesOnDay,
+  lastDayWithin,
   nearestActiveEpisode,
   showAttributionLabel
 } from './regimenEpisode.ts';
@@ -427,4 +428,25 @@ test('a drug-less dose while two drugs run belongs to neither, so both stay', ()
     episodesWithNoDoseLogged(episodes, episodes, [dayDose(150)]).map((e) => e.id),
     ['a', 'b']
   );
+});
+
+test('an open episode that began before the range runs to the end of it', () => {
+  assert.equal(lastDayWithin(episode('a', 100), 150, 160), 160);
+});
+
+test('an episode that ends inside the range stops at its own end', () => {
+  assert.equal(lastDayWithin(episode('a', 100, 154), 150, 160), 154);
+});
+
+test('an episode that starts inside the range still reaches its end', () => {
+  assert.equal(lastDayWithin(episode('a', 155), 150, 160), 160);
+});
+
+test('an episode that misses the range on either side answers null', () => {
+  assert.equal(lastDayWithin(episode('a', 161), 150, 160), null);
+  assert.equal(lastDayWithin(episode('a', 100, 149), 150, 160), null);
+});
+
+test('an episode ending on the first day of the range keeps that one day', () => {
+  assert.equal(lastDayWithin(episode('a', 100, 150), 150, 160), 150);
 });

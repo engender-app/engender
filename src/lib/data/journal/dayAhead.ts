@@ -37,6 +37,7 @@
    above this seam. */
 
 import { expectedSlots, isDailySchedule, pauseCoversDay } from '../doseSchedule';
+import { lastDayWithin } from '../regimenEpisode';
 import type { TableName } from '../live/writes';
 import type { ArchiveSectionName } from './archiveSections';
 import type { AppointmentsArea } from './appointments';
@@ -228,15 +229,12 @@ const SECTIONS = [
         doses.getPauses()
       ]);
       /* Every episode whose span meets the range, not only the ones running
-         today, and each one's slots stopped at its own planned end
-         (after-release ticket 01): a course that ends on Friday expects
-         nothing the week after, and one that starts next week expects its
-         first dose there even though nothing is running yet. */
+         today, each one's slots stopped at its own planned end
+         (lastDayWithin). */
       const days: number[] = [];
       for (const episode of episodes) {
-        if (episode.startEpochDay > range.to) continue;
-        const to = Math.min(range.to, episode.endEpochDay ?? range.to);
-        if (to < range.from) continue;
+        const to = lastDayWithin(episode, range.from, range.to);
+        if (to === null) continue;
         const schedule = schedules.find((s) => s.episodeId === episode.id);
         if (!schedule || isDailySchedule(schedule)) continue;
         const ownPauses = pauses.filter((p) => p.episodeId === episode.id);
