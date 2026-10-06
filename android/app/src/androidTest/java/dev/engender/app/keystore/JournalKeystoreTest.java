@@ -431,4 +431,44 @@ public class JournalKeystoreTest {
         }
         return -1;
     }
+    @Test public void aFailedReplacementKeepsThePreviousKeyOpenable() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        try {
+            keystore.wrap(JournalKeystore.Variant.UNLOCKED, new byte[300]);
+            fail("RSA accepted an oversized data key");
+        } catch (javax.crypto.IllegalBlockSizeException expected) {
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        }
+    }
+
+    @Test public void aFailedAtomicWriteKeepsThePreviousWrapOpenable() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        File staged = new File(keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED).getPath() + ".new");
+        assertTrue(staged.mkdir());
+        try {
+            keystore.wrap(JournalKeystore.Variant.UNLOCKED, new byte[32]);
+            fail("writing over a directory unexpectedly succeeded");
+        } catch (java.io.IOException expected) {
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        } finally {
+            assertTrue(staged.delete());
+        }
+    }
+
+    @Test public void repeatedReplacementSwapsAliasAndBlobTogether() throws Exception {
+        keystore.create(JournalKeystore.Variant.UNLOCKED);
+        for (int i = 1; i <= 3; i++) {
+            byte[] replacement = new byte[32];
+            java.util.Arrays.fill(replacement, (byte) i);
+            keystore.wrap(JournalKeystore.Variant.UNLOCKED, replacement);
+            assertArrayEquals(replacement, new JournalKeystore(context()).unwrapUnlocked());
+            KeyStore androidKeystore = KeyStore.getInstance("AndroidKeyStore");
+            androidKeystore.load(null);
+            assertTrue(androidKeystore.containsAlias(JournalKeystore.UNLOCKED_ALIAS)
+                != androidKeystore.containsAlias(JournalKeystore.UNLOCKED_ALIAS + ".replacement"));
+        }
+        keystore.erase(JournalKeystore.Variant.UNLOCKED);
+        assertFalse(keystore.hasKey());
+    }
+
 }
