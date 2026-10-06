@@ -41,7 +41,9 @@
         dimension, whose spoken name carries both endpoints. */
     labelledBy?: string;
     /** No value yet: the thumb and fill are not drawn, and a screen reader
-        hears "Not set" rather than the midpoint the thumb rests on. */
+        hears "Not set" rather than the midpoint the thumb rests on. Melt
+        still writes that midpoint to aria-valuenow, which a role="slider"
+        must carry; readers speak aria-valuetext in its place. */
     unset?: boolean;
     /** True while the control is being operated - a finger is down on it, or
         it holds keyboard focus. Bindable so a label outside the control can

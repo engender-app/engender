@@ -89,7 +89,7 @@ async function dateClearOfHeader(page) {
 async function settled(page) {
   await page.evaluate(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const finite = () => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity);
+    const finite = () => document.getAnimations().filter((a) => (a.playState === 'running' || a.pending) && a.effect?.getTiming().iterations !== Infinity);
     for (let i = 0; i < 100 && finite().length; i++) await sleep(50);
     const rects = () => JSON.stringify([...document.querySelectorAll('[data-screen-field], [data-editor-section], [data-editor-chips], [data-app-savebar]')]
       .map((el) => el.getBoundingClientRect()));

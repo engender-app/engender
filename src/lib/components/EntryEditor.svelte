@@ -457,11 +457,10 @@
   });
   let isToday = $derived(day === todayEpochDay());
   /* The header's own subtitle, so it sits 12 under the field the way every
-     screen's does (components.css), not a paragraph of the editor's own
-     that had to guess the header's spacing and twice guessed wrong (U3,
-     UI-01). */
-  /* An existing entry's day is a read away; until it lands the line holds
-     its height blank rather than naming today, which is the wrong day for
+     screen's does (components.css), rather than a paragraph of the editor's
+     own that had to guess the header's spacing and twice guessed wrong. An
+     existing entry's day is a read away; until it lands the line holds its
+     height blank rather than naming today, which is the wrong day for
      almost every entry anyone reopens. */
   let dateLine = $derived(
     entryId != null && !existing ? '\u00a0' : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
@@ -654,13 +653,11 @@
   }
 
   // Skipping (day === null) leaves the override unset, exactly as before
-  // this ticket: the photo inherits this entry's day, same as always. So
-  // does saving the entry's own day, which is what the field starts on.
+  // this ticket: the photo inherits this entry's day, same as always.
   function resolveDayPrompt(day: string | null) {
     const [photo, ...rest] = dayPromptQueue;
     if (!photo) return;
-    const picked = day ? epochDayFromDateInputValue(day) : null;
-    entryDraft.addPhoto({ ...photo, epochDayOverride: picked === entryDraft.epochDay ? null : picked });
+    entryDraft.addPhoto({ ...photo, epochDayOverride: day ? epochDayFromDateInputValue(day) : null });
     dayPromptQueue = rest;
     if (rest.length) dayPromptValue = dateInputValueFromEpochDay(entryDraft.epochDay);
   }

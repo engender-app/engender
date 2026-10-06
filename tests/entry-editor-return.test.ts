@@ -26,7 +26,9 @@ describe('entry editor Save, date and delete', () => {
   });
 
   it('makes the disabling fieldset the screen itself, so the screen rules reach its blocks', () => {
-    expect(editor).toMatch(/<fieldset class="screen editor" inert=\{saving\} disabled=\{saving\}>/);
+    const open = editor.match(/<fieldset[^>]*class="screen editor"[^>]*>/)?.[0] ?? '';
+    expect(open).toContain('disabled={saving}');
+    expect(open).toContain('inert={saving}');
     expect(editor).not.toContain('class="editor-fields"');
   });
 

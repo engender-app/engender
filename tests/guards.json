@@ -325,7 +325,7 @@
   {
     "name": "entry-editor-return",
     "tier": "built",
-    "holds": "The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed"
+    "holds": "The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed; the header field spans the same box as Care's and Day's, an opened Photos, Voice or Video section lands above the foot, and an untouched scale draws no thumb or fill and saves no value"
   },
   {
     "name": "calendar-month-a11y-check",
