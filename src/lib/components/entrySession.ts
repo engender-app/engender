@@ -101,10 +101,12 @@ export function entrySessionCore(options: EntrySessionOptions, state = initialEn
     initialized = true;
     await prepare(async () => {
       const fresh = entry ? createEntryDraft(entry.epochDay, entry) : state.draft;
-      if (entry) state.baseline = entryDraftFingerprint(fresh);
+      if (entry) {
+        state.baseline = entryDraftFingerprint(fresh);
+        state.starred = entry.starred;
+      }
       try {
         state.draft = await restore(fresh);
-        if (entry && !state.saving && state.draft === fresh) state.starred = entry.starred;
       } finally { state.mirrorRead = true; }
     });
   }
