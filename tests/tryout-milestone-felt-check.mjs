@@ -137,6 +137,7 @@ try {
     assert.match(await offer.innerText(), /Started HRT/);
     await offer.click();
     await page.locator('[data-save-feeling-offer]').waitFor();
+    assert.equal(await page.locator('[data-feeling-offer-subject]').innerText(), 'Started HRT', 'the sheet names the milestone');
     await page.locator('[data-sheet] [data-mood="4"]').click();
     await page.locator('[data-save-feeling-offer]').click();
     await offer.waitFor({ state: 'detached' });
