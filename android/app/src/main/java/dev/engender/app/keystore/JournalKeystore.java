@@ -179,6 +179,9 @@ public final class JournalKeystore {
     public void wrap(Variant variant, byte[] dataKey) throws Exception {
         String previousAlias = wrappedKeyExists(variant)
             ? readStoredWrap(variant).alias : null;
+        // A previous rename may have returned before its directory sync failed.
+        // Make its pointer durable before reusing the alternate wrapping key.
+        if (previousAlias != null) directorySync.sync(context.getFilesDir());
         String nextAlias = variant.alias.equals(previousAlias) ? variant.alias + ".replacement" : variant.alias;
         KeyStore keystore = loadKeystore();
         if (keystore.containsAlias(nextAlias)) keystore.deleteEntry(nextAlias);

@@ -477,8 +477,9 @@ public class JournalKeystoreTest {
         byte[] originalWrap = Files.readAllBytes(blob.toPath());
         byte[] replacement = new byte[32];
         java.util.Arrays.fill(replacement, (byte) 7);
+        java.util.concurrent.atomic.AtomicInteger syncs = new java.util.concurrent.atomic.AtomicInteger();
         JournalKeystore failing = new JournalKeystore(context(), (directory) -> {
-            throw new java.io.IOException("directory sync failed");
+            if (syncs.incrementAndGet() == 2) throw new java.io.IOException("directory sync failed");
         });
         try {
             failing.wrap(JournalKeystore.Variant.UNLOCKED, replacement);
@@ -489,6 +490,38 @@ public class JournalKeystoreTest {
             Files.write(blob.toPath(), originalWrap);
             assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
         }
+    }
+
+    @Test public void aFailedPublicationAndRetryKeepEveryPossibleDirectoryStateOpenable() throws Exception {
+        byte[] original = keystore.create(JournalKeystore.Variant.UNLOCKED);
+        File blob = keystore.wrappedKeyFile(JournalKeystore.Variant.UNLOCKED);
+        byte[] originalWrap = Files.readAllBytes(blob.toPath());
+        byte[] replacement = new byte[32];
+        java.util.Arrays.fill(replacement, (byte) 7);
+        JournalKeystore failing = new JournalKeystore(context(), (directory) -> {
+            if (!java.util.Arrays.equals(originalWrap, Files.readAllBytes(blob.toPath()))) {
+                throw new java.io.IOException("directory sync failed");
+            }
+        });
+        try {
+            failing.wrap(JournalKeystore.Variant.UNLOCKED, replacement);
+            fail("the directory sync failure was ignored");
+        } catch (java.io.IOException expected) { }
+
+        File staged = new File(blob.getPath() + ".new");
+        assertTrue(staged.mkdir());
+        JournalKeystore retry = new JournalKeystore(context(), (directory) -> {
+            throw new java.io.IOException("retry directory sync failed");
+        });
+        try {
+            retry.wrap(JournalKeystore.Variant.UNLOCKED, new byte[32]);
+            fail("the retry failure was ignored");
+        } catch (java.io.IOException expected) {
+            assertArrayEquals(replacement, new JournalKeystore(context()).unwrapUnlocked());
+            // A failed sync permits either directory entry, even if another replacement is attempted.
+            Files.write(blob.toPath(), originalWrap);
+            assertArrayEquals(original, new JournalKeystore(context()).unwrapUnlocked());
+        } finally { assertTrue(staged.delete()); }
     }
 
 }
