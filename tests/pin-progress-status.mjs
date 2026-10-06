@@ -18,7 +18,7 @@ export async function verifyPinProgressStatus() {
       await page.waitForSelector('body[data-pin-progress-ready]', { state: 'attached' });
       const expected = (count) => locale === 'en'
         ? `PIN progress: ${count} of 4 digits`
-        : `Wpisany PIN: ${count} z 4 cyfr`;
+        : `Wpisano ${count} z 4 cyfr PIN-u`;
       const status = page.locator('[role="status"]');
       const check = async (count) => {
         assert.equal(await status.textContent(), expected(count));
