@@ -19,7 +19,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { onThisDayCandidates } from '$lib/data/on-this-day';
-  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import Tile from './kit/Tile.svelte';
   import { joinReadGroup } from './kit/readGroup.svelte';
 
@@ -42,14 +42,10 @@
      dependencies), and on either half of the mute layer (phase 6 ticket
      05): eras and era mutes. */
   let goodDaysQuery = liveList(async (j) => {
-    const [eras, mutedEraUuids, goodDays] = await Promise.all([
-      j.eras.getEras(),
-      j.eraMutes.getMutedEraUuids(),
-      Promise.all(candidates.map((c) => j.stats.isGoodDay(c.epochDay)))
-    ]);
-    return candidates.filter(
-      (c, i) => goodDays[i] && !touchesMutedEra(eras, mutedEraUuids, c.epochDay, c.epochDay)
-    );
+    const consent = await resurfacing('on-this-day-home-card', j);
+    const allowed = consent.allowedDays(candidates);
+    const goodDays = await Promise.all(allowed.map((c) => j.stats.isGoodDay(c.epochDay)));
+    return allowed.filter((c, i) => goodDays[i]);
   });
   /* Whether there is a card is settled once this answers (ReadGroup). */
   joinReadGroup(() => !goodDaysQuery.loading);
