@@ -1902,7 +1902,7 @@
   "lock_after_sub_one_minute": "blokada po minucie poza aplikacją",
   "lock_after_sub_restart": "blokada dopiero po ponownym uruchomieniu",
   "lock_after_title": "Kiedy dziennik się blokuje",
-  "lock_after_web_note": "Blokada zamyka dziennik w tej przeglądarce i odrzuca jego klucz. Zwykłe odblokowanie otwiera go ponownie. Przeglądarka zwalnia tę pamięć we własnym tempie, więc blokada nie wymaże klucza od razu.",
+  "lock_after_web_note": "Blokada zamyka dziennik w tej przeglądarce i pozbywa się jego klucza. Przeglądarka zwalnia tę pamięć we własnym tempie, więc blokada nie wymaże klucza od razu.",
   "look_back_letter_opened": "Otwarto {date}",
   "look_back_letter_written": "Napisano {date}",
   "lookback_band_aria": "Wybierz okres {name}, od {from} do {to}",

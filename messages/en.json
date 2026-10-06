@@ -1874,7 +1874,7 @@
   "lock_after_sub_one_minute": "locks after 1 minute away",
   "lock_after_sub_restart": "locks only when the app restarts",
   "lock_after_title": "When your journal locks",
-  "lock_after_web_note": "Locking closes your journal in this browser and lets go of its key. Your usual unlock opens it again. The browser frees that memory in its own time, so a lock cannot wipe the key on the spot.",
+  "lock_after_web_note": "Locking closes your journal in this browser and lets go of its key. The browser frees that memory in its own time, so a lock cannot wipe the key on the spot.",
   "look_back_letter_opened": "Opened {date}",
   "look_back_letter_written": "Written {date}",
   "lookback_band_aria": "Select the stretch {name}, {from} to {to}",
