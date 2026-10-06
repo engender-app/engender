@@ -73,6 +73,7 @@
   import { createProgress } from '$lib/components/progress.svelte';
   import { wipe } from '$lib/motion/reveal';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '$lib/data/pinnedRows';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
@@ -212,7 +213,7 @@
      draws whole: this is a question about what to track, and the hub is
      navigation to everything regardless. */
   const TRACKABLE_GROUPS = new Set<HubSection['key']>(['health', 'transition']);
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   let sections = $derived(
     hubSections({ todayEpochDay: today, lastWrites: {}, states: {}, forward: {} }).filter((section) =>
       TRACKABLE_GROUPS.has(section.key)

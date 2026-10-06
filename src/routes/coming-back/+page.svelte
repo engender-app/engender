@@ -141,6 +141,7 @@
     startOfDayTimestamp,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     APPLICATION_SITES,
     matchDoseRoute,
@@ -164,7 +165,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const DOSE_OFFER = OFFERS['returning-dose'];
   const WEAR_OFFER = OFFERS['returning-wear-session'];
@@ -178,14 +179,15 @@
      longer a return: the letter and the milestone the person had not read
      yet disappearing because they logged a dose. A return is one gap. The
      items under it re-read as often as the journal changes. */
-  const gap = readReturnGap(journal, today);
+  const gap = readReturnGap(journal, todayEpochDay()); // mount-day: a return is one gap
 
   /* Seeded rather than left to discover itself: every one of `readWhatIsWaiting`'s
      five reads sits past the gap's own `await`, so an unseeded query would
      re-run once for nothing on every mount (phase 8 audit ticket 14). */
   let waitingQuery = liveQuery(async (j) => {
+    const asOf = today; // before the await, so the read follows the day
     const since = await gap;
-    return since === null ? null : readWhatIsWaiting(j, today, since);
+    return since === null ? null : readWhatIsWaiting(j, asOf, since);
   }, WAITING_TABLES);
   let waitingRows = liveListIn(waitingQuery, (surface) => surface?.items ?? []);
 

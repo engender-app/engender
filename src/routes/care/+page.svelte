@@ -56,9 +56,9 @@
     dateInputValueFromEpochDay,
     epochDayFromDateInputValue,
     epochDayFromDateInputValueOrToday,
-    ongoingWindowRange,
-    todayEpochDay
+    ongoingWindowRange
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay } from '$lib/data/dates';
   import { resolveCurveDrug } from '$lib/data/hormoneDrug';
@@ -83,7 +83,7 @@
      drug. */
   const AREA_ROLE = { rail: 0, readings: 1 };
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   /* The weekday said out loud, the same format Today's own dose tile uses
      (liveTiles.svelte.ts): a block states a day somebody has to recognise

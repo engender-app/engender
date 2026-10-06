@@ -17,10 +17,12 @@ import {
 
 /** A registration whose waiting worker can be put there by hand, the way the
     browser puts one there once a new release has finished installing. */
-function fakeRegistration(options: { onUpdate?: () => void } = {}) {
+function fakeRegistration(options: { onUpdate?: () => void; firstInstall?: boolean } = {}) {
   const posted: unknown[] = [];
   const listeners: (() => void)[] = [];
   const registration = {
+    /* The release this page is running, or nothing on a first visit. */
+    active: (options.firstInstall ? null : {}) as object | null,
     waiting: null as { postMessage(message: unknown): void } | null,
     installing: null as { state: string; addEventListener(type: 'statechange', l: () => void): void } | null,
     async update() {
@@ -70,6 +72,19 @@ function fakeRegistration(options: { onUpdate?: () => void } = {}) {
         fails() {
           registration.installing = null;
           reachState('redundant');
+        },
+        /** A first install with nothing running: the browser puts the worker
+            in `waiting` and says 'installed', then activates it straight
+            away because there is no active worker to wait behind. */
+        activatesAtOnce() {
+          registration.installing = null;
+          const worker = { postMessage: (message: unknown) => posted.push(message) };
+          registration.waiting = worker;
+          reachState('installed');
+          registration.waiting = null;
+          registration.active = worker;
+          reachState('activating');
+          reachState('activated');
         }
       };
     }
@@ -257,6 +272,21 @@ test('an install found mid-session offers its release without another write', ()
   stop();
 });
 
+
+test('a first install is not offered as an update', () => {
+  // A first visit installs the worker while the page is open. Between
+  // 'installed' and its own activation it sits in `waiting` with nothing
+  // active, and an offer made then never went away: hosted run 37504870508
+  // drew "update ready" over a fresh desktop page mid-check.
+  const worker = fakeRegistration({ firstInstall: true });
+  watchForUpdates(worker.registration, fakeEnvironment().environment);
+  const heard: boolean[] = [];
+  const stop = onUpdateReadyChange((ready) => heard.push(ready));
+  worker.releaseStartsInstalling().activatesAtOnce();
+  assert.deepEqual(heard, []);
+  assert.equal(updateReady(), false);
+  stop();
+});
 
 test('an install that never finishes stops waiting after 30 seconds', async () => {
   vi.useFakeTimers();

@@ -56,7 +56,7 @@
   import { secondaryLabValue } from '$lib/data/labs/units';
   import { labTimingLabel } from '$lib/data/vocabulary/labContextLabel';
   import { fmtDay, intlLocale } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -83,7 +83,7 @@
   };
 
   let windowDays = $state<(typeof WINDOWS)[number]>(90);
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   let fromEpochDay = $derived(today - windowDays + 1);
 
   /* One read for the whole screen: both evidence classes, both hormones, the

@@ -78,7 +78,8 @@
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay, fmtMonthYear } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { eraCoversDay } from '$lib/data/eras';
   import type { Era } from '$lib/data/types';
   import { heatLevel, moodStep } from '$lib/data/metricRange';
@@ -190,7 +191,7 @@
      here; which kind it is is the day view's own business - the grid caps
      what it draws at one mark regardless of how many kinds land on a day. */
   let dayAheadQuery = liveQuery((j) =>
-    tagged('', j.dayAhead.getDayAhead(bounds.first, bounds.last, todayEpochDay()))
+    tagged('', j.dayAhead.getDayAhead(bounds.first, bounds.last, currentDay()))
   );
   /* The presentation chip (ticket 17, ADR-0048), bounded to the same month
      as the reads above rather than resolved by the caller the way `eras`
@@ -282,7 +283,7 @@
     const markedDays = new Set(rowsOf(dayAheadQuery).map((mark) => mark.epochDay));
     const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     const startDow = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7; // Monday-first
-    const today = todayEpochDay();
+    const today = currentDay();
     const days: Cell[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const epochDay = bounds.first + d - 1;

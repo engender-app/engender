@@ -13,7 +13,8 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { pauseCoversDay } from '$lib/data/journalingPause';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import SectionTitle from '$lib/components/SectionTitle.svelte';
@@ -26,7 +27,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import type { JournalingPause } from '$lib/data/types';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let pausesQuery = liveList((j) => j.journalingPauses.getPauses());
   let pauses = $derived(pausesQuery.rows);
