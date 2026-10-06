@@ -6,11 +6,18 @@
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
 
   let resetOpen = $state(false);
   let restoringArchive = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
   let body = $derived(recoveryKeyPresence.exists ? m.dbr_body_recoverable() : m.dbr_body());
@@ -23,7 +30,6 @@
     } catch (error) {
       console.error('the app reset failed', error);
       resetting = false;
-      resetOpen = false;
       resetError = m.reset_failed();
     }
   }
@@ -70,9 +76,6 @@
       <span>{m.dbr_open_reset()}</span>
     </button>
   </div>
-  {#if resetError}
-    <p class="pin-status small" role="alert" data-device-reset-failed>{resetError}</p>
-  {/if}
 </GateScreen>
 {/if}
 
@@ -87,6 +90,12 @@
   </div>
   {#if !restoringArchive}
     <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {/if}
+  {#if resetError}
+    <!-- In the sheet, which stays open: the sheet is where the button was
+         pressed, and closing it on a failure left the gate looking as if
+         nothing had happened (after-release ticket 09). -->
+    <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-device-reset data-confirm-archive-reset={restoringArchive || undefined} disabled={resetting} onclick={confirmReset}>
