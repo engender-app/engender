@@ -415,7 +415,8 @@ const AREAS = [
   }),
   /* The drug and the ester somebody typed for an episode (regimen.ts's own
      text fields), dated by the day the episode started. The dose, the unit
-     and the route are picked from closed vocabularies and are not text. */
+     and the route are picked from closed vocabularies and are not text. An
+     episode that was put away is not found (after-release 07). */
   area({
     key: 'regimenEpisodes',
     covers: ['regimenEpisodes'],
@@ -423,7 +424,8 @@ const AREAS = [
     from: 'regimen_episode',
     uuid: 'uuid',
     date: { kind: 'epochDay', column: 'start_epoch_day' },
-    columns: ['drug', 'ester']
+    columns: ['drug', 'ester'],
+    where: { sql: 'hidden = 0', params: () => [] }
   }),
   area({
     key: 'medicationStock',

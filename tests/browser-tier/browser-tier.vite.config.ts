@@ -106,7 +106,7 @@ export default defineConfig({
          the kit gallery does not mount, because a real kit component imports
          it; without the second no whole screen does, because a screen
          navigates. */
-      '$app/state': resolve(import.meta.dirname, 'app-state-stub.ts'),
+      '$app/state': resolve(import.meta.dirname, 'screen-router.svelte.ts'),
       '$app/navigation': resolve(import.meta.dirname, 'app-navigation-stub.ts')
     }
   },

@@ -104,7 +104,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 87);
+  assert.equal(db.getUserVersion(), 88);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1078,4 +1078,17 @@ test('weekly migration uses the local calendar day at a UTC day boundary', async
     if (originalTz === undefined) delete process.env.TZ;
     else process.env.TZ = originalTz;
   }
+});
+
+test('a saved question from before v88 reads as not starred, and a new one can be', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 87));
+  await db.run(`INSERT INTO saved_question (uuid, name, updated_at) VALUES ('old', 'Before v88', 1)`);
+  await runMigrations(db, noopFileOps(), migrations);
+  await db.run(`INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('new', 'After v88', 1, 2)`);
+  const rows = await db.query('SELECT uuid, starred FROM saved_question ORDER BY id');
+  assert.deepEqual(rows.map((row) => ({ ...row })), [
+    { uuid: 'old', starred: 0 },
+    { uuid: 'new', starred: 1 }
+  ]);
 });

@@ -140,7 +140,8 @@ export async function peaksFor(
   return attempt;
 }
 
-/** Test seam: drops everything remembered. */
+/** Drops everything remembered: a lock takes the bars with the rest of
+    the journal (after-release ticket 10), and the tests start clean. */
 export function forgetPeaks(): void {
   cached.clear();
   inFlight.clear();

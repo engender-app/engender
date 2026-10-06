@@ -412,7 +412,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   bodyRegions: classify<Journal['bodyRegions']>()({
     writes: {
       addCustomRegion: ['bodyRegion'],
-      setRegionHidden: ['bodyRegion']
+      setRegionHidden: ['bodyRegion'],
+      renameCustomRegion: ['bodyRegion']
     },
     reads: { getBodyRegions: ['bodyRegion'] }
   }),
@@ -438,6 +439,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getMilestones: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
       getMilestonesOnDay: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
+      getNonProcedureDaysInRange: ['milestone'],
       // No photo join: the registry wants the date, not the photo indicator.
       lastWriteEpochDay: ['milestone']
     }
@@ -563,6 +565,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getLatestResult: ['lab'],
       getResults: ['lab'],
       getResultsOnDay: ['lab'],
+      getResultsInRange: ['lab'],
       getResultById: ['lab'],
       getSeries: ['lab'],
       lastWriteEpochDay: ['lab']
@@ -744,6 +747,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // procedure row is not read to find it.
     reads: {
       getProcedures: ['procedure', 'appointment'],
+      getSurgeryDaysInRange: ['procedure'],
       getPhotos: ['procedure'],
       photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
@@ -892,8 +896,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: { getEvents: ['tally'], getEventsOnDay: ['tally'], lastWriteEpochDay: ['tally'], latestEvent: ['tally'] }
   }),
   regimen: classify<Journal['regimen']>()({
-    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
-    reads: { getEpisodes: ['regimen'], hasAny: ['regimen'] }
+    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
+    reads: { getEpisodes: ['regimen'], getHiddenEpisodes: ['regimen'], hasAny: ['regimen'] }
   }),
   doses: classify<Journal['doses']>()({
     writes: {
@@ -1064,6 +1068,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       // never changes when a presentation is renamed, recoloured or hidden.
       presentationDays: ['entry'],
       tagInsights: ['entry', 'dimension', 'tag'],
+      metricInsights: ['entry', 'dimension', 'tag'],
       // No dimension: a share by tag counts entries, not values on them.
       tagShare: ['entry', 'tag'],
       recap: ['entry', 'dimension', 'tag', 'milestone', 'photo'],

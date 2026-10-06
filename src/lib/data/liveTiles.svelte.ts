@@ -87,18 +87,16 @@ export function homeTiles(
     onLetterDismiss: () => void;
   }
 ): HomeTileGrid {
-  /* One clock for the grid. The wear timer needs a second hand, and every
-     snooze comparison and the dose panel's "active now" ride the same tick
-     rather than opening clocks of their own - which is also what makes a
-     snooze taken here disappear the tile at once (ADR-0051: no second
-     ambient loop, and this is not one; it moved off the route unchanged). */
   let nowTick = $state(Date.now());
+  let snoozeRevision = $state(0);
+  const snoozeMinute = $derived(Math.floor(nowTick / 60_000));
+  const runningWear = liveQuery((j) => j.wearSessions.getRunningSession());
   $effect(() => {
-    const id = setInterval(() => (nowTick = Date.now()), 1000);
+    const interval = runningWear.value ? 1000 : 60_000;
+    const id = setInterval(() => (nowTick = Date.now()), interval);
     return () => clearInterval(id);
   });
 
-  const runningWear = liveQuery((j) => j.wearSessions.getRunningSession());
   const episodes = liveList((j) => j.regimen.getEpisodes());
   const procedures = liveList((j) => j.procedures.getProcedures());
   const letters = liveList((j) => j.letters.getLetterSeals(100));
@@ -135,7 +133,7 @@ export function homeTiles(
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();
-    nowTick = Date.now();
+    snoozeRevision += 1;
   }
 
   async function resumePause(pauseId: string, startEpochDay: number): Promise<void> {
@@ -151,11 +149,14 @@ export function homeTiles(
      say - the same field Today's own editor draws its switch from - so
      this indexes the store by it rather than naming eleven preferences. */
   const gates = $derived.by(() => {
+    snoozeRevision;
+    snoozeMinute;
+    const snoozeNow = Date.now();
     const enabled = {} as Record<LiveTileKind, boolean>;
     const snoozed = {} as Record<LiveTileKind, boolean>;
     for (const kind of LIVE_TILE_ORDER) {
       enabled[kind] = prefs[LIVE_TILE_PREF_KEY[kind]];
-      snoozed[kind] = snoozeStoreOf(kind).snoozed(nowTick);
+      snoozed[kind] = snoozeStoreOf(kind).snoozed(snoozeNow);
     }
     return { enabled, snoozed };
   });

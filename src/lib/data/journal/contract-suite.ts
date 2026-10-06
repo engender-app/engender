@@ -30,6 +30,7 @@ import { openJournal } from './journal.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 import { restoreArchive } from './restore.ts';
+import { entrySearchFiltersOf, savedQuestionInputOf } from '../savedQuestionQuery.ts';
 
 interface ContractCheck {
   name: string;
@@ -380,7 +381,8 @@ export async function runJournalContract(
       startEpochDay: filters.startEpochDay,
       endEpochDay: filters.endEpochDay,
       hasNote: filters.hasNote,
-      hasPhoto: filters.hasPhoto
+      hasPhoto: filters.hasPhoto,
+      starred: false
     });
     const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
     r.equal('the saved row round-trips its comma-joined columns back into arrays', saved?.tagIds, filters.tagIds);
@@ -402,6 +404,36 @@ export async function runJournalContract(
     }
 
     for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
+    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+  });
+
+  /* After-release ticket 16 (audit L08-01): Starred is a filter on /search,
+     and a question saved with it on came back without it, so it answered
+     with every entry carrying the tag. This one goes through the two
+     conversions the screens use, savedQuestionInputOf on the way in and
+     entrySearchFiltersOf on the way out, because the section above builds
+     its filters by hand and so could never notice a field they drop. */
+  await r.section('a saved question keeps Starred and answers with starred entries only', async () => {
+    const group = await journal.tags.addGroup('saved-question-starred-test');
+    const tag = await journal.tags.addTag(group.key, 'binder');
+    const starredId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id], starred: true });
+    const plainId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id] });
+
+    const filters = { tagIds: [tag.id], starred: true };
+    const adHocHits = (await journal.entries.searchEntries('', [], filters)).map((e) => e.id);
+    r.equal('the ad hoc search narrows to the starred entry', adHocHits, [starredId]);
+
+    const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred binder days', '', filters));
+    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
+    r.equal('the saved row keeps Starred', saved?.starred, true);
+    if (saved) {
+      const savedFilters = entrySearchFiltersOf(saved);
+      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
+      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
+      r.equal('and its total says one', await journal.entries.countSearchMatches(saved.queryText, [], savedFilters), 1);
+    }
+
+    for (const id of [starredId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
     await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
   });
 
@@ -501,6 +533,39 @@ export async function runJournalContract(
     const reopened = await openPreferences(driver);
     r.equal('a preference survives a reopen', reopened.get('theme'), 'dark');
     r.equal('a table with rows in it is not an empty first run', reopened.openedEmpty(), false);
+  });
+
+  await r.section('automatic dose logging', async () => {
+    const { startOfDayTimestamp } = await import('../epochDay.ts');
+    const firstDay = 19000;
+    const episodeId = await journal.regimen.upsertEpisode({
+      drug: 'contract auto-log drug', ester: null, dose: 2, doseUnit: 'mg',
+      route: 'oral', interval: 'daily', startEpochDay: firstDay,
+      endEpochDay: null, endReason: null
+    });
+    await journal.doses.upsertSchedule({
+      episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 2,
+      doseAmounts: [{ dose: 2, doseUnit: 'mg' }, { dose: 3, doseUnit: 'mg' }],
+      autoLogFromEpochDay: firstDay
+    });
+    await journal.doses.upsertDose({
+      timestamp: startOfDayTimestamp(firstDay) + 8 * 3600000,
+      route: 'oral', dose: 2, doseUnit: 'mg', status: 'taken',
+      drug: 'contract auto-log drug'
+    });
+    r.equal('automatic logging fills empty and partially filled days',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 5);
+    r.equal('an unchanged automatic logging pass writes nothing',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 0);
+    const doses = await journal.doses.getDoses(firstDay, firstDay + 2);
+    r.equal('automatic logging leaves two doses on each expected day', doses.length, 6);
+    const old = doses.find((dose) => dose.source === 'schedule');
+    if (!old) throw new Error('No automatic dose was written');
+    await journal.doses.deleteDose(old.id);
+    r.equal('automatic logging recreates a deleted historical dose',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 1);
+    r.equal('historical replay is idempotent',
+      await journal.doses.autoLogDueDoses(firstDay + 3, []), 0);
   });
 
   return r.checks;

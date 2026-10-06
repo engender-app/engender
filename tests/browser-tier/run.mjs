@@ -70,6 +70,34 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('rendered screen contracts', 169, async () => {
+  const result = await load('/screen-mount.html', 'screen-mount');
+  for (const [suite, expected] of Object.entries({ direction: 57, home: 53, calendar: 59 })) {
+    const cases = result[suite];
+    if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
+    if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
+    for (const item of cases) {
+      if (item.passed) ok(`${suite}: ${item.name}`);
+      else fail(`${suite}: ${item.name}`, item.error ?? 'rendered contract failed');
+    }
+  }
+});
+
+await block('rendered screen contracts at 230px', 2, async () => {
+  const previous = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 230, height: 900 });
+    const result = await load('/screen-mount.html?narrow=1', 'screen-mount');
+    if (!Array.isArray(result.narrow)) throw new Error(result.error ?? 'missing narrow results');
+    for (const item of result.narrow) {
+      if (item.passed) ok(item.name);
+      else fail(item.name, item.error ?? 'rendered narrow contract failed');
+    }
+  } finally {
+    await page.setViewportSize(previous);
+  }
+});
+
 await block('release blockers 03 duplicate display values', 11, async () => {
   const result = await load('/duplicate-keys.html', 'duplicate-keys');
   for (const item of result.cases) {
@@ -1499,6 +1527,41 @@ try {
     );
 } catch (e) {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
+}
+
+// --- after-release 10: a web lock closes the database and lets go of the key ---
+for (const cpu of [1, 4]) {
+  const label = cpu === 1 ? 'web lock' : 'web lock, CPU throttled 4x';
+  await block(label, 8, async () => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
+    let lock;
+    try {
+      lock = await load('/session-lock.html', 'session-lock-probe');
+    } finally {
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      await cdp.detach();
+    }
+    if (lock.error) throw new Error(lock.error);
+    if (lock.heldOverLanded) ok(`${label}: a save in flight lands before the database closes`);
+    else fail(`${label}: a save in flight lands before the database closes`, 'still pending after the lock');
+    if (lock.oldDriverRefuses) ok(`${label}: the closed database answers nothing (${lock.oldDriverRefuses})`);
+    else fail(`${label}: the closed database answers nothing`, 'the old driver still answered a query');
+    if (!lock.keyHandedOut) ok(`${label}: the locked session hands out no key`);
+    else fail(`${label}: the locked session hands out no key`, 'session.key.current was still set');
+    if (!lock.mirrorWhileLocked.ready && lock.mirrorWhileLocked.tags === 0) ok(`${label}: the vocabulary mirror is empty while locked`);
+    else fail(`${label}: the vocabulary mirror is empty while locked`, JSON.stringify(lock.mirrorWhileLocked));
+    if (lock.whileLockedWaited && lock.stored.includes('written while locked') && lock.stored.includes('held over the lock'))
+      ok(`${label}: a save made while locked waits and lands on the reopened journal`);
+    else fail(`${label}: a save made while locked waits and lands on the reopened journal`, JSON.stringify({ waited: lock.whileLockedWaited, stored: lock.stored }));
+    if (lock.mirrorFollowed === null) ok(`${label}: the mirror refreshes against the reopened journal`);
+    else fail(`${label}: the mirror refreshes against the reopened journal`, lock.mirrorFollowed);
+    if (lock.roundsLanded) ok(`${label}: five lock and unlock rounds lose no write`);
+    else fail(`${label}: five lock and unlock rounds lose no write`, JSON.stringify(lock.rounds));
+    const reopen = lock.rounds.map((round) => Math.round(round.reopenMs)).sort((a, b) => a - b);
+    const closing = lock.rounds.map((round) => Math.round(round.lockMs)).sort((a, b) => a - b);
+    ok(`${label}: reopen ${reopen.join('/')} ms (median ${reopen[2]}), lock ${closing.join('/')} ms`);
+  });
 }
 
 // --- ux-carpet 201: a revisit paints the last answer, a lock forgets it ----

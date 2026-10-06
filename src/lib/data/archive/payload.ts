@@ -332,6 +332,9 @@ interface ArchiveSavedQuestion {
   endEpochDay: number | null;
   hasNote: boolean;
   hasPhoto: boolean;
+  /** After-release ticket 16. Absent on an archive written before it, which
+      restores as false. */
+  starred: boolean;
 }
 
 /** A day chosen to see one entry again (phase 8 features ticket 08,
@@ -613,6 +616,9 @@ interface ArchiveRegimenEpisode {
       as null - no reason recorded, which is exactly what a pre-ticket
       ended episode has. */
   endReason: EpisodeEndReason | null;
+  /** Put away (after-release 07). Absent on an archive from before the
+      field existed, which a restore writes as shown. */
+  hidden: boolean;
 }
 
 /* Flat and nullable, the way ArchiveReminder carries its recurrence
