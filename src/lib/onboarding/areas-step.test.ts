@@ -102,8 +102,8 @@ describe('onboarding areas step and Today pins', () => {
 
     expect(en.ob_areas_preview_title).toBeDefined();
     expect(pl.ob_areas_preview_title).toBeDefined();
-    expect(en.features_to_show_sub).toContain('Saved records');
-    expect(pl.features_to_show_sub).toContain('Zapisane dane');
+    expect(en.features_to_show_sub).toContain('hides');
+    expect(pl.features_to_show_sub).toContain('ukrywa');
   });
 
   it('finishes setup successfully on skip, select one, and select many', async () => {
