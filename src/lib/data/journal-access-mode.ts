@@ -1,4 +1,3 @@
-import { describeJournalState } from './conversion/conversion.ts';
 import type { JournalSecretSource } from '../crypto/keystore.ts';
 
 /* How this journal opens (ADR-0041, tickets 53 and 55).
@@ -48,30 +47,20 @@ export function chooseJournalAccessMode({
   return null;
 }
 
-type WebBootPlan = 'needs-setup' | 'needs-unlock' | 'auto-unlock' | 'convert' | 'retire';
+type WebBootPlan = 'needs-setup' | 'needs-unlock' | 'auto-unlock' | 'legacy-refused';
 
 export function describeWebBootPlan({
   keystoreSecretSource,
   deviceBoundKeystoreExists,
-  plaintextJournalPresent,
-  marker
+  legacyStoragePresent
 }: {
   keystoreSecretSource: JournalSecretSource | null;
   deviceBoundKeystoreExists: boolean;
-  plaintextJournalPresent: boolean;
-  marker: Parameters<typeof describeJournalState>[0]['marker'];
+  legacyStoragePresent: boolean;
 }): WebBootPlan {
-  const state = describeJournalState({
-    keystoreExists: keystoreSecretSource !== null || deviceBoundKeystoreExists,
-    plaintextJournalPresent,
-    marker
-  });
-
-  if (state === 'first-run') return 'needs-setup';
-  if (state !== 'unlock') return state;
-  return chooseJournalAccessMode({ keystoreSecretSource, deviceBoundKeystoreExists }) === 'device-bound'
-    ? 'auto-unlock'
-    : 'needs-unlock';
+  if (legacyStoragePresent) return 'legacy-refused';
+  if (keystoreSecretSource === null && !deviceBoundKeystoreExists) return 'needs-setup';
+  return keystoreSecretSource === null ? 'auto-unlock' : 'needs-unlock';
 }
 
 type AndroidBootPlan =

@@ -45,10 +45,6 @@ export const LICENCE_TEXT_BY_HAND = {
     file: APACHE,
     read: 'package.json says Apache-2.0 and the tarball has no LICENSE; the Apache text itself is what the licence asks to pass on.'
   },
-  '@sqlite.org/sqlite-wasm': {
-    file: APACHE,
-    read: 'The copy SQLocal nests: package.json says Apache-2.0 and the tarball has no LICENSE. SQLite itself, inside it, is public domain.'
-  },
   '@tesseract.js-data/eng': {
     file: 'scripts/licence-texts/tesseract-js-data.txt',
     read: 'package.json says MIT, author Balearica; no LICENSE in the tarball or in github.com/naptha/tessdata.'

@@ -19,7 +19,7 @@
    but nothing here decides what they do. Everything is injected (not
    imported directly) so this file's ordering and error handling can be
    unit-tested in the Node tier against a fake driver, while the real app
-   supplies createWebSqlite() from sqlocal-driver.ts. */
+   supplies createEncryptedWebSqlite() from mc-driver.ts. */
 
 import { markJournalBusy } from '../journal-busy.ts';
 import type { SqliteDriver } from './driver.ts';
@@ -114,7 +114,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     const migrating = markJournalBusy();
     try {
       // createDriver() itself isn't expected to be where a failure surfaces
-      // (SQLocal defers real I/O to its worker, so constructing it doesn't
+      // (the web driver defers real I/O to its worker, so constructing it doesn't
       // throw) - the try/catch is here for runMigrations()'s exec/
       // getUserVersion calls, which are where opening the database and
       // applying schema changes actually happen.

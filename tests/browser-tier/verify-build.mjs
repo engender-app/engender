@@ -1,6 +1,6 @@
 /* Release gate (ticket 04's acceptance: "verify it, do not assume it"):
    confirms the production build (`npm run build`) is a static SPA that
-   makes zero requests off its own origin - the SQLocal .wasm/worker in
+   makes zero requests off its own origin - the SQLite .wasm/worker in
    particular, which Rive's canvas package already gets wrong by
    defaulting to a CDN. Serves build/ with `vite preview` and drives a
    real Chromium through it with Playwright.
@@ -558,7 +558,7 @@ try {
      satisfy at once: fonts dropped from static/ would leave the release and
      the cache agreeing with each other and nothing to load offline. */
   const kinds = {
-    "SQLocal's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
+    "SQLite's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
     /* One copy of each file, under assets/ for the client and its workers
        alike (vite.config.ts's sharedWasmAssets): two names for one file was
        the duplicate ticket 13 removed, so two sqlite3 files here is the
