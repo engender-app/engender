@@ -8,6 +8,7 @@ import {
   projectEveryStock,
   projectStock,
   reorderByEpochDay,
+  remainingAfterOneDose,
   snoozeStockNotice,
   STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS,
   TRAILING_WINDOW_DAYS,
@@ -509,4 +510,52 @@ test('reorderByEpochDay is the run-out day itself when no lead time is set', () 
 test('reorderByEpochDay is null when there is no run-out day to project from, lead time or not', () => {
   assert.equal(reorderByEpochDay(null, 5), null);
   assert.equal(reorderByEpochDay(null, null), null);
+});
+
+/* Doses per unit (after-release ticket 01, L03-04). Stock used to subtract
+   one unit per dose whatever the unit was, so two vials of injectable
+   estradiol ran out after two doses. */
+
+test('two vials at five doses per vial last ten doses, and project the run-out from that', () => {
+  const stock = { drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: DAY_0, dosesPerUnit: 5 };
+  const doses = [0, 7, 14].map((offset) => dose(DAY_0 + offset));
+
+  const projection = projectStock(stock, doses, [episode()], DAY_0 + 20);
+
+  // 3 of 10 doses used: 7 doses, or 1.4 vials, left.
+  assert.equal(projection.remaining, 1.4);
+  // 3 doses over 21 days is a dose every 7 days; 7 doses left is 49 days.
+  assert.equal(projection.runOutEpochDay, DAY_0 + 20 + 49);
+});
+
+test('no doses per unit counts one dose per unit, as before', () => {
+  const stock = { drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: DAY_0, dosesPerUnit: null };
+  const projection = projectStock(stock, [dose(DAY_0)], [episode()], DAY_0);
+  assert.equal(projection.remaining, 1);
+});
+
+test('projectEveryStock divides by doses per unit the same way projectStock does', async () => {
+  const stock = { drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: DAY_0, dosesPerUnit: 5 };
+  const doses = [0, 7, 14].map((offset) => dose(DAY_0 + offset));
+  const counter: DrugDoseCounter = async (ranges) => [
+    {
+      drug: null,
+      countsByRange: ranges.map(
+        (range) =>
+          doses.filter((d) => {
+            const day = epochDayFromTimestamp(d.timestamp);
+            return day >= range.fromEpochDay && day <= range.toEpochDay;
+          }).length
+      )
+    }
+  ];
+
+  const [every] = await projectEveryStock([stock], [episode()], DAY_0 + 20, counter);
+
+  assert.deepEqual(every, projectStock(stock, doses, [episode()], DAY_0 + 20));
+});
+
+test('one more dose leaves a fifth of a vial less at five doses per vial, a whole unit with none set', () => {
+  assert.equal(remainingAfterOneDose(2, { dosesPerUnit: 5 }), 1.8);
+  assert.equal(remainingAfterOneDose(2, { dosesPerUnit: null }), 1);
 });

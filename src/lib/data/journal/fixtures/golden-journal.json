@@ -1882,7 +1882,8 @@
       "openedEpochDay": null,
       "inUseWindowDays": null,
       "inUseEndEpochDay": null,
-      "leadTimeDays": null
+      "leadTimeDays": null,
+      "dosesPerUnit": null
     }
   ],
   "tryouts": [
