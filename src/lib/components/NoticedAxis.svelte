@@ -125,9 +125,14 @@
   const DIRECTION_ROLE: Record<EffectDirection, number> = { feminizing: 0, masculinizing: 1, other: 2 };
   const roleFor = (direction: EffectDirection) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
 
+  /* The legend names what the marks show: a filled dot per direction a
+     personal effect carries, and one hollow ring for side effects, which
+     are drawn by kind rather than by direction (after-release 05, L05-09). */
   let directionsPresent = $derived(
-    EFFECT_DIRECTIONS.filter((direction) => axis.marks.some((mark) => mark.direction === direction))
+    EFFECT_DIRECTIONS.filter((direction) =>
+      axis.marks.some((mark) => mark.kind === 'personal-effect' && mark.direction === direction))
   );
+  let sideEffectsPresent = $derived(axis.marks.some((mark) => mark.kind === 'side-effect'));
 
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -231,13 +236,18 @@
 
   <p class="na-caption muted small">{axisCaption}</p>
 
-  {#if directionsPresent.length > 1}
+  {#if directionsPresent.length + (sideEffectsPresent ? 1 : 0) > 1}
     <div class="na-legend muted small">
       {#each directionsPresent as direction (direction)}
         <span class="na-legend-item">
           <span class="na-legend-swatch" {...roleAttrs(roleFor(direction))}></span>{effectDirectionLabel(direction)}
         </span>
       {/each}
+      {#if sideEffectsPresent}
+        <span class="na-legend-item">
+          <span class="na-legend-swatch" data-kind="side-effect"></span>{m.side_effects()}
+        </span>
+      {/if}
     </div>
   {/if}
 </div>
@@ -481,5 +491,10 @@
     border-radius: 50%;
     flex: none;
     background: var(--role-draw, var(--accent));
+  }
+
+  .na-legend-swatch[data-kind='side-effect'] {
+    background: var(--bg);
+    box-shadow: inset 0 0 0 2px var(--text-2);
   }
 </style>

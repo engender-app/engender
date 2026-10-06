@@ -204,6 +204,9 @@
 
   function pickPoint(ester: InjectableEster, index: number) {
     picked = { ...picked, [ester]: picked[ester] === index ? null : index };
+    /* The readout prefers an open marker, so a result tapped while one is
+       open would change nothing visible. The tap is the newer question. */
+    pickedMarker = { ...pickedMarker, [ester]: null };
   }
 
   /* Which marker is open, keyed by chart the same way `picked` is - and
@@ -231,10 +234,13 @@
   /* A marker open in a readout is a mark on the plot, and the plot is
      redrawn from a different set of days. Left alone the card would go on
      naming a record with no tick under it, so the window takes the
-     selection with it. */
+     selection with it. A picked result too: it is an index into the
+     window's own points, and after the switch it would name whichever
+     result now sits at that position. */
   function changeWindow(days: (typeof WINDOWS)[number]) {
     windowDays = days;
     pickedMarker = {};
+    picked = {};
   }
 
   function toggleFit(next: boolean) {
