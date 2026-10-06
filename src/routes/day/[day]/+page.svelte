@@ -91,6 +91,7 @@
   import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
   import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { parseDayParam } from '$lib/data/dayParam';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
@@ -108,10 +109,10 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
-  let parsedDay = $derived(parseDayParam(page.params.day, todayEpochDay()));
+  let parsedDay = $derived(parseDayParam(page.params.day, currentDay()));
   let epochDay = $derived(parsedDay ?? 0);
-  let isToday = $derived(epochDay === todayEpochDay());
-  let isFuture = $derived(epochDay > todayEpochDay());
+  let isToday = $derived(epochDay === currentDay());
+  let isFuture = $derived(epochDay > currentDay());
 
   /* The query reads `epochDay` before its first await, which is what makes it
      re-run on navigation - see liveQuery's contract. One query for the whole

@@ -38,7 +38,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { appointmentsOnDay, chosenAppointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
   import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
@@ -55,7 +55,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);

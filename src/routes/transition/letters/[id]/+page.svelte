@@ -33,7 +33,7 @@
      tile on the next Home visit. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { isLetterSealed, markLetterRead } from '$lib/data/letterStatus';
   import LetterCard from '$lib/components/LetterCard.svelte';
@@ -46,7 +46,7 @@
   import { roleAt } from '$lib/theme/roles';
 
   let id = $derived(page.params.id ?? '');
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   let letterQuery = liveQuery((j) => j.letters.getLetter(id));
   let letter = $derived(letterQuery.value);

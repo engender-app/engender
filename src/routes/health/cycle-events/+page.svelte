@@ -20,15 +20,16 @@
   import { cycleEventKindName } from '$lib/data/vocabulary/labels';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import {
-    todayEpochDay,
     epochDayFromDateInputValue,
     epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay,
     dayRangeEndMin,
     dayRangeStartMax,
     ongoingWindowRange,
-    customInclusiveRange
+    customInclusiveRange,
+    todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { CycleEvent, CycleEventKind } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -55,8 +56,8 @@
      (CycleEventChart.svelte) and takes no role here. */
   const SECTION_ROLE = { strip: 0, sessions: 1 };
 
-  const today = todayEpochDay();
-  const defaultRange = ongoingWindowRange(today, 365);
+  const today = $derived(currentDay());
+  const defaultRange = ongoingWindowRange(todayEpochDay(), 365);
 
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));

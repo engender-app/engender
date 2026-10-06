@@ -85,6 +85,7 @@
     epochDayFromDateInputValueOrToday,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { resize } from '$lib/motion/reveal';
@@ -122,7 +123,7 @@
 
   const OFFER = OFFERS['area-finished'];
   const SUSPEND_OFFER = OFFERS['area-suspended'];
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
   /** Null for every group but voice and hair removal (ticket 51) - the two
@@ -153,7 +154,7 @@
   let lastWrite = $derived(lastWritesQuery.value ? groupLastWrite(group, lastWritesQuery.value) : null);
 
   let sheetOpen = $state(false);
-  let dateInput = $state(dateInputValueFromEpochDay(today));
+  let dateInput = $state(dateInputValueFromEpochDay(todayEpochDay()));
 
   /** The control's own way in: today, which is the day somebody deciding now
       is deciding about, and editable. */
@@ -202,7 +203,7 @@
   }
 
   let suspendSheetOpen = $state(false);
-  let suspendDateInput = $state(dateInputValueFromEpochDay(today));
+  let suspendDateInput = $state(dateInputValueFromEpochDay(todayEpochDay()));
 
   /** The control's own way in, same as `openFinish` - today, editable. */
   function openSuspend() {

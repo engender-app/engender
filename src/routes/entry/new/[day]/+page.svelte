@@ -5,10 +5,10 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { parseDayParam } from '$lib/data/dayParam';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
 
-  let epochDay = $derived(parseDayParam(page.params.day, todayEpochDay()));
-  let available = $derived(epochDay !== null && epochDay <= todayEpochDay());
+  let epochDay = $derived(parseDayParam(page.params.day, currentDay()));
+  let available = $derived(epochDay !== null && epochDay <= currentDay());
   let seedMood = $derived.by(() => {
     const raw = page.url.searchParams.get('seedMood');
     if (raw == null) return null;

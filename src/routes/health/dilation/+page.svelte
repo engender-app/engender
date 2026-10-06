@@ -56,6 +56,7 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { dilationEligible, expectedSessionDays, stagesFromInput } from '$lib/data/taperSchedule';
   import type { TaperSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
@@ -70,7 +71,7 @@
   const SECTION_ROLE = { strip: 0, schedule: 1, sessions: 2 };
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let taperQuery = liveQuery((j) => j.taper.getTaper());
   let taper = $derived(taperQuery.value ?? null);
@@ -101,7 +102,7 @@
      one, there is nothing to ask, and `scheduleCanSave` refuses to save
      around the gap either way. */
   let selectedProcedureId = $state<string | null>(null);
-  let startDayInput = $state(dateInputValueFromEpochDay(today));
+  let startDayInput = $state(dateInputValueFromEpochDay(todayEpochDay()));
   let stagesInput = $state<{ everyNDays: string; days: string }[]>([]);
 
   function openScheduleEditor() {
