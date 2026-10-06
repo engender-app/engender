@@ -1041,7 +1041,7 @@ interface PreferencesV1 {
     answers to "which scales does this journal offer" is exactly what this
     ticket removed, and an archive is where one of them would come back. */
 const presetBecomesTickedScales: PayloadMigration = (payload) => {
-  const { activePreset, ...rest } = payload.preferences as PortablePreferences & PreferencesV1;
+  const { activePreset, ...rest } = (payload.preferences ?? {}) as PortablePreferences & PreferencesV1;
   if (activePreset === undefined) return payload;
 
   const carried = payload.journal.presets?.find((preset) => preset.id === activePreset);

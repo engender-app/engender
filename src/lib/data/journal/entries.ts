@@ -1232,8 +1232,10 @@ export function makeEntriesArea(
       // recording rows all stay exactly as they are, so restoreEntry has
       // them to bring back. Only the search index drops the entry now -
       // trashed_at IS NULL on every other read is what hides the rest.
-      await driver.run('UPDATE entry SET trashed_at = ? WHERE id = ? AND trashed_at IS NULL', [now(), id]);
-      await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [id]);
+      await driver.transaction(async (driver) => {
+        await driver.run('UPDATE entry SET trashed_at = ? WHERE id = ? AND trashed_at IS NULL', [now(), id]);
+        await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [id]);
+      });
     },
 
     async restoreEntry(id) {
@@ -1242,8 +1244,10 @@ export function makeEntriesArea(
         [id]
       ))[0];
       if (!current) return;
-      await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
-      await indexEntry(driver, id, current.note ?? '');
+      await driver.transaction(async (driver) => {
+        await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
+        await indexEntry(driver, id, current.note ?? '');
+      });
     },
 
     async setEntryStarred(id, starred) {

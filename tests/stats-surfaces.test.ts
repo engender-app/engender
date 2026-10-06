@@ -278,14 +278,16 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('waits for the rail and has a day-one shape', () => {
-    expect(stats).toContain('if (!railLoading) railRevealed = true');
-    expect(stats).toMatch(/\{#if !railRevealed\}\s*<div out:crossfade><Skeleton/);
+    expect(stats).toContain('if (railReleased()) railRevealed = true');
+    expect(stats).toMatch(/\{#if !railRevealed\}\s*<div out:crossfade data-lookback-rail-wait><Skeleton/);
     expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
   });
 
-  it('fades in what replaced the rail within the tab arrival, not after it', () => {
+  it('fades in what replaced the rail within the tab arrival, or holds it through the arrival', () => {
     /* A rail answering late in an Android tab change used to fade for a
-       full --dur-fast after the field had stopped (tile-arrival-timing). */
+       full --dur-fast after the field had stopped, and then was squeezed
+       into what was left of the travel (tile-arrival-timing). */
+    expect(stats).toContain('const railReleased = holdForArrival(() => !railLoading, () => railPainted);');
     expect(stats).toContain("const duration = readRevealDuration('--dur-fast');");
     expect(stats).toContain('playAfterPaint(screen, animations, { fitArrival: true });');
   });
