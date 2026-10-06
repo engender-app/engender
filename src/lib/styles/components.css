@@ -2337,15 +2337,19 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 
 .toast {
-  position: absolute; left: 50%; bottom: var(--nav-clearance);
-  transform: translate(-50%, 10px);
+  /* Centred by its two insets and auto margins rather than by left: 50%
+     and a -50% translate (after-release 17, U2/UI-19). The translate was
+     the transform the arrival composes with, and at desktop width it
+     centred the toast on the window, 105px off the column it belongs to;
+     an inset can take the rail's width instead. */
+  position: absolute; left: 0; right: 0; margin-inline: auto; bottom: var(--nav-clearance);
+  transform: translateY(10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--r-block);
   padding: var(--space-3) var(--space-4);
   display: flex; align-items: center; gap: var(--space-4);
-  /* Positioned at left: 50%, a toast's shrink-to-fit width is capped at half
-     the screen, which wrapped "Moved to trash" onto two lines beside its
-     action. It takes the width of its text, up to max-width below. */
+  /* The width of its text, up to max-width below: a toast with one word in
+     it is not a bar across the screen. */
   width: max-content;
   font-size: var(--text-sm); font-weight: var(--weight-medium);
   /* No shadow, and none needed: this is already rule 4's ink treatment -
@@ -2367,7 +2371,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      instead and goes nowhere until it clears. */
   pointer-events: none;
 }
-.toast.is-open { opacity: 1; transform: translate(-50%, 0); }
+.toast.is-open { opacity: 1; transform: none; }
 /* Measured at 48.3x32 by ticket 30, under the same floor and fixed the same
    way. A toast is a single line and growing this to 48px would grow the toast
    around it; the target grows instead. There is only ever one action in a
@@ -2800,7 +2804,9 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
-  .toast { bottom: var(--space-6); }
+  /* Centred in what the rail leaves, the strip the column and the sheets
+     centre in too. */
+  .toast { bottom: var(--space-6); left: calc(var(--rail-width) + var(--inset-left)); }
 }
 
 

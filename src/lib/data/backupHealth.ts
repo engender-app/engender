@@ -27,3 +27,17 @@ export function backupIsStale(lastBackupAt: number | null, today: number = today
   const age = backupAgeDays(lastBackupAt, today);
   return age !== null && age > BACKUP_STALE_DAYS;
 }
+
+/** Whether Home says that this browser may clear the journal (after-release
+    17, U2). The browser refusing persistent storage is not news a person
+    can act on by itself; what they can do is keep a backup elsewhere, so
+    the notice is that ask and goes quiet once a recent backup answers it,
+    or once dismissed. It replaced a toast that covered the Welcome
+    screen's buttons for four seconds on every cold web load. */
+export function storageNoticeShows(
+  state: { persistDenied: boolean; dismissed: boolean; lastBackupAt: number | null },
+  today: number = todayEpochDay()
+): boolean {
+  if (!state.persistDenied || state.dismissed) return false;
+  return state.lastBackupAt === null || backupIsStale(state.lastBackupAt, today);
+}
