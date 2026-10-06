@@ -38,6 +38,7 @@ import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
+import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
 import { todayEpochDay } from '../data/epochDay';
@@ -215,8 +216,14 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     /* The handle boot state published goes first: it holds the driver and
        the photo store, both built over the key. */
     dispatch({ type: 'journal-closed' });
-    await journalIsClosing();
+    /* Every step that changes something happens before the first wait. The
+       drain of the journal's calls can outlast the lock, which stops
+       waiting after its limit or when the person unlocks, and a detach
+       that ran after that would take the reopened journal's preferences
+       away from it. */
+    const drained = journalIsClosing();
     await detachPreferences();
+    await drained;
   },
   open: reopenJournal,
   release() {
@@ -233,6 +240,10 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
   }
 });
+
+/* What every journal handle is built over, so that one held across a lock
+   reaches the reopened database rather than the closed one. */
+const journalDriver = sessionDriver(session.connection);
 
 /** The key the open journal is encrypted under, for the two things outside
     this module that need it themselves: the entry-draft mirror
@@ -296,8 +307,12 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   try {
-    const journal = attachJournal(openJournal(sqlite.driver, photoFiles));
+    const journal = attachJournal(openJournal(journalDriver, photoFiles));
     const preferences = await openPreferences(sqlite.driver, bootCache);
+    /* The database has answered, so the journal's calls can go to it: the
+       hydrate below, and any write held across the lock, which starts now
+       on this driver rather than on the closed one it was made against. */
+    session.connection.open(sqlite.driver);
     await hydrateReference(journal);
     openDriver = sqlite.driver;
     openFileOps = sqlite.fileOps;
@@ -311,6 +326,9 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
     /* Still locked, so nothing read on the way stays: the vocabulary a
        hydrate may already have filled, and the stores if they were set. */
     forgetReference();
+    /* Calls already handed this driver fail with it; the ones that come
+       after wait for the next unlock. */
+    if (session.connection.current === sqlite.driver) void session.connection.close();
     if (openDriver === sqlite.driver) {
       openDriver = null;
       openFileOps = null;
@@ -817,7 +835,8 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
       setActiveDriver(activeSqlite.driver);
-      journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
+      session.connection.open(activeSqlite.driver);
+      journal = attachJournal(openJournal(journalDriver, photoFiles));
       return activeSqlite.driver;
     },
     prepareDatabase: __DEMO__ ? async (driver, fileOps) => {
