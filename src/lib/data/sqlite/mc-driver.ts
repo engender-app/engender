@@ -27,7 +27,7 @@ import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './sqlocal-driver.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
-import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
+import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -371,10 +371,16 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     requestPersistentStorage,
     ...(typeof __DEMO__ !== 'undefined' && __DEMO__ && typeof OffscreenCanvas !== 'undefined' ? {
       prepareDemoPersona: (source: ReturnType<typeof import('../demo/persona').persona>) =>
-      post<boolean | { foundVersion: number; knownVersion: number } | { interruptedRestore: true }>('seedDemoPersona', { source })
+      post<
+        | boolean
+        | { foundVersion: number; knownVersion: number }
+        | { interruptedRestore: true }
+        | { belowBaseline: number; baselineVersion: number }
+      >('seedDemoPersona', { source })
         .then((result) => {
           if (typeof result === 'boolean') return result;
           if ('foundVersion' in result) throw new SchemaTooNewError(result.foundVersion, result.knownVersion);
+          if ('belowBaseline' in result) throw new JournalBelowBaselineError(result.belowBaseline, result.baselineVersion);
           throw new InterruptedRestoreError();
         }) } : {})
   };
