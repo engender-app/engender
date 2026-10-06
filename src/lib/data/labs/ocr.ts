@@ -1,4 +1,5 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '../epochDay';
+import { formatNumber } from '../numbers';
 import { normalizeUnit } from './units';
 import { foldText } from '../fold';
 import {
@@ -179,6 +180,10 @@ export function applyPreferredUnitDefaults(parsed: OcrParsedRow[], preferredUnit
 
     return { ...row, value: converted, unit: preferred };
   });
+}
+
+export function formatLabReviewValue(value: number, locale: string): string {
+  return formatNumber(value, locale, { useGrouping: false });
 }
 
 export function makeReviewRows(parsed: OcrParsedRow[], duplicates: Set<string>, formatValue: (value: number) => string = String): OcrReviewRow[] {

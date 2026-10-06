@@ -35,10 +35,11 @@
   import { isAndroid } from '$lib/platform';
   import {
     parseLabNumeric,
+    formatLabReviewValue,
     type OcrReviewRow
   } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { fmtNumber, fmtDay, fmtRangeEnds } from '$lib/data/dates';
+  import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -315,7 +316,7 @@
     (next) => {
       ocrState = next;
     },
-    fmtNumber
+    (value) => formatLabReviewValue(value, intlLocale())
   );
 
   /** The recognizing screen outliving the pass by the length of the bar's
