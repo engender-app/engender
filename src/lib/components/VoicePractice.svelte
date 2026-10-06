@@ -79,7 +79,7 @@
   /** Live only across the microphone-opening await, so `onDestroy` can abort
       it if the screen goes before `start()` returns (voiceBenchmark.ts's
       `startTake`, ticket AU-03). */
-  let opening: AbortController | null = null;
+  let opening = $state<AbortController | null>(null);
 
   let role = $derived(roleAt(activeFlag.roles, 0));
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
@@ -115,10 +115,15 @@
   }
 
   async function start() {
+    if (opening || session) return;
     const controller = new AbortController();
     opening = controller;
-    const opened = await startTake(SPEECH_GATE, controller.signal);
-    if (opening === controller) opening = null;
+    let opened;
+    try {
+      opened = await startTake(SPEECH_GATE, controller.signal);
+    } finally {
+      if (opening === controller) opening = null;
+    }
     // The screen went away while the microphone was opening: startTake has
     // already stopped whatever it opened, so there is nothing left to do.
     if (opened === null) return;
@@ -252,7 +257,7 @@
           <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
         </button>
       {:else}
-        <button class="btn btn-primary" data-vp-start onclick={start}>
+        <button class="btn btn-primary" data-vp-start disabled={opening !== null} onclick={start}>
           <Icon name="mic" size={20} /><span>{m.vb_record()}</span>
         </button>
       {/if}
