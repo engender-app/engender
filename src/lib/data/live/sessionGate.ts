@@ -22,7 +22,10 @@ export interface SessionGate<T> {
   /** What is open now, or null while locked or still booting. */
   readonly current: T | null;
   /** Runs `use` on what is open now, or on the next thing to open. Counted
-      as in flight from the moment it starts until it settles. */
+      as in flight from the moment it starts until it settles. `use` must not
+      wait on this same gate: once a close has begun, that inner call waits
+      for the reopen and the close waits for `use`. The journal facade's
+      callbacks only call the raw journal, which never comes back here. */
   run<R>(use: (value: T) => R | Promise<R>): Promise<R>;
   /** What is open now, or the next thing to open. Not counted: a caller
       that waits on this holds nothing open. */

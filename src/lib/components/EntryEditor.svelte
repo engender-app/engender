@@ -326,7 +326,9 @@
      the person was typing is what should be there (after-release ticket
      10). The mirror is ciphertext under the data key, so keeping it costs
      nothing a lock is meant to take away; the remount reads it back once
-     the unlock has opened the journal and handed the key out again. */
+     the unlock has opened the journal and handed the key out again. The
+     same holds on Android, whose lock unmounts the editor the same way.
+     A mode with no secret never locks, so it never reaches this. */
   onDestroy(() => {
     destroyed = true;
     if (saveRecovery) detachedEntrySave = saveRecovery;

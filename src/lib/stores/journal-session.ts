@@ -63,8 +63,16 @@ export interface JournalSession<Key, Driver extends Closable> {
   unlock(key: Key): Promise<void>;
 }
 
+/** How long a lock waits for the calls already running before it closes the
+    database anyway. A call into a worker that has stopped answering would
+    otherwise hold the key in the page for good; closing terminates the
+    worker, which rejects that call. Saves take milliseconds, so this is a
+    bound on a fault rather than on anything a person does. */
+const SUSPEND_LIMIT_MS = 5000;
+
 export function journalSession<Key, Driver extends Closable>(
-  ports: JournalSessionPorts<Key, Driver>
+  ports: JournalSessionPorts<Key, Driver>,
+  { suspendLimitMs = SUSPEND_LIMIT_MS }: { suspendLimitMs?: number } = {}
 ): JournalSession<Key, Driver> {
   const key = sessionGate<Key>();
   let driver: Driver | null = null;
@@ -97,7 +105,22 @@ export function journalSession<Key, Driver extends Closable>(
       inTurn(async () => {
         const closing = driver;
         if (closing === null) return;
-        await ports.suspend();
+        /* Fails closed: whatever suspending did or did not finish, the
+           database closes and the key goes. A lock that stopped here would
+           leave the gate drawn over a journal still open behind it. */
+        let limit: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          ports.suspend().catch((error) => {
+            console.warn('the journal did not settle cleanly before the lock', error);
+          }),
+          new Promise<void>((resolve) => {
+            limit = setTimeout(() => {
+              console.warn(`the journal was still busy ${suspendLimitMs} ms into the lock; closing it anyway`);
+              resolve();
+            }, suspendLimitMs);
+          })
+        ]);
+        clearTimeout(limit);
         /* A worker that already died has nothing left to close, and the
            key still has to go. */
         await closing.close().catch((error) => {
