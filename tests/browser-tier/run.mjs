@@ -1538,7 +1538,7 @@ try {
 // --- after-release 10: a web lock closes the database and lets go of the key ---
 for (const cpu of [1, 4]) {
   const label = cpu === 1 ? 'web lock' : 'web lock, CPU throttled 4x';
-  await block(label, 8, async () => {
+  await block(label, 9, async () => {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
     let lock;
@@ -1560,6 +1560,9 @@ for (const cpu of [1, 4]) {
     if (lock.whileLockedWaited && lock.stored.includes('written while locked') && lock.stored.includes('held over the lock'))
       ok(`${label}: a save made while locked waits and lands on the reopened journal`);
     else fail(`${label}: a save made while locked waits and lands on the reopened journal`, JSON.stringify({ waited: lock.whileLockedWaited, stored: lock.stored }));
+    if (lock.capturedLate === null && lock.stored.includes('captured before the lock'))
+      ok(`${label}: a save holding the journal from before the lock lands on the reopened database`);
+    else fail(`${label}: a save holding the journal from before the lock lands on the reopened database`, String(lock.capturedLate));
     if (lock.mirrorFollowed === null) ok(`${label}: the mirror refreshes against the reopened journal`);
     else fail(`${label}: the mirror refreshes against the reopened journal`, lock.mirrorFollowed);
     if (lock.roundsLanded) ok(`${label}: five lock and unlock rounds lose no write`);
@@ -1914,7 +1917,7 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
   if (
     ambiguous &&
     ambiguous.title?.startsWith('50 mg') &&
-    ambiguous.subs.some((sub) => sub.includes('More than one regimen was active'))
+    ambiguous.subs.some((sub) => sub.includes('more than one regimen was running'))
   )
     ok('a dose two regimens could both explain says so instead of naming one');
   else fail('a dose two regimens could both explain says so instead of naming one', JSON.stringify(ambiguous));

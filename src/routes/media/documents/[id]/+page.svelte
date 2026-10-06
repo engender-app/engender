@@ -53,7 +53,6 @@
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import { deliverBlob } from '$lib/data/archive/deliver';
   import { nameSlug } from '$lib/data/fold';
-  import { fmtDay } from '$lib/data/dates';
   import { openPdf, type OpenPdf } from '$lib/data/documents/pdf';
   import { documentThumbName, isPdfDocument } from '$lib/data/journal/documents';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -383,9 +382,6 @@
     void replaceRoute(url, { noScroll: true, keepFocus: true });
   };
 
-  const fileSize = (bytes: number): string =>
-    bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-
   async function exportPdf() {
     if (!stored || !pdfBytes) return;
     try {
@@ -440,36 +436,16 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.document_title()} back={DOCUMENTS} />
+  <!-- Titled by the paper itself (audit UI-15). The screen used to say
+       "Document" up here and then the name, the date and the link once at
+       the top and again in the fields below; the fields are where those
+       live now, and the link has one row. -->
+  <ScreenHeader title={stored?.title ?? m.document_title()} back={DOCUMENTS} />
 
   {#if detail.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if stored}
-    <div class="screen-part stack-3 doc-identity" data-document-identity in:crossfade>
-      <h2>{stored.title}</h2>
-      <p class="muted">
-        <time datetime={dateInputValueFromEpochDay(stored.epochDay)}>
-          {fmtDay(stored.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-        </time>
-      </p>
-      {#if resolved?.state === 'found'}
-        <ListCard>
-          <ListRow
-            key="document-owner"
-            icon={DOCUMENT_TARGET_ICON[target!.kind]}
-            title={resolved.text}
-            subtitle={documentTargetKindLabel(target!.kind)}
-            href={withSourceReturn(resolved.href, page.url)}
-          />
-        </ListCard>
-      {:else if resolved?.state === 'loading'}
-        <Skeleton variant="line" count={1} />
-      {:else}
-        <p class="muted small">{resolved ? m.document_target_gone() : m.document_link_none()}</p>
-      {/if}
-    </div>
-
-    <!-- The page follows its stored identity. The
+    <!-- The page comes first, under the title. The
          canvas is always mounted and only sometimes the thing on screen:
          a page cannot be drawn into an element that appears once it has
          been drawn. Behind it, in order, the thumbnail from import and
@@ -586,7 +562,6 @@
           <p class="muted small" data-document-page-failed>{m.document_page_failed()}</p>
         {/if}
 
-        <p data-document-size>{pdfBytes ? fileSize(pdfBytes.byteLength) : ''}</p>
         <button class="btn btn-soft press" data-export-document disabled={!pdfBytes} onclick={exportPdf}>
           <Icon name="share" size={20} /><span>{m.document_export()}</span>
         </button>
@@ -715,14 +690,6 @@
 </div>
 
 <style>
-  .doc-identity h2 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-display);
-    overflow-wrap: anywhere;
-  }
-
   /* The page sits on its own, centred, with nothing drawn around it: a box
      around the one picture on the screen is what DIRECTION.md 2b names as
      making a screen read as generic. The corner radius is the sheet's own,

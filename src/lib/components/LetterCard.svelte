@@ -20,17 +20,19 @@
      the feature (spec: sealed contents are out of scope under any
      circumstance) and this is what it looks like.
 
-     **Open.** Its first line and the day it was written, which is what
-     somebody with ten of them scans for, and a mark beside the date while it
-     has not been read - the "ready" reading, which Today's live tile already
-     carries and which this screen only has to not lose.
+     **Open.** The day it was written and, once it has been read, its first
+     lines, which is what somebody with ten of them scans for. Until then a
+     mark beside the date instead of any text - the "ready" reading, which
+     Today's live tile already carries and which this screen only has to not
+     lose.
 
      **The unfold is a blind, and that is why the folded card and the open
      one are the same paragraph in the same type.** Folded is the whole
      letter clamped to two lines; open is the clamp taken off. So the first
      frame of an opening is pixel-for-pixel the frame before it - the box is
      still its old height and the two lines under the date are the two lines
-     that were already there - and everything after it is the box being
+     that were already there, or for a first reading no lines, with the text
+     waiting under the folded edge - and everything after it is the box being
      uncovered downwards. Nothing is swapped, nothing appears at its
      destination, and no frame has anything in neither place.
 
@@ -42,7 +44,7 @@
      first, then the journey. `maskHeight` is called at a known moment with a
      height its caller measured before the layout changed, which is exactly
      what an opening is. */
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from './Icon.svelte';
   import { m } from '$lib/paraglide/messages';
@@ -99,14 +101,29 @@
   /* Measure, flip, then mask from what was measured. The measurement has to
      happen before the state changes and the mask has to be started before
      the browser paints the new layout, which is what `tick()` buys: it
-     resolves once Svelte has written the DOM and before the frame ends. */
-  async function toggle() {
-    const from = card?.getBoundingClientRect().height ?? 0;
+     resolves once Svelte has written the DOM and before the frame ends.
+
+     Keyed on `open` itself rather than on this card's own press, because
+     the arrival opens the card from a button of its own: that path flipped
+     the prop with no mask and the whole letter landed in one frame (after-
+     release 26, which also took the folded lines away and so made the
+     jump 116px). `$effect.pre` runs before this card's DOM is written, so
+     the height it reads is still the old one. */
+  let maskedOpen = untrack(() => open);
+  $effect.pre(() => {
+    const next = open;
+    if (next === maskedOpen) return;
+    maskedOpen = next;
+    if (!folds || isReducedMotion() || !card) return;
+    const from = card.getBoundingClientRect().height;
+    void tick().then(() => {
+      if (card) maskHeight(card, from, motionDuration('--dur-med'));
+    });
+  });
+
+  function toggle() {
     if (open) onclose?.();
     else onopen?.();
-    if (isReducedMotion() || !card) return;
-    await tick();
-    if (card) maskHeight(card, from, motionDuration('--dur-med'));
   }
 
   /* Tile's panel contract, and the same reasoning: `|global` because what
@@ -152,7 +169,9 @@
 {/snippet}
 
 {#snippet face()}
-  <p class="letter-mark">
+  <!-- Spans, not paragraphs: this is the content of a button wherever the
+       card folds, and a button takes phrasing content only. -->
+  <span class="letter-mark">
     <span class="letter-when">{m.look_back_letter_written({ date: dayLabel(letter.epochDay) })}</span>
     <!-- Opening the letter is what marks it read, so this mark goes in the
          same frame the card opens - on a line the mask leaves visible. It
@@ -164,11 +183,16 @@
         <span>{m.letters_ready_title()}</span>
       </span>
     {/if}
-  </p>
-  <!-- The whole letter, clamped to two lines while the card is folded. One
-       element in both states and the same type in both, so opening it is the
-       box being uncovered rather than anything being replaced. -->
-  <p class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined}>{letter.text}</p>
+  </span>
+  <!-- The whole letter, clamped to two lines while the card is folded, once
+       it has been read. Until then nothing of it is on the card, folded or
+       on the arrival: the first lines are the letter, and a letter nobody
+       has opened yet should not be read off its envelope (Alicja,
+       2026-10-05, after audit L04-18). Opening it puts the text under the
+       mask below the folded edge, so it is uncovered by the same travel. -->
+  {#if open || read}
+    <span class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined}>{letter.text}</span>
+  {/if}
 {/snippet}
 
 <div
@@ -368,6 +392,7 @@
      lines in the frame the card opened, which is the one frame that has to
      be identical to the one before it. */
   .letter-text {
+    display: block;
     margin: 0;
     white-space: pre-wrap;
     line-height: var(--leading-body);

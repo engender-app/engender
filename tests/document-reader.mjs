@@ -74,20 +74,23 @@ try {
   }, [...pdf]);
   await visit(`/media/documents/${fixture.first}`);
   await page.locator('[data-document-page-canvas="drawn"]').waitFor();
-  const identity = page.locator('[data-document-identity]');
-  await identity.waitFor();
-  assert.equal(await identity.locator('h2').innerText(), fixture.title);
-  assert.equal(await identity.locator('time').getAttribute('datetime'), '2024-10-04');
-  const bounds = await identity.boundingBox();
-  assert.ok(bounds.y + bounds.height <= (await page.locator('.doc-page').boundingBox()).y);
-  assert.ok((await identity.locator('h2').boundingBox()).height > 48, 'long title wraps');
+  /* The screen is titled by the document (after-release 26): the name,
+     date and link are said once, in the fields under the page. */
+  const heading = page.locator('[data-screen-title]');
+  assert.equal(await heading.innerText(), fixture.title);
+  assert.equal(await page.locator('#document-day').inputValue(), '2024-10-04');
+  assert.equal(await page.locator('[data-list-row="document-owner"]').count(), 0, 'one link row');
+  assert.equal(await page.locator('[data-document-link]').count(), 1, 'one link row');
+  const headingBox = await heading.boundingBox();
+  assert.ok(headingBox.y + headingBox.height <= (await page.locator('.doc-page').boundingBox()).y);
+  assert.ok(headingBox.x + headingBox.width <= 390, 'long title stays inside the column');
   assert.ok((await page.locator('#document-title').boundingBox()).y > (await page.locator('.doc-page').boundingBox()).y);
   await page.locator('#document-title').fill('Unsaved title');
-  assert.equal(await identity.locator('h2').innerText(), fixture.title, 'identity uses stored metadata');
+  assert.equal(await heading.innerText(), fixture.title, 'the title is the stored name');
   await page.locator('#document-title').fill(fixture.title);
   await visit(`/media/documents/${fixture.second}`);
   await page.getByRole('heading', { name: 'Referral for the August consultation', exact: true }).waitFor();
-  assert.equal(await identity.locator('time').getAttribute('datetime'), '2024-10-03');
+  assert.equal(await page.locator('#document-day').inputValue(), '2024-10-03');
   await visit(`/media/documents/${fixture.first}`);
   await page.locator('[data-document-page-canvas="drawn"]').waitFor();
   await page.getByRole('button', { name: 'Enlarge page', exact: true }).click();
@@ -111,7 +114,7 @@ try {
      app's own motion setting, not the emulated media query this page sets -
      so the label can change before the scroll lands. */
   await page.waitForFunction(() => document.querySelector('[data-document-reader]').scrollTop === 0);
-  await page.locator('[data-list-row="document-owner"]').click();
+  await page.locator('[data-list-row="document-target"]').click();
   await page.locator('#ms-name').waitFor();
   assert.equal(await page.locator('#ms-name').inputValue(), 'Original referral');
   await page.keyboard.press('Escape');
@@ -215,14 +218,15 @@ try {
     await j.milestones.deleteMilestone(milestone);
   }, fixture);
   await page.reload({ waitUntil: 'networkidle' });
-  await identity.getByText('Not linked to anything', { exact: true }).waitFor();
-  assert.equal(await identity.getByRole('link').count(), 0, 'deleted owner leaves no stale link');
+  const linkRow = page.locator('[data-document-link]');
+  await linkRow.getByText('Not linked to anything', { exact: true }).waitFor();
+  assert.equal(await linkRow.locator('a').count(), 0, 'deleted owner leaves no stale link');
   await page.evaluate(async ({ first, milestone }) => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     await j.documents.setDocumentTarget(first, { kind: 'milestone', id: milestone });
   }, fixture);
-  await identity.getByText('Linked to something that’s gone', { exact: true }).waitFor();
-  assert.equal(await identity.getByRole('link').count(), 0, 'restored dangling owner is unavailable');
+  await linkRow.getByText('Linked to something that’s gone', { exact: true }).waitFor();
+  assert.equal(await linkRow.locator('a').count(), 0, 'restored dangling owner is unavailable');
   await visit(`/media/documents/${fixture.image}`);
   await page.locator('[data-document-page]').waitFor();
   await page.waitForFunction(() => document.querySelector('[data-document-page]').naturalWidth === 1190);

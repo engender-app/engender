@@ -38,6 +38,7 @@ import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
+import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
 import { tablesWrittenBy } from '../data/live/writes';
 import { todayEpochDay } from '../data/epochDay';
@@ -215,8 +216,14 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     /* The handle boot state published goes first: it holds the driver and
        the photo store, both built over the key. */
     dispatch({ type: 'journal-closed' });
-    await journalIsClosing();
-    await detachPreferences();
+    /* Every step that changes something happens before the first wait. The
+       drain of the journal's calls can outlast the lock, which stops
+       waiting after its limit or when the person unlocks, and a detach
+       that ran after that would take the reopened journal's preferences
+       away from it. */
+    const drained = journalIsClosing();
+    const [detached] = await Promise.allSettled([detachPreferences(), drained]);
+    if (detached.status === 'rejected') throw detached.reason;
   },
   open: reopenJournal,
   release() {
@@ -233,6 +240,10 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
   }
 });
+
+/* What every journal handle is built over, so that one held across a lock
+   reaches the reopened database rather than the closed one. */
+const journalDriver = sessionDriver(session.connection);
 
 /** The key the open journal is encrypted under, for the two things outside
     this module that need it themselves: the entry-draft mirror
@@ -266,6 +277,10 @@ export function closeJournalForLock(): Promise<void> {
      locked screen's to keep. */
   forgetJournalContent();
   if (android) return Promise.resolve();
+  /* Published now as well as when the lock's turn comes: a lock can wait
+     behind a reopen still under way, and the boot machine has to treat the
+     next key as an unlock from the moment the gate is drawn. */
+  dispatch({ type: 'journal-closed' });
   return session.lock();
 }
 
@@ -281,10 +296,24 @@ function useJournalFiles(files: PhotoFileStore | null): void {
     access mode's own secret, the same derivation a cold start makes, and
     this opens the journal again under it. Does nothing where no lock closed
     the journal. Rejects if the database will not open - most likely because
-    another tab has it now - and the gate says so. */
+    another tab has it now - and the gate says so.
+
+    Through the boot machine's `key-obtained`, like every other key, so the
+    guard ticket 29 put there sees this one too: a second key while a reopen
+    is under way starts nothing and waits on the first. */
 export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
-  return session.unlock(dataKey);
+  /* The unlock screen only draws over a ready journal, but its derivation
+     can outlast that; a key arriving anywhere else would start a boot. */
+  if (machine.boot.status !== 'ready') return Promise.resolve();
+  dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
+  /* A key the machine refused because the journal is open has nothing to
+     wait on; one refused as a second submit waits on the first. */
+  return machine.journalReopening ? reopening : Promise.resolve();
 }
+
+/* The reopen the machine last asked for, for the unlock screen to wait on.
+   Set by the effect synchronously, inside the dispatch above. */
+let reopening: Promise<void> = Promise.resolve();
 
 /* A lock's reopen: the boot's own construction without the boot. The
    journal was open and migrated minutes ago in this same page, so there is
@@ -296,8 +325,15 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   try {
-    const journal = attachJournal(openJournal(sqlite.driver, photoFiles));
+    const journal = attachJournal(openJournal(journalDriver, photoFiles));
     const preferences = await openPreferences(sqlite.driver, bootCache);
+    /* The database has answered, so the journal's calls can go to it: the
+       hydrate below, and any write held across the lock, which starts now
+       on this driver rather than on the closed one it was made against.
+       Not later: the hydrate reads through this same gate. The cost is that
+       a reopen failing after this point fails a held write with it, where
+       waiting for the next unlock would have kept it. */
+    session.connection.open(sqlite.driver);
     await hydrateReference(journal);
     openDriver = sqlite.driver;
     openFileOps = sqlite.fileOps;
@@ -311,6 +347,9 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
     /* Still locked, so nothing read on the way stays: the vocabulary a
        hydrate may already have filled, and the stores if they were set. */
     forgetReference();
+    /* Calls already handed this driver fail with it; the ones that come
+       after wait for the next unlock. */
+    if (session.connection.current === sqlite.driver) void session.connection.close();
     if (openDriver === sqlite.driver) {
       openDriver = null;
       openFileOps = null;
@@ -742,6 +781,15 @@ async function perform(effect: BootEffect): Promise<void> {
       markUnlocked();
       return;
 
+    /* Not thrown into run()'s net: a reopen that fails is the unlock
+       screen's sentence to say, with the journal still locked, not a boot
+       failure. */
+    case 'reopen-journal':
+      reopening = session.unlock(effect.dataKey);
+      await reopening.catch(() => {});
+      dispatch({ type: 'journal-reopen-ended' });
+      return;
+
     case 'open-journal':
       await openAndBoot(effect.dataKey);
       return;
@@ -817,7 +865,8 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
       setActiveDriver(activeSqlite.driver);
-      journal = attachJournal(openJournal(activeSqlite.driver, photoFiles));
+      session.connection.open(activeSqlite.driver);
+      journal = attachJournal(openJournal(journalDriver, photoFiles));
       return activeSqlite.driver;
     },
     prepareDatabase: __DEMO__ ? async (driver, fileOps) => {

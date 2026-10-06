@@ -47,6 +47,14 @@
     position: relative;
   }
 
+  /* The width the stacked rows in clinician-print.css answer to. Screen
+     only, so paper lays its tables out exactly as it did. */
+  @media screen {
+    .dossier-table-frame {
+      container: dossier-table / inline-size;
+    }
+  }
+
   .dossier-table-wrap:focus-visible {
     outline-offset: -2px;
   }

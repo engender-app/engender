@@ -40,7 +40,8 @@ describe('the web app manifest', () => {
       runInNewContext(script, {
         localStorage: { getItem: () => JSON.stringify({ disguise }) },
         document: { documentElement: { dataset: {} }, querySelector: (key: string) => links[key] },
-        navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {}
+        navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {},
+        performance: { getEntriesByType: () => [] }
       });
       const file = links['link[rel="apple-touch-icon"]'].href.replace('%sveltekit.assets%', 'static');
       expect(file).toBe(disguise ? 'static/apple-touch-icon-notes.png' : 'static/apple-touch-icon.png');
@@ -57,7 +58,8 @@ describe('the web app manifest', () => {
       };
       runInNewContext(script, {
         localStorage: { getItem: (key: string) => key === 'PARAGLIDE_LOCALE' ? locale : JSON.stringify({ disguise: true }) },
-        document, navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {}
+        document, navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {},
+        performance: { getEntriesByType: () => [] }
       });
       expect(document.title).toBe(locale === 'pl' ? 'Notatki' : 'Notes');
     }

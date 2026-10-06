@@ -51,11 +51,20 @@ export interface JournalSessionPorts<Key, Driver extends Closable> {
 export interface JournalSession<Key, Driver extends Closable> {
   /** The data key, for as long as the journal is open. */
   readonly key: SessionGate<Key>;
+  /** The open database, for the journal's own calls into it. A journal
+      handle is built over this gate rather than over one driver
+      (data/live/sessionDriver.ts), so a call that comes after a lock -
+      from a save that was still encrypting a photo when the lock gave up
+      waiting for it - waits for the reopened database instead of reaching
+      the worker the lock terminated. The lock drains it before closing. */
+  readonly connection: SessionGate<Driver>;
   /** The open database, or null while locked. */
   readonly driver: Driver | null;
   /** Closed by a lock and not reopened yet. */
   readonly locked: boolean;
-  /** The first open, which boot does itself. */
+  /** The first open, which boot does itself. Opens `connection` too, which
+      boot has already done as soon as the driver existed, because the
+      boot's own journal calls go through it; here for callers that do not. */
   adopt(key: Key, driver: Driver): void;
   lock(): Promise<void>;
   /** Reopens a journal a lock closed, under the key just derived. Does
@@ -75,8 +84,17 @@ export function journalSession<Key, Driver extends Closable>(
   { suspendLimitMs = SUSPEND_LIMIT_MS }: { suspendLimitMs?: number } = {}
 ): JournalSession<Key, Driver> {
   const key = sessionGate<Key>();
+  const connection = sessionGate<Driver>();
   let driver: Driver | null = null;
   let locked = false;
+  /* An unlock asked for while a lock is still waiting on the journal's
+     calls ends that wait. The wait is there so a save can land before the
+     database closes; with the person back, the database is about to reopen
+     and the save lands there instead, so keeping them on "Decrypting..."
+     until the limit would buy nothing. A database call already running
+     still finishes first: the drain of `connection` is not cut short. */
+  let unlockWaiting = false;
+  let stopWaiting: (() => void) | null = null;
   /* One at a time, in the order asked. Someone who comes straight back
      unlocks while the lock is still waiting for a save, and someone who
      leaves again under `immediately` locks while the unlock is reopening;
@@ -90,6 +108,7 @@ export function journalSession<Key, Driver extends Closable>(
 
   return {
     key,
+    connection,
     get driver() {
       return driver;
     },
@@ -98,6 +117,7 @@ export function journalSession<Key, Driver extends Closable>(
     },
     adopt(opened, openDriver) {
       key.open(opened);
+      connection.open(openDriver);
       driver = openDriver;
       locked = false;
     },
@@ -109,17 +129,27 @@ export function journalSession<Key, Driver extends Closable>(
            database closes and the key goes. A lock that stopped here would
            leave the gate drawn over a journal still open behind it. */
         let limit: ReturnType<typeof setTimeout> | undefined;
+        const outOfTime = new Promise<void>((resolve) => {
+          limit = setTimeout(() => {
+            console.warn(`the journal was still busy ${suspendLimitMs} ms into the lock; closing it anyway`);
+            resolve();
+          }, suspendLimitMs);
+        });
         await Promise.race([
           ports.suspend().catch((error) => {
             console.warn('the journal did not settle cleanly before the lock', error);
           }),
+          outOfTime,
           new Promise<void>((resolve) => {
-            limit = setTimeout(() => {
-              console.warn(`the journal was still busy ${suspendLimitMs} ms into the lock; closing it anyway`);
-              resolve();
-            }, suspendLimitMs);
+            stopWaiting = resolve;
+            if (unlockWaiting) resolve();
           })
         ]);
+        stopWaiting = null;
+        /* Whatever the journal's calls are doing now, the ones that come
+           to the database from here wait for the reopen. The ones already
+           in the worker get the rest of the same limit to answer. */
+        await Promise.race([connection.close(), outOfTime]);
         clearTimeout(limit);
         /* A worker that already died has nothing left to close, and the
            key still has to go. */
@@ -132,12 +162,17 @@ export function journalSession<Key, Driver extends Closable>(
         ports.release();
         ports.prewarm();
       }),
-    unlock: (derived) =>
-      inTurn(async () => {
+    unlock(derived) {
+      unlockWaiting = true;
+      stopWaiting?.();
+      return inTurn(async () => {
+        unlockWaiting = false;
         if (!locked) return;
         driver = await ports.open(derived);
+        connection.open(driver);
         locked = false;
         key.open(derived);
-      })
+      });
+    }
   };
 }

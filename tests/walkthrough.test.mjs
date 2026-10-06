@@ -1,7 +1,7 @@
 /* Walkable-flow tests (ticket 20's acceptance for tickets 01/07/08) against
    the real app, not a probe page - so this serves the app's own production
    build rather than sharing browser-tier/run.mjs's probe-page dev server.
-   It's `vite preview`, like verify-build.mjs, not `vite dev`: the dev
+   It's `vite preview`, not `vite dev`: the dev
    server's dependency re-optimization forces a full-page reload the first
    time it discovers a new dependency deep in boot() (SQLocal's worker,
    hash-wasm, ...), which raced every flow here and hung page.evaluate calls
@@ -9,7 +9,11 @@
    port (falling back off its 5173 default if that's taken), so there's no
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
-   #demo-jump control), then serves that build. */
+   #demo-jump control), then serves that build. vite preview renders its own
+   document, without the CSP meta or the held module hints that
+   build/index.html carries; verify-build and previewBuild serve the real
+   file through serve-build.mjs since after-release ticket 31, and this
+   runner has not moved yet. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
@@ -1958,7 +1962,7 @@ try {
        flaky under the full suite even though it held reliably alone. The
        toast below is what proves the save actually landed. */
     await page.waitForFunction(
-      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Imported'))
+      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Results saved'))
     );
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
     ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
@@ -8135,8 +8139,10 @@ try {
   await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
     throw new Error('a PDF nothing could draw is showing a page image');
   }
-  const sizeText = await page.locator('[data-document-size]').textContent();
-  if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
+  // No byte size on the screen (after-release 26): sizes are Export's.
+  if (/\b\d+(?:[.,]\d+)?\s?(?:KB|MB)\b/.test(await page.locator('main').innerText())) {
+    throw new Error('the document screen shows a byte size');
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),

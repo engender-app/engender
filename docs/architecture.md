@@ -741,6 +741,7 @@ flowchart LR
 - Mood has its own scale, and each step picks its own ink (ADR-0025, ADR-0077, ADR-0091).
 - A secondary button is a block of the page (ADR-0093).
 - The pride flag motif appears only on Home and never under disguise (ADR-0035).
+- Every `var(--x)` without a stated fallback must name a property the tree defines, whether in a stylesheet, a `style:` directive, `setProperty` or `@property`. An undefined one is invalid at computed-value time and falls back to the inherited value without any error. [tests/css-tokens-resolve.test.ts](../tests/css-tokens-resolve.test.ts) walks `src` and fails on one. The scale has no `--muted`, `--text-1` or `--weight-semibold`; use `--text-2`, `--text` and `--weight-medium`.
 - [kit.css](../src/lib/styles/kit.css), [components.css](../src/lib/styles/components.css) and [screens.css](../src/lib/styles/screens.css) keep class baselines (`src/lib/styles/*-classes-baseline.txt`). `check:screens-classes` stops a screen-only class from spreading.
 
 ### 8.5 Motion system
@@ -867,7 +868,7 @@ flowchart LR
 - `hash-wasm`, which the Argon2 worker bundles for itself
 - most of the built-in vocabulary ([vocabulary/builtinTemplates.ts](../src/lib/data/vocabulary/builtinTemplates.ts) carries only what boot needs)
 
-**Preload hints wait for the first frame.** [src/hooks.server.ts](../src/hooks.server.ts) runs once at build time and turns the document's module preload hints into held `x-modulepreload` hints. The pre-paint script in [app.html](../src/app.html) releases them after the first frame, so the splash paints before the chunk downloads compete with it. Over HTTP/2 at 4x CPU throttling and a slow network, the splash paints in under a second.
+**Preload hints wait for the first frame.** [src/hooks.server.ts](../src/hooks.server.ts) runs once at build time and turns the document's module preload hints into held `x-modulepreload` hints. The pre-paint script in [app.html](../src/app.html) releases them after the first frame, so the splash paints before the chunk downloads compete with it. Over HTTP/2 at 4x CPU throttling and a slow network, the splash paints in under a second. Over HTTP/1.1 the browser has six connections rather than one to share, so the script gives each hint back as the parser adds it instead; holding them there only delayed the first screen by about 0.3 s. The browser checks serve `build/` through [tests/serve-build.mjs](../tests/serve-build.mjs), which hands out `build/index.html` itself under the production isolation headers, so they run under the shipped CSP and the held hints.
 
 **The offline shell is one cache per release** (ADR-0021). A production precache is roughly 680 files and about 3 MB brotli: the app's chunks and CSS, the SQLite WASM, fonts and static icons. [src/lib/pwa/shell-assets.ts](../src/lib/pwa/shell-assets.ts) keeps the OCR engine and the PDF worker out of the install. A page asks for OCR through `engender:cache-on-demand` and the PDF worker through `engender:cache-pdf-worker`. PDF fonts are already precached. `registerServiceWorkerAfterBoot` ([src/lib/pwa/register.ts](../src/lib/pwa/register.ts)) schedules registration on browser idle after `ready` or `needs-setup`; returning users at an unlock gate wait until `ready`. This keeps registration out of initial boot work, though downloads can overlap later activity.
 
