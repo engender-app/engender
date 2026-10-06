@@ -1431,11 +1431,15 @@
      scroll (rule 14). It bleeds to the screen's edges and pads back in: a
      region that scrolls clips on both axes, so a block reaching past the
      content edge inside it would be cut. */
+  /* 4px of the 20 above moved inside the scroller (after-release 17,
+     U16): the name field sits at the region's very top, and its focus
+     ring - 2px drawn 2px out - was cut off along its top edge by the
+     scroller's own clip. The content lands where it did. */
   .setup-answers {
     flex: 1 1 0;
     min-height: 0;
-    margin: var(--space-5) calc(-1 * var(--space-5)) 0;
-    padding: 0 var(--space-5);
+    margin: calc(var(--space-5) - 4px) calc(-1 * var(--space-5)) 0;
+    padding: 4px var(--space-5) 0;
     overflow-y: auto;
     overscroll-behavior: contain;
   }

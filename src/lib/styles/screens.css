@@ -917,6 +917,13 @@
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  /* Eight across gives a name 69.5px at 1280, and the widest one on a line
+     is 75.2px ("Panseksualna"), so overflow-wrap: anywhere broke
+     "Genderqueer" as "Genderquee/r" (after-release 17, UI-07). A name is
+     one word or two, so it wraps between words or not at all, and the
+     longest overhangs at most 6px into the 12px gap after its column. */
+  .palette-grid .swatch-name,
+  .palette-grid .palette-swatch.is-active .swatch-name { overflow-wrap: normal; }
 
   /* Home's outline frame on the web (phase 5 ticket 32.11) is gone with
      redesign ticket 23: the field is the column's top edge now, a
