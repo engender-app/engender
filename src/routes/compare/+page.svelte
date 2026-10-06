@@ -22,9 +22,9 @@
   import {
     customInclusiveRange,
     dateInputValueFromEpochDay,
-    epochDayFromDateInputValue,
-    todayEpochDay
+    epochDayFromDateInputValue
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { eraRangeOrNull } from '$lib/data/eras';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { Journal } from '$lib/data/journal/journal';
@@ -65,7 +65,7 @@
     dimensionAverages: { name: string; average: number | null }[];
   }
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let todayInput = $derived(dateInputValueFromEpochDay(today));
 
   let aMode = $state<PeriodMode>('range');

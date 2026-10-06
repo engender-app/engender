@@ -16,6 +16,7 @@
   import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '$lib/data/hairRemovalAreas';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { HairRemovalSession, HairRemovalMethod } from '$lib/data/types';
   import { HAIR_REMOVAL_METHODS } from '$lib/data/types';
   import type { HairRemovalPhoto } from '$lib/data/journal/hairRemoval';
@@ -50,7 +51,7 @@
 
   const PAIN_RATINGS = [1, 2, 3, 4, 5];
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /** The untouched draft every open starts from, named once so the
       header's add control, a strip day and a recency row cannot drift

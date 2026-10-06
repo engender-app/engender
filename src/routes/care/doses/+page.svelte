@@ -51,6 +51,7 @@
     epochDayFromTimestamp,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     ROUTE_OPTIONS,
     STATUS_OPTIONS,
@@ -88,8 +89,10 @@
   const SECTION_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
   let windowDays = $state(DOSE_LOG_WINDOW_DAYS);
-  const today = todayEpochDay();
-  let through = $state(today);
+  const today = $derived(currentDay());
+  /* The latest day a save has pushed the window to, if it went past today. */
+  let extendedTo = $state<number | null>(null);
+  const through = $derived(Math.max(today, extendedTo ?? today));
   let from = $derived(today - windowDays);
 
   /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
@@ -215,7 +218,7 @@
       const stored = allDoses.find((dose) => dose.id === draft.id);
       await journal.doses.upsertDose(stored?.source === 'schedule' ? { ...input, source: 'schedule' } : input);
       windowDays = Math.max(windowDays, today - epochDayFromTimestamp(input.timestamp));
-      through = Math.max(through, epochDayFromTimestamp(input.timestamp));
+      extendedTo = Math.max(extendedTo ?? today, epochDayFromTimestamp(input.timestamp));
       view = 'log';
       validationTouched = false;
       toast(m.dose_saved(), { kind: 'dose-saved' });

@@ -23,13 +23,13 @@
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
-  import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
+  import { onThisDayCandidates, onThisDayQualifies, type OnThisDayLookback } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -52,8 +52,8 @@
     scrollTo?: string | null;
   } = $props();
 
-  const today = todayEpochDay();
-  const candidates = onThisDayCandidates(today);
+  const today = $derived(currentDay());
+  const candidates = $derived(onThisDayCandidates(today));
 
   const LOOKBACK_TITLE: Record<OnThisDayLookback, () => string> = {
     year: () => m.on_this_day_year_title(),
@@ -72,15 +72,18 @@
 
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
+    // Read before the first await, so the query re-runs when the day changes.
+    const asOf = today;
+    const lookbacks = candidates;
     const [letters, consent] = await Promise.all([
       j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
       resurfacing('on-this-day', j)
     ]);
     const results = await Promise.all(
-      consent.allowedDays(candidates).map(async (c): Promise<QualifyingDay | null> => {
-        const dayLetters = onThisDayLetters(letters, c.epochDay, today);
+      consent.allowedDays(lookbacks).map(async (c): Promise<QualifyingDay | null> => {
+        const dayLetters = onThisDayLetters(letters, c.epochDay, asOf);
         const good = await j.stats.isGoodDay(c.epochDay);
-        if (!good && dayLetters.length === 0) return null;
+        if (!onThisDayQualifies(good, dayLetters)) return null;
         return {
           key: c.key,
           epochDay: c.epochDay,
@@ -101,8 +104,13 @@
     }))
   );
 
+  /* Once per target: `days` is replaced on every refresh of the query, and
+     scrolling again each time would pull the page back from wherever the
+     reader had moved on to. */
+  let scrolledTo: string | null = null;
   $effect(() => {
-    if (!days.length || !scrollTo) return;
+    if (!days.length || !scrollTo || scrolledTo === scrollTo) return;
+    scrolledTo = scrollTo;
     document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 

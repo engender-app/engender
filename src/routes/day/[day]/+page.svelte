@@ -91,6 +91,8 @@
   import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
   import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
+  import { untrack } from 'svelte';
   import { fmtDay } from '$lib/data/dates';
   import { parseDayParam } from '$lib/data/dayParam';
   import { DAY_SECTION_KEYS } from '$lib/data/journal/day';
@@ -108,10 +110,10 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
 
-  let parsedDay = $derived(parseDayParam(page.params.day, todayEpochDay()));
+  let parsedDay = $derived(parseDayParam(page.params.day, untrack(currentDay)));
   let epochDay = $derived(parsedDay ?? 0);
-  let isToday = $derived(epochDay === todayEpochDay());
-  let isFuture = $derived(epochDay > todayEpochDay());
+  let isToday = $derived(epochDay === currentDay());
+  let isFuture = $derived(epochDay > currentDay());
 
   /* The query reads `epochDay` before its first await, which is what makes it
      re-run on navigation - see liveQuery's contract. One query for the whole
@@ -127,7 +129,7 @@
      this screen's own day, the same reason HeatMap asks for a month and
      Home (ticket 63) will ask for just today. */
   let dayAheadRead = liveList((j) =>
-    parsedDay === null ? Promise.resolve([]) : j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay())
+    parsedDay === null ? Promise.resolve([]) : j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())
   );
 
   /* What the schedules expect on this day, which a mark cannot say
@@ -144,7 +146,7 @@
      already draws them. */
   let expectedDosesRead = liveQuery(async (j) => {
     const asked = epochDay;
-    if (parsedDay === null || asked <= todayEpochDay()) return [];
+    if (parsedDay === null || asked <= currentDay()) return [];
     const [episodes, schedules, pauses] = await Promise.all([
       j.regimen.getEpisodes(),
       j.doses.getSchedules(),
@@ -322,7 +324,7 @@
           weekday: 'long',
           day: 'numeric',
           month: 'long',
-          ...(crossesCalendarYear(epochDay, todayEpochDay()) ? { year: 'numeric' } : {})
+          ...(crossesCalendarYear(epochDay, currentDay()) ? { year: 'numeric' } : {})
         })}
     screen="day"
     back="/calendar"

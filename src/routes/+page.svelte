@@ -44,6 +44,7 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay } from '$lib/data/dates';
@@ -102,7 +103,7 @@
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /* Every block on this screen that appears and disappears takes the same
      `skip` (phase 9 carpet ticket 04): a screen leaving should not spend
@@ -116,7 +117,7 @@
      the `{#each}` and the one sheet a tile opens rather than handles in
      place. */
   let letterDismissSheetOpen = $state(false);
-  const liveTiles = homeTiles(today, {
+  const liveTiles = homeTiles(() => today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
   });
 
@@ -622,7 +623,7 @@
     const raw = page.url.searchParams.get('tally');
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
-    if (kind) journal.tally.log({ epochDay: today, kind });
+    if (kind) journal.tally.log({ epochDay: todayEpochDay(), kind });
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 

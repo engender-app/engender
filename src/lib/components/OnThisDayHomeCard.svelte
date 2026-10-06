@@ -16,9 +16,10 @@
      purpose, so the two read as siblings; the tiles say that by sitting in
      one grid instead, which is a thing the eye reads without a wash. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { onThisDayCandidates } from '$lib/data/on-this-day';
+  import { onThisDayCandidates, onThisDayQualifies } from '$lib/data/on-this-day';
+  import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import Tile from './kit/Tile.svelte';
   import { joinReadGroup } from './kit/readGroup.svelte';
@@ -36,16 +37,25 @@
     onOpen?: (event: MouseEvent) => void;
   } = $props();
 
-  const candidates = onThisDayCandidates(todayEpochDay());
+  const today = $derived(currentDay());
+  const candidates = $derived(onThisDayCandidates(today));
 
   /* Invalidated on entry or tag writes (the good-day rule's own two
      dependencies), and on either half of the mute layer (phase 6 ticket
      05): eras and era mutes. */
   let goodDaysQuery = liveList(async (j) => {
-    const consent = await resurfacing('on-this-day-home-card', j);
-    const allowed = consent.allowedDays(candidates);
+    // Read before the first await, so the query re-runs when the day changes.
+    const asOf = today;
+    const lookbacks = candidates;
+    const [letters, consent] = await Promise.all([
+      j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
+      resurfacing('on-this-day-home-card', j)
+    ]);
+    const allowed = consent.allowedDays(lookbacks);
     const goodDays = await Promise.all(allowed.map((c) => j.stats.isGoodDay(c.epochDay)));
-    return allowed.filter((c, i) => goodDays[i]);
+    /* The block this card opens also shows a day that only has a letter, so
+       the card must not say there is nothing to see on such a day. */
+    return allowed.filter((c, i) => onThisDayQualifies(goodDays[i], onThisDayLetters(letters, c.epochDay, asOf)));
   });
   /* Whether there is a card is settled once this answers (ReadGroup). */
   joinReadGroup(() => !goodDaysQuery.loading);

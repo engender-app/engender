@@ -38,9 +38,9 @@
     epochDayFromTimestamp,
     startOfDayTimestamp,
     timestampAtLocalTime,
-    todayEpochDay,
     FIRST_EPOCH_DAY
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     binderCueShowing,
     hoursMinutesOf,
@@ -110,8 +110,8 @@
 
   const WINDOW_DAYS = 90;
   const RANGES = [7, 14, 30, 90, 180, 365];
-  const today = todayEpochDay();
-  const from = today - WINDOW_DAYS;
+  const today = $derived(currentDay());
+  const from = $derived(today - WINDOW_DAYS);
 
   let sessionsQuery = liveList((j) => j.wearSessions.getSessions(from, today));
   let runningQuery = liveQuery((j) => j.wearSessions.getRunningSession());
