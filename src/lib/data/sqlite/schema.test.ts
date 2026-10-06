@@ -7,7 +7,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
-import { runMigrations } from './migration-runner.ts';
+import { JournalBelowBaselineError, runMigrations } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
@@ -50,10 +50,10 @@ test('the squashed baseline builds the schema the 78-step chain built', async ()
 test('a journal from below the baseline is refused loudly, with its rows left alone', async () => {
   /* The price the squash took: the steps that would have carried such a
      journal forward are gone, so it cannot be opened. What it must not do is
-     go wrong quietly. The version is behind rather than ahead, so
-     SchemaTooNewError never fires for it - the baseline is simply pending, it
-     meets tables that are already there, and the step fails inside its own
-     transaction. */
+     go wrong quietly, or as a SQLite message: the version is behind rather
+     than ahead, and the runner says so by name (after-release ticket 09), so
+     the failure screen can tell the person where the journal came from
+     instead of printing "table entry already exists". */
   const db = makeNodeSqliteDb();
   db.raw.exec(`CREATE TABLE entry (
     id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, epoch_day INTEGER NOT NULL,
@@ -63,15 +63,26 @@ test('a journal from below the baseline is refused loudly, with its rows left al
 
   const fileOps = noopFileOps();
   let cleanups = 0;
+  let copies = 0;
   fileOps.cleanupPreMigrationCopy = () => {
     cleanups += 1;
   };
+  fileOps.copyDatabaseFile = () => {
+    copies += 1;
+  };
 
-  await assert.rejects(() => runMigrations(db, fileOps, migrations));
+  await assert.rejects(
+    () => runMigrations(db, fileOps, migrations),
+    (error: unknown) =>
+      error instanceof JournalBelowBaselineError &&
+      error.foundVersion === SQUASH_BASELINE_VERSION - 38 &&
+      error.baselineVersion === SQUASH_BASELINE_VERSION
+  );
 
-  // The transaction rolled back, so nothing the baseline creates is there and
-  // the entry is untouched. The copy is not retired either, which is what
-  // leaves a way back (ADR-0006, amended by ticket 04).
+  // Refused before anything runs, so nothing the baseline creates is there
+  // and the entry is untouched. No copy is taken, because nothing is about to
+  // change, and none is retired either (ADR-0006, amended by ticket 04).
+  assert.equal(copies, 0);
   assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION - 38);
   assert.equal(
     (db.raw.prepare("SELECT note FROM entry WHERE uuid = 'e1'").get() as { note: string }).note,
@@ -93,7 +104,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 86);
+  assert.equal(db.getUserVersion(), 87);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")

@@ -18,6 +18,12 @@
    Ticket 215 adds the database that never loads: a refused wasm request
    and a worker served without COEP both have to reach the same notice.
 
+   After-release ticket 09 adds what the notice says: a sentence for the
+   failure, never the driver's text, and a journal from a development build
+   (below the squashed baseline) reaching the start-over way out with no
+   retry. The worker for that one answers the demo seed the way the real
+   one does for such a journal.
+
    Against a demo build:
      VITE_DEMO=1 npm run build
      node tests/boot-error-alone.mjs [--root <built tree>] */
@@ -40,14 +46,18 @@ const base = `http://localhost:${app.httpServer.address().port}`;
 /* What only a booted app draws. The notice itself is not in this list. */
 const APP_MARKUP = ['[data-home-hello]', '[data-app-nav]', '[data-nav-fab]', '[data-fan]'];
 
-async function open(breakTheDatabase) {
+const UNREADABLE_WORKER = "onmessage = (e) => postMessage({ id: e.data.id, ok: false, error: 'file is not a database' });";
+const BELOW_BASELINE_WORKER = `onmessage = (e) => postMessage({
+  id: e.data.id,
+  ok: true,
+  result: e.data.op === 'seedDemoPersona' ? { belowBaseline: 50, baselineVersion: 78 } : e.data.op === 'query' ? [] : undefined
+});`;
+
+async function open(workerBody) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
-  if (breakTheDatabase) {
+  if (workerBody) {
     await context.route(/mc-worker-[^/]*\.js$/, async (route) =>
-      route.fulfill({
-        response: await route.fetch(),
-        body: "onmessage = (e) => postMessage({ id: e.data.id, ok: false, error: 'file is not a database' });"
-      })
+      route.fulfill({ response: await route.fetch(), body: workerBody })
     );
   }
   const page = await context.newPage();
@@ -68,7 +78,11 @@ async function open(breakTheDatabase) {
     boot: document.querySelector('[data-app-root]')?.dataset.boot,
     present: selectors.filter((selector) => document.querySelector(selector)),
     scrollRegionText: document.querySelector('[data-app-scroll-region]')?.innerText.trim() ?? '',
-    notice: !!document.querySelector('[data-retry-boot]') && !!document.querySelector('[data-unreadable-reset]')
+    notice: !!document.querySelector('[data-retry-boot]') && !!document.querySelector('[data-unreadable-reset]'),
+    failure: document.querySelector('[data-boot-failure]')?.dataset.bootFailure ?? null,
+    noticeText: document.querySelector('[data-boot-failure]')?.innerText ?? '',
+    retry: !!document.querySelector('[data-retry-boot]'),
+    wayOut: !!document.querySelector('[data-unreadable-reset]')
   }), APP_MARKUP);
   await context.close();
   return { ...state, bands: await decoder.evaluate(frameBandDistances, frames) };
@@ -95,8 +109,12 @@ const check = (ok, line) => {
 };
 
 for (let pass = 1; pass <= 3; pass++) {
-  const broken = await open(true);
+  const broken = await open(UNREADABLE_WORKER);
   check(broken.boot === 'error' && broken.notice, `pass ${pass}: an unreadable journal boots to the error notice (boot=${broken.boot})`);
+  check(
+    broken.failure === 'unreadable' && !/not a database/i.test(broken.noticeText),
+    `pass ${pass}: the notice names the failure in words, not the driver's (failure=${broken.failure})`
+  );
   check(broken.present.length === 0, `pass ${pass}: nothing a booted app draws is on screen (${broken.present.join(', ') || 'none'})`);
   check(broken.scrollRegionText === '', `pass ${pass}: the scroll region is empty (${JSON.stringify(broken.scrollRegionText.slice(0, 80))})`);
   for (const name of ['notice', 'body']) {
@@ -108,7 +126,17 @@ for (let pass = 1; pass <= 3; pass++) {
   }
 }
 
-const healthy = await open(false);
+const belowBaseline = await open(BELOW_BASELINE_WORKER);
+check(
+  belowBaseline.boot === 'error' &&
+    belowBaseline.failure === 'below-baseline' &&
+    belowBaseline.wayOut &&
+    !belowBaseline.retry &&
+    !/schema version|baseline/i.test(belowBaseline.noticeText),
+  `a development build's journal gets its sentence and the way out, no retry and no driver text (failure=${belowBaseline.failure}, way out ${belowBaseline.wayOut}, retry ${belowBaseline.retry})`
+);
+
+const healthy = await open(null);
 check(healthy.boot === 'ready' && healthy.present.includes('[data-home-hello]'), `a normal boot still reaches Today (boot=${healthy.boot})`);
 
 /* Ticket 215: a database that never loads is a failed boot too. A blocked
