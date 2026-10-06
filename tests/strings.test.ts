@@ -410,6 +410,71 @@ describe('copy outside the catalogues', () => {
     expect(Object.keys(files).map((file) => readFileSync(join(root, file), 'utf8'))).toEqual(before);
   });
 
+  it('round-trips Android escapes, skips untranslatable strings and locks markup', () => {
+    const root = sources();
+    const pl = 'android/app/src/main/res/values-pl/strings.xml';
+    const file = join(root, pl);
+    writeFileSync(file, readFileSync(file, 'utf8').replace('</resources>',
+      '    <string name="fixed" translatable="false">x</string>\n    <string name="bold">Ala <b>ma</b> kota</string>\n' +
+      '    <string name="escaped">A\\nB \\u0041 &quot;q&quot;</string>\n</resources>'));
+    const rows = outside(root);
+    expect(rows.some((row) => row.key === 'android:fixed')).toBe(false);
+    expect(rows.find((row) => row.key === 'android:escaped')!.pl).toBe('A\nB A "q"');
+    expect(rows.find((row) => row.key === 'android:bold')!.findings).toContain('android:bold: This string holds markup. Edit it in the file.');
+    expect(() => writeString(root, edit('android:bold', 'pl', 'Ala <b>ma</b> kota', 'X'))).toThrow('markup');
+    const typed = '@home\nline two \\ end';
+    writeString(root, edit('android:widget_title', 'pl', 'Zapisz moment', typed));
+    expect(readFileSync(file, 'utf8')).toContain('>\\@home\\nline two \\\\ end<');
+    expect(outside(root).find((row) => row.key === 'android:widget_title')!.pl).toBe(typed);
+  });
+
+  it('names manifest fields by their JSON path, whatever the key order', () => {
+    const root = sources();
+    writeFileSync(join(root, 'static/manifest-pl.webmanifest'), `{
+  "shortcuts": [{ "short_name": "Nowy", "name": "Nowy wpis", "url": "/entry" }],
+  "share_target": { "params": { "name": "tytuł" } },
+  "description": "Opis",
+  "name": "engender"
+}
+`);
+    const rows = outside(root).filter((row) => row.key.startsWith('manifest:'));
+    expect(rows.map(({ key, en, pl }) => ({ key, en, pl }))).toEqual([
+      { key: 'manifest:description', en: 'Your journal is stored on this device.', pl: 'Opis' },
+      { key: 'manifest:name', en: 'engender', pl: 'engender' },
+      { key: 'manifest:shortcuts.1.name', en: 'New entry', pl: 'Nowy wpis' },
+      { key: 'manifest:shortcuts.1.short_name', en: 'New entry', pl: 'Nowy' }
+    ]);
+    writeString(root, edit('manifest:name', 'pl', 'engender', 'Notatki'));
+    expect(readFileSync(join(root, 'static/manifest-pl.webmanifest'), 'utf8')).toContain('"params": { "name": "tytuł" }');
+    expect(readFileSync(join(root, 'static/manifest-pl.webmanifest'), 'utf8')).toContain('"name": "Notatki"\n}');
+  });
+
+  it('lists English with no Polish, store text over Play limits and policies that stopped pairing', () => {
+    const root = sources();
+    writeFileSync(join(root, 'fastlane/metadata/android/en-US/changelogs/8.txt'), 'Second release.\n');
+    writeFileSync(join(root, 'fastlane/metadata/android/pl-PL/title.txt'), 'engender: dziennik tranzycji i więcej\n');
+    writeFileSync(join(root, 'docs/privacy-policy.en.md'), files['docs/privacy-policy.en.md'] + '\nA new paragraph.\n');
+    const rows = outside(root);
+    expect(rows.find((row) => row.key === 'store:changelogs/8')).toMatchObject({
+      en: 'Second release.', pl: null,
+      findings: ['store:changelogs/8 is missing from fastlane/metadata/android/pl-PL/changelogs/8.txt']
+    });
+    expect(rows.find((row) => row.key === 'store:title')!.findings).toEqual([
+      'store:title is 37 characters in fastlane/metadata/android/pl-PL/title.txt; Play allows 30'
+    ]);
+    expect(rows.find((row) => row.key === 'privacy:01')!.findings).toEqual([
+      'docs/privacy-policy.en.md has 4 paragraphs and docs/privacy-policy.pl.md has 3, so pairs after the difference are off'
+    ]);
+  });
+
+  it('treats a whitespace-only line as a paragraph break', () => {
+    const root = sources();
+    writeFileSync(join(root, 'docs/privacy-policy.pl.md'), '# Polityka\n   \nAkapit.\n');
+    expect(outside(root).filter((row) => row.key.startsWith('privacy:')).map((row) => row.pl)).toEqual(['# Polityka', 'Akapit.', null]);
+    writeString(root, edit('privacy:02', 'pl', 'Akapit.', 'Inny akapit.'));
+    expect(readFileSync(join(root, 'docs/privacy-policy.pl.md'), 'utf8')).toBe('# Polityka\n   \nInny akapit.\n');
+  });
+
   it('remembers a review of outside copy and reopens it when the text changes', () => {
     const root = sources();
     writeReviews(root, { reviewed: true, keys: outside(root).filter((row) => row.key.startsWith('store:')) });

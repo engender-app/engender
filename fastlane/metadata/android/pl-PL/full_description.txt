@@ -1,6 +1,6 @@
 engender to dziennik tranzycji. Wpis to nastrój, notatka, twoje skale, tagi i zdjęcia, a żeby się liczył, wystarczy jedno z nich. Możesz dodać kilka wpisów jednego dnia, a pominięty dzień uzupełnić później, z jego datą.
 
-Aplikacje do śledzenia nastroju dobrze pasują do codziennego nawyku, tylko nie mają miejsca na płeć. engender zachowuje ten nawyk i dokłada skale, które nazywasz po swojemu. Zapisuje to, co wpiszesz, i niczego nie interpretuje.
+Aplikacje do śledzenia nastroju dobrze pasują do codziennego nawyku, tylko nie mają miejsca na płeć. engender działa tak samo i dokłada skale, które nazywasz po swojemu. Zapisuje to, co wpiszesz, i niczego nie interpretuje.
 
 Twój dziennik, twoje urządzenie
 
