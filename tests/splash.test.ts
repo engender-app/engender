@@ -57,24 +57,11 @@ describe("the first frame is the mark's own numbers", () => {
 });
 
 describe('the first frame holds still', () => {
-  it('has no animation or keyframes, and fades by default', () => {
-    expect(handwritten).not.toMatch(/@keyframes|animation/);
-    expect(handwritten).toMatch(/#splash \{[^}]*transition: opacity/);
-  });
-
-  /* TEMPORARY, while Alicja picks between the two handovers (after-release
-     ticket 31). The rise moves the first frame up and its ground down by
-     the same amount, so the ground and the mark stay where they are and
-     only the clipping edge travels. */
-  it('moves nothing in the rise but the edge: the frame and its ground travel by opposite amounts', () => {
-    const rules = [...handwritten.matchAll(/([^{}]+)\{([^}]*transform\s*:[^}]*)\}/g)];
-    expect(rules.length).toBe(2);
-    for (const [, selector] of rules) expect(selector).toContain("html[data-splash-handover='rise']");
-    const frame = rules.find(([, selector]) => /#splash\.is-leaving\s*$/.test(selector.trim()))![2];
-    const ground = rules.find(([, selector]) => /#splash\.is-leaving b\s*$/.test(selector.trim()))![2];
-    expect(frame).toContain('transform: translateY(-100%)');
-    expect(ground).toContain('transform: translateY(100%)');
-    expect(handwritten).toMatch(/html\[data-splash-handover='rise'\] #splash,\s*html\[data-splash-handover='rise'\] #splash b \{\s*transition: transform/);
+  /* Alicja's pick in after-release ticket 31: the fade, on the soft
+     ease-out base.css gives the blind, over the rising edge. */
+  it('has no animation, keyframes, transform or second handover: it only fades, on --ease-out-soft', () => {
+    expect(handwritten).not.toMatch(/@keyframes|animation|transform\s*:|data-splash-handover/);
+    expect(handwritten).toMatch(/#splash \{[^}]*transition: opacity 280ms var\(--ease-out-soft,/);
   });
 
   it('draws no mark under disguise', () => {
