@@ -20,7 +20,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Checks that Home/Recents reaches the real timing hooks and protects Immediately.
+/** Checks that Home/Recents reaches the real timing hooks, and that leaving
+ * never changes what the capture choice decided: allowed leaves FLAG_SECURE
+ * off with or without a lock, not allowed keeps it on. Android 13+ keeps the
+ * Recents half on the system's activity record, which has no getter;
+ * tests/android-manifest-recents.test.ts holds that line instead.
  * The preference is mirrored through the same public bridge as Settings.
  */
 @RunWith(AndroidJUnit4.class)
@@ -53,11 +57,11 @@ public class LockTimingLeaveHintTest {
     }
 
     @Test
-    public void allTimingsProtectLegacyRecentsAndRestoreAllowedCapture() throws Exception {
+    public void everyTimingLeavesAllowedCaptureAndRecentsVisible() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             installCounter(scenario);
-            for (String timing : new String[] {"one-minute", "five-minutes", "restart"}) {
+            for (String timing : new String[] {"immediately", "one-minute", "five-minutes", "restart"}) {
                 setTiming(scenario, timing);
                 runJs(scenario, "window.__leaveLockCalls = 0");
                 scenario.onActivity(MainActivity::onUserLeaveHint);
@@ -68,8 +72,8 @@ public class LockTimingLeaveHintTest {
                 Thread.sleep(500);
                 assertEquals(timing, android.os.Build.VERSION.SDK_INT >= 29 ? "3" : "2",
                     evalJs(scenario, "String(window.__leaveLockCalls || 0)"));
-                scenario.onActivity(activity -> assertEquals(android.os.Build.VERSION.SDK_INT < 33,
-                    (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+                scenario.onActivity(activity -> assertEquals(timing, 0,
+                    activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE
                 ));
                 scenario.onActivity(MainActivity::onResume);
                 scenario.onActivity(activity -> assertEquals(0,
@@ -81,7 +85,7 @@ public class LockTimingLeaveHintTest {
 
     @Test
     @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
-    public void recentsLocksWhileResumedAndRestoresTheCaptureChoice() throws Exception {
+    public void recentsLocksWhileResumedAndKeepsTheCaptureChoice() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             setTiming(scenario, "immediately");
@@ -94,7 +98,7 @@ public class LockTimingLeaveHintTest {
                 runJs(scenario, "window.__leaveLockCalls = 0");
                 scenario.onActivity(activity -> activity.onTopResumedActivityChanged(false));
                 assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
-                scenario.onActivity(activity -> assertEquals(android.os.Build.VERSION.SDK_INT < 33 || !allowed,
+                scenario.onActivity(activity -> assertEquals(!allowed,
                     (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
                 ));
                 scenario.onActivity(activity -> activity.onTopResumedActivityChanged(true));
@@ -120,15 +124,15 @@ public class LockTimingLeaveHintTest {
     }
 
     @Test
-    public void recentsPauseLocksWithoutALeaveHintAndProtectsTheThumbnail() throws Exception {
+    public void recentsPauseLocksWithoutALeaveHintAndKeepsAnAllowedThumbnail() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             awaitTrue(scenario, "typeof window.__lockOnLeaveFromNative === 'function'");
             setTiming(scenario, "immediately");
             installCounter(scenario);
             scenario.onActivity(MainActivity::onPause);
             assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
-            scenario.onActivity(activity -> assertEquals(android.os.Build.VERSION.SDK_INT < 33,
-                (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+            scenario.onActivity(activity -> assertEquals(0,
+                activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_SECURE
             ));
             scenario.onActivity(MainActivity::onResume);
             scenario.onActivity(activity -> assertEquals(
@@ -139,7 +143,7 @@ public class LockTimingLeaveHintTest {
     }
 
     private void setTiming(ActivityScenario<MainActivity> scenario, String timing) throws Exception {
-        runJs(scenario, "window.Capacitor.Plugins.LockTiming.setTiming({timing: '" + timing + "', enabled: true})");
+        runJs(scenario, "window.Capacitor.Plugins.LockTiming.setTiming({timing: '" + timing + "'})");
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
         while (System.nanoTime() < deadline) {
