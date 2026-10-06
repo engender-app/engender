@@ -25,6 +25,11 @@ import { stockAutoSource } from '../autoSource';
 import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 
 interface StockEntryInput {
+  /** The entry being edited. With it the row is matched by id, so a new
+      drug name renames that row rather than starting a second one beside
+      it (after-release ticket 01). Without it the row is matched by drug,
+      as before. */
+  id?: string;
   drug: string;
   quantity: number;
   unit: string;
@@ -62,7 +67,12 @@ export interface StockArea {
       replaces the first, the way DoseSchedule replaces per episode
       (doses.ts). Also clears box 4's reminder hand-off state - a fresh
       count is the deliberate act that re-arms a dismissed prompt. Returns
-      the row's id. */
+      the row's id.
+
+      Given an `id`, it edits that row and refuses an id that names none.
+      A changed drug name renames the row: the old name's run-out reminder
+      goes with it, and a different row already counting the new name is
+      replaced, since there is still one count per drug. */
   upsertEntry(input: StockEntryInput): Promise<string>;
   /** Also drops this drug's auto-managed run-out reminder, if any -
       nothing is left to project once the count is gone. */
@@ -169,10 +179,27 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
 
     async upsertEntry(input) {
       const drug = input.drug.trim();
-      const [existing, allReminders] = await Promise.all([
-        driver.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]),
-        reminders.getReminders()
-      ]);
+      let existing: { uuid: string }[];
+      if (input.id === undefined) {
+        existing = await driver.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]);
+      } else {
+        const edited = await driver.query<{ uuid: string; drug: string }>(
+          'SELECT uuid, drug FROM medication_stock WHERE uuid = ?',
+          [input.id]
+        );
+        if (edited.length === 0) throw new Error(`unknown stock entry ${input.id}`);
+        if (edited[0].drug !== drug) {
+          /* A rename. The old name's reminder goes first and any row that
+             already counts the new name second, in the order deleteEntry
+             uses and for its reason: a reminder left behind for a name no
+             row carries any more is one nothing can ever clear. */
+          const oldAuto = findAutoReminder(await reminders.getReminders(), edited[0].drug);
+          if (oldAuto) await reminders.deleteReminder(oldAuto.id);
+          await driver.run('DELETE FROM medication_stock WHERE drug = ? AND uuid <> ?', [drug, input.id]);
+        }
+        existing = edited;
+      }
+      const allReminders = await reminders.getReminders();
       /* `dismissed` always resets: recording a fresh count is the
          deliberate act that re-arms it. `everCreated` resets to whether an
          auto reminder happens to exist right now, rather than always to
@@ -199,9 +226,10 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         await driver.run(
           `UPDATE medication_stock
               SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, updated_at = ?
-            WHERE drug = ?`,
-          [...values, drug]
+                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, updated_at = ?,
+                  drug = ?
+            WHERE uuid = ?`,
+          [...values, drug, existing[0].uuid]
         );
         return existing[0].uuid;
       }

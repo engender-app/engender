@@ -926,7 +926,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   stock: classify<Journal['stock']>()({
     writes: {
-      upsertEntry: ['stock'],
+      // A rename drops the old name's run-out Reminder (after-release 01).
+      upsertEntry: ['stock', 'reminder'],
       deleteEntry: ['stock', 'reminder'],
       // Box 4: reconciling can create, move or clear the drug's run-out
       // Reminder as well as this drug's own bookkeeping.

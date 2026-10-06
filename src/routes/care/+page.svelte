@@ -196,6 +196,7 @@
         : null;
 
     await journal.stock.upsertEntry({
+      id: stockEditor.id,
       drug,
       quantity,
       unit,
