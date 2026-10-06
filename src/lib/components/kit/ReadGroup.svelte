@@ -42,6 +42,7 @@
   import { crossfade } from '$lib/motion/reveal';
   import { provideReadGroup } from './readGroup.svelte';
   import { fitReadArrival, readRevealDuration } from '$lib/motion/screenArrival';
+  import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
 
   let {
     answered = true,
@@ -79,8 +80,12 @@
   });
   let instant = $state(false);
 
+  /* Answered too late in an Android tab arrival to reveal within it, the
+     group keeps its placeholder until the field stops (screenArrival.ts). */
+  const released = holdForArrival(() => group.answered, () => painted);
+
   $effect(() => {
-    if (group.shown || !group.answered) return;
+    if (group.shown || !released()) return;
     if (!painted) {
       for (const animation of members.getAnimations({ subtree: true })) {
         if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
