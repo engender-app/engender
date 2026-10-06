@@ -1,7 +1,7 @@
 /* Standalone dev server for the browser-tier probe (ticket 03) - separate
    from the app's own vite.config.ts on purpose, since this only exists to
    serve probe.ts to a real browser over COOP/COEP, and ticket 04 owns
-   wiring SQLocal into the app itself. Named so svelte-check's project
+   wiring the SQLite driver into the app itself. Named so svelte-check's project
    auto-discovery (which globs for vite.config.*) does not pick it up -
    run.mjs loads it explicitly.
 
@@ -13,7 +13,6 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import sqlocal from 'sqlocal/vite';
 
 /* A real service worker whose bytes change on demand (phase 2 ticket 04).
 
@@ -86,6 +85,7 @@ interface ServerResponse {
 export default defineConfig({
   root: import.meta.dirname,
   server: {
+    headers: { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' },
     fs: {
       strict: false
     }
@@ -95,7 +95,7 @@ export default defineConfig({
      happens to be. Type is half of what that page is reviewed for, and every
      other probe here is unaffected by a few more files being reachable. */
   publicDir: resolve(import.meta.dirname, '../../static'),
-  plugins: [svelte(), sqlocal(), mutableServiceWorker()],
+  plugins: [svelte(), mutableServiceWorker()],
   resolve: {
     alias: {
       '$lib/stores/boot.svelte': resolve(import.meta.dirname, 'entry-editor-boot-stub.ts'),

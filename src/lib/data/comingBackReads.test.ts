@@ -13,6 +13,7 @@ function recordingAreas(lastWrite: number | null) {
   const windows: { fromEpochDay: number; toEpochDay: number }[] = [];
   const areas = {
     lastWrite: {
+      getWritingDays: async () => { asked.push('writingDays'); return []; },
       getLastWrites: async () => {
         asked.push('lastWrite');
         return { entries: lastWrite };
@@ -76,7 +77,7 @@ test('a return reads the rest, and asks the schedule about the gap and not about
 
   assert.equal(surface?.sinceEpochDay, since);
   assert.deepEqual(asked.slice(0, 1), ['lastWrite']);
-  assert.deepEqual(asked.slice(1).sort(), ['doses', 'eras', 'letters(60)', 'milestones', 'wearSessions']);
+  assert.deepEqual(asked.slice(1).sort(), ['doses', 'eras', 'letters(60)', 'milestones', 'wearSessions', 'writingDays']);
   assert.deepEqual(windows, [{ fromEpochDay: since + 1, toEpochDay: TODAY - 1 }]);
 });
 
@@ -91,4 +92,11 @@ test('the gap it is handed is the gap it answers about, whatever the journal now
 
   assert.equal(surface?.sinceEpochDay, since);
   assert.deepEqual(windows, [{ fromEpochDay: since + 1, toEpochDay: TODAY - 1 }]);
+});
+
+test('daily entries followed by 30 days away return despite old last-write dates in other areas', async () => {
+  const areas = recordingAreas(TODAY - 30).areas;
+  areas.lastWrite.getLastWrites = async () => ({ entries: TODAY - 30, labResults: TODAY - 80, measurements: TODAY - 130, tallyEvents: TODAY - 180, sideEffects: TODAY - 230 }) as never;
+  areas.lastWrite.getWritingDays = async () => Array.from({ length: 30 }, (_, index) => TODAY - 59 + index);
+  assert.equal(await readReturnGap(areas, TODAY), TODAY - 30);
 });

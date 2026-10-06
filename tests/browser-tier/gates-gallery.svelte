@@ -60,8 +60,7 @@
     'session-biometric',
     /* Unchanged by this ticket, kept so a regression in the shared shell
        shows up here rather than in the app. */
-    'converting',
-    'conversion-refused',
+    'legacy-refused',
     'android-key',
     'android-key-no-lock',
     'android-key-invalidated',
@@ -185,22 +184,8 @@
       Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'passphrase')));
     } else if (scene === 'unlock-biometric') {
       Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'biometric')));
-    } else if (scene === 'converting') {
-      const setup = bootTransitions.toNeedsSetup(from, { conversionRequired: true });
-      const converting = bootTransitions.toConverting(setup);
-      Object.assign(
-        bootState,
-        bootTransitions.updateConversionProgress(converting, { stage: 'photos', done: 34, total: 91 })
-      );
-    } else if (scene === 'conversion-refused') {
-      Object.assign(
-        bootState,
-        bootTransitions.toConversionRefused(from, {
-          reason: 'not-enough-space',
-          needBytes: 214 * 1024 * 1024,
-          freeBytes: 37 * 1024 * 1024
-        })
-      );
+    } else if (scene === 'legacy-refused') {
+      Object.assign(bootState, bootTransitions.toLegacyRefused(from));
     } else if (scene === 'android-key') {
       Object.assign(bootState, bootTransitions.toNeedsAuthentication(from));
     } else if (scene === 'android-key-no-lock') {
@@ -321,7 +306,7 @@
           <SessionUnlock mode="passphrase" />
         {:else if scene === 'session-biometric'}
           <SessionUnlock mode="biometric" />
-        {:else if scene.startsWith('unlock-') || scene === 'converting' || scene === 'conversion-refused'}
+        {:else if scene.startsWith('unlock-') || scene === 'legacy-refused'}
           <JournalGate />
         {:else if scene.startsWith('android-key')}
           <AndroidKeyGate />

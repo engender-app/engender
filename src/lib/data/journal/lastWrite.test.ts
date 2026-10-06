@@ -239,7 +239,7 @@ test('the assembled read costs one query per registered area', async () => {
 });
 
 test('a test may register an entry of its own and read it back through the same path', async () => {
-  const { journal } = await journalWithBuiltIns();
+  const { journal, db: driver } = await journalWithBuiltIns();
   const invented: LastWriteEntry = {
     key: 'invented',
     tables: [],
@@ -269,6 +269,7 @@ test('a test may register an entry of its own and read it back through the same 
       tryouts: journal.tryouts,
       documents: journal.documents
     },
+    driver,
     [...LAST_WRITE_ENTRIES, invented]
   );
 
@@ -278,9 +279,9 @@ test('a test may register an entry of its own and read it back through the same 
 });
 
 test('selected last-write areas omit unrelated reads and retain their own answers', async () => {
-  const { journal } = await journalWithBuiltIns();
+  const { journal, db: driver } = await journalWithBuiltIns();
   const calls: string[] = [];
-  const area = makeLastWriteArea(journal, [
+  const area = makeLastWriteArea(journal, driver, [
     { key: 'measurements', tables: [], read: async () => { calls.push('measurements'); return TODAY - 2; } },
     { key: 'sizeRecords', tables: [], read: async () => { calls.push('sizeRecords'); return null; } },
     { key: 'cycleEvents', tables: [], read: async () => { calls.push('cycleEvents'); return TODAY; } }
@@ -292,4 +293,14 @@ test('selected last-write areas omit unrelated reads and retain their own answer
   assert.deepEqual(calls, []);
   assert.deepEqual(await area.getLastWrites(TODAY), { measurements: TODAY - 2, sizeRecords: null, cycleEvents: TODAY });
   assert.deepEqual(calls, ['measurements', 'sizeRecords', 'cycleEvents']);
+});
+
+test('writing days are distinct entry and local dose days, bounded to one year in one query', async () => {
+  const db = await migratedDb();
+  await db.run("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('old', ?, 0, 0), ('first', ?, 0, 0), ('duplicate', ?, 0, 0), ('future', ?, 0, 0)", [TODAY - 365, TODAY - 364, TODAY - 364, TODAY + 1]);
+  await db.run("INSERT INTO dose_event (uuid, timestamp, route, dose, dose_unit, status, updated_at) VALUES ('dose1', ?, 'im', 1, 'mg', 'taken', 0), ('dose2', ?, 'im', 1, 'mg', 'taken', 0), ('old-dose', ?, 'im', 1, 'mg', 'taken', 0), ('future-dose', ?, 'im', 1, 'mg', 'taken', 0)", [at(TODAY - 2, 23), at(TODAY - 2, 1), at(TODAY - 365), at(TODAY + 1)]);
+  const counted = countingDriver(db);
+  const journal = openJournal(counted.driver, fakeFileStore());
+  assert.deepEqual(await journal.lastWrite.getWritingDays(TODAY), [TODAY - 364, TODAY - 2]);
+  assert.equal(counted.roundTrips().query, 1);
 });

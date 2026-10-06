@@ -70,3 +70,10 @@ test('a single entry keeps drawing itself rather than erroring', () => {
     drawnIds = draw.drawnIds;
   }
 });
+
+test('first draw after exhaustion cannot repeat last entry when another exists', () => {
+  const hits = [entry(1), entry(2)];
+  const first = drawRandomEntry(hits, new Set(), () => 0)!;
+  const last = drawRandomEntry(hits, first.drawnIds, () => 0)!;
+  assert.equal(drawRandomEntry(hits, last.drawnIds, () => 0.99)!.entry.id, first.entry.id);
+});
