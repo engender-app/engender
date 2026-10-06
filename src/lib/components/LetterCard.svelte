@@ -44,7 +44,7 @@
      first, then the journey. `maskHeight` is called at a known moment with a
      height its caller measured before the layout changed, which is exactly
      what an opening is. */
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from './Icon.svelte';
   import { m } from '$lib/paraglide/messages';
@@ -101,14 +101,29 @@
   /* Measure, flip, then mask from what was measured. The measurement has to
      happen before the state changes and the mask has to be started before
      the browser paints the new layout, which is what `tick()` buys: it
-     resolves once Svelte has written the DOM and before the frame ends. */
-  async function toggle() {
-    const from = card?.getBoundingClientRect().height ?? 0;
+     resolves once Svelte has written the DOM and before the frame ends.
+
+     Keyed on `open` itself rather than on this card's own press, because
+     the arrival opens the card from a button of its own: that path flipped
+     the prop with no mask and the whole letter landed in one frame (after-
+     release 26, which also took the folded lines away and so made the
+     jump 116px). `$effect.pre` runs before this card's DOM is written, so
+     the height it reads is still the old one. */
+  let maskedOpen = untrack(() => open);
+  $effect.pre(() => {
+    const next = open;
+    if (next === maskedOpen) return;
+    maskedOpen = next;
+    if (!folds || isReducedMotion() || !card) return;
+    const from = card.getBoundingClientRect().height;
+    void tick().then(() => {
+      if (card) maskHeight(card, from, motionDuration('--dur-med'));
+    });
+  });
+
+  function toggle() {
     if (open) onclose?.();
     else onopen?.();
-    if (isReducedMotion() || !card) return;
-    await tick();
-    if (card) maskHeight(card, from, motionDuration('--dur-med'));
   }
 
   /* Tile's panel contract, and the same reasoning: `|global` because what
