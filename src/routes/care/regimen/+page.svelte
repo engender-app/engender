@@ -546,6 +546,7 @@
               static
               key={episode.id}
               data-hidden-episode={episode.id}
+              icon="flask"
               title={episode.drug}
               subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
               action={{
