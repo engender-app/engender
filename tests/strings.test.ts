@@ -289,3 +289,197 @@ describe('copy review memory', () => {
     expect(() => readStrings(root)).toThrow();
   });
 });
+
+describe('copy outside the catalogues', () => {
+  const files: Record<string, string> = {
+    'android/app/src/main/res/values/strings.xml': `<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">engender</string>
+    <!-- a comment -->
+    <string name="widget_title">Log the moment</string>
+    <string-array name="widget_labels">
+        <item>Misgendered</item>
+        <item>Correctly gendered</item>
+    </string-array>
+</resources>
+`,
+    'android/app/src/main/res/values-pl/strings.xml': `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_title">Zapisz moment</string>
+    <string-array name="widget_labels">
+        <item>Misgenderowanie</item>
+        <item>Właściwe formy</item>
+    </string-array>
+</resources>
+`,
+    'static/manifest.webmanifest': `{
+  "name": "engender",
+  "description": "Your journal is stored on this device.",
+  "icons": [{ "src": "/i.svg" }],
+  "shortcuts": [{ "name": "New entry", "short_name": "New entry", "url": "/entry" }]
+}
+`,
+    'static/manifest-pl.webmanifest': `{
+  "name": "engender",
+  "description": "Dziennik jest zapisany na tym urządzeniu.",
+  "icons": [{ "src": "/i.svg" }],
+  "shortcuts": [{ "name": "Nowy wpis", "short_name": "Nowy wpis", "url": "/entry" }]
+}
+`,
+    'fastlane/metadata/android/en-US/title.txt': 'engender: mood journal\n',
+    'fastlane/metadata/android/pl-PL/title.txt': 'engender: dziennik tranzycji\n',
+    'fastlane/metadata/android/en-US/changelogs/7.txt': 'First release.\n',
+    'fastlane/metadata/android/pl-PL/changelogs/7.txt': 'Pierwsza wersja.\n',
+    'docs/privacy-policy.en.md': '# Privacy policy\n\nNothing leaves the device.\nNot even crash reports.\n\n## Contact\n',
+    'docs/privacy-policy.pl.md': '# Polityka prywatności\n\nNic nie opuszcza urządzenia.\nNawet raporty awarii.\n\n## Kontakt\n'
+  };
+
+  function sources() {
+    const root = fixture();
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(join(root, file, '..'), { recursive: true });
+      writeFileSync(join(root, file), text);
+    }
+    execFileSync('git', ['-C', root, 'add', '-A']);
+    execFileSync('git', ['-C', root, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+      '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Add copy outside the catalogues']);
+    return root;
+  }
+
+  const outside = (root: string) => readStrings(root).filter((row) => row.key.includes(':'));
+  const edit = (key: string, locale: 'en' | 'pl', previous: string, text: string) =>
+    ({ locale, key, variant: null, form: null, previous, text });
+
+  it('pairs every translated value with its English, by source, with a link to both files', () => {
+    const root = sources();
+    const rows = outside(root);
+    expect(rows.map(({ key, theme, en, pl }) => ({ key, theme, en, pl }))).toEqual([
+      { key: 'android:widget_labels.1', theme: 'Android, store and web install', en: 'Misgendered', pl: 'Misgenderowanie' },
+      { key: 'android:widget_labels.2', theme: 'Android, store and web install', en: 'Correctly gendered', pl: 'Właściwe formy' },
+      { key: 'android:widget_title', theme: 'Android, store and web install', en: 'Log the moment', pl: 'Zapisz moment' },
+      { key: 'manifest:description', theme: 'Android, store and web install', en: 'Your journal is stored on this device.', pl: 'Dziennik jest zapisany na tym urządzeniu.' },
+      { key: 'manifest:name', theme: 'Android, store and web install', en: 'engender', pl: 'engender' },
+      { key: 'manifest:shortcuts.1.name', theme: 'Android, store and web install', en: 'New entry', pl: 'Nowy wpis' },
+      { key: 'manifest:shortcuts.1.short_name', theme: 'Android, store and web install', en: 'New entry', pl: 'Nowy wpis' },
+      { key: 'privacy:01', theme: 'Privacy policy', en: '# Privacy policy', pl: '# Polityka prywatności' },
+      { key: 'privacy:02', theme: 'Privacy policy', en: 'Nothing leaves the device.\nNot even crash reports.', pl: 'Nic nie opuszcza urządzenia.\nNawet raporty awarii.' },
+      { key: 'privacy:03', theme: 'Privacy policy', en: '## Contact', pl: '## Kontakt' },
+      { key: 'store:changelogs/7', theme: 'Android, store and web install', en: 'First release.', pl: 'Pierwsza wersja.' },
+      { key: 'store:title', theme: 'Android, store and web install', en: 'engender: mood journal', pl: 'engender: dziennik tranzycji' }
+    ]);
+    expect(rows.every((row) => row.change === null && !row.reviewed && row.findings.length === 0)).toBe(true);
+    expect(rows.find((row) => row.key === 'privacy:02')!.sites).toEqual([
+      { file: 'docs/privacy-policy.en.md', line: 3, href: `vscode://file${root}/docs/privacy-policy.en.md:3` },
+      { file: 'docs/privacy-policy.pl.md', line: 3, href: `vscode://file${root}/docs/privacy-policy.pl.md:3` }
+    ]);
+  });
+
+  it('writes each value back into its own file and leaves every other byte alone', () => {
+    const root = sources();
+    writeString(root, edit('android:widget_title', 'pl', 'Zapisz moment', "Zapisz chwilę & to, co 'ważne'"));
+    writeString(root, edit('android:widget_labels.2', 'pl', 'Właściwe formy', 'Dobre zaimki'));
+    writeString(root, edit('manifest:shortcuts.1.name', 'pl', 'Nowy wpis', 'Dodaj „wpis”'));
+    writeString(root, edit('store:title', 'en', 'engender: mood journal', 'engender: transition journal'));
+    writeString(root, edit('privacy:02', 'pl', 'Nic nie opuszcza urządzenia.\nNawet raporty awarii.', 'Nic nie wychodzi poza urządzenie.'));
+    const read = (file: string) => readFileSync(join(root, file), 'utf8');
+    expect(read('android/app/src/main/res/values-pl/strings.xml')).toBe(files['android/app/src/main/res/values-pl/strings.xml']
+      .replace('>Zapisz moment<', ">Zapisz chwilę &amp; to, co \\'ważne\\'<").replace('Właściwe formy', 'Dobre zaimki'));
+    expect(read('static/manifest-pl.webmanifest')).toBe(files['static/manifest-pl.webmanifest']
+      .replace('"name": "Nowy wpis"', '"name": "Dodaj „wpis”"'));
+    expect(read('fastlane/metadata/android/en-US/title.txt')).toBe('engender: transition journal\n');
+    expect(read('docs/privacy-policy.pl.md')).toBe(files['docs/privacy-policy.pl.md']
+      .replace('Nic nie opuszcza urządzenia.\nNawet raporty awarii.', 'Nic nie wychodzi poza urządzenie.'));
+    const title = outside(root).find((row) => row.key === 'android:widget_title')!;
+    expect(title.pl).toBe("Zapisz chwilę & to, co 'ważne'");
+    expect(title.change).toBe('changed');
+    expect(title.previous).toEqual({ en: 'Log the moment', pl: 'Zapisz moment' });
+  });
+
+  it.each([
+    edit('android:widget_title', 'pl', 'Stale', 'X'),
+    edit('android:app_name', 'pl', 'engender', 'X'),
+    edit('android:nothing', 'en', 'X', 'Y'),
+    edit('store:../../secret', 'en', 'X', 'Y'),
+    edit('privacy:99', 'en', 'X', 'Y'),
+    { ...edit('store:title', 'en', 'engender: mood journal', 'X'), variant: 0 },
+    edit('privacy:02', 'en', 'Nothing leaves the device.\nNot even crash reports.', 'Two\n\nparagraphs')
+  ])('refuses %j without touching any file', (bad) => {
+    const root = sources();
+    const before = Object.keys(files).map((file) => readFileSync(join(root, file), 'utf8'));
+    expect(() => writeString(root, bad)).toThrow();
+    expect(Object.keys(files).map((file) => readFileSync(join(root, file), 'utf8'))).toEqual(before);
+  });
+
+  it('round-trips Android escapes, skips untranslatable strings and locks markup', () => {
+    const root = sources();
+    const pl = 'android/app/src/main/res/values-pl/strings.xml';
+    const file = join(root, pl);
+    writeFileSync(file, readFileSync(file, 'utf8').replace('</resources>',
+      '    <string name="fixed" translatable="false">x</string>\n    <string name="bold">Ala <b>ma</b> kota</string>\n' +
+      '    <string name="escaped">A\\nB \\u0041 &quot;q&quot;</string>\n</resources>'));
+    const rows = outside(root);
+    expect(rows.some((row) => row.key === 'android:fixed')).toBe(false);
+    expect(rows.find((row) => row.key === 'android:escaped')!.pl).toBe('A\nB A "q"');
+    expect(rows.find((row) => row.key === 'android:bold')!.findings).toContain('android:bold: This string holds markup. Edit it in the file.');
+    expect(() => writeString(root, edit('android:bold', 'pl', 'Ala <b>ma</b> kota', 'X'))).toThrow('markup');
+    const typed = '@home\nline two \\ end';
+    writeString(root, edit('android:widget_title', 'pl', 'Zapisz moment', typed));
+    expect(readFileSync(file, 'utf8')).toContain('>\\@home\\nline two \\\\ end<');
+    expect(outside(root).find((row) => row.key === 'android:widget_title')!.pl).toBe(typed);
+  });
+
+  it('names manifest fields by their JSON path, whatever the key order', () => {
+    const root = sources();
+    writeFileSync(join(root, 'static/manifest-pl.webmanifest'), `{
+  "shortcuts": [{ "short_name": "Nowy", "name": "Nowy wpis", "url": "/entry" }],
+  "share_target": { "params": { "name": "tytuł" } },
+  "description": "Opis",
+  "name": "engender"
+}
+`);
+    const rows = outside(root).filter((row) => row.key.startsWith('manifest:'));
+    expect(rows.map(({ key, en, pl }) => ({ key, en, pl }))).toEqual([
+      { key: 'manifest:description', en: 'Your journal is stored on this device.', pl: 'Opis' },
+      { key: 'manifest:name', en: 'engender', pl: 'engender' },
+      { key: 'manifest:shortcuts.1.name', en: 'New entry', pl: 'Nowy wpis' },
+      { key: 'manifest:shortcuts.1.short_name', en: 'New entry', pl: 'Nowy' }
+    ]);
+    writeString(root, edit('manifest:name', 'pl', 'engender', 'Notatki'));
+    expect(readFileSync(join(root, 'static/manifest-pl.webmanifest'), 'utf8')).toContain('"params": { "name": "tytuł" }');
+    expect(readFileSync(join(root, 'static/manifest-pl.webmanifest'), 'utf8')).toContain('"name": "Notatki"\n}');
+  });
+
+  it('lists English with no Polish, store text over Play limits and policies that stopped pairing', () => {
+    const root = sources();
+    writeFileSync(join(root, 'fastlane/metadata/android/en-US/changelogs/8.txt'), 'Second release.\n');
+    writeFileSync(join(root, 'fastlane/metadata/android/pl-PL/title.txt'), 'engender: dziennik tranzycji i więcej\n');
+    writeFileSync(join(root, 'docs/privacy-policy.en.md'), files['docs/privacy-policy.en.md'] + '\nA new paragraph.\n');
+    const rows = outside(root);
+    expect(rows.find((row) => row.key === 'store:changelogs/8')).toMatchObject({
+      en: 'Second release.', pl: null,
+      findings: ['store:changelogs/8 is missing from fastlane/metadata/android/pl-PL/changelogs/8.txt']
+    });
+    expect(rows.find((row) => row.key === 'store:title')!.findings).toEqual([
+      'store:title is 37 characters in fastlane/metadata/android/pl-PL/title.txt; Play allows 30'
+    ]);
+    expect(rows.find((row) => row.key === 'privacy:01')!.findings).toEqual([
+      'docs/privacy-policy.en.md has 4 paragraphs and docs/privacy-policy.pl.md has 3, so pairs after the difference are off'
+    ]);
+  });
+
+  it('treats a whitespace-only line as a paragraph break', () => {
+    const root = sources();
+    writeFileSync(join(root, 'docs/privacy-policy.pl.md'), '# Polityka\n   \nAkapit.\n');
+    expect(outside(root).filter((row) => row.key.startsWith('privacy:')).map((row) => row.pl)).toEqual(['# Polityka', 'Akapit.', null]);
+    writeString(root, edit('privacy:02', 'pl', 'Akapit.', 'Inny akapit.'));
+    expect(readFileSync(join(root, 'docs/privacy-policy.pl.md'), 'utf8')).toBe('# Polityka\n   \nInny akapit.\n');
+  });
+
+  it('remembers a review of outside copy and reopens it when the text changes', () => {
+    const root = sources();
+    writeReviews(root, { reviewed: true, keys: outside(root).filter((row) => row.key.startsWith('store:')) });
+    expect(outside(root).filter((row) => row.reviewed).map((row) => row.key)).toEqual(['store:changelogs/7', 'store:title']);
+    writeString(root, edit('store:title', 'pl', 'engender: dziennik tranzycji', 'engender: dziennik'));
+    expect(outside(root).filter((row) => row.reviewed).map((row) => row.key)).toEqual(['store:changelogs/7']);
+  });
+});
