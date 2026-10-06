@@ -859,7 +859,7 @@ A returning visit with a full fixture reaches ready in about 0.6 s at 4x CPU thr
 
 **No layout jump on arrival.** Home's blocks answer out of many reads. [data/homeReserve.ts](../src/lib/data/homeReserve.ts) remembers how tall each block was last time, and `kit/ReadReserve.svelte` holds that room until the reads agree. [tests/tile-arrival-timing.mjs](../tests/tile-arrival-timing.mjs) and [tests/return-floor-check.mjs](../tests/return-floor-check.mjs) (`npm run test:return-floor`) guard arrival timing.
 
-**Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](../src/lib/data/sqlite/boot.ts)).
+**Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](../src/lib/data/sqlite/boot.ts)). Auto-logging checks expected days with indexed timestamp probes in batches, then reads dose events only for underfilled days. It still checks historical slots on every pass so deleting an old automatic dose can recreate it; no stored cursor or derived checkpoint skips that history.
 
 **Long lists and media are rendered lazily.**
 - Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069). A log that should grow only on request passes `autoGrow={false}`: the dose log does, so its day headings and older batches arrive through its show-more control, which discloses the new rows and collapses itself with its spacing once nothing is left.
