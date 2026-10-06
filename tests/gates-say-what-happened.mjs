@@ -108,9 +108,15 @@ export async function verifyGatesSayWhatHappened(report = (line) => console.log(
       });
       await page.keyboard.press('Escape');
       await page.locator('[data-sheet]').waitFor({ state: 'detached' });
+      /* Reopened, the sheet starts clean: the failure was the last attempt's. */
+      await page.locator(opener).click();
+      await page.locator(`[data-sheet] ${confirm}`).waitFor();
+      assert.equal(await page.locator('[data-sheet] [data-reset-failed]').count(), 0, `${name}: a reopened sheet repeats the old failure`);
+      await page.keyboard.press('Escape');
+      await page.locator('[data-sheet]').waitFor({ state: 'detached' });
       reported++;
     }
-    report(`a failed reset says so inside its sheet on all ${reported} gate branches that offer one`);
+    report(`a failed reset says so inside its sheet on all ${reported} gate branches that offer one, and a reopened sheet starts clean`);
 
     /* 3. An access mode's failure stays with that mode. Biometric setup is
        the one a browser refuses without anything being typed, and the

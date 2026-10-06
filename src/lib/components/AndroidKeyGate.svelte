@@ -39,6 +39,12 @@
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
   /* Read once on mount, like the web gate's (ADR-0054, ticket sec-02). It
      matters more here: the invalidated screen below is the state
      JournalKeystore.java calls the cliff, and a recovery key is the one
