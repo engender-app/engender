@@ -62,10 +62,16 @@ export type OcrMachineState =
   | { tag: 'permission-denied' }
   | { tag: 'no-rows' }
   | { tag: 'recognition-failed' }
+  /** The page was read, but checking its rows against the journal for
+      duplicates failed, so there is nothing safe to review yet. */
+  | { tag: 'lookup-failed' }
   | { tag: 'review'; rows: OcrReviewRow[] }
   | { tag: 'save-validation-failed'; rows: OcrReviewRow[]; error: string }
   | { tag: 'saving'; rows: OcrReviewRow[] }
-  | { tag: 'save-failed'; rows: OcrReviewRow[]; error: string }
+  /** `rows` holds only what did not land; `saved` counts what did, across
+      every attempt, so the sheet can say so and a second save writes the
+      rest without doubling the first. */
+  | { tag: 'save-failed'; rows: OcrReviewRow[]; error: string; saved: number }
   | { tag: 'saved'; count: number };
 
 // ---------------------------------------------------------------------------
@@ -86,7 +92,8 @@ interface OcrMachine {
   /** User selects an image source. Acquires the image then runs recognition. */
   pickSource(source: 'gallery' | 'camera'): Promise<void>;
 
-  /** User retries from permission-denied, no-rows, or save-failed state. */
+  /** User retries. From save-failed that is the review of the rows still
+      unsaved; from every other failure it is the picker. */
   retry(): void;
 
   /** User edits the review rows in place. */
@@ -115,6 +122,14 @@ export function createOcrMachine(
   /** Live only while a pass is running, so the stop button and the
       recognizer are talking about the same one. */
   let attempt: AbortController | null = null;
+  /** The sheet session every async step belongs to. open() and close()
+      replace it, so a step that resolves after the sheet closed (or closed
+      and opened again) finds a different token and writes nothing. */
+  let session = {};
+  const stale = (mine: object) => mine !== session;
+  /** Rows this sheet session has written, across every save attempt, so a
+      retry after a partial failure still reports the whole count. */
+  let savedSoFar = 0;
 
   const machine: OcrMachine = {
     get state() {
@@ -126,11 +141,14 @@ export function createOcrMachine(
     },
 
     open() {
+      session = {};
+      savedSoFar = 0;
       machine.state = { tag: 'picking' };
     },
 
     async pickSource(source) {
       if (machine.state.tag !== 'picking') return;
+      const mine = session;
       machine.state = { tag: 'recognizing', fraction: null };
       const running = new AbortController();
       attempt = running;
@@ -139,6 +157,7 @@ export function createOcrMachine(
       try {
         image = await imageSource.pickImage(source);
       } catch (err) {
+        if (stale(mine)) return;
         attempt = null;
         if (isPermissionDenied(err)) {
           machine.state = { tag: 'permission-denied' };
@@ -149,6 +168,7 @@ export function createOcrMachine(
         return;
       }
 
+      if (stale(mine)) return;
       if (!image || running.signal.aborted) {
         // User cancelled the picker, or stopped the pass while it was open
         attempt = null;
@@ -163,10 +183,11 @@ export function createOcrMachine(
           onProgress: (fraction) => {
             // Late reports from a pass the person already stopped must not
             // put the sheet back into recognizing.
-            if (machine.state.tag === 'recognizing') machine.state = { tag: 'recognizing', fraction };
+            if (!stale(mine) && machine.state.tag === 'recognizing') machine.state = { tag: 'recognizing', fraction };
           }
         });
       } catch (err) {
+        if (stale(mine)) return;
         attempt = null;
         // Stopping is an answer, not a failure: the picker is where it
         // leaves them, with nothing to apologise for.
@@ -179,6 +200,7 @@ export function createOcrMachine(
         }
         return;
       }
+      if (stale(mine)) return;
       attempt = null;
 
       const preferredUnits = Object.fromEntries(
@@ -200,9 +222,16 @@ export function createOcrMachine(
         value: number;
         unit: string;
       }> = [];
-      for (const analyte of analyteNames) {
-        const results = await saver.getExistingResults(analyte);
-        existing.push(...results);
+      try {
+        for (const analyte of analyteNames) {
+          const results = await saver.getExistingResults(analyte);
+          if (stale(mine)) return;
+          existing.push(...results);
+        }
+      } catch {
+        if (stale(mine)) return;
+        machine.state = { tag: 'lookup-failed' };
+        return;
       }
 
       const rows = makeReviewRows(parsed, buildDuplicateKeys(existing));
@@ -210,12 +239,15 @@ export function createOcrMachine(
     },
 
     retry() {
-      const { tag } = machine.state;
-      if (
+      const s = machine.state;
+      const { tag } = s;
+      if (s.tag === 'save-failed') {
+        machine.state = { tag: 'review', rows: s.rows };
+      } else if (
         tag === 'permission-denied' ||
         tag === 'no-rows' ||
         tag === 'recognition-failed' ||
-        tag === 'save-failed'
+        tag === 'lookup-failed'
       ) {
         machine.state = { tag: 'picking' };
       }
@@ -233,8 +265,9 @@ export function createOcrMachine(
 
     async save() {
       const s = machine.state;
-      if (s.tag !== 'review' && s.tag !== 'save-validation-failed') return;
+      if (s.tag !== 'review' && s.tag !== 'save-validation-failed' && s.tag !== 'save-failed') return;
       const rows = s.rows;
+      const mine = session;
 
       const validation = validateRowsForSave(rows);
       if (!validation.ok) {
@@ -244,7 +277,9 @@ export function createOcrMachine(
 
       machine.state = { tag: 'saving', rows };
 
-      let saved = 0;
+      /* Rows are written one at a time with no rollback (ADR-0070), so a
+         failure part way leaves some in the journal. Those leave the list. */
+      const landed = new Set<OcrReviewRow>();
       try {
         for (const row of rows) {
           if (!row.include) continue;
@@ -253,15 +288,25 @@ export function createOcrMachine(
           if (epochDay === null || value === null) continue;
           const analyte = row.analyte.trim().toLowerCase();
           if (!analyte) continue;
+          // Closed mid-save: stop here rather than keep writing unseen.
+          if (stale(mine)) return;
           await saver.saveResult({ epochDay, analyte, value, unit: row.unit, note: row.note });
-          saved += 1;
+          landed.add(row);
+          if (!stale(mine)) savedSoFar += 1;
         }
       } catch (err) {
-        machine.state = { tag: 'save-failed', rows, error: String(err) };
+        if (stale(mine)) return;
+        machine.state = {
+          tag: 'save-failed',
+          rows: rows.filter((row) => !landed.has(row)),
+          error: String(err),
+          saved: savedSoFar
+        };
         return;
       }
 
-      machine.state = { tag: 'saved', count: saved };
+      if (stale(mine)) return;
+      machine.state = { tag: 'saved', count: savedSoFar };
     },
 
     cancel() {
@@ -270,6 +315,8 @@ export function createOcrMachine(
     },
 
     close() {
+      session = {};
+      savedSoFar = 0;
       attempt?.abort();
       attempt = null;
       machine.state = { tag: 'idle' };

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -14,7 +15,7 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedureInArchive, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { dilationEligible } from '$lib/data/taperSchedule';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
@@ -24,7 +25,7 @@
   import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
-  import { disclose } from '$lib/motion/reveal';
+  import { disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
@@ -57,12 +58,27 @@
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
-  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedure.archived));
-  let archivedProcedures = $derived(procedures.filter((procedure) => procedure.archived));
+  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedureInArchive(procedure, today)));
+  let archivedProcedures = $derived(procedures.filter((procedure) => procedureInArchive(procedure, today)));
   let procedureGroups = $derived([
     { key: 'ongoing', title: m.surgery_ongoing_title(), procedures: ongoingProcedures },
     { key: 'archive', title: m.surgery_archive_title(), procedures: archivedProcedures }
   ].filter((group) => group.procedures.length));
+
+  let procedureRows = $derived(procedureGroups.flatMap((group, index) => [
+    { key: `heading-${index}`, group: group.key, heading: group.title, procedure: null },
+    ...group.procedures.map((procedure) => ({
+      key: procedure.id, group: group.key, heading: null, procedure
+    }))
+  ]));
+
+  /* A procedure moving between Ongoing and the archive travels there
+     instead of cutting; headings and cards that come or go disclose. */
+  travelOnChange(
+    () => [...document.querySelectorAll<HTMLElement>('.procedure-row[data-travel-key]')],
+    (el) => el.dataset.travelKey ?? '',
+    () => procedureRows
+  );
 
   let sourceId = $derived(page.url.searchParams.get('procedure'));
   let sourceProcedure = $derived(procedures.find((p) => p.id === sourceId));
@@ -292,11 +308,13 @@
 
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
-      {#each procedureGroups as group (group.key)}
-        <SectionHeading text={group.title} />
-        <div data-procedure-group={group.key}>
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
-            {#each group.procedures as procedure (procedure.id)}
+      {#each procedureRows as { key, procedure, group, heading } (key)}
+        <div class="procedure-row" data-procedure-group={procedure ? group : undefined} data-procedure-heading={heading ? key : undefined}
+          data-travel-key={key} use:resize transition:disclose>
+          {#if heading}
+            <SectionHeading text={heading} />
+          {:else if procedure}
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
               <ProcedureRecoveryCard
                 {procedure}
                 selected={selectedId === procedure.id}
@@ -307,8 +325,8 @@
                 onclick={() => select(procedure)}
                 onedit={() => record.openEditor(procedure)}
               />
-            {/each}
-          </ListCard>
+            </ListCard>
+          {/if}
         </div>
       {/each}
     {/snippet}
@@ -843,6 +861,10 @@
 </div>
 
 <style>
+  .procedure-row {
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
   .recovery {
     margin-top: var(--space-4);
   }

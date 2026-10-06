@@ -373,7 +373,9 @@
             ? m.labs_ocr_missing_date()
             : m.labs_ocr_invalid_date()
       : ocrState.tag === 'save-failed'
-        ? m.labs_ocr_save_failed()
+        ? ocrState.saved > 0
+          ? m.labs_ocr_save_partial({ saved: String(ocrState.saved) })
+          : m.labs_ocr_save_failed()
         : ''
   );
 
@@ -750,6 +752,13 @@
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_failed()}</div>
+      </div>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocrState.tag === 'lookup-failed'}
+      <h3>{m.labs_ocr_pick_sheet()}</h3>
+      <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">{m.labs_ocr_lookup_failed()}</div>
       </div>
       <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
     {:else if ocrState.tag === 'no-rows'}
