@@ -3073,6 +3073,7 @@
   "scales_none_ticked": "Nic nie zaznaczono",
   "scales_note": "Zaznacz skale, które mają się pokazywać we wpisach. Po odznaczeniu wcześniejsze wartości zostają.",
   "screen_capture_sub": "pozwala temu urządzeniu robić zrzuty ekranu i nagrywać aplikację",
+  "screen_capture_sub_recents": "Po wyłączeniu podgląd aplikacji znika też z listy ostatnio używanych.",
   "screen_capture_title": "Przechwytywanie ekranu",
   "search": "Szukaj",
   "search_area_felt_sense": "Odczucia",

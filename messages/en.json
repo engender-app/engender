@@ -3021,6 +3021,7 @@
   "scales_none_ticked": "None ticked",
   "scales_note": "Tick the scales to show on entries. Unticking keeps past values.",
   "screen_capture_sub": "lets this device screenshot or record the app",
+  "screen_capture_sub_recents": "Turning it off also hides the app's preview in Recents.",
   "screen_capture_title": "Screen capture",
   "search": "Search",
   "search_area_felt_sense": "Felt sense",
