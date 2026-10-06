@@ -41,7 +41,7 @@ import type {
   TagGroup
 } from '../types';
 import type { Journal } from '../journal/journal';
-import { onTablesWritten } from './journal.svelte';
+import { journal as currentJournal, onTablesWritten } from './journal.svelte';
 import { tablesReadBy } from './writes';
 
 const mirror = $state<{
@@ -157,6 +157,13 @@ export async function hydrateReference(journal: Journal): Promise<void> {
 
   if (registered) return;
   registered = true;
+  /* Re-read through the facade rather than the handle this first hydrate
+     was given (after-release ticket 10, audit L02-09). The listener is bound
+     once per page, and the handle is not: a web lock closes the database
+     and the unlock opens a new one, so a refresh bound to the first handle
+     re-read a closed journal, failed, and left the vocabulary stale. The
+     facade is always the journal open now, and a refresh asked for while
+     it is locked waits for the reopen. */
   onTablesWritten((tables) => {
     const slices = new Set(
       (Object.keys(SLICE_READS) as MirrorSlice[]).filter((slice) =>
@@ -164,8 +171,18 @@ export async function hydrateReference(journal: Journal): Promise<void> {
       )
     );
     if (slices.size === 0) return;
-    void refresh(journal, slices);
+    void refresh(currentJournal, slices);
   });
+}
+
+/** The lock's half (after-release ticket 10): tag, milestone and template
+    names are journal content, and a locked web journal keeps none of it in
+    the page. Nothing reads the mirror behind the lock - every screen that
+    does is unmounted - and the unlock hydrates it again before the app
+    comes back. */
+export function forgetReference(): void {
+  hydrated = false;
+  for (const slice of Object.keys(SLICE_READS) as MirrorSlice[]) mirror[slice] = [];
 }
 
 async function refresh(journal: Journal, slices: Set<string>): Promise<void> {

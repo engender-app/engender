@@ -46,6 +46,14 @@ export function holdRoomAnswers(entry: HeldRoomAnswers): void {
   held.set(entry.appointmentId, entry);
 }
 
+/** Lets go of everything jotted, for every appointment (after-release
+    ticket 10). A lock takes it with the rest of the journal: what was said
+    in a consulting room is exactly what a locked app should not still be
+    holding. */
+export function forgetRoomAnswers(): void {
+  held.clear();
+}
+
 /** What was jotted for this appointment, or nothing. */
 export function roomAnswersFor(appointmentId: string): DebriefAnswer[] {
   return held.get(appointmentId)?.answers ?? [];

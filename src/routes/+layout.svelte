@@ -32,7 +32,7 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
-  import { bootState, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
+  import { bootState, closeJournalForLock, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
@@ -93,7 +93,7 @@
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
-  $effect(() => watchLock());
+  $effect(() => watchLock(closeJournalForLock));
 
   /* The first frame in app.html starts leaving when this layout mounts, the
      frame the screen's own entrances begin, and is gone once boot has
