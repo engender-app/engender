@@ -29,7 +29,7 @@
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
-  import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
+  import { onThisDayCandidates, onThisDayQualifies, type OnThisDayLookback } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -83,7 +83,7 @@
       consent.allowedDays(lookbacks).map(async (c): Promise<QualifyingDay | null> => {
         const dayLetters = onThisDayLetters(letters, c.epochDay, asOf);
         const good = await j.stats.isGoodDay(c.epochDay);
-        if (!good && dayLetters.length === 0) return null;
+        if (!onThisDayQualifies(good, dayLetters)) return null;
         return {
           key: c.key,
           epochDay: c.epochDay,

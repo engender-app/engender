@@ -172,7 +172,7 @@
     upsert: async (draft) => {
       if (requirement(draft)) return false;
       const unlockEpochDay = epochDayFromDateInputValue(draft.unlockDate)!;
-      await journal.letters.addLetter({ epochDay: today, text: draft.text.trim(), unlockEpochDay });
+      await journal.letters.addLetter({ epochDay: todayEpochDay(), text: draft.text.trim(), unlockEpochDay });
       if (record.editor === draft && unlockEpochDay !== today) {
         sealOutcome = isLetterSealed({ unlockEpochDay }, today) ? m.letters_seal_done() : m.letters_ready_done();
       }

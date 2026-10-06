@@ -38,8 +38,11 @@ export function dayCaptures(file: string, text: string): string[] {
   const found: string[] = [];
   const lineOf = (index: number) => code.slice(0, index).split('\n').length;
   const indent = file.endsWith('.svelte') ? ' {0,2}' : '';
-  const binding = new RegExp(`^${indent}(?:const|let) [\\w$]+(?::[^=\\n]+)? = todayEpochDay\\(\\)`, 'gm');
+  const binding = new RegExp(`^${indent}(?:const|let) [\\w$]+(?::[^=\\n]+)? = (?![^;\\n]*(?:=>|function|\\$state(?:<[^>]*>)?\\())[^;\\n]*todayEpochDay\\(`, 'gm');
+  const raw = text.split('\n');
   for (const m of code.matchAll(binding)) {
+    // A deliberate hold on the mount day says so on its own line.
+    if (raw[lineOf(m.index) - 1].includes('// mount-day') || m[0].includes('$derived')) continue;
     found.push(`${file}:${lineOf(m.index)} captures todayEpochDay() in a top-level binding`);
   }
   /* A derived or a live read runs again only when something it read changes,
@@ -68,6 +71,7 @@ it('fails on a planted capture', () => {
   expect(dayCaptures('x.svelte', '<script>\n  const today = todayEpochDay();\n</script>')).toHaveLength(1);
   expect(dayCaptures('x.svelte', '<script>\n  let today = $state(0);\n  let t = $derived(todayEpochDay());\n</script>')).toHaveLength(1);
   expect(dayCaptures('x.svelte', '<script>\n  let t = $derived.by(() => {\n    return f(todayEpochDay());\n  });\n</script>')).toHaveLength(1);
+  expect(dayCaptures('x.svelte', '<script>\n  const input = format(todayEpochDay());\n</script>')).toHaveLength(1);
   expect(dayCaptures('x.ts', 'const today = todayEpochDay();')).toHaveLength(1);
 });
 
@@ -79,7 +83,8 @@ it('leaves reads that happen when something runs, and comments, alone', () => {
   const ok = [
     '<script>\n  const today = $derived(currentDay());\n  function save() {\n    const day = todayEpochDay();\n  }\n</script>',
     '<script>\n  /* const today = todayEpochDay(); */\n  // let t = $derived(todayEpochDay());\n</script>',
-    '<script>\n  let draft = $state(dateInputValueFromEpochDay(todayEpochDay()));\n</script>'
+    '<script>\n  let draft = $state(dateInputValueFromEpochDay(todayEpochDay()));\n</script>',
+    '<script>\n  const gap = read(todayEpochDay()); // mount-day: the gap is decided once\n</script>'
   ];
   for (const text of ok) expect(dayCaptures('x.svelte', text)).toEqual([]);
 });

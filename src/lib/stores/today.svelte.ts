@@ -15,7 +15,7 @@
    rather than a captured value (tests/today-capture.test.ts). */
 
 import { createSubscriber } from 'svelte/reactivity';
-import { msUntilNextLocalMidnight, todayEpochDay } from '$lib/data/epochDay';
+import { msUntilNextLocalMidnight, todayEpochDay } from '../data/epochDay';
 
 const subscribe = createSubscriber((update) => {
   let timer: ReturnType<typeof setTimeout>;

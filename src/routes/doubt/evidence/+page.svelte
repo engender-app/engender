@@ -36,6 +36,7 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { COUNTEREVIDENCE_LIMIT, previewWholeDays } from '$lib/data/counterevidence';
@@ -90,7 +91,7 @@
       mood: e.mood,
       note: e.note
     }));
-    await journal.doubtJournal.saveSnapshot(today, items);
+    await journal.doubtJournal.saveSnapshot(todayEpochDay(), items);
   }
 
   let snapshotDeleteTarget = $state<CounterevidenceSnapshot | null>(null);

@@ -179,7 +179,7 @@
      longer a return: the letter and the milestone the person had not read
      yet disappearing because they logged a dose. A return is one gap. The
      items under it re-read as often as the journal changes. */
-  const gap = readReturnGap(journal, todayEpochDay());
+  const gap = readReturnGap(journal, todayEpochDay()); // mount-day: a return is one gap
 
   /* Seeded rather than left to discover itself: every one of `readWhatIsWaiting`'s
      five reads sits past the gap's own `await`, so an unseeded query would

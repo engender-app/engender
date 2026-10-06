@@ -1612,7 +1612,7 @@
       <DatePicker
         id="revisit-date"
         name="revisit-date"
-        min={dateInputValueFromEpochDay(todayEpochDay() + 1)}
+        min={dateInputValueFromEpochDay(currentDay() + 1)}
         ariaLabel={m.revisit_pick_date_label()}
         bind:value={revisitDateInput}
         data-revisit-date

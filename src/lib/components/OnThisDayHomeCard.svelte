@@ -18,7 +18,7 @@
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { onThisDayCandidates } from '$lib/data/on-this-day';
+  import { onThisDayCandidates, onThisDayQualifies } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import Tile from './kit/Tile.svelte';
@@ -55,7 +55,7 @@
     const goodDays = await Promise.all(allowed.map((c) => j.stats.isGoodDay(c.epochDay)));
     /* The block this card opens also shows a day that only has a letter, so
        the card must not say there is nothing to see on such a day. */
-    return allowed.filter((c, i) => goodDays[i] || onThisDayLetters(letters, c.epochDay, asOf).length > 0);
+    return allowed.filter((c, i) => onThisDayQualifies(goodDays[i], onThisDayLetters(letters, c.epochDay, asOf)));
   });
   /* Whether there is a card is settled once this answers (ReadGroup). */
   joinReadGroup(() => !goodDaysQuery.loading);

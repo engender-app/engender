@@ -57,7 +57,7 @@
   const SECTION_ROLE = { strip: 0, sessions: 1 };
 
   const today = $derived(currentDay());
-  const defaultRange = ongoingWindowRange(todayEpochDay(), 365);
+  const defaultRange = ongoingWindowRange(todayEpochDay(), 365); // mount-day: the form starts on the day it opened
 
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));

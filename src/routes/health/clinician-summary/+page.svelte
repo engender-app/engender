@@ -50,7 +50,7 @@
 
   const today = $derived(currentDay());
   const todayInput = $derived(dateInputValueFromEpochDay(today));
-  const defaultRange = ongoingWindowRange(todayEpochDay(), 90);
+  const defaultRange = ongoingWindowRange(todayEpochDay(), 90); // mount-day: the form starts on the day it opened
 
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));
