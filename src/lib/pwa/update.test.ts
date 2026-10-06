@@ -3,7 +3,7 @@
    activate the new release is tests/browser-tier/update-probe.ts. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { markJournalBusy } from '../data/journal-busy.ts';
 import { SKIP_WAITING } from './sw-messages.ts';
 import {
@@ -49,16 +49,22 @@ function fakeRegistration(options: { onUpdate?: () => void } = {}) {
       const stateListeners: (() => void)[] = [];
       const installing = {
         state: 'installing',
-        addEventListener: (_type: 'statechange', listener: () => void) => stateListeners.push(listener)
+        addEventListener: (_type: 'statechange', listener: () => void) => stateListeners.push(listener),
+        removeEventListener: (_type: 'statechange', listener: () => void) => {
+          const index = stateListeners.indexOf(listener);
+          if (index >= 0) stateListeners.splice(index, 1);
+        }
       };
       registration.installing = installing;
+      for (const listener of listeners) listener();
       const reachState = (state: string) => {
         installing.state = state;
-        for (const listener of stateListeners) listener();
+        for (const listener of [...stateListeners]) listener();
       };
       return {
         finishes() {
-          releaseArrives();
+          registration.installing = null;
+          registration.waiting = { postMessage: (message: unknown) => posted.push(message) };
           reachState('installed');
         },
         fails() {
@@ -237,4 +243,28 @@ test('a listener hears the offer arrive, and not before', () => {
 
   assert.deepEqual(heard, [true], 'nothing while busy, one notice when the journal goes idle');
   stop();
+});
+
+
+test('an install found mid-session offers its release without another write', () => {
+  const worker = fakeRegistration();
+  watchForUpdates(worker.registration, fakeEnvironment().environment);
+  const heard: boolean[] = [];
+  const stop = onUpdateReadyChange((ready) => heard.push(ready));
+  const installing = worker.releaseStartsInstalling();
+  installing.finishes();
+  assert.deepEqual(heard, [true]);
+  stop();
+});
+
+
+test('an install that never finishes stops waiting after 30 seconds', async () => {
+  vi.useFakeTimers();
+  try {
+    const worker = fakeRegistration({ onUpdate: () => worker.releaseStartsInstalling() });
+    watchForUpdates(worker.registration, fakeEnvironment().environment);
+    const looking = checkForNewerRelease();
+    await vi.advanceTimersByTimeAsync(30_000);
+    assert.equal(await looking, false);
+  } finally { vi.useRealTimers(); }
 });

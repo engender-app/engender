@@ -24,6 +24,7 @@ vi.mock('./android-pick-channel.ts', () => ({
 import { chooseFiles } from '../fileDialog.ts';
 import { isAndroid } from '../../platform.ts';
 import { androidPhotos } from './android-bridge.ts';
+import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel.ts';
 import {
   androidPickedBytes,
@@ -363,4 +364,19 @@ describe('documentPicker', () => {
       kind: 'too-large'
     });
   });
+});
+
+
+test('a stalled pick channel falls back to chunked reads of the same token', async () => {
+  bridgeAnswers([[4, 5, 6]]);
+  vi.mocked(readPickedOverChannel).mockReturnValue(Promise.reject(new PhotoChannelTimeoutError('pick')));
+  expect(await androidPickedBytes('stalled')).toEqual(new Uint8Array([4, 5, 6]));
+  expect(androidPhotos.readPickedChunk).toHaveBeenCalledWith({ token: 'stalled' });
+});
+
+test('a native pick failure propagates without trying the fallback', async () => {
+  vi.mocked(androidPhotos.readPickedChunk).mockClear();
+  vi.mocked(readPickedOverChannel).mockReturnValue(Promise.reject(new Error('read failed')));
+  await expect(androidPickedBytes('broken')).rejects.toThrow('read failed');
+  expect(androidPhotos.readPickedChunk).not.toHaveBeenCalled();
 });

@@ -20,7 +20,7 @@
        yields null and the caller keeps the capture. Storing a too-big file
        is a better outcome than losing the recording. */
 
-import { frameSize, type VideoBitrates } from './limits';
+import { VIDEO_MAX_DURATION_MS, frameSize, type VideoBitrates } from './limits';
 
 /** A `<video>` wound up to the point where its dimensions are known and it is
     ready to play. Detached from the document: nothing should see it. */
@@ -32,10 +32,18 @@ async function loadSource(blob: Blob): Promise<{ video: HTMLVideoElement; url: s
   video.preload = 'auto';
   video.src = url;
   const ready = new Promise<boolean>((resolve) => {
-    video.onloadeddata = () => resolve(true);
-    video.onerror = () => resolve(false);
+    const done = (loaded: boolean) => {
+      clearTimeout(timer);
+      video.onloadeddata = null;
+      video.onerror = null;
+      resolve(loaded);
+    };
+    const timer = setTimeout(() => done(false), 30_000);
+    video.onloadeddata = () => done(true);
+    video.onerror = () => done(false);
   });
   if (!(await ready) || !video.videoWidth || !video.videoHeight) {
+    video.src = '';
     URL.revokeObjectURL(url);
     return null;
   }
@@ -91,6 +99,14 @@ export async function reencodeVideo(
     recorder.onstop = () => resolve();
   });
 
+  let timedOut = false;
+  let frame: { id: number; video: boolean } | undefined;
+  const durationMs = Number.isFinite(video.duration) && video.duration > 0
+    ? video.duration * 1000 : VIDEO_MAX_DURATION_MS;
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => { timedOut = true; resolve(null); }, durationMs * 2 + 5000);
+  });
   try {
     /* Draw on every frame the decoder produces rather than on a timer:
        requestVideoFrameCallback fires once per decoded frame, so the canvas
@@ -100,18 +116,25 @@ export async function reencodeVideo(
       video.onended = () => resolve();
     });
     recorder.start();
-    await video.play();
+    if (await Promise.race([video.play().then(() => true), deadline]) === null) return null;
 
     const draw = () => {
       context.drawImage(video, 0, 0, size.width, size.height);
-      if (!video.ended) requestFrame(video, draw);
+      if (!video.ended && !timedOut) frame = requestFrame(video, draw);
     };
-    requestFrame(video, draw);
-    await ended;
+    frame = requestFrame(video, draw);
+    if (await Promise.race([ended.then(() => true), deadline]) === null) return null;
 
-    recorder.stop();
-    await finished;
+    if (recorder.state !== 'inactive') recorder.stop();
+    if (await Promise.race([finished.then(() => true), deadline]) === null) return null;
+  } catch {
+    return null;
   } finally {
+    clearTimeout(timer!);
+    if (frame) {
+      if (frame.video) video.cancelVideoFrameCallback(frame.id);
+      else cancelAnimationFrame(frame.id);
+    }
     if (recorder.state !== 'inactive') recorder.stop();
     for (const track of stream.getTracks()) track.stop();
     video.pause();
@@ -125,10 +148,10 @@ export async function reencodeVideo(
 /** requestVideoFrameCallback where it exists, a repaint otherwise. The
     fallback can duplicate or drop a frame; it cannot fail, which is what
     matters when the alternative is no re-encode at all. */
-function requestFrame(video: HTMLVideoElement, draw: () => void): void {
+function requestFrame(video: HTMLVideoElement, draw: () => void): { id: number; video: boolean } {
   const withCallback = video as HTMLVideoElement & {
     requestVideoFrameCallback?: (callback: () => void) => number;
   };
-  if (withCallback.requestVideoFrameCallback) withCallback.requestVideoFrameCallback(draw);
-  else requestAnimationFrame(draw);
+  if (withCallback.requestVideoFrameCallback) return { id: withCallback.requestVideoFrameCallback(draw), video: true };
+  return { id: requestAnimationFrame(draw), video: false };
 }

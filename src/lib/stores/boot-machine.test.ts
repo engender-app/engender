@@ -524,3 +524,27 @@ test('a lock that lands after the boot left ready changes nothing', () => {
   expect(reduce(failed.machine, { type: 'journal-closed' }).machine).toEqual(failed.machine);
   expect(reduce(failed.machine, { type: 'journal-reopened', journal: {} as never }).machine).toEqual(failed.machine);
 });
+
+
+test('a second key while the journal opens leaves the first open alone', () => {
+  const first = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
+  });
+  const duplicate = reduce(first.machine, {
+    type: 'key-obtained', dataKey: new Uint8Array(32), accessMode: 'pin', unlocked: true
+  });
+  expect(duplicate.effects).toEqual([]);
+  expect(duplicate.machine.boot).toBe(first.machine.boot);
+});
+
+
+test('a duplicate key never replaces a ready journal or changes its access mode', () => {
+  const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
+  }, { type: 'journal-opened', journal: {} as never });
+  const before = KEY.slice();
+  const duplicate = reduce(opened.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'pin', unlocked: true });
+  expect(duplicate.effects).toEqual([]);
+  expect(duplicate.machine.boot).toBe(opened.machine.boot);
+  expect(KEY).toEqual(before);
+});

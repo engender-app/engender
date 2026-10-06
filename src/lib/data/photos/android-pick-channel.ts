@@ -44,6 +44,8 @@
    gives: they are the same object in a WebView, and this keeps the module
    reachable from a plain Node test with `vi.stubGlobal`. */
 
+import { PhotoChannelTimeoutError, PHOTO_CHANNEL_TIMEOUT_MS } from './channel-timeout';
+
 const CHANNEL_NAME = 'androidPhotoPickChannel';
 
 interface PickChannel {
@@ -75,13 +77,32 @@ export function readPickedOverChannel(token: string): Promise<Uint8Array> | null
 
   return new Promise<Uint8Array>((resolve, reject) => {
     const { port1, port2 } = new MessageChannel();
+    let settled = false;
+    const close = () => {
+      settled = true;
+      clearTimeout(timer);
+      port1.onmessage = null;
+      port1.close();
+      port2.close();
+    };
+    const timer = setTimeout(() => {
+      try {
+        port1.postMessage('cancel');
+      } finally {
+        close();
+        reject(new PhotoChannelTimeoutError('pick'));
+      }
+    }, PHOTO_CHANNEL_TIMEOUT_MS);
 
     port1.onmessage = (event: MessageEvent<ArrayBuffer | string>) => {
-      port1.close();
+      if (settled) return;
       if (typeof event.data !== 'string') {
+        port1.postMessage('received');
+        close();
         resolve(new Uint8Array(event.data));
         return;
       }
+      close();
       let failure: PickFailure;
       try {
         failure = JSON.parse(event.data) as PickFailure;
@@ -92,6 +113,11 @@ export function readPickedOverChannel(token: string): Promise<Uint8Array> | null
       reject(new Error(failure.error ?? 'picked file could not be read'));
     };
 
-    target.postMessage(JSON.stringify({ token }), [port2]);
+    try {
+      target.postMessage(JSON.stringify({ token }), [port2]);
+    } catch (error) {
+      close();
+      reject(error);
+    }
   });
 }

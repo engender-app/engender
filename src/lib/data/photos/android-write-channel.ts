@@ -9,6 +9,8 @@
    `vi.stubGlobal`, the same way android-file-store.test.ts already stubs
    `fetch`. */
 
+import { PhotoChannelTimeoutError, PHOTO_CHANNEL_TIMEOUT_MS } from './channel-timeout';
+
 const CHANNEL_NAME = 'androidPhotoWriteChannel';
 
 interface WriteChannel {
@@ -35,9 +37,22 @@ export function writeOverChannel(name: string, directory: string, bytes: Uint8Ar
 
   return new Promise<void>((resolve, reject) => {
     const { port1, port2 } = new MessageChannel();
+    let settled = false;
+    const close = () => {
+      settled = true;
+      clearTimeout(timer);
+      port1.onmessage = null;
+      port1.close();
+      port2.close();
+    };
+    const timer = setTimeout(() => {
+      close();
+      reject(new PhotoChannelTimeoutError('write'));
+    }, PHOTO_CHANNEL_TIMEOUT_MS);
 
     port1.onmessage = (event: MessageEvent<string>) => {
-      port1.close();
+      if (settled) return;
+      close();
       let ack: WriteAck;
       try {
         ack = JSON.parse(event.data) as WriteAck;
@@ -49,12 +64,17 @@ export function writeOverChannel(name: string, directory: string, bytes: Uint8Ar
       else reject(new Error(ack.error ?? 'photo write failed'));
     };
 
-    target.postMessage(JSON.stringify({ name, directory }), [port2]);
-    // A fresh copy rather than `bytes.buffer` directly: a subarray view's
-    // buffer can be larger than the view itself, and transferring it would
-    // hand over bytes the write never asked for (and detach them from
-    // whatever else still holds that buffer).
-    const payload = new Uint8Array(bytes).buffer;
-    port1.postMessage(payload, [payload]);
+    try {
+      target.postMessage(JSON.stringify({ name, directory }), [port2]);
+      // A fresh copy rather than `bytes.buffer` directly: a subarray view's
+      // buffer can be larger than the view itself, and transferring it would
+      // hand over bytes the write never asked for (and detach them from
+      // whatever else still holds that buffer).
+      const payload = new Uint8Array(bytes).buffer;
+      port1.postMessage(payload, [payload]);
+    } catch (error) {
+      close();
+      reject(error);
+    }
   });
 }
