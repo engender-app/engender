@@ -30,7 +30,7 @@
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
   import { regimenEsterNote, type ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
   import { resize } from '$lib/motion/reveal';
-  import { crossfadeDuration, fadeOnly, isReducedMotion } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
   import '$lib/styles/clinician-print.css';
 
@@ -124,8 +124,14 @@
       });
   });
 
+  /* The arriving row waits for half the travel before it fades in, so its
+     text lands in the gap the displaced rows have opened rather than over
+     them as they pass (the first flipbook had "they/them" printed across
+     "Reporting period" for six frames). A leaving row keeps the full
+     crossfade: at half of it, the ease-out took 79% of its opacity in one
+     frame, which reads as the row vanishing. */
   function profileArrive(_node: Element) {
-    return fadeOnly(crossfadeDuration());
+    return { ...fadeOnly(crossfadeDuration()), delay: motionDuration('--dur-med') / 2 };
   }
 
   function profileLeave(node: HTMLElement) {
@@ -239,7 +245,7 @@
                   <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
                   <td data-label={m.regimen_route_label()}>{routeLabel(ep.route as DoseRoute)}</td>
                   <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
-                  <td data-label={m.clinician_summary_dates_active()} class="num">{episodeSpan(ep)}</td>
+                  <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -279,7 +285,7 @@
                   <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
                   <td data-label={m.regimen_route_label()}>{routeLabel(ep.route as DoseRoute)}</td>
                   <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
-                  <td data-label={m.clinician_summary_dates_active()} class="num">{episodeSpan(ep)}</td>
+                  <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -493,7 +499,7 @@
                     {/if}
                   </td>
                   <td data-label={m.labs_provider_label()}>{lab.provider.trim() || '—'}</td>
-                  <td data-label={m.labs_note_label()}>{lab.note.trim() || '—'}</td>
+                  <td data-label={m.labs_note_label()} class="dossier-cell-wide">{lab.note.trim() || '—'}</td>
                 </tr>
               {/each}
             </tbody>
@@ -670,12 +676,12 @@
                 </td>
                 <td data-label={m.surgery_consults_title()}>
                   {#if proc.consults.length}
-                    {#each proc.consults as consult, k (consult)}{k > 0 ? ', ' : ''}{@render date(consult.epochDay)}{/each}
+                    {#each proc.consults as consult, k (consult)}{k > 0 ? ' ' : ''}<span class="dossier-date">{dayShort(consult.epochDay)}{k < proc.consults.length - 1 ? ',' : ''}</span>{/each}
                   {:else}
                     —
                   {/if}
                 </td>
-                <td data-label={m.surgery_notes_title()}>
+                <td data-label={m.surgery_notes_title()} class="dossier-cell-wide">
                   {proc.notes.trim() || '—'}
                   {#if proc.checklistItems.length}
                     <div class="dossier-sub-list">

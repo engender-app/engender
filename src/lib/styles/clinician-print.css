@@ -148,7 +148,7 @@
    past the edge read cut mid-word ("Rout", "Dose 48 m"), and dates broke a
    word a line. Below 30rem of frame, a table with three or more columns
    reads as stacked rows instead: each row a block, each cell its header
-   over its value, wrapping as many to a line as fit. Every column is on
+   over its value. Every column is on
    screen without scrolling, so there is nothing for the keyboard to reach
    past. Two-column tables fit as tables once a long header may wrap.
 
@@ -180,13 +180,32 @@
       white-space: nowrap;
     }
 
+    /* A record reads as its first column, then the rest in aligned
+       columns of label over value (the shape Zocdoc's medication cards
+       use), so the same field sits in the same place on every row: three
+       columns at 390, two at 320. */
     .dossier-table:has(th:nth-child(3)) tr {
       position: relative;
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2) var(--space-4);
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+      gap: var(--space-2) var(--space-3);
       padding: var(--space-3) 0;
       border-bottom: 1px solid var(--hairline);
+    }
+
+    .dossier-table:has(th:nth-child(3)) td:first-child {
+      grid-column: 1 / -1;
+      font-size: var(--text-md);
+    }
+
+    /* A range or a note takes two columns rather than breaking at its
+       dash in one. */
+    .dossier-table:has(th:nth-child(3)) td.dossier-cell-wide {
+      grid-column: span 2;
+    }
+
+    .dossier-table:has(th:nth-child(3)) td:first-child::before {
+      content: none;
     }
 
     .dossier-table:has(th:nth-child(3)) tr.dossier-row-overflow {
@@ -196,9 +215,9 @@
     .dossier-table:has(th:nth-child(3)) td {
       display: block;
       min-width: 0;
-      max-width: 100%;
       padding: 0;
       border: 0;
+      overflow-wrap: break-word;
     }
 
     .dossier-table:has(th:nth-child(3)) td::before {
