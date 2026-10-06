@@ -19,6 +19,7 @@
    change to every importer and belongs to whoever next has a reason to
    touch them all. */
 
+import { fmtNumber } from './dates';
 import { m } from '$lib/paraglide/messages';
 import type { BarRow } from '$lib/components/kit/barRow';
 import type { DaySpread } from './journal/stats';
@@ -40,7 +41,7 @@ export function nativeAmount(metric: string, value: number): number {
     wants a decimal place; a dimension arrives in its own range and does not. */
 export function nativeValue(metric: string, value: number): string {
   const amount = nativeAmount(metric, value);
-  return metric === 'mood' ? amount.toFixed(1) : String(amount);
+  return fmtNumber(amount, metric === 'mood' ? { minimumFractionDigits: 1, maximumFractionDigits: 1 } : { maximumFractionDigits: 0 });
 }
 
 /** A day's two ends in words, or null for a day that covered no ground

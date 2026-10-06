@@ -116,7 +116,8 @@ export function createOcrMachine(
   imageSource: OcrImageSource,
   recognizer: OcrRecognizer,
   saver: OcrSaver,
-  onStateChange?: (state: OcrMachineState) => void
+  onStateChange?: (state: OcrMachineState) => void,
+  formatValue: (value: number) => string = String
 ): OcrMachine {
   let currentState: OcrMachineState = { tag: 'idle' };
   /** Live only while a pass is running, so the stop button and the
@@ -234,7 +235,7 @@ export function createOcrMachine(
         return;
       }
 
-      const rows = makeReviewRows(parsed, buildDuplicateKeys(existing));
+      const rows = makeReviewRows(parsed, buildDuplicateKeys(existing), formatValue);
       machine.state = { tag: 'review', rows };
     },
 

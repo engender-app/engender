@@ -29,7 +29,7 @@
 import { liveList, liveQuery, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
-import { fmtDay, fmtTime } from './dates';
+import { fmtDay, fmtTime, fmtNumber } from './dates';
 import { hairRemovalAreaName } from './vocabulary/labels';
 import { spanCoversDay } from './span';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
@@ -247,6 +247,7 @@ export function homeTiles(
         snooze
       },
       format: {
+        number: fmtNumber,
         fullDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
         shortDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short' }),
         /* The agenda band's own day format, so the dose panel's next slot
