@@ -102,7 +102,7 @@ export function readStrings(root = ROOT) {
       key, theme: (now ?? before)?.theme ?? 'Unassigned copy', ...values,
       reviewed: approved[key] === revision(values.en, values.pl), previous,
       change: !before ? 'added' : !now ? 'removed' : isDeepStrictEqual(values, previous) ? null : 'changed',
-      findings: [], sites: (now?.sites ?? []).map(site)
+      findings: now?.findings ?? [], sites: (now?.sites ?? []).map(site)
     };
   });
   return [...Object.keys({ ...previousEn, ...previousPl, ...en, ...pl }).filter((key) => !key.startsWith('$')).sort().map((key) => ({
