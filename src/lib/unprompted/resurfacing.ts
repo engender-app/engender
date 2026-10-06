@@ -1,27 +1,14 @@
-/* Which surfaces resurface the past unasked, and that each was built to
-   consult the resurfacing consent layer (phase 6 ticket 05, ADR-0049,
-   CONTEXT: "Resurfacing consent") - following registry.ts's own pattern, a
-   surface named here without `honoursMutes: true` set does not compile, the
-   same way a notify row without `channel` does not. A fifth resurfacing
-   surface someone adds later has to argue with this list rather than slip
-   past a review.
+import type { Journal } from '../data/journal/journal';
+import { touchesMutedEra } from '../data/resurfacingConsent';
 
-   Four surfaces: the on-this-day route and its Home tile, the Wrapped route
-   and its Home tile - the same screen/card split the unprompted registry
-   itself draws, because each keeps its own preference gate and its own
-   query. What actually honours the mute for each of the four is
-   resurfacingConsent.ts's `touchesMutedEra`, called once per surface at its
-   own read seam (on-this-day/+page.svelte, OnThisDayHomeCard.svelte,
-   wrapped/[cadence]/+page.svelte, WrappedHomeCard.svelte).
-
-   Photos are a second, separate control (hidden by default in a resurfacing
-   context, tap to reveal) rather than a second field here: it has no
-   surface of its own to be missing from this list, and is enforced by
-   construction instead - the two places a resurfacing surface shows a
-   photo (on-this-day, Wrapped) render it through ResurfacedPhoto.svelte
-   rather than PhotoThumb directly. */
-
-type ResurfacingSurface = 'on-this-day' | 'on-this-day-home-card' | 'wrapped' | 'wrapped-home-card';
+export type ResurfacingSurface =
+  | 'on-this-day'
+  | 'on-this-day-home-card'
+  | 'wrapped'
+  | 'wrapped-home-card'
+  | 'on-this-day-notification'
+  | 'wrapped-notification'
+  | 'wrapped-share';
 
 interface ResurfacingSurfaceRow {
   key: ResurfacingSurface;
@@ -45,7 +32,10 @@ const ROWS = [
   { key: 'on-this-day', honoursMutes: true, photos: true },
   { key: 'on-this-day-home-card', honoursMutes: true },
   { key: 'wrapped', honoursMutes: true, photos: true },
-  { key: 'wrapped-home-card', honoursMutes: true }
+  { key: 'wrapped-home-card', honoursMutes: true },
+  { key: 'on-this-day-notification', honoursMutes: true },
+  { key: 'wrapped-notification', honoursMutes: true },
+  { key: 'wrapped-share', honoursMutes: true }
 ] as const;
 
 /* A kind in `ResurfacingSurface` with no entry above is a compile error
@@ -55,12 +45,8 @@ type Unregistered = Exclude<ResurfacingSurface, (typeof ROWS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
 type EverySurfaceRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* RESURFACING_SURFACE_ROWS stays exported only for its own test (AU-09
-   test-only review). */
 export const RESURFACING_SURFACE_ROWS: readonly ResurfacingSurfaceRow[] = ROWS;
 
-/* RESURFACING_SURFACES stays exported only for its own test (AU-09 test-only
-   review). */
 export const RESURFACING_SURFACES: readonly ResurfacingSurface[] = ROWS.map((row) => row.key);
 
 /** The runtime half of `EverySurfaceRegistered`, the same shape
@@ -72,4 +58,27 @@ export const RESURFACING_SURFACES: readonly ResurfacingSurface[] = ROWS.map((row
 export function unregisteredSurfaces(rows: readonly Pick<ResurfacingSurfaceRow, 'key'>[]): ResurfacingSurface[] {
   const present = new Set(rows.map((row) => row.key));
   return RESURFACING_SURFACES.filter((key) => !present.has(key));
+}
+
+export interface ResurfacingRange {
+  start: number;
+  end: number;
+}
+
+/** Load consent before reading any resurfaced content. Each caller names a
+    registered surface; missing or unknown keys are type errors. */
+export async function resurfacing(surface: ResurfacingSurface, journal: Pick<Journal, 'eras' | 'eraMutes'>) {
+  const [eras, mutedEraUuids] = await Promise.all([
+    journal.eras.getEras(),
+    journal.eraMutes.getMutedEraUuids()
+  ]);
+  const mayResurface = (range: ResurfacingRange) =>
+    !touchesMutedEra(eras, mutedEraUuids, range.start, range.end);
+  return {
+    surface,
+    mayResurface,
+    allowedDays<T extends { epochDay: number }>(days: readonly T[]): T[] {
+      return days.filter((day) => mayResurface({ start: day.epochDay, end: day.epochDay }));
+    }
+  };
 }
