@@ -47,6 +47,8 @@
   let pin = $state('');
   let error = $state('');
   let busy = $state(true);
+  /** Set once an attempt let the person in; nothing resets the pad after. */
+  let opening = false;
   let refusals = $state(0);
   let waitMs = $state(0);
   /** The whole wait, taken the moment it starts, so the rail under the status
@@ -103,8 +105,11 @@
     try {
       const outcome = await onVerify(entered);
       if (outcome === 'ok') {
+        /* The pad stays as it is, full and disabled, while the gate leaves:
+           emptying it and enabling it again painted for a frame or two
+           before the opening took the screen (after-release ticket 10). */
+        opening = true;
         await throttle.reset();
-        pin = '';
         return;
       }
       pin = '';
@@ -127,7 +132,7 @@
       refusals++;
       startCountdown();
     } finally {
-      busy = false;
+      if (!opening) busy = false;
     }
   }
 </script>
