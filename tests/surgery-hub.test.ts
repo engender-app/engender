@@ -32,6 +32,11 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(cardCode).toContain('ProcedurePhaseRail');
   });
 
+  it('an archived card draws no phase pill, since its heading already says Archived', () => {
+    const cardCode = read('src/lib/components/ProcedureRecoveryCard.svelte');
+    expect(cardCode).toMatch(/\{#if phase !== 'archived'\}\s*<span class="kit-pill proc-phase-pill"/);
+  });
+
   it('surgery page implements all 4 active lifecycle sections and prompt for milestone on surgery day', () => {
     const pageCode = read('src/routes/health/surgery/+page.svelte');
     expect(pageCode).toContain('data-recovery-log');
