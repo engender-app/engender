@@ -381,7 +381,8 @@ async function run() {
     startEpochDay: null,
     endEpochDay: null,
     hasNote: false,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
   const otherId = await journal.savedQuestions.upsertSavedQuestion({
     name: 'Other name',
@@ -391,7 +392,8 @@ async function run() {
     startEpochDay: null,
     endEpochDay: null,
     hasNote: false,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
 
   let unstableRuns = 0;
@@ -444,7 +446,8 @@ async function run() {
     startEpochDay: null,
     endEpochDay: null,
     hasNote: false,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
   const unstableErrorAfterUnrelatedRename = await reasonIfNotReached(
     until(() => unstableRuns > unstableRunsBeforeUnrelatedRename, 'the unstable query to re-run after an unrelated rename')
@@ -464,7 +467,8 @@ async function run() {
     startEpochDay: null,
     endEpochDay: null,
     hasNote: false,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
   const stableErrorAfterRealChange = await reasonIfNotReached(
     until(() => stableRuns > stableRunsAfterUnrelatedRename, "the stable query to re-run after its own queryText changes")

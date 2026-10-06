@@ -275,6 +275,7 @@ timeline
   v84 : procedure archived flag
   v85 : clear orphans, foreign keys enforced
   v87 : stock doses per unit
+  v88 : saved question keeps Starred
 ```
 
 The rules:

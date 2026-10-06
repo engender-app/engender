@@ -675,7 +675,8 @@ beforeAll(async () => {
       startEpochDay: null,
       endEpochDay: null,
       hasNote: true,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: false
     })
   )) as string;
   const secondSavedQuestionId = (await drive('savedQuestions', 'upsertSavedQuestion', () =>
@@ -687,7 +688,8 @@ beforeAll(async () => {
       startEpochDay: null,
       endEpochDay: null,
       hasNote: false,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: false
     })
   )) as string;
   await drive('savedQuestions', 'deleteSavedQuestion', () =>
