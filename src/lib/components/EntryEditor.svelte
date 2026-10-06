@@ -39,7 +39,8 @@
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
-  import { journalDataKey } from '$lib/stores/boot.svelte';
+  import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
+  import { isLockedNow } from '$lib/stores/lock.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { episodesWithNoDoseLogged, remainingAfterOneDose } from '$lib/data/quickLogChip';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
@@ -320,10 +321,20 @@
     void draftStore.write(snapshot);
   });
 
+  /* A lock is not leaving. It unmounts this editor the way a departure
+     does, but the unlock comes back to this same address, and the draft
+     the person was typing is what should be there (after-release ticket
+     10). The mirror is ciphertext under the data key, so keeping it costs
+     nothing a lock is meant to take away; the remount reads it back once
+     the unlock has opened the journal and handed the key out again. The
+     same holds on Android, whose lock unmounts the editor the same way.
+     A mode with no secret never locks, so it never reaches this. Read
+     through `isLockedNow`: a teardown sees reactive state as it was before
+     the change that caused it, which here is still unlocked. */
   onDestroy(() => {
     destroyed = true;
     if (saveRecovery) detachedEntrySave = saveRecovery;
-    else if (!saving) draftStore.clear();
+    else if (!saving && !isLockedNow(bootState.accessMode)) draftStore.clear();
   });
 
   let deleteOpen = $state(false);

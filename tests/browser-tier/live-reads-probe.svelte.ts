@@ -497,7 +497,7 @@ async function run() {
   afterWrite.destroy();
   const previousTiming = prefs.lockAfter;
   prefs.lockAfter = 'immediately';
-  const stopLock = watchLock();
+  const stopLock = watchLock(async () => {});
   Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
   document.dispatchEvent(new Event('visibilitychange'));
   Reflect.deleteProperty(document, 'visibilityState');

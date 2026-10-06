@@ -40,6 +40,7 @@ import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './read
 import type { Journal } from '../journal/journal';
 import { bump, settledVersionOf, versionOf } from './tableVersions.svelte';
 import { callKey, forgetLastResults, recall, remember, sameAnswer } from './lastResults';
+import { sessionGate } from './sessionGate';
 
 export { onTablesWritten, batchWrites } from './tableVersions.svelte';
 
@@ -48,23 +49,25 @@ export { onTablesWritten, batchWrites } from './tableVersions.svelte';
    the journal is in another module. */
 const open = $state<{ journal: Journal | null }>({ journal: null });
 
-/* Same value as `open.journal`, reachable without a reactive read, plus the
-   promise everything queues on until it lands. A screen that rendered during
+/* Same value as `open.journal`, reachable without a reactive read, behind
+   the gate everything queues on until it lands. A screen that rendered during
    boot - Home's quick log is reachable at first paint - can then save without
    knowing whether the worker has caught up. The preference store solves the
    same problem by replaying writes; the journal only has to queue them,
-   because nothing here needs an answer before the database has one. */
-let openedJournal: Journal | null = null;
-let announceOpened: (journal: Journal) => void;
-const opened = new Promise<Journal>((resolve) => {
-  announceOpened = resolve;
-});
+   because nothing here needs an answer before the database has one.
+
+   A gate rather than a promise resolved once since after-release ticket 10:
+   a lock on the web closes the database, and the gate is what lets every
+   call already running finish first, holds the ones made while locked, and
+   hands them the reopened journal instead of the closed one. */
+const journals = sessionGate<Journal>();
 
 let wrapped: Journal | null = null;
 
-/** Boot's job, once: wraps the journal so its writes announce themselves, and
-    hands the wrapper back for boot's own use - `loadReferenceData` writes
-    through it, so its announcements have to be observed too.
+/** Boot's job, once per open: wraps the journal so its writes announce
+    themselves, and hands the wrapper back for boot's own use -
+    `loadReferenceData` writes through it, so its announcements have to be
+    observed too.
 
     Nothing may query yet. `openJournal()` only composes closures over the
     driver, and the tables do not exist until the migrations have run, which is
@@ -81,9 +84,18 @@ export function attachJournal(raw: Journal): Journal {
     and queued calls go through. */
 export function journalIsOpen(): void {
   if (!wrapped) throw new Error('the journal was reported open before it was attached');
-  openedJournal = wrapped;
   open.journal = wrapped;
-  announceOpened(wrapped);
+  journals.open(wrapped);
+}
+
+/** The lock's half (after-release ticket 10): stops handing the journal out,
+    and resolves once every call already made through it has settled, so the
+    database can close under nothing. Calls made from here on wait for the
+    next `journalIsOpen()`. */
+export async function journalIsClosing(): Promise<void> {
+  open.journal = null;
+  wrapped = null;
+  await journals.close();
 }
 
 type Operations = Record<string, (...args: unknown[]) => unknown>;
@@ -103,8 +115,7 @@ function facadeFor(areaName: string): unknown {
       get(_target, operation: string) {
         return (...args: unknown[]) => {
           const area = (journal: Journal) => journal[areaName as keyof Journal] as unknown as Operations;
-          if (openedJournal) return area(openedJournal)[operation](...args);
-          return opened.then((ready) => area(ready)[operation](...args));
+          return journals.run((ready) => area(ready)[operation](...args));
         };
       }
     }
@@ -124,7 +135,7 @@ export const journal: Journal = new Proxy({} as Journal, {
     // distinction (JOURNAL_WIDE).
     if ((JOURNAL_WIDE as readonly string[]).includes(name)) {
       const operation = name as (typeof JOURNAL_WIDE)[number];
-      return () => opened.then((ready) => ready[operation]());
+      return () => journals.run((ready) => ready[operation]());
     }
     return facadeFor(name);
   }
@@ -322,7 +333,7 @@ function query<T>(
      learn what it asks for. */
   const instance = ++queriesMade;
   liveQueries.add(instance);
-  const asked = site && openedJournal ? recallFor(site, run, openedJournal) : null;
+  const asked = site && journals.current ? recallFor(site, run, journals.current) : null;
   const recalled = asked?.value;
   let state = $state<ReadState<T>>(recalled === undefined ? pending<T>() : landed(recalled as T));
   let inFlight = $state(false);

@@ -235,6 +235,11 @@
               onChange={(next) => (prefs.lockAfter = next)}
               aria-labelledby="lock-after-title"
             />
+            <!-- What a lock does on the web since after-release ticket 10, and
+                 what it cannot do. Android's lock path is its own. -->
+            {#if !isAndroid()}
+              <p class="ob-text" data-lock-after-web>{m.lock_after_web_note()}</p>
+            {/if}
           {:else}
             <p class="ob-text" data-lock-after-none>{m.lock_after_no_secret()}</p>
           {/if}
