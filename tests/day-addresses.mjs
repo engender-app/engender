@@ -59,13 +59,13 @@ try {
     const isoTitle = await page.locator('h1').innerText();
     await load('/day/20731');
     assert.equal(await page.locator('h1').innerText(), isoTitle);
-    assert.match(isoTitle, /October 5/);
+    assert.match(isoTitle, /5 October/);
   });
   await check('ISO new entry opens its day and preserves seedMood', async () => {
     await load('/entry/new/2026-10-05?seedMood=4');
     await page.locator('#ed-note').waitFor({ timeout: 3000 });
     assert.equal(await page.locator('[data-mood="4"]').getAttribute('aria-checked'), 'true');
-    assert.match(await page.locator('[data-app-scroll-region]').innerText(), /October 5/);
+    assert.match(await page.locator('[data-app-scroll-region]').innerText(), /5 October/);
   });
   await check('today new entry remains writable', async () => {
     await load('/entry/new/today');
