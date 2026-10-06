@@ -81,7 +81,7 @@
       name={m.stats_highest_days()}
       href={readingHref('highest', span)}
       headline={topRow.name}
-      note={`${topRow.value} ${highestMetric.name}`}
+      note={m.reading_highest_value({ value: topRow.value, metric: highestMetric.name })}
     >
       {#snippet drawing()}
         <span class="highest-bars">

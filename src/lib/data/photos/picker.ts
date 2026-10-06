@@ -17,6 +17,7 @@ import { isAndroid } from '../../platform';
 import { androidPhotos } from './android-bridge';
 import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel';
+import { refuseLargePhoto, PhotoTooLargeError } from './limits';
 import { refuseAboveCeiling, refuseTooLarge } from '../documents/accept';
 
 interface PhotoPicker {
@@ -57,6 +58,7 @@ async function pickedBytesInChunks(token: string): Promise<Uint8Array> {
     const chunk = base64ToBytes(base64);
     chunks.push(chunk);
     length += chunk.length;
+    refuseLargePhoto(length);
     if (done) break;
   }
 
@@ -100,11 +102,14 @@ export async function androidPickedBytes(token: string): Promise<Uint8Array> {
     rejects before it ever opens the file, the same "before it is read" this
     ceiling means on the web. Anything else the bridge rejects with is
     rethrown unchanged. */
-async function pickOnAndroid<T>(call: () => Promise<T>): Promise<T> {
+async function pickOnAndroid<T>(call: () => Promise<T>, photo = false): Promise<T> {
   try {
     return await call();
   } catch (error) {
-    if (error instanceof Error && error.message.includes('too-large')) refuseTooLarge();
+    if (error instanceof Error && error.message.includes('too-large')) {
+      if (photo) throw new PhotoTooLargeError();
+      refuseTooLarge();
+    }
     throw error;
   }
 }
@@ -116,7 +121,8 @@ async function pickOnAndroid<T>(call: () => Promise<T>): Promise<T> {
 async function pickOneFile(...args: Parameters<typeof chooseFiles>): Promise<Uint8Array[]> {
   const [file] = await chooseFiles(...args);
   if (!file) return [];
-  refuseAboveCeiling(file.size);
+  if (args[0] === 'image/*') refuseLargePhoto(file.size);
+  else refuseAboveCeiling(file.size);
   return [new Uint8Array(await file.arrayBuffer())];
 }
 
@@ -124,16 +130,18 @@ export function filePhotoPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { tokens } = await pickOnAndroid(() => androidPhotos.pickImages());
-        // One at a time rather than all at once: a multi-pick can be
-        // several files at the ceiling, and fetching them concurrently
-        // would hold every one of them in the heap together. The fallback
-        // transport needs it too now - PickedFiles keeps one chunked read
-        // open at a time, so a second token's first chunk ends the first
-        // file's read wherever it had got to (phase 9 audit ticket 14).
-        const picked: Uint8Array[] = [];
-        for (const token of tokens) picked.push(await androidPickedBytes(token));
-        return picked;
+        return pickOnAndroid(async () => {
+          const { tokens } = await androidPhotos.pickImages();
+          // One at a time rather than all at once: a multi-pick can be
+          // several files at the ceiling, and fetching them concurrently
+          // would hold every one of them in the heap together. The fallback
+          // transport needs it too now - PickedFiles keeps one chunked read
+          // open at a time, so a second token's first chunk ends the first
+          // file's read wherever it had got to (phase 9 audit ticket 14).
+          const picked: Uint8Array[] = [];
+          for (const token of tokens) picked.push(await androidPickedBytes(token));
+          return picked;
+        }, true);
       }
 
       // Whatever the OS decides matches "image/*", HEIC included: the bytes
@@ -143,7 +151,7 @@ export function filePhotoPicker(): PhotoPicker {
       // Every file's size is checked before any of them is read, so one
       // oversized photo in a multi-pick refuses the batch before the others
       // are read too - not partway through it.
-      for (const file of files) refuseAboveCeiling(file.size);
+      for (const file of files) refuseLargePhoto(file.size);
       return Promise.all(files.map(async (file) => new Uint8Array(await file.arrayBuffer())));
     }
   };
@@ -158,8 +166,10 @@ export function documentPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { token } = await pickOnAndroid(() => androidPhotos.pickDocument());
-        return token ? [await androidPickedBytes(token)] : [];
+        return pickOnAndroid(async () => {
+          const { token } = await androidPhotos.pickDocument();
+          return token ? [await androidPickedBytes(token)] : [];
+        });
       }
 
       return pickOneFile('application/pdf,image/*');
@@ -181,8 +191,10 @@ export function cameraPhotoPicker(): PhotoPicker {
   return {
     async pick() {
       if (isAndroid()) {
-        const { token } = await androidPhotos.captureImage();
-        return token ? [await androidPickedBytes(token)] : [];
+        return pickOnAndroid(async () => {
+          const { token } = await androidPhotos.captureImage();
+          return token ? [await androidPickedBytes(token)] : [];
+        }, true);
       }
 
       return pickOneFile('image/*', { capture: 'environment' });

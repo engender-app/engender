@@ -125,7 +125,7 @@
   <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
     <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>
       {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
-      <SectionHeading text={m.affirmations_builtin_heading()} />
+      <SectionHeading text={m.tags_builtin_heading()} />
       {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
     </ReadReserve>
   </div>
