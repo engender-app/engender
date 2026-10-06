@@ -287,6 +287,7 @@ available for the surface or device it measures.
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
 | `measurement-notice-proof` | prove delayed stationary appearance, missing content, incomplete observation, unsettled content and injected travel using the cold-load sampler; fresh and remembered reserves against a demo build |
+| `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |
 
 `guard-recovery-proof` runs disposable synthetic guards through the production runner
 and checks recovery, revision identity and retained evidence. The separate Guard

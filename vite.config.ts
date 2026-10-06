@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
@@ -6,6 +7,7 @@ import { appVersion } from './scripts/app-version.mjs';
 import { lockfilePackages } from './scripts/check-licences.mjs';
 import { noticesFromDisk, packagePathOf } from './scripts/licence-notices.mjs';
 import capacitorConfig from './capacitor.config';
+import { buildRequestHandler } from './tests/serve-build.mjs';
 
 /* What the client build actually emitted, written where src/service-worker.ts
    can import it - the shell cannot be precached from SvelteKit's own `build`
@@ -13,6 +15,11 @@ import capacitorConfig from './capacitor.config';
    WASM. verify-build.mjs fails if anything the build wrote is missing from
    the cache the worker fills. */
 const GENERATED = 'src/lib/pwa/emitted-client-assets.generated.ts';
+const locale = process.env.ENGENDER_BUILD_LOCALE;
+const previousAssets = process.env.ENGENDER_PREVIOUS_ASSETS
+  ? JSON.parse(readFileSync(process.env.ENGENDER_PREVIOUS_ASSETS, 'utf8')) as string[]
+  : [];
+
 
 function demoWorkerPrewarm(): Plugin {
   let client = false;
@@ -103,10 +110,9 @@ function writeEmittedClientAssets() {
         // Its output directory is the thing that says which is which.
         if (!options.dir?.endsWith('/client')) return;
         write(
-          Object.keys(bundle)
+          [...new Set([...previousAssets, ...Object.keys(bundle)
             .filter((file) => file.startsWith('_app/immutable/'))
-            .map((file) => `/${file}`)
-            .sort()
+            .map((file) => `/${file}`)])].sort()
         );
       }
     }
@@ -260,6 +266,23 @@ function isolateServer(server: ViteDevServer | PreviewServer): void {
   });
 }
 
+/* `npm run build` joins an English and a Polish build into build/ and gives
+   build/index.html the selector that picks one (scripts/build-locales.mjs,
+   after-release ticket 32). SvelteKit's preview renders its own document
+   from .svelte-kit/output, which holds only the last of the two builds, so
+   every page it served was Polish whatever the saved language. When build/
+   holds the joined shell, preview serves build/ itself, as serve-build.mjs
+   and nginx do. A plain `vite build` leaves an ordinary shell and keeps
+   SvelteKit's preview. */
+function serveJoinedLocaleBuild(server: PreviewServer): void {
+  const shell = resolve(server.config.root, 'build/index.html');
+  const handle = buildRequestHandler(server.config.root);
+  server.middlewares.use((req, res, next) => {
+    if (existsSync(shell) && readFileSync(shell, 'utf8').includes('const engenderLocaleGraphs = ')) handle(req, res);
+    else next();
+  });
+}
+
 export default defineConfig(({ command }) => ({
   build: { target: BUILD_TARGET },
   worker: { format: 'es', plugins: () => [notices.worker] },
@@ -276,6 +299,11 @@ export default defineConfig(({ command }) => ({
   // screen can only ever show what was actually shipped. Read once here, from
   // the signed tag or from ENGENDER_VERSION, and nowhere else.
   define: {
+    ...(locale ? {
+      'globalThis.__PARAGLIDE_STATIC_LOCALE__': JSON.stringify(locale),
+      // Vite 6's fast filter must see the marker in the parenthesized compiler expression.
+      __PARAGLIDE_STATIC_LOCALE__: 'undefined'
+    } : {}),
     __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1'),
     __APP_VERSION__: JSON.stringify(appVersion())
   },
@@ -290,8 +318,15 @@ export default defineConfig(({ command }) => ({
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/lib/paraglide',
+      ...(locale ? { experimentalStaticLocale: '/** @type {any} */ (globalThis).__PARAGLIDE_STATIC_LOCALE__' } : {}),
       strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
     }),
+    // Before sveltekit(), so its document handler runs first. Returning the
+    // hook makes it run after Vite's own host check, not before it.
+    {
+      name: 'engender:joined-locale-preview',
+      configurePreviewServer: (server) => () => serveJoinedLocaleBuild(server)
+    },
     sveltekit(),
     sharedWasmAssets(),
     notices.main,

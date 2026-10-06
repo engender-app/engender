@@ -9,11 +9,10 @@
    port (falling back off its 5173 default if that's taken), so there's no
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
-   #demo-jump control), then serves that build. vite preview renders its own
-   document, without the CSP meta or the held module hints that
-   build/index.html carries; verify-build and previewBuild serve the real
-   file through serve-build.mjs since after-release ticket 31, and this
-   runner has not moved yet. */
+   #demo-jump control), then serves that build. Since after-release ticket
+   32, vite preview serves build/ itself when the build joined its two
+   locale graphs (vite.config.ts), so this runner loads the shipped
+   document, CSP meta and held module hints included. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
@@ -4752,8 +4751,15 @@ try {
   const after = await boxes.count();
   if (after !== before) throw new Error('the goal count changed from ' + before + ' to ' + after);
 
+  /* A font file is not a call the roadmap makes. The legal track's Polish
+     names are the first text on the page that needs nunito-latin-ext, and
+     since after-release ticket 32 this runner loads the shipped document
+     with its no-cache headers (as nginx serves /fonts/), so after the reload
+     the browser asks for the file again instead of reusing it silently. */
   const requested = [];
-  page.on('request', (request) => requested.push(request.url()));
+  page.on('request', (request) => {
+    if (!new URL(request.url()).pathname.startsWith('/fonts/')) requested.push(request.url());
+  });
 
   await page.locator('[data-segment="legal"]').click(); // the reload above remounted on Social
 

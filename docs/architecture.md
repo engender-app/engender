@@ -551,7 +551,7 @@ The things the app protects are journal content (the database, photos, voice, vi
 
 | Adversary | Design answer |
 |---|---|
-| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents gets no screenshot. Disguise renames the app. |
+| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless screen capture is off. Disguise renames the app. |
 | Someone holding the unlocked phone | Lock timing, PIN throttle, sensitive-clipboard clearing. |
 | Someone holding the locked phone | Data is encrypted at rest. The data key is behind Keystore or an Argon2id wrap. Launch routes are nonce-gated. |
 | Copy of stored app data | Database and files are ciphertext. Android Keystore keys are outside app-private files. A whole browser-profile copy can include the IndexedDB keys beside the web wraps; non-extractability alone does not protect that copy. |
@@ -681,7 +681,7 @@ stateDiagram-v2
 - `allowBackup="false"`, plus [data_extraction_rules.xml](../android/app/src/main/res/xml/data_extraction_rules.xml) excluding every domain.
 - No `INTERNET` permission. The declared permissions are notifications, exact alarms, boot-completed, audio record and settings, and camera.
 - `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`. Capture output is deleted after consumption or cancellation, at the next app start, and when device stores are wiped.
-- Recents: `setRecentsScreenshotEnabled(false)` on Android 13+ whenever a lock exists, and `FLAG_SECURE` on leave below 13.
+- Screen capture and Recents follow one per-device switch, `allowScreenCapture` (on by default). On, screenshots and the Recents preview both show, with or without a lock. Off, `FLAG_SECURE` hides both, and Android 13+ also gets `setRecentsScreenshotEnabled(false)`.
 - Notifications use `VISIBILITY_PRIVATE`, PendingIntents are immutable, and Capacitor logging is off (`loggingBehavior: 'none'`).
 - Launch routes need a nonce (section 9).
 
@@ -758,6 +758,8 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 ### 8.6 i18n
 
 - **Catalogues.** Paraglide compiles [messages/en.json](../messages/en.json) and [messages/pl.json](../messages/pl.json). The base locale is `en`, and the locale is resolved from `localStorage`, then the browser's preferred language, then the base locale ([vite.config.ts](../vite.config.ts)).
+- **Locale builds.** [scripts/build-locales.mjs](../scripts/build-locales.mjs) runs two ordinary SvelteKit builds with Paraglide's `experimentalStaticLocale`, using one build ID. It joins hashed assets, checks the generated startup contract and composes the fallback shell with a synchronous locale selector. The final service worker receives both emitted asset lists before compilation. Both languages therefore work offline, while startup imports one client graph. `npm run dev` keeps the runtime locale resolver.
+- **Import aliases.** Daylio matching loads the static English and Polish tag strings through [import-labels.ts](../src/lib/data/vocabulary/import-labels.ts) when an import preview starts. Their catalogue shape and built-in tag coverage have Node tests; display labels use the active compiled locale.
 - **Human copy review.** `npm run strings` serves the local catalogue editor in [scripts/strings.mjs](../scripts/strings.mjs). Field saves compare the displayed value with disk before replacing it; bulk save uses the same operation and retains conflicting edits in the browser. Literal find-and-replace previews selected languages across shown or all keys, then applies replacements to drafts before saving. Individual and group checkboxes save fingerprints of the reviewed English/Polish pairs in `.scratch/copy-review.json`. Later copy changes invalidate approval for the affected keys. A filtered group checkbox applies only to the shown keys. Copy outside the catalogues (Android resources, web manifests, the store listing, the privacy policy by paragraph) is read by [scripts/strings-outside.mjs](../scripts/strings-outside.mjs) as values with their offsets, so a save splices one value into its file and leaves the formatting alone. This review state is local tooling data, separate from the journal and shipped catalogues.
 - **Keys, not words, in the database.** Built-in rows store keys, and [data/vocabulary/](../src/lib/data/vocabulary) turns keys into words (ADR-0024).
 - **Copy checks.** `npm run check:copy` checks that both catalogues have the same keys and that the count in [messages/untranslated-literals.txt](../messages/untranslated-literals.txt) never grows. `docs/ui-copy.md` is the copy guide.

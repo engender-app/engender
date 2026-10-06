@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -16,7 +15,6 @@ import com.getcapacitor.Plugin;
 
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
-import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.lock.OwnSystemUi;
 import dev.engender.app.launch.AppLaunch;
 import dev.engender.app.reminders.ReminderScheduler;
@@ -163,11 +161,6 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void lockOnLeave() {
-        // Below Android 13, Recents and capture share one flag. Protect every
-        // locked access mode on leave, including the default restart timing.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && LockTimingPlugin.isEnabled(this)) {
-            ScreenCapturePlugin.applyWindowFlags(this, false);
-        }
         if (bridge == null || bridge.getWebView() == null) return;
         // Covered by a screen the app opened itself is not leaving it yet,
         // and the page decides how long it may stay up (leave-lock.ts). The

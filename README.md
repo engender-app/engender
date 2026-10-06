@@ -221,6 +221,12 @@ service worker, so edits are served directly rather than from a cached
 release.
 
 Build once on a fresh checkout before running the type checks or Node tests.
+The build compiles one English and one Polish client graph, then joins their
+assets into one static release. The shell selects the saved language before
+loading scripts; changing language still reloads the page. The service worker
+caches both graphs for offline switching. Development serves both catalogues
+through the ordinary Vite server.
+
 The build generates the translation runtime and service-worker asset list;
 some tests also inspect the built app.
 
