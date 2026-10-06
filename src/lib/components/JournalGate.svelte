@@ -384,11 +384,15 @@
           >{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span
         >
       {/if}
+      <!-- The gate's own notes, not the mid-session ones: those send
+           somebody to reopen the app for the recovery key, and this gate
+           already offers it beside the button that opened this sheet
+           (after-release ticket 09). -->
       {unlockingPin
-        ? m.pin_forgot_key_note()
+        ? m.pin_forgot_gate_note()
         : unlockingBiometric
-          ? m.bm_forgot_key_note()
-          : m.pp_forgot_key_note()}
+          ? m.bm_forgot_gate_note()
+          : m.pp_forgot_gate_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>

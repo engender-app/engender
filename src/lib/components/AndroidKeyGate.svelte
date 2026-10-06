@@ -215,7 +215,7 @@
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      {m.ak_forgot_key_note()}
+      {m.ak_forgot_gate_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
