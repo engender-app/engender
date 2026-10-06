@@ -16,6 +16,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { WRAPPED_ENTRY_FLOOR, completedWrappedPeriod, WRAPPED_CADENCES, type WrappedCadence } from '$lib/data/wrapped';
@@ -49,11 +50,15 @@
   );
   let period = $derived(cadence ? completedWrappedPeriod(cadence, today) : null);
 
+  let consentQuery = liveQuery((j) => resurfacing('wrapped-share', j));
+  let allowed = $derived(!!period && (consentQuery.value?.mayResurface(period) ?? false));
+  let muted = $derived(!!period && !!consentQuery.value && !allowed);
+
   let recapQuery = liveQuery((j) =>
-    period ? j.stats.recap(period.start, period.end) : Promise.resolve(null)
+    prefs.wrappedEnabled && allowed && period ? j.stats.recap(period.start, period.end) : Promise.resolve(null)
   );
   let recap = $derived(recapQuery.value);
-  let ready = $derived(prefs.wrappedEnabled && recap && recap.entryCount >= WRAPPED_ENTRY_FLOOR);
+  let ready = $derived(prefs.wrappedEnabled && allowed && recap && recap.entryCount >= WRAPPED_ENTRY_FLOOR);
 
   let selection = $state<WrappedShareSelection>({ ...WRAPPED_SHARE_NOTHING_SELECTED });
   let nothingPicked = $derived(!selection.counts && !selection.paletteArt);
@@ -87,7 +92,7 @@
 
   async function make() {
     const cardNode = cardHost?.querySelector('[data-wrapped-card]') as HTMLElement | null;
-    if (!cardNode) return;
+    if (!ready || !cardNode) return;
     const from = recipe;
     running = true;
     try {
@@ -104,7 +109,7 @@
   /* The only thing on this screen that sends anything anywhere, and it goes
      through the same share sheet every other export uses (deliver.ts). */
   async function share() {
-    if (!showing) return;
+    if (!ready || !showing) return;
     try {
       const delivery = await deliverBlob(wrappedShareFileName(prefs.name, undefined, prefs.disguise), showing.blob);
       if (delivery === 'cancelled') {
@@ -122,8 +127,17 @@
 <div class="screen">
   <ScreenHeader title={m.wrapped_share_title()} back="/wrapped/{page.params.cadence}" />
 
-  {#if recapQuery.loading}
+  {#if consentQuery.loading || recapQuery.loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
+  {:else if muted}
+    <Notice
+      icon="eyeOff"
+      key="wrapped-muted"
+      title={m.wrapped_muted_title()}
+      text={m.wrapped_muted_body()}
+      action={{ label: m.eras_title(), href: '/settings/eras' }}
+      aria-live="polite"
+    />
   {:else if !ready}
     <Notice
       icon="info"
