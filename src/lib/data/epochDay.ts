@@ -16,6 +16,15 @@ export function todayEpochDay(): number {
   return epochDayFromLocalDate(new Date());
 }
 
+/** Milliseconds from `now` to the next local midnight. Built from the
+    calendar date rather than `DAY - elapsed`, so a 23 or 25 hour day around
+    a DST change still lands on midnight. At least 1, so a timer set from it
+    always fires after the day has changed. */
+export function msUntilNextLocalMidnight(now: Date = new Date()): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return Math.max(1, next.getTime() - now.getTime());
+}
+
 export function epochDayFromLocalDate(date: Date): number {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY);
 }

@@ -53,7 +53,8 @@
      Look back rail's own era bands use, so the two rails agree on which
      stripe a given era gets. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
+  import { calendarDuration } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { timelineItems } from '$lib/data/timelineItems';
@@ -78,7 +79,7 @@
     onOpenEra: (eraId: string) => void;
   } = $props();
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let items = $derived(timelineItems(milestones, today));
 
   const statusOf = (milestone: Milestone) => {

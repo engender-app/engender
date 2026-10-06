@@ -47,6 +47,7 @@
   } from '$lib/data/letterStatus';
   import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { Letter } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LetterArrival from '$lib/components/LetterArrival.svelte';
@@ -67,7 +68,7 @@
 
   const HISTORY_LIMIT = 100;
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   type Composition = { id?: string; text: string; unlockDate: string };
   let sealOutcome = $state('');
 
@@ -171,7 +172,7 @@
     upsert: async (draft) => {
       if (requirement(draft)) return false;
       const unlockEpochDay = epochDayFromDateInputValue(draft.unlockDate)!;
-      await journal.letters.addLetter({ epochDay: today, text: draft.text.trim(), unlockEpochDay });
+      await journal.letters.addLetter({ epochDay: todayEpochDay(), text: draft.text.trim(), unlockEpochDay });
       if (record.editor === draft && unlockEpochDay !== today) {
         sealOutcome = isLetterSealed({ unlockEpochDay }, today) ? m.letters_seal_done() : m.letters_ready_done();
       }

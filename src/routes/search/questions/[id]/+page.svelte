@@ -23,7 +23,7 @@
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { moodName } from '$lib/data/vocabulary/labels';
@@ -136,7 +136,7 @@
     const limit = PAGE * hitPages;
     return j.textSearch.search({
       query: typed,
-      today: todayEpochDay(),
+      today: currentDay(),
       startEpochDay: criteria.filters.startEpochDay ?? null,
       endEpochDay: criteria.filters.endEpochDay ?? null,
       limit

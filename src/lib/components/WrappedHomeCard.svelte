@@ -29,14 +29,14 @@
      which is what lets one be silenced without touching the other. */
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthName } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveQuery, liveQueryWatchingOnly } from '$lib/data/live/journal.svelte';
   import { WRAPPED_ENTRY_FLOOR, offeredWrappedPeriod } from '$lib/data/wrapped';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import Tile from './kit/Tile.svelte';
   import { joinReadGroup } from './kit/readGroup.svelte';
 
-  const period = offeredWrappedPeriod(todayEpochDay());
+  const period = $derived(offeredWrappedPeriod(currentDay()));
 
   let consentQuery = liveQuery((j) => resurfacing('wrapped-home-card', j));
   let allowed = $derived(consentQuery.value?.mayResurface(period) ?? false);
