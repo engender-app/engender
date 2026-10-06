@@ -51,10 +51,10 @@ try {
   assert.equal(await page.locator('a[href="/wrapped/week/share"]').count(), 0);
   console.log('PASS wrapped route hides share link for muted period');
 
-  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-home-hello]');
+  await page.goto(`${base}/stats`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-lookback-readings]');
   assert.equal(await page.locator('[data-wrapped-card], [data-on-this-day-card]').count(), 0);
-  console.log('PASS Home offers no muted retrospective');
+  console.log('PASS Look back offers no muted retrospective');
 
   await page.evaluate(async ({ url, id }) => {
     const module = await import(url);
@@ -66,7 +66,7 @@ try {
   await page.waitForSelector('[data-generate]');
   assert.equal(await page.locator('[data-notice="wrapped-muted"]').count(), 0);
   assert.deepEqual(errors, []);
-  console.log('PASS unmuting restores Home and direct sharing without page errors');
+  console.log('PASS unmuting restores Look back and direct sharing without page errors');
 } finally {
   await browser.close();
   await new Promise((resolve) => app.httpServer.close(resolve));
