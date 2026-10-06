@@ -138,7 +138,7 @@
   let annotationsQuery = liveList((j) => {
     const asked = `${span.from}:${span.to}`;
     return j.chartAnnotations
-      .getAnnotations(span.from, span.to, todayEpochDay())
+      .getAnnotations(span.from, span.to, currentDay())
       .finally(() => (annotationsAnsweredFor = asked));
   });
 

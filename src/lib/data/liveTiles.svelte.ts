@@ -30,6 +30,7 @@ import { liveList, liveQuery, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime, fmtNumber } from './dates';
+import { todayEpochDay as clockDay } from './epochDay';
 import { hairRemovalAreaName } from './vocabulary/labels';
 import { spanCoversDay } from './span';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
@@ -139,7 +140,7 @@ export function homeTiles(
   }
 
   async function resumePause(pauseId: string, startEpochDay: number): Promise<void> {
-    const endEpochDay = today() - 1;
+    const endEpochDay = clockDay() - 1;
     if (endEpochDay < startEpochDay) {
       await journal.journalingPauses.deletePause(pauseId);
       return;

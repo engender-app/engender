@@ -185,8 +185,9 @@
      five reads sits past the gap's own `await`, so an unseeded query would
      re-run once for nothing on every mount (phase 8 audit ticket 14). */
   let waitingQuery = liveQuery(async (j) => {
+    const asOf = today; // before the await, so the read follows the day
     const since = await gap;
-    return since === null ? null : readWhatIsWaiting(j, today, since);
+    return since === null ? null : readWhatIsWaiting(j, asOf, since);
   }, WAITING_TABLES);
   let waitingRows = liveListIn(waitingQuery, (surface) => surface?.items ?? []);
 
