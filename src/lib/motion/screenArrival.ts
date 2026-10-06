@@ -18,8 +18,8 @@ export function endTabArrival(): void {
 /* A read answering during the field's travel shares what is left of it,
    but never below --dur-fast. Look back's rail used to be squeezed into
    whatever remained: answering about 40ms before the stop, it went from
-   skeleton to almost fully drawn in one frame, which Alicja rejected on
-   sight ("looks shit and yanks"). An answer with less than that left keeps
+   skeleton to almost fully drawn in one frame, which Alicja rejected as a
+   yank. An answer with less than that left keeps
    its placeholder until the field stops and then reveals at full length
    (arrivalHold.svelte.ts); one with more is fitted into the travel, no
    shorter than --dur-fast. */
@@ -53,7 +53,12 @@ function fitBefore(animations: Animation[], deadline: number): void {
     const timing = animation.effect?.getComputedTiming();
     if (!timing || timing.iterations === Infinity || animation.playState === 'finished') continue;
     const left = Number(timing.endTime) - Number(animation.currentTime ?? 0);
-    animation.playbackRate = Math.max(animation.playbackRate, left / remaining);
+    /* The floor is on what the eye sees: a staggered entrance's own
+       movement, not its delay plus movement, plays no shorter than
+       --dur-fast. Such an entrance may end a frame or so after the
+       deadline, which sits two frames before the field stops. */
+    const ceiling = Math.max(1, Number(timing.duration) / revealFloor());
+    animation.playbackRate = Math.max(animation.playbackRate, Math.min(left / remaining, ceiling));
   }
 }
 

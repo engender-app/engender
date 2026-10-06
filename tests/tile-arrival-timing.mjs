@@ -297,7 +297,7 @@ async function androidArrival(to) {
               }
               return false;
             }),
-          placeholder: !!screen?.querySelector('[data-gate-skeleton], [data-read-reserve-hold], .read-group-members.is-held, [data-skeleton]'),
+          placeholder: !!screen?.querySelector('[data-gate-skeleton], [data-read-reserve-hold], .read-group-members.is-held, [data-lookback-rail-wait]'),
           /* Every fade-in or tile entrance outside the field, as the length
              it plays at: its authored duration over its playback rate. */
           reveals: (screen?.getAnimations({ subtree: true }) ?? []).flatMap((animation) => {
@@ -347,15 +347,18 @@ function judgeArrival(frames) {
      the field stops is the held answer arriving. */
   const lastMoving = frames[lastMotion]?.at ?? -Infinity;
   const overran = !!deadline && deadline.reveals.some((r) => r.running && r.started !== null && r.started <= lastMoving && r.left > 17);
-  const held = !!deadline && !deadline.readable && deadline.placeholder && !overran;
+  /* Held: the placeholder was still up in the last frame the field moved,
+     and what is not readable at the stop only begins to reveal there (a
+     held answer is let go in the very frame the field stops). */
+  const held = !!deadline && !deadline.readable && !!frames[lastMotion]?.placeholder && !overran;
   const after = held && frames.some((f) => f.at > deadline.at && f.readable);
-  const ok = lastMotion >= 0 && !!deadline && shortest >= MIN_REVEAL_MS - 1 && (deadline.readable || after);
+  const ok = lastMotion >= 0 && !!deadline && shortest >= MIN_REVEAL_MS - 1 && !overran && (deadline.readable || after);
   const squeezed = frames.flatMap((f) => f.reveals).find((r) => r.length < MIN_REVEAL_MS - 1);
-  return { ok, deadline, readable, shortest, held, lastMotion, squeezed };
+  return { ok, deadline, readable, shortest, held, overran, lastMotion, squeezed };
 }
-const describe = ({ deadline, readable, shortest, held, squeezed }) =>
+const describe = ({ deadline, readable, shortest, held, overran, squeezed }) =>
   `readable ${Math.round(readable?.at ?? -1)}ms, field end ${Math.round(deadline?.at ?? -1)}ms` +
-  `${held ? ', held through the stop' : ''}, shortest reveal ${Number.isFinite(shortest) ? Math.round(shortest) + 'ms' : 'none'}` +
+  `${held ? ', held through the stop' : ''}${overran ? ', a reveal overran the stop' : ''}, shortest reveal ${Number.isFinite(shortest) ? Math.round(shortest) + 'ms' : 'none'}` +
   `${squeezed ? ` (${squeezed.what})` : ''}`;
 
 /* The frames around the stop, for a failure: CI printed only the verdict
@@ -379,10 +382,11 @@ for (const pass of ['first', 'repeat']) for (const to of ['/calendar', '/stats',
   if (to === '/calendar') console.log(`${reversal ? 'FAIL' : 'ok  '} Journal arrival never expands then collapses before settling`);
 }
 
-/* Reads held to 250ms land with most of the travel left; held to 330ms
-   they land with less than a fade's length of it, the case a slow runner
-   reached on main (run 37385237608) and the one that used to be squeezed. */
-for (const releaseMs of [250, 330]) {
+/* Reads held to 150ms land with more than a fade's length of the travel
+   left and are fitted into it; held to 330ms they land with less, the case
+   a slow runner reached on main (run 37385237608) and the one that used to
+   be squeezed; 250ms falls either side depending on the machine. */
+for (const releaseMs of [150, 250, 330]) {
   await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
   await page.evaluate(`window.Capacitor.getPlatform = () => 'android'; window.__lateReadUntil = performance.now() + ${releaseMs}`);
   const during = await androidArrival('/stats');
