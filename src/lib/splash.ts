@@ -2,9 +2,11 @@
    ticket 13, after-release ticket 31). app.html paints a ground and the
    mark before any script has run; this is what takes them away.
 
-   How the first frame leaves is app.html's CSS: the mark does not move on
-   the way out, and the ground is the app's own --bg, so no frame of the
-   handover has either of them somewhere new.
+   How the first frame leaves is app.html's CSS: a crossfade, the first
+   frame fading out while the app's root fades in on the same curve. The
+   mark does not move on the way out, and the ground is the app's own --bg
+   on the body, which neither side fades, so no frame of the handover has
+   either of them somewhere new.
 
    When it leaves is `splashMayLeave`: once boot has answered, and once the
    screen it answered with is the one the layout is drawing. Ticket 13 had
@@ -33,7 +35,16 @@ export function splashMayLeave(bootStatus: string, redirecting: boolean): boolea
 
 export function answerSplash(doc: Document = document): void {
   const splash = doc.getElementById('splash');
-  if (!splash || splash.classList.contains('is-answered')) return;
+  /* No first frame to cross with: the screen must not stay held at 0. */
+  if (!splash) {
+    delete doc.documentElement.dataset.splash;
+    return;
+  }
+  if (splash.classList.contains('is-answered')) return;
   splash.classList.add('is-leaving', 'is-answered');
-  setTimeout(() => splash.remove(), REMOVE_AFTER_MS);
+  doc.documentElement.dataset.splash = 'leaving';
+  setTimeout(() => {
+    splash.remove();
+    delete doc.documentElement.dataset.splash;
+  }, REMOVE_AFTER_MS);
 }
