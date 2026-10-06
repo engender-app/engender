@@ -223,9 +223,13 @@ export async function directionContracts(): Promise<Result[]> {
       css('.kit-area-line').strokeLinecap === 'square' &&
       css('.kit-area-line').strokeLinejoin === 'miter'
   );
+  /* A casing (phase 15 ticket 20) is not a weight of its own: it is the
+     edge of a 2px series, a pixel either side, so it is 4px and is held to
+     that rather than to the weights a mark may take. */
+  const CASING = '.kit-area-casing, .kit-area-ring-casing';
   await check('Kit chart strokes use one, two or twelve pixels', () => {
     const strokes = [...target.querySelectorAll('svg *')].filter(
-      (n) => getComputedStyle(n).stroke !== 'none'
+      (n) => getComputedStyle(n).stroke !== 'none' && !n.matches(CASING)
     );
     return (
       strokes.length > 5 &&
@@ -235,6 +239,10 @@ export async function directionContracts(): Promise<Result[]> {
           n.closest('.mood-face,.icon')
       )
     );
+  });
+  await check('A line casing is its 2px series plus a pixel each side', () => {
+    const casings = [...target.querySelectorAll(CASING)];
+    return casings.length > 0 && casings.every((n) => parseFloat(getComputedStyle(n).strokeWidth) === 4);
   });
   await check(
     'Bar is 14px with two-pixel ends',

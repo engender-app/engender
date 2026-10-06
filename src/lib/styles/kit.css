@@ -27,7 +27,10 @@
    A role arrives as three values, all from $lib/theme/roles.ts: --role, the
    flag's own stripe; --role-ink-in, the version of it that carries small
    text at 4.5:1; and --role-mark-in, the version that draws a chart line, a
-   bar, an icon or a display number at 3:1.
+   bar, an icon or a display number at 3:1. A fourth, --role-edge-in,
+   arrives only where the stripe itself is under 3:1 against what a chart
+   draws a line over: the edge a line in the raw stripe is cased in
+   (phase 15 ticket 20, --role-edge below).
 
    Two of them because the floors are different and the difference is
    visible. Holding a mark to the text floor darkens every bright stripe on
