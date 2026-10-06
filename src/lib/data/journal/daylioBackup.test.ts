@@ -150,3 +150,16 @@ test('a photo the pipeline cannot decode fails the import with the journal untou
   assert.equal((await journal.entries.recentDays(10)).length, 0);
   assert.equal((await journal.milestones.getMilestones()).length, 0);
 });
+
+test('case-variant duplicate Daylio tags import once per entry and definition', async () => {
+  const { journal } = await journalWithFiles();
+  const payload = daylioPayload();
+  const original = (payload.tags as Record<string, unknown>[])[0];
+  (payload.tags as Record<string, unknown>[]).push({ ...original, id: 99, name: 'PRACA' });
+  (payload.dayEntries as Record<string, unknown>[])[0].tags = [14, 99, 14];
+  const preview = await journal.archive.previewDaylioBackupImport(await makeDaylioBackup(payload), naming);
+  assert.equal(preview.journal.entries[0].tags.length, 1);
+  assert.equal(preview.newTagCount, 2);
+  await journal.archive.commitDaylioBackupImport(preview, normalize);
+  assert.equal((await journal.archive.snapshot()).journal.entries.find(entry => entry.uuid === preview.journal.entries[0].uuid)!.tags.length, 1);
+});
