@@ -9,7 +9,13 @@ export async function mountHome(): Promise<{ result: number; detail: string }> {
   try {
     await tick();
     const started = performance.now();
-    while (!target.querySelector('[data-home-log]') || target.querySelector('[data-read-reserve-hold]')) {
+    const ready = () => {
+      const reserves = [...target.querySelectorAll('[data-home-reserve]')];
+      return target.querySelector('[data-home-log]') && reserves.length >= 2 &&
+        reserves.every((reserve) => reserve.querySelector(':scope > [data-read-reserve-body]')) &&
+        !target.querySelector('[data-read-reserve-hold]');
+    };
+    while (!ready()) {
       if (performance.now() - started > 20_000) throw new Error('Mounted Home did not finish its reads');
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     }
