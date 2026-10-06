@@ -482,15 +482,22 @@
   }
 
   /* The cluster's pills are ordinary boxes, so they take the kit's own block
-     arrival rather than the figure's. */
+     arrival rather than the figure's.
+
+     The wipe ends, and the pill rests, with half a touch target of room
+     around it rather than 3px. A clip-path clips hit testing as well as
+     paint, and 3px cut the pill's 48px target (its .tag-chip ::after) to 47
+     (after-release 18). Nothing the pill paints reaches past 3px, so the
+     wider clip changes no pixel of the wipe. */
   .region-pill.region-arrive {
+    clip-path: inset(calc(var(--touch-target) / -2) round var(--radius-pill));
     animation: region-pill-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--region-i, 0) * var(--stagger-step));
   }
 
   @keyframes region-pill-in {
     from { clip-path: inset(-3px 100% -3px -3px round var(--radius-pill)); }
-    to { clip-path: inset(-3px round var(--radius-pill)); }
+    to { clip-path: inset(calc(var(--touch-target) / -2) round var(--radius-pill)); }
   }
 
   /* The hit boxes. Transparent, and over the drawing: the touch target is a

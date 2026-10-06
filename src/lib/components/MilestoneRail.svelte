@@ -136,7 +136,11 @@
       to breathe, and a band a few pixels short of it reads as broken. */
   const CHAR_HEIGHT_PX = 8;
   const LABEL_PADDING_PX = 16;
-  const minLabelHeight = (name: string) => name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX;
+  /** Never under the touch floor either (`floor`, the --touch-target
+      token): a band is a button, and a three-letter name ("HRT") would
+      otherwise draw a 40px one (after-release 18). */
+  const minLabelHeight = (name: string, floor: number) =>
+    Math.max(floor, name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX);
 
   let bandRects = $state<BandRect[]>([]);
 
@@ -165,6 +169,7 @@
       return;
     }
     const railTop = el.getBoundingClientRect().top;
+    const floor = parseFloat(getComputedStyle(el).getPropertyValue('--touch-target')) || 0;
     const next: BandRect[] = [];
     eraBandRanges.forEach((band, index) => {
       const first = itemEls[band.startIndex];
@@ -185,7 +190,7 @@
 
       // Stretched around its own middle rather than pinned to either end,
       // so a lengthened band still reads as centred on the rows it covers.
-      const needed = minLabelHeight(band.name);
+      const needed = minLabelHeight(band.name, floor);
       if (height < needed) {
         const grown = (needed - height) / 2;
         top -= grown;
@@ -261,7 +266,7 @@
   {#each bandRects as band (band.id)}
     <button
       type="button"
-      class="tl-era-band"
+      class="tl-era-band hit-floor"
       data-tl-era={band.id}
       style:top="{band.top}px"
       style:height="{band.height}px"
@@ -397,7 +402,14 @@
      clean gap through a band or a name behind it, the way it always has
      through the thread). Every band wears an edge, the reason
      SpanTimeline's own bands do - a black or white flag leaves no other
-     way for two adjacent bands to read as separate objects. */
+     way for two adjacent bands to read as separate objects.
+
+     The drawn band is 20px; its target is the 48px floor (.hit-floor in
+     components.css), 14px out each side. That is exactly the room there
+     is: the band's centre is 16px into the rail, so the target runs from
+     8px into the screen's own gutter to the 40px where the milestone cards
+     begin, and covers nothing that is pressable (after-release 18; it
+     was 20px wide). */
   .tl-era-band {
     position: absolute;
     left: 6px;
@@ -438,8 +450,13 @@
   }
 
   /* The point on the axis, centred on the line and cut out of it by a ring in
-     the page colour, so the line appears to pass behind rather than through. */
+     the page colour, so the line appears to pass behind rather than through.
+     Not a control, and it paints over an era's band, so it lets presses
+     through: a press on the dot used to fall to nothing, and the band's
+     target had a 20px hole wherever a milestone sat on it (after-release
+     18). */
   .tl-dot {
+    pointer-events: none;
     position: absolute;
     left: -30px;
     top: 18px;

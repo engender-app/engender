@@ -253,8 +253,10 @@ body {
    the scroll region above and any screen with its own sticky footer - the
    entry editor's save bar - have to agree on it. */
 .app {
+  /* --nav-bar-height is the bar's measured height (AppNav.svelte), taller
+     than the token at large text or in two rows. */
   --nav-clearance: calc(
-    var(--bottom-nav-height) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
+    var(--nav-bar-height, var(--bottom-nav-height)) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
   /* Trimmed from --space-3/5px for ticket 08: the four tab labels grew, and
      every px reclaimed from the bar's own margins is a px the five equal
@@ -427,7 +429,9 @@ body {
   left: calc(var(--nav-float-gap) + var(--inset-left));
   right: calc(var(--nav-float-gap) + var(--inset-right));
   bottom: calc(var(--nav-float-gap) + var(--inset-bottom));
-  height: var(--bottom-nav-height);
+  /* A floor rather than a height: at large text a tab is taller than the
+     token, and a fixed bar let the names spill out under its edge. */
+  min-height: var(--bottom-nav-height);
   border-radius: var(--r-block);
   background: var(--surface);
   border: 1px solid var(--outline);
@@ -456,7 +460,11 @@ body {
   justify-self: stretch;
   min-width: 0;
   min-height: var(--touch-target);
-  padding: var(--space-1);
+  /* No inline padding: the name gets the whole fifth of the bar. At 320px
+     that is 58.8px, and "Look back" (56.8) and "Transition" (56.2) fit it
+     with none taken off the sides (after-release 18). The lit pill is the
+     tab's own box, so it keeps its size. */
+  padding: var(--space-1) 0;
   border-radius: var(--r-block);
   color: var(--text-2);
   text-decoration: none;
@@ -475,23 +483,44 @@ body {
    that is not the row itself, since the row carries the press. */
 .nav-icon,
 .rail-icon { display: grid; place-items: center; }
-/* One line, ellipsed rather than wrapped: a two-line label would grow the
-   bar's height on one tab and not the others.
-
-   Ticket 08 measured every label's fit at the 320px floor after widening
-   the cells as far as this bar's own margins allow (Alicja, 2026-09-07):
-   Today/Dzisiaj and Journal/Dziennik clear it, Look back and Transition
-   (English) do not, by 4-5px, and closing that without shrinking the text
-   or giving up the floating bar's own margin needs more room than five
-   equal columns have at 320px. Accepted as a truncation this ellipsis
-   already existed to catch, at the narrowest phone still supported - it
-   is not one this ticket's wording made possible that wasn't already true
-   of "Calendar"/"Kalendarz"/"Statystyki" at the same width. */
+/* One line, never wrapped: a two-line label would grow the bar's height on
+   one tab and not the others. A name that does not fit its fifth of the bar
+   moves the bar to two rows (.is-two-rows, below) rather than ending in an
+   ellipsis; the ellipsis stays only as the last resort for a width neither
+   layout holds. */
 .nav-label {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Two rows of two tabs, the add button between them across both rows, for
+   names too wide for a fifth of the bar: large text, or a narrow phone in a
+   long language (after-release 18). Each tab gets half of what the add
+   button leaves, which at 320px and 200% text is 119px against the widest
+   name's 114. The tabs keep their order: the first two on the top row, the
+   last two under them. */
+.app-nav.is-two-rows {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  /* The bar's own pad between the add button and a lit tab beside it, so
+     the pill does not butt against the button. */
+  column-gap: var(--nav-bar-pad);
+}
+.app-nav.is-two-rows .nav-item:nth-of-type(1) { grid-area: 1 / 1; }
+.app-nav.is-two-rows .nav-item:nth-of-type(2) { grid-area: 1 / 3; }
+.app-nav.is-two-rows .nav-item:nth-of-type(3) { grid-area: 2 / 1; }
+.app-nav.is-two-rows .nav-item:nth-of-type(4) { grid-area: 2 / 3; }
+.app-nav.is-two-rows .nav-add { grid-area: 1 / 2 / 3 / 3; align-self: center; }
+/* Icon beside the name when the wider tab holds both (AppNav.svelte decides
+   by measuring), which keeps each row at the 48px floor instead of an icon
+   and a line of large text stacked. */
+.app-nav.is-inline .nav-item {
+  grid-auto-flow: column;
+  justify-content: center;
+  align-items: center;
+  column-gap: var(--space-2);
+  padding-inline: var(--space-1);
 }
 /* SH-003: colour alone marked the active tab, which disappears with a
    colour vision deficiency or on a screen turned all the way down. The
@@ -624,16 +653,21 @@ body {
    top) and --pill-far-* (right or bottom) and the component decides which is
    which - indicator.ts's `leadingEdge`.
 
-   The cross-axis pair is deliberately not transitioned. Every cell of the
-   bar is the same height and every rail row the same width, so those insets
-   only change when the nav itself relaid out, and a relayout is not a
-   navigation to animate. */
+   The bar travels across as well when it is in two rows: a tab in the
+   other row is down or up from here, so top and bottom take their own pair
+   of clocks (--pill-cross-*), the edge facing the destination leading. In
+   one row they never change on a navigation. Every rail row is the same
+   width, so the rail's left and right stay untransitioned. */
 [data-nav-pill='bar'] {
   transition:
     left var(--pill-near-dur, var(--dur-med)) var(--pill-near-ease, var(--ease-out-soft))
       var(--pill-near-delay, 0ms),
     right var(--pill-far-dur, var(--dur-med)) var(--pill-far-ease, var(--ease-out-soft))
       var(--pill-far-delay, 0ms),
+    top var(--pill-cross-near-dur, var(--dur-med)) var(--pill-cross-near-ease, var(--ease-out-soft))
+      var(--pill-cross-near-delay, 0ms),
+    bottom var(--pill-cross-far-dur, var(--dur-med)) var(--pill-cross-far-ease, var(--ease-out-soft))
+      var(--pill-cross-far-delay, 0ms),
     opacity var(--dur-fast) var(--ease-out);
 }
 [data-nav-pill='rail'] {
@@ -752,6 +786,11 @@ body {
   position: relative;
   z-index: 1;
   width: 56px; height: 56px;
+  /* The button is 2px taller than the bar's 54px of room inside its padding
+     and always sat 1px into it top and bottom. Now that the bar grows with
+     what it holds, that overhang is taken out of the layout so the bar stays
+     64px rather than growing to 66 for the button. */
+  margin-block: -1px;
   border-radius: var(--r-block);
   border: none;
   background: var(--accent);

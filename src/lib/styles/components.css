@@ -484,6 +484,27 @@
 .section-aside { font-size: var(--text-sm); color: var(--text-2); }
 .section-aside a, a.section-aside { color: var(--accent); text-decoration: none; font-weight: var(--weight-medium); }
 
+/* The 48px floor for a control drawn smaller than that (after-release
+   ticket 18). A transparent box centred on the control grows its target
+   to --touch-target on whichever axis is short and adds nothing on an axis
+   that already clears it, so a chip that grows at 200% text stops reaching
+   out once it is tall enough. Percentages in `inset` resolve against the
+   padding box, height for top and bottom and width for left and right, so
+   one expression serves both axes.
+
+   Only what is missing, never a fixed overhang: a 41px chip reaches 3.5px
+   past each edge, and two wrapped rows 8px apart keep their targets apart.
+   The old fixed -6px met in the middle of that gap and the lower row's
+   overlay took 1px off the chip above it. The control has to be positioned;
+   `:where` keeps this from overriding one that is already absolute. */
+:where(.hit-floor) { position: relative; }
+.hit-floor::after,
+.tag-chip::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--touch-target)) / 2));
+}
+
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: var(--touch-target); height: var(--touch-target);
@@ -985,7 +1006,13 @@ a.segment {
    last label at that width already. tests/voice-task-names.mjs sweeps every
    compact control the app renders at both widths and holds that claim,
    rather than leaving it as a sentence somebody measured once. */
-.segmented.is-compact .segment { flex: 1 1 auto; min-width: max-content; padding-inline: var(--space-1); }
+/* `width: max-content` rather than `min-width`: the min-width is the
+   segment's 48px floor, which `min-width: max-content` used to replace -
+   "cm" came out 28px wide and "in" 21px in Settings, "7d" 40px on the
+   tallies (after-release ticket 18). As the flex basis, max-content still
+   hands an overflowing label back to the track, and `flex-shrink: 0` keeps
+   it from being squeezed under its words. */
+.segmented.is-compact .segment { flex: 1 0 auto; width: max-content; min-width: var(--touch-target); padding-inline: var(--space-1); }
 /* 5px, not 9px. The inset was tuned when the compact form carried six
    segments across the full width, where the pill is wider than it is tall
    whatever the inset. With three or six *short* labels the segments are wide
@@ -1687,14 +1714,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-/* -6px each way over a 36px pill is 48px. The row's own gap is 8px, so two
-   stacked rows of chips extend towards each other without their targets
-   meeting. */
-.tag-chip::after {
-  content: '';
-  position: absolute;
-  inset: -6px 0;
-}
+/* The chip's ::after is the shared .hit-floor box above. */
 .tag-chip:hover { border-color: var(--accent-border); }
 .tag-chip.is-selected {
   background: var(--accent-soft); border-color: var(--accent);
