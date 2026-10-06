@@ -130,12 +130,18 @@ public final class PhotoPickChannel {
         declares is not trusted to size it: {@code PhotosPlugin} has already
         refused anything declaring more than the ceiling, and a provider that
         declares nothing (or lies low) would otherwise size this array wrong
-        rather than simply growing it. */
-    private static byte[] readFully(InputStream input) throws Exception {
+        rather than simply growing it. The read also enforces the ceiling when
+        the provider reports no size or reports less than it returns. */
+    static byte[] readFully(InputStream input) throws Exception {
         ByteArrayOutputStream collected = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
         int read;
-        while ((read = input.read(buffer)) != -1) collected.write(buffer, 0, read);
+        while ((read = input.read(buffer)) != -1) {
+            if (read > 25 * 1024 * 1024 - collected.size()) {
+                throw new java.io.IOException("selected file exceeds 25 MB");
+            }
+            collected.write(buffer, 0, read);
+        }
         return collected.toByteArray();
     }
 }

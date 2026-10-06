@@ -2,6 +2,8 @@ package dev.engender.app.sqlite;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -21,18 +23,25 @@ import java.util.function.Consumer;
  *
  * <p>Not thread-safe by design: every call to {@link #accept} is made on the
  * plugin's one worker thread, so the state here is only ever touched from
- * there. A session's state is kept for the life of the process, a counter and
- * an empty map per unlock, so a call made after its driver's close still runs
- * in order and fails the way it always did ("the database is not open").
+ * there. Closing a driver drops its sequence state and refuses later calls.
+ * A bounded set remembers recent closed sessions without accumulating one
+ * map per unlock.
  */
 final class CallSequencer {
 
     private static final class Session {
         long next = 0;
-        final Map<Long, Runnable> held = new HashMap<>();
+        final Map<Long, Pending> held = new HashMap<>();
+    }
+
+    private static final class Pending {
+        final Runnable work;
+        final Consumer<String> refuse;
+        Pending(Runnable work, Consumer<String> refuse) { this.work = work; this.refuse = refuse; }
     }
 
     private final Map<String, Session> sessions = new HashMap<>();
+    private final Set<String> closedSessions = new LinkedHashSet<>();
 
     /**
      * Runs {@code work} now if it is {@code session}'s next call, and then any
@@ -41,23 +50,41 @@ final class CallSequencer {
      * rather than run twice or dropped.
      */
     void accept(String session, long seq, Runnable work, Consumer<String> refuse) {
+        if (closedSessions.contains(session)) {
+            refuse.accept("sqlite session is closed");
+            return;
+        }
         Session state = sessions.computeIfAbsent(session, (key) -> new Session());
         if (seq < state.next || state.held.containsKey(seq)) {
             refuse.accept("sqlite call " + seq + " of session " + session + " arrived twice");
             return;
         }
         if (seq != state.next) {
-            state.held.put(seq, work);
+            state.held.put(seq, new Pending(work, refuse));
             return;
         }
         runSafely(work);
         state.next++;
-        Runnable following;
+        Pending following;
         while ((following = state.held.remove(state.next)) != null) {
-            runSafely(following);
+            runSafely(following.work);
             state.next++;
         }
     }
+
+    /** Called by the sequenced close, after the connection has been closed. */
+    void finish(String session) {
+        Session state = sessions.remove(session);
+        if (state != null) {
+            for (Pending pending : state.held.values()) pending.refuse.accept("sqlite session is closed");
+            state.held.clear();
+        }
+        closedSessions.add(session);
+        if (closedSessions.size() > 64) closedSessions.remove(closedSessions.iterator().next());
+    }
+
+    int sessionCount() { return sessions.size(); }
+    int closedCount() { return closedSessions.size(); }
 
     /** How many calls are waiting for an earlier one, for the tests. */
     int heldCount(String session) {

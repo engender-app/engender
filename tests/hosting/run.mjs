@@ -169,13 +169,14 @@ try {
     fail('the on-demand OCR assets are served with a long max-age', `${ocrResponse.status} ${ocrCache || 'no cache-control'}`);
   }
 
-  const manifestResponse = await fetch(`${origin}/manifest.webmanifest`);
-  const manifestType = manifestResponse.headers.get('content-type') ?? '';
-  if (manifestResponse.status === 200 && manifestType.includes('application/manifest+json')) {
-    ok('the manifest is served with installable content type');
-  } else {
-    fail('the manifest is served with installable content type', `${manifestResponse.status} ${manifestType}`);
+  for (const manifest of ['manifest', 'manifest-pl', 'manifest-notes', 'manifest-notes-pl']) {
+    const manifestResponse = await fetch(`${origin}/${manifest}.webmanifest`);
+    const manifestType = manifestResponse.headers.get('content-type') ?? '';
+    const label = `${manifest}.webmanifest is served with installable content type`;
+    if (manifestResponse.status === 200 && manifestType.includes('application/manifest+json')) ok(label);
+    else fail(label, `${manifestResponse.status} ${manifestType}`);
   }
+
 
   const fallbackResponse = await fetch(`${origin}/entry/new/today`);
   const fallbackText = await fallbackResponse.text();
