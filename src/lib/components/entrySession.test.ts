@@ -1,6 +1,6 @@
 import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
-import { entrySessionCore, type EntrySessionOptions } from './entrySession';
+import { entrySessionCore, initialEntrySession, type EntrySessionOptions } from './entrySession';
 import { serializeDraft, type PersistedEntryDraft } from '../data/entryDraftPersistence';
 import { journalWithBuiltIns } from '../data/journal/test-support';
 import { firstResult } from '../data/live/firstResult';
@@ -222,4 +222,25 @@ test('real encrypted mirror rejects detached editor writes and clears after owne
     assert.equal((await currentStore.read())?.epochDay, 104);
     assert.equal([...values.values()].some((value) => value.includes('Current encrypted draft')), false);
   } finally { vi.unstubAllGlobals(); }
+});
+
+
+test('loading a starred entry preserves metadata when reactive state wraps its draft', async () => {
+  const { journal, mirror } = await fixture();
+  const id = await journal.entries.upsertEntry({ epochDay: 105, timestamp: 1, mood: 4, starred: true });
+  const options: EntrySessionOptions = {
+    entryId: id, epochDay: 105, entries: journal.entries,
+    draftStore: mirror.store(), navigate: async () => {}
+  };
+  const state = new Proxy(initialEntrySession(options), {
+    set(target, property, value) {
+      // Svelte state wraps assigned objects; callers cannot compare them to raw inputs.
+      return Reflect.set(target, property, property === 'draft' ? new Proxy(value, {}) : value);
+    }
+  });
+  const session = entrySessionCore(options, state);
+  await session.resume(await journal.entries.getEntry(id));
+  assert.equal(state.starred, true);
+  await session.save();
+  assert.equal((await journal.entries.getEntry(id))?.starred, true);
 });
