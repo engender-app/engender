@@ -485,16 +485,16 @@
     gap: var(--space-1);
   }
 
-  .na-legend-swatch[data-kind='side-effect'] {
-    background: var(--bg);
-    box-shadow: inset 0 0 0 2px var(--text-2);
-  }
-
   .na-legend-swatch {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     flex: none;
     background: var(--role-draw, var(--accent));
+  }
+
+  .na-legend-swatch[data-kind='side-effect'] {
+    background: var(--bg);
+    box-shadow: inset 0 0 0 2px var(--text-2);
   }
 </style>

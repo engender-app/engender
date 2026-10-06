@@ -25,7 +25,6 @@
      (regimenEpisode.ts). */
   import { flip } from 'svelte/animate';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
-  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -74,6 +73,7 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import BatchedList from '$lib/components/kit/BatchedList.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -481,10 +481,10 @@
           <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
           <div data-dose-log>
             <BatchedList items={logRows} key="doses" autoGrow={false}
-              focusIndex={deepLinkedDoseIndex} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
+              focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
               {#snippet rows(shownRows)}
                 {#each dayRows(shownRows) as item (item.key)}
-                  <div class="dose-day-row rows-divide" class:is-day={item.row === null} data-dose-row={item.row?.dose.id} transition:disclose
+                  <div class="rows-divide" class:is-day={item.row === null} data-dose-row={item.row?.dose.id} transition:disclose
                     animate:flip={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
                     {#if item.row}
                       {@const { dose, attribution, drug, showAttribution, offersSkip } = item.row}

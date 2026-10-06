@@ -90,7 +90,6 @@ export function procedurePhase(
   return 'archived';
 }
 
-
 /** Group an older procedure with the archive without writing its manual flag. */
 export function procedureInArchive(
   procedure: { archived: boolean; surgeryEpochDay: number | null },

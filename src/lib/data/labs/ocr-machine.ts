@@ -127,6 +127,9 @@ export function createOcrMachine(
       and opened again) finds a different token and writes nothing. */
   let session = {};
   const stale = (mine: object) => mine !== session;
+  /** Rows this sheet session has written, across every save attempt, so a
+      retry after a partial failure still reports the whole count. */
+  let savedSoFar = 0;
 
   const machine: OcrMachine = {
     get state() {
@@ -139,6 +142,7 @@ export function createOcrMachine(
 
     open() {
       session = {};
+      savedSoFar = 0;
       machine.state = { tag: 'picking' };
     },
 
@@ -179,7 +183,7 @@ export function createOcrMachine(
           onProgress: (fraction) => {
             // Late reports from a pass the person already stopped must not
             // put the sheet back into recognizing.
-            if (machine.state.tag === 'recognizing') machine.state = { tag: 'recognizing', fraction };
+            if (!stale(mine) && machine.state.tag === 'recognizing') machine.state = { tag: 'recognizing', fraction };
           }
         });
       } catch (err) {
@@ -263,7 +267,6 @@ export function createOcrMachine(
       const s = machine.state;
       if (s.tag !== 'review' && s.tag !== 'save-validation-failed' && s.tag !== 'save-failed') return;
       const rows = s.rows;
-      const before = s.tag === 'save-failed' ? s.saved : 0;
       const mine = session;
 
       const validation = validateRowsForSave(rows);
@@ -274,7 +277,6 @@ export function createOcrMachine(
 
       machine.state = { tag: 'saving', rows };
 
-      let saved = 0;
       /* Rows are written one at a time with no rollback (ADR-0070), so a
          failure part way leaves some in the journal. Those leave the list. */
       const landed = new Set<OcrReviewRow>();
@@ -286,9 +288,11 @@ export function createOcrMachine(
           if (epochDay === null || value === null) continue;
           const analyte = row.analyte.trim().toLowerCase();
           if (!analyte) continue;
+          // Closed mid-save: stop here rather than keep writing unseen.
+          if (stale(mine)) return;
           await saver.saveResult({ epochDay, analyte, value, unit: row.unit, note: row.note });
           landed.add(row);
-          saved += 1;
+          if (!stale(mine)) savedSoFar += 1;
         }
       } catch (err) {
         if (stale(mine)) return;
@@ -296,13 +300,13 @@ export function createOcrMachine(
           tag: 'save-failed',
           rows: rows.filter((row) => !landed.has(row)),
           error: String(err),
-          saved: before + saved
+          saved: savedSoFar
         };
         return;
       }
 
       if (stale(mine)) return;
-      machine.state = { tag: 'saved', count: before + saved };
+      machine.state = { tag: 'saved', count: savedSoFar };
     },
 
     cancel() {
@@ -312,6 +316,7 @@ export function createOcrMachine(
 
     close() {
       session = {};
+      savedSoFar = 0;
       attempt?.abort();
       attempt = null;
       machine.state = { tag: 'idle' };
