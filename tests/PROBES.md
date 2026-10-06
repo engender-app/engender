@@ -21,7 +21,9 @@ probe that takes `--root <built tree>` serves it through `previewBuild` in
 browser-harness.mjs, which changes into that tree first (ticket 226) and
 serves `build/index.html` itself under the production isolation headers
 (`serve-build.mjs`, after-release ticket 31). Until then it was `vite
-preview`, whose document had no CSP and no held module hints.
+preview`, whose document had no CSP and no held module hints. A probe that
+imports vite's `preview` directly, and the walkthrough, still get that
+document.
 
 CI's Node and Android jobs use `scripts/run-ci-checks.mjs`. Independent
 checks continue after a failure; failed prerequisites leave named blocked

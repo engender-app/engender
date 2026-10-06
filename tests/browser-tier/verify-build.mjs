@@ -604,6 +604,14 @@ try {
   if (twins.length === 0) ok('the shell stores no file twice under two names');
   else fail('the shell stores no file twice under two names', twins.map((paths) => paths.join(' = ')).join('; '));
 
+  /* And none of the SQLocal stack by name: its worker was
+     workers/sqlite3-worker1-<hash>.js. The package's own worker1 promiser
+     file shares the prefix and is kept out of the install already
+     (UNUSED_WORKER), so any match here is a stack nothing should load. */
+  const sqlocal = shell.paths.filter((p) => /\/sqlite3-worker1-|sqlocal/i.test(p));
+  if (sqlocal.length === 0) ok('the shell holds no file of the SQLocal stack');
+  else fail('the shell holds no file of the SQLocal stack', sqlocal.join(', '));
+
   const absent = Object.keys(kinds).filter((kind) => !kinds[kind]);
   if (absent.length === 0) ok('the shell names what an offline boot reaches for first: worker, WASM, fonts, manifests, icons');
   else fail('the shell names what an offline boot reaches for first', `no ${absent.join(', no ')}`);

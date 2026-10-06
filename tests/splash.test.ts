@@ -64,6 +64,14 @@ describe('the first frame holds still', () => {
     expect(handwritten).toMatch(/#splash \{[^}]*transition: opacity 280ms var\(--ease-out-soft,/);
   });
 
+  /* The fallback is for the frames before base.css has loaded, so it has
+     to be the token's own value or the curve changes mid-fade. */
+  it("falls back to --ease-out-soft's own value", () => {
+    const baseCss = readFileSync(new URL('../src/lib/theme/base.css', import.meta.url), 'utf8');
+    const token = baseCss.match(/--ease-out-soft:\s*([^;]+);/)![1].trim();
+    expect(handwritten).toContain(`var(--ease-out-soft, ${token})`);
+  });
+
   it('draws no mark under disguise', () => {
     expect(handwritten).toContain('html[data-disguised] #splash i { display: none; }');
   });
