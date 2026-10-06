@@ -62,9 +62,9 @@ export interface JournalSession<Key, Driver extends Closable> {
   readonly driver: Driver | null;
   /** Closed by a lock and not reopened yet. */
   readonly locked: boolean;
-  /** The first open, which boot does itself. Boot opens `connection` on
-      the driver earlier than this, as soon as it exists, because the boot's
-      own journal calls go through it. */
+  /** The first open, which boot does itself. Opens `connection` too, which
+      boot has already done as soon as the driver existed, because the
+      boot's own journal calls go through it; here for callers that do not. */
   adopt(key: Key, driver: Driver): void;
   lock(): Promise<void>;
   /** Reopens a journal a lock closed, under the key just derived. Does

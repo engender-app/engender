@@ -222,8 +222,8 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
        that ran after that would take the reopened journal's preferences
        away from it. */
     const drained = journalIsClosing();
-    await detachPreferences();
-    await drained;
+    const [detached] = await Promise.allSettled([detachPreferences(), drained]);
+    if (detached.status === 'rejected') throw detached.reason;
   },
   open: reopenJournal,
   release() {
@@ -306,7 +306,9 @@ export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>): Prom
      can outlast that; a key arriving anywhere else would start a boot. */
   if (machine.boot.status !== 'ready') return Promise.resolve();
   dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
-  return reopening;
+  /* A key the machine refused because the journal is open has nothing to
+     wait on; one refused as a second submit waits on the first. */
+  return machine.journalReopening ? reopening : Promise.resolve();
 }
 
 /* The reopen the machine last asked for, for the unlock screen to wait on.
@@ -327,7 +329,10 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
     const preferences = await openPreferences(sqlite.driver, bootCache);
     /* The database has answered, so the journal's calls can go to it: the
        hydrate below, and any write held across the lock, which starts now
-       on this driver rather than on the closed one it was made against. */
+       on this driver rather than on the closed one it was made against.
+       Not later: the hydrate reads through this same gate. The cost is that
+       a reopen failing after this point fails a held write with it, where
+       waiting for the next unlock would have kept it. */
     session.connection.open(sqlite.driver);
     await hydrateReference(journal);
     openDriver = sqlite.driver;
