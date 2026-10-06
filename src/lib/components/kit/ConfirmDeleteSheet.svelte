@@ -39,22 +39,12 @@
         `true` so it serializes as the bare attribute the screens wrote. */
     confirmAttrs?: Record<string, string>;
   } = $props();
-
-  /* The words stay while the sheet slides away. Screens clear their delete
-     target the moment it is answered and hand back empty strings, so the
-     question and the hint went blank in the first frame of the close
-     (after-release 07's review). Updated only while open. */
-  let last = { title: '', question: '', hint: null as string | null };
-  const shown = $derived.by(() => {
-    if (open) last = { title, question, hint };
-    return last;
-  });
 </script>
 
-<Sheet {open} title={shown.title} onClose={onCancel}>
-  <h3>{shown.question}</h3>
-  {#if shown.hint}
-    <p class="muted small" style="margin-bottom:var(--space-4)">{shown.hint}</p>
+<Sheet {open} {title} onClose={onCancel}>
+  <h3>{question}</h3>
+  {#if hint}
+    <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
   {/if}
   <div class="stack-3">
     <!-- The kit's own handle, beside whatever the screen already named its
