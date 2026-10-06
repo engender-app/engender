@@ -70,6 +70,34 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('rendered screen contracts', 169, async () => {
+  const result = await load('/screen-mount.html', 'screen-mount');
+  for (const [suite, expected] of Object.entries({ direction: 57, home: 53, calendar: 59 })) {
+    const cases = result[suite];
+    if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
+    if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
+    for (const item of cases) {
+      if (item.passed) ok(`${suite}: ${item.name}`);
+      else fail(`${suite}: ${item.name}`, item.error ?? 'rendered contract failed');
+    }
+  }
+});
+
+await block('rendered screen contracts at 230px', 2, async () => {
+  const previous = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 230, height: 900 });
+    const result = await load('/screen-mount.html?narrow=1', 'screen-mount');
+    if (!Array.isArray(result.narrow)) throw new Error(result.error ?? 'missing narrow results');
+    for (const item of result.narrow) {
+      if (item.passed) ok(item.name);
+      else fail(item.name, item.error ?? 'rendered narrow contract failed');
+    }
+  } finally {
+    await page.setViewportSize(previous);
+  }
+});
+
 await block('release blockers 03 duplicate display values', 11, async () => {
   const result = await load('/duplicate-keys.html', 'duplicate-keys');
   for (const item of result.cases) {
