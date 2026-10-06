@@ -1002,7 +1002,7 @@ async function weeklyInjection(journal: Journal, fromEpochDay: number | null = M
 }
 
 const lateDose = (journal: Journal, epochDay: number) =>
-  journal.doses.upsertDose({ timestamp: at(epochDay, 19), route: 'im', dose: 5, doseUnit: 'mg', injectionSite: null, vehicle: null });
+  journal.doses.upsertDose({ timestamp: at(epochDay, 19), route: 'im', dose: 5, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
 
 test('the auto-log pass writes nothing for a Monday slot whose dose was logged on Tuesday', async () => {
   const { journal } = await journalWithBuiltIns();
