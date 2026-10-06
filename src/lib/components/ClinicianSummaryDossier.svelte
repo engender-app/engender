@@ -29,7 +29,8 @@
   import { recoveryDay } from '$lib/data/recoveryDay';
   import { isInjectionDose, isTopicalDose } from '$lib/data/doseSchedule';
   import { regimenEsterNote, type ClinicianDossier } from '$lib/data/export/clinicianSummaryData';
-  import { disclose } from '$lib/motion/reveal';
+  import { resize } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly, isReducedMotion } from '$lib/motion/tokens';
   import type { DoseEvent, DoseRoute, RegimenEpisode } from '$lib/data/types';
   import '$lib/styles/clinician-print.css';
 
@@ -80,6 +81,65 @@
     return null;
   };
 
+  /* The profile card's motion (after-release 22). Pronouns and a date of
+     birth come and go as the person types them in the controls sheet, so
+     a row arrives in, or leaves, the middle of a grid that reflows around
+     it - sideways too, once the card is wide enough for columns. The row
+     itself only fades; the rows it displaces travel from where they were
+     painted (measured before the update, released after it, the way
+     reorder.svelte.ts carries a list, in two axes here); and the card's
+     height follows through `resize`. A leaving row is lifted out of the
+     flow at its own place for its fade, so the rest can travel at once
+     rather than after it has gone. */
+  let profileGrid = $state<HTMLElement>();
+  const profileItems = () =>
+    profileGrid ? [...profileGrid.querySelectorAll<HTMLElement>('[data-profile-item]')] : [];
+  let profileBefore = new Map<string, DOMRect>();
+  const profileKey = () => [dossier.demographics?.pronouns?.trim(), dossier.demographics?.dob];
+
+  $effect.pre(() => {
+    profileKey();
+    profileBefore = new Map(profileItems().map((el) => [el.dataset.profileItem!, el.getBoundingClientRect()]));
+  });
+
+  $effect(() => {
+    profileKey();
+    if (isReducedMotion()) return;
+    const moved: HTMLElement[] = [];
+    for (const el of profileItems()) {
+      const from = profileBefore.get(el.dataset.profileItem!);
+      if (!from || el.dataset.leaving !== undefined) continue;
+      const to = el.getBoundingClientRect();
+      if (Math.abs(from.left - to.left) < 0.5 && Math.abs(from.top - to.top) < 0.5) continue;
+      el.style.transition = 'none';
+      el.style.translate = `${from.left - to.left}px ${from.top - to.top}px`;
+      moved.push(el);
+    }
+    if (moved.length)
+      requestAnimationFrame(() => {
+        for (const el of moved) {
+          el.style.transition = '';
+          el.style.translate = '';
+        }
+      });
+  });
+
+  function profileArrive(_node: Element) {
+    return fadeOnly(crossfadeDuration());
+  }
+
+  function profileLeave(node: HTMLElement) {
+    const { offsetTop, offsetLeft, offsetWidth } = node;
+    node.dataset.leaving = '';
+    Object.assign(node.style, {
+      position: 'absolute',
+      top: `${offsetTop}px`,
+      left: `${offsetLeft}px`,
+      width: `${offsetWidth}px`
+    });
+    return fadeOnly(crossfadeDuration());
+  }
+
   const isDossierEmpty = $derived(
     !dossier.demographics &&
       !dossier.regimen &&
@@ -107,9 +167,9 @@
 <div class="clinician-dossier" data-clinician-dossier>
   <!-- 1. Patient Demographics & Profile -->
   {#if dossier.demographics}
-    <div class="dossier-profile-card" data-dossier-section="demographics">
-      <div class="dossier-profile-grid">
-        <div class="dossier-profile-item">
+    <div class="dossier-profile-card" data-dossier-section="demographics" use:resize>
+      <div class="dossier-profile-grid" bind:this={profileGrid}>
+        <div class="dossier-profile-item" data-profile-item="name">
           <span class="dossier-profile-label">{m.clinician_summary_name_label()}</span>
           <span class="dossier-profile-value">
             {dossier.demographics.name.trim() || m.clinician_summary_not_set()}
@@ -120,24 +180,24 @@
              row reading "Not specified" told the doctor something the
              person never said (after-release 22). -->
         {#if dossier.demographics.pronouns?.trim()}
-          <div class="dossier-profile-item" transition:disclose>
+          <div class="dossier-profile-item" data-profile-item="pronouns" in:profileArrive out:profileLeave>
             <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>
             <span class="dossier-profile-value">{dossier.demographics.pronouns.trim()}</span>
           </div>
         {/if}
         {#if dossier.demographics.dob}
-          <div class="dossier-profile-item" transition:disclose>
+          <div class="dossier-profile-item" data-profile-item="dob" in:profileArrive out:profileLeave>
             <span class="dossier-profile-label">{m.clinician_summary_dob_label()}</span>
             <span class="dossier-profile-value">{dossier.demographics.dob}</span>
           </div>
         {/if}
-        <div class="dossier-profile-item">
+        <div class="dossier-profile-item" data-profile-item="period">
           <span class="dossier-profile-label">{m.clinician_summary_period_label()}</span>
           <span class="dossier-profile-value num">
             {dayShort(dossier.fromEpochDay)} – {dayShort(dossier.toEpochDay)}
           </span>
         </div>
-        <div class="dossier-profile-item">
+        <div class="dossier-profile-item" data-profile-item="generated">
           <span class="dossier-profile-label">{m.clinician_summary_generated_label()}</span>
           <span class="dossier-profile-value num">
             {dayShort(dossier.generatedAtEpochDay)}
@@ -684,6 +744,16 @@
 </div>
 
 <style>
+  @media screen {
+    .dossier-profile-grid {
+      position: relative;
+    }
+
+    .dossier-profile-item {
+      transition: translate var(--dur-med) var(--ease-out);
+    }
+  }
+
   .sub-heading {
     margin: var(--space-3) 0 var(--space-1);
     font-size: var(--text-sm);
