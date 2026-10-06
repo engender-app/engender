@@ -343,7 +343,7 @@
     const inner = bar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const cell = inner / (NAV.length + 1);
     const add = bar.querySelector<HTMLElement>('[data-nav-fab]')?.offsetWidth ?? 0;
-    const half = (inner - add) / 2;
+    const half = (inner - add - 2 * (parseFloat(style.getPropertyValue('--nav-bar-pad')) || 0)) / 2;
     const gap = parseFloat(style.getPropertyValue('--space-2')) || 8;
     const icon = bar.querySelector('.nav-icon')?.getBoundingClientRect().width ?? 0;
     const words = document.createRange();
@@ -352,7 +352,8 @@
       words.selectNodeContents(label);
       widest = Math.max(widest, words.getBoundingClientRect().width);
     }
-    const next = widest <= cell + 0.5 ? 'one' : icon + widest + 3 * gap <= half ? 'two-inline' : 'two';
+    // Inline: the icon, --space-2 beside it, and --space-1 at each side of the tab.
+    const next = widest <= cell + 0.5 ? 'one' : icon + widest + 2 * gap <= half ? 'two-inline' : 'two';
     if (rows !== next) rows = next;
     /* What the scroll region keeps clear under its last row follows the
        bar's real height, which large text and the second row both grow. */

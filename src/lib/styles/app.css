@@ -503,6 +503,9 @@ body {
 .app-nav.is-two-rows {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-rows: auto auto;
+  /* The bar's own pad between the add button and a lit tab beside it, so
+     the pill does not butt against the button. */
+  column-gap: var(--nav-bar-pad);
 }
 .app-nav.is-two-rows .nav-item:nth-of-type(1) { grid-area: 1 / 1; }
 .app-nav.is-two-rows .nav-item:nth-of-type(2) { grid-area: 1 / 3; }
@@ -517,7 +520,7 @@ body {
   justify-content: center;
   align-items: center;
   column-gap: var(--space-2);
-  padding-inline: var(--space-2);
+  padding-inline: var(--space-1);
 }
 /* SH-003: colour alone marked the active tab, which disappears with a
    colour vision deficiency or on a screen turned all the way down. The
