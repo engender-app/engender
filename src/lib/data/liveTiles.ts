@@ -142,8 +142,8 @@ export function shouldShowPatchScheduleTile(params: {
     if (unloggedSlot) {
       const expAmount = expectedAmountOn(adh, params.todayEpochDay);
       const doseAmount = expAmount
-        ? `${(params.formatNumber ?? String)(expAmount.dose)} ${expAmount.doseUnit}`
-        : `${(params.formatNumber ?? String)(episode.dose)} ${episode.doseUnit}`;
+        ? m.tile_patch_schedule_amount({ dose: (params.formatNumber ?? String)(expAmount.dose), unit: expAmount.doseUnit })
+        : m.tile_patch_schedule_amount({ dose: (params.formatNumber ?? String)(episode.dose), unit: episode.doseUnit });
 
       return {
         episode,
@@ -898,7 +898,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         attrs: { 'data-patch-schedule-tile': true },
         title: m.tile_patch_schedule_title(),
         value: qualifying.episode.drug,
-        note: `${qualifying.doseAmount} · ${qualifying.route}`,
+        note: m.tile_patch_schedule_detail({ amount: qualifying.doseAmount, route: qualifying.route }),
         href: '/care/doses',
         action: {
           icon: 'plus',
