@@ -1631,19 +1631,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .slider-thumb:focus-visible { outline: none; }
 .slider:focus-visible .slider-thumb { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-/* An unset slider (ticket 31). The thumb has to rest somewhere, and where it
-   rests is not a value anyone logged - on a body region both axes start this
-   way, so a mid-track thumb would otherwise read as a middling score. Dimmed
-   rather than hidden: the control is still there to be used. The ruler is not
-   dimmed with it, because the scale is true whether or not there is a value
-   on it yet. */
-.slider.is-unset .slider-fill,
-.slider.is-unset .slider-thumb { opacity: 0.45; }
-/* And no mark claims to be standing on a value, because there is not one. */
-.slider.is-unset .slider-tick.is-here {
-  background: color-mix(in oklab, var(--text) 45%, transparent);
-  scale: 1;
-}
+/* An unset slider's own drawing lives with the control (Slider.svelte), out
+   of this first-load sheet: only an editor ever draws one. */
 .dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
 
 /* Inset to the lane, so the two endpoint words line up under the two
