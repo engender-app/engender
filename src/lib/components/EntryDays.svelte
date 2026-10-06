@@ -27,6 +27,7 @@
      entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
      where a card's first and last entry are (kit.css). */
   import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
   import { disclose } from '$lib/motion/reveal';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
@@ -64,6 +65,13 @@
         it a run mounts as it stands, and only a day added later opens. */
     arrive?: boolean;
   } = $props();
+
+  /* A day heads its card the way the day screen heads itself: weekday,
+     day and month, and the year only when it is not this one. The year on
+     every heading brought a comma with it in English ("Thursday, 1
+     October 2026") that no other day heading in the app carries (audit
+     UX-11). */
+  const today = todayEpochDay();
 </script>
 
 <div class="entry-days" class:is-arriving={arrive}>
@@ -73,7 +81,12 @@
       key={String(group.epochDay)}
       {role}
       tight
-      heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+      heading={fmtDay(group.epochDay, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        ...(crossesCalendarYear(group.epochDay, today) ? { year: 'numeric' } : {})
+      })}
     >
       {#each group.entries as entry (entry.id)}
         {@const presentation = entryPresentation(entry)}
@@ -91,7 +104,7 @@
         >
           {#snippet marginNotes()}
             {#if marginNotesByEntry}
-              <MarginNotes entryId={entry.id} notes={marginNotesByEntry.get(entry.id) ?? []} />
+              <MarginNotes entryId={entry.id} notes={marginNotesByEntry.get(entry.id) ?? []} addable={false} />
             {/if}
           {/snippet}
         </DayEntry>

@@ -30,11 +30,10 @@
      their own group, last.
 
      DIRECTION.md rule 16 ("an area screen opens by saying what is true
-     now"): a plain present-reading row - how many documents there are and
-     how much room they take - opens the screen, above the groups. Its
-     total is a live file-size query (photoFiles.ts's `totalSize`, summing
-     the stored file only, not its incidental thumbnail cache) rather than
-     anything stored on the row, so it needs its own async read.
+     now"): a plain present-reading row - how many documents there are -
+     opens the screen, above the groups. It used to add how much room they
+     took ("2 documents · 4 KB"), which is the payload talking rather than
+     the paperwork (audit UI-14); sizes are Export's business.
 
      Importing is two steps and the order matters: the file is chosen
      first, and the sheet that asks for a title and a date only opens once
@@ -65,8 +64,6 @@
   import type { DocumentFile } from '$lib/data/documents/accept';
   import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
   import type { JournalDocument } from '$lib/data/types';
-  import { documentsSummaryText } from '$lib/data/vocabulary/documentsSummary';
-  import { totalSize } from '$lib/stores/photoFiles';
   import { pickDocument } from '$lib/stores/documentPicking';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -143,26 +140,10 @@
 
   let groups = $derived(groupDocumentsByTarget(documentsQuery.rows));
 
-  /* The present reading (DIRECTION.md rule 16): a live size query rather
-     than a stored figure, since nothing else in the row's own data carries
-     it. Re-run whenever the document list changes rather than on a timer -
-     an import or a delete is the only thing that can move this number. */
-  let totalBytes = $state<number | null>(null);
-  $effect(() => {
-    const names = documentsQuery.rows.map((document) => document.fileName);
-    let stale = false;
-    totalSize(names).then((bytes) => {
-      if (!stale) totalBytes = bytes;
-    });
-    return () => {
-      stale = true;
-    };
-  });
-
   /* The list waits for everything a row draws, not only the documents.
      Each row's second line names what it is filed under, through
-     `targets`' own four reads, and the size line above the groups is its
-     own read; when either landed after the documents, it arrived in a row
+     `targets`' own four reads; when those landed after the documents, the
+     line arrived in a row
      already on screen, and the first group grew 11px in one frame under
      the gate's fade (ux-carpet ticket 212, 1 of 15 cold loads). Latched,
      like a read's own loading: a line that changes later is that row's own
@@ -170,7 +151,6 @@
   let rowsSettled = $state(false);
   $effect.pre(() => {
     if (rowsSettled || documentsQuery.loading) return;
-    if (documentsQuery.rows.length > 0 && totalBytes === null) return;
     const linking = documentsQuery.rows.some(
       (d) =>
         d.targetKind !== null &&
@@ -220,19 +200,17 @@
 
   <ReadGate read={documentsRead} count={3}>
     {#snippet rows(documents)}
-      {#if totalBytes !== null}
-        <div class="screen-part" data-documents-present-reading>
-          <ListCard role={roleAt(activeFlag.roles, 0)}>
-            <ListRow
-              static
-              data-documents-summary
-              icon="documents"
-              title={documentsSummaryText(documents.length, totalBytes)}
-              subtitle={m.documents_search_note()}
-            />
-          </ListCard>
-        </div>
-      {/if}
+      <div class="screen-part" data-documents-present-reading>
+        <ListCard role={roleAt(activeFlag.roles, 0)}>
+          <ListRow
+            static
+            data-documents-summary
+            icon="documents"
+            title={m.documents_summary({ count: documents.length })}
+            subtitle={m.documents_search_note()}
+          />
+        </ListCard>
+      </div>
 
       {#each groups as group (group.kind)}
         <div class="screen-part" data-documents-group={group.kind}>
