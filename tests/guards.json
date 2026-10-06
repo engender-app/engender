@@ -472,5 +472,10 @@
     "diagnostics": [
       "/tmp/settings-erase-*-failure.png"
     ]
+  },
+  {
+    "name": "day-addresses",
+    "tier": "built",
+    "holds": "malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter"
   }
 ]
