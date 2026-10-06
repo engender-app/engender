@@ -303,6 +303,10 @@ beforeAll(async () => {
     journal.bodyRegions.addCustomRegion('scar tissue')
   )) as { id: string };
   await drive('bodyRegions', 'setRegionHidden', () => journal.bodyRegions.setRegionHidden('hairline', true));
+  await drive('bodyRegions', 'renameCustomRegion', async () => {
+    const region = await journal.bodyRegions.addCustomRegion('scar tisue');
+    await journal.bodyRegions.renameCustomRegion(region.id, 'scar tissue');
+  });
 
   // --- dimensions ---------------------------------------------------------
   const voice = (await drive('dimensions', 'addCustomDimension', () =>

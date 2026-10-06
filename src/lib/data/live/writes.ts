@@ -412,7 +412,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   bodyRegions: classify<Journal['bodyRegions']>()({
     writes: {
       addCustomRegion: ['bodyRegion'],
-      setRegionHidden: ['bodyRegion']
+      setRegionHidden: ['bodyRegion'],
+      renameCustomRegion: ['bodyRegion']
     },
     reads: { getBodyRegions: ['bodyRegion'] }
   }),
