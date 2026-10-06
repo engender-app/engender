@@ -60,7 +60,8 @@ entries, or use search and filters to find something across the journal.
 Choose a period to review day-by-day charts, tag insights, recaps and entries
 that resurface from your history. The period you choose carries through the
 section's readings. You can also prepare a journal book for printing or PDF
-export, or share retrospective cards as images.
+export, or share retrospective cards as images. Muted eras stay out of
+On this day and Wrapped, including their notifications and share cards.
 
 ### Transition
 

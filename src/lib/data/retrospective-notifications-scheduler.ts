@@ -45,6 +45,7 @@ import { androidRetrospectiveNotifications } from '$lib/retrospective/android-br
    the test wants to see actually applied rather than mocked away. */
 import { mayFireAt, quietHoursOf } from '../unprompted/quietHours';
 import { notificationText } from '../unprompted/notificationText';
+import { resurfacing } from '../unprompted/resurfacing';
 import { periodicCheck } from './backgroundSchedulers';
 
 let running = false;
@@ -61,6 +62,8 @@ async function checkWrapped(now: Date) {
   const key = wrappedPeriodKey(period);
   if (prefs.lastWrappedNotifiedPeriodKey === key) return;
 
+  const consent = await resurfacing('wrapped-notification', journal);
+  if (!consent.mayResurface(period)) return;
   const recap = await journal.stats.recap(period.start, period.end);
   if (recap.entryCount < WRAPPED_ENTRY_FLOOR) return;
 
@@ -86,7 +89,8 @@ async function checkOnThisDay(now: Date) {
   // Longest lookback first (onThisDayCandidates' own order): with more than
   // one qualifying, the Home card shows all of them but a notification picks
   // one card to open, and the longest lookback is the more notable retelling.
-  for (const candidate of onThisDayCandidates(today)) {
+  const consent = await resurfacing('on-this-day-notification', journal);
+  for (const candidate of consent.allowedDays(onThisDayCandidates(today))) {
     if (!(await journal.stats.isGoodDay(candidate.epochDay))) continue;
 
     await androidRetrospectiveNotifications.notifyOnThisDay({
