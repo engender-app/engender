@@ -8,7 +8,6 @@ import {
   projectEveryStock,
   projectStock,
   reorderByEpochDay,
-  remainingAfterOneDose,
   snoozeStockNotice,
   STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS,
   TRAILING_WINDOW_DAYS,
@@ -553,9 +552,4 @@ test('projectEveryStock divides by doses per unit the same way projectStock does
   const [every] = await projectEveryStock([stock], [episode()], DAY_0 + 20, counter);
 
   assert.deepEqual(every, projectStock(stock, doses, [episode()], DAY_0 + 20));
-});
-
-test('one more dose leaves a fifth of a vial less at five doses per vial, a whole unit with none set', () => {
-  assert.equal(remainingAfterOneDose(2, { dosesPerUnit: 5 }), 1.8);
-  assert.equal(remainingAfterOneDose(2, { dosesPerUnit: null }), 1);
 });

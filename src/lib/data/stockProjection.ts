@@ -70,14 +70,8 @@ export interface StockEntry {
 
 /** The doses one unit of `stock` holds: its own figure when one was typed
     and is usable, one otherwise. */
-const dosesInOneUnit = (stock: Pick<StockEntry, 'dosesPerUnit'>): number =>
+export const dosesInOneUnit = (stock: Pick<StockEntry, 'dosesPerUnit'>): number =>
   stock.dosesPerUnit != null && stock.dosesPerUnit > 0 ? stock.dosesPerUnit : 1;
-
-/** What one more dose would leave, in the entry's own unit: the entry
-    editor's quick-log chip states this before the dose is logged. */
-export function remainingAfterOneDose(remaining: number, stock: Pick<StockEntry, 'dosesPerUnit'>): number {
-  return remaining - 1 / dosesInOneUnit(stock);
-}
 
 export interface StockProjection {
   /** `quantity` minus every non-skipped dose logged against this drug on
