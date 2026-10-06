@@ -4,7 +4,7 @@
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import {
