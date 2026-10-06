@@ -211,7 +211,7 @@ try {
   await fieldOrder(['ocr-analyte-1', 'ocr-value-1', 'ocr-unit-1', 'ocr-date-1', 'ocr-note-1']);
   await page.locator('#ocr-analyte-1').fill('');
   await page.locator('[data-ocr-save]').click();
-  await page.getByRole('alert').filter({ hasText: 'Every included row needs an analyte' }).waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Every included result needs a test name' }).waitFor();
   await page.locator('#ocr-analyte-1').fill('estradiol');
   await page.locator('#ocr-value-1').fill('invalid');
   await page.locator('[data-ocr-save]').click();
