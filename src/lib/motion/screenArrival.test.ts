@@ -49,7 +49,7 @@ it.each([350, 390])('never squeezes a reveal below --dur-fast when paint resumes
     playState: 'running',
     currentTime: 0,
     playbackRate: 1,
-    effect: { getComputedTiming: () => ({ iterations: 1, endTime: 150 }) },
+    effect: { getComputedTiming: () => ({ iterations: 1, duration: 150, endTime: 150 }) },
     pause: vi.fn(() => { animation.playState = 'paused'; }),
     play: vi.fn(() => { animation.playState = 'running'; }),
     cancel: vi.fn(),
@@ -70,11 +70,11 @@ it.each([350, 390])('never squeezes a reveal below --dur-fast when paint resumes
   expect(animation.play).toHaveBeenCalledOnce();
 });
 
-it('fits a longer entrance into the arrival no shorter than --dur-fast', () => {
+it('fits a staggered entrance into the arrival, its movement no shorter than --dur-fast', () => {
   const now = vi.spyOn(performance, 'now').mockReturnValue(0);
   const animation = {
     playState: 'paused', currentTime: 0, playbackRate: 1,
-    effect: { getComputedTiming: () => ({ iterations: 1, endTime: 430 }) },
+    effect: { getComputedTiming: () => ({ iterations: 1, duration: 380, endTime: 430 }) },
     finish: vi.fn()
   };
   beginTabArrival();
@@ -84,7 +84,8 @@ it('fits a longer entrance into the arrival no shorter than --dur-fast', () => {
   now.mockReturnValue(370);
   animation.playbackRate = 1;
   fitReadArrival([animation as unknown as Animation]);
-  expect(animation.playbackRate).toBeCloseTo(430 / 150);
+  // The delay may run late; the movement itself still takes 150ms.
+  expect(animation.playbackRate).toBeCloseTo(380 / 150);
   expect(animation.finish).not.toHaveBeenCalled();
 });
 
@@ -94,7 +95,7 @@ it('keeps field motion at its authored speed while paint is prepared', () => {
   const now = vi.spyOn(performance, 'now').mockReturnValue(0);
   const animation = {
     playState: 'paused', currentTime: 0, playbackRate: 1,
-    effect: { getComputedTiming: () => ({ iterations: 1, endTime: 380 }) },
+    effect: { getComputedTiming: () => ({ iterations: 1, duration: 380, endTime: 380 }) },
     pause: vi.fn(), play: vi.fn(), cancel: vi.fn(), finish: vi.fn()
   };
   beginTabArrival();
@@ -114,7 +115,7 @@ it('does not restart a nested reveal that finished before its queued paint', () 
     playState: 'paused',
     currentTime: 0,
     playbackRate: 1,
-    effect: { getComputedTiming: () => ({ iterations: 1, endTime: 150 }) },
+    effect: { getComputedTiming: () => ({ iterations: 1, duration: 150, endTime: 150 }) },
     pause: vi.fn(),
     play: vi.fn(),
     cancel: vi.fn(),

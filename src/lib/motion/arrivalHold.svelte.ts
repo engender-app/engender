@@ -12,6 +12,8 @@ import { arrivalTooShortToReveal } from './screenArrival';
  * anything was painted is not a reveal, and is never held.
  */
 export function holdForArrival(answered: () => boolean, canHold: () => boolean = () => true): () => boolean {
+  /* Deliberately not reactive: it only remembers whether this answer has
+     been let through, and every caller reads the result each flush. */
   let shown = false;
   const released = $derived.by(() => {
     if (!answered()) return (shown = false);
