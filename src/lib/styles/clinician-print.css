@@ -297,6 +297,7 @@
      always was - the href stays (a PDF export keeps it clickable), only the
      on-screen affordance goes. */
   .dossier-row-link {
+    position: static;
     display: inline;
     vertical-align: baseline;
     min-width: 0;
@@ -305,6 +306,10 @@
     padding: 0;
     color: #000000 !important;
     text-decoration: none !important;
+  }
+
+  .dossier-row-link::after {
+    display: none;
   }
 
   .dossier-timing-badge {
