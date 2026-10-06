@@ -54,6 +54,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   }
 
   function query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]> {
+    if (blocked) return blocked.then(() => query<Row>(sql, params));
     // SQLite bindings outside scalar values keep their own identity.
     const readOnly = /^\s*SELECT\b/i.test(sql);
     if (!readOnly) invalidate();
