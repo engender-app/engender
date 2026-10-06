@@ -204,7 +204,13 @@
     >
       <span class="proc-head">
         <span class="proc-name">{procedure.name}</span>
-        <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
+        <!-- An archived card only ever sits under the "Archived procedures"
+             heading, so its pill would say the heading again. A card the
+             person archived by hand keeps its pill: Recovery under that
+             heading still says something the heading does not. -->
+        {#if phase !== 'archived'}
+          <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
+        {/if}
       </span>
       {#if open}
         <!-- The number and the date it counts from, side by side: the block
