@@ -128,7 +128,7 @@
      again - not the query's dependencies, which this no longer names. */
   let loaded = liveQuery((j) => (entryId != null ? j.entries.getEntry(entryId) : Promise.resolve(undefined)));
   let existing = $derived(loaded.value);
-  let day = $derived(existing?.epochDay ?? epochDay ?? currentDay());
+  let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
   /* Local draft; committed as one action on Save (F1), and filled from the
      stored entry the moment it arrives (entryDraft.ts, ticket 29). */

@@ -6,8 +6,12 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { parseDayParam } from '$lib/data/dayParam';
   import { currentDay } from '$lib/stores/today.svelte';
+  import { untrack } from 'svelte';
 
-  let epochDay = $derived(parseDayParam(page.params.day, currentDay()));
+  /* `today` in the address is resolved when the address changes, not at
+     midnight: the editor below is keyed by this day, and moving it would
+     throw away what is being written. */
+  let epochDay = $derived(parseDayParam(page.params.day, untrack(currentDay)));
   let available = $derived(epochDay !== null && epochDay <= currentDay());
   let seedMood = $derived.by(() => {
     const raw = page.url.searchParams.get('seedMood');

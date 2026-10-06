@@ -293,7 +293,7 @@
   const ANNIV_OFFER = OFFERS['milestone-anniversary-felt-sense'];
   let answeredToday = liveQuery((j) =>
     j.feltSense
-      .onDay(todayEpochDay())
+      .onDay(currentDay())
       .then((rows) => new Set(rows.flatMap((f) => (f.owner.kind === 'milestone' ? [f.owner.id] : []))))
   );
   let skippedAnniv = $state<string[]>([]);

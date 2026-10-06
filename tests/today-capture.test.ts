@@ -42,9 +42,11 @@ export function dayCaptures(file: string, text: string): string[] {
   for (const m of code.matchAll(binding)) {
     found.push(`${file}:${lineOf(m.index)} captures todayEpochDay() in a top-level binding`);
   }
-  for (const m of code.matchAll(/\$derived(?:\.by)?\(/g)) {
+  /* A derived or a live read runs again only when something it read changes,
+     and the clock is not something it can read. */
+  for (const m of code.matchAll(/(\$derived(?:\.by)?|liveQuery|liveList|liveQueryWatchingOnly)\(/g)) {
     const body = balanced(code, m.index + m[0].length - 1);
-    if (body.includes('todayEpochDay(')) found.push(`${file}:${lineOf(m.index)} calls todayEpochDay() inside $derived`);
+    if (body.includes('todayEpochDay(')) found.push(`${file}:${lineOf(m.index)} calls todayEpochDay() inside ${m[1]}`);
   }
   return found;
 }
@@ -67,6 +69,10 @@ it('fails on a planted capture', () => {
   expect(dayCaptures('x.svelte', '<script>\n  let today = $state(0);\n  let t = $derived(todayEpochDay());\n</script>')).toHaveLength(1);
   expect(dayCaptures('x.svelte', '<script>\n  let t = $derived.by(() => {\n    return f(todayEpochDay());\n  });\n</script>')).toHaveLength(1);
   expect(dayCaptures('x.ts', 'const today = todayEpochDay();')).toHaveLength(1);
+});
+
+it('fails on a planted capture in a live read', () => {
+  expect(dayCaptures('x.svelte', '<script>\n  let q = liveQuery((j) => j.a.b(todayEpochDay()));\n</script>')).toHaveLength(1);
 });
 
 it('leaves reads that happen when something runs, and comments, alone', () => {

@@ -365,7 +365,7 @@
     const key = elsewhereKeyOf(typed, startEpochDay, endEpochDay);
     if (!typed) return Promise.resolve({ ...NOTHING_ELSEWHERE, key });
     return j.textSearch
-      .search({ query: typed, today: todayEpochDay(), startEpochDay, endEpochDay, limit })
+      .search({ query: typed, today: currentDay(), startEpochDay, endEpochDay, limit })
       .then((answer) => ({ ...answer, key }));
   });
 
@@ -512,7 +512,7 @@
      `hasCriteria` - cheap, bounded reads a person is about to want the
      moment they clear the field again. */
   const POPULAR_TAG_COUNT = 8;
-  let tagShareQuery = liveList((j) => j.stats.tagShare(FIRST_EPOCH_DAY, todayEpochDay()));
+  let tagShareQuery = liveList((j) => j.stats.tagShare(FIRST_EPOCH_DAY, currentDay()));
   let popularTags = $derived(
     tagShareQuery.rows
       .map((t) => vocabulary.tag(t.id))
