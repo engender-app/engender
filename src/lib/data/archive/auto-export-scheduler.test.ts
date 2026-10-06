@@ -125,6 +125,22 @@ describe('auto-export scheduler', () => {
     expect(runAndroidAutoExport).toHaveBeenCalled();
   });
 
+  test('overlapping startup and visibility checks write one backup', async () => {
+    let release!: () => void;
+    status.mockImplementation(() => new Promise((resolve) => {
+      release = () => resolve({ enabled: true });
+    }));
+    startAutoExportScheduler();
+    const visible = vi.mocked(document.addEventListener).mock.calls[0][1] as () => void;
+    visible();
+    await flush();
+    const checks = status.mock.calls.length;
+    release();
+    await flush();
+    expect(checks).toBe(1);
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
+  });
+
   test('does nothing when backup is not due', async () => {
     vi.mocked(isDue).mockReturnValue(false);
 
@@ -179,6 +195,20 @@ describe('auto-export scheduler', () => {
       body: 'Nothing was saved.',
       channelName: 'Backups'
     });
+  });
+
+  test('a status failure before packing posts the backup failure notice', async () => {
+    status.mockRejectedValue(new Error('status unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+      expect(snapshot).not.toHaveBeenCalled();
+      expect(notifyFailure).toHaveBeenCalledTimes(1);
+      expect(prefs.lastBackupAt).toBeNull();
+    } finally {
+      logged.mockRestore();
+    }
   });
 
   test('reports a snapshot failure before packing starts', async () => {

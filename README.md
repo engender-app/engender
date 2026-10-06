@@ -131,7 +131,9 @@ The full policies are available in
 
 Export an encrypted Archive when you want a backup or need to move your
 journal. Archives use a backup password you choose and can be restored on
-another device. Android also supports scheduled encrypted backups.
+another device. Android also supports scheduled encrypted backups. It keeps
+the five newest verified automatic backups and prunes older automatic backups
+only after a new one verifies. Manual backups remain untouched.
 
 The import tools accept supported exports from Daylio, Day One, TransTracks,
 Track & Graph and Pixels. Plain CSV and JSON exports are available when you
