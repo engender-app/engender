@@ -139,8 +139,12 @@ export function createReporter() {
     const message = detail instanceof Error ? (detail.message ?? String(detail)) : detail;
     console.log('FAIL', name, '—', message);
   };
+  /* Sets the exit code itself. Six probes called finish() and ignored what
+     it returned, so a run that printed FAILURE(S) still exited 0 and the
+     guard runner recorded a pass (hosted run 37504870508). */
   const finish = (passMessage) => {
     console.log(failures ? `\n${failures} FAILURE(S)` : `\n${passMessage}`);
+    if (failures) process.exitCode = 1;
     return failures;
   };
 

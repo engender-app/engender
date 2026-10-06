@@ -99,21 +99,25 @@ describe('the database worker started ahead of the key', () => {
     expect(worker.transferred[1]).toEqual([]);
   });
 
-  it('rejects a statement the worker refuses to take, even one held behind the module bytes', async () => {
+  /* With module bytes supplied, every post waits on them and is sent from a
+     .then callback. A postMessage that throws there (a value that will not
+     clone) used to escape as an uncaught error and leave the caller waiting
+     forever: the entry editor's failed delete never said so. */
+  it('rejects a post whose message cannot be sent, after the module bytes arrived', async () => {
     const early = prewarmJournalWorker('journal.sqlite3', Promise.resolve(new ArrayBuffer(8)));
     const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
     await early;
     const [worker] = FakeWorker.made;
-    const post = worker.postMessage.bind(worker);
-    worker.postMessage = (message, transfer) => {
-      if (message.op === 'run') throw new Error('could not be cloned');
-      post(message, transfer);
+    const send = worker.postMessage.bind(worker);
+    worker.postMessage = (message: Posted, transfer?: Transferable[]) => {
+      if (message.op === 'run') throw new Error('could not clone');
+      send(message, transfer);
     };
-    /* Sent from a callback once the bytes have arrived: a throw there used
-       to be an unhandled error, and the statement waited for an answer that
-       could never come. */
-    await expect(driver.run('UPDATE entries SET trashed_at = 1')).rejects.toThrow('could not be cloned');
-    await expect(driver.exec('SELECT 1')).resolves.toBeUndefined();
+    await expect(driver.run('UPDATE entry SET trashed_at = 1')).rejects.toThrow('could not clone');
+    /* The connection is still usable: the next post goes through. */
+    worker.postMessage = send;
+    await driver.run('UPDATE entry SET trashed_at = 1');
+    expect(worker.posted.at(-1)?.op).toBe('run');
   });
 
   it('reports a failed module download through later boot reads', async () => {

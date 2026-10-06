@@ -255,7 +255,12 @@
         data-time-picker-entry
         onfocus={() => { lastTouched = 'entry'; }}
         onpointerdown={() => { lastTouched = 'entry'; }}
-        onselect={() => { lastTouched = 'entry'; }}
+        onselect={(event) => {
+          /* The browser queues select, and focusing the entry queues one
+             too, so it can arrive after a drum has been turned. Only a
+             selection made while the entry still has focus is a claim. */
+          if (document.activeElement === event.currentTarget) lastTouched = 'entry';
+        }}
         oninput={onTyped}
         onkeydown={(event) => {
           if (event.key !== 'Enter') return;
