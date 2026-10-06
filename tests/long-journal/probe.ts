@@ -143,8 +143,14 @@ async function run(days: number) {
   stage('generate', days);
   // Fixture writes are setup, before any scored operation. Keep the public
   // journal transactions and defer SQLite durability syncs during generation.
-  // Restore the captured setting and commit a header write before reopening.
+  // The rollback journal goes to memory for the same reason: with it on the
+  // OPFS pool, every page a transaction first touches is written out to a
+  // second encrypted file, and that was most of generation (ten years:
+  // in-transaction statements 118s of 238s on a hosted runner, 1.9s locally
+  // once the journal was in memory). Neither changes a row or a photo byte.
+  // Restore the captured settings and commit a header write before reopening.
   const [{ synchronous }] = await booted.driver.query<{ synchronous: number }>('PRAGMA synchronous');
+  const [{ journal_mode: journalMode }] = await booted.driver.query<{ journal_mode: string }>('PRAGMA journal_mode');
   const startedAt = performance.now();
   // Setup counters show whether fixture work advances or waits on one operation.
   // The adapter keeps the same journal writes and photo bytes; scored reads use
@@ -178,8 +184,10 @@ async function run(days: number) {
   let summary: LongJournalSummary;
   try {
     await booted.driver.exec('PRAGMA synchronous = OFF');
+    await booted.driver.exec('PRAGMA journal_mode = MEMORY');
     summary = await generateLongJournal(generatingJournal, { days, makePhoto: generatingPhoto });
   } finally {
+    await booted.driver.exec(`PRAGMA journal_mode = ${journalMode}`);
     await booted.driver.exec(`PRAGMA synchronous = ${synchronous}`);
     const version = await booted.driver.getUserVersion();
     await booted.driver.transaction((scope) => scope.setUserVersion(version));
