@@ -456,6 +456,16 @@
     return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
   let isToday = $derived(day === todayEpochDay());
+  /* The header's own subtitle, so it sits 12 under the field the way every
+     screen's does (components.css), not a paragraph of the editor's own
+     that had to guess the header's spacing and twice guessed wrong (U3,
+     UI-01). */
+  /* An existing entry's day is a read away; until it lands the line holds
+     its height blank rather than naming today, which is the wrong day for
+     almost every entry anyone reopens. */
+  let dateLine = $derived(
+    entryId != null && !existing ? '\u00a0' : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
+  );
 
   /* The chip row and the section it opens (phase 11 ticket 19). Nothing
      takes the focus on arrival, a new entry included: a focused note put
@@ -938,8 +948,13 @@
      huge text transition"). The plain fill grows now; the real content
      sits outside the named element and crossfades in place through the
      screen's own transition instead. -->
-<div class="screen editor" inert={saving}>
-  <fieldset class="editor-fields" disabled={saving}>
+<!-- The fieldset is the screen rather than a wrapper inside it. Its
+     `disabled` is what stops native fields taking edits during a save on a
+     WebView that predates `inert`, and as a `display: contents` wrapper it
+     hid every block from `.screen > *` and the header from the field's bleed
+     rule: the field drew 20px inset with no 20px between the blocks under
+     it (audit UI-01). As the screen, its children are the screen's again. -->
+<fieldset class="screen editor" inert={saving} disabled={saving}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
@@ -950,6 +965,7 @@
        (NAV-005, CARPET-05). -->
   <ScreenHeader
     title={entryId != null ? m.entry() : m.new_entry()}
+    subtitle={dateLine}
     screen="entry"
     back={existing ? `/day/${day}` : '/'}
   >
@@ -981,10 +997,6 @@
     {/snippet}
   </ScreenHeader>
   <SourceRecordHandoff id={entryId == null ? null : String(entryId)} ready={!loaded.loading && !loaded.failed} found={!!existing} />
-
-  <p class="editor-date">
-    {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
-  </p>
 
   {#if entryDraft.savedId !== undefined}
     <Notice
@@ -1633,8 +1645,7 @@
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
-  </fieldset>
-</div>
+</fieldset>
 
 <style>
   /* The container transform's own layer - a plain fill behind the real
@@ -1649,6 +1660,11 @@
      this screen alone rather than reordering anything outside it. */
   .screen.editor {
     isolation: isolate;
+    /* The browser's own fieldset box, taken back to the screen's: no
+       groove, and auto rather than 0 inline so the desktop column still
+       centres (a full-width box resolves auto to 0 on the phone). */
+    border: 0;
+    margin: 0 auto;
   }
   .editor-bg {
     position: absolute;
@@ -1656,7 +1672,6 @@
     z-index: -1;
     background: var(--bg);
   }
-  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
 
   .editor-save-row {
     display: flex;
@@ -1665,7 +1680,6 @@
     gap: var(--space-2);
   }
   .editor-save-row [data-entry-saving] { opacity: 1; }
-  .editor-fields { display: contents; }
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }

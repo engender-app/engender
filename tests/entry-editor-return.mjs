@@ -1,5 +1,7 @@
 /* The entry editor's Save name, date line, return path and delete (phase 14
-   pre-release ticket 03: audit findings U1, U3, U4, U5).
+   pre-release ticket 03: audit findings U1, U3, U4, U5), and its header,
+   media sections and unset scales (phase 15 after-release ticket 04: UI-01,
+   UX-05, UX-17).
 
    Holds:
    - Save is a button with a name in the accessibility tree, at 390 and 1280
@@ -9,11 +11,19 @@
    - Save and Delete on an entry opened from Calendar, Search, a day and
      On this day return to that screen; Search comes back with its query;
    - Delete says "Moved to trash" with Restore, Restore brings the entry
-     back, and a failed delete says so on screen.
+     back, and a failed delete says so on screen;
+   - the header's field spans the same box as Care's and Day's, and the
+     blocks under it take the screen's 20px floor;
+   - tapping Photos, Voice or Video leaves the opened section above the foot
+     with its chip still on screen;
+   - an untouched scale draws no thumb and no fill, and saving the entry
+     stores no value for it.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build
      node tests/entry-editor-return.mjs
+   or against a build some other server already serves (a base build, to
+   watch the checks fail): node tests/entry-editor-return.mjs --base <url>
    Exits 1 on any failure. */
 import { launchChromium, previewBuild, settlePage, createReporter } from './browser-harness.mjs';
 import {
@@ -25,8 +35,9 @@ import {
 } from './yank-sweep-core.mjs';
 
 const { ok, fail, finish, block } = createReporter();
-const app = await previewBuild(process.cwd());
-const base = `http://localhost:${app.httpServer.address().port}`;
+const baseArg = process.argv.indexOf('--base');
+const app = baseArg > 0 ? null : await previewBuild(process.cwd());
+const base = baseArg > 0 ? process.argv[baseArg + 1] : `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 
 /** A client-side navigation, the way a tapped link does it: the app's own
@@ -58,18 +69,53 @@ async function newContext(width, height) {
   return context;
 }
 
-/** The two facts about the editor's top that U3 broke. */
+/** The two facts about the editor's top that U3 broke: the date line is
+    the header's subtitle now, so it is measured against the field above it. */
 async function dateClearOfHeader(page) {
-  await page.waitForSelector('.editor-date');
+  await page.waitForSelector('[data-screen-subtitle]');
+  await page.waitForFunction(() => document.querySelector('[data-screen-subtitle]')?.textContent?.trim());
   return page.evaluate(() => {
-    const header = document.querySelector('.screen.editor .screen-header, .screen-header');
-    const date = document.querySelector('.editor-date');
-    const h = header.getBoundingClientRect();
+    const field = document.querySelector('[data-screen-field]');
+    const date = document.querySelector('[data-screen-subtitle]');
+    const h = field.getBoundingClientRect();
     const d = date.getBoundingClientRect();
     const hit = document.elementFromPoint(d.left + d.width / 2, d.top + 1);
     return { headerBottom: h.bottom, dateTop: d.top, hitIsDate: !!hit && date.contains(hit) };
   });
 }
+
+/** Waits until the screen's boxes stop moving: no finite animation left
+    running, then the same rects twice 600ms apart. */
+async function settled(page) {
+  await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const finite = () => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity);
+    for (let i = 0; i < 100 && finite().length; i++) await sleep(50);
+    const rects = () => JSON.stringify([...document.querySelectorAll('[data-screen-field], [data-editor-section], [data-editor-chips], [data-app-savebar]')]
+      .map((el) => el.getBoundingClientRect()));
+    let last = rects();
+    for (let i = 0; i < 20; i++) {
+      await sleep(600);
+      const now = rects();
+      if (now === last) return;
+      last = now;
+    }
+  });
+}
+
+/** The field's box and the gap under the header, on whatever screen is up. */
+const fieldBox = (page) =>
+  page.evaluate(() => {
+    const field = document.querySelector('[data-screen-field]').getBoundingClientRect();
+    const header = document.querySelector('[data-screen-header]');
+    const next = header.nextElementSibling;
+    return {
+      left: field.left,
+      right: field.right,
+      height: field.height,
+      gapUnder: next ? next.getBoundingClientRect().top - header.getBoundingClientRect().bottom : null
+    };
+  });
 
 async function saveName(page) {
   const snap = await page.locator('[data-save]').ariaSnapshot();
@@ -85,6 +131,26 @@ try {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     await persona(page);
+
+    await block(`editor header field matches Care and Day at ${width}`, 3, async () => {
+      const boxes = {};
+      for (const path of ['/care', '/day/today', '/entry/new/today']) {
+        await go(page, path);
+        await page.waitForSelector('[data-screen-field]');
+        if (path.startsWith('/entry')) await page.waitForSelector('[data-save]');
+        await settled(page);
+        boxes[path] = await fieldBox(page);
+      }
+      const entry = boxes['/entry/new/today'];
+      for (const other of ['/care', '/day/today']) {
+        const box = boxes[other];
+        const same = Math.abs(entry.left - box.left) < 0.5 && Math.abs(entry.right - box.right) < 0.5;
+        if (same) ok(`the editor's field spans the same box as ${other} at ${width}`);
+        else fail(`the editor's field spans the same box as ${other} at ${width}`, JSON.stringify({ entry, [other]: box }));
+      }
+      if (entry.gapUnder != null && Math.abs(entry.gapUnder - 20) < 0.5) ok(`the block under the editor's header sits 20 below it at ${width}`);
+      else fail(`the block under the editor's header sits 20 below it at ${width}`, JSON.stringify(entry));
+    });
 
     await block(`editor top and Save name at ${width}`, 5, async () => {
       for (const target of ['/entry/new/today', 'existing']) {
@@ -111,6 +177,70 @@ try {
         }
       }
     });
+    if (width === 390) {
+      await block('an opened media section lands above the foot', 6, async () => {
+        for (const section of ['photos', 'voice', 'video']) {
+          await go(page, '/entry/new/today');
+          await page.waitForSelector(`[data-section-chip="${section}"]`);
+          await settled(page);
+          /* Scrolled to the end, the way a thumb reaches the chips after
+             the note and the scales: the chips are the last row, so the
+             region has no room left to scroll until the section grows. */
+          await page.evaluate(() => {
+            const region = document.querySelector('[data-app-scroll-region]');
+            region.scrollTop = region.scrollHeight;
+          });
+          await settled(page);
+          await page.evaluate((s) => document.querySelector(`[data-section-chip="${s}"]`).click(), section);
+          await page.waitForSelector(`[data-editor-section="${section}"]`);
+          await settled(page);
+          const geo = await page.evaluate((s) => {
+            const sec = document.querySelector(`[data-editor-section="${s}"]`).getBoundingClientRect();
+            const chips = document.querySelector('[data-editor-chips]').getBoundingClientRect();
+            const foot = document.querySelector('[data-app-savebar]').getBoundingClientRect();
+            const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
+            return { sectionBottom: sec.bottom, footTop: foot.top, chipsTop: chips.top, regionTop: region.top };
+          }, section);
+          if (geo.sectionBottom <= geo.footTop) ok(`${section} opens above the foot`);
+          else fail(`${section} opens above the foot`, JSON.stringify(geo));
+          if (geo.chipsTop >= geo.regionTop) ok(`${section}'s chip stays on screen`);
+          else fail(`${section}'s chip stays on screen`, JSON.stringify(geo));
+        }
+      });
+
+      await block('an untouched scale draws nothing and stores nothing', 3, async () => {
+        await go(page, '/entry/new/today');
+        await page.waitForSelector('.dim-slider');
+        await settled(page);
+        const drawn = await page.evaluate(() =>
+          [...document.querySelectorAll('.dim-slider.is-unset')].map((s) => ({
+            thumb: getComputedStyle(s.querySelector('.slider-thumb')).opacity,
+            fill: getComputedStyle(s.querySelector('.slider-fill')).opacity
+          }))
+        );
+        if (drawn.length && drawn.every((d) => d.thumb === '0' && d.fill === '0')) ok('an unset scale draws no thumb and no fill');
+        else fail('an unset scale draws no thumb and no fill', JSON.stringify(drawn));
+        const note = `untouched scales ${Date.now()}`;
+        await page.fill('#ed-note', note);
+        await page.locator('[data-save-moods] [data-mood]').nth(3).click();
+        await page.locator('[data-save]').click();
+        await page.waitForURL((url) => !url.pathname.startsWith('/entry/'));
+        await go(page, '/day/today');
+        const card = page.locator('a[href^="/entry/"]:not([href*="/new"])').filter({ hasText: note });
+        await card.first().waitFor();
+        await card.first().click();
+        await page.waitForSelector('[data-save]');
+        await page.waitForFunction(() => document.querySelector('#ed-note')?.value);
+        await settled(page);
+        const values = await page.locator('.dim-slider [data-dim-value]').allTextContents();
+        const unset = await page.locator('.dim-slider.is-unset').count();
+        if (values.length && values.every((v) => v.trim() === '-')) ok('the saved entry reads back with no scale value');
+        else fail('the saved entry reads back with no scale value', JSON.stringify(values));
+        if (unset === values.length) ok('every scale on the saved entry is still unset');
+        else fail('every scale on the saved entry is still unset', `${unset} of ${values.length}`);
+      });
+    }
+
     if (errors.length) fail(`no page errors at ${width}`, errors.join(' | '));
     await context.close();
   }
@@ -259,6 +389,6 @@ try {
   await context.close();
 } finally {
   await browser.close();
-  await new Promise((resolve) => app.httpServer.close(resolve));
+  if (app) await new Promise((resolve) => app.httpServer.close(resolve));
 }
 process.exit(finish('entry editor name, date, return and delete: all hold') ? 1 : 0);
