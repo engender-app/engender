@@ -306,6 +306,9 @@
     });
   });
   let annivOffer = $state<Milestone | null>(null);
+  /* Kept after the offer closes, so the sheet still names its milestone
+     while it slides away rather than losing the line mid-close. */
+  let annivSubject = $state('');
   /* An offer known by the time the milestones first paint arrives with
      them, in place, rather than opening a frame later and pushing the rail
      down 114px under someone who is already looking at it. Once the rail
@@ -370,7 +373,10 @@
               <div class="rows-divide" transition:disclose>
                 <ListRow
                   data-anniv-feeling={mi.id}
-                  onclick={() => (annivOffer = mi)}
+                  onclick={() => {
+                    annivSubject = mi.name;
+                    annivOffer = mi;
+                  }}
                   title={ANNIV_OFFER.copy.title()}
                   subtitle={`${mi.name} · ${m.ms_status_years_ago({ years: m.n_years({ n: years }) })}`}
                 >
@@ -628,6 +634,7 @@
   <FeltSenseOfferSheet
     open={annivOffer !== null}
     copy={ANNIV_OFFER.copy}
+    subject={annivSubject}
     onSave={(input) => answerAnnivOffer('confirm', input)}
     onSkip={() => void answerAnnivOffer('decline', null)}
   />
