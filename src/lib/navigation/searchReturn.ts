@@ -7,6 +7,8 @@
    no longer than the tab, and reading it spends it. A lock takes it too,
    with the query More hands over in memory below (after-release ticket 10). */
 
+import { forgetOnLock, HELD_SEARCH_KEY as KEY } from '../lock/forget-content.ts';
+
 export interface SearchSnapshot {
   query: string;
   selectedTagIds: string[];
@@ -22,8 +24,6 @@ export const EMPTY_SEARCH: SearchSnapshot = {
   query: '', selectedTagIds: [], selectedMoods: [], startDate: '', endDate: '',
   hasNote: false, hasPhoto: false, starredOnly: false
 };
-
-const KEY = 'engender-search-return';
 
 export function holdSearch(snapshot: SearchSnapshot): void {
   try {
@@ -60,10 +60,8 @@ export function takeHandedQuery(): string | null {
   return query;
 }
 
-/** Drops both: the held snapshot and a query still on its way. */
-export function forgetSearch(): void {
+/* A lock drops the query on its way; forget-content.ts removes the held
+   snapshot itself, since a reload can leave one with this module unloaded. */
+forgetOnLock(() => {
   handedQuery = null;
-  try {
-    sessionStorage.removeItem(KEY);
-  } catch { /* no storage, so nothing was held there */ }
-}
+});
