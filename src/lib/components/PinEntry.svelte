@@ -28,9 +28,9 @@
 
   /** What the caller's attempt came to. `device-gone` is PIN mode's own
       failure: this browser has lost the key the PIN was bound to, so the PIN
-      is not wrong and retyping will never help. */
-  /** `unopened`: the PIN was right but the journal would not open again
-      after a web lock (after-release ticket 10). Not counted as a guess. */
+      is not wrong and retyping will never help. `unopened`: the PIN was
+      right but the journal would not open again after a web lock
+      (after-release ticket 10); not counted as a guess either. */
   export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened';
 
   let {

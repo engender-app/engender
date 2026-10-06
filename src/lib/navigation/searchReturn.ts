@@ -4,7 +4,8 @@
 
    Kept in sessionStorage, not in memory: the editor can be reloaded before
    it is left, and the person's own typing should still be there. It lives
-   no longer than the tab, and reading it spends it. */
+   no longer than the tab, and reading it spends it. A lock takes it too,
+   with the query More hands over in memory below (after-release ticket 10). */
 
 export interface SearchSnapshot {
   query: string;

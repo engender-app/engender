@@ -180,3 +180,42 @@ test('a lock that finds the database already gone still lets go of the key', asy
   assert.equal(session.key.current, null);
   assert.equal(session.driver, null);
 });
+
+test('a lock whose suspend fails still closes the database and lets go of the key', async () => {
+  const log: string[] = [];
+  const first = fakeDriver('driver 1', log);
+  const session = journalSession<Key, FakeDriver>({
+    suspend: () => Promise.reject(new Error('a preference write would not flush')),
+    open: async () => fakeDriver('driver 2', log),
+    release: () => log.push('released'),
+    prewarm: () => log.push('prewarmed')
+  });
+  session.adopt(keyOf(1), first);
+  await session.lock();
+  assert.equal(first.closed, true);
+  assert.equal(session.key.current, null);
+  assert.equal(session.locked, true);
+  await session.unlock(keyOf(1));
+  assert.equal(session.driver?.name, 'driver 2', 'and the unlock can still reopen');
+});
+
+test('a call that never settles does not hold the key past the limit', async () => {
+  const log: string[] = [];
+  const first = fakeDriver('driver 1', log);
+  const journals = sessionGate<string>();
+  journals.open('driver 1');
+  void journals.run(() => new Promise<void>(() => {}));
+  const session = journalSession<Key, FakeDriver>(
+    {
+      suspend: () => journals.close(),
+      open: async () => fakeDriver('driver 2', log),
+      release: () => log.push('released'),
+      prewarm: () => log.push('prewarmed')
+    },
+    { suspendLimitMs: 20 }
+  );
+  session.adopt(keyOf(1), first);
+  await session.lock();
+  assert.equal(first.closed, true, 'closing the worker is what rejects the hung call');
+  assert.equal(session.key.current, null);
+});

@@ -223,10 +223,10 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     openDriver = null;
     openFileOps = null;
     setActiveDriver(null);
-    setPhotoFiles(null);
-    setVoiceFiles(null);
-    setVideoFiles(null);
+    useJournalFiles(null);
     forgetReference();
+    /* Again, after the drain: a read that was still answering when the lock
+       began may have put an answer back. */
     forgetJournalContent();
   },
   prewarm() {
@@ -258,10 +258,23 @@ export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
     whose lock path is its own - and before the journal is open, it does
     nothing. */
 export function closeJournalForLock(): Promise<void> {
-  if (isAndroid() || !isReadyState(bootState) || !accessModeHasSecret(bootState.accessMode, false)) {
-    return Promise.resolve();
-  }
+  const android = isAndroid();
+  if (!isReadyState(bootState) || !accessModeHasSecret(bootState.accessMode, android)) return Promise.resolve();
+  /* Every lock that draws the gate takes the content copied out of the
+     journal at once, Android's included: its database stays open, but the
+     held search, the room answers and the waveforms are still not the
+     locked screen's to keep. */
+  forgetJournalContent();
+  if (android) return Promise.resolve();
   return session.lock();
+}
+
+/** The three readers' one file store, built over the key, or null while a
+    web lock has let go of it. */
+function useJournalFiles(files: PhotoFileStore | null): void {
+  setPhotoFiles(files);
+  setVoiceFiles(files);
+  setVideoFiles(files);
 }
 
 /** The mid-session unlock's half: the gate has derived the key from the
@@ -289,14 +302,21 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
     openDriver = sqlite.driver;
     openFileOps = sqlite.fileOps;
     setActiveDriver(sqlite.driver);
-    setPhotoFiles(photoFiles);
-    setVoiceFiles(photoFiles);
-    setVideoFiles(photoFiles);
+    useJournalFiles(photoFiles);
     await attachPreferences(preferences);
     journalIsOpen();
     dispatch({ type: 'journal-reopened', journal });
     return sqlite.driver;
   } catch (error) {
+    /* Still locked, so nothing read on the way stays: the vocabulary a
+       hydrate may already have filled, and the stores if they were set. */
+    forgetReference();
+    if (openDriver === sqlite.driver) {
+      openDriver = null;
+      openFileOps = null;
+      setActiveDriver(null);
+      useJournalFiles(null);
+    }
     await sqlite.driver.close().catch(() => {});
     throw error;
   }
@@ -780,14 +800,12 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   const photoFiles = journalPhotoFiles(dataKey);
 
   // Set before boot() rather than after, so the first screen to render a
-  // photo already has somewhere to read it from.
-  setPhotoFiles(photoFiles);
-  // Same underlying store (journal.ts's PhotoFileStore covers any opaque
-  // blob, recordings and video notes included) - separate setters because
-  // VoicePlayer.svelte, VideoNotePlayer.svelte and PhotoThumb.svelte each
-  // read a different kind of file.
-  setVoiceFiles(photoFiles);
-  setVideoFiles(photoFiles);
+  // photo already has somewhere to read it from. One underlying store
+  // (journal.ts's PhotoFileStore covers any opaque blob, recordings and
+  // video notes included) behind three setters, because VoicePlayer.svelte,
+  // VideoNotePlayer.svelte and PhotoThumb.svelte each read a different kind
+  // of file.
+  useJournalFiles(photoFiles);
 
   let activeSqlite: WebSqlite | null = null;
   let journal: Journal | null = null;
