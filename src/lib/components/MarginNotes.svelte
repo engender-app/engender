@@ -24,7 +24,19 @@
   import Sheet from './Sheet.svelte';
   import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
 
-  let { entryId, notes }: { entryId: number; notes: MarginNote[] } = $props();
+  let {
+    entryId,
+    notes,
+    addable = true
+  }: {
+    entryId: number;
+    notes: MarginNote[];
+    /** Off in a list of hits (audit UX-11): "Add a margin note" under every
+        result was 29 rows of the same words for one search, and about two
+        and a half results fitted a screen. A note is added from the
+        entry's own day, where this stays on. */
+    addable?: boolean;
+  } = $props();
 
   let composeOpen = $state(false);
   let composeText = $state('');
@@ -80,10 +92,12 @@
   </div>
 {/if}
 
-<button class="margin-note-add" data-margin-note-add onclick={openAdd}>
-  <Icon name="note" size={14} />
-  <span>{m.margin_note_add()}</span>
-</button>
+{#if addable}
+  <button class="margin-note-add" data-margin-note-add onclick={openAdd}>
+    <Icon name="note" size={14} />
+    <span>{m.margin_note_add()}</span>
+  </button>
+{/if}
 
 <Sheet bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
   <h3>{editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}</h3>
