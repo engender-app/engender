@@ -69,10 +69,15 @@ export interface StockEntry {
 }
 
 /** The doses one unit of `stock` holds: its own figure when one was typed
-    and is usable, one otherwise. Exported for the entry editor's quick-log
-    chip, which states what one more dose would leave. */
-export const dosesPerUnit = (stock: Pick<StockEntry, 'dosesPerUnit'>): number =>
+    and is usable, one otherwise. */
+const dosesInOneUnit = (stock: Pick<StockEntry, 'dosesPerUnit'>): number =>
   stock.dosesPerUnit != null && stock.dosesPerUnit > 0 ? stock.dosesPerUnit : 1;
+
+/** What one more dose would leave, in the entry's own unit: the entry
+    editor's quick-log chip states this before the dose is logged. */
+export function remainingAfterOneDose(remaining: number, stock: Pick<StockEntry, 'dosesPerUnit'>): number {
+  return remaining - 1 / dosesInOneUnit(stock);
+}
 
 export interface StockProjection {
   /** `quantity` minus every non-skipped dose logged against this drug on
@@ -156,7 +161,7 @@ function projectStockFromCounts(
      day comes out of whole-number arithmetic: 7 doses left at 3 doses in
      21 days is 7 * 21 / 3 = 49 days, where dividing by a rate of 3/21
      first lands a hair over 49 and ceil() adds a day. */
-  const perUnit = dosesPerUnit(stock);
+  const perUnit = dosesInOneUnit(stock);
   const remainingDoses = stock.quantity * perUnit - counts.consumed;
   const remaining = remainingDoses / perUnit;
   const excludedDoses = counts.excluded;
@@ -164,7 +169,9 @@ function projectStockFromCounts(
   const windowDays = asOfEpochDay - trailingWindowStart(stock, asOfEpochDay) + 1;
   const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays / perUnit : null;
 
-  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
+  // Asked of the dose count, not the divided figure, so a fractional
+  // quantity cannot leave 1e-16 standing in for "out".
+  if (remainingDoses <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
   if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
   const daysLeft = Math.ceil((remainingDoses * windowDays) / counts.consumedInTrailingWindow);
   return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + daysLeft, excludedDoses };

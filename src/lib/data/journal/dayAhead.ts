@@ -211,9 +211,9 @@ const SECTIONS = [
      daily slot would mark every cell a calendar could draw, which is
      wallpaper rather than information. Every episode the range meets is
      asked (phase 11 ticket 10 made it every active one; after-release
-     ticket 01 every one in the range, bounded by its own end). A pause suppresses a slot the
-     same way it does everywhere else a schedule is read against one
-     (doseSchedule.ts's own `adherence`). */
+     ticket 01 every one in the range, bounded by its own end). A pause
+     suppresses a slot the same way it does everywhere else a schedule is
+     read against one (doseSchedule.ts's own `adherence`). */
   section({
     key: 'doseSlot',
     covers: ['doseSchedules'],

@@ -189,7 +189,8 @@
     if (isNaN(quantity) || !drug || !unit) return;
 
     /* A number field hands over null once emptied; anything not above zero
-       is read as nothing typed, one dose per unit. */
+       is read as nothing typed, one dose per unit. A fraction is allowed:
+       0.5 is two pills to a dose. */
     const perUnit = Number(stockEditor.dosesPerUnit);
     const dosesPerUnit = stockEditor.dosesPerUnit !== null && stockEditor.dosesPerUnit !== '' && perUnit > 0 ? perUnit : null;
     const leadTime = parseInt(stockEditor.leadTimeDays, 10);
@@ -967,7 +968,8 @@
             type="number"
             {id}
             name="stock-doses-per-unit"
-            min="1"
+            min="0"
+            step="any"
             placeholder={m.stock_doses_per_unit_placeholder()}
             inputmode="decimal"
             bind:value={stockEditor!.dosesPerUnit}

@@ -184,6 +184,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
 
     async upsertEntry(input) {
       const drug = input.drug.trim();
+      const allReminders = await reminders.getReminders();
       let existing: { uuid: string }[];
       if (input.id === undefined) {
         existing = await driver.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]);
@@ -198,13 +199,12 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
              already counts the new name second, in the order deleteEntry
              uses and for its reason: a reminder left behind for a name no
              row carries any more is one nothing can ever clear. */
-          const oldAuto = findAutoReminder(await reminders.getReminders(), edited[0].drug);
+          const oldAuto = findAutoReminder(allReminders, edited[0].drug);
           if (oldAuto) await reminders.deleteReminder(oldAuto.id);
           await driver.run('DELETE FROM medication_stock WHERE drug = ? AND uuid <> ?', [drug, input.id]);
         }
         existing = edited;
       }
-      const allReminders = await reminders.getReminders();
       /* `dismissed` always resets: recording a fresh count is the
          deliberate act that re-arms it. `everCreated` resets to whether an
          auto reminder happens to exist right now, rather than always to
