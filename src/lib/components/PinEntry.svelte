@@ -29,7 +29,9 @@
   /** What the caller's attempt came to. `device-gone` is PIN mode's own
       failure: this browser has lost the key the PIN was bound to, so the PIN
       is not wrong and retyping will never help. */
-  export type PinAttempt = 'ok' | 'wrong' | 'device-gone';
+  /** `unopened`: the PIN was right but the journal would not open again
+      after a web lock (after-release ticket 10). Not counted as a guess. */
+  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened';
 
   let {
     onVerify,
@@ -106,6 +108,10 @@
         return;
       }
       pin = '';
+      if (outcome === 'unopened') {
+        error = m.su_reopen_failed();
+        return;
+      }
       if (outcome === 'device-gone') {
         /* Not counted against the throttle: nothing was guessed and no
            number of tries would get anywhere. */
