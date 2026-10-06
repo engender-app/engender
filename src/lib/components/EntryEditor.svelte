@@ -35,7 +35,6 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { createEntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
-  import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
@@ -63,6 +62,7 @@
   import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { followReveal } from '$lib/components/sectionReveal';
   import Field from '$lib/components/kit/Field.svelte';
   import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -500,26 +500,17 @@
     revealSection(section);
   }
 
-  /* Brings the opened section into view on the same clock it discloses
-     on: the scroll region moves by however much of the section's settled
-     height would land under the foot, and never so far that the chip row
+  /* Brings the opened section into view on the same clock it discloses on
+     (sectionReveal.ts has why it follows the growth frame by frame rather
+     than asking for one smooth scroll), never so far that the chip row
      itself leaves the top of the window - the row is what the person just
      tapped, and a section that scrolled its own chip away would be a
-     section with no visible way to close it. `scrollHeight` is the
-     section's content height even while `disclose` still clips its box,
-     which is what makes the settled height readable on the first frame. */
+     section with no visible way to close it. */
   function revealSection(section: EntrySection) {
     const sectionEl = chipRowEl?.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
     const region = chipRowEl?.closest<HTMLElement>('[data-app-scroll-region]');
     if (!sectionEl || !region || !chipRowEl) return;
-    const regionBox = region.getBoundingClientRect();
-    const settledBottom = sectionEl.getBoundingClientRect().top + sectionEl.scrollHeight;
-    const overflow = settledBottom + 20 - regionBox.bottom;
-    if (overflow <= 0) return;
-    const rowRoom = chipRowEl.getBoundingClientRect().top - regionBox.top - 8;
-    const travel = Math.min(overflow, rowRoom);
-    if (travel <= 0) return;
-    region.scrollBy({ top: travel, behavior: scrollBehavior() });
+    followReveal(sectionEl, region, chipRowEl);
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
@@ -663,11 +654,13 @@
   }
 
   // Skipping (day === null) leaves the override unset, exactly as before
-  // this ticket: the photo inherits this entry's day, same as always.
+  // this ticket: the photo inherits this entry's day, same as always. So
+  // does saving the entry's own day, which is what the field starts on.
   function resolveDayPrompt(day: string | null) {
     const [photo, ...rest] = dayPromptQueue;
     if (!photo) return;
-    entryDraft.addPhoto({ ...photo, epochDayOverride: day ? epochDayFromDateInputValue(day) : null });
+    const picked = day ? epochDayFromDateInputValue(day) : null;
+    entryDraft.addPhoto({ ...photo, epochDayOverride: picked === entryDraft.epochDay ? null : picked });
     dayPromptQueue = rest;
     if (rest.length) dayPromptValue = dateInputValueFromEpochDay(entryDraft.epochDay);
   }
@@ -687,7 +680,14 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => queueForDayPrompt([photo]));
+  /* A photo taken with the camera just now was taken today, so on today's
+     entry there is nothing to ask (audit UX-05: Save and Skip did the same
+     thing). A picked file has had its date stripped and could be from any
+     day, so it is still asked; so is a capture on a backdated entry. */
+  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
+    if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
+    else queueForDayPrompt([photo]);
+  });
 
   // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
   // closed.
@@ -1632,6 +1632,7 @@
     open={dayPromptQueue.length > 0}
     bind:day={dayPromptValue}
     fieldId="entry-photo-day-prompt"
+    hint={m.photo_day_prompt_hint_entry()}
     onSave={() => resolveDayPrompt(dayPromptValue)}
     onSkip={() => resolveDayPrompt(null)}
   />

@@ -1561,6 +1561,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   width: calc(var(--percentage) + var(--slider-inset));
   border-radius: var(--r-block);
   background: var(--accent);
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 /* The ruler. Every stop the thumb can rest on is marked, which is what makes
@@ -1613,7 +1614,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   border-radius: 50%;
   background: var(--surface);
   border: 3px solid var(--accent);
-  transition: box-shadow var(--dur-fast) var(--ease-out);
+  transition: box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
 }
 /* Held, the thumb takes the wash the row's press takes, drawn as a ring
    because a ring is the only thing box-shadow spells (kit.css says the same
@@ -1633,12 +1634,17 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 
 /* An unset slider (ticket 31). The thumb has to rest somewhere, and where it
    rests is not a value anyone logged - on a body region both axes start this
-   way, so a mid-track thumb would otherwise read as a middling score. Dimmed
-   rather than hidden: the control is still there to be used. The ruler is not
-   dimmed with it, because the scale is true whether or not there is a value
-   on it yet. */
+   way, so a mid-track thumb would otherwise read as a middling score. Ticket
+   31 dimmed it; dimmed, a half-filled track beside a "-" still read as a
+   value (audit UX-17), so the thumb and the fill are not drawn at all until
+   the first touch, and fade in under the finger when it lands. The groove
+   and the ruler stay: they are the control, and the scale is true whether
+   or not there is a value on it yet. */
 .slider.is-unset .slider-fill,
-.slider.is-unset .slider-thumb { opacity: 0.45; }
+.slider.is-unset .slider-thumb { opacity: 0; }
+/* Except under a keyboard's focus, where the thumb is the focus ring's only
+   carrier and marks where the first arrow key starts from. */
+.slider.is-unset:focus-visible .slider-thumb { opacity: 0.45; }
 /* And no mark claims to be standing on a value, because there is not one. */
 .slider.is-unset .slider-tick.is-here {
   background: color-mix(in oklab, var(--text) 45%, transparent);

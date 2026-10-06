@@ -2316,6 +2316,7 @@
   "photo_day_edit_title": "Photo day",
   "photo_day_label": "Day",
   "photo_day_prompt_hint": "Skip to use the entry's or milestone's date.",
+  "photo_day_prompt_hint_entry": "Skip to use the entry's date.",
   "photo_day_prompt_save": "Save",
   "photo_day_prompt_skip": "Skip",
   "photo_day_prompt_title": "When was this photo taken?",

@@ -2360,6 +2360,7 @@
   "photo_day_edit_title": "Dzień zdjęcia",
   "photo_day_label": "Dzień",
   "photo_day_prompt_hint": "Jeśli pominiesz, zdjęcie dostanie datę wpisu lub kamienia milowego.",
+  "photo_day_prompt_hint_entry": "Jeśli pominiesz, zdjęcie dostanie datę wpisu.",
   "photo_day_prompt_save": "Zapisz",
   "photo_day_prompt_skip": "Pomiń",
   "photo_day_prompt_title": "Kiedy zrobiono to zdjęcie?",

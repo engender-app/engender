@@ -178,36 +178,6 @@ try {
       }
     });
     if (width === 390) {
-      await block('an opened media section lands above the foot', 6, async () => {
-        for (const section of ['photos', 'voice', 'video']) {
-          await go(page, '/entry/new/today');
-          await page.waitForSelector(`[data-section-chip="${section}"]`);
-          await settled(page);
-          /* Scrolled to the end, the way a thumb reaches the chips after
-             the note and the scales: the chips are the last row, so the
-             region has no room left to scroll until the section grows. */
-          await page.evaluate(() => {
-            const region = document.querySelector('[data-app-scroll-region]');
-            region.scrollTop = region.scrollHeight;
-          });
-          await settled(page);
-          await page.evaluate((s) => document.querySelector(`[data-section-chip="${s}"]`).click(), section);
-          await page.waitForSelector(`[data-editor-section="${section}"]`);
-          await settled(page);
-          const geo = await page.evaluate((s) => {
-            const sec = document.querySelector(`[data-editor-section="${s}"]`).getBoundingClientRect();
-            const chips = document.querySelector('[data-editor-chips]').getBoundingClientRect();
-            const foot = document.querySelector('[data-app-savebar]').getBoundingClientRect();
-            const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
-            return { sectionBottom: sec.bottom, footTop: foot.top, chipsTop: chips.top, regionTop: region.top };
-          }, section);
-          if (geo.sectionBottom <= geo.footTop) ok(`${section} opens above the foot`);
-          else fail(`${section} opens above the foot`, JSON.stringify(geo));
-          if (geo.chipsTop >= geo.regionTop) ok(`${section}'s chip stays on screen`);
-          else fail(`${section}'s chip stays on screen`, JSON.stringify(geo));
-        }
-      });
-
       await block('an untouched scale draws nothing and stores nothing', 3, async () => {
         await go(page, '/entry/new/today');
         await page.waitForSelector('.dim-slider');
@@ -242,6 +212,55 @@ try {
     }
 
     if (errors.length) fail(`no page errors at ${width}`, errors.join(' | '));
+    await context.close();
+  }
+
+  /* The media sections, on the demo's first-run journal rather than the
+     filled persona: there the chip row is the last thing on the screen, so
+     scrolled to the end the region has no room left until a section grows,
+     which is the case audit UX-05 found (the persona's contextual cards
+     under the chips leave room and hide it). */
+  {
+    const context = await newContext(390, 844);
+    const page = await context.newPage();
+    await block('an opened media section lands above the foot', 6, async () => {
+      for (const section of ['photos', 'voice', 'video']) {
+        await settlePage(page, base, '/entry/new/today', 'light');
+        await page.waitForSelector(`[data-section-chip="${section}"]`);
+        await settled(page);
+        /* The open chip is draft state and the unsaved draft survives
+           the navigation, so a section left open by the last pass is
+           closed first. */
+        if (await page.locator('[data-editor-section]').count()) {
+          await page.locator('[data-section-chip][aria-pressed="true"], [data-section-chip][aria-expanded="true"]').first().click();
+          await page.waitForSelector('[data-editor-section]', { state: 'detached' });
+          await settled(page);
+        }
+        /* Scrolled to the end, the way a thumb reaches the chips after
+           the note and the scales: the chips are the last row, so the
+           region has no room left to scroll until the section grows. */
+        await page.evaluate(() => {
+          const region = document.querySelector('[data-app-scroll-region]');
+          region.scrollTop = region.scrollHeight;
+        });
+        await settled(page);
+        await page.locator(`[data-section-chip="${section}"]`).click();
+        await page.waitForSelector(`[data-editor-section="${section}"]`);
+        await settled(page);
+        const geo = await page.evaluate((s) => {
+          const sec = document.querySelector(`[data-editor-section="${s}"]`).getBoundingClientRect();
+          const chips = document.querySelector('[data-editor-chips]').getBoundingClientRect();
+          const foot = document.querySelector('[data-app-savebar]').getBoundingClientRect();
+          const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
+          return { sectionBottom: sec.bottom, footTop: foot.top, chipsTop: chips.top, regionTop: region.top };
+        }, section);
+        if (geo.sectionBottom <= geo.footTop) ok(`${section} opens above the foot`);
+        else fail(`${section} opens above the foot`, JSON.stringify(geo));
+        if (geo.chipsTop >= geo.regionTop) ok(`${section}'s chip stays on screen`);
+        else fail(`${section}'s chip stays on screen`, JSON.stringify(geo));
+      }
+    });
+
     await context.close();
   }
 
