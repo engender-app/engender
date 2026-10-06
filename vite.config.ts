@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
@@ -13,6 +13,11 @@ import capacitorConfig from './capacitor.config';
    WASM. verify-build.mjs fails if anything the build wrote is missing from
    the cache the worker fills. */
 const GENERATED = 'src/lib/pwa/emitted-client-assets.generated.ts';
+const locale = process.env.ENGENDER_BUILD_LOCALE;
+const previousAssets = process.env.ENGENDER_PREVIOUS_ASSETS
+  ? JSON.parse(readFileSync(process.env.ENGENDER_PREVIOUS_ASSETS, 'utf8')) as string[]
+  : [];
+
 
 function demoWorkerPrewarm(): Plugin {
   let client = false;
@@ -103,10 +108,9 @@ function writeEmittedClientAssets() {
         // Its output directory is the thing that says which is which.
         if (!options.dir?.endsWith('/client')) return;
         write(
-          Object.keys(bundle)
+          [...new Set([...previousAssets, ...Object.keys(bundle)
             .filter((file) => file.startsWith('_app/immutable/'))
-            .map((file) => `/${file}`)
-            .sort()
+            .map((file) => `/${file}`)])].sort()
         );
       }
     }
@@ -276,6 +280,11 @@ export default defineConfig(({ command }) => ({
   // screen can only ever show what was actually shipped. Read once here, from
   // the signed tag or from ENGENDER_VERSION, and nowhere else.
   define: {
+    ...(locale ? {
+      'globalThis.__PARAGLIDE_STATIC_LOCALE__': JSON.stringify(locale),
+      // Vite 6's fast filter must see the marker in the parenthesized compiler expression.
+      __PARAGLIDE_STATIC_LOCALE__: 'undefined'
+    } : {}),
     __DEMO__: JSON.stringify(command === 'serve' || process.env.VITE_DEMO === '1'),
     __APP_VERSION__: JSON.stringify(appVersion())
   },
@@ -290,6 +299,7 @@ export default defineConfig(({ command }) => ({
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/lib/paraglide',
+      ...(locale ? { experimentalStaticLocale: '/** @type {any} */ (globalThis).__PARAGLIDE_STATIC_LOCALE__' } : {}),
       strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
     }),
     sveltekit(),
