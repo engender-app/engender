@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
+import {
+  Fts5UnavailableError,
+  InterruptedRestoreError,
+  JournalBelowBaselineError,
+  SchemaTooNewError
+} from '../data/sqlite/migration-runner.ts';
 import { interpretAuthentication } from '../lock/biometric-outcome.ts';
 import {
   initialBoot,
@@ -205,7 +210,7 @@ test('android reaches each of its four gates', () => {
   const plaintext = walk(started('android'), surveyedAndroid({ plaintextJournalPresent: true }));
   expect(plaintext.machine.boot).toMatchObject({
     status: 'error',
-    error: 'android-plaintext-journal'
+    failure: 'android-plaintext'
   });
 });
 
@@ -410,6 +415,42 @@ test('any other failed open asks the disk whether it can offer a way back', () =
   ).toBe(false);
 });
 
+/* After-release ticket 09: the failure screen says what happened in the
+   person's words, so the state carries which failure this was and keeps the
+   raw text only as the detail a bug report needs. */
+test('a journal from below the baseline names itself and asks for no restore', () => {
+  const { machine, effects } = failedOpen(new JournalBelowBaselineError(50, 78));
+
+  expect(machine.boot).toMatchObject({ status: 'error', failure: 'below-baseline', recoverable: false });
+  expect(machine.boot.error).toContain('50');
+  /* Putting the previous journal back would reopen the same old journal, so
+     the disk is not even asked whether there is a copy. */
+  expect(effects).toEqual([]);
+});
+
+test('a key that does not read the file is the unreadable failure, however it arrives', () => {
+  expect(failedOpen(new Error('file is not a database (code 26)')).machine.boot.failure).toBe('unreadable');
+  expect(
+    walk(started('web'), { type: 'boot-failed', message: 'SQLITE_NOTADB: file is not a database' }).machine.boot
+      .failure
+  ).toBe('unreadable');
+});
+
+test('a database that never starts is the engine failure', () => {
+  expect(failedOpen(new Fts5UnavailableError(new Error('no such module: fts5'))).machine.boot.failure).toBe(
+    'engine'
+  );
+  expect(
+    walk(started('web'), { type: 'boot-failed', message: 'the database worker stopped: no message' }).machine.boot
+      .failure
+  ).toBe('engine');
+});
+
+test('a failure nobody has named yet is unknown, and still keeps its text for the bug report', () => {
+  const failed = failedOpen(new Error('no such table: entry'));
+  expect(failed.machine.boot).toMatchObject({ failure: 'unknown', error: 'no such table: entry' });
+});
+
 test('anything else that goes wrong is the plain failure screen, with nothing to offer', () => {
   const { machine, effects } = walk(started('web'), {
     type: 'boot-failed',
@@ -526,6 +567,7 @@ test('journal-open-failed with database lock preserves the lock error and allows
 
   expect(retried.machine.boot.status).toBe('booting');
   expect(retried.machine.boot.error).toBeNull();
+  expect(retried.machine.boot.failure).toBeNull();
   expect(retried.effects).toEqual([
     { type: 'mark-unlocked' },
     { type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }

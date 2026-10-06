@@ -35,7 +35,6 @@
   }
 </script>
 
-<p style="margin-top:var(--space-2)" data-unreadable-help>{m.dbr_archive_body()}</p>
 <div class="stack-3" style="margin-top:var(--space-2)">
   <button class="btn btn-soft" data-unreadable-archive onclick={() => open(true)}>
     <span>{m.dbr_archive_open()}</span>
