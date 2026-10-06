@@ -1828,7 +1828,8 @@
       "interval": "every 2 weeks",
       "startEpochDay": 19000,
       "endEpochDay": null,
-      "endReason": null
+      "endReason": null,
+      "hidden": false
     }
   ],
   "doseEvents": [

@@ -9,12 +9,28 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import { discloseWidth } from '$lib/motion/reveal';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   let builtIns = $derived(vocabulary.bodyRegions.filter((r) => r.builtIn));
   let customs = $derived(vocabulary.bodyRegions.filter((r) => !r.builtIn));
 
   let addOpen = $state(false);
   let newName = $state('');
+
+  /* A custom region carries the same hide control the built-ins have, plus
+     a rename, since a typo in one otherwise sat in every picker for good
+     (after-release 07). A built-in keeps the catalogue's name. */
+  let renameTarget = $state<{ id: string; name: string } | null>(null);
+
+  async function rename() {
+    const target = renameTarget;
+    const name = target?.name.trim();
+    if (!target || !name) return;
+    renameTarget = null;
+    await journal.bodyRegions.renameCustomRegion(target.id, name);
+    toast(m.body_regions_renamed({ region: name }));
+  }
 
   /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
      must not put its placeholder back over settled lists. */
@@ -55,8 +71,27 @@
     {/if}
     <div class="managed-tags">
       {#each customs as r (r.id)}
-        <div class="rows-divide managed-tag">
-          <span class="managed-label">{r.name}</span>
+        <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
+          <span class="managed-label" data-region-label={r.id}>{r.name}</span>
+          {#if r.hidden}<span class="muted small" transition:discloseWidth>{m.body_regions_hidden()}</span>{/if}
+          <span class="managed-actions">
+            <button
+              class="icon-btn"
+              data-region-rename={r.id}
+              aria-label={m.body_regions_rename_aria({ region: r.name })}
+              onclick={() => (renameTarget = { id: r.id, name: r.name })}
+            >
+              <Icon name="pencil" size={16} />
+            </button>
+            <button
+              class="icon-btn"
+              data-region-hide={r.id}
+              aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
+              onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
+            >
+              <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
+            </button>
+          </span>
         </div>
       {/each}
     </div>
@@ -67,7 +102,7 @@
         {#each builtIns as r (r.id)}
           <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
             <span class="managed-label">{r.name}</span>
-            {#if r.hidden}<span class="muted small">{m.body_regions_hidden()}</span>{/if}
+            {#if r.hidden}<span class="muted small" transition:discloseWidth>{m.body_regions_hidden()}</span>{/if}
             <span class="managed-actions">
               <button
                 class="icon-btn"
@@ -98,5 +133,19 @@
         addOpen = false;
       }}><span>{m.body_regions_save()}</span></button
     >
+  </Sheet>
+
+  <Sheet open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
+    {#if renameTarget}
+      <h3>{m.body_regions_rename_sheet()}</h3>
+      <Field label={m.body_regions_rename_sheet()} id="rename-region-input" hidden>
+        {#snippet children(id)}
+          <input class="input" {id} name="rename-region-input" bind:value={renameTarget!.name} />
+        {/snippet}
+      </Field>
+      <button class="btn btn-primary" data-save-region-name disabled={!renameTarget.name.trim()} onclick={rename}>
+        <span>{m.body_regions_save()}</span>
+      </button>
+    {/if}
   </Sheet>
 </div>

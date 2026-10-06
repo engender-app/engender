@@ -25,7 +25,7 @@
   import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
-  import { disclose, resize } from '$lib/motion/reveal';
+  import { collapse, disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
@@ -213,6 +213,16 @@
     add: storePhoto,
     remove: (id) => journal.procedures.deletePhoto(id),
     reference: () => lastPhotoReference(photos)
+  });
+
+  /* A consult date asks before it goes and says that it went
+     (after-release 07); it used to vanish on one tap. */
+  const consultRecord = recordEditor<ProcedureConsult>({
+    remove: async (id) => {
+      await journal.procedures.deleteConsult(id);
+      toast(m.surgery_consult_deleted());
+    },
+    findById: (id) => selected?.consults.find((consult) => consult.id === id)
   });
 
   let itemSheet = $state(false);
@@ -442,25 +452,27 @@
 
       {#snippet consultsBlock()}
         {#if selected!.consults.length}
-          <div style="margin-bottom:var(--space-3)">
+          <div style="margin-bottom:var(--space-3)" transition:collapse>
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
               {#each selected!.consults as consult (consult.id)}
-                <ListRow
-                  static
-                  data-consult={consult.id}
-                  title={dayLabel(consult.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: async () => await journal.procedures.deleteConsult(consult.id),
-                    attrs: { 'data-delete-consult': consult.id }
-                  }}
-                />
+                <div class="rows-divide" transition:collapse>
+                  <ListRow
+                    static
+                    data-consult={consult.id}
+                    title={dayLabel(consult.epochDay)}
+                    action={{
+                      icon: 'trash',
+                      label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
+                      onclick: () => consultRecord.askToDelete(consult),
+                      attrs: { 'data-delete-consult': consult.id }
+                    }}
+                  />
+                </div>
               {/each}
             </ListCard>
           </div>
         {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
+          <p class="muted small" style="margin-bottom:var(--space-3)" transition:collapse>{m.surgery_consults_empty()}</p>
         {/if}
       {/snippet}
 
@@ -846,6 +858,17 @@
       </div>
     </Sheet>
   {/if}
+
+  <RecordSheet
+    record={consultRecord}
+    handle="consult"
+    confirm={{
+      title: m.surgery_consult_delete_sheet(),
+      question: (consult) => m.surgery_consult_delete_q({ date: dayLabel(consult.epochDay) }),
+      confirmLabel: m.surgery_consult_delete_sheet(),
+      cancelLabel: m.keep_it()
+    }}
+  />
 
   <RecordSheet
     record={itemRecord}
