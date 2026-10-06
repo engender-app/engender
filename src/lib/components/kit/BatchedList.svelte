@@ -39,13 +39,15 @@
   import ListCard from './ListCard.svelte';
   import { batchesFor, nextCount, remainingCount, shownCount } from './batchedList';
   import type { Role } from '$lib/theme/roles';
+  import { disclose } from '$lib/motion/reveal';
 
   let {
     items,
     key,
     role,
     rows,
-    focusIndex = null
+    focusIndex = null,
+    autoGrow = true
   }: {
     /** Every row the screen has, already read and already ordered. Nothing
         here asks the journal for anything: what is paged is the DOM. */
@@ -56,6 +58,12 @@
     key: string;
     /** A role from $lib/theme/roles.ts, passed straight to the card. */
     role?: Role;
+    /** False for a log that grows only when its control is pressed: no
+        scroll sentinel, and the control discloses on the way in and gives
+        back its own spacing on the way out, so the card's foot does not
+        jump when the last batch arrives. The dose log uses it (after-release
+        05); true keeps the scroll-grown behaviour every other list has. */
+    autoGrow?: boolean;
     /** The screen's rows, rendered over the slice that is showing. */
     rows: Snippet<[T[]]>;
     /** The index in `items` a deep link named, if the screen found one
@@ -126,7 +134,7 @@
      `remaining`, so it tears down once the list is exhausted and there is
      nothing left to watch for. */
   $effect(() => {
-    if (!sentinel || remaining === 0) return;
+    if (!autoGrow || !sentinel || remaining === 0) return;
     if (typeof IntersectionObserver === 'undefined') return;
 
     const root = sentinel.closest<HTMLElement>('[data-app-scroll-region]');
@@ -141,21 +149,23 @@
   });
 </script>
 
-<div class="batched" data-batched-list={key}>
+<div class="batched" class:batched-manual={!autoGrow} data-batched-list={key}>
   <ListCard {role}>
     {@render rows(shown)}
   </ListCard>
 
   <!-- What the scroll is watched for. Empty and hidden: it is a position in
        the layout, not content, and a screen reader has no use for it. -->
-  <div class="batched-edge" bind:this={sentinel} aria-hidden="true"></div>
+  {#if autoGrow}
+    <div class="batched-edge" bind:this={sentinel} aria-hidden="true"></div>
+  {/if}
 
   <!-- Kept even though the sentinel exists, and not a fallback for it. It is
        what a keyboard reaches, it is the same control search already ships,
        and it is the way out for anyone whose next row is not findable by the
        browser's own find because it has not rendered yet. -->
   {#if remaining > 0}
-    <button class="btn btn-soft" data-batched-more={key} onclick={grow}>
+    <button class="btn btn-soft" data-batched-more={key} onclick={grow} transition:disclose={{ skip: autoGrow }}>
       <span>{moreLabel}</span>
     </button>
   {/if}
@@ -167,5 +177,13 @@
   .batched {
     display: grid;
     gap: var(--space-4);
+  }
+
+  .batched-manual {
+    gap: 0;
+  }
+
+  .batched-manual > button {
+    margin-top: var(--space-4);
   }
 </style>

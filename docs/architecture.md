@@ -238,6 +238,8 @@ flowchart LR
 
 **Database worker (web).** [mc-driver.ts](../src/lib/data/sqlite/mc-driver.ts) sends `{ id, op, args }` messages and the worker answers `{ id, ok, result }` or `{ id, ok: false, error }`. The worker handles messages strictly in arrival order through one promise chain. Its handlers include `open`, query and run calls, the pre-migration copy (`VACUUM INTO` a URI that carries the same key) and `close`. Error text crosses the boundary as a string and never contains the key. The data key enters the worker once, as hex for `PRAGMA hexkey`.
 
+Vite emits workers as ES modules so demo worker imports can split into chunks. The development and preview servers set COOP/COEP headers for SQLite; production hosting supplies those headers itself.
+
 **Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](../src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Transactions don't nest.
 
 **Android bridge.** On Android, [android-driver.ts](../src/lib/data/sqlite/android-driver.ts) talks to `SqlitePlugin` over the Capacitor bridge. Calls are pipelined (ADR-0089): each crosses as soon as it is made, carrying a session and a sequence number, and [CallSequencer.java](../android/app/src/main/java/dev/engender/app/sqlite/CallSequencer.java) runs them strictly in order on one thread. Bulk photo bytes skip the JSON bridge and go through two WebMessage channels (`PhotoPickChannel`, `PhotoWriteChannel`), registered with `WebViewCompat.addWebMessageListener` and limited to the `https://localhost` origin.
@@ -850,7 +852,7 @@ A returning visit with a full fixture reaches ready in about 0.6 s at 4x CPU thr
 **Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](../src/lib/data/sqlite/boot.ts)).
 
 **Long lists and media are rendered lazily.**
-- Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069).
+- Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069). A log that should grow only on request passes `autoGrow={false}`: the dose log does, so its day headings and older batches arrive through its show-more control, which discloses the new rows and collapses itself with its spacing once nothing is left.
 - Photo thumbnails decode at 320x320 and load behind an IntersectionObserver.
 - Object URLs are revoked when their element leaves.
 

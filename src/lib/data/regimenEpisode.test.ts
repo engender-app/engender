@@ -378,20 +378,20 @@ test('expectedDosesOnDay reads the day itself, so an episode starting later stil
 });
 
 test('showAttributionLabel: a lone active episode already named its drug in the title', () => {
-  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol', 1), false);
+  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol'), false);
 });
 
-test('showAttributionLabel: an episode picked out among two concurrent ones still shows', () => {
-  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol', 2), true);
+test('showAttributionLabel: concurrent episodes do not repeat the title drug', () => {
+  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol'), false);
 });
 
 test('showAttributionLabel: no episode and no drug shows, so the row still says nothing covered it', () => {
-  assert.equal(showAttributionLabel({ episode: null, ambiguous: false }, null, 0), true);
-  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, null, 2), true);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: false }, null), true);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, null), true);
 });
 
 test('showAttributionLabel: two episodes agreeing on one drug hide the "not recorded" text the title contradicts', () => {
-  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol', 2), false);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol'), false);
 });
 
 /* The day-ahead dose marks read each episode only as far as its own span

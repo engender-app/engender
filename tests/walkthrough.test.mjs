@@ -6209,8 +6209,9 @@ try {
   // depends on the ~50 flows already run against this journal, so both
   // outcomes are legitimate and both are checked.
   await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
-  await page.locator('[data-procedure]').first().click();
-  await page.waitForSelector('[data-phase="archived"]');
+  /* By phase, not position: a procedure past its recovery window is listed
+     under the archive now (after-release 05), below the ongoing ones. */
+  await page.locator('[data-procedure][data-phase="archived"]').first().click();
   const procedureNotice = page.locator('[data-notice="surgery-compare"]');
   await procedureNotice.waitFor();
   const procedureAction = procedureNotice.locator('[data-notice-action]');

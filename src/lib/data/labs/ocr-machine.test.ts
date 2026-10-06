@@ -479,7 +479,7 @@ describe('OcrMachine – save-failed path', () => {
     expect(s.error).toContain('Network error');
   });
 
-  test('retry from save-failed returns to picking with no stale rows', async () => {
+  test('retry from save-failed returns to the review with the rows still unsaved', async () => {
     const m = createOcrMachine(
       imageSourceThat(new Uint8Array([1])),
       recognizerThat(GOOD_OCR_TEXT),
@@ -488,9 +488,10 @@ describe('OcrMachine – save-failed path', () => {
     m.open();
     await m.pickSource('gallery');
     if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    const rows = m.state.rows;
     await m.save();
     m.retry();
-    expect(m.state.tag).toBe('picking');
+    expect(m.state).toEqual({ tag: 'review', rows });
   });
 });
 
@@ -580,5 +581,197 @@ describe('recognition progress and cancelling', () => {
     await saving;
 
     expect(m.state).toMatchObject({ tag: 'saved' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stale writes, failed lookups and partial saves (after-release 05, L02-03)
+// ---------------------------------------------------------------------------
+
+/** A promise the test settles by hand, to land a step after close(). */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+describe('OcrMachine – a closed sheet stays closed', () => {
+  test('closing during recognition keeps it idle when the aborted pass rejects', async () => {
+    const recognizer: OcrRecognizer = {
+      recognize(_image, watch) {
+        return new Promise((_resolve, reject) => {
+          watch?.signal?.addEventListener('abort', () => reject(new DOMException('stopped', 'AbortError')));
+        });
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizer, saverWith());
+    m.open();
+    const running = m.pickSource('gallery');
+    await Promise.resolve();
+    m.close();
+    await running;
+    expect(m.state).toEqual({ tag: 'idle' });
+  });
+
+  test('closing while the picker is open keeps it idle when the image arrives', async () => {
+    const image = deferred<Uint8Array | null>();
+    const m = createOcrMachine({ pickImage: () => image.promise }, recognizerThat(GOOD_OCR_TEXT), saverWith());
+    m.open();
+    const running = m.pickSource('gallery');
+    m.close();
+    image.resolve(new Uint8Array([1]));
+    await running;
+    expect(m.state).toEqual({ tag: 'idle' });
+  });
+
+  test('closing during the duplicate lookup keeps it idle, not in review', async () => {
+    const lookup = deferred<[]>();
+    const saver: OcrSaver = { getExistingResults: () => lookup.promise, async saveResult() {} };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
+    m.open();
+    const running = m.pickSource('gallery');
+    await new Promise((r) => setTimeout(r, 0));
+    m.close();
+    lookup.resolve([]);
+    await running;
+    expect(m.state).toEqual({ tag: 'idle' });
+  });
+
+  test('a pass from before a close and reopen cannot overwrite the new picker', async () => {
+    const text = deferred<string>();
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), { recognize: () => text.promise }, saverWith());
+    m.open();
+    const running = m.pickSource('gallery');
+    await new Promise((r) => setTimeout(r, 0));
+    m.close();
+    m.open();
+    text.resolve(GOOD_OCR_TEXT);
+    await running;
+    expect(m.state).toEqual({ tag: 'picking' });
+  });
+});
+
+describe('OcrMachine – a failed lookup', () => {
+  test('leaves recognizing for lookup-failed, and retry goes back to the picker', async () => {
+    const saver: OcrSaver = {
+      async getExistingResults() { throw new Error('database locked'); },
+      async saveResult() {}
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    expect(m.state).toEqual({ tag: 'lookup-failed' });
+    m.retry();
+    expect(m.state).toEqual({ tag: 'picking' });
+  });
+});
+
+describe('OcrMachine – a partial save', () => {
+  function saverFailingAfter(landed: number): OcrSaver & { saved: unknown[] } {
+    const saved: unknown[] = [];
+    return {
+      saved,
+      async getExistingResults() { return []; },
+      async saveResult(params) {
+        if (saved.length >= landed) throw new Error('disk full');
+        saved.push(params);
+      }
+    };
+  }
+
+  test('says how many rows landed and keeps only the rows that did not', async () => {
+    const saver = saverFailingAfter(1);
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(TWO_ROWS_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    const [, second] = m.state.rows;
+    await m.save();
+    expect(m.state).toMatchObject({ tag: 'save-failed', saved: 1, rows: [second] });
+  });
+
+  test('saving again from save-failed writes only the rest', async () => {
+    let failNext = true;
+    const saved: string[] = [];
+    const saver: OcrSaver = {
+      async getExistingResults() { return []; },
+      async saveResult(params) {
+        if (saved.length === 1 && failNext) { failNext = false; throw new Error('disk full'); }
+        saved.push(params.analyte);
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(TWO_ROWS_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    await m.save();
+    expect(m.state.tag).toBe('save-failed');
+    await m.save();
+    expect(saved).toEqual(['estradiol', 'prolactin']);
+    expect(m.state).toEqual({ tag: 'saved', count: 2 });
+  });
+});
+
+describe('OcrMachine – review findings', () => {
+  test('the saved count survives a retry, so the toast counts every row that landed', async () => {
+    let failNext = true;
+    const saved: string[] = [];
+    const saver: OcrSaver = {
+      async getExistingResults() { return []; },
+      async saveResult(params) {
+        if (saved.length === 1 && failNext) { failNext = false; throw new Error('disk full'); }
+        saved.push(params.analyte);
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(TWO_ROWS_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    await m.save();
+    m.retry();
+    await m.save();
+    expect(m.state).toEqual({ tag: 'saved', count: 2 });
+  });
+
+  test('closing mid-save stops writing the rows that are left', async () => {
+    const first = deferred<void>();
+    const saved: string[] = [];
+    const saver: OcrSaver = {
+      async getExistingResults() { return []; },
+      async saveResult(params) {
+        saved.push(params.analyte);
+        if (saved.length === 1) await first.promise;
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(TWO_ROWS_OCR_TEXT), saver);
+    m.open();
+    await m.pickSource('gallery');
+    const saving = m.save();
+    m.close();
+    first.resolve();
+    await saving;
+    expect(saved).toEqual(['estradiol']);
+    expect(m.state).toEqual({ tag: 'idle' });
+  });
+
+  test('a late progress report from a closed pass does not reach the next one', async () => {
+    let oldReport: ((f: number | null) => void) | undefined;
+    let calls = 0;
+    const recognizer: OcrRecognizer = {
+      recognize(_image, watch) {
+        calls += 1;
+        if (calls === 1) { oldReport = watch?.onProgress; return new Promise(() => {}); }
+        return new Promise(() => {});
+      }
+    };
+    const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizer, saverWith());
+    m.open();
+    void m.pickSource('gallery');
+    await new Promise((r) => setTimeout(r, 0));
+    m.close();
+    m.open();
+    void m.pickSource('gallery');
+    await new Promise((r) => setTimeout(r, 0));
+    oldReport?.(0.9);
+    expect(m.state).toEqual({ tag: 'recognizing', fraction: null });
   });
 });
