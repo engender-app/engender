@@ -282,6 +282,13 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toMatch(/\{#if !railRevealed\}\s*<div out:crossfade><Skeleton/);
     expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
   });
+
+  it('fades in what replaced the rail within the tab arrival, not after it', () => {
+    /* A rail answering late in an Android tab change used to fade for a
+       full --dur-fast after the field had stopped (tile-arrival-timing). */
+    expect(stats).toContain("const duration = readRevealDuration('--dur-fast');");
+    expect(stats).toContain('playAfterPaint(screen, animations, { fitArrival: true });');
+  });
 });
 
 /* Phase 11 ticket 07: every reading is a tile stating one figure for the

@@ -98,7 +98,7 @@
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
-  import { playAfterPaint } from '$lib/motion/screenArrival';
+  import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -378,13 +378,18 @@
       return;
     }
     if (whileLoading.size === 0) return;
-    const duration = motionDuration('--dur-fast');
+    /* Inside a tab's arrival the fade shares the field's deadline, as
+       ReadGate's and ReadReserve's do: a rail that answered late in the
+       field's travel went on fading for a full --dur-fast after the field
+       had stopped, the last of Look back still arriving on a screen that
+       had come to rest. */
+    const duration = readRevealDuration('--dur-fast');
     if (duration > 0) {
       const animations: Animation[] = [];
       for (const child of screen.children) {
         if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
       }
-      playAfterPaint(screen, animations);
+      playAfterPaint(screen, animations, { fitArrival: true });
     }
     whileLoading = new Set();
   });
