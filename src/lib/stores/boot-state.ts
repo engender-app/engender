@@ -137,6 +137,7 @@ interface SetupUnlockOptions {
 }
 
 type MutableTarget =
+  | 'booting'
   | 'needs-setup'
   | 'needs-unlock'
   | 'needs-authentication'
@@ -288,6 +289,10 @@ function accessMode(state: BootState, mode: JournalAccessMode): BootState {
 }
 
 function resetToBooting(state: BootState): BootingState {
+  if (state.status === 'booting') return state;
+  if (state.status === 'ready' || state.status === 'schema-too-new' || state.status === 'legacy-refused') {
+    invalidTransition(state, 'booting');
+  }
   return booting(state.accessMode);
 }
 

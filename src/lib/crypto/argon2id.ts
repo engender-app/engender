@@ -13,6 +13,7 @@ import type { Argon2Params } from './params.ts';
    it always did, and so does a derivation whose worker fails to start: a
    slower unlock is better than none. */
 let prewarmed: Worker | null = null;
+let prewarmFailed = false;
 
 function argon2Worker(): Worker | null {
   if (typeof Worker === 'undefined') return null;
@@ -27,7 +28,15 @@ function argon2Worker(): Worker | null {
     exists, so the first derivation of a cold boot does not also pay for
     that. Holds nothing: the worker gets a secret only from `deriveKey`. */
 export function prewarmArgon2(): void {
-  if (!prewarmed) prewarmed = argon2Worker();
+  if (prewarmed || prewarmFailed) return;
+  const worker = argon2Worker();
+  prewarmed = worker;
+  if (worker) worker.onerror = (event) => {
+    event.preventDefault();
+    worker.terminate();
+    prewarmFailed = true;
+    if (prewarmed === worker) prewarmed = null;
+  };
 }
 
 /* The page's own copy is imported when it is needed, not with this module
@@ -62,7 +71,7 @@ export async function deriveKey(
   salt: Uint8Array<ArrayBuffer>,
   params: Argon2Params
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const worker = prewarmed ?? argon2Worker();
+  const worker = prewarmFailed ? null : prewarmed ?? argon2Worker();
   prewarmed = null;
   if (!worker) return inThread(password, salt, params);
   const answer = await new Promise<{ ok: true; key: Uint8Array<ArrayBuffer> } | { ok: false; error?: string; loadFailed?: boolean }>(
