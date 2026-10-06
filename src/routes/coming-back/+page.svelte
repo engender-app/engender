@@ -277,10 +277,12 @@
 
   let doseIsInjection = $derived(doseDraft?.route === 'im' || doseDraft?.route === 'sc');
   let doseIsTopical = $derived(doseDraft?.route === 'patch' || doseDraft?.route === 'gel');
+  let doseHasAmount = $derived(
+    doseDraft !== null && !Number.isNaN(parseFloat(doseDraft.dose)) && doseDraft.doseUnit.trim() !== ''
+  );
   let doseCanSave = $derived(
     doseDraft !== null &&
-      !Number.isNaN(parseFloat(doseDraft.dose)) &&
-      doseDraft.doseUnit.trim() !== '' &&
+      doseHasAmount &&
       (!doseIsInjection || doseDraft.injectionSite !== '') &&
       (!doseIsTopical || doseDraft.applicationSite !== '')
   );
@@ -618,6 +620,19 @@
       </Field>
     {/if}
 
+    <!-- Why Save is refused, under the picker that refuses it. An injection
+         or a patch opens here with no site picked, so this sheet opens with
+         its primary disabled, and the comment on the wear sheet below says
+         why the reason then has to be on screen. Only the dose sheet lacked
+         it (audit L08-16). It goes the way it came once the site is
+         picked, closing its own height rather than leaving in one frame. -->
+    {#if !doseCanSave}
+      <div class="muted small coming-back-dose-hint" data-coming-back-dose-hint transition:disclose|local>
+        {#if !doseHasAmount}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+        {#if doseIsInjection && !doseDraft.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
+        {#if doseIsTopical && !doseDraft.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}
+      </div>
+    {/if}
     <div class="stack-3 coming-back-sheet-actions">
       <button class="btn btn-primary" data-coming-back-dose-confirm disabled={!doseCanSave} onclick={confirmDose}>
         <span>{DOSE_OFFER.copy.confirm()}</span>
@@ -806,6 +821,15 @@
      a screen with a style block has somewhere to put it. */
   .coming-back-field-hint {
     margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+  }
+
+  /* Padding rather than margin, so the space travels inside the height
+     `disclose` closes (a margin would be left behind for one frame). */
+  .coming-back-dose-hint {
+    padding-top: var(--space-2);
+  }
+  .coming-back-dose-hint p {
+    margin: 0;
   }
 
   .coming-back-amount {
