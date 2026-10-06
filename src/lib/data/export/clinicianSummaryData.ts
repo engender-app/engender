@@ -129,6 +129,20 @@ export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] 
   return [...new Set(episodes.map((episode) => episode.drug))].sort((a, b) => a.localeCompare(b));
 }
 
+const spacedWords = (text: string) =>
+  ` ${text.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
+
+/** The ester a regimen row should name beside its drug, or null when there
+    is none or the drug's own name already says it ("Estradiol valerate"
+    with the ester "valerate" printed the ester twice, after-release 22).
+    Whole words only, so a name that merely starts with the ester still
+    gets it. */
+export function regimenEsterNote(drug: string, ester: string | null): string | null {
+  const note = ester?.trim();
+  if (!note) return null;
+  return spacedWords(drug).includes(spacedWords(note)) ? null : note;
+}
+
 /** Assembles all requested sections for the given range into a structured
     clinical dossier. Unselected sections are omitted as null. */
 export async function assembleClinicianDossier(

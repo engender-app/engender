@@ -25,11 +25,17 @@
 
 import { isReducedMotion } from './tokens';
 
-export type RowTop = { key: string; top: number };
+export type RowTop = { key: string; top: number; left: number };
 
-/** Where each row is painted, keyed. */
+/** Where each row is painted, keyed. Both axes, so a grid that reflows
+    sideways travels as well as a list that reflows down (the clinician
+    summary's profile card, after-release 22); a list's rows only ever
+    differ in `top`. */
 export function measureTops(rows: HTMLElement[], keyOf: (el: HTMLElement) => string): RowTop[] {
-  return rows.map((el) => ({ key: keyOf(el), top: el.getBoundingClientRect().top }));
+  return rows.map((el) => {
+    const box = el.getBoundingClientRect();
+    return { key: keyOf(el), top: box.top, left: box.left };
+  });
 }
 
 /** After a write has re-rendered the rows: start each at the top `before`
@@ -42,10 +48,12 @@ export function travelFrom(rows: HTMLElement[], keyOf: (el: HTMLElement) => stri
     el.style.transition = 'none';
     el.style.translate = '';
   }
-  const from = new Map(before.map((row) => [row.key, row.top]));
+  const from = new Map(before.map((row) => [row.key, row]));
   for (const el of rows) {
-    const top = from.get(keyOf(el));
-    if (top !== undefined) el.style.translate = `0 ${top - el.getBoundingClientRect().top}px`;
+    const was = from.get(keyOf(el));
+    if (!was) continue;
+    const box = el.getBoundingClientRect();
+    el.style.translate = `${was.left - box.left}px ${was.top - box.top}px`;
   }
   requestAnimationFrame(() => {
     for (const el of rows) {
