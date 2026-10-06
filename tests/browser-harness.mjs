@@ -10,7 +10,7 @@
    one exception to that: every probe that takes `--root` needs the same
    chdir, and twelve copies of it had already gone wrong (ticket 226). */
 import { chromium } from 'playwright-core';
-import { preview } from 'vite';
+import { serveBuild } from './serve-build.mjs';
 import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
@@ -167,16 +167,17 @@ export function createReporter() {
   return { ok, fail, finish, block };
 }
 
-/** A `vite preview` server over the built app in `root`.
+/** A server over the built app in `root`, serving build/index.html itself
+    under the production headers (serve-build.mjs, ticket 31). It was vite
+    preview until then, whose document had no CSP and no held module hints.
 
-    SvelteKit's preview adapter reads the built server from the working
-    directory, not from the root Vite is handed, so a probe given `--root
-    <other tree>` but started anywhere else served the tree it was started
-    in and compared a build with itself (tickets 224 and 226). This changes
-    into `root` first. Resolve any output path the caller takes before
-    calling it. Without `--root` the root is the checkout the probe runs in
-    and the change is a no-op. */
+    It still changes into `root` first, as it did for vite preview, whose
+    SvelteKit adapter read the built server from the working directory
+    (tickets 224 and 226): a probe given `--root <other tree>` that reads
+    relative paths afterwards keeps reading that tree. Resolve any output
+    path the caller takes before calling it. Without `--root` the root is
+    the checkout the probe runs in and the change is a no-op. */
 export function previewBuild(root) {
   process.chdir(root);
-  return preview({ root, preview: { port: 0 } });
+  return serveBuild(root);
 }
