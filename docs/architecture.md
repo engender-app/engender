@@ -239,7 +239,7 @@ flowchart LR
 
 **Database worker (web).** [mc-driver.ts](../src/lib/data/sqlite/mc-driver.ts) sends `{ id, op, args }` messages and the worker answers `{ id, ok, result }` or `{ id, ok: false, error }`. The worker handles messages strictly in arrival order through one promise chain. Its handlers include `open`, `convert`, query and run calls, the pre-migration copy (`VACUUM INTO` a URI that carries the same key) and `close`. Error text crosses the boundary as a string and never contains the key. The data key enters the worker once, as hex for `PRAGMA hexkey`.
 
-**Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](../src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Transactions don't nest.
+**Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](../src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Unrelated calls wait until the reserved transaction or snapshot ends. Transactions don't nest. Entry trash and restore, tryout adoption, procedure deletion and doubt-snapshot deletion commit their related writes together. A failed file cleanup after commit logs a warning and leaves reclamation to the boot sweep; the committed write still succeeds.
 
 **Android bridge.** On Android, [android-driver.ts](../src/lib/data/sqlite/android-driver.ts) talks to `SqlitePlugin` over the Capacitor bridge. Calls are pipelined (ADR-0089): each crosses as soon as it is made, carrying a session and a sequence number, and [CallSequencer.java](../android/app/src/main/java/dev/engender/app/sqlite/CallSequencer.java) runs them strictly in order on one thread. Bulk photo bytes skip the JSON bridge and go through two WebMessage channels (`PhotoPickChannel`, `PhotoWriteChannel`), registered with `WebViewCompat.addWebMessageListener` and limited to the `https://localhost` origin.
 
@@ -451,7 +451,7 @@ stateDiagram-v2
   Erased --> [*]
 ```
 
-A boot sweep reclaims orphaned media files. Reset ([data/reset.ts](../src/lib/data/reset.ts), and `DeviceResetPlugin` on Android) wipes everything the installation holds: OPFS, the boot mirror, the device-key IndexedDB and the PIN bindings. It never touches an archive made earlier (ADR-0014).
+A boot sweep reclaims orphaned media files. Android's photo listing excludes dotfiles, so `.nomedia` survives the sweep, and native file operations accept only the photo directory or named test directories in debug builds. Both native photo-write transports sync their file before acknowledging success. Reset ([data/reset.ts](../src/lib/data/reset.ts), and `DeviceResetPlugin` on Android) wipes everything the installation holds: OPFS, the boot mirror, the device-key IndexedDB and the PIN bindings. It never touches an archive made earlier (ADR-0014).
 
 ### 6.7 Media files
 
@@ -570,7 +570,7 @@ flowchart TD
 
 ### 7.3 Access modes and boot
 
-`JournalAccessMode` ([data/journal-access-mode.ts](../src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material, so a crash midway through changing modes can't downgrade the journal.
+`JournalAccessMode` ([data/journal-access-mode.ts](../src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material, so a crash midway through changing modes can't downgrade the journal. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
 
 ```mermaid
 stateDiagram-v2
@@ -767,7 +767,7 @@ Launcher aliases are exported, so a route extra by itself proves nothing about w
 The native features:
 
 - **Reminders.** `RemindersPlugin` and `ReminderScheduler` schedule exact alarms. `ReminderAlarmReceiver` fires them, and `ReminderRescheduleReceiver` restores them after a reboot. Quiet hours and the payload store sit beside them.
-- **Scheduled backups.** `AutoExportPlugin` derives the archive key natively (ADR-0042) and keeps a retention set ([BackupRetention.java](../android/app/src/main/java/dev/engender/app/backup/BackupRetention.java)).
+- **Scheduled backups.** `AutoExportPlugin` derives the archive key natively (ADR-0042) and keeps the five newest verified automatic backups ([BackupRetention.java](../android/app/src/main/java/dev/engender/app/backup/BackupRetention.java)). Pruning follows verification and touches only recorded app-owned backups. A temporarily unavailable folder keeps its setting for a later retry. Changing or disabling the destination releases its persisted SAF grant. The scheduler admits one check at a time and reports failures from status lookup or snapshotting as well as packing and delivery.
 - **Retrospective notifications.** These are the Wrapped and On-this-day notifications (`RetrospectiveNotificationsPlugin`).
 - **Widgets.** `QuickLogWidgetProvider`, `TallyWidgetProvider` and `DoubtWidgetProvider` extend `DisguisableWidgetProvider`. Their taps are launch routes.
 - **Everything else** is one plugin per concern: file delivery to the share sheet with encrypted staging, the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.

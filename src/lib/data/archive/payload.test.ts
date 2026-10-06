@@ -99,3 +99,9 @@ test('a v1 archive that never carried a preset at all is left saying nothing abo
   // would turn "the file does not say" into "the file says the default".
   assert.equal(scalesOf(migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION)), undefined);
 });
+
+ test('a v1 archive without preferences migrates without throwing', () => {
+  const bare = { journal: { presets: [] }, files: [] } as unknown as ArchivePayload;
+  const migrated = migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION);
+  assert.deepEqual(migrated.journal, bare.journal);
+});
