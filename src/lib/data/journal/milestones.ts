@@ -43,6 +43,7 @@ export interface MilestoneInput {
 
 export interface MilestonesArea {
   getMilestones(): Promise<Milestone[]>;
+  getNonProcedureDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /** The milestones dated to one day, in the same shape and order
       `getMilestones` reads them (phase 5 ticket 21). Its own query rather
       than a filter over that one, so the day view pays for the day it is
@@ -117,6 +118,14 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
   };
 
   return {
+    async getNonProcedureDaysInRange(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<{ epoch_day: number }>(
+        'SELECT DISTINCT epoch_day FROM milestone WHERE procedure_id IS NULL AND epoch_day BETWEEN ? AND ? ORDER BY epoch_day',
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map((row) => row.epoch_day);
+    },
+
     async getMilestones() {
       return withPhotos(await driver.query<MilestoneRow>(`${MILESTONE_SELECT} ORDER BY ms.epoch_day, ms.id`));
     },

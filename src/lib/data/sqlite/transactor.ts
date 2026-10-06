@@ -44,6 +44,41 @@ type RawSqliteDriver = Omit<SqliteDriver, 'readSnapshot' | 'transaction'> & {
 /** Reserves the connection for transaction and snapshot callbacks.
     Ordinary calls stay pipelined while no reservation is pending. */
 export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
+  const reads = new Map<string, Promise<Record<string, unknown>[]>>();
+  const invalidate = () => reads.clear();
+
+  function copyRows<Row extends Record<string, unknown>>(rows: Row[]): Row[] {
+    return rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) =>
+      [key, value instanceof Uint8Array ? value.slice() : value]
+    )) as Row);
+  }
+
+  function query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]> {
+    // SQLite bindings outside scalar values keep their own identity.
+    const readOnly = /^\s*SELECT\b/i.test(sql);
+    if (!readOnly) invalidate();
+    const cacheable = readOnly && (params ?? []).every((value) =>
+      value === null || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))
+    );
+    const key = cacheable ? JSON.stringify([sql, params ?? []]) : null;
+    if (key !== null) {
+      const existing = reads.get(key);
+      if (existing) return existing.then((rows) => copyRows(rows) as Row[]);
+    }
+    const result = Promise.resolve(call(() => {
+      if (!readOnly) invalidate();
+      return driver.query<Row>(sql, params);
+    }));
+    if (key !== null) {
+      if (reads.size >= 128) reads.delete(reads.keys().next().value!);
+      reads.set(key, result);
+      void result.catch(() => {
+        if (reads.get(key) === result) reads.delete(key);
+      });
+    }
+    return result.then((rows) => copyRows(rows));
+  }
+
   let active = 0;
   let idle: (() => void)[] = [];
   let blocked: Promise<void> | null = null;
@@ -79,6 +114,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
       while (active > 0) await new Promise<void>((resolve) => idle.push(resolve));
       return work();
     }).finally(() => {
+      invalidate();
       if (blocked === barrier) blocked = null;
       release();
     });
@@ -88,6 +124,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
 
   function transaction<T>(work: (scope: SqliteDriver) => T | Promise<T>): Promise<T> {
     const cleanups: (() => Promise<void>)[] = [];
+    invalidate();
     const writing = reserve(() => driver.transaction(async () => {
       let valid = true;
       function use<Result>(operation: () => Result): Result {
@@ -139,14 +176,13 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   }
 
   return {
-    exec: (sql) => call(() => driver.exec(sql)),
-    query: <Row extends Record<string, unknown>>(sql: string, params?: unknown[]) =>
-      Promise.resolve(call(() => driver.query<Row>(sql, params))),
-    run: (sql, params) => Promise.resolve(call(() => driver.run(sql, params))),
+    exec: (sql) => { invalidate(); return call(() => driver.exec(sql)); },
+    query,
+    run: (sql, params) => { invalidate(); return Promise.resolve(call(() => driver.run(sql, params))); },
     getUserVersion: () => call(() => driver.getUserVersion()),
-    setUserVersion: (version) => call(() => driver.setUserVersion(version)),
+    setUserVersion: (version) => { invalidate(); return call(() => driver.setUserVersion(version)); },
     transaction,
-    close: () => Promise.resolve(call(() => driver.close())),
+    close: () => { invalidate(); return Promise.resolve(call(() => driver.close())); },
     readSnapshot
   };
 }
