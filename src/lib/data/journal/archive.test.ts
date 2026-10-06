@@ -553,6 +553,42 @@ test('a lead time and doses per unit travel, and a restore keeps them', async ()
   assert.equal(restored?.dosesPerUnit, 5);
 });
 
+/* After-release ticket 16: a saved question's Starred filter is part of
+   what the question asks, so it travels, and an archive written before the
+   field existed restores its questions as not starred - what they answered
+   with when that archive was made. */
+test("a saved question's Starred filter travels, and an older archive restores it off", async () => {
+  const { journal } = await populated();
+  const starredId = await journal.savedQuestions.upsertSavedQuestion({
+    name: 'Starred days',
+    queryText: '',
+    tagIds: [],
+    moods: [],
+    startEpochDay: null,
+    endEpochDay: null,
+    hasNote: false,
+    hasPhoto: false,
+    starred: true
+  });
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.savedQuestions.find((q) => q.id === starredId)?.starred, true);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  assert.equal((await target.savedQuestions.getSavedQuestions()).find((q) => q.id === starredId)?.starred, true);
+
+  const older = {
+    ...snapshot.journal,
+    savedQuestions: snapshot.journal.savedQuestions.map(({ starred: _dropped, ...row }) => row)
+  } as typeof snapshot.journal;
+  const olderTarget = openJournal(await migratedDb(), fakeFileStore());
+  await olderTarget.reconcileBuiltIns();
+  await olderTarget.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.equal((await olderTarget.savedQuestions.getSavedQuestions()).find((q) => q.id === starredId)?.starred, false);
+});
+
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
   const { journal, photo, milestonePhoto, tryoutPhoto, recording, videoNote } = await populated();
 

@@ -17,7 +17,7 @@ import type { SavedQuestion } from './types';
     folded in - tag ids matched by *typing* stay a live lookup at run time
     (searchQuery.ts's `tagIdsMatching`), the same as an ad hoc search. */
 export function entrySearchFiltersOf(
-  saved: Pick<SavedQuestion, 'tagIds' | 'moods' | 'startEpochDay' | 'endEpochDay' | 'hasNote' | 'hasPhoto'>
+  saved: Pick<SavedQuestion, 'tagIds' | 'moods' | 'startEpochDay' | 'endEpochDay' | 'hasNote' | 'hasPhoto' | 'starred'>
 ): EntrySearchFilters {
   return {
     tagIds: saved.tagIds,
@@ -25,7 +25,8 @@ export function entrySearchFiltersOf(
     startEpochDay: saved.startEpochDay,
     endEpochDay: saved.endEpochDay,
     hasNote: saved.hasNote,
-    hasPhoto: saved.hasPhoto
+    hasPhoto: saved.hasPhoto,
+    starred: saved.starred
   };
 }
 
@@ -47,6 +48,7 @@ export function savedQuestionInputOf(
     startEpochDay: filters.startEpochDay ?? null,
     endEpochDay: filters.endEpochDay ?? null,
     hasNote: filters.hasNote ?? false,
-    hasPhoto: filters.hasPhoto ?? false
+    hasPhoto: filters.hasPhoto ?? false,
+    starred: filters.starred ?? false
   };
 }

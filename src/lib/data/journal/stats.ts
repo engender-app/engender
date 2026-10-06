@@ -170,6 +170,7 @@ export interface StatsArea {
       are left out: the list is something to act on, and a hidden tag is out
       of every place a user picks things (CONTEXT: Hidden). */
   tagInsights(metric: string, fromEpochDay: number, toEpochDay: number): Promise<TagInsight[]>;
+  metricInsights(metrics: readonly string[], fromEpochDay: number, toEpochDay: number): Promise<Map<string, { dayAverages: DayAverage[]; tagInsights: TagInsight[] }>>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
   /** One point per day a body region (bodyMap.ts) carried an intensity on
       the named axis in the range, oldest first, both ends inclusive - the
@@ -632,6 +633,46 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         [fromEpochDay, toEpochDay]
       );
       return rows.map((r) => ({ day: r.day, count: r.entries }));
+    },
+
+    async metricInsights(metrics, fromEpochDay, toEpochDay) {
+      metrics = [...new Set(metrics)];
+      const result = new Map(metrics.map((metric) => [metric, { dayAverages: [] as DayAverage[], tagInsights: [] as TagInsight[] }]));
+      if (metrics.length === 0) return result;
+      const values = metrics.map((metric) => ({ metric, ...metricValues(metric) }));
+      const sql = values.map((value) => `SELECT ? AS metric, v.* FROM (${value.sql}) v`).join(' UNION ALL ');
+      const params = values.flatMap((value) => [value.metric, ...value.params]);
+      const [averages, tags] = await Promise.all([
+        driver.query<{ metric: string; day: number; value: number; entries: number }>(
+          `WITH metric_value AS (${sql})
+           SELECT metric, epoch_day AS day, AVG(value) AS value, COUNT(*) AS entries FROM metric_value
+           WHERE epoch_day BETWEEN ? AND ? GROUP BY metric, epoch_day ORDER BY metric, epoch_day`,
+          [...params, fromEpochDay, toEpochDay]
+        ),
+        driver.query<{ metric: string; id: string; with_count: number; with_avg: number; without_avg: number }>(
+          `WITH metric_value AS (${sql}),
+                in_range AS (SELECT metric, entry_id, value FROM metric_value WHERE epoch_day BETWEEN ? AND ?),
+                range_total AS (SELECT metric, COUNT(*) AS entries, SUM(value) AS total FROM in_range GROUP BY metric),
+                per_tag AS (
+                  SELECT in_range.metric, COALESCE(t.key, t.uuid) AS id,
+                         COUNT(*) AS with_count, SUM(in_range.value) AS with_total
+                  FROM in_range JOIN entry_tag et ON et.entry_id = in_range.entry_id JOIN tag t ON t.id = et.tag_id
+                  WHERE t.hidden = 0 GROUP BY in_range.metric, t.id),
+                compared AS (
+                  SELECT per_tag.metric, id, with_count, with_total,
+                         range_total.entries - with_count AS without_count,
+                         range_total.total - with_total AS without_total
+                  FROM per_tag JOIN range_total ON range_total.metric = per_tag.metric)
+           SELECT metric, id, with_count, with_total * 1.0 / with_count AS with_avg,
+                  without_total * 1.0 / without_count AS without_avg
+           FROM compared WHERE with_count >= 3 AND without_count > 0
+           ORDER BY metric, ABS(with_avg - without_avg) DESC, id`,
+          [...params, fromEpochDay, toEpochDay]
+        )
+      ]);
+      for (const row of averages) result.get(row.metric)!.dayAverages.push({ day: row.day, value: row.value, count: row.entries });
+      for (const row of tags) result.get(row.metric)!.tagInsights.push({ id: row.id, count: row.with_count, withAvg: row.with_avg, withoutAvg: row.without_avg });
+      return result;
     },
 
     async tagInsights(metric, fromEpochDay, toEpochDay) {
