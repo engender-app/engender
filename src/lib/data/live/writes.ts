@@ -892,8 +892,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: { getEvents: ['tally'], getEventsOnDay: ['tally'], lastWriteEpochDay: ['tally'], latestEvent: ['tally'] }
   }),
   regimen: classify<Journal['regimen']>()({
-    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
-    reads: { getEpisodes: ['regimen'], hasAny: ['regimen'] }
+    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
+    reads: { getEpisodes: ['regimen'], getHiddenEpisodes: ['regimen'], hasAny: ['regimen'] }
   }),
   doses: classify<Journal['doses']>()({
     writes: {
