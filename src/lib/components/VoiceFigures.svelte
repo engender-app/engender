@@ -486,7 +486,16 @@
     height: 10px;
     border: 2px solid var(--role-draw);
     border-radius: 50%;
-    background: var(--surface);
+    /* The ring's edge, both sides, where the stripe needs one (--role-edge,
+       transparent otherwise): an outline outside the border, and the last
+       pixel of the card colour inside it. */
+    outline: 1px solid var(--role-edge);
+    background: radial-gradient(
+        circle closest-side,
+        var(--surface) calc(100% - 1px),
+        var(--role-edge) calc(100% - 1px)
+      )
+      padding-box;
     transform: translate(-50%, -50%);
   }
 
