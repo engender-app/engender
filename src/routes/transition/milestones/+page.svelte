@@ -177,7 +177,7 @@
   });
 
   function statusText(mi: Milestone): string {
-    const s = milestoneStatus(mi, todayEpochDay());
+    const s = milestoneStatus(mi, currentDay());
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
     if (s.type === 'today') return m.ms_status_today();
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
