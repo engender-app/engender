@@ -852,7 +852,7 @@ A returning visit with a full fixture reaches ready in about 0.6 s at 4x CPU thr
 **Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](../src/lib/data/sqlite/boot.ts)).
 
 **Long lists and media are rendered lazily.**
-- Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069).
+- Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069). A log that should grow only on request passes `autoGrow={false}`: the dose log does, so its day headings and older batches arrive through its show-more control, which discloses the new rows and collapses itself with its spacing once nothing is left.
 - Photo thumbnails decode at 320x320 and load behind an IntersectionObserver.
 - Object URLs are revoked when their element leaves.
 
