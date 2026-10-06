@@ -98,6 +98,7 @@ export function shouldShowPatchScheduleTile(params: {
   doses: readonly DoseEvent[];
   pauses: readonly DosePause[];
   todayEpochDay: number;
+  formatNumber?: (value: number) => string;
   enabled: boolean;
   snoozed: boolean;
 }): PatchScheduleTileResult | null {
@@ -141,8 +142,8 @@ export function shouldShowPatchScheduleTile(params: {
     if (unloggedSlot) {
       const expAmount = expectedAmountOn(adh, params.todayEpochDay);
       const doseAmount = expAmount
-        ? `${expAmount.dose} ${expAmount.doseUnit}`
-        : `${episode.dose} ${episode.doseUnit}`;
+        ? m.tile_patch_schedule_amount({ dose: (params.formatNumber ?? String)(expAmount.dose), unit: expAmount.doseUnit })
+        : m.tile_patch_schedule_amount({ dose: (params.formatNumber ?? String)(episode.dose), unit: episode.doseUnit });
 
       return {
         episode,
@@ -558,6 +559,7 @@ export interface HomeTileActions {
 /* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
    cross-checks against it (AU-09 test-only review). */
 export interface HomeTileFormat {
+  number?: (value: number) => string;
   /** A full date - the day a letter unlocked. */
   fullDay: (epochDay: number) => string;
   /** A day and a short month - when a pause ends. */
@@ -880,6 +882,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
     'patch-schedule-tile': (gate) => {
       const qualifying = shouldShowPatchScheduleTile({
+        formatNumber: format.number,
         episodes: reads.episodes,
         schedules: reads.schedules,
         doses: reads.todayDoses,
@@ -895,7 +898,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         attrs: { 'data-patch-schedule-tile': true },
         title: m.tile_patch_schedule_title(),
         value: qualifying.episode.drug,
-        note: `${qualifying.doseAmount} · ${qualifying.route}`,
+        note: m.tile_patch_schedule_detail({ amount: qualifying.doseAmount, route: qualifying.route }),
         href: '/care/doses',
         action: {
           icon: 'plus',
