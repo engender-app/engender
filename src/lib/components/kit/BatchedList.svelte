@@ -58,7 +58,11 @@
     key: string;
     /** A role from $lib/theme/roles.ts, passed straight to the card. */
     role?: Role;
-    /** False for logs that reveal older rows only through their control. */
+    /** False for a log that grows only when its control is pressed: no
+        scroll sentinel, and the control discloses on the way in and gives
+        back its own spacing on the way out, so the card's foot does not
+        jump when the last batch arrives. The dose log uses it (after-release
+        05); true keeps the scroll-grown behaviour every other list has. */
     autoGrow?: boolean;
     /** The screen's rows, rendered over the slice that is showing. */
     rows: Snippet<[T[]]>;
