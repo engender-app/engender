@@ -306,6 +306,17 @@
     });
   });
   let annivOffer = $state<Milestone | null>(null);
+  /* An offer known by the time the milestones first paint arrives with
+     them, in place, rather than opening a frame later and pushing the rail
+     down 114px under someone who is already looking at it. Once the rail
+     has painted, an offer that answers late, and a row that goes, open and
+     close as usual. */
+  let annivArrived = $state(false);
+  $effect(() => {
+    if (annivArrived || !vocabulary.ready) return;
+    const id = requestAnimationFrame(() => (annivArrived = true));
+    return () => cancelAnimationFrame(id);
+  });
 
   async function answerAnnivOffer(given: OfferAnswer, input: { mood: number; note: string | null } | null) {
     const open = annivOffer;
@@ -353,10 +364,10 @@
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
       {#if anniversaries.length}
-        <div class="screen-part" data-anniv-offers transition:disclose>
+        <div class="screen-part" data-anniv-offers transition:disclose={{ skip: !annivArrived }}>
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each anniversaries as { mi, years } (mi.id)}
-              <div transition:disclose>
+              <div class="rows-divide" transition:disclose>
                 <ListRow
                   data-anniv-feeling={mi.id}
                   onclick={() => (annivOffer = mi)}

@@ -493,24 +493,28 @@
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
             <!-- The reading first, then when (phase 15 after-release ticket
                  15): this log is "how it's felt", and rows that held only a
-                 date never said how. -->
-            <ListRow
-              static
-              data-feeling={f.id}
-              data-feeling-mood={f.mood}
-              title={moodName(f.mood)}
-              subtitle={[dayLabel(f.epochDay), f.note]}
-              action={{
-                icon: 'trash',
-                label: m.tryout_feeling_delete_sheet(),
-                onclick: () => feelingRecord.askToDelete(f),
-                attrs: { 'data-delete-feeling': f.id }
-              }}
-            >
-              {#snippet leading()}
-                <span class="feeling-face"><MoodFace step={f.mood} size={36} /></span>
-              {/snippet}
-            </ListRow>
+                 date never said how. A reading saved or deleted here opens
+                 or closes its row rather than appearing or vanishing in one
+                 frame; the rows already there when the log loads do not. -->
+            <div class="rows-divide" transition:disclose>
+              <ListRow
+                static
+                data-feeling={f.id}
+                data-feeling-mood={f.mood}
+                title={moodName(f.mood)}
+                subtitle={[dayLabel(f.epochDay), f.note]}
+                action={{
+                  icon: 'trash',
+                  label: m.tryout_feeling_delete_sheet(),
+                  onclick: () => feelingRecord.askToDelete(f),
+                  attrs: { 'data-delete-feeling': f.id }
+                }}
+              >
+                {#snippet leading()}
+                  <span class="feeling-face"><MoodFace step={f.mood} size={36} /></span>
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
       {/snippet}

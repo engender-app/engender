@@ -91,7 +91,7 @@ try {
       els.map((el) => ({
         title: el.querySelector('[data-row-title]')?.textContent.trim(),
         sub: el.querySelector('.kit-row-sub')?.textContent.trim() ?? '',
-        face: el.querySelector('svg') !== null
+        face: el.querySelector('svg.mood-face') !== null
       }))
     );
     assert.equal(read[0].title, 'great', JSON.stringify(read));
@@ -148,6 +148,7 @@ try {
     assert.deepEqual(stored.map((f) => [f.epochDay, f.mood]), [[seeded.today, 4]]);
     // Answered today, so a second visit does not ask again.
     await navigate('/more');
+    await page.locator('[data-hub-search]').waitFor();
     await navigate('/transition/milestones');
     await page.locator('[data-ms-log-toggle]').waitFor();
     assert.equal(await offer.count(), 0);
