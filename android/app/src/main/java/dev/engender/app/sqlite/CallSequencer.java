@@ -32,7 +32,6 @@ final class CallSequencer {
     private static final class Session {
         long next = 0;
         final Map<Long, Pending> held = new HashMap<>();
-        boolean closed;
     }
 
     private static final class Pending {
@@ -68,8 +67,7 @@ final class CallSequencer {
         state.next++;
         Pending following;
         while ((following = state.held.remove(state.next)) != null) {
-            if (state.closed) following.refuse.accept("sqlite session is closed");
-            else runSafely(following.work);
+            runSafely(following.work);
             state.next++;
         }
     }
@@ -77,7 +75,10 @@ final class CallSequencer {
     /** Called by the sequenced close, after the connection has been closed. */
     void finish(String session) {
         Session state = sessions.remove(session);
-        if (state != null) state.closed = true;
+        if (state != null) {
+            for (Pending pending : state.held.values()) pending.refuse.accept("sqlite session is closed");
+            state.held.clear();
+        }
         closedSessions.add(session);
         if (closedSessions.size() > 64) closedSessions.remove(closedSessions.iterator().next());
     }

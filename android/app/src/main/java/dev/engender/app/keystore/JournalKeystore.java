@@ -6,11 +6,14 @@ import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.system.Os;
+import android.system.OsConstants;
 
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileDescriptor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -110,10 +113,18 @@ public final class JournalKeystore {
     private static final String KEYSTORE = "AndroidKeyStore";
     private static final String TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
 
+    interface DirectorySync { void sync(File directory) throws Exception; }
+
     private final Context context;
+    private final DirectorySync directorySync;
 
     public JournalKeystore(Context context) {
+        this(context, JournalKeystore::syncDirectory);
+    }
+
+    JournalKeystore(Context context, DirectorySync directorySync) {
         this.context = context.getApplicationContext();
+        this.directorySync = directorySync;
     }
 
     /** Whether a lock screen exists at all. Without one the platform refuses
@@ -178,6 +189,7 @@ public final class JournalKeystore {
             cipher.init(Cipher.ENCRYPT_MODE, wrappingKey, oaepParameters());
             writeWrappedKey(variant, nextAlias, cipher.doFinal(dataKey));
             committed = true;
+            directorySync.sync(context.getFilesDir());
         } finally {
             if (!committed && keystore.containsAlias(nextAlias)) keystore.deleteEntry(nextAlias);
         }
@@ -383,6 +395,12 @@ public final class JournalKeystore {
         } finally {
             if (staged.isFile()) staged.delete();
         }
+    }
+
+    private static void syncDirectory(File directory) throws Exception {
+        FileDescriptor descriptor = Os.open(directory.getPath(), OsConstants.O_RDONLY, 0);
+        try { Os.fsync(descriptor); }
+        finally { Os.close(descriptor); }
     }
 
     private static final class StoredWrap {
