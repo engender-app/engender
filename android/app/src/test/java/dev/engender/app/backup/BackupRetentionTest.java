@@ -60,9 +60,9 @@ public class BackupRetentionTest {
         assertTrue(documents.get(0).deleted);
     }
 
-    @Test public void leavesPreviouslyChosenFoldersAndDirectoriesAlone() {
+    @Test public void forgetsMissingDocumentsWithoutDeletingOtherFolders() {
         List<String> verified = new ArrayList<>(Arrays.asList("old-folder"));
         BackupRetention.prune(verified, new ArrayList<Document>());
-        assertEquals(Arrays.asList("old-folder"), verified);
+        assertTrue(verified.isEmpty());
     }
 }

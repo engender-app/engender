@@ -20,7 +20,10 @@ final class BackupRetention {
         int retained = 0;
         for (int i = verified.size() - 1; i >= 0; i--) {
             Document document = current.get(verified.get(i));
-            if (document == null) continue;
+            if (document == null) {
+                verified.remove(i);
+                continue;
+            }
             String name = document.name();
             if (name == null || !name.startsWith("auto-") || !name.endsWith(".ttbackup")) continue;
             if (++retained > KEEP && document.delete()) verified.remove(i);
