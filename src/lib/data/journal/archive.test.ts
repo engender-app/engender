@@ -517,7 +517,8 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       openedEpochDay: null,
       inUseWindowDays: null,
       inUseEndEpochDay: null,
-      leadTimeDays: null
+      leadTimeDays: null,
+      dosesPerUnit: null
     }
   ]);
 });
@@ -526,19 +527,21 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
    not derivable, so it has to travel rather than defaulting silently to
    null on the other end - the same reasoning ticket 43's end reason test
    above gives. */
-test('a lead time travels, and a restore keeps it', async () => {
+test('a lead time and doses per unit travel, and a restore keeps them', async () => {
   const { journal, stock } = await populated();
   await journal.stock.upsertEntry({
     drug: 'estradiol valerate',
     quantity: 10,
     unit: 'vials',
     recordedEpochDay: 19000,
-    leadTimeDays: 21
+    leadTimeDays: 21,
+    dosesPerUnit: 5
   });
 
   const snapshot = await journal.archive.snapshot();
 
   assert.equal(snapshot.journal.medicationStock.find((s) => s.id === stock)?.leadTimeDays, 21);
+  assert.equal(snapshot.journal.medicationStock.find((s) => s.id === stock)?.dosesPerUnit, 5);
 
   const target = openJournal(await migratedDb(), fakeFileStore());
   await target.reconcileBuiltIns();
@@ -546,6 +549,7 @@ test('a lead time travels, and a restore keeps it', async () => {
 
   const restored = (await target.stock.getEntries()).find((s) => s.id === stock);
   assert.equal(restored?.leadTimeDays, 21);
+  assert.equal(restored?.dosesPerUnit, 5);
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {

@@ -51,12 +51,20 @@
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
 
   let passphrase = $state('');
   let error = $state('');
   let busy = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
+  let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
   /* Which row of the module is open, so this gate's own title can name it
      rather than leaving "How should your journal open?" over a screen where
      that has already been answered. */
@@ -264,8 +272,7 @@
     } catch (e) {
       console.error('the app reset failed', e);
       resetting = false;
-      resetOpen = false;
-      error = m.reset_failed();
+      resetError = m.reset_failed();
     }
   }
 </script>
@@ -383,14 +390,24 @@
           >{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span
         >
       {/if}
+      <!-- The gate's own notes, not the mid-session ones: those send
+           somebody to reopen the app for the recovery key, and this gate
+           already offers it beside the button that opened this sheet
+           (after-release ticket 09). -->
       {unlockingPin
-        ? m.pin_forgot_key_note()
+        ? m.pin_forgot_gate_note()
         : unlockingBiometric
-          ? m.bm_forgot_key_note()
-          : m.pp_forgot_key_note()}
+          ? m.bm_forgot_gate_note()
+          : m.pp_forgot_gate_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {#if resetError}
+    <!-- In the sheet, which stays open: the sheet is where the button was
+         pressed, and closing it on a failure left the gate looking as if
+         nothing had happened (after-release ticket 09). -->
+    <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
+  {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
       <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>

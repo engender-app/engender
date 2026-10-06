@@ -15,6 +15,22 @@ type BootStatus =
   | 'schema-too-new'
   | 'error';
 
+/** Which failure a boot ended in, in the terms the failure screen speaks
+    (after-release ticket 09). The raw text stays in `error`, which the screen
+    shows only behind its bug-report control.
+
+    - `unreadable`: the key does not read the journal file. SQLCipher reports a
+      wrong key and a file that is not a database the same way, SQLITE_NOTADB
+      (ADR-0020), and retrying cannot fix either (ux-carpet 210).
+    - `below-baseline`: a development build's journal from before the
+      squashed baseline (migrations.ts), which this build cannot carry forward.
+    - `android-plaintext`: a phone still holding a journal from before Android
+      encryption.
+    - `engine`: the database itself never started - the worker or its wasm
+      failed to load, or the SQLite build lacks FTS5.
+    - `unknown`: anything nobody has named yet. */
+export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'unknown';
+
 type PendingConversion = { progress: null };
 type ConversionState = { progress: ConversionProgress | null };
 
@@ -22,6 +38,7 @@ interface BootShape {
   status: BootStatus;
   accessMode: JournalAccessMode;
   error: string | null;
+  failure: BootFailure | null;
   persistDenied: boolean;
   recoverable: boolean;
   journal: Journal | null;
@@ -130,6 +147,7 @@ type SchemaTooNewState = BootShape & {
 type ErrorState = BootShape & {
   status: 'error';
   error: string;
+  failure: BootFailure;
   journal: null;
   persistDenied: false;
   conversion: null;
@@ -171,6 +189,7 @@ function invalidTransition(state: BootState, target: MutableTarget): never {
 function base() {
   return {
     error: null,
+    failure: null,
     persistDenied: false,
     recoverable: false,
     journal: null,
@@ -302,12 +321,13 @@ function markPersistDenied(state: BootState): BootState {
   return { ...state, persistDenied: true };
 }
 
-function failure(state: BootState, error: string): ErrorState {
+function failure(state: BootState, error: string, kind: BootFailure): ErrorState {
   return {
     status: 'error',
     accessMode: state.accessMode,
     ...base(),
-    error
+    error,
+    failure: kind
   };
 }
 
@@ -336,15 +356,6 @@ export function isReadyState(state: BootState): state is ReadyState {
 
 export function isErrorState(state: BootState): state is ErrorState {
   return state.status === 'error';
-}
-
-/** A boot that failed because the key does not read the journal file:
-    SQLCipher reports a wrong key and a file that is not a database the same
-    way, SQLITE_NOTADB (ADR-0020). Retrying cannot fix either, so the error
-    screen offers a restore or a fresh start beside the retry (ux-carpet
-    210). The plaintext-journal case has its own sentence and is not this. */
-export function journalIsUnreadable(state: BootState): boolean {
-  return isErrorState(state) && /not a database|SQLITE_NOTADB/i.test(state.error);
 }
 
 type BootGate = 'none' | 'passphrase' | 'authentication' | 'device-recovery' | 'schema-too-new';
