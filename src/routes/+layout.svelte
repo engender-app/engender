@@ -115,10 +115,8 @@
 
   /* The passphrase gate (ticket 09) renders before the database can even
      open, the same way the lock renders instead of the app: no route shows
-     journal content, because there is no journal to show yet. Ticket 10's
-     two states belong to the same gate - a conversion running, and one
-     that could not start - because both are the same "there is no journal
-     open yet, and here is why". */
+     journal content, because there is no journal to show yet. Unsupported
+     legacy storage meets this gate's refusal screen. */
   let gate = $derived(bootGate(bootState));
 
   let path = $derived(page.url.pathname);

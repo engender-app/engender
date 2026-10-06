@@ -9,7 +9,7 @@
    only thing above this file that knows a database is involved at all.
 
    Since phase 5 audit ticket 14 it decides nothing. boot-machine.ts holds the
-   order - web and Android, first run and unlock, conversion, a refused key, a
+   order - web and Android, first run and unlock, unsupported legacy storage, a refused key, a
    schema from a newer build - and this is its adapter: an effect arrives, the
    platform is asked, and what it answered goes back as an event. The reducer's
    state is mirrored into the rune below and read by the layout and the gates
@@ -28,9 +28,9 @@ import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sql
 import { prewarmArgon2 } from '../crypto/argon2id';
 import { forgetLastResults } from '../data/live/lastResults';
 import type { SqliteDriver } from '../data/sqlite/driver';
-import type { WebSqlite } from '../data/sqlite/sqlocal-driver';
+import type { WebSqlite } from '../data/sqlite/driver';
 import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
-import { JOURNAL_DATABASE } from '../data/conversion/plaintext-journal';
+import { JOURNAL_DATABASE } from '../data/legacy-journal';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';

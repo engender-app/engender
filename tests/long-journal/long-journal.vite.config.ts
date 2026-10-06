@@ -5,11 +5,11 @@
    plugin. run.mjs loads it explicitly. */
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
-import sqlocal from 'sqlocal/vite';
 
 export default defineConfig({
+  server: { headers: { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' } },
   root: import.meta.dirname,
-  plugins: [sqlocal()],
+  plugins: [],
   define: {
     __DEMO__: JSON.stringify(false)
   },
