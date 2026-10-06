@@ -101,14 +101,30 @@
          not sharing the connection with ninety-eight modules nothing waits
          for. They are given back once the document has parsed and the first
          frame has had its turn. Outside the try above, so a browser with no
-         storage still loads its modules. */
-      addEventListener('DOMContentLoaded', () => {
-        requestAnimationFrame(() =>
-          setTimeout(() => {
-            for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
-          })
-        );
-      });
+         storage still loads its modules.
+
+         Over HTTP/1.1 there is no one connection to share: the browser opens
+         six, and holding the hints only queued the modules behind the first
+         frame, which put the first screen 0.3 s later (after-release ticket
+         31, audit PERF-03). There each hint is given back as the parser adds
+         it. Only HTTP/1.x is named, so a page with no protocol to read (the
+         offline shell, the Android WebView) keeps the hold it always had. */
+      {
+        const give = () => {
+          for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
+        };
+        const protocol = performance.getEntriesByType('navigation')[0]?.nextHopProtocol;
+        if (protocol === 'http/1.1' || protocol === 'http/1.0') {
+          const watch = new MutationObserver(give);
+          watch.observe(document.documentElement, { childList: true, subtree: true });
+          addEventListener('DOMContentLoaded', () => {
+            watch.disconnect();
+            give();
+          });
+        } else {
+          addEventListener('DOMContentLoaded', () => requestAnimationFrame(() => setTimeout(give)));
+        }
+      }
     </script>
     <style>
       /* The first frame (phase 14 pre-release ticket 13): the ground and the
