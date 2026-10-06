@@ -26,9 +26,10 @@
         unlikely, but a walkthrough handle or a label/input pairing should
         never collide on it. */
     fieldId: string;
-    /** What Skip falls back to, in the caller's own terms. The shared line
-        names both owners, which read oddly inside an entry (audit UX-05). */
-    hint?: string;
+    /** What Skip falls back to, in the caller's own terms. Required: a
+        shared line had to name both owners, which read oddly inside an
+        entry and inside a milestone alike (audits UX-05 and UX-13). */
+    hint: string;
     /** Whatever the caller's own day means: bake it into the picked photo,
         write it to a stored one, whichever the flow this sheet interrupts
         is doing. */
@@ -42,7 +43,7 @@
 <Sheet {open} title={m.photo_day_prompt_title()} onClose={onSkip}>
   {#if open}
     <h3>{m.photo_day_prompt_title()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-4)">{hint ?? m.photo_day_prompt_hint()}</p>
+    <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
     <Field label={m.photo_day_label()} id={fieldId}>
       {#snippet children(id)}
         <DatePicker name={fieldId} bind:value={day} {id} />
