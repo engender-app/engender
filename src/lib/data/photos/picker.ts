@@ -15,6 +15,7 @@
 import { chooseFiles } from '../fileDialog';
 import { isAndroid } from '../../platform';
 import { androidPhotos } from './android-bridge';
+import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel';
 import { refuseAboveCeiling, refuseTooLarge } from '../documents/accept';
 
@@ -83,7 +84,13 @@ async function pickedBytesInChunks(token: string): Promise<Uint8Array> {
     one place deciding which transport a token is read over is the point. */
 export async function androidPickedBytes(token: string): Promise<Uint8Array> {
   const viaChannel = readPickedOverChannel(token);
-  if (viaChannel) return viaChannel;
+  if (viaChannel) {
+    try {
+      return await viaChannel;
+    } catch (error) {
+      if (!(error instanceof PhotoChannelTimeoutError)) throw error;
+    }
+  }
   return pickedBytesInChunks(token);
 }
 

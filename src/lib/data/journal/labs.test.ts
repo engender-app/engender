@@ -24,3 +24,15 @@ test('getResultById finds an existing lab result by UUID and returns null for un
   const missing = await journal.labs.getResultById('00000000-0000-4000-8000-000000000000');
   assert.equal(missing, null);
 });
+
+test('ranged lab reads include boundaries across analytes and omit older history', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  for (const [epochDay, analyte] of [[20000, 'estradiol'], [20001, 'testosterone'], [20002, 'estradiol'], [20003, 'testosterone']] as const) {
+    await journal.labs.upsertResult({ epochDay, analyte, value: 10 });
+  }
+  assert.deepEqual((await journal.labs.getResultsInRange(20001, 20002)).map((result) => [result.epochDay, result.analyte]), [
+    [20001, 'testosterone'], [20002, 'estradiol']
+  ]);
+  assert.deepEqual(await journal.labs.getResultsInRange(20004, 20005), []);
+  await db.close();
+});

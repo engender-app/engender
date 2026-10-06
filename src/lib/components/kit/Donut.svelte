@@ -118,17 +118,22 @@
   }
 
   let active = $state<string | null>(null);
+  /* The row a tap or a key toggled on, which is what aria-pressed says
+     (after-release 18, L06-04). Hover shows the same amount but is not a
+     press, so a pointer passing over a row never announces one; leaving a
+     row hands the display back to whatever is pressed. */
+  let pressed = $state<string | null>(null);
 
   function enter(e: PointerEvent, key: string) {
     if (e.pointerType === 'mouse') active = key;
   }
   function leave(e: PointerEvent, key: string) {
-    if (e.pointerType === 'mouse' && active === key) active = null;
+    if (e.pointerType === 'mouse' && active === key) active = pressed;
   }
   /* A finger has no hover, so its own pointerup is the toggle - the same
      touch equivalent OrderedStrip's own tooltip decided on. */
   function tap(e: PointerEvent, key: string) {
-    if (e.pointerType !== 'mouse') active = active === key ? null : key;
+    if (e.pointerType !== 'mouse') active = pressed = pressed === key ? null : key;
   }
   /* The legend row's own button fires a click on Enter/Space too, with no
      pointer event under it at all - detail is 0 only for that case, never
@@ -136,7 +141,7 @@
      tap() above cannot reach: a keyboard toggling what a pointer's enter
      and leave already handle for anyone with one. */
   function keyboardToggle(e: MouseEvent, key: string) {
-    if (e.detail === 0) active = active === key ? null : key;
+    if (e.detail === 0) active = pressed = pressed === key ? null : key;
   }
 </script>
 
@@ -196,6 +201,7 @@
           type="button"
           class="kit-donut-item-btn"
           class:is-hovered={active === slice.key}
+          aria-pressed={pressed === slice.key}
           data-donut-slice={slice.key}
           onpointerenter={(e) => enter(e, slice.key)}
           onpointerleave={(e) => leave(e, slice.key)}
@@ -356,7 +362,6 @@
     padding: 0;
     list-style: none;
     display: grid;
-    gap: var(--space-2);
   }
 
   .kit-donut-item {
@@ -369,14 +374,20 @@
      "cover the whole reading" reasoning .kit-bar.is-open gives for a
      pressable bar row - half a legend row answering to a pointer and
      half not would read as an accident here too. */
+  /* Each row is the touch floor tall and the rows touch, so the legend's
+     rhythm is the rows themselves rather than a gap between 27px rows
+     (after-release 18, L06-04): 48px rows 8px apart would have spread the
+     legend for nothing, and 27px rows with an overlay could not reach the
+     floor without covering each other. */
   .kit-donut-item-btn {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     width: 100%;
     min-width: 0;
-    margin: -2px calc(var(--space-1) * -1);
-    padding: 2px var(--space-1);
+    min-height: var(--touch-target);
+    margin: 0 calc(var(--space-1) * -1);
+    padding: 0 var(--space-1);
     border: 0;
     border-radius: var(--r-block);
     background: none;

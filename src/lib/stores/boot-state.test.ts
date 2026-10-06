@@ -77,3 +77,14 @@ test('refusal keeps onboarding and session lock out; only ready journals can loc
   expect(midSessionLockApplies(bootTransitions.toReady(base, { journal: {} as never }))).toBe(true);
   expect(() => bootTransitions.toReady(refused, { journal: {} as never })).toThrow(/invalid transition/i);
 });
+
+
+test('only an unfinished boot, a key gate or an error can enter booting', () => {
+  const initial = bootStates.booting();
+  expect(bootTransitions.toBooting(initial)).toBe(initial);
+  const unlock = bootTransitions.toNeedsUnlock(initial, { accessMode: 'passphrase' });
+  expect(bootTransitions.toBooting(unlock).status).toBe('booting');
+  expect(bootTransitions.toBooting(bootTransitions.toError(initial, 'failed', 'unknown')).status).toBe('booting');
+  expect(() => bootTransitions.toBooting(bootTransitions.toReady(initial, { journal: {} as never }))).toThrow('Invalid transition');
+  expect(() => bootTransitions.toBooting(bootTransitions.toSchemaTooNew(initial))).toThrow('Invalid transition');
+});

@@ -1081,7 +1081,7 @@
         {@const role = roleAt(activeFlag.roles, p.roleIndex)}
         <button
           type="button"
-          class="contextual-chip presentation-chip press"
+          class="contextual-chip presentation-chip hit-floor press"
           class:is-active={entryDraft.presentationId === p.id}
           {...roleAttrs(role)}
           role="radio"
@@ -1316,7 +1316,7 @@
         ] as opt (opt.step)}
           <button
             type="button"
-            class="contextual-chip press"
+            class="contextual-chip hit-floor press"
             class:is-active={entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id && entryDraft.tryoutFeltSense?.mood === opt.step}
             role="radio"
             aria-checked={entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id && entryDraft.tryoutFeltSense?.mood === opt.step}
@@ -1367,7 +1367,7 @@
         {@const stockRow = stockFor(doseItem.drug)}
         <button
           type="button"
-          class="contextual-chip dose-chip press"
+          class="contextual-chip dose-chip hit-floor press"
           class:is-active={entryDraft.doseLog?.drug === doseItem.drug}
           aria-pressed={entryDraft.doseLog?.drug === doseItem.drug}
           onclick={() => {
@@ -1472,7 +1472,7 @@
       {/each}
       <button
         type="button"
-        class="contextual-chip press"
+        class="contextual-chip hit-floor press"
         onclick={() => (effectSheetOpen = true)}
       >
         <Icon name="plus" size={16} />
@@ -1494,7 +1494,7 @@
         ] as item (item.kind)}
           <button
             type="button"
-            class="contextual-chip press"
+            class="contextual-chip hit-floor press"
             class:is-active={entryDraft.cycleEvent?.kind === item.kind}
             aria-pressed={entryDraft.cycleEvent?.kind === item.kind}
             onclick={() => {
@@ -1838,19 +1838,13 @@
     cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  /* Only where the chip is itself the control (ticket 99 item 19, "when i
+  /* The 48px target is the shared .hit-floor box (components.css), and only
+     on the chips that are themselves a <button> (ticket 99 item 19, "when i
      select an effect, i cannot deselect it even though i am clicking on the
-     'x'"). This box exists to grow a 36px pill's hit area to the touch
-     target, which is worth doing on a chip that is a <button> and is worth
-     nothing on the one chip that is a <div> wrapping its own dismiss
-     button - there it was an overlay with no handler, painted after its
+     'x'"). The one chip that is a <div> wrapping its own dismiss button
+     must not carry it: an overlay with no handler, painted after its
      sibling button because a positioned pseudo-element with auto z-index
-     paints in tree order, so it swallowed every press on the x. */
-  button.contextual-chip::after {
-    content: '';
-    position: absolute;
-    inset: -6px 0;
-  }
+     paints in tree order, swallowed every press on the x. */
   .contextual-chip:hover {
     border-color: var(--accent-border, var(--outline));
   }
