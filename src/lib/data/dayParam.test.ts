@@ -6,7 +6,7 @@ const today = 20732;
 describe('day URL parameter', () => {
   it.each([
     ['today', today], ['0', 0], ['20731', 20731], ['99999', 99999],
-    ['1970-01-01', 0], ['2026-10-05', 20731], ['2024-02-29', 19782],
+    ['1970-01-01', 0], ['2011-12-30', 15338], ['2026-10-05', 20731], ['2024-02-29', 19782],
     ['9999-12-31', 2932896]
   ])('reads %s as epoch day %s', (raw, day) => {
     expect(parseDayParam(raw as string, today)).toBe(day);

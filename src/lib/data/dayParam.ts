@@ -1,6 +1,5 @@
 import {
-  dateInputValueFromEpochDay,
-  epochDayFromDateInputValue,
+  epochDayFromCalendarDate,
   FIRST_EPOCH_DAY,
   localDateFromEpochDay
 } from './epochDay';
@@ -13,8 +12,10 @@ export function parseDayParam(value: string | undefined, today: number): number 
   if (/^\d+$/.test(value)) {
     day = Number(value);
   } else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    day = epochDayFromDateInputValue(value)!;
-    if (dateInputValueFromEpochDay(day) !== value) return null;
+    const [year, month, dayOfMonth] = value.split('-').map(Number);
+    const parsed = epochDayFromCalendarDate(year, month, dayOfMonth);
+    if (parsed === null) return null;
+    day = parsed;
   } else {
     return null;
   }
