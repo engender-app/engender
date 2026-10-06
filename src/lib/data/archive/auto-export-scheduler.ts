@@ -57,21 +57,16 @@ async function maybeRun() {
   const now = Date.now();
   if (now - lastAttemptAt < MIN_GAP_MS) return;
 
-  /* Before the due check, not after: a notice held from last week's failure
-     is waiting on the window ending, not on the next backup being due. */
-  await reportFailure(false, now);
-
-  const status = await androidAutoExport.status();
-  /* Dynamic, not a top-of-file import: this drags in the packer and the
-     payload/preference-migration code (135 KB combined with the date
-     picker), which every cold boot paid for even though the check right
-     below is due maybe once a week (phase 8 audit F6). */
-  const { isDue, runAndroidAutoExport } = await import('./android-auto-export');
-  if (!isDue(status, now)) return;
-
   running = true;
   lastAttemptAt = now;
   try {
+    /* A held notice waits for quiet hours to end, not for another backup. */
+    await reportFailure(false, now);
+    const status = await androidAutoExport.status();
+    // Packing stays deferred until this Android-only check runs.
+    const { isDue, runAndroidAutoExport } = await import('./android-auto-export');
+    if (!isDue(status, now)) return;
+
     const result = await runAndroidAutoExport(
       {
         snapshot: await journal.archive.snapshot(),
