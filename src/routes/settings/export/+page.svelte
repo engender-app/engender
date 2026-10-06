@@ -774,7 +774,7 @@
         <!-- The age beside it already says how long ago; the mark only says
              that it is long enough to act on. It used to be a badge reading
              "Over 30 days ago" under "34 days ago" (audit UX-11). -->
-        <span class="notice-warn backup-stale-mark" data-backup-stale><Icon name="alert" size={18} /></span>
+        <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()}><Icon name="alert" size={18} /></span>
       {:else}
         <Icon name="check" size={20} />
       {/if}
