@@ -69,6 +69,18 @@ export function timestampAtLocalTime(epochDay: number, time: string): number {
   return d.getTime();
 }
 
+/** Calendar fields → epoch day, or null for an invalid date. Month is 1–12.
+    UTC fields validate the calendar without normalizing dates skipped by a
+    timezone change. The Date here counts calendar days, not an instant. */
+export function epochDayFromCalendarDate(year: number, month: number, day: number): number | null {
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day) {
+    return null;
+  }
+  return Math.floor(calendar.getTime() / DAY);
+}
+
 /** `<input type="date">` value → epoch day, or null for the empty string.
     The single place that guard lives; callers fall back with `?? …`. */
 export function epochDayFromDateInputValue(value: string): number | null {

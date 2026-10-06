@@ -1,11 +1,14 @@
 <script lang="ts">
   import { page } from '$app/state';
   import EntryEditor from '$lib/components/EntryEditor.svelte';
+  import { m } from '$lib/paraglide/messages';
+  import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import Notice from '$lib/components/kit/Notice.svelte';
+  import { parseDayParam } from '$lib/data/dayParam';
   import { todayEpochDay } from '$lib/data/epochDay';
 
-  let epochDay = $derived(
-    page.params.day === 'today' ? todayEpochDay() : Number(page.params.day)
-  );
+  let epochDay = $derived(parseDayParam(page.params.day, todayEpochDay()));
+  let available = $derived(epochDay !== null && epochDay <= todayEpochDay());
   let seedMood = $derived.by(() => {
     const raw = page.url.searchParams.get('seedMood');
     if (raw == null) return null;
@@ -24,6 +27,13 @@
   });
 </script>
 
-{#key epochDay}
-  <EntryEditor {epochDay} {seedMood} {debriefForAppointment} />
-{/key}
+{#if available && epochDay !== null}
+  {#key epochDay}
+    <EntryEditor {epochDay} {seedMood} {debriefForAppointment} />
+  {/key}
+{:else}
+  <div class="screen" data-screen>
+    <ScreenHeader title={m.new_entry()} screen="entry" back="/calendar" />
+    <Notice key="entry-unavailable" title={m.source_record_unavailable()} />
+  </div>
+{/if}
