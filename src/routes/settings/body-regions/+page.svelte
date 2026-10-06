@@ -22,12 +22,20 @@
      a rename, since a typo in one otherwise sat in every picker for good
      (after-release 07). A built-in keeps the catalogue's name. */
   let renameTarget = $state<{ id: string; name: string } | null>(null);
+  /* Separate from the target, so the field stays in the sheet while it
+     slides away instead of blanking in the first frame of the close. */
+  let renameOpen = $state(false);
+
+  function openRename(region: { id: string; name: string }) {
+    renameTarget = { id: region.id, name: region.name };
+    renameOpen = true;
+  }
 
   async function rename() {
     const target = renameTarget;
     const name = target?.name.trim();
     if (!target || !name) return;
-    renameTarget = null;
+    renameOpen = false;
     await journal.bodyRegions.renameCustomRegion(target.id, name);
     toast(m.body_regions_renamed({ region: name }));
   }
@@ -79,7 +87,7 @@
               class="icon-btn"
               data-region-rename={r.id}
               aria-label={m.body_regions_rename_aria({ region: r.name })}
-              onclick={() => (renameTarget = { id: r.id, name: r.name })}
+              onclick={() => openRename(r)}
             >
               <Icon name="pencil" size={16} />
             </button>
@@ -135,7 +143,7 @@
     >
   </Sheet>
 
-  <Sheet open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
+  <Sheet open={renameOpen} title={m.body_regions_rename_sheet()} onClose={() => (renameOpen = false)}>
     {#if renameTarget}
       <h3>{m.body_regions_rename_sheet()}</h3>
       <Field label={m.body_regions_rename_sheet()} id="rename-region-input" hidden>
