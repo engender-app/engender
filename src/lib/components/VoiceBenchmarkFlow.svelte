@@ -810,7 +810,7 @@
 
   .vb-live-label {
     font-size: var(--text-sm);
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .vb-covered {
