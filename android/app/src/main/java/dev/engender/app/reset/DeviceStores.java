@@ -6,6 +6,7 @@ import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.files.FileDeliveryPlugin;
 import dev.engender.app.clipboard.SensitiveClipboard;
 import dev.engender.app.lock.LockTimingPlugin;
+import dev.engender.app.photos.CameraCapture;
 import dev.engender.app.reminders.ReminderScheduler;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 
@@ -51,6 +52,7 @@ public final class DeviceStores {
             ReminderScheduler::wipe,
             AutoExportPlugin::wipe,
             FileDeliveryPlugin::wipe,
+            CameraCapture::cancel,
             LockTimingPlugin::wipe,
             ScreenCapturePlugin::wipe,
             SensitiveClipboard::wipe

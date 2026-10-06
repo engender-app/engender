@@ -195,7 +195,7 @@
   /* The wordmark, never the person's name, although the name has been read
      by now: whoever is holding a locked phone is exactly who should not see
      it. GateScreen.svelte argues the rest for all six gates. */
-  let title = $derived(appWordmark(prefs.disguise, m.app_name()));
+  let title = $derived(appWordmark(prefs.disguise, m.app_name(), m.disguise_name()));
 </script>
 
 <GateScreen {title} data-applock>
