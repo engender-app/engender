@@ -37,6 +37,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { COUNTEREVIDENCE_LIMIT, previewWholeDays } from '$lib/data/counterevidence';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
@@ -56,7 +57,7 @@
 
   const HISTORY_LIMIT = 50;
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   let counterevidenceQuery = liveList((j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
@@ -90,7 +91,7 @@
       mood: e.mood,
       note: e.note
     }));
-    await journal.doubtJournal.saveSnapshot(today, items);
+    await journal.doubtJournal.saveSnapshot(todayEpochDay(), items);
   }
 
   let snapshotDeleteTarget = $state<CounterevidenceSnapshot | null>(null);

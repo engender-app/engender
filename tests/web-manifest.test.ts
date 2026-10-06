@@ -124,7 +124,7 @@ describe('the web app manifest', () => {
     // The route reads 'today' as a day parameter, so a long-press shortcut
     // opens the editor on the current epoch day without a date in the URL.
     expect(exists('src/routes/entry/new/[day]/+page.svelte')).toBe(true);
-    expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain('parseDayParam(page.params.day, todayEpochDay())');
+    expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain('parseDayParam(page.params.day, untrack(currentDay))');
   });
 
   it('keeps install text and shortcut destination paired across languages', () => {

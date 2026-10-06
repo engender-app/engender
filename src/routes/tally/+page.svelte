@@ -14,6 +14,7 @@
   import { m } from '$lib/paraglide/messages';
   import type { TallyKind } from '$lib/data/types';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { toast } from '$lib/stores/toasts.svelte';
   import { liveList, liveQuery, journal } from '$lib/data/live/journal.svelte';
@@ -34,7 +35,7 @@
   // Same inclusive-range rule as the stats screen (ticket 10): the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let from = $derived(today - range + 1);
 
   let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, today));

@@ -47,6 +47,7 @@
   import { fitFormantScale, type VowelFormants, type VowelLabel } from '$lib/audio/vowelScale';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { builtInPassageKey, customPassageKey, wordCountOf } from '$lib/data/voice/passages';
   import { ANALYSIS_SAMPLE_RATE, startTake, type TakeSession } from '$lib/stores/voiceBenchmark';
@@ -224,7 +225,7 @@
     return [
       ...benchmarksQuery.rows,
       {
-        epochDay: todayEpochDay(),
+        epochDay: currentDay(),
         passageKey,
         captureChain: vowelTake?.captureChain ?? take.captureChain,
         f0P10Hz: figures.f0P10Hz,

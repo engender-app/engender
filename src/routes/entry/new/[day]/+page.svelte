@@ -5,10 +5,14 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { parseDayParam } from '$lib/data/dayParam';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
+  import { untrack } from 'svelte';
 
-  let epochDay = $derived(parseDayParam(page.params.day, todayEpochDay()));
-  let available = $derived(epochDay !== null && epochDay <= todayEpochDay());
+  /* `today` in the address is resolved when the address changes, not at
+     midnight: the editor below is keyed by this day, and moving it would
+     throw away what is being written. */
+  let epochDay = $derived(parseDayParam(page.params.day, untrack(currentDay)));
+  let available = $derived(epochDay !== null && epochDay <= currentDay());
   let seedMood = $derived.by(() => {
     const raw = page.url.searchParams.get('seedMood');
     if (raw == null) return null;

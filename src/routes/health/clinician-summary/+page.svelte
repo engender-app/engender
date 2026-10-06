@@ -20,6 +20,7 @@
     ongoingWindowRange,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { printCurrentPage } from '$lib/print/print';
   import {
@@ -47,9 +48,9 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
 
-  const today = todayEpochDay();
-  const todayInput = dateInputValueFromEpochDay(today);
-  const defaultRange = ongoingWindowRange(today, 90);
+  const today = $derived(currentDay());
+  const todayInput = $derived(dateInputValueFromEpochDay(today));
+  const defaultRange = ongoingWindowRange(todayEpochDay(), 90); // mount-day: the form starts on the day it opened
 
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));

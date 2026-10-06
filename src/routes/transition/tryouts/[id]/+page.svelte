@@ -17,6 +17,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
@@ -233,7 +234,7 @@
      to offer that at all. */
   let openEnded = $derived(detail.record ? detail.record.endEpochDay === null : false);
   let stretch = $derived(
-    detail.record ? { start: detail.record.startEpochDay, end: detail.record.endEpochDay ?? todayEpochDay() } : null
+    detail.record ? { start: detail.record.startEpochDay, end: detail.record.endEpochDay ?? currentDay() } : null
   );
   const compareLink = compareStretchLink(() => stretch);
   const TRYOUT_COMPARE_COPY = {
