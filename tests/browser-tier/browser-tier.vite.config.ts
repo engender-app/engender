@@ -83,6 +83,7 @@ interface ServerResponse {
 }
 
 export default defineConfig({
+  worker: { format: 'es' },
   root: import.meta.dirname,
   server: {
     headers: { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' },

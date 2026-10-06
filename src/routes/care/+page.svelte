@@ -853,59 +853,65 @@
     {/snippet}
     <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
     <p class="stats-inline-note">{m.care_interval_all_history()}</p>
-    <ReadGate read={intervalMoodQuery} variant="block" count={1}>
-      {#snippet rows()}
-        {#if foldDrawable(intervalMoodPattern)}
-          {@const ends = positionEnds(intervalMoodPattern)}
-          <AreaChart
-            points={positionPoints(intervalMoodPattern)}
-            min={1}
-            max={5}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => v.toFixed(1)}
-            scrubLabel={positionLabel}
-            ariaLabel={m.interval_mood_chart_aria({
-              count: String(intervalMoodPattern.length),
-              from: String(intervalMoodPattern[0].position),
-              to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-            })}
-          />
-        {:else}
+    <figure class="care-fold" data-care-fold="injections">
+      <figcaption>{m.care_injection_cycle_caption()}</figcaption>
+      <ReadGate read={intervalMoodQuery} variant="block" count={1}>
+        {#snippet rows()}
+          {#if foldDrawable(intervalMoodPattern)}
+            {@const ends = positionEnds(intervalMoodPattern)}
+            <AreaChart
+              points={positionPoints(intervalMoodPattern)}
+              min={1}
+              max={5}
+              from={ends.from}
+              to={ends.to}
+              formatValue={(v) => v.toFixed(1)}
+              scrubLabel={positionLabel}
+              ariaLabel={m.interval_mood_chart_aria({
+                count: String(intervalMoodPattern.length),
+                from: String(intervalMoodPattern[0].position),
+                to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+              })}
+            />
+          {:else}
+            <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+          {/if}
+        {/snippet}
+        {#snippet empty()}
           <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/if}
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
-    <ReadGate read={customIntervalQuery} variant="block" count={1}>
-      {#snippet rows(customIntervalPattern)}
-        {#if foldDrawable(customIntervalPattern)}
-          {@const ends = positionEnds(customIntervalPattern)}
-          <AreaChart
-            points={positionPoints(customIntervalPattern)}
-            min={1}
-            max={5}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => v.toFixed(1)}
-            scrubLabel={positionLabel}
-            ariaLabel={m.custom_interval_chart_aria({
-              days: String(debouncedCustomIntervalLength),
-              count: String(customIntervalPattern.length),
-              from: String(customIntervalPattern[0].position),
-              to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-            })}
-          />
-        {:else}
+        {/snippet}
+      </ReadGate>
+    </figure>
+    <figure class="care-fold" data-care-fold="interval">
+      <figcaption>{m.care_custom_interval_caption({ days: debouncedCustomIntervalLength })}</figcaption>
+      <ReadGate read={customIntervalQuery} variant="block" count={1}>
+        {#snippet rows(customIntervalPattern)}
+          {#if foldDrawable(customIntervalPattern)}
+            {@const ends = positionEnds(customIntervalPattern)}
+            <AreaChart
+              points={positionPoints(customIntervalPattern)}
+              min={1}
+              max={5}
+              from={ends.from}
+              to={ends.to}
+              formatValue={(v) => v.toFixed(1)}
+              scrubLabel={positionLabel}
+              ariaLabel={m.custom_interval_chart_aria({
+                days: String(debouncedCustomIntervalLength),
+                count: String(customIntervalPattern.length),
+                from: String(customIntervalPattern[0].position),
+                to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+              })}
+            />
+          {:else}
+            <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+          {/if}
+        {/snippet}
+        {#snippet empty()}
           <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/if}
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
+        {/snippet}
+      </ReadGate>
+    </figure>
   </ChartCard>
 
   <!-- What came of all of it (phase 9 carpet ticket 16). The card above is
@@ -1099,6 +1105,19 @@
 </div>
 
 <style>
+  .care-fold {
+    margin: var(--space-4) 0 0;
+  }
+  .care-fold + .care-fold {
+    margin-top: var(--space-6);
+  }
+  .care-fold figcaption {
+    margin-bottom: var(--space-3);
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+
   .stats-inline-note {
     margin: var(--space-2) 0 0;
     font-size: var(--text-sm);

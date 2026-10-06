@@ -23,6 +23,7 @@
      episode with nothing else to update. `drug` only exists to break a
      tie when more than one episode is active at once for different drugs
      (regimenEpisode.ts). */
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -127,6 +128,26 @@
     deepLinkedDoseId ? logRows.findIndex(({ dose }) => dose.id === deepLinkedDoseId) : -1
   );
 
+  function dayRows(rows: typeof logRows) {
+    return rows.flatMap((row, index) => {
+      const day = epochDayFromTimestamp(row.dose.timestamp);
+      const startsDay = index === 0 || epochDayFromTimestamp(rows[index - 1].dose.timestamp) !== day;
+      return [
+        ...(startsDay ? [{ key: `day-${day}`, day, row: null }] : []),
+        { key: row.dose.id, day: null, row }
+      ];
+    });
+  }
+
+  /* A dose saved to another day travels to its new heading rather than
+     cutting there; rows that arrive or leave disclose (no-yank clause). */
+  let doseLog = $state<HTMLElement>();
+  travelOnChange(
+    () => [...(doseLog?.querySelectorAll<HTMLElement>('[data-travel-key]') ?? [])],
+    (el) => el.dataset.travelKey ?? '',
+    () => logRows
+  );
+
   function loadEarlier() {
     windowDays += DOSE_LOG_WINDOW_DAYS;
   }
@@ -149,6 +170,11 @@
   };
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+  /* A day heading in the log names the weekday, which is how a person
+     finds "the Tuesday I missed"; the year only when it is not this one. */
+  const yearOf = (epochDay: number) => fmtDay(epochDay, { year: 'numeric' });
+  const dayHeading = (epochDay: number) =>
+    fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long', ...(yearOf(epochDay) === yearOf(today) ? {} : { year: 'numeric' }) });
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
@@ -461,105 +487,59 @@
       {#if doses.length}
         <div class="screen-part">
           <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
-          <BatchedList
-            items={logRows}
-            key="doses"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
-            focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
-          >
-            {#snippet rows(shownRows)}
-              {#each shownRows as { dose, attribution, drug, showAttribution, offersSkip } (dose.id)}
-                {@const site = siteOf(dose)}
-                {@const sourceNote = sourceNoteOf(dose)}
-                <!-- Keyed on what the row says about itself, so correcting an
-                     auto-logged dose crossfades its words instead of cutting
-                     them (ADR-0078, and this ticket's standing motion clause).
-
-                     `out` only, which is what this primitive is: the replacing
-                     row is simply there, in flow, at the same height, and the
-                     one it replaced fades off underneath it from its own
-                     static position. An `in:crossfade` as well would take the
-                     arriving row out of flow for the length of the fade and
-                     every row below it would jump up and back - a yank, for a
-                     change of four words.
-
-                     `rows-divide` because the wrapper is now what the card
-                     sees between two rows, and the hairline rule matches
-                     adjacent siblings (kit.css). -->
-                {#key sourceNote}
-                  <div class="rows-divide" class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
-                  <ListRow
-                    key={dose.id}
-                    data-dose={dose.id}
-                    id={dose.id}
-                    icon="clock"
-                    title={doseRowTitle(drug, dose)}
-                    subtitle={[
-                      [
-                        whenOf(dose),
-                        site,
-                        isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
-                        sourceNote ? attributionLabel(attribution) : ''
-                      ]
-                        .filter(Boolean)
-                        .join(' · '),
-                      sourceNote
-                    ]}
-                    chevron={false}
-                    onclick={() => openEditor(dose)}
-                    action={offersSkip
-                      ? {
-                          /* The app's own word for the status this sets, not a
-                             sentence: a dose row already carries an amount, a
-                             route, a time, where it came from and which episode
-                             it is under, and a four-word button at 390px left
-                             the title wrapping one character to a line. The
-                             accessible name is the whole sentence, which is
-                             what a control read out of its row needs and what a
-                             control sitting in one does not. */
-                          text: statusLabel('skipped'),
-                          label: m.dose_from_schedule_skip_action(),
-                          attrs: { 'data-dose-skip': dose.id },
-                          onclick: () => skipAutoLoggedDose(dose)
-                        }
-                      : undefined}
-                  >
-                    {#snippet trailing()}
-                      <!-- The bookkeeping, at the end of the row rather than as
-                           two more lines under the dose: which episode the app
-                           attributed it to, whether it was taken as logged, and
-                           what a schedule had asked for. All three are about the
-                           record rather than about the dose.
-
-                           An auto-logged row says the first two on its second
-                           line instead, in one sentence with where it came from.
-                           Partly because "skipped" beside "skipped, was logged
-                           from your schedule" is the same word twice - and
-                           partly because that row carries a control at this
-                           trailing edge, and a 390px row cannot hold an icon, a
-                           dose, an episode name and a button. Measured: the
-                           title had 78px to wrap "100 mg · Oral" in. -->
-                      <span class="dose-trail">
-                        {#if dose.status !== 'taken' && !sourceNote}
-                          <span class="dose-status">{statusLabel(dose.status)}</span>
-                        {/if}
-                        {#if !sourceNote && showAttribution}
-                          <span>{attributionLabel(attribution)}</span>
-                        {/if}
-                        {#if dose.scheduled}
-                          <span>
-                            {m.dose_scheduled_legend()}: {dose.scheduled.dose}
-                            {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
-                          </span>
-                        {/if}
-                      </span>
-                    {/snippet}
-                  </ListRow>
+          <div data-dose-log bind:this={doseLog}>
+            <BatchedList items={logRows} key="doses" autoGrow={false}
+              focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
+              {#snippet rows(shownRows)}
+                {#each dayRows(shownRows) as item (item.key)}
+                  <div class="rows-divide dose-log-row" class:is-day={item.row === null} data-dose-row={item.row?.dose.id}
+                    data-travel-key={item.key} transition:disclose>
+                    {#if item.row}
+                      {@const { dose, attribution, drug, showAttribution, offersSkip } = item.row}
+                      {@const site = siteOf(dose)}
+                      {@const sourceNote = sourceNoteOf(dose)}
+                      {#key sourceNote}
+                        <div class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
+                          <ListRow
+                            key={dose.id}
+                            data-dose={dose.id}
+                            id={dose.id}
+                            title={`${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}`}
+                            subtitle={[
+                              [fmtTime(dose.timestamp), routeLabel(dose.route), site,
+                                isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '']
+                                .filter(Boolean).join(' · '),
+                              sourceNote,
+                              showAttribution ? attributionLabel(attribution) : '',
+                              dose.scheduled ? `${m.dose_scheduled_legend()}: ${dose.scheduled.dose} ${dose.doseUnit} · ${routeLabel(dose.scheduled.route)} · ${fmtTime(dose.scheduled.timestamp)}` : ''
+                            ]}
+                            chevron={false}
+                            onclick={() => openEditor(dose)}
+                            action={offersSkip
+                              ? {
+                                  text: statusLabel('skipped'),
+                                  label: m.dose_from_schedule_skip_action(),
+                                  attrs: { 'data-dose-skip': dose.id },
+                                  onclick: () => skipAutoLoggedDose(dose)
+                                }
+                              : undefined}
+                          >
+                            {#snippet trailing()}
+                              {#if dose.status !== 'taken' && !sourceNote}
+                                <span class="dose-status">{statusLabel(dose.status)}</span>
+                              {/if}
+                            {/snippet}
+                          </ListRow>
+                        </div>
+                      {/key}
+                    {:else if item.day !== null}
+                      <h2 class="dose-day" data-dose-day={item.day}>{dayHeading(item.day)}</h2>
+                    {/if}
                   </div>
-                {/key}
-              {/each}
-            {/snippet}
-          </BatchedList>
+                {/each}
+              {/snippet}
+            </BatchedList>
+          </div>
           {#if hasOlderDoses}
             {@render earlierControl()}
           {/if}
@@ -1098,18 +1078,24 @@
     transform: rotate(180deg);
   }
 
-  /* The bookkeeping stacks at the end of the row rather than running along
-     it: three facts on one line at 390px is an ellipsis, and the widest of
-     them is a whole scheduled dose written out. Right-aligned, so the
-     column of them reads down the edge of the card. */
-  .dose-trail {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    text-align: right;
-    max-width: 12rem;
-    line-height: 1.25;
+  /* A day is a group of rows, said by space and a heading rather than by
+     more hairlines: the rule above and below a heading row would sit one
+     heading-height apart and read as a stray box. */
+  .dose-log-row {
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
+  .rows-divide.is-day::before,
+  .is-day + .rows-divide::before {
+    content: none;
+  }
+
+  .dose-day {
+    padding: var(--space-5) 0 var(--space-1);
+    margin: 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
   }
 
   .dose-status {
@@ -1281,7 +1267,7 @@
     color: var(--text-2);
   }
 
-  .rows-divide.is-target-dose,
+  .is-target-dose,
   .rows-divide.is-target-slot {
     background: var(--surface-2);
     border-radius: var(--r-block);

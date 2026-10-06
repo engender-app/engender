@@ -130,6 +130,10 @@
     expandedGroups = next;
   }
 
+  let hasDrawnBands = $derived(visibleEffects.some((effect) =>
+    expandedGroups.has(groupKey(directionOf(effect), effect.categoryKey)) && bands?.get(effect.key) != null
+  ));
+
   function timelineRowsFor(effects: PersonalEffectCatalogEntry[]) {
     return effects.map((e) => ({
       key: e.key,
@@ -388,31 +392,32 @@
     {/if}
 
     <!-- These explanations concern the literature's bands, so they keep
-         the company of the chart that draws them: with no regimen there is
-         no band on the screen for them to be describing. A short limitation
-         stays visible while longer context stays in an
-         accessible disclosure (ticket 20, UX17). -->
-    {#if anchorEpochDay !== null}
-      <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
-      <div class="effects-methodology">
-        <button
-          type="button"
-          class="effects-methodology-toggle"
-          aria-expanded={methodologyOpen}
-          data-methodology-toggle
-          onclick={() => (methodologyOpen = !methodologyOpen)}
-        >
-          <span>{m.effects_methodology_disclosure()}</span>
-          <span class="effects-methodology-chev">
-            <Icon name="chevronDown" size={18} />
-          </span>
-        </button>
-        {#if methodologyOpen}
-          <div class="disclosed" transition:disclose>
-            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
-            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
-          </div>
-        {/if}
+         the company of the chart that draws them: a collapsed group has
+         no bands on screen, even when a regimen supplies their windows.
+         Longer context stays in an accessible disclosure (ticket 20, UX17). -->
+    {#if hasDrawnBands}
+      <div data-bands-context transition:disclose>
+        <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
+        <div class="effects-methodology">
+          <button
+            type="button"
+            class="effects-methodology-toggle"
+            aria-expanded={methodologyOpen}
+            data-methodology-toggle
+            onclick={() => (methodologyOpen = !methodologyOpen)}
+          >
+            <span>{m.effects_methodology_disclosure()}</span>
+            <span class="effects-methodology-chev">
+              <Icon name="chevronDown" size={18} />
+            </span>
+          </button>
+          {#if methodologyOpen}
+            <div class="disclosed" transition:disclose>
+              <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
+              <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
+            </div>
+          {/if}
+        </div>
       </div>
     {/if}
 
