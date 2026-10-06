@@ -33,8 +33,9 @@
    what is **stored**, and the two legitimately differ - `tally_event.context`
    is a stored column no archive carries, and an archive descriptor also
    carries the wire concerns (`bool`, `whenAbsent`, `whenNull`) that a local
-   write has no opinion about. Folding them into one declaration would need an option per
-   divergence, which is the descriptor-as-policy-language ADR-0027 refused.
+   write has no opinion about. Folding them into one declaration would need
+   an option per divergence, which is the descriptor-as-policy-language
+   ADR-0027 refused.
    They agree today, and nothing here depends on them agreeing.
 
    `eras` is the eighth flat area and stays out. Its pre-write check is
