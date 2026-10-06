@@ -89,6 +89,7 @@
         }
         const savedLocale = localStorage.getItem('PARAGLIDE_LOCALE');
         const locale = savedLocale === 'en' || savedLocale === 'pl' ? savedLocale : navigator.language;
+        if (boot.disguise) document.title = locale.toLowerCase().startsWith('pl') ? 'Notatki' : 'Notes';
         if (locale.toLowerCase().startsWith('pl')) {
           manifest.href = manifest.href.replace('.webmanifest', '-pl.webmanifest');
         }

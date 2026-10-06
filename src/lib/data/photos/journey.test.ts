@@ -132,3 +132,9 @@ test('the file name says journey, not journal, and carries the right extension',
   assert.equal(journeyFileName('', 'collage', 20313), 'journey-2025-08-13.jpg');
   assert.equal(journeyFileName('Żaneta Kowalska', 'collage', 20313), 'zaneta-kowalska-journey-2025-08-13.jpg');
 });
+
+
+test('disguised journey exports omit the name slug', () => {
+  assert.equal(journeyFileName('Alicja', 'collage', 20313, true), 'journey-2025-08-13.jpg');
+  assert.equal(journeyFileName('Żaneta Kowalska', 'timelapse', 20313, true), 'journey-2025-08-13.webm');
+});
