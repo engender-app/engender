@@ -294,7 +294,7 @@
   "boot_failed_below_baseline": "This journal comes from a development build of engender, and this version can’t open it. Export it from the build that made it, or start over.",
   "boot_failed_engine": "The journal’s database didn’t start on this device. Nothing in the journal was changed.",
   "boot_failed_unknown": "Something went wrong while opening it. If trying again doesn’t help, copy the details into a bug report.",
-  "boot_failed_unreadable": "The key on this device doesn’t open this journal. Trying again won’t change that.",
+  "boot_failed_unreadable": "The key on this device doesn’t open this journal.",
   "boot_restore_action": "Put the previous journal back",
   "boot_restore_failed": "That did not work. The copy is still on the device.",
   "boot_restore_offer": "A copy of your journal from before this update is still on this device. Restoring it permanently removes anything saved since that copy was made. If this version cannot open it, try the previous app version.",

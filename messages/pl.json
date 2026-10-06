@@ -296,7 +296,7 @@
   "boot_failed_below_baseline": "Ten dziennik pochodzi z wersji rozwojowej engender i ta wersja nie może go otworzyć. Wyeksportuj go w wersji, w której powstał, albo zacznij od nowa.",
   "boot_failed_engine": "Baza danych dziennika nie uruchomiła się na tym urządzeniu. W dzienniku nic się nie zmieniło.",
   "boot_failed_unknown": "Coś poszło nie tak przy otwieraniu. Jeśli ponowna próba nie pomoże, skopiuj szczegóły do zgłoszenia błędu.",
-  "boot_failed_unreadable": "Klucz z tego urządzenia nie otwiera tego dziennika. Ponowna próba tego nie zmieni.",
+  "boot_failed_unreadable": "Klucz z tego urządzenia nie otwiera tego dziennika.",
   "boot_restore_action": "Przywróć poprzedni dziennik",
   "boot_restore_failed": "Nie udało się. Kopia nadal jest na urządzeniu.",
   "boot_restore_offer": "Na tym urządzeniu jest kopia dziennika sprzed tej aktualizacji. Przywrócenie trwale usunie wszystko, co zapisano od jej utworzenia. Jeśli ta wersja nie może jej otworzyć, spróbuj poprzedniej wersji aplikacji.",
