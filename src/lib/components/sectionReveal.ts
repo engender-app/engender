@@ -40,9 +40,18 @@ export function revealTravel({ sectionBottom, regionTop, regionBottom, anchorTop
 export function followReveal(section: HTMLElement, region: HTMLElement, anchor: HTMLElement): void {
   const started = performance.now();
   let frames = 0;
+  /* A finger or a wheel on the region takes the scroll back: the follow
+     never fights a person who has started scrolling themselves. */
+  let released = false;
+  const release = () => (released = true);
+  const inputs = ['wheel', 'touchstart', 'pointerdown'] as const;
+  for (const type of inputs) region.addEventListener(type, release, { once: true, passive: true });
+  const stop = () => {
+    for (const type of inputs) region.removeEventListener(type, release);
+  };
   const step = () => {
     frames++;
-    if (!section.isConnected || !region.isConnected) return;
+    if (released || !section.isConnected || !region.isConnected) return stop();
     const regionBox = region.getBoundingClientRect();
     const travel = revealTravel({
       sectionBottom: section.getBoundingClientRect().bottom,
@@ -50,12 +59,17 @@ export function followReveal(section: HTMLElement, region: HTMLElement, anchor: 
       regionBottom: regionBox.bottom,
       anchorTop: anchor.getBoundingClientRect().top
     });
+    const before = region.scrollTop;
     if (travel > 0) region.scrollTop += travel;
+    /* Clamped: the region has no room left, and asking again every frame
+       until the cap would change nothing. */
+    const stuck = travel > 0 && region.scrollTop === before;
     /* The first frames may land before the transition has started, and one
        frame past the last animation reads the settled height once more; a
        second's cap in case an animation never reports finishing. */
     const growing = section.getAnimations().some((a) => a.playState === 'running');
-    if ((growing || travel > 0 || frames < 3) && performance.now() - started < 1000) requestAnimationFrame(step);
+    if ((growing || (travel > 0 && !stuck) || frames < 3) && performance.now() - started < 1000) requestAnimationFrame(step);
+    else stop();
   };
   requestAnimationFrame(step);
 }
