@@ -771,7 +771,10 @@
         <!-- Neither mark until the age is known: the tick was the half of the
              wrong answer that looked most sure of itself. -->
       {:else if stale}
-        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--r-block);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
+        <!-- The age beside it already says how long ago; the mark only says
+             that it is long enough to act on. It used to be a badge reading
+             "Over 30 days ago" under "34 days ago" (audit UX-11). -->
+        <span class="notice-warn backup-stale-mark" data-backup-stale><Icon name="alert" size={18} /></span>
       {:else}
         <Icon name="check" size={20} />
       {/if}
@@ -1214,6 +1217,14 @@
 </div>
 
 <style>
+  /* The same footprint as the tick it stands in for, on the warning ground. */
+  .backup-stale-mark {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-block);
+  }
   /* From components.css once Settings stopped drawing one (ticket 277):
      this screen is the only reader left. */
   .hr {

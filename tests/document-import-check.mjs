@@ -232,8 +232,8 @@ try {
   assert.equal(await page.evaluate(() => window.documentFault.calls), 2);
   assert.equal((await stored()).length, baseline.length + 1);
   await page.getByRole('link', { name: /Retained document/ }).click();
-  await page.locator('[data-document-identity] time').waitFor();
-  assert.equal(await page.locator('[data-document-identity] time').getAttribute('datetime'), '2024-03-11');
+  await page.locator('[data-screen-title]', { hasText: 'Retained document' }).waitFor();
+  assert.equal(await page.locator('#document-day').inputValue(), '2024-03-11');
   const download = page.waitForEvent('download');
   await page.locator('[data-export-document]').click();
   assert.deepEqual(await readFile(await (await download).path()), bytes);
