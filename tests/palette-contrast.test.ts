@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf } from '../src/lib/theme/colour';
+import { chromaOf, colorMixOklab, contrast, hueOf, lightnessOf, washOver } from '../src/lib/theme/colour';
 import { flagField, flagRoles, heatInk } from '../src/lib/theme/roles';
 import { PALETTES } from './palettes.mjs';
 
@@ -566,8 +566,10 @@ describe('the field and the fills (phase 10)', () => {
      against the 18 per cent band wash, against the 9 per cent middle band,
      and against the bare surface between them. The worst of all three is
      nonbinary's yellow on the light theme at 1.13:1 against its own band -
-     the same 1.16:1 the pitch trace has always had against the surface, and
-     the flag-colour rule working rather than a regression. */
+     the same 1.16:1 the pitch trace has always had against the surface.
+     Since phase 15 ticket 20 that is no longer the whole line: the stripe
+     keeps its colour and an edge drawn under it carries the 3:1, measured in
+     the essential-graphics cases below. */
   it('draws the density in the flag colour itself, never a floored one', () => {
     let worst = { ratio: 99, where: '' };
     for (const palette of PALETTES) {
@@ -631,6 +633,103 @@ describe('the field and the fills (phase 10)', () => {
         }
       }
     }
+  });
+
+  /* Phase 15 ticket 20, WCAG 1.4.11: a chart line that carries the reading
+     answers to 3:1 against everything it is drawn over. The stripe itself
+     stays the line's colour (the test above holds that), and where it cannot
+     reach 3:1 on its own the line is edged in role.edge, which is what an
+     eye finds the line by. So the line's boundary is the edge where there is
+     one and the stripe where there is not, and that boundary is what is
+     measured here, on every role of every flag, both themes. */
+  describe('essential chart graphics (WCAG 1.4.11)', () => {
+    const pitchCss = readFileSync('src/lib/components/PitchFigure.svelte', 'utf8');
+    const kitCss = readFileSync('src/lib/styles/kit.css', 'utf8');
+    const bandCss = readFileSync('src/lib/components/HormoneBandChart.svelte', 'utf8');
+
+    /** The N in a rule's `color-mix(... N%, transparent)`, read out of the
+        component so a change to the wash is a change to what is measured. */
+    function washPercent(source: string, selector: string) {
+      const rule = new RegExp(String.raw`${selector}\s*\{([^}]*)\}`).exec(source)?.[1] ?? '';
+      const match = /(\d+)%,\s*transparent/.exec(rule);
+      if (!match) throw new Error(`No transparent wash in ${selector}`);
+      return Number(match[1]);
+    }
+
+    function eachRole(fn: (where: string, role: ReturnType<typeof flagRoles>[number], t: Record<string, string>) => void) {
+      for (const palette of PALETTES) {
+        for (const theme of THEMES) {
+          const t = tokenMap(palette, theme);
+          for (const role of flagRoles(stripesOf(palette), t.text, [t.bg, t.surface, t['surface-2']])) {
+            fn(`${palette}/${theme} ${role.stripe}`, role, t);
+          }
+        }
+      }
+    }
+
+    function expectBoundary(where: string, line: string, grounds: Array<[string, string]>) {
+      for (const [what, ground] of grounds) {
+        const ratio = contrast(line, ground);
+        expect(ratio, `${where}: line edge ${line} on ${what} (${ground}) has ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+      }
+    }
+
+    /* The field is --surface on every theme (PitchFigure's .pf-field) and
+       carries no annotation band, so these three are every ground there. */
+    it("draws the voice figure's trace and contour at 3:1 against the bands they cross", () => {
+      const band = washPercent(pitchCss, String.raw`\.pf-band`);
+      const middle = washPercent(pitchCss, String.raw`\.pf-middle`);
+      eachRole((where, role, t) =>
+        expectBoundary(where, role.edge ?? role.stripe, [
+          ['the bare field', t.surface],
+          ['a reference band', washOver(role.stripe, band, t.surface)],
+          ['the middle band', washOver(role.stripe, middle, t.surface)]
+        ])
+      );
+    });
+
+    it("draws an area chart's line at 3:1 against its own fill and every page it sits on", () => {
+      const fill = washPercent(kitCss, String.raw`\.kit-area-fill`);
+      const annotation = washPercent(kitCss, String.raw`\n\.kit-annotation-band`);
+      eachRole((where, role, t) => {
+        const grounds: Array<[string, string]> = [];
+        for (const surface of ['bg', 'surface', 'surface-2']) {
+          const marked = washOver(t.text, annotation, t[surface]);
+          grounds.push(
+            [surface, t[surface]],
+            [`${surface} under the fill`, washOver(role.stripe, fill, t[surface])],
+            [`${surface} under an annotation band`, marked],
+            [`${surface} under both`, washOver(role.stripe, fill, marked)]
+          );
+        }
+        expectBoundary(where, role.edge ?? role.stripe, grounds);
+        /* The second series is drawn in `paired` and carries no fill. */
+        const second = role.pairedEdge ?? role.paired;
+        expectBoundary(`${where} as the second series`, second, grounds.filter(([what]) => !what.includes('fill') && !what.includes('both')));
+      });
+    });
+
+    it("edges the hormone curve's band at 3:1 against the page and the card", () => {
+      const rule = /\.band-edge\s*\{([^}]*)\}/.exec(bandCss)?.[1] ?? '';
+      const opacity = Number(/opacity:\s*([\d.]+)/.exec(rule)?.[1] ?? 1);
+      /* The band is drawn in --chart-line, which palettes.css points at the
+         accent; read rather than assumed, so a new chart colour is measured. */
+      expect(rule).toMatch(/stroke:\s*var\(--chart-line\)/);
+      expect(rawDeclaration(blockBody(':root'), 'chart-line')).toBe('var(--accent)');
+      for (const palette of PALETTES) {
+        for (const theme of THEMES) {
+          const t = tokenMap(palette, theme);
+          for (const surface of ['bg', 'surface', 'surface-2']) {
+            const edge = washOver(t.accent, opacity * 100, t[surface]);
+            const ratio = contrast(edge, t[surface]);
+            expect(
+              ratio,
+              `${palette}/${theme}: the band's edge ${edge} on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1`
+            ).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    });
   });
 
   /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date
