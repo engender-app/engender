@@ -18,7 +18,6 @@ function baseMatrix(ranAt = '2026-08-13T09:00:00Z') {
     checks: {
       update: true,
       migration: true,
-      encryptionConversion: true,
       archiveRoundTrip: true,
       scheduledBackup: true,
       rollback: true
@@ -71,7 +70,6 @@ function fullRecord() {
         evidence: {
           update: true,
           migration: true,
-          encryptionConversion: true,
           archiveRoundTrip: true,
           scheduledBackup: true,
           rollback: true

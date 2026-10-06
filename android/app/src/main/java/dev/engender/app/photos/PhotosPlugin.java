@@ -49,6 +49,11 @@ public class PhotosPlugin extends Plugin {
         before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
 
+    @Override
+    public void load() {
+        CameraCapture.cancel(getContext());
+    }
+
     @PluginMethod
     public void pickImages(PluginCall call) {
         Intent intent;

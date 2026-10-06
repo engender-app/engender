@@ -35,16 +35,15 @@
   import { ui } from '$lib/stores/ui.svelte';
   import { createEntryDraft } from '$lib/data/entryDraft';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
-  import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { journalDataKey } from '$lib/stores/boot.svelte';
-  import { activeEpisodesAt, episodesWithNoDoseLogged } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { episodesWithNoDoseLogged, remainingAfterOneDose } from '$lib/data/quickLogChip';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
-  import { remainingAfterOneDose } from '$lib/data/stockProjection';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { areaQuiet } from '$lib/data/areaState';
@@ -63,6 +62,7 @@
   import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { followReveal } from '$lib/components/sectionReveal';
   import Field from '$lib/components/kit/Field.svelte';
   import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -456,6 +456,15 @@
     return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
   let isToday = $derived(day === todayEpochDay());
+  /* The header's own subtitle, so it sits 12 under the field the way every
+     screen's does (components.css), rather than a paragraph of the editor's
+     own that had to guess the header's spacing and twice guessed wrong. An
+     existing entry's day is a read away; until it lands the line holds its
+     height blank rather than naming today, which is the wrong day for
+     almost every entry anyone reopens. */
+  let dateLine = $derived(
+    entryId != null && !existing ? '\u00a0' : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
+  );
 
   /* The chip row and the section it opens (phase 11 ticket 19). Nothing
      takes the focus on arrival, a new entry included: a focused note put
@@ -490,26 +499,17 @@
     revealSection(section);
   }
 
-  /* Brings the opened section into view on the same clock it discloses
-     on: the scroll region moves by however much of the section's settled
-     height would land under the foot, and never so far that the chip row
+  /* Brings the opened section into view on the same clock it discloses on
+     (sectionReveal.ts has why it follows the growth frame by frame rather
+     than asking for one smooth scroll), never so far that the chip row
      itself leaves the top of the window - the row is what the person just
      tapped, and a section that scrolled its own chip away would be a
-     section with no visible way to close it. `scrollHeight` is the
-     section's content height even while `disclose` still clips its box,
-     which is what makes the settled height readable on the first frame. */
+     section with no visible way to close it. */
   function revealSection(section: EntrySection) {
     const sectionEl = chipRowEl?.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
     const region = chipRowEl?.closest<HTMLElement>('[data-app-scroll-region]');
     if (!sectionEl || !region || !chipRowEl) return;
-    const regionBox = region.getBoundingClientRect();
-    const settledBottom = sectionEl.getBoundingClientRect().top + sectionEl.scrollHeight;
-    const overflow = settledBottom + 20 - regionBox.bottom;
-    if (overflow <= 0) return;
-    const rowRoom = chipRowEl.getBoundingClientRect().top - regionBox.top - 8;
-    const travel = Math.min(overflow, rowRoom);
-    if (travel <= 0) return;
-    region.scrollBy({ top: travel, behavior: scrollBehavior() });
+    followReveal(sectionEl, region, chipRowEl);
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
@@ -677,7 +677,14 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => queueForDayPrompt([photo]));
+  /* A photo taken with the camera just now was taken today, so on today's
+     entry there is nothing to ask (audit UX-05: Save and Skip did the same
+     thing). A picked file has had its date stripped and could be from any
+     day, so it is still asked; so is a capture on a backdated entry. */
+  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
+    if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
+    else queueForDayPrompt([photo]);
+  });
 
   // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
   // closed.
@@ -938,8 +945,13 @@
      huge text transition"). The plain fill grows now; the real content
      sits outside the named element and crossfades in place through the
      screen's own transition instead. -->
-<div class="screen editor" inert={saving}>
-  <fieldset class="editor-fields" disabled={saving}>
+<!-- The fieldset is the screen rather than a wrapper inside it. Its
+     `disabled` is what stops native fields taking edits during a save on a
+     WebView that predates `inert`, and as a `display: contents` wrapper it
+     hid every block from `.screen > *` and the header from the field's bleed
+     rule: the field drew 20px inset with no 20px between the blocks under
+     it (audit UI-01). As the screen, its children are the screen's again. -->
+<fieldset class="screen editor" inert={saving} disabled={saving}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
@@ -950,6 +962,7 @@
        (NAV-005, CARPET-05). -->
   <ScreenHeader
     title={entryId != null ? m.entry() : m.new_entry()}
+    subtitle={dateLine}
     screen="entry"
     back={existing ? `/day/${day}` : '/'}
   >
@@ -981,10 +994,6 @@
     {/snippet}
   </ScreenHeader>
   <SourceRecordHandoff id={entryId == null ? null : String(entryId)} ready={!loaded.loading && !loaded.failed} found={!!existing} />
-
-  <p class="editor-date">
-    {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
-  </p>
 
   {#if entryDraft.savedId !== undefined}
     <Notice
@@ -1620,6 +1629,7 @@
     open={dayPromptQueue.length > 0}
     bind:day={dayPromptValue}
     fieldId="entry-photo-day-prompt"
+    hint={m.photo_day_prompt_hint_entry()}
     onSave={() => resolveDayPrompt(dayPromptValue)}
     onSkip={() => resolveDayPrompt(null)}
   />
@@ -1633,8 +1643,7 @@
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
-  </fieldset>
-</div>
+</fieldset>
 
 <style>
   /* The container transform's own layer - a plain fill behind the real
@@ -1649,6 +1658,11 @@
      this screen alone rather than reordering anything outside it. */
   .screen.editor {
     isolation: isolate;
+    /* The browser's own fieldset box, taken back to the screen's: no
+       groove, and auto rather than 0 inline so the desktop column still
+       centres (a full-width box resolves auto to 0 on the phone). */
+    border: 0;
+    margin: 0 auto;
   }
   .editor-bg {
     position: absolute;
@@ -1656,7 +1670,6 @@
     z-index: -1;
     background: var(--bg);
   }
-  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
 
   .editor-save-row {
     display: flex;
@@ -1665,7 +1678,6 @@
     gap: var(--space-2);
   }
   .editor-save-row [data-entry-saving] { opacity: 1; }
-  .editor-fields { display: contents; }
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }

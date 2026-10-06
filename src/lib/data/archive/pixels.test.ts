@@ -150,3 +150,15 @@ test('two identical records produce the same content uuid, so a repeat import ma
   const second = await pixelsPreview(bytes, empty());
   assert.equal(first.journal.entries[0].uuid, second.journal.entries[0].uuid);
 });
+
+test('case-variant tags resolve once per entry', async () => {
+  const preview = await pixelsPreview(backup([record({ tags: [{ type: 'Activities', entries: ['Work', 'work'] }] })]), empty());
+  assert.equal(preview.newTagCount, 1);
+  assert.equal(preview.journal.entries[0].tags.length, 1);
+});
+
+test('out-of-range scores become null and preview counts affected records', async () => {
+  const preview = await pixelsPreview(backup([record({scores: [0]}), record({date: '2026-1-2', scores: [9]}), record({date: '2026-1-3', scores: [0, 5]})]), empty());
+  assert.deepEqual(preview.journal.entries.map(e => e.mood), [null, null, null]);
+  assert.equal(preview.invalidMoodCount, 3);
+});

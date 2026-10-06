@@ -15,7 +15,6 @@
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';
 import { createEncryptedWebSqlite } from '../../../src/lib/data/sqlite/mc-driver.ts';
-import { createWebSqlite } from '../../../src/lib/data/sqlite/sqlocal-driver.ts';
 import { openJournal, type Journal } from '../../../src/lib/data/journal/journal.ts';
 import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-store.ts';
 import { androidPhotos } from '../../../src/lib/data/photos/android-bridge.ts';
@@ -81,7 +80,7 @@ async function openHandle(
   photoRoot: string
 ): Promise<Handle> {
   if (kind === 'web') {
-    const sqlite = encrypted ? createEncryptedWebSqlite(databaseName, WEB_KEY) : createWebSqlite(databaseName);
+    const sqlite = createEncryptedWebSqlite(databaseName, WEB_KEY);
     const files = encrypted ? encryptedFileStore(opfsPhotoFiles(photoRoot), WEB_KEY) : opfsPhotoFiles(photoRoot);
     const booted = await boot({ createDriver: () => sqlite.driver, fileOps: sqlite.fileOps, requestPersistentStorage: sqlite.requestPersistentStorage });
     if (booted.phase === 'error') throw booted.error;

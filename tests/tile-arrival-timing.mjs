@@ -328,6 +328,13 @@ const duringEnd = during.findLastIndex((f) => f.route && f.moving);
 const duringOk = during[duringEnd + 1]?.readable;
 if (!duringOk) failed = true;
 console.log(`${duringOk ? 'ok  ' : 'FAIL'} reads finishing during motion also finish nested tile entrances by field end`);
+/* CI printed only the verdict when this went red on main (run 37385237608),
+   which could not say whether the reads had landed during the motion. */
+if (!duringOk) {
+  for (const f of during.slice(Math.max(0, duringEnd - 7), duringEnd + 3)) {
+    console.log(`     ${Math.round(f.at)}ms ${f.moving ? 'moving' : 'still '} ${f.readable ? 'readable' : 'unread  '}${f.placeholder ? ' placeholder' : ''}`);
+  }
+}
 
 /* Hold actual worker reads past the field deadline on an uncached visit.
    Releasing every first-wave query at one time avoids fabricating a slow

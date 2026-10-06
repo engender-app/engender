@@ -115,28 +115,20 @@ export function attributeDrug(
   return drugs.size === 1 ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
 }
 
-/** Which of `candidates` have no dose logged against their drug among
-    `dayDoses` - the entry editor's quick-log chip, which offers a dose only
-    for a drug not already logged that day (after-release ticket 01).
-
-    Each dose's drug is attributeDrug's answer, the one dayRows draws with:
-    a dose's own `drug` is null on most rows, so reading only that field left
-    the chip up after a dose logged from the dose sheet, and one tap then
-    logged a second. A drug-less dose while two different drugs run is
-    ambiguous and takes neither off. Names compare trimmed and case
-    ignored, as the chip always compared them. */
-export function episodesWithNoDoseLogged(
-  episodes: readonly RegimenEpisode[],
-  candidates: readonly RegimenEpisode[],
-  dayDoses: readonly Pick<DoseEvent, 'drug' | 'timestamp'>[]
-): RegimenEpisode[] {
-  const fold = (drug: string) => drug.toLowerCase().trim();
-  const logged = new Set<string>();
-  for (const dose of dayDoses) {
-    const { drug } = attributeDrug(episodes, dose);
-    if (drug) logged.add(fold(drug));
-  }
-  return candidates.filter((episode) => !logged.has(fold(episode.drug)));
+/** The last day of `from`..`to` on which `episode` can expect a dose: `to`
+    itself, or the episode's own planned end when that comes first. Null
+    when the episode misses the range, starting after it or ending before
+    it. The day-ahead marks read every episode through this (after-release
+    ticket 01), so a course that ends on Friday expects nothing the week
+    after and one that starts next week still has its first dose there. */
+export function lastDayWithin(
+  episode: Pick<RegimenEpisode, 'startEpochDay' | 'endEpochDay'>,
+  from: number,
+  to: number
+): number | null {
+  if (episode.startEpochDay > to) return null;
+  const last = Math.min(to, episode.endEpochDay ?? to);
+  return last < from ? null : last;
 }
 
 /** One stretch of days over which a dose naming no drug of its own

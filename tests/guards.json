@@ -325,7 +325,7 @@
   {
     "name": "entry-editor-return",
     "tier": "built",
-    "holds": "The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed"
+    "holds": "The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed; the header field spans the same box as Care's and Day's, an opened Photos, Voice or Video section lands above the foot, and an untouched scale draws no thumb or fill and saves no value"
   },
   {
     "name": "calendar-month-a11y-check",
@@ -457,6 +457,11 @@
     "name": "restore-previous-journal",
     "tier": "built",
     "holds": "after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; \"Try opening again\" pressed the frame it appears boots like a slow retry, 5 of 5"
+  },
+  {
+    "name": "day-addresses",
+    "tier": "built",
+    "holds": "malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter"
   },
   {
     "name": "device-recovery-check",

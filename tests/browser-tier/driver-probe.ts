@@ -47,7 +47,7 @@ async function run() {
      reporting `changes` truthfully - unknown-id writes throw when changes
      is 0 - and on `lastInsertRowid` being the row just inserted, even
      though the journal itself reads rowids back by uuid instead. This is
-     the real SQLocal driver, so it is the contract's only honest check. */
+     the production encrypted driver, so it is the contract's only honest check. */
   const uuid = `run-contract-${Date.now()}`;
   const insert = await result.driver.run(
     'INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES (?, 1, 1000, 1000)',

@@ -1,5 +1,5 @@
 /* Browser tier (ticket 03): the Node tier (vitest.config.ts) cannot
-   exercise SQLocal, which needs a real browser's OPFS. This script serves
+   exercise the encrypted SQLite driver, which needs a real browser's OPFS. This script serves
    the probe pages in this directory over a standalone dev server, drives
    a real Chromium through them with Playwright, and prints PASS/FAIL
    lines like tests/walkthrough.test.mjs. Run with `npm run test:browser`.
@@ -131,8 +131,8 @@ await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');
   if (first.error) throw new Error(first.error);
 
-  if (first.markerExisted === false) ok('SQLocal opens a fresh database backed by OPFS');
-  else fail('SQLocal opens a fresh database backed by OPFS', 'marker row already existed on first load');
+  if (first.markerExisted === false) ok('sqlite3mc opens a fresh database backed by OPFS');
+  else fail('sqlite3mc opens a fresh database backed by OPFS', 'marker row already existed on first load');
 
   const { fts5 } = first;
   if (fts5.gesla === 1) ok("FTS5 remove_diacritics folds ą/ę/ś in 'zażółć gęślą jaźń'");
@@ -151,14 +151,11 @@ await block('ticket 03 browser tier', 5, async () => {
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
 });
 
-await block('production foreign key enforcement', 5, async () => {
+await block('production foreign key enforcement', 4, async () => {
   const r = await load('/foreign-keys.html', 'foreign-keys-probe');
   if (r.error) throw new Error(r.error);
   if (r.encryptedOpen === 1) ok('sqlite3mc enables foreign keys before migrations');
   else fail('sqlite3mc enables foreign keys before migrations', String(r.encryptedOpen));
-  if (r.sqlocalOpen === 1 && r.sqlocalRestoredOpen === 1 && r.plaintextOpen === 1)
-    ok('SQLocal enables foreign keys on initial, restored and plaintext opens');
-  else fail('SQLocal enables foreign keys on every open', JSON.stringify(r));
   if (r.encryptedAfterMigration === 1 && r.violations.length === 0)
     ok('migrations leave enforcement on and no foreign key violations');
   else fail('migrations leave enforcement on and no foreign key violations', JSON.stringify(r));
@@ -463,7 +460,7 @@ await block('ticket 13 browser tier', 10, async () => {
 
   /* Ticket 14: the same archive restored into another journal on the real
      platform, where a Replace is a dozen deletes and every insert inside one
-     BEGIN/COMMIT through SQLocal's worker. */
+     BEGIN/COMMIT through the SQLite worker. */
   const restored = r.restored ?? {};
   if (
     restored.entries === 1 &&
@@ -601,103 +598,16 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
   else fail('a wrong raw key is refused by SQLite', 'a query under a random key succeeded');
 });
 
-// --- Ticket 10 (phase 2): converting a plaintext-era journal --------------
-await block('ticket 10 (phase 2) browser tier', 14, async () => {
-  const r = await load('/conversion.html', 'conversion-probe');
+// --- Unsupported legacy storage remains untouched -----------------------
+await block('legacy storage refusal', 3, async () => {
+  const r = await load('/legacy-storage.html', 'legacy-storage-probe');
   if (r.error) throw new Error(r.error);
-
-  /* The fixture first, or nothing below it means anything: this journal was
-     written by the pre-encryption app, so every sentinel has to be sitting
-     in the clear on disk before the conversion runs. */
-  /* Against the probe's own sentinel list rather than a copy written here.
-     Which kinds of protected content the fixture plants is that file's
-     decision and it has changed once already; what this has to hold is
-     that every one of them is readable in the clear before the conversion,
-     since finding none of them afterwards is what the whole block rests on.
-     The floor keeps that from passing on an empty list. */
-  const expected = r.plaintextScanExpected ?? [];
-  if (expected.length > 0 && JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
-    ok(`the pre-encryption journal really is readable on disk: all ${expected.length} sentinels found before converting`);
-  else
-    fail(
-      'the pre-encryption journal is readable on disk before converting',
-      `found ${JSON.stringify(r.plaintextScanFound)} of ${JSON.stringify(expected)}`
-    );
-
-  if (r.stateBeforeConversion === 'convert') ok('a plaintext journal in the OPFS root is recognised as one to convert');
-  else fail('a plaintext journal is recognised as one to convert', r.stateBeforeConversion);
-
-  if (r.precheck?.ok === true && r.markerAfterPrecheck === 'preparing')
-    ok('the precheck passes on a device with room, and leaves the marker before the keystore');
-  else fail('the precheck passes and leaves a marker', JSON.stringify({ precheck: r.precheck, marker: r.markerAfterPrecheck }));
-
-  // A keystore beside a plaintext journal is only unambiguous because the
-  // marker is already there (conversion.ts's ordering rule).
-  if (r.stateWithKeystoreMidConversion === 'convert')
-    ok('a keystore written mid-conversion does not make the app think the journal is already encrypted');
-  else fail('a keystore written mid-conversion is still a conversion', r.stateWithKeystoreMidConversion);
-
-  if (r.copyBeforeRedoVerifies === true)
-    ok('a copy written by an attempt that then died verifies, and the conversion below writes over it');
-  else fail('an abandoned copy verifies and is written over', JSON.stringify(r.copyBeforeRedoVerifies));
-
-  if (r.interrupted && r.markerAfterInterruption === 'photos' && r.stateAfterInterruption === 'convert' && r.sourceStillPresentMidPhotos)
-    ok('killed part way through the photos: the marker says photos, and the plaintext journal is still on disk');
-  else
-    fail(
-      'killed part way through the photos leaves a resumable state',
-      JSON.stringify({ error: r.interrupted, marker: r.markerAfterInterruption, state: r.stateAfterInterruption })
-    );
-
-  if (r.markerAfterConversion === null && r.stateAfterConversion === 'unlock' && r.plaintextGone)
-    ok('the resume finishes: marker cleared, plaintext journal retired, journal is one that unlocks');
-  else
-    fail(
-      'the resume finishes the conversion',
-      JSON.stringify({ marker: r.markerAfterConversion, state: r.stateAfterConversion, plaintextGone: r.plaintextGone })
-    );
-
-  /* The claim gate, on a journal that was plaintext ten seconds ago. Every
-     OPFS file: the SAHPool pool files holding the converted database and
-     its side files, the encrypted photos, the keystore - and no source, no
-     pre-migration copy and no temporary artifact left over from the copy
-     itself. */
-  if (r.dirtyFiles.length === 0 && r.scan.length >= 3)
-    ok(`closed-app scan after conversion: none of the 8 sentinels readable in any of ${r.scan.length} OPFS files`);
-  else fail('closed-app scan after conversion finds no readable journal content', r.dirtyFiles.join('; ') || `only ${r.scan.length} files scanned`);
-
-  const remnants = r.rootNames.filter((p) => p.includes('engender.sqlite3'));
-  if (remnants.length === 0) ok('no plaintext database, pre-migration copy or side file survives in the OPFS root');
-  else fail('no plaintext database or side file survives in the OPFS root', JSON.stringify(remnants));
-
-  if (r.dirtyKeys.length === 0 && r.bootMirror && !('pinHash' in r.bootMirror))
-    ok('the boot mirror rewrites itself from the encrypted table, without the PIN hash it used to carry');
-  else fail('the boot mirror loses the PIN hash', JSON.stringify({ dirty: r.dirtyKeys, mirror: r.bootMirror }));
-
-  // The journal itself, read back through the passphrase.
-  const carried =
-    r.note === 'sentinel-converted-note-woke-up-early-4182' &&
-    r.photoCount === 1 &&
-    r.photoIntact &&
-    r.milestones?.includes('sentinel-converted-milestone-first-day-2260') &&
-    r.reminders?.includes('sentinel-converted-reminder-progynova-7715') &&
-    r.labs?.includes('sentinel-converted-analyte-estradiol') &&
-    r.preferenceName === 'sentinel-converted-preference-alicja-9014';
-  if (carried) ok('every entry, photo, milestone, reminder, lab result and preference comes back through the passphrase');
-  else fail('the whole journal comes back through the passphrase', JSON.stringify(r));
-
-  // Whole-database, not export/import: restore.ts never touches the pref
-  // table, so a device-local preference that survives proves the mechanism
-  // (ADR-0003/0020).
-  if (r.deviceLocalInDatabase === 'sentinel-converted-device-local-6801')
-    ok('a device-local preference travels too - one an archive would have dropped');
-  else fail('a device-local preference travels with the database', JSON.stringify(r.deviceLocalInDatabase));
-
-  if (r.searchHits >= 1) ok(`the FTS5 index came across with the pages rather than being rebuilt (${r.searchHits} hits)`);
-  else fail('the FTS5 index came across with the pages', `got ${r.searchHits} hits`);
-
-  if (r.secondConvertPhoto === true) ok('converting an already-converted photo again leaves it readable, which is what a resume relies on');
-  else fail('converting an already-converted photo is a no-op', JSON.stringify(r.secondConvertPhoto));
+  if (r.refused) ok('legacy storage refuses boot before setup or unlock');
+  else fail('legacy storage refuses boot', JSON.stringify(r));
+  if (r.demoRefused) ok('demo builds also refuse legacy storage without resetting it');
+  else fail('demo builds preserve legacy storage', JSON.stringify(r));
+  if (r.unchanged) ok('all legacy file names and bytes survive refusal');
+  else fail('legacy refusal leaves files untouched', JSON.stringify(r));
 });
 
 // --- Ticket 04 (phase 2): when a waiting release may take over ------------
