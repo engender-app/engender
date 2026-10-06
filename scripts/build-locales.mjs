@@ -90,7 +90,13 @@ export function buildLocales() {
     const { html, ...measurement } = composeShell(english, polish);
     writeFileSync('build/index.html', html);
     run('node', ['scripts/release-metadata.mjs']);
-    const shellHash = createHash('sha256').update(readFileSync('build/index.html')).digest('hex');
+    const shell = readFileSync('build/index.html', 'utf8');
+    // A demo build's prewarm script and WASM preload arrive here, after the
+    // graphs were read, and both locales download them at start.
+    const composed = firstLoadUrls(html);
+    const added = firstLoadUrls(shell).filter((url) => !composed.includes(url));
+    for (const urls of Object.values(measurement.graph)) urls.push(...added.filter((url) => !urls.includes(url)));
+    const shellHash = createHash('sha256').update(shell).digest('hex');
     writeFileSync('.svelte-kit/locale-graphs.json', JSON.stringify({ ...measurement, shellHash, demo: process.env.VITE_DEMO === '1' }, null, 2) + '\n');
   } finally {
     rmSync(temporary, { recursive: true, force: true });
