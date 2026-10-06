@@ -218,14 +218,15 @@ try {
     await j.milestones.deleteMilestone(milestone);
   }, fixture);
   await page.reload({ waitUntil: 'networkidle' });
-  await identity.getByText('Not linked to anything', { exact: true }).waitFor();
-  assert.equal(await identity.getByRole('link').count(), 0, 'deleted owner leaves no stale link');
+  const linkRow = page.locator('[data-document-link]');
+  await linkRow.getByText('Not linked to anything', { exact: true }).waitFor();
+  assert.equal(await linkRow.locator('a').count(), 0, 'deleted owner leaves no stale link');
   await page.evaluate(async ({ first, milestone }) => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     await j.documents.setDocumentTarget(first, { kind: 'milestone', id: milestone });
   }, fixture);
-  await identity.getByText('Linked to something that’s gone', { exact: true }).waitFor();
-  assert.equal(await identity.getByRole('link').count(), 0, 'restored dangling owner is unavailable');
+  await linkRow.getByText('Linked to something that’s gone', { exact: true }).waitFor();
+  assert.equal(await linkRow.locator('a').count(), 0, 'restored dangling owner is unavailable');
   await visit(`/media/documents/${fixture.image}`);
   await page.locator('[data-document-page]').waitFor();
   await page.waitForFunction(() => document.querySelector('[data-document-page]').naturalWidth === 1190);
