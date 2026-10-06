@@ -1962,7 +1962,7 @@ try {
        flaky under the full suite even though it held reliably alone. The
        toast below is what proves the save actually landed. */
     await page.waitForFunction(
-      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Imported'))
+      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Results saved'))
     );
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
     ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
@@ -8139,8 +8139,10 @@ try {
   await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
     throw new Error('a PDF nothing could draw is showing a page image');
   }
-  const sizeText = await page.locator('[data-document-size]').textContent();
-  if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
+  // No byte size on the screen (after-release 26): sizes are Export's.
+  if (/\b\d+(?:[.,]\d+)?\s?(?:KB|MB)\b/.test(await page.locator('main').innerText())) {
+    throw new Error('the document screen shows a byte size');
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
