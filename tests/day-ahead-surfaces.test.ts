@@ -20,11 +20,11 @@ const dayAheadRows = read('src/lib/components/dayAheadRows.ts');
 
 describe('the day after today', () => {
   it('is not the day carried in page.params.day alone - it is compared against today', () => {
-    expect(day).toMatch(/isFuture = \$derived\(epochDay > todayEpochDay\(\)\)/);
+    expect(day).toMatch(/isFuture = \$derived\(epochDay > currentDay\(\)\)/);
   });
 
   it('reads dayAhead for its own single day, not a month', () => {
-    expect(day).toContain('j.dayAhead.getDayAhead(epochDay, epochDay, todayEpochDay())');
+    expect(day).toContain('j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())');
   });
 
   /* The future branch itself: everything between `{#if isFuture}` and the

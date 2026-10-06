@@ -43,7 +43,7 @@
   import PhotoThumb from './PhotoThumb.svelte';
   import ProcedurePhaseRail from './ProcedurePhaseRail.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
@@ -52,7 +52,7 @@
   let {
     procedure,
     selected = false,
-    today = todayEpochDay(),
+    today = currentDay(),
     linkedMilestone = null,
     photos = [],
     checklistCount = 0,

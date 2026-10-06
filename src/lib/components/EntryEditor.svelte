@@ -13,6 +13,7 @@
     epochDayFromDateInputValue,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -108,7 +109,7 @@
      again - not the query's dependencies, which this no longer names. */
   let loaded = liveQuery((j) => (entryId != null ? j.entries.getEntry(entryId) : Promise.resolve(undefined)));
   let existing = $derived(loaded.value);
-  let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
+  let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
   // Route keys mount a new session for each entry or day.
   // svelte-ignore state_referenced_locally
@@ -354,7 +355,7 @@
       .filter((d): d is GenderDimension => !!d);
     return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
-  let isToday = $derived(day === todayEpochDay());
+  let isToday = $derived(day === currentDay());
   /* The header's own subtitle, so it sits 12 under the field the way every
      screen's does (components.css), rather than a paragraph of the editor's
      own that had to guess the header's spacing and twice guessed wrong. An
@@ -496,7 +497,7 @@
      editor's cards into that registry would give the next one the cascade for
      free and is worth its own ticket. */
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, todayEpochDay()));
+  let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, currentDay()));
 
   let tryoutReflection = $state('');
   let procRecoveryNote = $state('');
@@ -1445,7 +1446,7 @@
       <DatePicker
         id="revisit-date"
         name="revisit-date"
-        min={dateInputValueFromEpochDay(todayEpochDay() + 1)}
+        min={dateInputValueFromEpochDay(currentDay() + 1)}
         ariaLabel={m.revisit_pick_date_label()}
         bind:value={revisitDateInput}
         data-revisit-date

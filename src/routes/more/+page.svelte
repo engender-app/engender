@@ -61,6 +61,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
   import { AREA_STATES_BEFORE_READ } from '$lib/data/areaState';
   import { hubIconMaskImage } from '$lib/components/hubIconMasks';
@@ -69,7 +70,7 @@
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { collapse, disclose } from '$lib/motion/reveal';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
