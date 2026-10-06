@@ -724,6 +724,7 @@ flowchart LR
 - Mood has its own scale, and each step picks its own ink (ADR-0025, ADR-0077, ADR-0091).
 - A secondary button is a block of the page (ADR-0093).
 - The pride flag motif appears only on Home and never under disguise (ADR-0035).
+- Every `var(--x)` without a stated fallback must name a property the tree defines, whether in a stylesheet, a `style:` directive, `setProperty` or `@property`. An undefined one is invalid at computed-value time and falls back to the inherited value without any error. [tests/css-tokens-resolve.test.ts](../tests/css-tokens-resolve.test.ts) walks `src` and fails on one. The scale has no `--muted`, `--text-1` or `--weight-semibold`; use `--text-2`, `--text` and `--weight-medium`.
 - [kit.css](../src/lib/styles/kit.css), [components.css](../src/lib/styles/components.css) and [screens.css](../src/lib/styles/screens.css) keep class baselines (`src/lib/styles/*-classes-baseline.txt`). `check:screens-classes` stops a screen-only class from spreading.
 
 ### 8.5 Motion system
