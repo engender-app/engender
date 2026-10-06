@@ -1,8 +1,8 @@
 import { setLocale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
-import { fmtNumber } from '$lib/data/dates';
+import { fmtNumber, intlLocale } from '$lib/data/dates';
 import { nativeValue } from '$lib/data/wrappedDisplay';
-import { makeReviewRows } from '$lib/data/labs/ocr';
+import { makeReviewRows, formatLabReviewValue, parseLabNumeric } from '$lib/data/labs/ocr';
 import { pickPhotos } from '$lib/stores/photoPicking';
 import { documentPicker } from '$lib/data/photos/picker';
 import { publishFixture } from './mount';
@@ -54,7 +54,10 @@ publishFixture('locale-25', async () => {
   const results: Result[] = [];
   const check = assertions(results);
   await check('Polish mood and fractional doses use decimal commas', () => nativeValue('mood', 3.5) === '3,5' && `${fmtNumber(0.5)} mg` === '0,5 mg');
-  await check('Polish OCR uses the selected language', () => makeReviewRows([{ analyte: 'estradiol', value: 123.4, unit: 'pg/mL', date: '', note: '', line: '', lowConfidence: false, unresolvedAnalyte: false }], new Set(), fmtNumber)[0].value === '123,4');
+  await check('Polish OCR values retain decimal commas without invalid grouping', () => {
+    const rows = makeReviewRows([{ analyte: 'estradiol', value: 12345.6, unit: 'pg/mL', date: '', note: '', line: '', lowConfidence: false, unresolvedAnalyte: false }], new Set(), (value) => formatLabReviewValue(value, intlLocale()));
+    return rows[0].value === '12345,6' && parseLabNumeric(rows[0].value) === 12345.6;
+  });
   await check('Polish period and reading joins have translated grammar', () => {
     const range = m.compare_period_range({ from: '1 wrz', to: '30 wrz 2026' });
     return range === '1 wrz do 30 wrz 2026' && !range.includes(' to ') && m.reading_highest_value({ value: '3,5', metric: 'Nastrój' }) === 'Nastrój: 3,5';
