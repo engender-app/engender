@@ -12,8 +12,9 @@
 
      Which shape renders is a container query in app.css, not a branch here.
      Both are in the DOM at every width and one of them is display:none, so
-     there is no resize handler, no measurement, and no flash of the wrong
-     navigation on a slow first paint. */
+     there is no flash of the wrong navigation on a slow first paint. What
+     is measured is only whether the bar's four names fit one row of it
+     (`rows` below). */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { activeTabKey } from '$lib/navigation/active-tab';
@@ -165,7 +166,19 @@
     y: { near: 'center top', far: 'center bottom' }
   } as const;
 
-  type Pill = { box: Box; host: Host; at: Insets; shown: boolean; near: Schedule; far: Schedule };
+  /* `near`/`far` are the clocks along the shape's own axis; `crossNear`/
+     `crossFar` the ones across it, which only the bar's two-row layout ever
+     travels (top and bottom, between its rows). */
+  type Pill = {
+    box: Box;
+    host: Host;
+    at: Insets;
+    shown: boolean;
+    near: Schedule;
+    far: Schedule;
+    crossNear: Schedule;
+    crossFar: Schedule;
+  };
 
   const HIDDEN: Pill = {
     box: { x: 0, y: 0, w: 0, h: 0 },
@@ -173,7 +186,9 @@
     at: { left: 0, right: 0, top: 0, bottom: 0 },
     shown: false,
     near: LEAD,
-    far: LEAD
+    far: LEAD,
+    crossNear: LEAD,
+    crossFar: LEAD
   };
 
   /* The tab the highlight has just landed on, which way it came from - the
@@ -241,15 +256,22 @@
        the leading schedule, so the shape moves as one piece and never
        opens. */
     if (!prev.shown) {
-      return { next: { box, host, at, shown: true, near: PLACE, far: PLACE }, dir: 0 };
+      return {
+        next: { box, host, at, shown: true, near: PLACE, far: PLACE, crossNear: PLACE, crossFar: PLACE },
+        dir: 0
+      };
     }
     if (!animate) {
-      return { next: { box, host, at, shown: true, near: LEAD, far: LEAD }, dir: 0 };
+      return {
+        next: { box, host, at, shown: true, near: LEAD, far: LEAD, crossNear: LEAD, crossFar: LEAD },
+        dir: 0
+      };
     }
     const dir = travel(prev.box, box, axis);
     const lead = leadingEdge(dir);
+    const cross = schedules(travel(prev.box, box, axis === 'x' ? 'y' : 'x'));
     return {
-      next: { box, host, at, shown: true, ...schedules(dir) },
+      next: { box, host, at, shown: true, ...schedules(dir), crossNear: cross.near, crossFar: cross.far },
       dir,
       anchor: lead ? ANCHOR[axis][lead] : ANCHOR[axis].far
     };
@@ -282,14 +304,60 @@
   $effect(() => {
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
+      fitLabels();
       for (const shape of SHAPES) measure(shape, false);
     });
     for (const shape of SHAPES) {
       const nav = navs[shape.key];
       if (nav) observer.observe(nav);
     }
+    /* The labels too: a web font arriving, or Android's font scale changing
+       under the WebView, changes how wide a name is without the bar itself
+       changing size. */
+    for (const label of navs.bar?.querySelectorAll('[data-nav-label]') ?? []) observer.observe(label);
     return () => observer.disconnect();
   });
+
+  /* Whether the four names fit the bar's one-row layout, where each tab is a
+     fifth of the bar (after-release 18, audit A11 and A11Y-04). At 320px
+     with default text "Look back" and "Transition" were 4-5px too wide and
+     ended in an ellipsis; at 130% text two names did, at 200% all four.
+     When one does not fit, the bar takes two rows of two tabs either side
+     of the add button, which gives each name more than twice the room. In
+     those wider tabs the icon goes beside the name when both fit, so two
+     rows cost 42px more than one rather than twice the height; where they
+     do not (320px at 200%), the icon stays above.
+
+     Measured as rendered rather than reasoned from the type scale: Android's
+     font scale reaches the WebView as text zoom, which grows the glyphs but
+     not the rem units the type tokens are written in. The comparison is
+     always against the one-row cell, whichever layout is showing, so the
+     answer does not change because the layout did. Labels never wrap, in
+     either layout, so a label's range is its whole name on one line. */
+  let rows = $state<'one' | 'two' | 'two-inline'>('one');
+
+  function fitLabels() {
+    const bar = navs.bar;
+    if (!laidOut(bar)) return;
+    const style = getComputedStyle(bar);
+    const inner = bar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const cell = inner / (NAV.length + 1);
+    const add = bar.querySelector<HTMLElement>('[data-nav-fab]')?.offsetWidth ?? 0;
+    const half = (inner - add) / 2;
+    const gap = parseFloat(style.getPropertyValue('--space-2')) || 8;
+    const icon = bar.querySelector('.nav-icon')?.getBoundingClientRect().width ?? 0;
+    const words = document.createRange();
+    let widest = 0;
+    for (const label of bar.querySelectorAll('[data-nav-label]')) {
+      words.selectNodeContents(label);
+      widest = Math.max(widest, words.getBoundingClientRect().width);
+    }
+    const next = widest <= cell + 0.5 ? 'one' : icon + widest + 3 * gap <= half ? 'two-inline' : 'two';
+    if (rows !== next) rows = next;
+    /* What the scroll region keeps clear under its last row follows the
+       bar's real height, which large text and the second row both grow. */
+    bar.closest<HTMLElement>('.app')?.style.setProperty('--nav-bar-height', `${bar.offsetHeight}px`);
+  }
 </script>
 
 <!-- Behind the tabs in source order and in paint order, so a tab's icon and
@@ -310,6 +378,12 @@
     style:--pill-far-dur={pill[shape].far.dur}
     style:--pill-far-ease={pill[shape].far.ease}
     style:--pill-far-delay={pill[shape].far.delay}
+    style:--pill-cross-near-dur={pill[shape].crossNear.dur}
+    style:--pill-cross-near-ease={pill[shape].crossNear.ease}
+    style:--pill-cross-near-delay={pill[shape].crossNear.delay}
+    style:--pill-cross-far-dur={pill[shape].crossFar.dur}
+    style:--pill-cross-far-ease={pill[shape].crossFar.ease}
+    style:--pill-cross-far-delay={pill[shape].crossFar.delay}
   ></span>
 {/snippet}
 
@@ -409,6 +483,8 @@
 <nav
   bind:this={navs.bar}
   class="app-nav"
+  class:is-two-rows={rows !== 'one'}
+  class:is-inline={rows === 'two-inline'}
   class:is-fan-open={ui.chooserOpen}
   data-app-nav
   aria-label={m.nav_main()}
