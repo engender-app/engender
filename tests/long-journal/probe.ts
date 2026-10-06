@@ -40,6 +40,14 @@ const publish = (value: unknown) => publishResult(NAME, value);
 // Failure snapshots distinguish a late fixture from a stalled storage scan.
 const progress = {
   stages: [] as { name: string; days: number; at: number }[],
+  generation: null as {
+    startedAt: number;
+    lastProgressAt: number;
+    entriesStarted: number;
+    entriesCompleted: number;
+    photosStarted: number;
+    photosCompleted: number;
+  } | null,
   storage: null as {
     operation: 'list' | 'size' | 'complete';
     startedAt: number;
@@ -51,7 +59,10 @@ Object.assign(window, { __longJournalProgress: progress });
 const stage = (name: string, days: number) => {
   progress.stages.push({ name, days, at: performance.now() });
   if (progress.stages.length > 32) progress.stages.shift();
-  if (name === 'reset-origin') progress.storage = null;
+  if (name === 'reset-origin') {
+    progress.storage = null;
+    progress.generation = null;
+  }
   document.body.setAttribute('data-long-journal-stage', name);
   document.body.setAttribute('data-long-journal-days', String(days));
 };
@@ -133,10 +144,39 @@ async function run(days: number) {
   // Restore the captured setting and commit a header write before reopening.
   const [{ synchronous }] = await booted.driver.query<{ synchronous: number }>('PRAGMA synchronous');
   const startedAt = performance.now();
+  // Setup counters show whether fixture work advances or waits on one operation.
+  // The adapter keeps the same journal writes and photo bytes; scored reads use
+  // the original journal after generation finishes.
+  const generation = {
+    startedAt, lastProgressAt: startedAt,
+    entriesStarted: 0, entriesCompleted: 0, photosStarted: 0, photosCompleted: 0
+  };
+  progress.generation = generation;
+  const generatingJournal = {
+    ...journal,
+    entries: {
+      ...journal.entries,
+      async upsertEntry(input: Parameters<typeof journal.entries.upsertEntry>[0]) {
+        generation.entriesStarted++;
+        const id = await journal.entries.upsertEntry(input);
+        generation.entriesCompleted++;
+        generation.lastProgressAt = performance.now();
+        return id;
+      }
+    }
+  };
+  const makePhoto = photoMaker();
+  const generatingPhoto = async (n: number) => {
+    generation.photosStarted++;
+    const photo = await makePhoto(n);
+    generation.photosCompleted++;
+    generation.lastProgressAt = performance.now();
+    return photo;
+  };
   let summary: LongJournalSummary;
   try {
     await booted.driver.exec('PRAGMA synchronous = OFF');
-    summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+    summary = await generateLongJournal(generatingJournal, { days, makePhoto: generatingPhoto });
   } finally {
     await booted.driver.exec(`PRAGMA synchronous = ${synchronous}`);
     const version = await booted.driver.getUserVersion();
