@@ -80,13 +80,15 @@ const snoozeStoreOf = (kind: LiveTileKind) =>
     : { snoozed: (nowMs: number) => isTileSnoozed(kind, nowMs), snooze: () => snoozeTile(kind) };
 
 export function homeTiles(
-  todayEpochDay: number,
+  /** A getter, so the reads below follow the day across midnight. */
+  today: () => number,
   handlers: {
     /** Home's own surface: the sheet offering a 24h snooze or a permanent
         off for the ready-letter tile. */
     onLetterDismiss: () => void;
   }
 ): HomeTileGrid {
+  const todayEpochDay = $derived(today());
   let nowTick = $state(Date.now());
   let snoozeRevision = $state(0);
   const snoozeMinute = $derived(Math.floor(nowTick / 60_000));
@@ -137,7 +139,7 @@ export function homeTiles(
   }
 
   async function resumePause(pauseId: string, startEpochDay: number): Promise<void> {
-    const endEpochDay = todayEpochDay - 1;
+    const endEpochDay = today() - 1;
     if (endEpochDay < startEpochDay) {
       await journal.journalingPauses.deletePause(pauseId);
       return;

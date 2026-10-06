@@ -47,6 +47,7 @@
   } from '$lib/data/letterStatus';
   import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { Letter } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LetterArrival from '$lib/components/LetterArrival.svelte';
@@ -67,7 +68,7 @@
 
   const HISTORY_LIMIT = 100;
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   type Composition = { id?: string; text: string; unlockDate: string };
   let sealOutcome = $state('');
 

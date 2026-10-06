@@ -43,6 +43,7 @@
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
   import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
@@ -173,7 +174,7 @@
   /* What was happening between the takes (phase 6 ticket 23). Benchmarks are
      months apart and a regimen episode is the thing they are read against,
      so the trend's range is however long there have been benchmarks. */
-  let span = $derived(annotationSpan(anchors.map((b) => b.epochDay), todayEpochDay()));
+  let span = $derived(annotationSpan(anchors.map((b) => b.epochDay), currentDay()));
   let annotationsQuery = liveList((j) =>
     j.chartAnnotations.getAnnotations(span.from, span.to, todayEpochDay())
   );

@@ -104,6 +104,7 @@
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
@@ -503,7 +504,7 @@
     if (starredOnly) chips.push({ key: 'starred', label: m.search_filter_starred(), remove: () => (starredOnly = false) });
     return chips;
   });
-  let todayInput = $derived(dateInputValueFromEpochDay(todayEpochDay()));
+  let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
 
   /* What the opening state offers before a character is typed (ticket 18):
      the eight most-used tags, the saved questions that exist, and this

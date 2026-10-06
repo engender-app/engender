@@ -41,6 +41,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import Progress from '$lib/components/Progress.svelte';
@@ -132,7 +133,7 @@
      there is no single range to ask for - and asking once per chart would be
      one query per unit for the same six tables. */
   let drawnOn = $derived(series.flatMap((s) => s.results.map((r) => r.epochDay)));
-  let span = $derived(annotationSpan(drawnOn, todayEpochDay()));
+  let span = $derived(annotationSpan(drawnOn, currentDay()));
   let annotationsAnsweredFor = $state('');
   let annotationsQuery = liveList((j) => {
     const asked = `${span.from}:${span.to}`;

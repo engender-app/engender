@@ -47,6 +47,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -96,7 +97,7 @@
   let markers = $derived(markersQuery.rows);
   const markerFor = (effect: string) => markers.find((marker) => marker.effect === effect) ?? null;
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /* The catalogue a hidden effect or a disabled category has already
      removed (CONTEXT: "Hidden", "Effect category") - what the timeline and

@@ -51,6 +51,7 @@
     epochDayFromTimestamp,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     ROUTE_OPTIONS,
     STATUS_OPTIONS,
@@ -88,8 +89,8 @@
   const SECTION_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
   let windowDays = $state(DOSE_LOG_WINDOW_DAYS);
-  const today = todayEpochDay();
-  let through = $state(today);
+  const today = $derived(currentDay());
+  let through = $state(todayEpochDay());
   let from = $derived(today - windowDays);
 
   /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
