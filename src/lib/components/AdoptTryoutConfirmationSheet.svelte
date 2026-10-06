@@ -11,6 +11,7 @@
     epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { adoptionMood } from '$lib/data/adoptionMood';
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
@@ -49,7 +50,7 @@
 
   let durationDays = $derived.by(() => {
     if (!tryout) return 1;
-    return Math.max(1, todayEpochDay() - tryout.startEpochDay + 1);
+    return Math.max(1, currentDay() - tryout.startEpochDay + 1);
   });
 
   /* The same step the adoption will write onto the milestone, and through
