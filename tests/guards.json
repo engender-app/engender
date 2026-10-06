@@ -446,7 +446,7 @@
   {
     "name": "boot-error-alone",
     "tier": "built",
-    "holds": "a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today"
+    "holds": "a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; the notice names the failure in words rather than the driver's, and a development build's journal (below the baseline) gets the start-over way out and no retry; a normal boot, and one at 6x CPU, still reach Today"
   },
   {
     "name": "restore-previous-journal",
