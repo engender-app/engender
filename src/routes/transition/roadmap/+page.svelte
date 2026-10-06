@@ -394,7 +394,12 @@
               data-dismissed={section.dismissed}
               onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
             >
-              {section.dismissed ? m.roadmap_track_restore() : m.roadmap_track_dismiss()}
+              <!-- Both labels are always laid out in one grid cell, so the
+                   button keeps the wider one's width and the row beside it
+                   holds still; the two crossfade. aria-hidden keeps the
+                   hidden one out of the accessible name. -->
+              <span class="roadmap-track-label" aria-hidden={section.dismissed}>{m.roadmap_track_dismiss()}</span>
+              <span class="roadmap-track-label" aria-hidden={!section.dismissed}>{m.roadmap_track_restore()}</span>
             </button>
           </div>
         {/snippet}
@@ -815,7 +820,18 @@
     padding: 0 var(--space-2);
     margin-right: calc(var(--space-2) * -1);
     border-radius: var(--r-block);
+    display: inline-grid;
+    align-items: center;
     transition: color var(--dur-fast) var(--ease-out);
+  }
+
+  .roadmap-track-label {
+    grid-area: 1 / 1;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+
+  .roadmap-track-label[aria-hidden='true'] {
+    opacity: 0;
   }
 
   /* Track name, remaining count and dismissal stay one header. At narrow
