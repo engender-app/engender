@@ -615,7 +615,7 @@
     width: 3.4em;
     font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .pf-tick {

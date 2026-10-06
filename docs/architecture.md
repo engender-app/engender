@@ -465,7 +465,7 @@ A boot sweep reclaims orphaned media files. Android's photo listing excludes dot
 
 ### 6.7 Media files
 
-Photos, thumbnails, voice recordings, video notes and documents live outside SQLite in one file store. The file names are opaque uuids, such as `<uuid>.webm` for a recording. `encryptedFileStore()` in [data/photos/encrypted-file-store.ts](../src/lib/data/photos/encrypted-file-store.ts) wraps the platform store (OPFS on the web, app-private files on Android). Each file is stored as a nonce followed by its AES-256-GCM ciphertext under the data key, with the file name as AAD. Photos are normalized and stripped of metadata on import (ADR-0008, ADR-0015). Every photo is browsed in one library, but each table still owns its own photos (ADR-0085).
+Photos, thumbnails, voice recordings, video notes and documents live outside SQLite in one file store. The file names are opaque uuids, such as `<uuid>.webm` for a recording. `encryptedFileStore()` in [data/photos/encrypted-file-store.ts](../src/lib/data/photos/encrypted-file-store.ts) wraps the platform store (OPFS on the web, app-private files on Android). Each file is stored as a nonce followed by its AES-256-GCM ciphertext under the data key, with the file name as AAD. Photos are normalized and stripped of metadata on import (ADR-0008, ADR-0015). Photo picks accept source files up to 32 MiB before normalization; document picks keep their own 25 MiB ceiling. Both native read transports enforce the source ceiling when a provider omits or understates its size. Every photo is browsed in one library, but each table still owns its own photos (ADR-0085).
 
 ### 6.8 Archive format and restore
 
@@ -724,6 +724,7 @@ flowchart LR
 - Mood has its own scale, and each step picks its own ink (ADR-0025, ADR-0077, ADR-0091).
 - A secondary button is a block of the page (ADR-0093).
 - The pride flag motif appears only on Home and never under disguise (ADR-0035).
+- Every `var(--x)` without a stated fallback must name a property the tree defines, whether in a stylesheet, a `style:` directive, `setProperty` or `@property`. An undefined one is invalid at computed-value time and falls back to the inherited value without any error. [tests/css-tokens-resolve.test.ts](../tests/css-tokens-resolve.test.ts) walks `src` and fails on one. The scale has no `--muted`, `--text-1` or `--weight-semibold`; use `--text-2`, `--text` and `--weight-medium`.
 - [kit.css](../src/lib/styles/kit.css), [components.css](../src/lib/styles/components.css) and [screens.css](../src/lib/styles/screens.css) keep class baselines (`src/lib/styles/*-classes-baseline.txt`). `check:screens-classes` stops a screen-only class from spreading.
 
 ### 8.5 Motion system

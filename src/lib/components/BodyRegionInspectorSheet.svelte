@@ -229,7 +229,6 @@
   .inspector-title {
     margin: 0;
     font-size: var(--text-lg);
-    line-height: var(--leading-tight);
     text-transform: capitalize;
   }
 

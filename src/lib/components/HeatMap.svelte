@@ -135,7 +135,7 @@
     direction?: number;
   } = $props();
 
-  const DOWS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const DOWS = Array.from({ length: 7 }, (_, i) => fmtDay(4 + i, { weekday: 'narrow' }));
   /** 1 to 4; level 0 is "nothing logged" and has no swatch of its own. */
   const SHADED = [...HEAT_STEPS.keys()].slice(1);
   /** The pip stops counting here, and three dots also means "three or

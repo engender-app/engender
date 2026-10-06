@@ -102,7 +102,10 @@
       it, or the record's own name when they did not. The place rides under
       it rather than in a second line, the same pairing the appointment screen's
       rows use. */
-  const nameOf = (appointment: { kind: string | null }) => appointment.kind ?? m.appointments_untitled();
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let procedureNames = $derived(new Map(proceduresQuery.rows.map((p) => [p.id, p.name])));
+  const nameOf = (appointment: { kind: string | null; procedureId: string | null }) =>
+    appointment.kind ?? (appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined) ?? m.appointments_untitled();
 
   let index = $state(0);
   /* Keyed by item id rather than by position: the list is live, and an item
