@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
@@ -6,6 +7,7 @@ import { appVersion } from './scripts/app-version.mjs';
 import { lockfilePackages } from './scripts/check-licences.mjs';
 import { noticesFromDisk, packagePathOf } from './scripts/licence-notices.mjs';
 import capacitorConfig from './capacitor.config';
+import { buildRequestHandler } from './tests/serve-build.mjs';
 
 /* What the client build actually emitted, written where src/service-worker.ts
    can import it - the shell cannot be precached from SvelteKit's own `build`
@@ -264,6 +266,23 @@ function isolateServer(server: ViteDevServer | PreviewServer): void {
   });
 }
 
+/* `npm run build` joins an English and a Polish build into build/ and gives
+   build/index.html the selector that picks one (scripts/build-locales.mjs,
+   after-release ticket 32). SvelteKit's preview renders its own document
+   from .svelte-kit/output, which holds only the last of the two builds, so
+   every page it served was Polish whatever the saved language. When build/
+   holds the joined shell, preview serves build/ itself, as serve-build.mjs
+   and nginx do. A plain `vite build` leaves an ordinary shell and keeps
+   SvelteKit's preview. */
+function serveJoinedLocaleBuild(server: PreviewServer): void {
+  const shell = resolve(server.config.root, 'build/index.html');
+  const handle = buildRequestHandler(server.config.root);
+  server.middlewares.use((req, res, next) => {
+    if (existsSync(shell) && readFileSync(shell, 'utf8').includes('const engenderLocaleGraphs = ')) handle(req, res);
+    else next();
+  });
+}
+
 export default defineConfig(({ command }) => ({
   build: { target: BUILD_TARGET },
   worker: { format: 'es', plugins: () => [notices.worker] },
@@ -311,7 +330,10 @@ export default defineConfig(({ command }) => ({
     {
       name: 'engender:cross-origin-isolate',
       configureServer: isolateServer,
-      configurePreviewServer: isolateServer
+      configurePreviewServer(server) {
+        isolateServer(server);
+        serveJoinedLocaleBuild(server);
+      }
     },
   ],
 }));

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { preview } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 import { serveBuild } from './serve-build.mjs';
 
@@ -19,6 +20,10 @@ const browser = await launchChromium();
 const passphrase = 'locale build verification';
 let checks = 0;
 const passed = (message) => { checks++; console.log(`PASS ${message}`); };
+const unlock = async (page) => {
+  await page.fill('#journal-passphrase', passphrase);
+  await page.click('[data-passphrase-submit]');
+};
 
 try {
   for (const [saved, browserLocale, expected] of [['en', 'pl-PL', 'en'], ['PL', 'en-US', 'pl'], [null, 'pl-PL', 'pl'], ['invalid', 'fr-FR', 'en']]) {
@@ -38,6 +43,22 @@ try {
     assert.deepEqual(errors, []);
     passed(`preference ${saved}/${browserLocale} selects only ${expected} startup graph`);
     await context.close();
+  }
+  // Forty-odd guards and the walkthrough boot the app through vite preview.
+  const vitePreview = await preview({ preview: { port: 0 } });
+  try {
+    for (const saved of ['en', 'pl']) {
+      const context = await browser.newContext({ locale: 'en-US', serviceWorkers: 'block' });
+      await context.addInitScript((value) => localStorage.setItem('PARAGLIDE_LOCALE', value), saved);
+      const page = await context.newPage();
+      await page.goto(vitePreview.resolvedUrls.local[0]);
+      await page.waitForSelector('[data-next]');
+      assert.equal(await page.getAttribute('html', 'lang'), saved);
+      passed(`vite preview serves the joined shell and selects ${saved}`);
+      await context.close();
+    }
+  } finally {
+    await vitePreview.close();
   }
   const context = await browser.newContext({ locale: 'en-US' });
   const page = await context.newPage();
@@ -75,8 +96,7 @@ try {
     for (const locale of ['pl', 'en']) {
       await page.goto(`${origin}/settings`);
       await page.waitForSelector('#journal-passphrase');
-      await page.fill('#journal-passphrase', passphrase);
-      await page.click('[data-passphrase-submit]');
+      await unlock(page);
       await page.waitForSelector('[data-list-row="language"]');
       await page.click('[data-list-row="language"]');
       await Promise.all([page.waitForNavigation(), page.click(`[data-sheet] [data-segment="${locale}"]`)]);
@@ -85,14 +105,12 @@ try {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, 'utf8'));
       const text = await page.locator('body').innerText();
       assert.ok(text.includes(messages.pp_unlock_body), 'lock gate must show selected locale copy');
-      await page.fill('#journal-passphrase', passphrase);
-      await page.click('[data-passphrase-submit]');
+      await unlock(page);
       await page.waitForSelector('[data-list-row="language"]');
       passed(`${offline ? 'offline' : 'online'} reload switches to ${locale}; lock and unlock work`);
       await page.goto(`${origin}/settings/export`);
       await page.waitForSelector('#journal-passphrase');
-      await page.fill('#journal-passphrase', passphrase);
-      await page.click('[data-passphrase-submit]');
+      await unlock(page);
       await page.waitForSelector('[data-daylio]');
       await page.click('[data-daylio]');
       const chooser = page.waitForEvent('filechooser');
