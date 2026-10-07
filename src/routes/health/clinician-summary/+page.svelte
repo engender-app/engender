@@ -179,7 +179,7 @@
 </script>
 
 <div class="screen clinician-summary">
-  <ScreenHeader title={m.clinician_summary_title()} back="/more" class="no-print" />
+  <ScreenHeader title={m.clinician_summary_title()} back="/care" class="no-print" />
 
   <!-- The settings row shows the included items and opens their controls. -->
   <!-- Held until the regimen read answers: the row names the drugs, and

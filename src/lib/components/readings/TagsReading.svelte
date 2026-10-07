@@ -157,11 +157,3 @@
     {/if}
   </Sheet>
 {/if}
-
-<style>
-  .reading-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
-</style>

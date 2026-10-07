@@ -321,33 +321,9 @@
 {/if}
 
 <style>
-  .reading-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
 
-  .reading-axes {
-    display: grid;
-    gap: var(--space-1);
-    margin-top: var(--space-3);
-  }
 
-  .reading-axis {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
 
-  /* Widened past the picker's own 52% cap: the other half of this row is
-     one word (stats/+page.svelte's own reason, kept with the row). */
-  .reading-axis :global(.kit-chart-pick) {
-    max-width: 74%;
-  }
 
   .reading-compare-add {
     min-height: var(--touch-target);

@@ -251,20 +251,6 @@
     };
   }
 
-  function step(delta: number) {
-    dir = delta;
-    let mo = month + delta;
-    if (mo < 0) {
-      mo = 11;
-      year--;
-    }
-    if (mo > 11) {
-      mo = 0;
-      year++;
-    }
-    month = mo;
-  }
-
   /* The month, open or folded to a strip. Folded is where the door opens,
      because the entries are what it is for.
 
@@ -472,10 +458,10 @@
 
   {#if hasEntries}
     <div class="cal-controls">
-      <button class="icon-btn press" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => step(-1)}>
+      <button class="icon-btn press" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => move(-1, false)}>
         <Icon name="chevronLeft" size={22} />
       </button>
-      <button class="icon-btn press" aria-label={m.next_month()} data-cal-step="next" onclick={() => step(1)}>
+      <button class="icon-btn press" aria-label={m.next_month()} data-cal-step="next" onclick={() => move(1, false)}>
         <Icon name="chevronRight" size={22} />
       </button>
       <ChartPicker

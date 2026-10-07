@@ -46,6 +46,7 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
   }
 
   function askToDelete(target?: TRecord | string): TRecord | null {
+    if (!options.remove) return null;
     const found = findDeleteTarget(options.findById, editor, target);
     if (found) {
       deleteTarget = found;
@@ -61,9 +62,10 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
   const removeOnce = oneAtATime(() => {}, (value) => { deleting = value; });
   async function confirmDelete() {
     const target = deleteTarget;
-    if (!target || deleting) return;
+    const remove = options.remove;
+    if (!target || deleting || !remove) return;
     deleteFailed = false;
-    if (!(await removeOnce(() => options.remove(target.id), ''))) {
+    if (!(await removeOnce(() => remove(target.id), ''))) {
       if (deleteTarget === target) deleteFailed = true;
       return;
     }
