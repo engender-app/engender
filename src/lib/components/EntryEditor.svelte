@@ -152,6 +152,17 @@
   if (entryId == null && openSection) session.draft.setOpenSection(openSection);
   // svelte-ignore state_referenced_locally
   const persistedRestore = entryId == null ? session.resume() : Promise.resolve();
+  /* Opened from the address, the section is brought into view the way a
+     chip tap brings it, once the draft is in place: below Mode and Gender
+     it would otherwise open out of sight. */
+  // svelte-ignore state_referenced_locally
+  if (entryId == null && openSection) {
+    const section = openSection;
+    void persistedRestore.then(async () => {
+      await tick();
+      if (entryDraft.openSection === section) revealSection(section);
+    });
+  }
   onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
