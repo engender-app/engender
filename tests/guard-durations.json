@@ -99,7 +99,8 @@
     "boot-error-alone": 15.04,
     "restore-previous-journal": 41.98,
     "device-recovery-check": 19.76,
-    "settings-erase-check": 81.24
+    "settings-erase-check": 81.24,
+    "save-and-failure-check": 30
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -336,6 +337,9 @@
     "settings-erase-check": [
       40.68,
       40.56
+    ],
+    "save-and-failure-check": [
+      30
     ]
   }
 }
