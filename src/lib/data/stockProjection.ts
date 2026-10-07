@@ -35,7 +35,7 @@
    one is gone. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributeDrug, drugSpans } from './regimenEpisode';
+import { attributeDrug, drugSpans, sameDrug } from './regimenEpisode';
 import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -101,13 +101,6 @@ export interface StockProjection {
 
 const isConsuming = (dose: DoseEvent) => dose.status !== 'skipped';
 
-/** Whether two drug names are the same drug. Exported because pairing a
-    stock entry to a regimen is the same question outside this file as in
-    it - Care pairs each running drug's lane to the stock it is counting
-    down (phase 11 ticket 10), and a second comparison written there could
-    disagree with the one the projection itself is made from. */
-export const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
-
 /** Whether `dose` counts against `stock`'s drug: taken or changed - a
     skipped dose used nothing - and attributed (regimenEpisode.ts) to this
     drug, not necessarily to the episode active when the stock was
@@ -115,7 +108,7 @@ export const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
 function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly RegimenEpisode[]): boolean {
   if (!isConsuming(dose)) return false;
   const { drug } = attributeDrug(episodes, dose);
-  return drug !== null && drugsMatch(drug, stock.drug);
+  return drug !== null && sameDrug(drug, stock.drug);
 }
 
 /** The first day of the trailing window the consumption rate is estimated
@@ -253,7 +246,7 @@ export async function projectEveryStock(
       const span = spanForRange[index];
       const unnamed = unnamedByRange[index];
       const attributed =
-        (namedByRange[index].get(drug) ?? 0) + (span.drug !== null && span.drug.trim() === drug ? unnamed : 0);
+        (namedByRange[index].get(drug) ?? 0) + (span.drug !== null && sameDrug(span.drug, drug) ? unnamed : 0);
 
       counts.consumed += attributed;
       if (range.fromEpochDay >= windowStart) counts.consumedInTrailingWindow += attributed;

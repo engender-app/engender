@@ -118,3 +118,18 @@ test('a lane with nothing ever logged has no last dose, through the fallback (ti
   assert.equal(care.lanes[0].lastDoseId, null);
   assert.equal(care.lanes[0].nextDoseEpochDay, TODAY);
 });
+
+test('an untrimmed regimen drug name keeps its dose totals and run-out', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.regimen.upsertEpisode({
+    drug: ' estradiol ', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    startEpochDay: TODAY - 10, endEpochDay: null, endReason: null
+  });
+  await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY - 3),
+    route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: TODAY - 5 });
+  const care = await readCare(journal, TODAY);
+  assert.equal(care.lanes.length, 1);
+  assert.equal(care.lanes[0].doseTotals[0]?.total, 2);
+  assert.notEqual(care.lanes[0].runOut, null);
+});

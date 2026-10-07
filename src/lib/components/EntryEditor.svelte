@@ -25,7 +25,7 @@
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
   import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
   import { isLockedNow } from '$lib/stores/lock.svelte';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, sameDrug } from '$lib/data/regimenEpisode';
   import { episodesWithNoDoseLogged, remainingAfterOneDose } from '$lib/data/quickLogChip';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
@@ -511,8 +511,7 @@
       (ADR-0046). */
   let stockQuery = liveQuery((j) => j.stock.getProjections(day));
   let stockRows = $derived(stockQuery.value ?? []);
-  /** Exact trimmed match, the same rule drugsMatch (stockProjection.ts) uses. */
-  const stockFor = (drug: string) => stockRows.find((row) => row.entry.drug.trim() === drug.trim()) ?? null;
+  const stockFor = (drug: string) => stockRows.find((row) => sameDrug(row.entry.drug, drug)) ?? null;
 
   let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
   let recoveringProcedure = $derived.by(() => {
