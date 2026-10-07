@@ -1,9 +1,49 @@
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
 
+function replayPublish(version: string): string[] {
+  const step = workflow.split('      - name: Publish\n')[1].split('\n      # First upload')[0];
+  const script = step.split('        run: |\n')[1].split('\n').map((line) => line.slice(10)).join('\n');
+  const root = mkdtempSync(join(tmpdir(), 'engender-publish-test-'));
+  try {
+    mkdirSync(join(root, 'dist/release'), { recursive: true });
+    writeFileSync(join(root, 'dist/release-notes.md'), 'Synthetic release notes\n');
+    writeFileSync(join(root, 'dist/release/SHA256SUMS'), 'synthetic checksums\n');
+    const recorder = join(root, 'gh');
+    writeFileSync(recorder, '#!/bin/sh\nprintf "%s\\0" "$@"\n');
+    chmodSync(recorder, 0o755);
+    const output = execFileSync('bash', ['--noprofile', '--norc', '-e', '-u', '-o', 'pipefail', '-c', script], {
+      cwd: root,
+      env: { PATH: `${root}:/usr/bin:/bin`, RELEASE_TAG: `v${version}`, ENGENDER_VERSION: version },
+      encoding: 'utf8'
+    });
+    return output.split('\0').slice(0, -1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 describe('release publication contract', () => {
+  it.each(['1.0.0-rc.1', '1.0.0-beta.2', '1.0.0-preview.7', '1.0.0-0'])('excludes %s from stable release discovery', (version) => {
+    const args = replayPublish(version);
+    expect(args.slice(0, 3)).toEqual(['release', 'create', `v${version}`]);
+    expect(args).toContain('--prerelease');
+    expect(args).toContain('--latest=false');
+    expect(args).toContain('dist/release/SHA256SUMS');
+  });
+
+  it('keeps stable publication ordinary with default Latest behavior', () => {
+    expect(replayPublish('1.0.0')).toEqual([
+      'release', 'create', 'v1.0.0', '--title', 'engender 1.0.0',
+      '--notes-file', 'dist/release-body.md', 'dist/release/SHA256SUMS'
+    ]);
+  });
+
   it('publishes verified GitHub artifacts before an optional draft Play upload', () => {
     const github = workflow.indexOf('gh release create');
     const play = workflow.indexOf('- name: Upload App Bundle to Google Play internal');
