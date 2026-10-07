@@ -31,13 +31,15 @@ export function backupIsStale(lastBackupAt: number | null, today: number = today
 /** Whether Home says that this browser may clear the journal (after-release
     17, U2). The browser refusing persistent storage is not news a person
     can act on by itself; what they can do is keep a backup elsewhere, so
-    the notice is that ask and goes quiet once a recent backup answers it,
-    or once dismissed. It replaced a toast that covered the Welcome
-    screen's buttons for four seconds on every cold web load. */
-export function storageNoticeShows(
-  state: { persistDenied: boolean; dismissed: boolean; lastBackupAt: number | null },
-  today: number = todayEpochDay()
-): boolean {
-  if (!state.persistDenied || state.dismissed) return false;
-  return state.lastBackupAt === null || backupIsStale(state.lastBackupAt, today);
+    the notice is that ask, said once: it goes for good with the first
+    backup or a dismissal. After that the stale-backup notice is the
+    reminder, and two notices asking for one export would be one too many.
+    It replaced a toast that covered the Welcome screen's buttons for four
+    seconds on every cold web load. */
+export function storageNoticeShows(state: {
+  persistDenied: boolean;
+  dismissed: boolean;
+  lastBackupAt: number | null;
+}): boolean {
+  return state.persistDenied && !state.dismissed && state.lastBackupAt === null;
 }

@@ -502,20 +502,17 @@
      stopped moving, which is where a notice opening its own height reads as
      the change it is. Nothing about the read waits; only the appearing. */
   /* The browser refused to keep the journal's storage (after-release 17).
-     It asks for a backup too, with the reason, so where both would show
-     only this one does: two notices asking for one export is one too many. */
+     It shows only before the first backup, and the stale-backup notice
+     only after one, so the two never ask for an export together. */
   let showStorageNotice = $derived(
-    storageNoticeShows(
-      {
-        persistDenied: storageRisk.persistDenied,
-        dismissed: prefs.storageNoticeDismissed,
-        lastBackupAt: prefs.lastBackupAt
-      },
-      today
-    ) && !ui.appOpening
+    storageNoticeShows({
+      persistDenied: storageRisk.persistDenied,
+      dismissed: prefs.storageNoticeDismissed,
+      lastBackupAt: prefs.lastBackupAt
+    }) && !ui.appOpening
   );
   let showBackupNotice = $derived(
-    backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening && !showStorageNotice
+    backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
   );
 
   /* The appointment debrief offer (phase 6 ticket 08, rekeyed to an
