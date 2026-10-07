@@ -11,7 +11,7 @@ import { JournalBelowBaselineError, runMigrations } from './migration-runner.ts'
 import { migrations } from './migrations.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
-import { dumpSchema, readSchemaFixture } from './test-support/schema-dump.ts';
+import { dumpRows, dumpSchema, readSchemaFixture } from './test-support/schema-dump.ts';
 
 /* The version the squash landed on (ticket 34): one baseline statement in
    place of the 78 steps that used to build up to it, keeping the number those
@@ -45,6 +45,20 @@ test('the squashed baseline builds the schema the 78-step chain built', async ()
 
   assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
   assert.equal(dumpSchema(db.raw) + '\n', expected);
+});
+
+test('the chain from the v78 baseline through 88 builds the frozen v88 reference', async () => {
+  /* Frozen before the second squash (after-release ticket 42) touched the
+     chain, so the reference is what the real migrations produced rather than
+     what the replacement baseline says. */
+  const fixture = (name: string) =>
+    readSchemaFixture(readFileSync(new URL(`./test-support/${name}`, import.meta.url), 'utf8'));
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), migrations);
+
+  assert.equal(db.getUserVersion(), 88);
+  assert.equal(dumpSchema(db.raw) + '\n', fixture('schema-v88-reference.txt'));
+  assert.equal(dumpRows(db.raw) + '\n', fixture('schema-v88-reference-rows.txt'));
 });
 
 test('a journal from below the baseline is refused loudly, with its rows left alone', async () => {
