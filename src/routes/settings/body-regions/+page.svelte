@@ -11,6 +11,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { discloseWidth } from '$lib/motion/reveal';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
 
   let builtIns = $derived(vocabulary.bodyRegions.filter((r) => r.builtIn));
   let customs = $derived(vocabulary.bodyRegions.filter((r) => !r.builtIn));
@@ -23,13 +24,24 @@
      (after-release 07). A built-in keeps the catalogue's name. */
   let renameTarget = $state<{ id: string; name: string } | null>(null);
 
+  /* Both sheets close once their write lands, and stay open with a toast
+     when it does not (after-release 06). */
+  const renaming = writer();
+  const adding = writer();
   async function rename() {
     const target = renameTarget;
     const name = target?.name.trim();
     if (!target || !name) return;
+    if (!(await renaming.run(() => journal.bodyRegions.renameCustomRegion(target.id, name), m.write_failed()))) return;
     renameTarget = null;
-    await journal.bodyRegions.renameCustomRegion(target.id, name);
     toast(m.body_regions_renamed({ region: name }));
+  }
+
+  async function add() {
+    const name = newName.trim();
+    if (name && !(await adding.run(() => journal.bodyRegions.addCustomRegion(name), m.write_failed()))) return;
+    addOpen = false;
+    if (name) toast(m.saved(), { kind: 'record-saved' });
   }
 
   /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
@@ -87,7 +99,7 @@
               class="icon-btn"
               data-region-hide={r.id}
               aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
-              onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
+              onclick={() => attempt(() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden), m.write_failed())}
             >
               <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
             </button>
@@ -108,7 +120,7 @@
                 class="icon-btn"
                 data-region-hide={r.id}
                 aria-label={r.hidden ? m.body_regions_show_aria({ region: r.name }) : m.body_regions_hide_aria({ region: r.name })}
-                onclick={() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden)}
+                onclick={() => attempt(() => journal.bodyRegions.setRegionHidden(r.id, !r.hidden), m.write_failed())}
               >
                 <Icon name={r.hidden ? 'eye' : 'eyeOff'} size={16} />
               </button>
@@ -119,23 +131,17 @@
     </details>
   </ReadReserve>
 
-  <Sheet bind:open={addOpen} title={m.body_regions_new_sheet()}>
+  <Sheet busy={adding.busy} bind:open={addOpen} title={m.body_regions_new_sheet()}>
     <h3>{m.body_regions_new_sheet()}</h3>
     <Field label={m.body_regions_new_sheet()} id="new-region-input" hidden>
       {#snippet children(id)}
         <input class="input" {id} name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
       {/snippet}
     </Field>
-    <button
-      class="btn btn-primary"
-      onclick={() => {
-        if (newName.trim()) journal.bodyRegions.addCustomRegion(newName.trim());
-        addOpen = false;
-      }}><span>{m.body_regions_save()}</span></button
-    >
+    <button class="btn btn-primary" disabled={adding.busy} onclick={add}><span>{m.body_regions_save()}</span></button>
   </Sheet>
 
-  <Sheet open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
+  <Sheet busy={renaming.busy} open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
       <h3>{m.body_regions_rename_sheet()}</h3>
       <Field label={m.body_regions_rename_sheet()} id="rename-region-input" hidden>
@@ -143,7 +149,7 @@
           <input class="input" {id} name="rename-region-input" bind:value={renameTarget!.name} />
         {/snippet}
       </Field>
-      <button class="btn btn-primary" data-save-region-name disabled={!renameTarget.name.trim()} onclick={rename}>
+      <button class="btn btn-primary" data-save-region-name disabled={!renameTarget.name.trim() || renaming.busy} onclick={rename}>
         <span>{m.body_regions_save()}</span>
       </button>
     {/if}

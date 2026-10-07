@@ -177,6 +177,7 @@
         sealOutcome = isLetterSealed({ unlockEpochDay }, today) ? m.letters_seal_done() : m.letters_ready_done();
       }
     },
+    saved: () => sealOutcome || m.saved(),
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
@@ -299,8 +300,6 @@
       />
     {/snippet}
   </ReadGate>
-
-  <p class="visually-hidden" role="status" data-letter-outcome>{sealOutcome}</p>
 
   {#if calendarFor}
     <CalendarHandoffSheet

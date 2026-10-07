@@ -62,6 +62,11 @@
     ]
   },
   {
+    "name": "save-and-failure-check",
+    "tier": "dev",
+    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today"
+  },
+  {
     "name": "recovery-key-departure-check",
     "tier": "dev",
     "holds": "every way off the recovery key screen asks before the key is lost"

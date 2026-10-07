@@ -21,6 +21,13 @@ export type RecordEditorOptions<TRecord extends { id: string }, TDraft extends {
   upsert?: (draft: TDraft) => boolean | void | Promise<boolean | void>;
   /** Delete a record by id. */
   remove: (id: string) => void | Promise<void>;
+  /** What the toast says once a save lands (after-release ticket 06).
+      Omitted, it says "Saved."; `null` for a screen whose own result line or
+      notice already says more. */
+  saved?: (draft: TDraft) => string | null;
+  /** The same for a delete: omitted, "Deleted."; `null` where the screen
+      says it itself. */
+  deleted?: (record: TRecord) => string | null;
   /** Look up the current record behind a draft's id, for the delete-confirm
       sheet - the draft holds an edit-friendly shape (e.g. a date input
       string), not the stored record's own fields. */

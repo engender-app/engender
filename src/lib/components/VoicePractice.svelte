@@ -36,6 +36,7 @@
   import { ANALYSIS_SAMPLE_RATE, startTake, type TakeSession } from '$lib/stores/voiceBenchmark';
   import type { MicRefusal } from '$lib/stores/voiceRecording';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
   import VoiceGauge from '$lib/components/VoiceGauge.svelte';
@@ -72,7 +73,7 @@
       (vb_practice_sealed_note). */
   let review = $state<PracticeTakeStats | null>(null);
   let feltSense = $state<number | null>(null);
-  let saving = $state(false);
+  const saving = writer();
 
   let session: TakeSession | null = null;
   let poll: ReturnType<typeof setInterval> | null = null;
@@ -171,19 +172,27 @@
     review = practiceTakeStats(track.frames);
   }
 
+  /* Confirms the way the benchmark's save does, and a failed write leaves
+     the take in review with a toast instead of both buttons disabled for
+     good (after-release 06, L05-06). */
   async function saveTake() {
-    if (!review) return;
-    saving = true;
-    await journal.voicePracticeTakes.addTake({
-      epochDay: todayEpochDay(),
-      minHz: review.minHz,
-      maxHz: review.maxHz,
-      medianHz: review.medianHz,
-      feltSense
-    });
-    saving = false;
+    const take = review;
+    if (!take) return;
+    const stored = await saving.run(
+      () =>
+        journal.voicePracticeTakes.addTake({
+          epochDay: todayEpochDay(),
+          minHz: take.minHz,
+          maxHz: take.maxHz,
+          medianHz: take.medianHz,
+          feltSense
+        }),
+      m.write_failed()
+    );
+    if (!stored) return;
     review = null;
     feltSense = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   function discardTake() {
@@ -221,10 +230,10 @@
     </div>
 
     <SaveBar arrange="row">
-      <button class="btn btn-ghost" data-vp-discard disabled={saving} onclick={discardTake}>
+      <button class="btn btn-ghost" data-vp-discard disabled={saving.busy} onclick={discardTake}>
         <span>{m.vb_practice_discard()}</span>
       </button>
-      <button class="btn btn-primary" data-vp-save disabled={saving} onclick={saveTake}>
+      <button class="btn btn-primary" data-vp-save disabled={saving.busy} onclick={saveTake}>
         <Icon name="check" size={20} /><span>{m.vb_practice_save()}</span>
       </button>
     </SaveBar>

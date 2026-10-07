@@ -216,7 +216,15 @@
         prefs.autoExportEnabled = false;
         return;
       }
-      await androidAutoExport.setPassword({ password: expPass });
+      try {
+        await androidAutoExport.setPassword({ password: expPass });
+      } catch (error) {
+        // The switch goes back off rather than claiming a schedule with no password behind it.
+        console.error('could not store the auto-export password', error);
+        toast(m.exp_auto_config_failed(), { kind: 'failed' });
+        prefs.autoExportEnabled = false;
+        return;
+      }
       autoHasPassword = true;
     }
     prefs.autoExportEnabled = enabled;

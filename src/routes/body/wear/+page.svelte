@@ -310,6 +310,21 @@
       };
     },
     async upsert(draft) {
+      /* A running session's only save is Stop, which fills the duration in.
+         It goes through here, so the sheet's own busy state and leave guard
+         cover it like any other save (after-release 06). */
+      if (draft.isRunning) {
+        await journal.wearSessions.upsertSession({
+          id: draft.id,
+          kind: draft.kind,
+          startTimestamp: draft.startTimestamp,
+          durationMs: Date.now() - draft.startTimestamp,
+          note: draft.note.trim() || null,
+          reminderHoursAfterStart: reminderHoursOf(draft),
+          reminderTitle: wearReminderTitle(draft.kind)
+        });
+        return;
+      }
       if (!canSave(draft)) return false;
       const note = draft.note.trim() || null;
       const reminderHoursAfterStart = reminderHoursOf(draft);
@@ -337,6 +352,7 @@
         reminderTitle: wearReminderTitle(draft.kind)
       });
     },
+    saved: (draft) => (draft.isRunning ? m.wear_session_stopped() : m.saved()),
     remove: (id) => journal.wearSessions.deleteSession(id),
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
@@ -374,18 +390,6 @@
   const reminderHoursOf = (editor: Editor): number | null | undefined =>
     isWeb ? undefined : editor.reminderEnabled ? parseFloat(editor.reminderHours) : null;
 
-  async function stopRunning(draft: Editor) {
-    await journal.wearSessions.upsertSession({
-      id: draft.id,
-      kind: draft.kind,
-      startTimestamp: draft.startTimestamp,
-      durationMs: Date.now() - draft.startTimestamp,
-      note: draft.note.trim() || null,
-      reminderHoursAfterStart: reminderHoursOf(draft),
-      reminderTitle: wearReminderTitle(draft.kind)
-    });
-    record.editor = null;
-  }
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -805,7 +809,7 @@
          its own handle. -->
     {#snippet primary(editor)}
       {#if editor.isRunning}
-        <button class="btn btn-primary" data-stop-wear-session onclick={() => stopRunning(editor)}>
+        <button class="btn btn-primary" data-stop-wear-session onclick={record.save}>
           <span>{m.wear_session_stop_action()}</span>
         </button>
       {:else if editor.mode === 'live' && !editor.id}

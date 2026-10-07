@@ -39,6 +39,8 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
+  import { deleter } from '$lib/stores/attempt.svelte';
   import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
@@ -302,10 +304,13 @@
     }
   }
 
+  const removing = deleter();
   async function confirmDeleteBenchmark() {
-    if (!deleteTarget) return;
-    await journal.voiceBenchmarks.deleteBenchmark(deleteTarget);
+    const target = deleteTarget;
+    if (!target) return;
+    if (!(await removing.run(() => journal.voiceBenchmarks.deleteBenchmark(target)))) return;
     deleteTarget = null;
+    toast(m.record_deleted(), { kind: 'record-deleted' });
   }
 
   /** A delta figure as the screen states it: signed, so +35 and -35 are told
@@ -640,7 +645,9 @@
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-confirm-delete-benchmark': '' }}
     onConfirm={confirmDeleteBenchmark}
-    onCancel={() => (deleteTarget = null)}
+    onCancel={() => { deleteTarget = null; removing.dismiss(); }}
+    busy={removing.busy}
+    failed={removing.failed}
   />
 </div>
 

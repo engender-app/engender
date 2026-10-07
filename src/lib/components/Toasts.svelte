@@ -7,10 +7,11 @@
 {#each toasts as t (t.id)}
   <div
     class="toast is-open"
-    role="status"
+    class:is-raised={t.raised}
+    role={t.kind === 'failed' ? 'alert' : 'status'}
     data-toast
     data-toast-kind={t.kind}
-    transition:fly={{ y: motionDistance('--motion-distance-sm'), duration: motionDuration('--dur-med') }}
+    transition:fly={{ y: (t.raised ? -1 : 1) * motionDistance('--motion-distance-sm'), duration: motionDuration('--dur-med') }}
   >
     <span>{t.message}</span>
     {#if t.actionLabel}
@@ -25,3 +26,13 @@
     {/if}
   </div>
 {/each}
+
+<style>
+  /* A failure said while a sheet stays open (after-release 06): at the top,
+     over the dimmed screen, rather than on the sheet's own buttons. It comes
+     down from the edge it sits at. */
+  .is-raised {
+    top: calc(var(--inset-top) + var(--space-4));
+    bottom: auto;
+  }
+</style>
