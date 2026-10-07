@@ -613,6 +613,10 @@ export async function runJournalContract(
   });
 
   await r.section('dose backfill ownership', async () => {
+    const baseline = await journal.archive.snapshot();
+    const baselineFiles = await Promise.all(baseline.files.map(async (file) => ({
+      name: file.name, bytes: await baseline.readFile(file.name)
+    })));
     const { startOfDayTimestamp } = await import('../epochDay.ts');
     for (const winner of ['manual', 'replace', 'backfill'] as const) {
       await journal.discardEverything();
@@ -663,6 +667,11 @@ export async function runJournalContract(
       if (winner !== 'replace') r.equal(`${winner} stock is consumed once`,
         (await publicJournal.stock.getProjections(20001))[0].projection.remaining, 9);
     }
+    await journal.archive.replace({
+      journal: baseline.journal, files: (async function* () {
+        for (const file of baselineFiles) yield file;
+      })()
+    });
   });
 
   return r.checks;
