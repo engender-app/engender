@@ -517,7 +517,7 @@ export function startBoot() {
      exists, and - where the unlock will derive one - the argon2id worker
      with hash-wasm compiled. Neither is given a secret here. */
   if (!isAndroid()) prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
-  if (readCachedAccessMode() !== null) prewarmArgon2();
+  if (__DEMO__ || readCachedAccessMode() !== null) prewarmArgon2();
   dispatch({ type: 'started', platform: isAndroid() ? 'android' : 'web', demo: __DEMO__ });
 }
 
@@ -967,9 +967,4 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   session.adopt(dataKey, result.driver);
 
   dispatch({ type: 'journal-opened', journal: journal! });
-  /* A first demo visit has no cached access mode, so nothing above has warmed
-     argon2id, and its worker is a download that would otherwise share the
-     wire with the database module. Once the journal is open it is only the
-     Settings and setup flows that need it. */
-  if (__DEMO__) whenIdle(prewarmArgon2);
 }
