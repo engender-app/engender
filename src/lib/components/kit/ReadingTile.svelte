@@ -118,7 +118,7 @@
     flex-direction: column;
     gap: var(--space-2);
     min-width: 0;
-    /* Set by the tallest tile on the grid, never shorter than this: a tile
+    /* Set by the tallest tile in its row, never shorter than this: a tile
        whose drawing is the reading needs room for it (rule 9's 2px line
        needs height to be a shape). */
     min-height: 132px;
@@ -160,10 +160,20 @@
     --guide: var(--text-2);
   }
 
+  /* The plane fills what its row gives it rather than setting the row: a
+     square drawn at the column's width was the tallest thing on the door
+     and made every row as tall (after-release 27, audit UI-13). Taken out
+     of flow, it scales to the room the tile beside it leaves, with a floor
+     that keeps it a readable square on its own row. */
   .kit-reading-draw.is-whole {
-    flex: 1;
+    position: relative;
+    flex: 1 1 0;
     height: auto;
-    min-height: 56px;
+    min-height: 104px;
+  }
+  .kit-reading-draw.is-whole :global(svg) {
+    position: absolute;
+    inset: 0;
   }
 
   .kit-reading-draw :global(svg) {

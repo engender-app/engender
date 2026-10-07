@@ -51,6 +51,17 @@ export function timelineItems(milestones: Milestone[], todayEpochDay: number): T
   for (const milestone of milestones) {
     const future = milestone.epochDay > todayEpochDay;
     if (future && !markedToday) {
+      /* Today inside a long stretch splits it (after-release 27, audit
+         L03-15): the part already behind is drawn before the marker and
+         measured to today, so the marker is not put in front of a quiet
+         stretch it is in the middle of. Each side compresses on its own
+         length. */
+      if (previousDay !== null) {
+        if (todayEpochDay - previousDay > TIMELINE_GAP_DAYS) {
+          out.push({ kind: 'gap', id: 'gap-before-today', fromEpochDay: previousDay, toEpochDay: todayEpochDay });
+        }
+        previousDay = todayEpochDay;
+      }
       out.push({ kind: 'today', id: 'today' });
       markedToday = true;
     }

@@ -4,7 +4,9 @@ interface AndroidPhotosBridge {
   /* A pick hands back tokens, not bytes: the bytes come afterwards over
      android-pick-channel.ts, or through readPickedChunk below on a WebView
      that cannot carry a structured clone (phase 9 audit ticket 06). */
-  pickImages(): Promise<{ tokens: string[] }>;
+  /* `multiple` asks the system picker for several images in one trip, up to
+     the platform's own limit; without it the picker hands back one. */
+  pickImages(options?: { multiple?: boolean }): Promise<{ tokens: string[] }>;
   captureImage(): Promise<{ token: string | null }>;
   pickDocument(): Promise<{ token: string | null }>;
   /* One piece of a picked file per call, `done` on the last of them: a

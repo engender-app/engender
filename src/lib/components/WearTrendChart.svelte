@@ -57,8 +57,11 @@
   const AXIS = 30;
 
   let chart = $derived.by(() => {
+    /* A line needs two days. Under that the chart draws nothing, and the
+       caller says why in words (after-release 27, audit L05-14): this used
+       to print its own aria label, the chart's title, as body text. */
+    if (wearPoints.length < 2 && regionPoints.length < 2) return null;
     const days = [...wearPoints, ...regionPoints].map((p) => p.day);
-    if (days.length < 2) return null;
     const x0 = Math.min(...days);
     const x1 = Math.max(...days);
 
@@ -103,8 +106,6 @@
       {/each}
     {/if}
   </svg>
-{:else}
-  <div class="chart-too-little">{ariaLabel}</div>
 {/if}
 
 <style>

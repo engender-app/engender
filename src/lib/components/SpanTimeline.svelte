@@ -227,7 +227,7 @@
      no row and no height, so a journal with only tryouts gets one row
      rather than one row and an empty one. */
   let rows = $derived(historyKindsPresent(history));
-  let legend = $derived(railLegendKinds(history, surgeries, bands.length > 0));
+  let legend = $derived(railLegendKinds(history, marks, surgeries, bands.length > 0));
   const hasRow = (kind: RailHistoryKind) => (rows.includes(kind) ? 1 : 0);
 
   /* Which stripe each era takes (theme/roles.ts's `eraBandRoles`, shared
@@ -245,7 +245,9 @@
     era: () => m.lookback_legend_eras(),
     regimen: () => m.lookback_legend_regimen(),
     tryout: () => m.lookback_legend_tryouts(),
-    surgery: () => m.lookback_legend_surgery()
+    surgery: () => m.lookback_legend_surgery(),
+    milestone: () => m.lookback_legend_milestones(),
+    'milestone-and-surgery': () => m.lookback_legend_milestones_and_surgery()
   };
   /* The query types a band's name nullable because a journaling pause has
      none, and neither kind drawn here is that one - so the fallback is the
@@ -1218,8 +1220,12 @@
     background: var(--bg);
     border-color: var(--text-2);
   }
-  /* A mark, drawn as one: the milestone block's own size and radius. */
-  .span-tl-chip[data-span-chip='surgery'] {
+  /* A mark, drawn as one: the milestone block's own size and radius. One
+     key for milestones and surgery days alike, since the rail draws them
+     the same; only its word changes. */
+  .span-tl-chip[data-span-chip='surgery'],
+  .span-tl-chip[data-span-chip='milestone'],
+  .span-tl-chip[data-span-chip='milestone-and-surgery'] {
     width: 8px;
     height: 8px;
     background: var(--text);
