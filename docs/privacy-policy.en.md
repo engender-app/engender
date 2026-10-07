@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: 2026-10-05
+Last updated: 2026-10-07
 
 engender is a journal for tracking a gender transition. It is made and
 published by Alicja Barankiewicz in Warsaw, Poland. This policy covers the
@@ -204,8 +204,10 @@ or a lost device key or recovery key.
 
 ## Children
 
-[OPEN: the age the app is meant for. The Play listing is planned for adults
-only; say so here once that is decided.]
+engender is meant for people aged 16 and over. The developer receives no
+journal data from anyone, whatever their age, so there is none to delete for
+someone younger. The only details that reach the developer are the request
+details described above under Hosted web app.
 
 ## Changes to this policy
 
