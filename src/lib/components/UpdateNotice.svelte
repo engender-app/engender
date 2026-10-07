@@ -15,12 +15,20 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
+  import { announce } from '$lib/stores/announcer.svelte';
 
   let ready = $state(updateReady());
   let dismissed = $state(false);
   let applying = $state(false);
 
   $effect(() => onUpdateReadyChange((next) => (ready = next)));
+
+  /* Said once as it appears, through the app's standing live region
+     (announcer.ts): the notice itself is inserted with its words already
+     in it, which a screen reader often does not read (after-release 21). */
+  $effect(() => {
+    if (ready && !dismissed) announce(m.update_ready_title());
+  });
 
   async function apply() {
     if (applying) return;
@@ -33,7 +41,7 @@
 </script>
 
 {#if ready && !dismissed}
-  <div class="notice notice-info" role="status" data-update-notice style="margin:var(--space-3)">
+  <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
     <Icon name="download" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.update_ready_title()}</span>

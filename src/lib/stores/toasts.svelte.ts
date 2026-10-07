@@ -1,5 +1,7 @@
 /* Quiet toast confirmations, rendered by Toasts.svelte in the layout. */
 
+import { announce } from './announcer.svelte';
+
 interface ToastItem {
   id: number;
   message: string;
@@ -27,6 +29,7 @@ export function toast(
   const raised = opts.kind === 'failed' && typeof document !== 'undefined' && !!document.querySelector('[data-sheet-scrim]');
   const item: ToastItem = { id: seq++, message, actionLabel: opts.actionLabel, onAction: opts.onAction, kind: opts.kind, raised };
   toasts.push(item);
+  announce(message, opts.kind === 'failed');
   setTimeout(() => {
     const i = toasts.findIndex((t) => t.id === item.id);
     if (i >= 0) toasts.splice(i, 1);

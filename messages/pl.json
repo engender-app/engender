@@ -2431,6 +2431,7 @@
   "pin_mismatch": "Te dwa PIN-y się różnią. Zacznij od nowa.",
   "pin_progress": "Wpisano {typed} z {total} cyfr PIN-u",
   "pin_throttled": "Za dużo nieudanych prób. Spróbuj ponownie za {seconds} s.",
+  "pin_wait_over": "Możesz znowu wpisać PIN.",
   "pin_wrong": "To nie ten PIN.",
   "pj_again": "Zrób następny",
   "pj_collage_hint": "Jeden obraz, wszystkie zdjęcia w siatce, od najstarszego.",
