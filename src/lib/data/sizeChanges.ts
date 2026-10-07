@@ -39,9 +39,18 @@ import type { SizeRecord } from './types';
 
     Exported because the screen keys its rendered lines on the same thing,
     and a key the grouping and the rendering each built their own way is two
-    statements of one idea waiting to disagree. */
+    statements of one idea waiting to disagree.
+
+    The brand is case-folded: "H&M" and "h&m" typed on two days are one
+    label (after-release 27, audit L03-14). The line shows the latest
+    spelling, so the fold decides only what belongs together. */
 export function sizeLabelKey(category: string, brand: string): string {
-  return JSON.stringify([category, brand]);
+  return JSON.stringify([category, brand.trim().toLowerCase()]);
+}
+
+/** One size, however it was cased: "M" and "m" are the same size. */
+function sameSize(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 /** One statement: what a category and brand were, and what they are. */
@@ -103,7 +112,7 @@ function changeOf(group: readonly SizeRecord[]): SizeChange | null {
   /* The first day of the run the person is in now, walking back while the
      size is unchanged, and then the last day of the run before it. */
   let i = worn.length - 1;
-  while (i > 0 && worn[i - 1].size.trim() === to) i--;
+  while (i > 0 && sameSize(worn[i - 1].size, to)) i--;
   if (i === 0) return null;
 
   const before = worn[i - 1];
