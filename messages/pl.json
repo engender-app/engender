@@ -1540,6 +1540,7 @@
   "home_edit_unpin": "Odepnij: {row}",
   "home_hello_named": "Cześć {name} · {date}",
   "home_log_heading": "Jak dziś?",
+  "home_log_logged": "Zapisano o {time}",
   "home_pinned_edit": "Ułóż tę listę",
   "home_pinned_edit_empty": "Przypnij pozycję",
   "home_pinned_heading": "Przypięte",

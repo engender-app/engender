@@ -48,7 +48,7 @@
   import { backupAgeDays, backupIsStale, storageNoticeShows } from '$lib/data/backupHealth';
   import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtTime } from '$lib/data/dates';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
@@ -90,7 +90,7 @@
   import { toast } from '$lib/stores/toasts.svelte';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   /* A fold's label changes under a standing button - "Ready letter, Active
      tryout" loses a name when a tile is closed - and words cut, as a rule
@@ -618,9 +618,28 @@
     { i: 8, x: 95, d: 0.05, r: 180 }
   ];
 
+  /* Today's latest mood, ringed on the strip, and when it was logged, on the
+     heading's own line (after-release 06, UX-16): after a save, Today used
+     to ask "How is today?" with nothing picked, as if nothing had been
+     written. A face still opens a new entry, the ringed one included, so
+     the strip stays the way to add another. */
+  let todayEntriesQuery = liveQuery((j) => j.entries.entriesForDay(today));
+  let latestToday = $derived.by(() => {
+    let latest: { mood: number; timestamp: number } | null = null;
+    for (const entry of todayEntriesQuery.value ?? []) {
+      if (entry.mood == null) continue;
+      if (!latest || entry.timestamp > latest.timestamp) latest = { mood: entry.mood, timestamp: entry.timestamp };
+    }
+    return latest;
+  });
+  const loggedFade = (_node: Element) =>
+    stillArriving() ? { duration: 0 } : fadeOnly(crossfadeDuration());
+
   function onQuickLog(v: number | null) {
-    if (v == null) return;
-    goto(`/entry/new/today?seedMood=${v}`);
+    // The ringed face hands back null (MoodChips' own toggle), which here means its mood again.
+    const mood = v ?? latestToday?.mood;
+    if (mood == null) return;
+    goto(`/entry/new/today?seedMood=${mood}`);
   }
 
   /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
@@ -635,7 +654,7 @@
     const raw = page.url.searchParams.get('tally');
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
-    if (kind) journal.tally.log({ epochDay: todayEpochDay(), kind });
+    if (kind) void attempt(() => journal.tally.log({ epochDay: todayEpochDay(), kind }), m.write_failed());
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
@@ -965,9 +984,21 @@
        daily check-in has should not get worse; the heading says what they
        do rather than naming the strip. It draws under disguise too, every
        role fallen to the accent, so the thin app still writes. -->
-  <SectionHeading text={m.home_log_heading()} />
+  <SectionHeading text={m.home_log_heading()}>
+    {#snippet action()}
+      <!-- One grid cell, so a later entry's time crosses the earlier one in
+           place; the line is the heading's own, so nothing below moves. -->
+      <span class="home-log-logged">
+        {#if latestToday}
+          {#key latestToday.timestamp}
+            <span data-home-log-logged transition:loggedFade>{m.home_log_logged({ time: fmtTime(latestToday.timestamp) })}</span>
+          {/key}
+        {/if}
+      </span>
+    {/snippet}
+  </SectionHeading>
   <div data-home-log {...roleAttrs(roleAt(activeFlag.roles, HOME_AREA_ROLE.log))}>
-    <MoodChips onPick={onQuickLog} />
+    <MoodChips value={latestToday?.mood ?? null} onPick={onQuickLog} />
   </div>
 
   <!-- The notices, below the strip since phase 11 ticket 03. They used to
@@ -1656,6 +1687,20 @@
   :global(html[data-a11y-motion='reduce']) .home-fold-mark { transition: none; }
   @media (prefers-reduced-motion: reduce) {
     .home-fold-mark { transition: none; }
+  }
+
+  /* The time today's latest mood was logged, secondary type on the log
+     heading's line (UX-16). */
+  .home-log-logged {
+    display: grid;
+    justify-items: end;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+  .home-log-logged > span {
+    grid-area: 1 / 1;
+    white-space: nowrap;
   }
 
   /* A grid of one cell, so the outgoing and incoming labels stand on the

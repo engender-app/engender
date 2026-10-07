@@ -1522,6 +1522,7 @@
   "home_edit_unpin": "Unpin {row}",
   "home_hello_named": "Hi {name} · {date}",
   "home_log_heading": "How is today?",
+  "home_log_logged": "Logged at {time}",
   "home_pinned_edit": "Arrange these rows",
   "home_pinned_edit_empty": "Pin a row here",
   "home_pinned_heading": "Pinned",
