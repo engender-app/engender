@@ -9,11 +9,12 @@
      screen. They do share a scale, though: a chart drawn to its own maximum
      would make one day's single tap as tall as another day's five, and the
      two are counts of the same kind of thing. */
+  import { page } from '$app/state';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import type { TallyKind } from '$lib/data/types';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -36,23 +37,34 @@
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(currentDay());
-  let from = $derived(today - range + 1);
 
-  let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, today));
+  /* Look back's tile opens this screen on the span it counted (after-release
+     17), at the query /body-map and /compare read too. That span is the
+     range then, and the range switch, which only knows windows ending
+     today, is left off. A visit from a day row or a chart note carries no
+     span and gets the switch. */
+  let queryFrom = $derived(epochDayFromDateInputValue(page.url.searchParams.get('from') ?? ''));
+  let queryTo = $derived(epochDayFromDateInputValue(page.url.searchParams.get('to') ?? ''));
+  let hasSpan = $derived(queryFrom !== null && queryTo !== null && queryFrom <= queryTo);
+  let to = $derived(hasSpan ? (queryTo as number) : today);
+  let from = $derived(hasSpan ? (queryFrom as number) : today - range + 1);
+  let days = $derived(to - from + 1);
+
+  let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, to));
   let misgendered = $derived(misgenderedQuery.rows);
-  let correctlyGenderedQuery = liveList((j) => j.stats.tallyTrend('correctly_gendered', from, today));
+  let correctlyGenderedQuery = liveList((j) => j.stats.tallyTrend('correctly_gendered', from, to));
   /* Both counters take the same annotations: they are two readings of the
      same days, and a thing that happened happened to both of them (ticket
      23). */
-  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, to, today));
   let correctlyGendered = $derived(correctlyGenderedQuery.rows);
 
   let maxCount = $derived(
     Math.max(1, ...misgendered.map((p) => p.value), ...correctlyGendered.map((p) => p.value))
   );
 
-  let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), range));
-  let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), range));
+  let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), days));
+  let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), days));
 
   /* The presentation chip (ticket 17, ADR-0048): highlights, never
      filters, so both charts above keep drawing exactly what they draw
@@ -62,10 +74,10 @@
      reading. */
   let selectedPresentation = $state<string | null>(null);
   let presentationDaysQuery = liveList((j) =>
-    selectedPresentation ? j.stats.presentationDays(selectedPresentation, from, today) : Promise.resolve([])
+    selectedPresentation ? j.stats.presentationDays(selectedPresentation, from, to) : Promise.resolve([])
   );
   let highlightRole = $derived(presentationRole(selectedPresentation));
-  // Both charts share one grain (chooseGrain reads only `range`), so the
+  // Both charts share one grain (chooseGrain reads only the day count), so the
   // day set maps to chart positions once and each series reads its own hits.
   let highlightedAt = $derived(highlightedPositions(presentationDaysQuery.rows, null, plottedMis.grain));
   let highlightMis = $derived(
@@ -87,7 +99,7 @@
 
   let rangeEnds = $derived({
     from: fmtDay(from, { day: 'numeric', month: 'short' }),
-    to: fmtDay(today, { day: 'numeric', month: 'short' })
+    to: fmtDay(to, { day: 'numeric', month: 'short' })
   });
   // A count is a whole number, whatever the scale's top happens to be.
   const whole = (v: number) => String(Math.round(v));
@@ -127,7 +139,7 @@
      a live region announces a change of text, and setting the same string
      twice is not one (quick add's status region runs the same rule). */
   async function speakCount(kind: TallyKind) {
-    const rows = await journal.stats.tallyTrend(kind, from, today);
+    const rows = await journal.stats.tallyTrend(kind, from, to);
     const count = rows.reduce((sum, p) => sum + p.value, 0);
     announcement = m.tally_count_spoken({ kind: kindName(kind), count: String(count) });
   }
@@ -182,14 +194,16 @@
 <div class="screen">
   <ScreenHeader title={m.tally_trend_title()} subtitle={m.tally_trend_sub()} screen="tally" back="/stats" />
 
-  <Segmented
-    name={m.stats_range_group()}
-    options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-    value={String(range)}
-    onChange={(v) => (range = Number(v))}
-    compact
-    key="tally-range"
-  />
+  {#if !hasSpan}
+    <Segmented
+      name={m.stats_range_group()}
+      options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+      value={String(range)}
+      onChange={(v) => (range = Number(v))}
+      compact
+      key="tally-range"
+    />
+  {/if}
 
   <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
 

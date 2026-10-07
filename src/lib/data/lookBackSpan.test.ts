@@ -62,6 +62,14 @@ describe('historyStart: the earliest day the person authored anything dated', ()
     expect(start).toBe(20000);
   });
 
+  /* After-release 17 review: a journal holding only tally taps had no rail
+     and so no way to the counters' tile. */
+  it('reaches back to the first tally tap, and starts at one on its own', () => {
+    expect(historyStart({ bounds: { firstEpochDay: 20000, lastEpochDay: TODAY }, milestones: [], eras: [], firstTallyDay: 19500 }, TODAY)).toBe(19500);
+    expect(historyStart({ bounds: null, milestones: [], eras: [], firstTallyDay: 20650 }, TODAY)).toBe(20650);
+    expect(historyStart({ bounds: null, milestones: [], eras: [], firstTallyDay: null }, TODAY)).toBeNull();
+  });
+
   it('is null when nothing dated exists yet', () => {
     expect(historyStart({ bounds: null, milestones: [], eras: [] }, TODAY)).toBeNull();
     expect(historyStart({ bounds: null, milestones: [{ epochDay: TODAY + 1 }], eras: [] }, TODAY)).toBeNull();

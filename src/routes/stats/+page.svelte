@@ -121,7 +121,10 @@
      milestones (mirrored, ADR-0004, so no query), and the eras. */
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
-  let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
+  /* And the first tally tap (after-release 17 review): a journal of taps
+     alone had no rail, so no tiles, so no way to the counters' tile. */
+  let firstTallyQuery = liveQuery((j) => j.tally.firstEpochDay());
+  let railLoading = $derived(erasQuery.loading || boundsQuery.loading || firstTallyQuery.loading);
   /* A rail answering with less than its fade's length of an Android tab
      arrival left keeps its skeleton until the field stops, then fades in
      at full length (screenArrival.ts). Before anything has painted there
@@ -139,7 +142,12 @@
     railLoading
       ? null
       : historyStart(
-          { bounds: boundsQuery.value ?? null, milestones: vocabulary.milestones, eras: erasQuery.rows },
+          {
+            bounds: boundsQuery.value ?? null,
+            milestones: vocabulary.milestones,
+            eras: erasQuery.rows,
+            firstTallyDay: firstTallyQuery.value ?? null
+          },
           today
         )
   );

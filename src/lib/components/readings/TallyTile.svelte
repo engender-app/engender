@@ -3,7 +3,8 @@
      screen at /tally was reached only from a day row or a chart note, so a
      person who logged misgendering from quick add had no way back to the
      counts. This is the way in, beside the body map and Compare, and like
-     them it is absent where the span holds nothing to read.
+     them it is absent where the span holds nothing to read, and like them
+     it opens its screen on the span it counted.
 
      Two figures, never one: the counters do not combine into a score
      (stats.ts, ticket 10), so the headline is both counts in the order the
@@ -11,7 +12,7 @@
   import { m } from '$lib/paraglide/messages';
   import { fmtNumber } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import type { Span } from '$lib/data/lookBackSpan';
+  import { spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
   import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
 
@@ -32,7 +33,7 @@
   <ReadingTile
     key="tally"
     name={m.tally_trend_title()}
-    href="/tally"
+    href={`/tally${spanRangeQuery(span)}`}
     headline={m.tally_tile_figures({ misgendered: fmtNumber(misgendered), correct: fmtNumber(correct) })}
     note={m.tally_tile_note()}
   />
