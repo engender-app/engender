@@ -1,13 +1,14 @@
 # Android store listing
 
 English and Polish copy comes from the landing repository's
-`content/play/en.md` and `pl.md`. The listing uses the current engender name,
-six built-in scales, 16 palettes and the current Look back span controls.
+`content/play/en.md` and `pl.md`. Change a sentence there first, then copy
+the blockquotes here unchanged. F-Droid reads these same files, and the
+short description is its Summary, so it has no sentence punctuation.
 Changelogs summarize `CHANGELOG.md`; their filenames are Android version
 codes, so `1.0.0` maps to `1000000999.txt` through
 `scripts/android-version.mjs`.
 
-Regenerate the graphics and all six phone screenshots per language from
+Regenerate the graphics and all seven phone screenshots per language from
 this checkout:
 
 ```sh
@@ -22,9 +23,15 @@ opens an existing browser profile. A production build without demo controls
 fails before screenshot capture.
 
 Screenshots are 1080 × 1920 PNGs, in the default trans palette and light
-theme. Their order is Home, new entry, Journal, Care, Look back and Settings
-privacy. The entry screenshot is scrolled to its filled scales; Journal shows
-the previous month expanded. Feature graphics are 1024 × 500 PNGs. The script also copies the
+theme. Their order is Today, Care, new entry, Transition roadmap, Voice
+(Compare tab), Look back and Settings privacy, so the set covers the
+transition areas the description names: HRT records, the journal, plans,
+voice practice and looking back. The entry screenshot is scrolled to its
+note, with the first scale and the mood bar under it. Each capture waits
+until finite animations are done and every box has held still for 600ms,
+then keeps a shot only when two taken 500ms apart match. The script empties
+`phoneScreenshots/` first, so a shot dropped from its list does not stay
+behind. Feature graphics are 1024 × 500 PNGs. The script also copies the
 existing brand icons into the PWA assets and rasterizes the neutral disguise
 icons from their existing SVGs.
 
