@@ -226,7 +226,7 @@ export interface EntriesArea {
     span?: { from: number; to: number }
   ): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
-      body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
+      or body-region dysphoria intensity >= 50), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
   /** The same entry's id alone, `undefined` when there is none. Its own read
