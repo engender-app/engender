@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { dateValue, fillDate, launchChromium, settlePage } from './browser-harness.mjs';
+import { dateValue, fieldValue, fillDate, launchChromium, settlePage } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -81,8 +81,7 @@ async function reopen(flow) {
 }
 async function valuesMatch(flow) {
   for (const [id, value] of Object.entries(flow.values)) {
-    const field = page.locator(`#${id}`);
-    assert.equal((await field.getAttribute('data-date-value')) ?? (await field.inputValue()), value, id);
+    assert.equal(await fieldValue(page.locator(`#${id}`)), value, id);
   }
   if (flow.handle === 'side-effect') assert.equal(await radio().getAttribute('data-segment'), '3');
   if (flow.handle === 'cycle-event') assert.equal(await radio().getAttribute('data-segment'), 'spotting');

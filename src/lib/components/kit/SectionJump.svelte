@@ -158,6 +158,7 @@
       href={`#${s.target}`}
       aria-current={active === s.value ? 'location' : undefined}
       data-jump-to={s.value}
+      data-label={s.label}
       bind:this={links[s.value]}
       onclick={(event) => {
         event.preventDefault();
@@ -186,18 +187,37 @@
   }
 
   .section-jump-link {
+    position: relative;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-height: var(--touch-target);
+    min-width: var(--touch-target);
     color: var(--text-2);
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
     text-decoration: none;
-    transition: color var(--dur-fast) var(--ease-out);
   }
 
-  .section-jump-link[aria-current='location'] {
+  /* The current name darkens by a copy of itself in --text fading in over
+     it: opacity, the motion system's own property, rather than a colour
+     transition (ADR-0078 keeps that for the segmented label meeting its
+     pill). The `/ ""` keeps the copy out of the accessible name. */
+  .section-jump-link::after {
+    content: attr(data-label) / '';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+    pointer-events: none;
+  }
+
+  .section-jump-link[aria-current='location']::after {
+    opacity: 1;
   }
 
   /* A 100px bar scaled to the current name's width, so the whole move is

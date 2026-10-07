@@ -26,6 +26,7 @@
      (shiftStartToDay) - its time-of-day is never re-typed, so a session
      that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
+  import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -544,7 +545,10 @@
       <!-- Stopping from the row (or starting from the sheet) swaps one card
            for the other in place: the old one fades out of flow over the new
            one fading in, so neither is painted at full strength in a frame
-           the other still owns. -->
+           the other still owns, and the wrapper travels the difference in
+           height (a running card with its cue line is taller than Today). -->
+      {#if running || earliest !== null}
+      <div use:resize>
       {#if running}
         <div in:cardIn out:crossfade>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
@@ -592,6 +596,8 @@
           </ListRow>
         </ListCard>
         </div>
+      {/if}
+      </div>
       {/if}
 
       {#if earliest === null && !running}
@@ -659,7 +665,7 @@
             <div out:crossfade>
               <Segmented
                 name={m.stats_range_group()}
-                options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }), aria: m.range_days_aria({ days: String(r) }) }))}
+                options={dayRangeOptions(RANGES)}
                 value={String(range)}
                 onChange={(v) => (range = Number(v))}
                 compact

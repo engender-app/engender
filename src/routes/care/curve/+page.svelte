@@ -39,6 +39,7 @@
      journal/hormoneCurve.ts's, where it has tests. What is left here is
      wording and marks. */
 
+  import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -390,7 +391,7 @@
 
       <Segmented
         name={m.curve_window_label()}
-        options={WINDOWS.map((days) => ({ value: String(days), label: m.range_days({ days: String(days) }), aria: m.range_days_aria({ days: String(days) }) }))}
+        options={dayRangeOptions(WINDOWS)}
         value={String(windowDays)}
         onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
         compact
