@@ -2373,6 +2373,10 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   pointer-events: none;
 }
 .toast.is-open { opacity: 1; transform: none; }
+/* A failure said while a sheet stays open (after-release 06): at the top,
+   over the dimmed screen, rather than on the sheet's own buttons. It comes
+   down from the edge it sits at. */
+.toast.is-raised { top: calc(var(--inset-top) + var(--space-4)); bottom: auto; }
 /* Measured at 48.3x32 by ticket 30, under the same floor and fixed the same
    way. A toast is a single line and growing this to 48px would grow the toast
    around it; the target grows instead. There is only ever one action in a

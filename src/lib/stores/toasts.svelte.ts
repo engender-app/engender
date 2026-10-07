@@ -10,6 +10,11 @@ interface ToastItem {
      toast() callers never pass this, since most toasts are only ever
      asserted on by their role. */
   kind?: string;
+  /** Drawn at the top of the screen rather than above the bar: a failure
+      raised while a sheet is open, which stays open, would otherwise land on
+      the sheet's own buttons. Decided once, when the toast is made, so a
+      toast never moves while it is up. */
+  raised?: boolean;
 }
 
 let seq = 1;
@@ -19,7 +24,8 @@ export function toast(
   message: string,
   opts: { actionLabel?: string; onAction?: () => void; duration?: number; kind?: string } = {}
 ) {
-  const item: ToastItem = { id: seq++, message, actionLabel: opts.actionLabel, onAction: opts.onAction, kind: opts.kind };
+  const raised = opts.kind === 'failed' && typeof document !== 'undefined' && !!document.querySelector('[data-sheet-scrim]');
+  const item: ToastItem = { id: seq++, message, actionLabel: opts.actionLabel, onAction: opts.onAction, kind: opts.kind, raised };
   toasts.push(item);
   setTimeout(() => {
     const i = toasts.findIndex((t) => t.id === item.id);

@@ -7,10 +7,11 @@
 {#each toasts as t (t.id)}
   <div
     class="toast is-open"
-    role="status"
+    class:is-raised={t.raised}
+    role={t.kind === 'failed' ? 'alert' : 'status'}
     data-toast
     data-toast-kind={t.kind}
-    transition:fly={{ y: motionDistance('--motion-distance-sm'), duration: motionDuration('--dur-med') }}
+    transition:fly={{ y: (t.raised ? -1 : 1) * motionDistance('--motion-distance-sm'), duration: motionDuration('--dur-med') }}
   >
     <span>{t.message}</span>
     {#if t.actionLabel}
