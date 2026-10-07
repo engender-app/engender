@@ -70,13 +70,15 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
     epochDay,
     entryId,
     seedMood,
-    debriefForAppointment
+    debriefForAppointment,
+    openSection
   }: {
     epochDay?: number;
     entryId?: number;
@@ -89,6 +91,9 @@
         of an existing entry, the same "creation aid, not an editing one"
         rule the prompt and the template sheet already follow. */
     debriefForAppointment?: string;
+    /** A chip section a new entry opens with, from the address (`?open=`).
+        A resumed draft keeps its own open section. */
+    openSection?: EntrySection;
   } = $props();
 
   /* The editor is a writing surface rather than a set of areas to look at,
@@ -142,8 +147,44 @@
   const guard = session.guard;
   const prepareDraft = session.prepare;
   const leave = session.leave;
+  /* Before the mirror is read, so a resumed draft's own open section wins
+     over the address's. */
+  // svelte-ignore state_referenced_locally
+  if (entryId == null && openSection) session.draft.setOpenSection(openSection);
   // svelte-ignore state_referenced_locally
   const persistedRestore = entryId == null ? session.resume() : Promise.resolve();
+  /* Opened from the address, the open section and the chip row over it
+     are scrolled into view once they are drawn: below Mode and Gender the
+     section would otherwise open out of sight. A smooth scroll rather than
+     followReveal, which follows a section's growth and has none to follow
+     here, so it would jump the whole distance in one frame. */
+  // svelte-ignore state_referenced_locally
+  let revealFromAddress = entryId == null && openSection ? openSection : null;
+  $effect(() => {
+    if (!revealFromAddress || !chipRowEl || entryDraft.openSection !== revealFromAddress) return;
+    const section = chipRowEl.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${revealFromAddress}"]`);
+    if (!section) return;
+    revealFromAddress = null;
+    const region = chipRowEl.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!region) return;
+    /* The section's foot to the region's, the edge followReveal brings it
+       to, so the chip row directly above it stays in view. Measured once the
+       arrival has settled: started during it, the main thread stalled for
+       ~180ms mid-scroll and the next frame landed 92px further on, and the
+       save bar rising afterwards shortened the region by 196px and left the
+       section under it. So after the idle callback, and after every finite
+       animation on the page has finished (two seconds at most). */
+    const started = performance.now();
+    const settled = () => {
+      const moving = document
+        .getAnimations()
+        .some((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity);
+      if (moving && performance.now() - started < 2000) return requestAnimationFrame(settled);
+      const travel = section.getBoundingClientRect().bottom - region.getBoundingClientRect().bottom;
+      if (travel > 0) region.scrollBy({ top: travel, behavior: scrollBehavior() });
+    };
+    requestIdleCallback(settled, { timeout: 1000 });
+  });
   onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of

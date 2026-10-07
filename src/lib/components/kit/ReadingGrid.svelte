@@ -43,7 +43,11 @@
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: 1fr;
+    /* Each row its own tallest tile, not the grid's: with every row as tall
+       as the tallest tile anywhere, the plane's square set the height of
+       all of them, and a tile with only a figure sat over 150 to 260px of
+       blank box (after-release 27, audit UI-13). */
+    grid-auto-rows: auto;
     border-top: 1px solid var(--hairline);
     border-bottom: 1px solid var(--hairline);
   }

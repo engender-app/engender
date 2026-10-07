@@ -35,6 +35,7 @@
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
+  import { TODAY_PHOTO_HREF } from '$lib/data/entrySections';
   import { writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -484,6 +485,7 @@
           role={roleAt(activeFlag.roles, 0)}
           title={m.ph_empty_title()}
           text={m.ph_empty_body()}
+          action={{ label: m.ph_empty_action(), href: TODAY_PHOTO_HREF, primary: true }}
         />
       {/snippet}
     </ReadGate>
