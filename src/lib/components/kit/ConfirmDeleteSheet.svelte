@@ -46,12 +46,14 @@
     /** The last delete failed; the record is still there. */
     failed?: boolean;
   } = $props();
+
+  const stayOpen = () => {};
 </script>
 
 <!-- While a delete runs, the scrim, Back and a drag ask to close and are
      told no: handing Sheet a request handler is what stops it closing
      itself (Sheet.svelte's close()). -->
-<Sheet {open} {title} onClose={onCancel} onRequestClose={busy ? () => {} : undefined}>
+<Sheet {open} {title} onClose={onCancel} onRequestClose={busy ? stayOpen : undefined}>
   <h3>{question}</h3>
   {#if hint}
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
