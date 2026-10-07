@@ -17,14 +17,6 @@ function read(path: string) {
 }
 
 describe('phase 2 accessibility seams', () => {
-  it('keeps line charts labelled for screen readers', () => {
-    const chart = read('src/lib/components/LineChart.svelte');
-    expect(chart).toContain('m.chart_aria');
-    expect(chart).toContain('role="img"');
-    expect(chart).toContain('aria-label={ariaLabel ?? chart.label}');
-    expect(chart).toContain('m.not_enough_data()');
-  });
-
   it('keeps chart values available as text in stats', () => {
     /* The chart carries a value gutter and a mark per reading (phase 5 UX
        ticket 23), and neither is a number a screen reader can report. The

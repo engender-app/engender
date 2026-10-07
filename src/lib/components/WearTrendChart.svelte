@@ -7,7 +7,7 @@
      series, two edges" shape HormoneBandChart's band-plus-lab-points takes,
      just as two lines instead of a band and marks.
 
-     A dumb renderer, like LineChart and HormoneBandChart beside it: it
+     A dumb renderer, like HormoneBandChart beside it: it
      takes numbers and formatters and knows nothing about wear sessions or
      body regions. The wording, and paraglide, stay with the caller. */
 

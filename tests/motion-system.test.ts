@@ -295,11 +295,6 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'fill: transparent - an invisible hit target has nothing visible to press'
   },
   {
-    file: 'src/lib/components/LineChart.svelte',
-    count: 1,
-    reason: 'fill: transparent - an invisible hit target has nothing visible to press'
-  },
-  {
     file: 'src/lib/components/kit/BarRows.svelte',
     count: 1,
     reason:

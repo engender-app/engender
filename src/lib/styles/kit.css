@@ -1663,11 +1663,9 @@ button.kit-strip-day .kit-strip-cell {
      registered property, so the property itself is what carries it.
 
      Only where the strip can be paged, which is what the rule below
-     narrows it to. Left on `.kit-strip-cell` it also reached WeekStrip,
-     whose cells would have started fading from grey to their heat as
-     `dayAverages` lands rather than snapping - an improvement, and the
-     calendar is the one caller ticket 44's own out-of-scope list names, so
-     it is not this ticket's to make. */
+     narrows it to. Left on `.kit-strip-cell` it would also reach every
+     other strip, whose cells would start fading from grey to their heat
+     as data lands rather than snapping. */
 }
 
 /* A bare custom property animates as a string - it swaps at 50% and the
@@ -1702,7 +1700,7 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 /* CARPET-02: the desktop breakpoint app.css already switches the whole
-   shell on - the column WeekStrip.svelte counts 1024px by is the same
+   shell on - the column the strip counts 1024px by is the same
    640px `--content-max` this shrinks into. 14 cells at 44px plus their gaps
    would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap
    that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
