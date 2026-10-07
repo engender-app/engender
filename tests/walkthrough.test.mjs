@@ -942,12 +942,15 @@ try {
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
 
-  /* A tally is the fan's now, and it still resolves in place: the save
-     toast is what says the write came back, and Home is still Home. */
+  /* A tally is the fan's now, and it still resolves in place: the fan's
+     status line is what says the write came back, and Home is still Home.
+     This waited for a toast until after-release 17, and the toast it found
+     was the storage warning every cold load used to raise; the fan has
+     confirmed by its flight and its status line since. */
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan-target="mood-3"]');
   await page.locator('[data-choose="tally-misgendered"]').click();
-  await page.waitForSelector('[data-toast]');
+  await page.waitForFunction(() => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0);
   if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the fan left Home: ' + page.url());
 
   /* The pinned rows: the default set resolves for a journal that never
@@ -2736,7 +2739,7 @@ try {
        the window rather than by opening a keyboard nothing here has. */
     { width: 390, height: 360 }
   ];
-  const STEP_TAPS = 8; // nine steps, eight Continues
+  const STEP_TAPS = 9; // ten steps, nine Continues (features joined in after-release 17)
   for (const size of STEP_SIZES) {
     await page.setViewportSize(size);
     await fresh('/');
@@ -3043,8 +3046,8 @@ try {
   /* A setup draft from the new-journal path must not override the archive.
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
-  for (let i = 0; i < 4; i++) {
-    restoreStage = `next to setup draft ${i + 1}/4`;
+  for (let i = 0; i < 5; i++) {
+    restoreStage = `next to setup draft ${i + 1}/5`;
     await page.locator('[data-next]').click();
   }
   /* Dispatched rather than clicked: with the demo bar's 240px above it, the
@@ -3052,8 +3055,8 @@ try {
      in view and the step's foot takes a real click. Without the bar the
      list has about 280px. */
   await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  for (let i = 0; i < 4; i++) {
-    restoreStage = `back from setup draft ${i + 1}/4`;
+  for (let i = 0; i < 5; i++) {
+    restoreStage = `back from setup draft ${i + 1}/5`;
     await page.locator('[data-back]').click();
   }
   await page.waitForSelector('[data-restore-start]');
@@ -3293,7 +3296,8 @@ try {
   await page.locator('#ob-name').fill('Kit');
   await page.locator('[data-next]').click(); // name -> flag
   await page.locator('[data-next]').click(); // flag -> scales
-  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // scales -> features
+  await page.locator('[data-next]').click(); // features -> areas
   await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -3485,18 +3489,22 @@ try {
     throw new Error('the scales step made Continue wait for something');
   }
   // Untouched, then skipped: the stored default has to survive both.
-  await page.locator('[data-skip-step]').click(); // scales -> areas
+  await page.locator('[data-skip-step]').click(); // scales -> features
+
+  /* The feature choices are their own step since after-release 17: a
+     choice made and then skipped is not kept. */
+  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
+  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
+  await cycleChoice.focus();
+  await cycleChoice.press('Space');
+  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
+  await page.locator('[data-skip-step]').click(); // features -> areas
 
   /* Ticket 22's own version of the same proof: the default three arrive
      ticked, and skipping leaves `onboardingAreas` null rather than storing
      the default. */
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
-  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
-  await cycleChoice.focus();
-  await cycleChoice.press('Space');
-  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
   await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -3535,7 +3543,8 @@ try {
   await choice.focus();
   await choice.press('Space');
   if (await choice.getAttribute('aria-checked') !== 'true') throw new Error('Polish setup cycle choice ignored keyboard');
-  for (let step = 0; step < 4; step++) await page.locator('[data-next]').click();
+  // features -> areas -> lock -> permissions -> disguise -> finish
+  for (let step = 0; step < 5; step++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
