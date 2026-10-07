@@ -5,7 +5,8 @@ problem, without asking anyone to hand over private journal content.
 
 ## Where to ask for help
 
-- General bugs and questions: GitHub Issues.
+- General bugs and questions: GitHub Issues (public).
+- Private support: engender-app@pm.me.
 - Security-sensitive issues: use the private process in `SECURITY.md`.
 
 ## What to send
@@ -17,6 +18,7 @@ problem, without asking anyone to hand over private journal content.
 
 ## What support will never ask for
 
+- Passwords or recovery keys.
 - Backup or archive files.
 - Screenshots that show entries, notes, reminders, labs or photos.
 - Raw logs that carry journal content.
@@ -28,3 +30,14 @@ can be reproduced from a version, a platform and a list of steps instead.
 
 Then the next step is to work out a synthetic reproduction together: the same
 sequence, on entries invented for the purpose. Real entries stay where they are.
+
+## Correspondence
+
+Private support email and downloaded copies controlled by the maintainer are
+deleted within 30 days after resolution. Personal journal material sent by
+mistake is deleted when noticed and is not used for debugging. Issue records
+may retain technical findings without personal journal content.
+
+GitHub issues are public. Private vulnerability reports follow GitHub's
+separate process. Deletion from the maintainer's mailbox does not promise
+deletion from GitHub, provider backups or copies held by other people.

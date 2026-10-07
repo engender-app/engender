@@ -31,6 +31,15 @@ blocked.
 
 ## Walkthrough groups
 
+`page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
+empty counting request, document reload, internal navigation and offline behavior.
+Run after a production build: `node tests/page-load-browser.mjs`.
+
+`page-count-hosting` (`tests/page-count-hosting.mjs`) checks the analytics privacy
+boundary with real nginx and a capture server. Requires Podman:
+`node tests/page-count-hosting.mjs`. It checks both fixed labels, stripped headers
+and bodies, rejected input, and blocked direct collection on the dashboard.
+
 `walkthrough-groups` (`tests/walkthrough-groups.mjs`) assigns contiguous flow ranges to four hosted jobs.
 Run one with `node tests/walkthrough.test.mjs --group journal` after
 `VITE_DEMO=1 ENGENDER_VERSION=9.9.9-walkthrough npm run build`. The other group
