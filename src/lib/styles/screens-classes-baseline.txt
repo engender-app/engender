@@ -13,7 +13,6 @@ entry-days
 gate
 gate-field
 gate-page
-gate-progress
 gate-title
 kit-notice
 lab-context

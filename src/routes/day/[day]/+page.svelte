@@ -90,7 +90,7 @@
   import { goto } from '$app/navigation';
   import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
-  import { crossesCalendarYear, todayEpochDay } from '$lib/data/epochDay';
+  import { crossesCalendarYear } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { untrack } from 'svelte';
   import { fmtDay } from '$lib/data/dates';

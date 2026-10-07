@@ -65,7 +65,7 @@
   import { resolveCurveDrug } from '$lib/data/hormoneDrug';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
-  import { drugsMatch } from '$lib/data/stockProjection';
+  import { sameDrug } from '$lib/data/regimenEpisode';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
@@ -99,7 +99,7 @@
   let latestLab = $derived(careQuery.value?.latestLab ?? null);
   let stock = $derived(careQuery.value?.stock ?? []);
   let stockExcludedDoses = $derived(careQuery.value?.stockExcludedDoses ?? 0);
-  const runOutFor = (drug: string) => lanes.find((lane) => drugsMatch(lane.episode.drug, drug))?.runOut ?? null;
+  const runOutFor = (drug: string) => lanes.find((lane) => sameDrug(lane.episode.drug, drug))?.runOut ?? null;
 
   /* The stock editor (Recorded, Opened, window), off Care rather than its
      own screen (ADR-0084) - the same shape the dose panel's own Log sheet
@@ -463,7 +463,7 @@
       the same sentence a second time - it draws only what no lane covers,
       and the list behind it is still the whole drawer. */
   let unlanedStock = $derived(
-    stock.filter((row) => !lanes.some((lane) => drugsMatch(lane.episode.drug, row.entry.drug)))
+    stock.filter((row) => !lanes.some((lane) => sameDrug(lane.episode.drug, row.entry.drug)))
   );
 
   /* Mood between injections (phase 5 ticket 09, moved here whole by

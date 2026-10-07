@@ -45,7 +45,7 @@
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { CURVE_ANALYTE, CURVE_UNIT, bandRangeAt, latestBandPoint, type EsterCurve } from '$lib/data/hormoneCurve';
+  import { CURVE_ANALYTE, CURVE_UNIT, latestBandPoint, type EsterCurve } from '$lib/data/hormoneCurve';
   import type { CurveLabPoint, QualitativeChart, QualitativeSection } from '$lib/data/journal/hormoneCurve';
   import type { InjectableEster } from '$lib/data/hormoneEster';
   import { latestQualitativeValue } from '$lib/data/hormoneCurveQualitative';

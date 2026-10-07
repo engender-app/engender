@@ -45,7 +45,7 @@ import {
   type RouteOption
 } from '../doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
-import { activeEpisodesAt, attributeDose } from '../regimenEpisode';
+import { activeEpisodesAt, attributeDose, sameDrug } from '../regimenEpisode';
 import { rangesFromCuts } from '../span';
 import type { RegimenArea } from './regimen';
 import { assertChanged, mintUuid, now } from './support';
@@ -171,7 +171,7 @@ export function compareDoseSchedule(
      episodes falls back to the full list rather than reporting nothing
      active, since a stale pick is not the same fact as no episode. */
   const active = activeEpisodesAt(episodes, startOfDayTimestamp(toEpochDay));
-  const matchingDrug = drug === undefined ? active : active.filter((episode) => episode.drug.trim() === drug.trim());
+  const matchingDrug = drug === undefined ? active : active.filter((episode) => sameDrug(episode.drug, drug));
   const resolvedActive = matchingDrug.length > 0 ? matchingDrug : active;
   if (resolvedActive.length > 1) return { reason: 'multipleEpisodes' };
   const activeEpisode = resolvedActive[0];

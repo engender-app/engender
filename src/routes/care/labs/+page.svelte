@@ -34,10 +34,9 @@
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
   import { isAndroid } from '$lib/platform';
   import {
-    parseLabNumeric,
-    formatLabReviewValue,
-    type OcrReviewRow
-  } from '$lib/data/labs/ocr';
+  formatLabReviewValue,
+  type OcrReviewRow
+} from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
   import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -57,7 +56,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';

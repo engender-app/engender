@@ -3,7 +3,7 @@
      with the path between them traced by a scrubber (phase 5 deepening
      ticket 19, ADR-0048).
 
-     A dumb renderer, like WearTrendChart and LineChart beside it. It takes
+     A dumb renderer, like WearTrendChart beside it. It takes
      positions already read to 0..1 ($lib/data/constellationData), the two
      scales' own end words, a formatter for a date and the modes with their
      resolved roles. It knows no dimension key, no message and no colour of

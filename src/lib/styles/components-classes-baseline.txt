@@ -10,11 +10,6 @@ cal-num
 can-scroll
 can-scroll-end
 can-scroll-start
-card
-chart-area
-chart-dot
-chart-line
-chart-line-overlay
 dim-head
 dim-name
 dim-readout
@@ -49,10 +44,8 @@ is-major
 is-pair
 is-refused
 is-refusing
-is-short
 is-starred
 kit-chart-pick
-line-chart
 mood-btn
 mood-face
 mood-face-disc
@@ -92,10 +85,7 @@ sheet
 sheet-drag
 sheet-handle
 sheet-scrim
-skeleton
-skeleton-dot
 skeleton-fill
-skeleton-line
 skeleton-lines
 skeleton-stack
 slider

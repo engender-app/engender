@@ -15,6 +15,7 @@ ext {
     androidxTestCoreVersion = '1.6.1'
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
+    androidxDocumentFileVersion = '1.0.1'
     androidxBiometricVersion = '1.1.0' // latest stable, checked 2026-09-01: every release since
                                         // is an unreleased alpha (1.4.0-alpha07 as of April 2026),
                                         // so this is the floor, not a stale pin

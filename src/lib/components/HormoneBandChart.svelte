@@ -6,7 +6,7 @@
      so the single-line presentation this ticket rules out is not something a
      caller could ask for by passing a different prop.
 
-     A dumb renderer, like LineChart.svelte beside it: it takes numbers and
+     A dumb renderer, like WearTrendChart beside it: it takes numbers and
      formatters and knows nothing about esters, units or what any of it
      means. The wording, and paraglide, stay with the caller. */
 
@@ -166,7 +166,7 @@
       />{/each}
 
     {#if interactive}
-      <!-- Hit areas over the results, sized the way LineChart sizes its own:
+      <!-- Hit areas over the results, sized so they are
            wider than the mark and narrower than 44px, because at 44px
            neighbouring draws would steal each other's taps.
            data-no-press (ticket 15): fill: transparent below, so there is

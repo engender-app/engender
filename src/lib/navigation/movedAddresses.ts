@@ -23,12 +23,12 @@ export const MOVED_ADDRESSES: Record<string, MovedTarget> = {
   '/health/appointment-prep': '/health/appointments',
   '/health/side-effects': '/care/changes',
   '/media/voice/memos': '/voice?tab=recordings',
-  '/practice/entry-templates': '/settings/entry-templates',
+  '/practice/entry-templates': '/settings?raise=templates',
   '/practice/personal-effects': '/care/changes',
   '/practice/resources': '/support/resources',
   '/practice/voice/metrics': '/voice?metric=pitch',
   '/practice/wear': '/body/wear',
-  '/search/questions': '/search?questions=1',
+  '/search/questions': '/search',
   '/search/starred': '/search?starred=1',
   '/settings/appointment-prep': '/health/appointments',
   '/settings/clinician-summary': '/health/clinician-summary',
@@ -63,7 +63,7 @@ export const MOVED_ADDRESSES: Record<string, MovedTarget> = {
   '/settings/wear': '/body/wear',
   '/timeline': '/transition/milestones',
   '/transition/eras': '/settings/eras',
-  '/transition/presentations': '/settings/presentations',
+  '/transition/presentations': '/settings?raise=modes',
   '/transition/words': '/stats',
   /* Id-preserving: the parent screen moved, a deep link to one of its
      items keeps the id rather than landing on the list. */
