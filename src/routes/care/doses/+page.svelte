@@ -36,7 +36,7 @@
   import { DOSE_LOG_WINDOW_DAYS, NO_DOSE_LOG, readDoseLog } from '$lib/data/doseLogReads';
   import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft, type DoseDraft } from '$lib/data/doseDraft';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, sameDrug } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -338,7 +338,7 @@
     const draft = editor;
     if (!draft) return null;
     const at = activeEpisodesAt(episodes, draftTimestamp(draft.day, draft.time));
-    if (draft.drug) return at.find((e) => e.drug === draft.drug) ?? null;
+    if (draft.drug) return at.find((e) => sameDrug(e.drug, draft.drug)) ?? null;
     return at.length === 1 ? at[0] : null;
   });
 
@@ -778,8 +778,8 @@
                     <button
                       type="button"
                       class="tag-chip press"
-                      class:is-selected={editor!.drug === drug}
-                      aria-pressed={editor!.drug === drug}
+                      class:is-selected={sameDrug(editor!.drug, drug)}
+                      aria-pressed={sameDrug(editor!.drug, drug)}
                       data-dose-drug={drug}
                       onblur={() => { validationTouched = true; }}
                       onclick={() => pickDrug(drug)}

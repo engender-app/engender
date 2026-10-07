@@ -23,7 +23,7 @@
 import { adherence, expectedSlots, slotToleranceDays, type DoseSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
 import { resolveCurveDrug } from './hormoneDrug';
-import { attributeDose, attributeDrug } from './regimenEpisode';
+import { attributeDose, attributeDrug, sameDrug } from './regimenEpisode';
 import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
 
 /** How far the rail can reach either side of today.
@@ -425,8 +425,10 @@ export function scheduleDoseFacts(
   pauses: readonly DosePause[],
   todayEpochDay: number
 ): { lastDoseEpochDay: number | null; lastDoseId: string | null; nextDoseEpochDay: number | null } {
-  const drug = episode.drug.trim();
-  const ownDoses = doses.filter((dose) => attributeDrug(episodes, dose).drug?.trim() === drug);
+  const ownDoses = doses.filter((dose) => {
+    const { drug } = attributeDrug(episodes, dose);
+    return drug !== null && sameDrug(drug, episode.drug);
+  });
   const lastDose = lastLoggedDose(ownDoses);
   const lastDoseEpochDay = lastDose ? epochDayFromTimestamp(lastDose.timestamp) : null;
   const lastDoseId = lastDose?.id ?? null;

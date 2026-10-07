@@ -166,7 +166,7 @@ describe('assembleClinicianDossier', () => {
     const dossier = await assembleClinicianDossier(journal, {
       fromEpochDay: 19000,
       toEpochDay: 19010,
-      excludedDrugs: new Set(['Estradiol Valerate'])
+      excludedDrugs: new Set([' ESTRADIOL VALERATE '])
     });
 
     expect(dossier.regimen!.history).toHaveLength(0);
@@ -209,6 +209,13 @@ describe('regimenDrugNames', () => {
     const episodes = await journal.regimen.getEpisodes();
 
     expect(regimenDrugNames(episodes)).toEqual(['Estradiol Valerate', 'Progesterone']);
+  });
+
+  it('lists case and whitespace variants once, preserving the first label', async () => {
+    const episodes = await journal.regimen.getEpisodes();
+    const first = episodes.find((episode) => episode.drug === 'Estradiol Valerate')!;
+
+    expect(regimenDrugNames([first, { ...first, drug: ' ESTRADIOL VALERATE ' }])).toEqual(['Estradiol Valerate']);
   });
 
   it('comes back empty with no episodes', () => {

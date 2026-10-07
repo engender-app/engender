@@ -26,6 +26,7 @@ import type { ClinicianSummaryFinishedArea, ClinicianSummaryProcedure } from '..
 import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
 import { spanCoversDay } from '../span';
+import { sameDrug } from '../regimenEpisode';
 
 interface PatientDemographics {
   name: string;
@@ -126,7 +127,11 @@ interface AssembleClinicianDossierParams {
     device preference set once, not a per-print control, so a drug outside
     today's chosen range still gets a switch. */
 export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] {
-  return [...new Set(episodes.map((episode) => episode.drug))].sort((a, b) => a.localeCompare(b));
+  const names: string[] = [];
+  for (const episode of episodes) {
+    if (!names.some((name) => sameDrug(name, episode.drug))) names.push(episode.drug);
+  }
+  return names.sort((a, b) => a.localeCompare(b));
 }
 
 const spacedWords = (text: string) =>
