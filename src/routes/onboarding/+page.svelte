@@ -74,16 +74,16 @@
   import { wipe } from '$lib/motion/reveal';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { DEFAULT_ONBOARDING_AREAS, defaultPins } from '$lib/data/pinnedRows';
+  import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { hubRow, hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
+  import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
   import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { HOME_AREA_ROLE, roleAt, tileRoleAt } from '$lib/theme/roles';
+  import { roleAt } from '$lib/theme/roles';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import { firstRunScales } from '$lib/onboarding/firstRunScales';
@@ -185,7 +185,6 @@
   let genitalEffectsShown = $derived(
     genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
   );
-  let previewPins = $derived(defaultPins(tickedAreas).filter((key) => key !== 'measurements' || measurementsShown));
 
   function toggleArea(key: string) {
     areas = tickedAreas.includes(key)
@@ -429,6 +428,7 @@
     name: m.ob_name_title,
     flag: m.ob_flag_title,
     scales: m.ob_track_title,
+    features: m.ob_features_title,
     areas: m.ob_areas_title,
     lock: m.ob_lock_title,
     permissions: m.ob_perms_title,
@@ -444,6 +444,7 @@
     name: m.ob_name_body,
     flag: m.ob_flag_body,
     scales: m.ob_track_body,
+    features: m.ob_features_body,
     areas: m.ob_areas_body,
     lock: m.ob_lock_body,
     permissions: m.ob_perms_body,
@@ -540,12 +541,11 @@
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
-    else if (step === 'areas') {
-      areas = null;
+    else if (step === 'features') {
       measurementsChoice = null;
       genitalEffectsChoice = null;
       cycleChoice = null;
-    }
+    } else if (step === 'areas') areas = null;
     else if (step === 'lock') lockAfter = null;
     /* The permissions step is not in this list, and that is the whole of
        what skipping it does (ticket 31). Its answers live in the OS rather
@@ -557,7 +557,7 @@
   }
 
   /* One way out, whichever control was pressed. "Straight to the app" from
-     an early step and "Start writing" from the finish are the same act -
+     an early step and "Go to Today" from the finish are the same act -
      keep what has been chosen so far, mark the first run done, go - and
      writing them as one function is what stops the two drifting apart the
      way a second copy of this would.
@@ -922,8 +922,34 @@
                   onToggle={toggleScale}
                   offered={vocabulary.ready ? undefined : firstRunScales()}
                 />
+              {:else if step === 'features'}
+                <!-- Their own step since after-release 17 (UX-09), and
+                     before the pins, so the pins step offers only what is
+                     switched on here. -->
+                <ListCard>
+                  <ListRow
+                    key="feature-measurements"
+                    title={m.measurements_and_sizes()}
+                    checked={measurementsShown}
+                    chevron={false}
+                    onclick={() => (measurementsChoice = !measurementsShown)}
+                  />
+                  <ListRow
+                    key="feature-genital-effects"
+                    title={m.feature_genital_effects()}
+                    checked={genitalEffectsShown}
+                    chevron={false}
+                    onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
+                  />
+                  <ListRow
+                    key="feature-cycle-tracking"
+                    title={m.cycle_tracking_toggle_title()}
+                    checked={cycleShown}
+                    chevron={false}
+                    onclick={() => (cycleChoice = !cycleShown)}
+                  />
+                </ListCard>
               {:else if step === 'areas'}
-                <p class="setup-caption" id="setup-pins-title">{m.ob_today_pins_title()}</p>
                 <!-- The hub's own groups and rows, ticked rather than tapped
                      through - the flag step and the scales step both already
                      solved "a list you tick" on this screen, so this is that
@@ -931,50 +957,18 @@
 
                      A group inside the list is named by a caption at 15/600
                      and never by the 28px section rule (rule 12): a step has
-                     one heading and it is the question. The permissions step
-                     names its own two groups the same way, which is where
-                     this drawing comes from. -->
-                <!-- A concise preview of the resulting Today pins (phase 11 ticket 22):
-                     shows what the selection puts on Today, in registry order, and explains
-                     that unselected areas stay in Transition and where to change pins later. -->
-                <div class="setup-areas-preview" data-setup-areas-preview>
-                  <p class="setup-caption">{m.ob_areas_preview_title()}</p>
-                  <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}>
-                    {#if previewPins.length > 0}
-                      {#each previewPins as pinKey (pinKey)}
-                        {@const r = hubRow(pinKey)}
-                        <ListRow
-                          key={`preview-${pinKey}`}
-                          icon={r.icon}
-                          title={hubRowTitle(pinKey)}
-                          static={true}
-                          chevron={false}
-                          data-preview-pin={pinKey}
-                        />
-                      {/each}
-                    {:else}
-                      <ListRow
-                        key="preview-empty"
-                        title={m.home_edit_none()}
-                        static={true}
-                        chevron={false}
-                      />
-                    {/if}
-                    <ListRow
-                      key="preview-edit"
-                      icon="pencil"
-                      title={previewPins.length > 0 ? m.home_pinned_edit() : m.home_pinned_edit_empty()}
-                      static={true}
-                      chevron={false}
-                    />
-                  </ListCard>
-                </div>
+                     one heading and it is the question.
 
-                <div class="setup-areas" role="group" aria-labelledby="setup-pins-title">
+                     The list is the choice and nothing stands above it
+                     (after-release 17, UX-09): a "Today preview" of the
+                     rows this would pin sat over it, with a pencil row that
+                     looked tappable and was not, and pushed the first real
+                     choice below Continue at 390px. -->
+                <div class="setup-areas" role="group" aria-label={m.ob_areas_title()}>
                   {#each sections as section (section.key)}
                     <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
                     <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
-                      {#each section.rows as row (row.spec.key)}
+                      {#each section.rows.filter((row) => row.spec.key !== 'measurements' || measurementsShown) as row (row.spec.key)}
                         <!-- The clock handed to `hubRowLine` is inert here: these rows are
                              drawn from an empty reading, so none of them can be counting
                              up and the one line that reads a clock is unreachable. Same
@@ -992,33 +986,6 @@
                       {/each}
                     </ListCard>
                   {/each}
-                </div>
-                <div data-setup-feature-visibility role="group" aria-labelledby="setup-features-title">
-                  <p class="setup-caption" id="setup-features-title">{m.features_to_show()}</p>
-                  <p class="muted small">{m.features_to_show_sub()}</p>
-                  <ListCard>
-                    <ListRow
-                      key="feature-measurements"
-                      title={m.measurements_and_sizes()}
-                      checked={measurementsShown}
-                      chevron={false}
-                      onclick={() => (measurementsChoice = !measurementsShown)}
-                    />
-                    <ListRow
-                      key="feature-genital-effects"
-                      title={m.feature_genital_effects()}
-                      checked={genitalEffectsShown}
-                      chevron={false}
-                      onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
-                    />
-                    <ListRow
-                      key="feature-cycle-tracking"
-                      title={m.cycle_tracking_toggle_title()}
-                      checked={cycleShown}
-                      chevron={false}
-                      onclick={() => (cycleChoice = !cycleShown)}
-                    />
-                  </ListCard>
                 </div>
               {:else if step === 'lock'}
                 <!-- The module and the question after it cross rather than
@@ -1084,7 +1051,7 @@
                      draws, which is what makes "you can do this later" true
                      rather than a promise of a second screen that says
                      something close. -->
-                <PermissionList />
+                <PermissionList asksOnly />
               {:else if step === 'disguise'}
                 <!-- A row with a switch, drawn as every other answer in the
                      flow is (rule 13), and carrying the platform's own
@@ -1464,11 +1431,15 @@
      scroll (rule 14). It bleeds to the screen's edges and pads back in: a
      region that scrolls clips on both axes, so a block reaching past the
      content edge inside it would be cut. */
+  /* 4px of the 20 above moved inside the scroller (after-release 17,
+     U16): the name field sits at the region's very top, and its focus
+     ring - 2px drawn 2px out - was cut off along its top edge by the
+     scroller's own clip. The content lands where it did. */
   .setup-answers {
     flex: 1 1 0;
     min-height: 0;
-    margin: var(--space-5) calc(-1 * var(--space-5)) 0;
-    padding: 0 var(--space-5);
+    margin: calc(var(--space-5) - 4px) calc(-1 * var(--space-5)) 0;
+    padding: 4px var(--space-5) 0;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -1491,10 +1462,6 @@
   }
   .setup-caption:first-child {
     margin-top: 0;
-  }
-  .setup-areas-preview {
-    display: flex;
-    flex-direction: column;
   }
   .setup-areas {
     display: flex;

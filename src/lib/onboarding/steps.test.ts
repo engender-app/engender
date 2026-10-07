@@ -32,6 +32,7 @@ describe('the step list', () => {
       'name',
       'flag',
       'scales',
+      'features',
       'areas',
       'lock',
       'permissions',
@@ -98,6 +99,7 @@ describe('skipping', () => {
       'name',
       'flag',
       'scales',
+      'features',
       'areas',
       'lock',
       'permissions',
@@ -111,6 +113,23 @@ describe('skipping', () => {
      a step whose answers all live in the OS. */
   it('lets the permissions step be skipped like any other', () => {
     expect(isSkippable('permissions')).toBe(true);
+  });
+});
+
+/* After-release 17 (UX-09): the pins step asked two questions at once -
+   what sits on Today and which features exist at all - and offered
+   Measurements as both. Features are their own step now, before the pins,
+   so the pins step only offers areas that are switched on. */
+describe('features before pins', () => {
+  it('asks which features to show right before what to pin', () => {
+    expect(stepAfter(ONBOARDING_STEPS, 'scales')).toBe('features');
+    expect(stepAfter(ONBOARDING_STEPS, 'features')).toBe('areas');
+  });
+
+  it('stores the cycle choice, which an archive carries, so a restore skips it', () => {
+    expect(stepAnswers('features')).toEqual(['cycleTrackingChoice']);
+    expect(archiveAnswers('features')).toBe(true);
+    expect(restoreSteps()).not.toContain('features');
   });
 });
 

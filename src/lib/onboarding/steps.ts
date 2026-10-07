@@ -24,6 +24,7 @@ export type OnboardingStep =
   | 'name'
   | 'flag'
   | 'scales'
+  | 'features'
   | 'areas'
   | 'lock'
   | 'permissions'
@@ -37,6 +38,12 @@ export type OnboardingStep =
      flag     the app's whole visual identity, and the one choice that
               shows its own result while it is being made
      scales   which sliders appear when logging, i.e. what the journal is
+     features which optional parts of the app show at all - measurements,
+              genital effects, cycle tracking (after-release 17, UX-09).
+              They shared the pins step until then, which asked two
+              questions in one paragraph and offered Measurements as both
+              a pin and a feature. Asked first, so the pins that follow
+              only offer what is switched on
      areas    which of the hub's areas the front page starts pinned with
               (phase 10 redesign ticket 22) - the one central guess left in
               `pinnedRows.ts`, and the cheapest moment to settle it: the
@@ -89,6 +96,7 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'name',
   'flag',
   'scales',
+  'features',
   'areas',
   'lock',
   'permissions',
@@ -132,6 +140,11 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   name: ['name'],
   flag: ['palette'],
   scales: ['activeScales'],
+  /* The one preference it writes. Its other two answers are journal rows
+     (the measurements area's state and the genital-effects category), and
+     those travel in an archive with the rest of the journal, so a restore
+     already answers this step whole. */
+  features: ['cycleTrackingChoice'],
   areas: ['onboardingAreas'],
   lock: ['lockAfter'],
   /* Nothing, and not because it was forgotten: the permissions step's

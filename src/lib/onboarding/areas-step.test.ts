@@ -86,24 +86,25 @@ describe('onboarding areas step and Today pins', () => {
     }
   });
 
-  it('explains pinning and feature visibility separately in both languages', () => {
+  /* Two steps since after-release 17 (UX-09), so each says one thing: the
+     pins step what a pin is, the features step what off means. */
+  it('explains pinning and feature visibility on their own steps in both languages', () => {
     const en = JSON.parse(readFileSync('messages/en.json', 'utf8'));
     const pl = JSON.parse(readFileSync('messages/pl.json', 'utf8'));
 
     expect(en.ob_areas_title.toLowerCase()).toContain('pin');
-    expect(en.ob_areas_body).toContain('features');
+    expect(en.ob_areas_body).not.toContain('features');
     expect(en.ob_areas_body).toContain('Transition');
     expect(en.ob_areas_body).toContain('Today');
 
     expect(pl.ob_areas_title.toLowerCase()).toContain('przypiąć');
-    expect(pl.ob_areas_body).toContain('funkcje');
+    expect(pl.ob_areas_body).not.toContain('funkcje');
     expect(pl.ob_areas_body).toContain('Tranzycji');
     expect(pl.ob_areas_body).toContain('Dziś');
 
-    expect(en.ob_areas_preview_title).toBeDefined();
-    expect(pl.ob_areas_preview_title).toBeDefined();
-    expect(en.features_to_show_sub).toContain('hides');
-    expect(pl.features_to_show_sub).toContain('ukrywa');
+    expect(en.ob_areas_preview_title).toBeUndefined();
+    expect(en.ob_features_body).toContain('hidden');
+    expect(pl.ob_features_body).toContain('ukryte');
   });
 
   it('finishes setup successfully on skip, select one, and select many', async () => {
@@ -152,16 +153,19 @@ describe('onboarding areas step and Today pins', () => {
     );
   });
 
-  it('renders Today preview card and all eleven choices on the areas step', () => {
+  /* After-release 17 (UX-09): the preview card and the feature toggles left
+     the pins step. The features are a step of their own before it, and the
+     pins step offers Measurements only when that feature is on. */
+  it('draws the pins as the choice, with the features on their own step', () => {
     const svelte = readFileSync('src/routes/onboarding/+page.svelte', 'utf8');
 
-    expect(svelte).toContain('data-setup-areas-preview');
-    expect(svelte).toContain('data-preview-pin');
-    expect(svelte).toContain('m.ob_areas_preview_title');
+    expect(svelte).not.toContain('data-setup-areas-preview');
+    expect(svelte).not.toContain('data-preview-pin');
     expect(svelte).toContain('class="setup-areas"');
-    expect(svelte).toContain('data-setup-feature-visibility');
+    expect(svelte).toContain("step === 'features'");
     expect(svelte).toContain('key="feature-measurements"');
     expect(svelte).toContain('key="feature-genital-effects"');
+    expect(svelte).toContain("row.spec.key !== 'measurements' || measurementsShown");
     expect(svelte).toContain('data-leave-setup');
     expect(svelte).toContain('data-skip-step');
   });

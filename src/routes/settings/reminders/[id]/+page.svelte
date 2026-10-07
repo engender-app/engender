@@ -127,6 +127,16 @@
     />
   {/if}
 
+  {#if isWeb}
+    <!-- Ticket 13: the same truth the list screen opens with. Above the
+       form rather than above Save since after-release 17 (UX-18): the web
+       list draws no add button, so a person who reaches /new by address
+       meets the reason before a form that cannot ring. Editing stored data
+       stays allowed; the notice separates keeping a rule from promising a
+       ring this device cannot deliver. -->
+    <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
+  {/if}
+
   <Field label={m.rem_type_label()} legend>
     {#snippet children()}
       <Segmented name={m.rem_type_label()} options={TYPES} value={draft.type} onChange={(v) => (draft.type = v as Reminder['type'])} />
@@ -152,13 +162,7 @@
     {#if isWeb}{m.rem_next_web({ when: nextPreview })}{:else}{m.rem_next({ when: nextPreview })}{/if}
   </p>
 
-  {#if isWeb}
-    <!-- Ticket 13: the same truth the list screen opens with, above the one
-         action that commits the record. Editing stored data stays allowed;
-         what the notice separates is keeping a rule from promising a ring
-         this device cannot deliver. -->
-    <Notice icon="bell" key="reminder-web" title={m.rem_web_list_note()} text={m.rem_web_save_note()} />
-  {:else}
+  {#if !isWeb}
     <div class="notice notice-info">
       <Icon name="info" size={20} />
       <div class="notice-body">

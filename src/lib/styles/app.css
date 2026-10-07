@@ -1585,9 +1585,18 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
    off from the four doors above it by a hairline rather than a gap alone -
    a gap reads as spacing, a rule reads as a different kind of row (ticket
    09, ADR-0076). */
+/* The rule is drawn outside the row's box since after-release 17, when
+   the row started taking the pill on /settings: drawn as the row's own
+   border-top with the padding above the label, the lit shape covered the
+   hairline and sat 8px taller than the four doors' rows. */
 .rail-settings {
   margin-top: auto;
-  padding-top: calc(10px + var(--space-2));
+}
+.rail-settings::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: calc(-1 * var(--space-2) - 1px);
   border-top: 1px solid var(--outline);
 }
 

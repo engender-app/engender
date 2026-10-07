@@ -85,8 +85,6 @@
           </button>
         {:else if row.state === 'granted'}
           <span class="perm-state" data-granted>{m.perms_allowed()}</span>
-        {:else if row.state === 'unavailable'}
-          <span class="perm-state">{m.perms_android_only()}</span>
         {:else}
           <span class="perm-state">{m.perms_browser_blocked()}</span>
         {/if}

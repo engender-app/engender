@@ -22,7 +22,6 @@
    the built-ins are reconciled and the mirror filled at step 3, so the first
    screen to render already has a vocabulary. */
 
-import { m } from '$lib/paraglide/messages';
 import { boot, migrateJournal } from '../data/sqlite/boot';
 import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
 import { prewarmArgon2 } from '../crypto/argon2id';
@@ -80,7 +79,6 @@ import { applyCachedBootPreferences, attachPreferences, detachPreferences } from
 import { markUnlocked } from './lock.svelte';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
-import { toast } from './toasts.svelte';
 import { demoPreferences, persona } from '../data/demo/persona';
 import type { PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, isReadyState, type BootState } from './boot-state';
@@ -103,6 +101,10 @@ import {
 let machine: BootMachine = initialBoot(readCachedAccessMode());
 
 export const bootState = $state<BootState>({ ...machine.boot });
+
+/** Whether the browser refused to keep this journal's storage, as this
+    boot heard it. Home's storage notice reads it (after-release 17). */
+export const storageRisk = $state({ persistDenied: false });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
     started. Synchronous but for one case: the event that ends a gate
@@ -819,13 +821,11 @@ async function perform(effect: BootEffect): Promise<void> {
     }
 
     case 'warn-persist-denied':
-      // Raised here rather than from an $effect in +layout.svelte, where it
-      // used to live: toast() pushes onto a $state array, and reading that
-      // array's length to push made the effect depend on what it was
-      // writing, so it re-ran itself until Svelte gave up with
-      // effect_update_depth_exceeded. It never fired while opening the
-      // database was failing outright, which is how it stayed hidden.
-      toast(m.boot_storage_not_persistent());
+      // Recorded rather than said (after-release 17, U2): this was a toast,
+      // and on a first visit it covered the Welcome screen's two buttons
+      // for four seconds. Home reads the flag and draws a notice that asks
+      // for the one thing a person can do about it (storageNoticeShows).
+      storageRisk.persistDenied = true;
       return;
 
     default:
