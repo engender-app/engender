@@ -35,6 +35,7 @@
    resolution, which needs a real scheduler to be seen re-running at all. */
 
 import { untrack } from 'svelte';
+import { firstResult } from './firstResult';
 import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
@@ -580,10 +581,6 @@ function keyOf(site: string, calls: (string | null)[]): string | null {
     had typed since. Like `liveQuery`, call it while a component is
     initialising. */
 export function onFirstResult<T>(query: LiveQuery<T>, fill: (value: T | undefined) => void): void {
-  let filled = false;
-  $effect(() => {
-    if (filled || query.loading) return;
-    filled = true;
-    fill(query.value);
-  });
+  const fillOnce = firstResult(fill);
+  $effect(() => fillOnce(query));
 }
