@@ -7,7 +7,7 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { EntryTemplate } from '../types';
-import { assertChanged, bool, domainIdOf, mintUuid, now } from './support';
+import { assertChanged, bool, domainIdOf, mintUuid, now, resolveDimensionIds, resolveTagIds } from './support';
 
 interface EntryTemplateInput {
   name: string;
@@ -36,41 +36,6 @@ type TemplateRow = {
   note_scaffold: string;
   presentation_id: string | null;
   hidden: number;
-};
-
-const resolveTagIds = async (driver: SqliteDriver, tagDomainIds: string[]): Promise<number[]> => {
-  if (tagDomainIds.length === 0) return [];
-  const unique = [...new Set(tagDomainIds)];
-  const placeholders = unique.map(() => '?').join(', ');
-  const rows = await driver.query<{ id: number; key: string | null; uuid: string | null }>(
-    `SELECT id, key, uuid FROM tag WHERE key IN (${placeholders}) OR uuid IN (${placeholders})`,
-    [...unique, ...unique]
-  );
-  const byDomainId = new Map<string, number>();
-  for (const row of rows) byDomainId.set(domainIdOf(row, 'tag'), row.id);
-  for (const tagId of unique) {
-    if (!byDomainId.has(tagId)) throw new Error(`unknown tag: ${tagId}`);
-  }
-  return tagDomainIds.map((tagId) => byDomainId.get(tagId)!);
-};
-
-const resolveDimensionIds = async (
-  driver: SqliteDriver,
-  dims: Record<string, number>
-): Promise<readonly (readonly [number, number])[]> => {
-  const entries = Object.entries(dims);
-  if (entries.length === 0) return [];
-  const keys = [...new Set(entries.map(([key]) => key))];
-  const placeholders = keys.map(() => '?').join(', ');
-  const rows = await driver.query<{ id: number; key: string }>(
-    `SELECT id, key FROM gender_dimension WHERE key IN (${placeholders})`,
-    keys
-  );
-  const byKey = new Map(rows.map((row) => [row.key, row.id]));
-  for (const key of keys) {
-    if (!byKey.has(key)) throw new Error(`unknown dimension: ${key}`);
-  }
-  return entries.map(([key, value]) => [byKey.get(key)!, value] as const);
 };
 
 export function makeEntryTemplatesArea(driver: SqliteDriver): EntryTemplatesArea {
