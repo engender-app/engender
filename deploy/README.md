@@ -96,6 +96,69 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+## Private page-opening counts on the maintainer's VPS
+
+The two counters are `/app` and `/website`. They count online document
+openings, including reloads, not people or internal navigation. Android,
+offline openings, demo builds and other origins do not send counts.
+
+Keep the GoatCounter dashboard on `stats.engender.barankiewicz.dev`. Never
+proxy its scripts onto the journal origin: they would have access to the
+browser's journal storage. GoatCounter listens only on `127.0.0.1:8081`
+with `-base-path /gc`.
+
+Before adding a linked site, correct the existing site's hostname to the
+hostname its dashboard actually uses. GoatCounter's single-site fallback
+stops working when a second site exists. Preserve the existing site's data
+and settings. Create the Engender site linked to that site's administrator.
+Set only the Engender site's settings to `collect=1` (`CollectNothing`),
+`public="private"` and `data_retention=0`. Zero for `collect` restores
+defaults and is not equivalent to collecting nothing.
+
+After DNS reaches this VPS on both authoritative nameservers, issue a
+certificate using the HTTP bootstrap procedure above, with the stats
+hostname. Install:
+
+- `nginx/goatcounter-dashboard.conf` as `snippets/engender-goatcounter-dashboard.conf`
+- `nginx/goatcounter.conf` as `sites-available/engender-goatcounter.conf`
+- `nginx/journal-count-proxy.conf` as `snippets/engender-count-proxy.conf`
+- `nginx/journal-page-count.conf` as `snippets/engender-page-count.conf`
+- the updated `nginx/journal-site.conf` as `snippets/engender-journal-site.conf`
+
+Paths on the right are relative to `/etc/nginx/`. Enable the stats site,
+test nginx and reload. The counting locations accept only empty POSTs
+from their expected origins. They strip visitor headers, refuse query
+strings, and send a fixed label and User-Agent to GoatCounter. The fixed
+User-Agent prevents GoatCounter 2.7's separate raw bot storage from keeping
+these requests. Direct `/gc/count` requests on the stats host are blocked.
+Origin and bot filters reduce accidental traffic; these public totals are
+not protected against deliberate inflation.
+
+Install `nginx/engender-logrotate` as `/etc/logrotate.d/engender`, create
+`/var/log/nginx/engender` owned by `www-data:adm`, and ensure logrotate and
+its daily timer are installed and enabled. The production app server blocks
+disable access logs and use this separate error directory. Apply the same
+logging directives to the retained legacy app hostname. Five daily archives
+plus the active file leave room for the timer’s randomized delay within the
+seven-day limit when the daily timer runs. Rotation includes empty files so older errors still expire on quiet
+days. The counter locations write neither access nor error logs.
+
+Check both existing and new dashboard logins, private visibility, fixed
+counter labels, zero individual hits and bot rows for the new site, nginx
+configuration and the rotation timer. `node tests/page-count-hosting.mjs`
+checks the proxy with Podman; `node tests/page-load-browser.mjs` checks a
+production app build in Chromium. These commands send only synthetic data.
+
+Installing the endpoints does not publish an app build. The Journal counter
+ships through the signed release workflow. Publish the landing counter only
+after its endpoint and privacy policy are ready.
+
+To roll back counting, remove `engender-page-count.conf`, test nginx and
+reload. Remove the stats site's enabled symlink to take its dashboard
+offline. Keep the separate logging policy. Restore GoatCounter settings
+from a protected database backup only with the service stopped, and check
+whether newer statistics would be lost before replacing the database.
+
 ## Deploy command
 
 Build locally or in CI, upload the `build/` directory to the VPS, then run:
