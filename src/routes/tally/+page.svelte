@@ -74,6 +74,8 @@
   let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), days));
   /* Under two plotted positions a card says its count in words rather than
      drawing a lone ring in an empty plot (after-release 27, audit UI-12). */
+  type Plotted = typeof plottedMis;
+  type Highlight = typeof highlightMis;
   let wordsMis = $derived(tallyInWords(misgendered, plottedMis.points.length));
   let wordsCorrect = $derived(tallyInWords(correctlyGendered, plottedCorrect.points.length));
   const longDay = (day: number) => fmtDay(day, { day: 'numeric', month: 'long' });
@@ -211,6 +213,36 @@
   const tallyRemember = (px: number) => rememberReserve('tally', px);
 </script>
 
+<!-- One counter's body: its chart, or under two plotted positions the
+     sentence that stands in for it (after-release 27, audit UI-12). The two
+     slide in and out of each other, and the sentence is keyed on its own
+     words, so a tap or an undo that changes it crossfades rather than
+     swapping in a frame. -->
+{#snippet counter(words: TallyWords | null, plotted: Plotted, highlight: Highlight, ariaLabel: string)}
+  {#if words}
+    <ChartEmpty>
+      <span class="tally-words" data-tally-words>
+        {#key sayTally(words)}<span transition:crossfade>{sayTally(words)}</span>{/key}
+      </span>
+    </ChartEmpty>
+  {:else}
+    <div transition:slideMonit>
+      <AreaChart
+        scrubLabel={grainLabel(plotted.grain)}
+        points={plotted.points}
+        min={0}
+        max={maxCount}
+        from={rangeEnds.from}
+        to={rangeEnds.to}
+        formatValue={whole}
+        annotations={annotationsQuery.rows}
+        {highlight}
+        {ariaLabel}
+      />
+    </div>
+  {/if}
+{/snippet}
+
 <div class="screen">
   <ScreenHeader title={m.tally_trend_title()} subtitle={m.tally_trend_sub()} screen="tally" back="/stats" />
 
@@ -230,30 +262,7 @@
   <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
     <ChartCard level={2} heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
-      {#if wordsMis}
-        <!-- Keyed on the sentence, so a tap or an undo that changes it
-             crossfades the words rather than swapping them in a frame. -->
-        <ChartEmpty>
-          <span class="tally-words" data-tally-words>
-            {#key sayTally(wordsMis)}<span transition:crossfade>{sayTally(wordsMis)}</span>{/key}
-          </span>
-        </ChartEmpty>
-      {:else}
-        <div transition:slideMonit>
-          <AreaChart
-            scrubLabel={grainLabel(plottedMis.grain)}
-            points={plottedMis.points}
-            min={0}
-            max={maxCount}
-            from={rangeEnds.from}
-            to={rangeEnds.to}
-            formatValue={whole}
-            annotations={annotationsQuery.rows}
-            highlight={highlightMis}
-            ariaLabel={m.tally_misgendered()}
-          />
-        </div>
-      {/if}
+      {@render counter(wordsMis, plottedMis, highlightMis, m.tally_misgendered())}
     </ChartCard>
 
     <!-- This counter's own actions, under this counter's chart: the row sits
@@ -287,30 +296,7 @@
       kind="tally-correctly-gendered"
       role={roleAt(activeFlag.roles, 0)}
     >
-      {#if wordsCorrect}
-        <!-- Keyed on the sentence, so a tap or an undo that changes it
-             crossfades the words rather than swapping them in a frame. -->
-        <ChartEmpty>
-          <span class="tally-words" data-tally-words>
-            {#key sayTally(wordsCorrect)}<span transition:crossfade>{sayTally(wordsCorrect)}</span>{/key}
-          </span>
-        </ChartEmpty>
-      {:else}
-        <div transition:slideMonit>
-          <AreaChart
-            scrubLabel={grainLabel(plottedCorrect.grain)}
-            points={plottedCorrect.points}
-            min={0}
-            max={maxCount}
-            from={rangeEnds.from}
-            to={rangeEnds.to}
-            formatValue={whole}
-            annotations={annotationsQuery.rows}
-            highlight={highlightCorrect}
-            ariaLabel={m.tally_correctly_gendered()}
-          />
-        </div>
-      {/if}
+      {@render counter(wordsCorrect, plottedCorrect, highlightCorrect, m.tally_correctly_gendered())}
     </ChartCard>
 
     {#if logsToday}
