@@ -2,11 +2,10 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import PhotoViewer from '$lib/components/PhotoViewer.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
+  import SectionJump from '$lib/components/kit/SectionJump.svelte';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* Staging against a published scale, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
 
@@ -210,84 +209,21 @@
     comparing = [photos[next.left].id, photos[next.right].id];
   }
 
-  let activeSection = $state<'staging' | 'photos'>('staging');
-  let savedStagingScrollY = $state<number | null>(null);
-
-  const sectionOptions = $derived([
-    { value: 'staging', label: m.hair_stage_section_title() },
-    { value: 'photos', label: m.hair_jump_photos() }
+  /* The jump between the two halves is the kit's SectionJump (after-release
+     28): it scrolls the app's region, remembers where staging was read to,
+     and follows the scroll once both halves have mounted. */
+  let jumper = $state<SectionJump>();
+  const jumpSections = $derived([
+    { value: 'staging', label: m.hair_stage_section_title(), target: 'hair-staging' },
+    { value: 'photos', label: m.hair_jump_photos(), target: 'hair-photos' }
   ]);
-
-  function jumpToSection(section: 'staging' | 'photos' | string) {
-    activeSection = section === 'photos' ? 'photos' : 'staging';
-    if (activeSection === 'photos') {
-      savedStagingScrollY = window.scrollY;
-      const el = document.getElementById('hair-photos');
-      if (!el) return;
-      el.scrollIntoView({
-        behavior: scrollBehavior(),
-        block: 'start'
-      });
-      const focusTarget = el.querySelector<HTMLElement>('h2') ?? el;
-      focusTarget.setAttribute('tabindex', '-1');
-      focusTarget.focus({ preventScroll: true });
-    } else {
-      if (savedStagingScrollY !== null) {
-        window.scrollTo({
-          top: savedStagingScrollY,
-          behavior: scrollBehavior()
-        });
-      } else {
-        const el = document.getElementById('hair-staging');
-        if (el) {
-          el.scrollIntoView({
-            behavior: scrollBehavior(),
-            block: 'start'
-          });
-        }
-      }
-      const stagingEl = document.getElementById('hair-staging');
-      const focusTarget = stagingEl?.querySelector<HTMLElement>('h2') ?? stagingEl;
-      if (focusTarget) {
-        focusTarget.setAttribute('tabindex', '-1');
-        focusTarget.focus({ preventScroll: true });
-      }
-    }
-  }
 
   $effect(() => {
     if (typeof window === 'undefined') return;
     if (dosesQuery.loading) return;
     if (window.location.hash === '#hair-photos') {
-      jumpToSection('photos');
+      jumper?.jump('photos');
     }
-  });
-
-  $effect(() => {
-    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
-    if (dosesQuery.loading) return;
-    const stagesEl = document.getElementById('hair-staging');
-    const photosEl = document.getElementById('hair-photos');
-    if (!stagesEl || !photosEl) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            if (entry.target.id === 'hair-photos') {
-              activeSection = 'photos';
-            } else if (entry.target.id === 'hair-staging') {
-              activeSection = 'staging';
-            }
-          }
-        }
-      },
-      { rootMargin: '0px 0px -60% 0px' }
-    );
-
-    observer.observe(stagesEl);
-    observer.observe(photosEl);
-    return () => observer.disconnect();
   });
 </script>
 
@@ -297,14 +233,7 @@
   <PhotoViewer photo={viewing} onClose={() => { viewing = null; }} />
 
   <div data-hair-jump>
-    <Segmented
-      name={m.hair_jump_label()}
-      options={sectionOptions}
-      value={activeSection}
-      onChange={jumpToSection}
-      compact
-      key="hair-sections"
-    />
+    <SectionJump bind:this={jumper} name={m.hair_jump_label()} sections={jumpSections} key="hair-sections" />
   </div>
 
   <!-- The body waits for the doses (the anchor line), the stages and the
@@ -380,7 +309,7 @@
           class="icon-btn press"
           data-jump-staging
           aria-label={m.hair_jump_staging_aria()}
-          onclick={() => jumpToSection('staging')}
+          onclick={() => jumper?.jump('staging')}
         >
           <span class="jump-up"><Icon name="chevronDown" size={20} /></span>
         </button>
