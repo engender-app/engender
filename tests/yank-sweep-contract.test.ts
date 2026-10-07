@@ -121,3 +121,45 @@ it('rejects a PIN gate whose prepared journal or theme does not match', async ()
   expect(() => verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'dark')).toThrow('theme');
   expect(verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'light')).toMatchObject({ gate: 'pin' });
 });
+
+describe('query-driven cold surfaces', () => {
+  const proof = async (name, { search = '', surface = true, extraQuery = '' } = {}) => {
+    const { coldLoadProofExpression, hydrationScreensFor } = await import('./yank-sweep-core.mjs');
+    const { runInNewContext } = await import('node:vm');
+    const scene = hydrationScreensFor({ only: [name] })[0];
+    return runInNewContext(coldLoadProofExpression(scene.at + extraQuery, 'persona', 'light', scene.coldOutcome), {
+      URL,
+      location: { origin: 'https://journal.test', pathname: new URL(scene.at, 'https://journal.test').pathname, search },
+      localStorage: { getItem: (key) => key === 'engender-has-entries' ? '1' : 'persona' },
+      document: {
+        documentElement: { dataset: { theme: 'light' } },
+        querySelector: (selector) => selector === '[data-app-root]' ? { dataset: { boot: 'ready' } }
+          : selector === scene.coldOutcome?.selector && surface ? { checkVisibility: () => true } : null
+      }
+    });
+  };
+  for (const name of ['entry-templates', 'presentations', 'quick-log-dims']) {
+    it(`${name} proves its intended surface after consuming only its trigger query`, async () => {
+      expect(await proof(name)).toMatchObject({ surface: true });
+      await expect(proof(name, { surface: false })).rejects.toThrow('surface');
+      await expect(proof(name, { search: '?unrelated=lost' })).rejects.toThrow('route');
+      await expect(proof(name, { extraQuery: '&keep=1' })).rejects.toThrow('route');
+    });
+  }
+  it('ordinary query routes still require their exact query', async () => {
+    const { coldLoadProofExpression } = await import('./yank-sweep-core.mjs');
+    const { runInNewContext } = await import('node:vm');
+    expect(() => runInNewContext(coldLoadProofExpression('/settings?unrelated=kept', 'persona', 'light'), {
+      URL, location: { origin: 'https://journal.test', pathname: '/settings', search: '' },
+      localStorage: { getItem: () => 'persona' },
+      document: { documentElement: { dataset: { theme: 'light' } }, querySelector: () => null }
+    })).toThrow('route');
+  });
+});
+
+it('opens the presentations manager after closing old overlays, then proves the new editor', async () => {
+  const { scenesFor } = await import('./yank-sweep-core.mjs');
+  expect(scenesFor().find((scene) => scene.name === 'presentations-add')).toMatchObject({
+    at: '/settings', prepare: ['[data-list-row="presentations"]'], after: { selector: '[name="presentation-name"]' }
+  });
+});

@@ -23,7 +23,11 @@ A browser reminder detail is a platform exclusion because the web list
 renders an install prompt. Android resolves that record from its own list.
 
 Cold runs record the requested and actual route including query parameters,
-theme, boot state and profile. The profile check also reads the journal's
+theme, boot state and profile. Settings consumes `raise` when opening its
+Templates or Modes manager; Home consumes `quickLogDims` when opening the
+scale sheet. Those scenes name the consumed parameter and require their
+specific visible sheet content at the canonical route. Other query
+parameters still have to match. The profile check also reads the journal's
 entry-presence cache; persona preparation checks Alice's greeting. Both
 themes record onboarding and the PIN gate. The PIN epilogue restores the
 persona before capturing it, even when the preceding profile was empty.

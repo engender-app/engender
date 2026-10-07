@@ -719,7 +719,7 @@ if (originalAccessMode === 'passphrase' && (profiles.includes('empty') || SCENES
  *  Nothing is stamped on the page - the theme is already in the
  *  preferences boot stamps, and the cold window is meant to be
  *  untouched. */
-async function hydrationCold(href, profile, theme) {
+async function hydrationCold(href, profile, theme, outcome) {
   const pathname = href.split('?')[0].split('#')[0];
   return screencast(async (cast) => {
     await paintBlankSentinel(ev, sleep);
@@ -730,7 +730,7 @@ async function hydrationCold(href, profile, theme) {
       await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
     }
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    const coverageProof = await ev(coldLoadProofExpression(href, profile, theme));
+    const coverageProof = await ev(coldLoadProofExpression(href, profile, theme, outcome));
     return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
   });
 }
@@ -783,7 +783,7 @@ async function hydrationRunScene(scene, profile, theme, tokens) {
   }
   const href = fillTokens(scene.at, tokens);
   try {
-    const result = scene.act ? await hydrationSheet(scene, theme) : await hydrationCold(href, profile, theme);
+    const result = scene.act ? await hydrationSheet(scene, theme) : await hydrationCold(href, profile, theme, scene.coldOutcome);
     await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
   } catch (err) {
     report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });
