@@ -17,6 +17,7 @@
      action on it, and the protocol's dismiss is the notice's own rather
      than an icon button wired into a header row. */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -129,6 +130,7 @@
     // than silently keeping the old day.
     prefs.hairAnchorEpochDay = epochDayFromDateInputValue(anchorEditor);
     anchorEditor = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   function clearAnchor() {

@@ -22,6 +22,8 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { currentDay } from '$lib/stores/today.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
@@ -210,20 +212,25 @@
     renamingName = question.name;
     renamingOpen = true;
   }
+  const renameWrite = writer();
   async function confirmRename() {
     if (!question) return;
     const name = renamingName.trim();
     if (!name) return;
-    await journal.savedQuestions.upsertSavedQuestion({ ...question, name });
+    const renamed = { ...question, name };
+    if (!(await renameWrite.run(() => journal.savedQuestions.upsertSavedQuestion(renamed), m.write_failed()))) return;
     renamingOpen = false;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   let deleteOpen = $state(false);
+  const removing = deleter();
   async function confirmDelete() {
     if (!question) return;
     const deletedId = question.id;
+    if (!(await removing.run(() => journal.savedQuestions.deleteSavedQuestion(deletedId)))) return;
     deleteOpen = false;
-    await journal.savedQuestions.deleteSavedQuestion(deletedId);
+    toast(m.record_deleted(), { kind: 'record-deleted' });
     void goto('/search/questions');
   }
 </script>
@@ -360,7 +367,7 @@
         <button
           class="btn btn-primary"
           data-saved-question-rename-confirm
-          disabled={!renamingName.trim()}
+          disabled={!renamingName.trim() || renameWrite.busy}
           onclick={confirmRename}
         >
           <span>{m.saved_question_rename_confirm()}</span>
@@ -377,7 +384,9 @@
       cancelLabel={m.keep_it()}
       confirmAttrs={{ 'data-confirm-delete-saved-question': '' }}
       onConfirm={confirmDelete}
-      onCancel={() => (deleteOpen = false)}
+      onCancel={() => { deleteOpen = false; removing.dismiss(); }}
+      busy={removing.busy}
+      failed={removing.failed}
     />
   {:else if !questionsQuery.loading}
     <ScreenHeader title={m.saved_questions_title()} back="/search/questions" />

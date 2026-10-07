@@ -29,6 +29,8 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -374,17 +376,26 @@
   const reminderHoursOf = (editor: Editor): number | null | undefined =>
     isWeb ? undefined : editor.reminderEnabled ? parseFloat(editor.reminderHours) : null;
 
+  /* Stop is the save this screen writes by hand, so it confirms and fails
+     the way record.save does (after-release 06). */
+  const stopping = writer();
   async function stopRunning(draft: Editor) {
-    await journal.wearSessions.upsertSession({
-      id: draft.id,
-      kind: draft.kind,
-      startTimestamp: draft.startTimestamp,
-      durationMs: Date.now() - draft.startTimestamp,
-      note: draft.note.trim() || null,
-      reminderHoursAfterStart: reminderHoursOf(draft),
-      reminderTitle: wearReminderTitle(draft.kind)
-    });
+    const stopped = await stopping.run(
+      () =>
+        journal.wearSessions.upsertSession({
+          id: draft.id,
+          kind: draft.kind,
+          startTimestamp: draft.startTimestamp,
+          durationMs: Date.now() - draft.startTimestamp,
+          note: draft.note.trim() || null,
+          reminderHoursAfterStart: reminderHoursOf(draft),
+          reminderTitle: wearReminderTitle(draft.kind)
+        }),
+      m.write_failed()
+    );
+    if (!stopped) return;
     record.editor = null;
+    toast(m.wear_session_stopped(), { kind: 'record-saved' });
   }
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -805,7 +816,7 @@
          its own handle. -->
     {#snippet primary(editor)}
       {#if editor.isRunning}
-        <button class="btn btn-primary" data-stop-wear-session onclick={() => stopRunning(editor)}>
+        <button class="btn btn-primary" data-stop-wear-session disabled={stopping.busy} onclick={() => stopRunning(editor)}>
           <span>{m.wear_session_stop_action()}</span>
         </button>
       {:else if editor.mode === 'live' && !editor.id}
