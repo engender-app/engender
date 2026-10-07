@@ -384,7 +384,7 @@
 
       <Segmented
         name={m.curve_window_label()}
-        options={WINDOWS.map((days) => ({ value: String(days), label: m.range_days({ days: String(days) }) }))}
+        options={WINDOWS.map((days) => ({ value: String(days), label: m.range_days({ days: String(days) }), aria: m.range_days_aria({ days: String(days) }) }))}
         value={String(windowDays)}
         onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
         compact

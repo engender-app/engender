@@ -2580,6 +2580,7 @@
   "quick_saved": "Zapisano.",
   "random_draw_label": "Losowy wpis",
   "range_days": "{days} dni",
+  "range_days_aria": "{days} dni",
   "read_failed": "Nie udało się odczytać dziennika",
   "read_refresh_failed": "Nie udało się odświeżyć dziennika",
   "read_retry": "Spróbuj ponownie",

@@ -659,7 +659,7 @@
             <div out:crossfade>
               <Segmented
                 name={m.stats_range_group()}
-                options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+                options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }), aria: m.range_days_aria({ days: String(r) }) }))}
                 value={String(range)}
                 onChange={(v) => (range = Number(v))}
                 compact
