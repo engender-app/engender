@@ -1,6 +1,6 @@
 # Polityka prywatności
 
-Ostatnia aktualizacja: 7 października 2026
+Ostatnia aktualizacja: 5 października 2026
 
 engender to dziennik tranzycji. Tworzy go i publikuje Alicja Barankiewicz
 z Warszawy. Ta polityka dotyczy aplikacji w przeglądarce, aplikacji na
@@ -213,10 +213,8 @@ klucza odzyskiwania.
 
 ## Dzieci
 
-engender jest dla osób, które mają co najmniej 16 lat. Autorka aplikacji nie
-dostaje danych z dziennika od nikogo, bez względu na wiek, więc w przypadku
-osoby młodszej nie ma czego usuwać. Do autorki trafiają tylko dane żądań
-opisane wyżej w części o aplikacji w przeglądarce.
+[OPEN: dla kogo jest aplikacja pod względem wieku. Wpis w Google Play ma być
+tylko dla dorosłych; napisać to tutaj, gdy zapadnie decyzja.]
 
 ## Zmiany tej polityki
 
