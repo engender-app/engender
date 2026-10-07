@@ -12,17 +12,27 @@
 
 export type WearLegendSeries = 'wear' | 'region';
 
+/** How a series stands on the chart: drawn as a line, absent from the
+    range, or present on one day only, which is a point and not a line
+    (after-release 27, audit L05-14). */
+export type WearLegendState = 'drawn' | 'empty' | 'one-day';
+
 export interface WearLegendEntry {
   series: WearLegendSeries;
-  /** True where this series has no points in the range: the entry reads as
-      a note rather than the drawn line's name. */
-  empty: boolean;
+  /** Anything but `drawn` reads as a note rather than the drawn line's
+      name. */
+  state: WearLegendState;
 }
 
-export function wearTrendLegend(hasWear: boolean, hasRegion: boolean): WearLegendEntry[] {
-  if (!hasWear && !hasRegion) return [];
+const stateOf = (points: number): WearLegendState => (points >= 2 ? 'drawn' : points === 1 ? 'one-day' : 'empty');
+
+/** The legend for a wear series and a region series of this many days.
+    Neither drawn returns no entries: the chart draws a line only from two
+    days, so the card switches to its empty state instead. */
+export function wearTrendLegend(wearPoints: number, regionPoints: number): WearLegendEntry[] {
+  if (wearPoints < 2 && regionPoints < 2) return [];
   return [
-    { series: 'wear', empty: !hasWear },
-    { series: 'region', empty: !hasRegion }
+    { series: 'wear', state: stateOf(wearPoints) },
+    { series: 'region', state: stateOf(regionPoints) }
   ];
 }

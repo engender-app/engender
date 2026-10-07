@@ -4186,6 +4186,7 @@
   "wear_session_trend_region_group": "Porównaj z",
   "wear_session_trend_region_legend": "intensywność: {region}",
   "wear_session_trend_series_empty": "{series}: w tym zakresie nic nie zapisano.",
+  "wear_session_trend_series_one_day": "{series}: jeden dzień w tym zakresie, a linia potrzebuje dwóch.",
   "wear_session_trend_title": "Czas noszenia i intensywność",
   "wear_session_trend_wear_legend": "Czas noszenia (godziny)",
   "words_empty": "Nie ma jeszcze notatek ze słowami.",

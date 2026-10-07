@@ -455,7 +455,7 @@
      audit U7): a series with no points in the range gets a note instead of
      a promise it draws nothing on. wearLegend.ts is the pure, node-tested
      half; this just supplies the two booleans. */
-  let legendEntries = $derived(wearTrendLegend(wearTrend.length > 0, regionTrend.length > 0));
+  let legendEntries = $derived(wearTrendLegend(wearTrend.length, regionTrend.length));
 
   /* The presentation chip (ticket 17, ADR-0048): highlights, never
      filters, so both lines above keep drawing exactly what they draw
@@ -652,8 +652,10 @@
         {/snippet}
         <!-- A chart with nothing in it drew an empty plot and a legend
              naming two lines that were not there. It says so instead, the
-             way every other chart in the kit does. -->
-        {#if wearTrend.length || regionTrend.length}
+             way every other chart in the kit does - and so does a range
+             with one day in it, which is a point and no line (after-release
+             27, audit L05-14). -->
+        {#if legendEntries.length}
           <WearTrendChart
             wearPoints={wearTrend}
             regionPoints={regionTrend}
@@ -671,8 +673,10 @@
                 entry.series === 'wear'
                   ? m.wear_session_trend_wear_legend()
                   : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
-              {#if entry.empty}
+              {#if entry.state === 'empty'}
                 <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
+              {:else if entry.state === 'one-day'}
+                <span out:crossfade>{m.wear_session_trend_series_one_day({ series: label })}</span>
               {:else}
                 <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
               {/if}

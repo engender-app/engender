@@ -4092,6 +4092,7 @@
   "wear_session_trend_region_group": "Compare against",
   "wear_session_trend_region_legend": "{region} intensity",
   "wear_session_trend_series_empty": "{series}: nothing logged in this range.",
+  "wear_session_trend_series_one_day": "{series}: one day in this range, a line needs two.",
   "wear_session_trend_title": "Wear time and intensity",
   "wear_session_trend_wear_legend": "Wear time (hours)",
   "words_empty": "No notes with words yet.",
