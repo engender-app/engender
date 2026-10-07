@@ -928,9 +928,14 @@
     gap: var(--space-1);
   }
   /* Always mounted, so a first session growing it from nothing and a last
-     one taking it away both travel; with neither card in it, it keeps no
-     block margin of its own. */
-  .wear-now:empty {
+     one taking it away both travel. The block gap under the card is the
+     card's own padding rather than the wrapper's margin, so it is part of
+     the height `resize` travels and leaves with the card instead of
+     snapping when the wrapper empties. */
+  .wear-now {
     margin-bottom: 0;
+  }
+  .wear-now > div {
+    padding-bottom: var(--space-5);
   }
 </style>
