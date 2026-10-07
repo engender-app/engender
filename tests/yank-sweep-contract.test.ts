@@ -163,3 +163,52 @@ it('opens the presentations manager after closing old overlays, then proves the 
     at: '/settings', prepare: ['[data-list-row="presentations"]'], after: { selector: '[name="presentation-name"]' }
   });
 });
+
+describe('keyboard gesture preparation', () => {
+  it('focuses and exposes the intended grip before sampling', async () => {
+    const { prepareKeyboardAction } = await import('./yank-sweep-core.mjs');
+    const hit = control({ getBoundingClientRect: () => ({ width: 48, height: 48, left: 20, top: 200 }) });
+    const env = environment([hit]);
+    hit.focus = vi.fn(() => { env.document.activeElement = hit; });
+    hit.scrollIntoView = vi.fn();
+    hit.contains = () => false;
+    env.document.elementFromPoint = () => hit;
+    prepareKeyboardAction(hit, env);
+    expect(hit.focus).toHaveBeenCalledOnce();
+    expect(hit.scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'instant' });
+    expect(env.document.activeElement).toBe(hit);
+    env.document.elementFromPoint = () => control();
+    expect(() => prepareKeyboardAction(hit, env)).toThrow('covered');
+    hit.focus = () => { env.document.activeElement = null; };
+    expect(() => prepareKeyboardAction(hit, env)).toThrow('focus');
+  });
+  it('rejects a keyboard dispatch without prior target focus', () => {
+    const hit = control({ dispatchEvent: vi.fn() });
+    const env = environment([hit]);
+    env.KeyboardEvent = class {};
+    expect(() => dispatchSceneAction({ act: '[data-edit-grip]', key: 'ArrowDown' }, env)).toThrow('focus');
+    expect(hit.dispatchEvent).not.toHaveBeenCalled();
+    env.document.activeElement = hit;
+    expect(dispatchSceneAction({ act: '[data-edit-grip]', key: 'ArrowDown' }, env)).toMatchObject({ dispatched: true });
+  });
+});
+
+it('restores the requested real theme after palette preparation resets appearance', async () => {
+  const { prepareSceneExpression, sceneForTheme, scenesFor } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  for (const theme of ['light', 'dark']) {
+    const selected = [];
+    const env = environment();
+    env.document.documentElement = { dataset: { theme } };
+    env.document.querySelector = () => null;
+    env.document.querySelectorAll = (selector) => selector.startsWith('[data-palette-pick') || selector.startsWith('[data-segmented="theme"]')
+      ? [control({ scrollIntoView: () => {}, click: () => {
+        selected.push(selector);
+        env.document.documentElement.dataset.theme = selector.includes('data-segment="dark"') ? 'dark' : 'light';
+      } })] : [];
+    const scene = sceneForTheme(scenesFor().find((item) => item.name === 'settings-palette'), theme);
+    await runInNewContext(prepareSceneExpression(scene), env);
+    expect(selected).toEqual(['[data-palette-pick="trans"]', `[data-segmented="theme"] [data-segment="${theme}"]`]);
+    expect(env.document.documentElement.dataset.theme).toBe(theme);
+  }
+});

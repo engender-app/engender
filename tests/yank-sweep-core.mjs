@@ -441,6 +441,7 @@ export function dispatchSceneAction(scene, env = globalThis) {
   if (after?.order) evidence.beforeValue = [...document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|');
   evidence.chosen = { selector, tag: hit.tagName, text: hit.textContent?.trim().slice(0, 100), href: hit.getAttribute('href') };
   if (scene.key) {
+    if (document.activeElement !== hit) throw new Error('keyboard target lacks prepared focus: ' + selector);
     hit.dispatchEvent(new env.KeyboardEvent('keydown', { key: scene.key, bubbles: true, cancelable: true }));
     evidence.key = scene.key;
   } else hit.click();
@@ -601,6 +602,17 @@ export function coverageSummary(scenes, profiles, themes, passes, report) {
   return { ...counts, groups: grouped, missingRuns: missing, inventory: scenes };
 }
 
+/** Keyboard input starts on a focused, exposed control, as real Tab focus does. */
+export function prepareKeyboardAction(hit, env = globalThis) {
+  if (!hit) throw new Error('keyboard target missing during preparation');
+  hit.focus();
+  if (env.document.activeElement !== hit) throw new Error('keyboard target did not receive focus');
+  hit.scrollIntoView({ block: 'center', behavior: 'instant' });
+  const box = hit.getBoundingClientRect();
+  const front = env.document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+  if (!box.width || !box.height || (front !== hit && !hit.contains(front))) throw new Error('keyboard target remains covered after preparation');
+}
+
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};
   const dispatch = ${dispatchSceneAction};
@@ -609,7 +621,10 @@ export const prepareSceneExpression = (scene) => `(async () => {
   for (let i = 0; i < 60 && document.querySelector('.fan-scrim, [data-sheet-scrim]'); i++) await sleep(50);
   if (document.querySelector('.fan-scrim, [data-sheet-scrim]')) throw new Error('previous overlay did not close');
   if (scene.name === 'settings-theme-switcher') dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
-  if (scene.name === 'settings-palette') dispatch({ act: '[data-palette-pick="trans"]' });
+  if (scene.name === 'settings-palette') {
+    dispatch({ act: '[data-palette-pick="trans"]' });
+    dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+  }
   if (scene.name === 'settings-unit-switcher') dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
   if (document.querySelector('[data-edit-done]')) { dispatch({ act: '[data-edit-done]' }); await sleep(500); }
   if (document.querySelector('[data-comfort-grip]')) { dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
@@ -621,7 +636,8 @@ export const prepareSceneExpression = (scene) => `(async () => {
   }
   const hits = [...document.querySelectorAll(scene.act === 'back' ? '[data-screen-back]' : scene.act === 'inject' ? 'body' : scene.act)];
   const hit = hits.find((el) => { const b = el.getBoundingClientRect(); return b.width && b.height; });
-  if (hit) hit.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  if (scene.key) (${prepareKeyboardAction})(hit);
+  else if (hit) hit.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   return true;
 })()`;
 
