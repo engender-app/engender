@@ -360,7 +360,7 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.curve_title()} back="/more" />
+  <ScreenHeader title={m.curve_title()} back="/care" />
 
   <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={curveRevealed} estimate={curveEstimate} onrest={curveRemember}>
@@ -479,7 +479,6 @@
             <div id="curve-results-{curve.ester}">
               {#if resultsOpen[curve.ester]}
                 <div class="disclosed" transition:disclose data-curve-results-list={curve.ester}>
-                  <p class="muted small curve-markers-note">{m.curve_intro()}</p>
                   <ul class="marker-list" aria-label={m.curve_legend_results()}>
                     {#each points as point, index (point.result.id)}
                       <li>

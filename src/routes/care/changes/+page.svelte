@@ -338,6 +338,26 @@
   }
 </script>
 
+{#snippet groupBody(groupEffects: typeof visibleEffects)}
+                    {#if anchorEpochDay !== null}
+                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {/if}
+                    {#each groupEffects as e (e.key)}
+                      {@const marker = markerFor(e.key)}
+                      <ListRow
+                        key={e.key}
+                        title={e.name}
+                        subtitle={marker
+                          ? m.effect_first_noticed({
+                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                            })
+                          : m.effect_not_marked()}
+                        chevron={false}
+                        onclick={() => openEditor(e)}
+                      />
+                    {/each}
+{/snippet}
+
 <div class="screen">
   <!-- The intro stays in the body rather than becoming the header's
        subtitle. At 420 characters it is by some way the longest of these
@@ -441,23 +461,7 @@
                 </ListRow>
                 {#if expanded}
                   <div class="effect-group-body" transition:disclose>
-                    {#if anchorEpochDay !== null}
-                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
-                    {/if}
-                    {#each groupEffects as e (e.key)}
-                      {@const marker = markerFor(e.key)}
-                      <ListRow
-                        key={e.key}
-                        title={e.name}
-                        subtitle={marker
-                          ? m.effect_first_noticed({
-                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                            })
-                          : m.effect_not_marked()}
-                        chevron={false}
-                        onclick={() => openEditor(e)}
-                      />
-                    {/each}
+                    {@render groupBody(groupEffects)}
                   </div>
                 {/if}
               </ListCard>
@@ -483,23 +487,7 @@
               </ListRow>
               {#if expanded}
                 <div class="effect-group-body" transition:disclose>
-                  {#if anchorEpochDay !== null}
-                    <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
-                  {/if}
-                  {#each uncategorized as e (e.key)}
-                    {@const marker = markerFor(e.key)}
-                    <ListRow
-                      key={e.key}
-                      title={e.name}
-                      subtitle={marker
-                        ? m.effect_first_noticed({
-                            date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                          })
-                        : m.effect_not_marked()}
-                      chevron={false}
-                      onclick={() => openEditor(e)}
-                    />
-                  {/each}
+                  {@render groupBody(uncategorized)}
                 </div>
               {/if}
             </ListCard>

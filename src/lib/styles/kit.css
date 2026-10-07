@@ -3038,3 +3038,46 @@ button.kit-strip-day .kit-strip-cell {
   white-space: nowrap;
   max-width: 100%;
 }
+
+/* Shared reading notes, axis controls and miniature bars. */
+.reading-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.reading-axes {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.reading-axis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.reading-bars {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+}
+
+.reading-bar {
+  display: block;
+  flex: 0 0 8px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+.reading-axis .kit-chart-pick {
+  max-width: 74%;
+}

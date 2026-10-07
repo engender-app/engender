@@ -6,7 +6,7 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Procedures, dates and your own recovery log, on the surface kit (phase
      5 UX ticket 25 and phase 5 deepening ticket 12).
-     Rebuilt into a comprehensive 4-phase Procedure Care & Recovery Hub:
+     Rebuilt into a five-phase Procedure Care & Recovery Hub:
      1. Planning Phase (no date set): Consult questions, preparation checklist, insurance tasks.
      2. Pre-Op Phase (date set, before surgery day): Live day countdown, packing list, clearance tasks.
      3. Surgery Day: On surgery day, prompts user to record surgery day as transition milestone upon explicit confirmation (ADR-0045).
@@ -347,6 +347,34 @@
   }
 </script>
 
+{#snippet woundAlbum()}
+        <SectionHeading text={m.surgery_wound_album_title()} />
+        <PhotoSection
+          section={recoveryPhotos}
+          read={photosQuery}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
+          handle="procedure-photo"
+          subtitle={(photo) => dayLabel(photo.epochDay)}
+          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
+          confirm={{
+            title: m.surgery_photo_delete_sheet(),
+            question: () => m.surgery_photo_delete_q(),
+            hint: () => m.surgery_photo_delete_hint(),
+            confirmLabel: m.surgery_photo_delete(),
+            cancelLabel: m.keep_it()
+          }}
+        >
+          {#snippet empty()}
+            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
+          {/snippet}
+          {#snippet addControl()}
+            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
+              <span>{m.add_photo()}</span>
+            </button>
+          {/snippet}
+        </PhotoSection>
+{/snippet}
+
 <div class="screen">
   <ScreenHeader title={m.surgery_journey_title()} back="/more" subtitle={m.surgery_intro()}>
     {#snippet actions()}
@@ -643,31 +671,7 @@
 
         {@render notesBlock(m.surgery_feelings_title(), m.surgery_feelings_placeholder())}
 
-        <SectionHeading text={m.surgery_wound_album_title()} />
-        <PhotoSection
-          section={recoveryPhotos}
-          read={photosQuery}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          handle="procedure-photo"
-          subtitle={(photo) => dayLabel(photo.epochDay)}
-          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-          confirm={{
-            title: m.surgery_photo_delete_sheet(),
-            question: () => m.surgery_photo_delete_q(),
-            hint: () => m.surgery_photo_delete_hint(),
-            confirmLabel: m.surgery_photo_delete(),
-            cancelLabel: m.keep_it()
-          }}
-        >
-          {#snippet empty()}
-            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
-          {/snippet}
-          {#snippet addControl()}
-            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-              <span>{m.add_photo()}</span>
-            </button>
-          {/snippet}
-        </PhotoSection>
+        {@render woundAlbum()}
 
         {@render checklistBlock(m.surgery_recovery_checklist_title())}
 
@@ -691,31 +695,7 @@
 
         {@render compareBlock()}
 
-        <SectionHeading text={m.surgery_wound_album_title()} />
-        <PhotoSection
-          section={recoveryPhotos}
-          read={photosQuery}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          handle="procedure-photo"
-          subtitle={(photo) => dayLabel(photo.epochDay)}
-          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-          confirm={{
-            title: m.surgery_photo_delete_sheet(),
-            question: () => m.surgery_photo_delete_q(),
-            hint: () => m.surgery_photo_delete_hint(),
-            confirmLabel: m.surgery_photo_delete(),
-            cancelLabel: m.keep_it()
-          }}
-        >
-          {#snippet empty()}
-            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
-          {/snippet}
-          {#snippet addControl()}
-            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-              <span>{m.add_photo()}</span>
-            </button>
-          {/snippet}
-        </PhotoSection>
+        {@render woundAlbum()}
 
         {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
 

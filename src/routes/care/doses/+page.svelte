@@ -282,15 +282,8 @@
      all once the log batches (ticket 67) - this only has to wait for the
      layout scrollToHash's own settle loop already handles. */
   $effect(() => {
-    if (!loading && view === 'log' && !deepLinkedDoseUnavailable) {
-      if (deepLinkedDoseId) {
-        if (deepLinkedDoseIndex >= 0) scrollToHash();
-      } else {
-        scrollToHash();
-      }
-    } else {
-      scrollToHash();
-    }
+    if (!loading && view === 'log' && !deepLinkedDoseUnavailable && deepLinkedDoseId && deepLinkedDoseIndex < 0) return;
+    scrollToHash();
   });
 
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {

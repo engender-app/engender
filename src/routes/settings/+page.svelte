@@ -41,15 +41,7 @@
   import { lockAfterSub } from '$lib/lock/lock-after-words';
   import { accessModeTitle } from '$lib/components/AccessModeSetup.svelte';
 
-  /* Keyed, not worded, so the swatch names translate with everything else. */
-  const PALETTES: [string, () => string][] = [
-    ['trans', m.palette_trans], ['nonbinary', m.palette_nonbinary], ['genderfluid', m.palette_genderfluid],
-    ['bisexual', m.palette_bisexual], ['lesbian', m.palette_lesbian], ['pansexual', m.palette_pansexual],
-    ['rainbow', m.palette_rainbow], ['agender', m.palette_agender],
-    ['gaymen', m.palette_gaymen], ['genderqueer', m.palette_genderqueer], ['intersex', m.palette_intersex],
-    ['asexual', m.palette_asexual], ['demiboy', m.palette_demiboy], ['demigirl', m.palette_demigirl],
-    ['trigender', m.palette_trigender], ['polish', m.palette_polish],
-  ];
+  import { PALETTES } from '$lib/theme/paletteChoices';
 
   /* COL-001: mood's own fixed 5-step scale, picked independently of the
      gender palette above - see ADR-0025. */

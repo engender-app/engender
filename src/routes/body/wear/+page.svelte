@@ -98,16 +98,16 @@
   let isWeb = $derived(!isAndroid());
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): index 0 is the
-     only role guaranteed chromatic on all 8 palettes, and a two-line chart
+     only role guaranteed chromatic on every palette, and a two-line chart
      drawn in an achromatic band reads as disabled. The sessions take the
      stripe after it. */
-  const SECTION_ROLE = { chart: 0, strip: 0, sessions: 1 };
-
   /* The strip's fill is a colour carrying a value, so it takes role 0 with
      the chart rather than the sessions' stripe (ticket 44) - index 0 is
-     the only one guaranteed chromatic on all 8 palettes, and a logged day
+     the only one guaranteed chromatic on every palette, and a logged day
      filled in a palette's achromatic band is a day drawn as nothing. The
      calendar states the same rule for its own three readings of a day. */
+  const SECTION_ROLE = { chart: 0, strip: 0, sessions: 1 };
+
   import Switch from '$lib/components/Switch.svelte';
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';

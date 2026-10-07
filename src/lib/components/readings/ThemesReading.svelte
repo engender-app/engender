@@ -58,9 +58,9 @@
       note={top.value}
     >
       {#snippet drawing()}
-        <span class="themes-bars">
+        <span class="reading-bars">
           {#each themeRows.slice(0, 3) as row (row.key)}
-            <span class="themes-bar" style={`width: ${Math.round((row.amount / most) * 100)}%`}></span>
+            <span class="reading-bar" style={`width: ${Math.round((row.amount / most) * 100)}%`}></span>
           {/each}
         </span>
       {/snippet}
@@ -82,21 +82,3 @@
     </ReadGate>
   </ChartCard>
 {/if}
-
-<style>
-  .themes-bars {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 4px;
-    width: 100%;
-    height: 100%;
-  }
-
-  .themes-bar {
-    display: block;
-    flex: 0 0 8px;
-    border-radius: 2px;
-    background: var(--ink);
-  }
-</style>
