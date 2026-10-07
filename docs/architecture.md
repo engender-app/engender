@@ -692,7 +692,8 @@ stateDiagram-v2
 - Runes everywhere. Module-level reactive state lives in `*.svelte.ts` files and is held in an object, such as `$state({ journal: null })`, because reassigning a bare module `let` doesn't reach readers in other modules.
 - Logic that has a rule in it lives in a rune-free `.ts` file next to the reactive file, so the Node tier can test it: [readState.ts](../src/lib/data/live/readState.ts) beside [journal.svelte.ts](../src/lib/data/live/journal.svelte.ts), [boot-machine.ts](../src/lib/stores/boot-machine.ts) beside [boot.svelte.ts](../src/lib/stores/boot.svelte.ts), [tableVersions.notify.ts](../src/lib/data/live/tableVersions.notify.ts) beside [tableVersions.svelte.ts](../src/lib/data/live/tableVersions.svelte.ts).
 - Screens read through `liveQuery`/`liveList` and write through `journal`. They never import a driver.
-- A screen draws an edit draft through `kit/recordEditor.svelte.ts` or `kit/detailDraft.svelte.ts`, which expose `{ changed, saving, discard }`.
+- A screen draws an edit draft through `kit/recordEditor.svelte.ts` or `kit/detailDraft.svelte.ts`, which expose `{ changed, saving, discard }`. `recordEditor` toasts "Saved." and "Deleted." once a write lands (a screen that says more passes `saved` or `deleted` returning null), and keeps the delete sheet open with the error when a remove fails.
+- Every tapped write says how it ended. A write outside `recordEditor` goes through [stores/attempt.svelte.ts](../src/lib/stores/attempt.svelte.ts): `attempt(write, failMessage)` toasts a rejection, `writer()` adds a `busy` flag for the button so a double tap writes once, and `deleter()` does the same for a screen's own `ConfirmDeleteSheet`. A sheet closes after its write lands, never before. The rune-free core is [stores/writeOutcome.ts](../src/lib/stores/writeOutcome.ts).
 - Svelte transitions are local by default. Use `|global` when the block that toggles is not the transition's own.
 
 ### 8.2 The shell and route policy
