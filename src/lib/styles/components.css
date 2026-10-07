@@ -1979,7 +1979,7 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
    used; the toast goes under the scrim with everything else. */
 .fan-scrim {
   position: absolute; inset: 0; z-index: 54;
-  /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+  /* Keep CSS transitions disabled so Svelte's
      transition controls opacity without CSS transition interference (ticket 105, 116). */
   transition: none;
 }

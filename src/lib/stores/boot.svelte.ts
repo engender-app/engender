@@ -69,7 +69,6 @@ import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
-import { setVideoFiles, setVoiceFiles } from './voiceFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
 import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidPhotos } from '../data/photos/android-bridge';
@@ -290,8 +289,6 @@ export function closeJournalForLock(): Promise<void> {
     web lock has let go of it. */
 function useJournalFiles(files: PhotoFileStore | null): void {
   setPhotoFiles(files);
-  setVoiceFiles(files);
-  setVideoFiles(files);
 }
 
 /** The mid-session unlock's half: the gate has derived the key from the

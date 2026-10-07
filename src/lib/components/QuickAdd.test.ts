@@ -8,7 +8,7 @@ const sweepCore = readFileSync(root + '/tests/yank-sweep-core.mjs', 'utf8');
 
 describe('Quick add fan transitions and compositing contracts (ticket 105)', () => {
   it('disables CSS transition on .fan-scrim to prevent WAAPI interference', () => {
-    // .scrim-withdraw declares CSS transition: opacity; override to none so Svelte WAAPI controls opacity
+    // Keep CSS transitions disabled so Svelte WAAPI controls opacity
     expect(componentsCss).toMatch(/\.fan-scrim\s*\{[^}]*transition:\s*none;/);
   });
 
