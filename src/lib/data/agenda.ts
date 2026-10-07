@@ -67,9 +67,8 @@ import type { DoseScheduleComparison } from './journal/doses';
     wall is `AGENDA_CAP` and the fold under it, not the width of the window
     - so the window widened and neither of those moved.
 
-    Not read off `weekStripDayCount`, which is a responsive count of cells a
-    strip has room for rather than a stretch of time, and which leaves Home
-    in phase 10's ticket 13 anyway. */
+    Not a responsive count of cells a strip has room for: that is a width, not
+    a stretch of time. */
 export const AGENDA_DAYS = 30;
 
 /** How many days behind today the passed slot is looked for in, its own

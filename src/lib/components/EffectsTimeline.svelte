@@ -11,11 +11,10 @@
      is the literature having nothing to say about that change, and the
      screen must not turn that into a gap in the person.
 
-     Purely a renderer, the same philosophy LineChart states for itself:
+     Purely a renderer:
      every row's label is resolved by the caller (personalEffectName), and
      the chart adds only its own fixed wording (the legend, the two edge
-     captions) via paraglide directly, the same way LineChart's own
-     "not enough data" text is inline rather than threaded through as a
+     captions) via paraglide directly, inline rather than threaded through as a
      prop. Decorative only - the day-by-day detail a screen reader needs
      lives in the textual list the caller renders alongside this. -->
 <script lang="ts">

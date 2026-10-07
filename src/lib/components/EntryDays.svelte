@@ -5,8 +5,7 @@
      formatted date, a formatted time, resolved tag labels and icon names, and
      know nothing about a journal. This is the caller that knows: it owns the
      date and time formats, the resolution of a tag id to a word, which media
-     marks an entry carries and where an entry opens. `WeekStrip` stands in the
-     same relation to `BareStrip`.
+     marks an entry carries and where an entry opens.
 
      It exists because search and the starred shelf were drawing the identical
      eighteen lines, down to the date format, and Home and a day are two more
