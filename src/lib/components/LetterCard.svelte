@@ -304,14 +304,19 @@
   }
 
   /* The state marks - SEALED, and READY while a letter is unlocked and
-     unread - take the role's own mark colour, which is the one held to a
-     ratio against the page. */
-  .letter-mark > :global(svg),
+     unread. The words take the role's ink, held to 4.5:1 as small text;
+     the glyphs keep its mark colour, which only owes a glyph's 3:1. The
+     words in --role-mark measured 3.53:1 on trans light (after-release
+     21, audit A11Y-09). */
   .letter-mark > span:not(.letter-when),
   .letter-ready {
-    color: var(--role-mark);
+    color: var(--role-ink);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+  }
+  .letter-mark > :global(svg),
+  .letter-ready > :global(svg) {
+    color: var(--role-mark);
   }
 
   .letter-ready {

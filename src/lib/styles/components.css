@@ -1070,7 +1070,7 @@ a.segment {
 .input, textarea.input, select.input {
   font: inherit; color: var(--text);
   background: var(--surface);
-  border: 1.5px solid var(--outline);
+  border: 1.5px solid var(--input-edge);
   border-radius: var(--r-block);
   padding: 12px var(--space-4);
   min-height: var(--touch-target);
@@ -1113,7 +1113,7 @@ a.segment {
   color: var(--text);
   background: none;
   border: 0;
-  border-bottom: 3px solid var(--outline);
+  border-bottom: 3px solid var(--input-edge);
   border-radius: 0;
 }
 .rule-input::placeholder {
