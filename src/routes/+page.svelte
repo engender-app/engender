@@ -88,6 +88,7 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
 
@@ -660,16 +661,21 @@
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
+  const dimsWrite = writer();
   async function saveQuickLogDims() {
-    if (dimsPromptEntryId == null) return;
+    const id = dimsPromptEntryId;
+    if (id == null) return;
     const dims: Record<string, number> = {};
     for (const dim of vocabulary.activeDimensions) {
       const n = dimInputs[dim.key];
       if (n == null || Number.isNaN(n)) continue;
       dims[dim.key] = Math.min(dim.max, Math.max(dim.min, Math.round(n)));
     }
-    if (Object.keys(dims).length) await journal.entries.upsertEntry({ id: dimsPromptEntryId, dims });
+    const any = Object.keys(dims).length > 0;
+    // The sheet stays up with the numbers in it when the write fails.
+    if (any && !(await dimsWrite.run(() => journal.entries.upsertEntry({ id, dims }), m.write_failed()))) return;
     dimsPromptEntryId = null;
+    if (any) toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
 
@@ -1041,7 +1047,7 @@
         }}
         dismiss={{
           label: m.dismiss(),
-          onclick: () => journal.checklists.setDebriefDismissed(lastAppointmentId!)
+          onclick: () => attempt(() => journal.checklists.setDebriefDismissed(lastAppointmentId!), m.write_failed())
         }}
         aria-live="polite"
         data-debrief-offer=""
@@ -1291,7 +1297,7 @@
           </Field>
         {/each}
         <div class="stack-3">
-          <button class="btn btn-primary" data-qld-add onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
+          <button class="btn btn-primary" data-qld-add disabled={dimsWrite.busy} onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
           <button class="btn btn-ghost" data-qld-skip onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
         </div>
       </div>
@@ -1323,6 +1329,7 @@
           onclick={() => {
             prefs.readyLetterEnabled = false;
             letterDismissSheetOpen = false;
+            toast(m.notice_turned_off_toast());
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
@@ -1357,6 +1364,7 @@
           onclick={() => {
             prefs.stockNoticeEnabled = false;
             stockDismissSheetOpen = false;
+            toast(m.notice_turned_off_toast());
           }}
         >
           <span>{m.notice_stock_dont_show_btn()}</span>
