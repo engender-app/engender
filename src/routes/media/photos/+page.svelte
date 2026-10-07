@@ -668,6 +668,14 @@
     width: 100%;
     aspect-ratio: 1;
   }
+  /* The label in the text colour on a solid strip of the card. The shared
+     .photo-label is a 35% black scrim made for a photograph, and over this
+     flat tile it left "Video note" at 1.9:1 (after-release 21, audit
+     A11Y-10). */
+  .photo-video-thumb .photo-label {
+    background: var(--surface);
+    color: var(--text);
+  }
 
   .photo-count {
     font-size: var(--text-sm);

@@ -444,6 +444,32 @@ describe('palette contrast coverage', () => {
     }
   });
 
+  /* After-release 21 (audit A11Y-11): a text field's edge is the only thing
+     that says where the field is, since its fill is --surface on a page
+     about 1.07:1 away. --outline, the line every block shares, is 1.44:1
+     there; Alicja approved an input-only token at 3:1 (WCAG 1.4.11) and
+     left every other line where it is. Checked as the browser paints it:
+     --text at that alpha over each ground a field sits on. */
+  it('draws a text field\'s edge at 3:1 against every ground it sits on', () => {
+    const raw = rawDeclaration(blockBody(':root'), 'input-edge');
+    const match = raw && /var\(--text\)\s*(\d+)%,\s*transparent/.exec(raw);
+    if (!match) throw new Error(`--input-edge is not a wash of --text: ${raw}`);
+    const percent = Number(match[1]);
+    for (const palette of PALETTES) {
+      for (const theme of THEMES) {
+        const t = tokenMap(palette, theme);
+        for (const surface of ['bg', 'surface', 'surface-2']) {
+          const edge = washOver(t.text, percent, t[surface]);
+          const ratio = contrast(edge, t[surface]);
+          expect(
+            ratio,
+            `${palette}/${theme}: input edge (${edge}) on ${surface} (${t[surface]}) has ${ratio.toFixed(2)}:1, needs 3:1`
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
   /* COL-002: the heat-map draws a day number in --on-heat-N on top of a
      --heat-N fill; heat-N is a color-mix() ramp rather than a literal, so
      this replicates the browser's OKLab mixing to check the real rendered

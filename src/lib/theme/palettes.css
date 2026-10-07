@@ -372,6 +372,15 @@
      works over a card and over the page tint underneath it. */
   --outline: color-mix(in oklab, var(--text) 19%, transparent);
   --hairline: color-mix(in oklab, var(--text) 14%, transparent);
+  /* The edge of a text field, and nothing else. A field's fill is the card
+     on a page barely lighter than it, so its edge is the only thing that
+     says where it is, and at --outline's 19% that was 1.44:1. 53% is the
+     least that clears 3:1 (WCAG 1.4.11) on bg, surface and surface-2 in
+     all 16 palettes x 2 themes; demiboy light is the tightest at 3.1:1.
+     Alicja approved an input-only token rather than a stronger rule 4
+     (pre-release-human 03 item 18, after-release 21); guarded in
+     tests/palette-contrast.test.ts. */
+  --input-edge: color-mix(in oklab, var(--text) 53%, transparent);
 }
 
 /* ============================================================
