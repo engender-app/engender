@@ -62,8 +62,16 @@ try {
     await copyFile(`brand/mark/png/${source}.png`, `static/icons/${target}.png`);
   }
   await copyFile('brand/mark/png/trans-tile-192.png', 'static/apple-touch-icon.png');
-  const font = (await readFile('static/fonts/outfit-latin.woff2')).toString('base64');
-  const extendedFont = (await readFile('static/fonts/outfit-latin-ext.woff2')).toString('base64');
+  // The graphic sets type the way the app does (src/lib/theme/base.css,
+  // fonts.css): Outfit and Nunito are variable fonts, so each face declares
+  // its weight range or the browser fakes the weight from the 400 master.
+  const fontFaces = (await Promise.all([
+    ['Outfit', 'outfit-latin', '100 900', ''], ['Outfit', 'outfit-latin-ext', '100 900', ';unicode-range:U+0100-024F'],
+    ['Nunito', 'nunito-latin', '200 1000', ''], ['Nunito', 'nunito-latin-ext', '200 1000', ';unicode-range:U+0100-024F']
+  ].map(async ([family, file, weight, range]) => `@font-face{font-family:${family};font-weight:${weight};src:url(data:font/woff2;base64,${(await readFile(`static/fonts/${file}.woff2`)).toString('base64')})${range}}`))).join('');
+  // The app's mark as generated, white tile and black edge, the drawing the
+  // rail, About and the landing header set beside the name.
+  const mark = await readFile('brand/mark/svg/trans-tile.svg', 'utf8');
   for (const locale of locales) {
     const dir = resolve(output, locale.code, 'images');
     // A shot dropped from the list must not linger in the upload folder.
@@ -71,15 +79,20 @@ try {
     await mkdir(resolve(dir, 'phoneScreenshots'), { recursive: true });
     await copyFile('brand/mark/png/trans-tile-512.png', resolve(dir, 'icon.png'));
     await artwork.setViewportSize({ width: 1024, height: 500 });
+    // Lockup in app.css's .lockup proportions (mark 1.23em, gap 0.5em, track
+    // -0.03em, word lifted 0.23em, Outfit at --weight-display 800). The line
+    // is a lede, set as the landing sets one: Nunito at --weight-medium 600.
+    // Ink and ground are the trans palette's light --text and --bg.
     await artwork.setContent(`<!doctype html><html lang="${locale.language}"><style>
-      @font-face{font-family:Outfit;src:url(data:font/woff2;base64,${font})}
-      @font-face{font-family:Outfit;src:url(data:font/woff2;base64,${extendedFont});unicode-range:U+0100-024F}
-      *{box-sizing:border-box}body{margin:0;width:1024px;height:500px;background:#F4F8FB;color:#152F43;font-family:Outfit,sans-serif;padding:0 72px 40px;display:flex;flex-direction:column;justify-content:center}
-      h1{font-size:92px;line-height:1;margin:0 0 32px;font-weight:600;letter-spacing:-3px}
-      p{font-size:40px;margin:0;white-space:nowrap}
+      ${fontFaces}
+      *{box-sizing:border-box}body{margin:0;width:1024px;height:500px;background:#F4F8FB;color:#1B2B36;padding:0 72px 40px;display:flex;flex-direction:column;justify-content:center}
+      h1{display:flex;align-items:center;gap:0.5em;margin:0 0 28px;font:800 92px/1 Outfit;letter-spacing:-0.03em}
+      h1 svg{display:block;width:1.23em;height:1.23em;flex:none}
+      h1 span{padding-bottom:0.23em}
+      p{font:600 40px/1.35 Nunito;margin:0;white-space:nowrap}
       footer{position:absolute;inset:auto 0 0;height:40px;background:linear-gradient(to right,#5BCEFA 0% 20%,#F5A9B8 20% 40%,#FFFFFF 40% 60%,#F5A9B8 60% 80%,#5BCEFA 80% 100%)}
-      </style><h1>engender</h1><p>${locale.claim}</p><footer></footer></html>`);
-    await artwork.evaluate(() => document.fonts.ready);
+      </style><h1>${mark}<span>engender</span></h1><p>${locale.claim}</p><footer></footer></html>`);
+    await artwork.evaluate(async () => { await Promise.all(['800 92px Outfit', '600 40px Nunito'].map((f) => document.fonts.load(f, 'engender Track your transition. Zapisuj tranzycję.'))); await document.fonts.ready; });
     if (!await artwork.locator('p').evaluate((node) => node.scrollWidth <= node.clientWidth)) throw new Error(`Feature graphic text exceeds margins: ${locale.code}`);
     await artwork.screenshot({ path: resolve(dir, 'featureGraphic.png'), omitBackground: false });
   }
