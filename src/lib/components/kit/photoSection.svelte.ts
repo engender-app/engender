@@ -48,7 +48,8 @@ export function photoSection<TPhoto extends { id: string }>(options: PhotoSectio
 
   async function pick() {
     const picked = await pickPhotos(1);
-    await attempt(() => addPickedPhoto(picked, options.add), m.photo_save_failed());
+    // The picker holds nothing to retry from, so the failure says to pick again.
+    await attempt(() => addPickedPhoto(picked, options.add), m.photo_pick_save_failed());
   }
 
   return {

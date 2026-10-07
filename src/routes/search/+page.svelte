@@ -833,7 +833,7 @@
           {id}
           name="saved-question-name"
           placeholder={m.saved_question_name_placeholder()}
-          readonly={questionWrite.busy} bind:value={savingName}
+          bind:value={savingName}
         />
       {/snippet}
     </Field>

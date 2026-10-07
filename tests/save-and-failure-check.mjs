@@ -70,12 +70,13 @@ async function expectToast(kind, text) {
   const toast = text ? toastOf(kind).filter({ hasText: text }) : toastOf(kind);
   await toast.last().waitFor({ timeout: 1200 });
 }
-async function doubleTapWhilePending(button) {
+async function doubleTapWhilePending(button, field) {
   await setMode('pending');
   const before = await calls();
   await button.evaluate((el) => { el.click(); el.click(); });
   await page.waitForFunction(() => window.fault.resolve);
   assert.equal(await button.isDisabled(), true, 'the button holds while its write is in flight');
+  if (field) assert.equal(await field.evaluate((el) => !!el.closest('[inert]') || el.matches(':disabled')), true, 'the form is frozen while its write is in flight');
   await page.evaluate(() => window.fault.resolve());
   return before;
 }
@@ -94,7 +95,7 @@ try {
   await page.locator('[data-save-measurement]').click();
   await page.locator('[data-save-failed]').waitFor();
   assert.equal(await page.locator('#measurement-value').inputValue(), '71.5');
-  const before = await doubleTapWhilePending(page.locator('[data-save-measurement]'));
+  const before = await doubleTapWhilePending(page.locator('[data-save-measurement]'), page.locator('#measurement-value'));
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   assert.equal(await calls(), before + 1, 'a double tap on Save writes once');
   await expectToast('record-saved', /Saved/);
@@ -123,7 +124,7 @@ try {
   await saveLine.click();
   await expectToast('failed', /Could not save/);
   assert.equal(await page.locator('[data-sheet] textarea').inputValue(), 'A line worth keeping');
-  const beforeLine = await doubleTapWhilePending(saveLine);
+  const beforeLine = await doubleTapWhilePending(saveLine, page.locator('[data-sheet] textarea'));
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   assert.equal(await calls(), beforeLine + 1);
   await expectToast('record-saved');

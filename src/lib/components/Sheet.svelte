@@ -62,7 +62,8 @@
     globalTransitions?: boolean;
     /** A write the sheet is waiting on (after-release 06). The scrim, a drag,
         Escape and Back leave it up until the write lands, so a sheet never
-        closes over a write that may yet fail and need what is in it. */
+        closes over a write that may yet fail and need what is in it, and its
+        contents are inert meanwhile. */
     busy?: boolean;
   } = $props();
 
@@ -242,6 +243,19 @@
     return registerOverlay(node, { dismiss: close });
   }
 
+  /* While a write runs (`busy`), everything in the sheet but its handle is
+     inert, so nothing can be typed or picked that the write already sent
+     without (after-release 06). Per child rather than one wrapper, because
+     `.sheet > * + *` spaces the children. Reruns when `busy` changes. */
+  function freezeWhileBusy(node: HTMLElement) {
+    if (!busy) return;
+    const frozen = [...node.children].filter((child): child is HTMLElement => child instanceof HTMLElement && !child.classList.contains('sheet-handle'));
+    for (const child of frozen) child.inert = true;
+    return () => {
+      for (const child of frozen) child.inert = false;
+    };
+  }
+
   /* SF-001's background lock and focus trap live in overlayLock.ts now: the
      letter arrival (redesign ticket 45) is the app's second surface that
      covers the whole shell, and it owes the screen behind it exactly what a
@@ -311,6 +325,7 @@
         onoutrostart={() => recedeBackground?.()}
         {@attach focusInitial}
         {@attach ownSheet}
+        {@attach freezeWhileBusy}
       >
         <div class="sheet-handle"></div>
         {@render children()}
@@ -336,6 +351,7 @@
         onoutrostart={() => recedeBackground?.()}
         {@attach focusInitial}
         {@attach ownSheet}
+        {@attach freezeWhileBusy}
       >
         <div class="sheet-handle"></div>
         {@render children()}

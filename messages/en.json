@@ -2350,6 +2350,7 @@
   "photo_library_view": "View photo",
   "photo_not_an_image": "This file isn’t an image this app can read. Try a JPEG or PNG.",
   "photo_open_owner": "Open record",
+  "photo_pick_save_failed": "Could not save the photo. Pick it again to retry.",
   "photo_picker_failed": "Couldn’t open the photo picker.",
   "photo_placeholder": "Photo placeholder",
   "photo_placeholder_labelled": "Photo placeholder: {label}",
