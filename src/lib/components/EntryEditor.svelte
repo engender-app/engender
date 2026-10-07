@@ -76,7 +76,8 @@
     epochDay,
     entryId,
     seedMood,
-    debriefForAppointment
+    debriefForAppointment,
+    openSection
   }: {
     epochDay?: number;
     entryId?: number;
@@ -89,6 +90,9 @@
         of an existing entry, the same "creation aid, not an editing one"
         rule the prompt and the template sheet already follow. */
     debriefForAppointment?: string;
+    /** A chip section a new entry opens with, from the address (`?open=`).
+        A resumed draft keeps its own open section. */
+    openSection?: EntrySection;
   } = $props();
 
   /* The editor is a writing surface rather than a set of areas to look at,
@@ -142,6 +146,10 @@
   const guard = session.guard;
   const prepareDraft = session.prepare;
   const leave = session.leave;
+  /* Before the mirror is read, so a resumed draft's own open section wins
+     over the address's. */
+  // svelte-ignore state_referenced_locally
+  if (entryId == null && openSection) session.draft.setOpenSection(openSection);
   // svelte-ignore state_referenced_locally
   const persistedRestore = entryId == null ? session.resume() : Promise.resolve();
   onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
