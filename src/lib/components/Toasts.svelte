@@ -26,3 +26,13 @@
     {/if}
   </div>
 {/each}
+
+<style>
+  /* A failure said while a sheet stays open (after-release 06): at the top,
+     over the dimmed screen, rather than on the sheet's own buttons. It comes
+     down from the edge it sits at. */
+  .is-raised {
+    top: calc(var(--inset-top) + var(--space-4));
+    bottom: auto;
+  }
+</style>

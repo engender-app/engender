@@ -123,6 +123,8 @@ try {
   const saveLine = page.locator('[data-sheet] .btn-primary');
   await saveLine.click();
   await expectToast('failed', /Could not save/);
+  // Raised over the open sheet rather than on its Save button.
+  assert.ok((await toastOf('failed').last().boundingBox()).y < 100, 'a failure over an open sheet sits at the top');
   assert.equal(await page.locator('[data-sheet] textarea').inputValue(), 'A line worth keeping');
   const beforeLine = await doubleTapWhilePending(saveLine, page.locator('[data-sheet] textarea'));
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
