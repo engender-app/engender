@@ -68,6 +68,12 @@ export async function dateValue(locator) {
   return locator.getAttribute('data-date-value');
 }
 
+/** Any field's value as a guard compares it: a DatePicker's stored
+    `yyyy-mm-dd`, every other field's own value. */
+export async function fieldValue(locator) {
+  return (await locator.getAttribute('data-date-value')) ?? (await locator.inputValue());
+}
+
 /** fillDate's twin for a TimePicker: the picker's foot takes `HH:MM` and
     "Use time". */
 export async function fillTime(page, selector, hhmm) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium, settlePage, dateValue } from './browser-harness.mjs';
+import { fillDate, launchChromium, settlePage, dateValue, fieldValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -43,7 +43,7 @@ async function valuesMatch() {
   for (const [id, value] of Object.entries({
     'appointment-kind': 'Follow-up', 'appointment-place': 'Clinic',
     'appointment-note': 'Ask about bloods', 'appointment-date': '2024-03-12'
-  })) assert.equal(await page.locator(`#${id}`).inputValue(), value, id);
+  })) assert.equal(await fieldValue(page.locator(`#${id}`)), value, id);
 }
 
 async function fieldOrder() {
