@@ -4352,12 +4352,10 @@ try {
      is that regression's own seam - it fails on the code before this
      ticket's fix and passes after. */
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
+  await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
-  const groupStillOpen = await page
-    .locator('[data-tag-hide="dt-existential"]')
-    .locator('xpath=ancestor::details[1]')
-    .evaluate((el) => el.open);
+  const groupStillOpen =
+    (await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').getAttribute('aria-expanded')) === 'true';
   if (!groupStillOpen) throw new Error('hiding a tag closed its own still-open group');
 
   const unusedPastDay = await page.evaluate(() => {
@@ -4372,7 +4370,7 @@ try {
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
+  await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
@@ -5004,7 +5002,7 @@ try {
   // before that settles gets clobbered right back to today's date.
   const today = localDateInput();
   await page.waitForFunction(
-    ([sel, expected]) => document.querySelector(sel)?.value === expected,
+    ([sel, expected]) => document.querySelector(sel)?.getAttribute('data-date-value') === expected,
     ['#regimen-end', today]
   );
   await fillDate(page, '#regimen-end', localDateInput(1));
@@ -6170,8 +6168,8 @@ try {
   };
   const assertOpensWithSides = async (stretch) => {
     const preceding = precedingWindow(stretch);
-    const gotA = [await page.locator('#compare-a-start').inputValue(), await page.locator('#compare-a-end').inputValue()];
-    const gotB = [await page.locator('#compare-b-start').inputValue(), await page.locator('#compare-b-end').inputValue()];
+    const gotA = [await dateValue(page.locator('#compare-a-start')), await dateValue(page.locator('#compare-a-end'))];
+    const gotB = [await dateValue(page.locator('#compare-b-start')), await dateValue(page.locator('#compare-b-end'))];
     const wantA = [dateInputValueFromEpochDay(stretch.start), dateInputValueFromEpochDay(stretch.end)];
     const wantB = [dateInputValueFromEpochDay(preceding.start), dateInputValueFromEpochDay(preceding.end)];
     if (gotA[0] !== wantA[0] || gotA[1] !== wantA[1] || gotB[0] !== wantB[0] || gotB[1] !== wantB[1]) {
