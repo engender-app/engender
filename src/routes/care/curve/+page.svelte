@@ -213,6 +213,12 @@
       29, accessibility audit A05). */
   let markersOpen = $state<Record<string, boolean>>({});
   let resultsOpen = $state<Partial<Record<InjectableEster, boolean>>>({});
+  /* What a legend key's line means, folded under the legend like the
+     results and the marks (after-release 28: these were native <details>
+     with the marker hidden, the one legend key with no chevron, opening in
+     one frame inside the wrapping legend line). */
+  let notesOpen = $state<Record<string, boolean>>({});
+  const toggleNotes = (chart: string) => () => (notesOpen = { ...notesOpen, [chart]: !notesOpen[chart] });
   const toggleMarkers = (chart: string) => () => (markersOpen = { ...markersOpen, [chart]: !markersOpen[chart] });
 
   function pickMarker(chart: string, mark: AnnotationMark) {
@@ -432,11 +438,17 @@
             />
 
             <div class="curve-legend">
-              <details class="curve-legend-detail">
-                <summary class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</summary>
-                <p>{m.curve_band_note()}</p>
-                <p>{m.curve_source()}</p>
-              </details>
+              <button
+                type="button"
+                class="legend-item curve-markers-toggle"
+                aria-expanded={notesOpen[curve.ester] === true}
+                aria-controls="curve-notes-{curve.ester}"
+                data-curve-notes-toggle={curve.ester}
+                onclick={toggleNotes(curve.ester)}
+              >
+                <span class="legend-band"></span>{m.curve_legend_band()}
+                <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
+              </button>
               <button
                 type="button"
                 class="legend-item curve-markers-toggle"
@@ -449,6 +461,14 @@
                 <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
               </button>
               {@render markerToggle(curve.ester, markersFor(curve.ester).length)}
+            </div>
+            <div id="curve-notes-{curve.ester}">
+              {#if notesOpen[curve.ester]}
+                <div class="disclosed curve-legend-detail" transition:disclose>
+                  <p>{m.curve_band_note()}</p>
+                  <p>{m.curve_source()}</p>
+                </div>
+              {/if}
             </div>
             <div id="curve-results-{curve.ester}">
               {#if resultsOpen[curve.ester]}
@@ -554,11 +574,25 @@
               />
 
               <div class="curve-legend">
-                <details class="curve-legend-detail">
-                  <summary class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</summary>
-                  <p>{m.curve_qual_note()}</p>
-                </details>
+                <button
+                  type="button"
+                  class="legend-item curve-markers-toggle"
+                  aria-expanded={notesOpen[curve.key] === true}
+                  aria-controls="curve-notes-{curve.key}"
+                  data-curve-notes-toggle={curve.key}
+                  onclick={toggleNotes(curve.key)}
+                >
+                  <span class="legend-qual-line"></span>{m.curve_qual_legend_line()}
+                  <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
+                </button>
                 {@render markerToggle(curve.key, markersFor(curve.key).length)}
+              </div>
+              <div id="curve-notes-{curve.key}">
+                {#if notesOpen[curve.key]}
+                  <div class="disclosed curve-legend-detail" transition:disclose>
+                    <p>{m.curve_qual_note()}</p>
+                  </div>
+                {/if}
               </div>
               {@render markerList(curve.key, markersFor(curve.key))}
 
@@ -694,13 +728,11 @@
     gap: 6px;
     min-height: var(--touch-target);
     cursor: pointer;
-    list-style: none;
   }
 
-  /* The one legend key that is a button rather than a summary: it opens a
-     list, and a list needs the disclosure's own motion, which a details
-     element's native toggle cannot give it. Drawn as the summaries beside
-     it are, plus the chevron the app's other folds carry. */
+  /* Every legend key that folds something open is a button with the
+     chevron the app's other folds carry, and what it opens grows in under
+     the legend (disclose). */
   .curve-markers-toggle {
     padding: 0;
     border: 0;
@@ -722,10 +754,6 @@
   .curve-markers-note {
     max-width: 48ch;
     margin: 0 0 var(--space-2);
-  }
-
-  .legend-item::-webkit-details-marker {
-    display: none;
   }
 
   .curve-legend-detail {

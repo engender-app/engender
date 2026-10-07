@@ -476,7 +476,7 @@
     <div class="spread" style="margin-bottom:var(--space-3)">
       <h3>{m.ms_add_heading()}</h3>
       <button class="icon-btn press" data-shuffle aria-label={m.ms_shuffle()} onclick={shuffleSuggestions}>
-        <Icon name="shuffle" size={20} />
+        <Icon name="dice" size={20} />
       </button>
     </div>
     <ListCard role={roleAt(activeFlag.roles, 0)}>
