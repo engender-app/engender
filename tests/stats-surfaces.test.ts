@@ -327,6 +327,17 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(stats).toContain("href={readingHref('words', resolvedSpan)}");
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
     expect(readings.compare).toContain('href={`/compare${spanRangeQuery(span)}`}');
+    expect(readings.tally).toContain('href={`/tally${spanRangeQuery(span)}`}');
+  });
+
+  /* Review finding: the tile counted the span and its screen opened on the
+     last thirty days, so a tile from an older era opened onto empty charts. */
+  it('opens the tally screen on the span the tile counted', () => {
+    const tally = read('src/routes/tally/+page.svelte');
+    expect(tally).toContain("page.url.searchParams.get('from')");
+    expect(tally).toContain("page.url.searchParams.get('to')");
+    expect(tally).toContain("j.stats.tallyTrend('misgendered', from, to)");
+    expect(tally).toContain("j.stats.tallyTrend('correctly_gendered', from, to)");
   });
 
   it('has a tile only where the span holds data for it', () => {

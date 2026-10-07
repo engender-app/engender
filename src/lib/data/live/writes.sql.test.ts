@@ -1080,6 +1080,7 @@ beforeAll(async () => {
   await driveRead('tally', 'getEventsOnDay', () => journal.tally.getEventsOnDay(20000));
   await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
   await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered', 20000));
+  await driveRead('tally', 'firstEpochDay', () => journal.tally.firstEpochDay());
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
   await driveRead('regimen', 'getHiddenEpisodes', () => journal.regimen.getHiddenEpisodes());
   await driveRead('regimen', 'hasAny', () => journal.regimen.hasAny());
