@@ -1,0 +1,73 @@
+# Yank sweep inventory
+
+The gesture table in `yank-sweep-core.mjs` is shared by the desktop and
+Android runners. Each entry names its route, preparation, control and
+route or state postcondition. A missing, hidden, disabled or inert control
+is an error. An unchanged destination or state is also an error. The
+report records the requested selector, chosen control and actual outcome.
+
+Preparation closes existing overlays and restores inline edit modes before
+opening the state a scene requires. It does not change the recorded motion
+window or detector thresholds. Quick add opening, closing, choosing a mood,
+opening a backdate and opening its calendar have separate scenes. Setup
+steps belong to the empty profile because starting first run clears the
+journal. The persona stays intact across both themes. The backup notice
+scene restores its demo fixture before every repeat so an earlier dismissal
+cannot turn later repeats into missing controls.
+
+The cold-load table covers every rendered route. The route inventory test
+checks the current route tree and rejects dead routes or new omissions.
+Detail IDs come from the prepared journal's list controls, never invented
+IDs. A record missing from the fixture is reported as a skip with its name.
+A browser reminder detail is a platform exclusion because the web list
+renders an install prompt. Android resolves that record from its own list.
+
+Cold runs record the requested and actual route including query parameters,
+theme, boot state and profile. The profile check also reads the journal's
+entry-presence cache; persona preparation checks Alice's greeting. Both
+themes record onboarding and the PIN gate. The PIN epilogue restores the
+persona before capturing it, even when the preceding profile was empty.
+
+Fresh Android preparation has a ten-minute bound. The observed demo seed
+took about five minutes; the former 30-second wait expired during that seed.
+The runner polls boot and Home readiness once per second and reports its
+state every ten seconds. This bound applies only to setup readiness.
+Gesture and cold-load sampling windows remain unchanged.
+
+Each report counts requested, attempted, measured, skipped, failed and
+missing runs per profile and theme. A partial report remains explicitly
+incomplete and is replaced atomically after each scene. An error or missing
+run makes the process fail even without `--gate`. Product yanks remain
+findings; only `--gate` treats them as an exit failure. Proof requires every
+injected style defect and painted evidence in each proof run.
+
+Style findings keep their DOM samples and complete compositor cast. Frame
+files carry frame numbers and milliseconds; the metadata keeps absolute
+capture timestamps. DOM samples also carry wall timestamps so a style
+finding can be compared with the frames that painted it. A mark's node
+identity stays fixed while its semantic class or text changes. A replacement
+node receives another identity even when its class and text match.
+
+## Boundaries
+
+These runs measure the supported scene table, not every possible user
+input. The cold inventory covers screens; it cannot prove every state of
+those screens. The report's inventory must accompany any claim of coverage.
+The following paths require separate fixtures or platform control:
+
+- Biometric, passphrase, recovery and schema-too-new gates need credentials
+  or a journal with that schema. The PIN and onboarding fixtures do not
+  represent these gates.
+- Camera, microphone, picker and share-system transitions depend on OS
+  permission and external surfaces. The browser sweep cannot measure them.
+- A real midnight change needs a controlled clock spanning the boundary.
+  Navigating to a different day does not reproduce that event.
+- Confirmed deletion and save paths need disposable records restored per
+  repeat. Opening their confirmation is covered where listed; it does not
+  claim coverage of the confirmed write or every row-removal animation.
+- Chart drags and body-region switching need gesture fixtures beyond the
+  selector-click contract. Cold mounting their routes does not claim those
+  interactions were measured.
+
+These omissions are coverage limits, not zero-yank passes or exemptions from
+the detector. Existing measurements and thresholds retain their meaning.

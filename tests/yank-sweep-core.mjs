@@ -12,7 +12,7 @@
    imports are node:fs/promises and plain data and plain decoding from
    the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
 
-import { writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { decodePng, grayFrame } from './png-decode.mjs';
 
@@ -240,65 +240,63 @@ export const PROOF = {
    to stop on; each transport implements its own walk (Playwright locators
    on desktop, devtools evaluates on the device). */
 const SCENES = [
-  { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"]', nav: true, is: 'the blind pulled up to Journal' },
-  { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"]', nav: true, is: 'the blind between two doors' },
-  { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"]', nav: true, is: 'the blind down to Transition' },
-  { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"]', nav: true, is: 'the blind back to the tallest field' },
-  { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', nav: true, is: 'a door into a deep screen' },
-  { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, is: 'a deep screen back to its door' },
-  { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the sheet rising' },
-  { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
-  { name: 'span-offer-appear', at: '/stats', act: '[data-span-milestone]', when: 'persona', is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
-  { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
-  { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
+  { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
+  { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
+  { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind down to Transition' },
+  { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind back to the tallest field' },
+  { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', prepare: ['[data-list-row="tag-groups"]'], nav: true, after: {"route": "/settings/tags"}, is: 'a door into a deep screen' },
+  { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, after: {"route": "/settings"}, is: 'a deep screen back to its door' },
+  { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', after: {"selector": "[data-fan]"}, is: 'the sheet rising' },
+  { name: 'segment-lookback', at: '/stats', act: '[data-span-era], [data-span-band]', when: 'persona', after: {"selector": "[data-span-timeline]", "attribute": "data-span-start"}, is: 'the segmented pill sliding' },
+  { name: 'span-offer-appear', at: '/stats', act: '[data-span-era], [data-span-band]', when: 'persona', after: {"selector": "[data-span-timeline]", "attribute": "data-span-start"}, is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
+  { name: 'mood-pick', at: '/', act: '[data-mood="4"]', after: {"route": "/entry/new/today"}, is: 'a mood picked, the row looking at it' },
+  { name: 'notice-dismiss', at: '/', act: '[data-backup-notice] [data-notice-dismiss]', when: 'persona', reseed: true, after: {"selector": "[data-backup-notice]", "absent": true}, is: 'a notice dismissed, its height closing' },
   /* Redesign ticket 47: Safe space opens on the breath and everything else
      is one tap down, so the tap off that screen is the gesture the ticket
      added and the one place a person mid-crisis meets a navigation. */
-  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, is: 'a way down from the breath' },
+  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, after: {"route": "/transition/letters"}, is: 'a way down from the breath' },
 
   /* Transition screens (ticket 108): buttons, switchers and modals */
-  { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
-  /* Redesign ticket 16 collapsed the list behind `[data-ms-log-toggle]`, so
-     `[data-milestone]` no longer exists until that row is opened - this
-     scene has no step for that and needs one before ticket 139's sweep. */
-  { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
-  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', is: 'a mark on the rail opening the same editor (redesign 43)' },
-  { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
-  { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
-  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
-  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
+  { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the milestone template picker sheet rising' },
+  /* The recorded list is disclosed before measuring the edit action. */
+  { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone] .kit-row-main', prepare: ['[data-ms-log-toggle]'], when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an existing milestone edit sheet opening' },
+  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor (redesign 43)' },
+  { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
+  { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
      open under it. New movement, and the one on this screen most likely to
      read as a jump. */
-  { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', is: 'the rest of the good moments disclosed under the six' },
+  { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', after: {"selector": "[data-evidence-see-all]", "absent": true}, is: 'the rest of the good moments disclosed under the six' },
   /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
      45: a sealed letter's card answers no press at all now, and it is the
      first card on the screen, so the old selector picked the one letter that
      cannot open. This handle is on the two states that can. */
-  { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', is: 'a letter unfolded to read' },
-  { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
-  { name: 'eras-add', at: '/settings/eras', act: '[data-add]', is: 'the add era sheet opening' },
+  { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', after: {"selector": "[data-letter-state=\"reading\"]"}, is: 'a letter unfolded to read' },
+  { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-open-tryout], a[data-tryout]', when: 'persona', nav: true, after: {"route": "chosen-href"}, is: 'navigating to tryout detail' },
+  { name: 'eras-add', at: '/settings/eras', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add era sheet opening' },
 
   /* Settings screens (ticket 108): swatches, switchers, switches and modals */
-  { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },
-  { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', is: 'the mood colours sheet opening' },
-  { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', is: 'the accessibility sheet opening' },
-  { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', is: 'the tag groups sheet opening' },
-  { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', is: 'switching theme segmented control' },
-  { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', is: 'toggling a settings switch' },
-  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', is: 'switching measurement unit segmented control' },
-  { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', is: 'the gender scales checklist sheet opening' },
-  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', is: 'the calendar colour metric sheet opening' },
-  { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', is: 'the disguise preview sheet opening' },
-  { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', is: 'the about sheet opening' },
-  { name: 'presentations-add', at: '/settings?raise=modes', act: '[data-add]', is: 'the add presentation sheet opening' },
-  { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
-  { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
-  { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
-  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', is: 'the dose editor sheet opening' },
-  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet opening' },
-  { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
+  { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', after: {"selector": "html", "attribute": "data-palette", "value": "nonbinary"}, is: 'picking a palette swatch' },
+  { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', after: {"selector": "[data-sheet]"}, is: 'the mood colours sheet opening' },
+  { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', after: {"selector": "[data-sheet]"}, is: 'the accessibility sheet opening' },
+  { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', after: {"selector": "[data-sheet]"}, is: 'the tag groups sheet opening' },
+  { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', after: {"selector": "html", "attribute": "data-theme", "value": "dark"}, is: 'switching theme segmented control' },
+  { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', after: {"selector": "[data-cycle-tracking-toggle] button.switch", "attribute": "aria-checked"}, is: 'toggling a settings switch' },
+  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', after: {"selector": "[data-segmented=\"measurement-unit\"] [data-segment=\"in\"]", "attribute": "aria-checked", "value": "true"}, is: 'switching measurement unit segmented control' },
+  { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', after: {"selector": "[data-sheet]"}, is: 'the gender scales checklist sheet opening' },
+  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
+  { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
+  { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', after: {"selector": "[data-sheet]"}, is: 'the about sheet opening' },
+  { name: 'presentations-add', at: '/settings?raise=modes', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add presentation sheet opening' },
+  { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', prepare: ['[data-tag-group] [data-disclosure-toggle]'], when: 'persona', after: {"selector": "[data-tag-hide]", "attribute": "aria-label"}, is: 'hiding a tag in settings' },
+  { name: 'reminders-open', at: '/settings/reminders', act: 'a[href^="/settings/reminders/"]', androidOnly: true, requiresFixture: 'reminder', when: 'persona', after: {"route": "chosen-href"}, is: 'opening a reminder for editing' },
+  { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'opening regimen template picker sheet' },
+  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet opening' },
+  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet opening' },
+  { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'opening regimen episode editor' },
   /* Ticket 09 (ADR-0084): the stock editor stopped being its own screen,
      so opening it is no longer one `at`/`act` step from a cold load - it
      is a sheet off Care's regimen block, which the carpet's ticket 139
@@ -313,6 +311,8 @@ const SCENES = [
      deciding, not the scene declaring. */
   {
     name: 'setup-step-forward',
+    when: 'empty',
+    after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'flag',
     act: '[data-next]',
@@ -320,6 +320,8 @@ const SCENES = [
   },
   {
     name: 'setup-step-back',
+    when: 'empty',
+    after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'scales',
     act: '[data-back]',
@@ -327,6 +329,8 @@ const SCENES = [
   },
   {
     name: 'setup-flag-pick',
+    when: 'empty',
+    after: {"selector": "html", "attribute": "data-palette", "value": "agender"},
     at: '/',
     firstRun: 'flag',
     act: '[data-palette-pick="agender"]',
@@ -334,22 +338,267 @@ const SCENES = [
   },
   {
     name: 'setup-handover',
+    when: 'empty',
+    after: {"route": "/"},
     at: '/',
     firstRun: 'done',
     act: '[data-finish]',
     nav: true,
     is: "setup's field closing to Home's, as one object"
-  }
+  },
+  { name: 'quick-add-close', at: '/', prepare: ['[data-nav-fab], [data-rail-add]'], act: '.fan-scrim', after: { selector: '[data-fan]', absent: true }, is: 'the open fan withdrawing into its add control' },
+  { name: 'quick-add-mood', at: '/', prepare: ['[data-nav-fab], [data-rail-add]'], act: '[data-fan-target="mood-4"]', after: { route: '/entry/new/today' }, is: 'choosing a mood from the open fan and entering today' },
+  { name: 'quick-add-backdate', at: '/', prepare: ['[data-nav-fab], [data-rail-add]'], act: '[data-fan-target="another-day"]', after: { selector: '[data-sheet]' }, is: 'the fan handing over to the backdate sheet' },
+  { name: 'quick-add-backdate-close', at: '/', prepare: ['[data-nav-fab], [data-rail-add]', '[data-fan-target="another-day"]'], act: '[data-sheet-scrim]', after: { selector: '[data-sheet]', absent: true }, is: 'the backdate sheet withdrawing' },
+  { name: 'quick-add-date-picker', at: '/', prepare: ['[data-nav-fab], [data-rail-add]', '[data-fan-target="another-day"]'], act: '[data-date-value]', after: { selector: '[data-date-picker-entry]' }, is: 'the backdate calendar opening' },
+  { name: 'doses-attribution-open', at: '/care/doses', act: '.doses-attribution-toggle', after: { selector: '.doses-attribution-toggle', attribute: 'aria-expanded', value: 'true' }, is: 'the dose attribution fold opening' },
+  { name: 'doses-attribution-close', at: '/care/doses', prepare: ['.doses-attribution-toggle'], act: '.doses-attribution-toggle', after: { selector: '.doses-attribution-toggle', attribute: 'aria-expanded', value: 'false' }, is: 'the dose attribution fold closing' },
+  { name: 'care-stock-open', at: '/care', act: '[data-care-regimen-stock]', when: 'persona', after: { selector: '[data-sheet]' }, is: 'the regimen stock sheet opening in Care' },
+  { name: 'care-stock-add', at: '/care', prepare: ['[data-list-row="stock"]'], act: '[data-notice="care-stock-empty"] [data-notice-action]', when: 'empty', after: { selector: '[data-save-stock]' }, is: 'the nested stock editor opening' },
+  { name: 'settings-about-close', at: '/settings', prepare: ['[data-list-row="about"]'], act: '[data-sheet-scrim]', after: { selector: '[data-sheet]', absent: true }, is: 'the About sheet withdrawing' },
+  { name: 'comfort-arrange', at: '/doubt/comfort', act: '[data-comfort-arrange]', when: 'persona', after: { selector: '[data-comfort-grip]' }, is: 'the comfort list entering its arrange state' },
+  { name: 'today-editor-open', at: '/', act: '[data-edit-today]', after: { selector: '[data-today-editor]' }, is: 'the front page editor opening' },
+  { name: 'today-editor-reset-ask', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-reset]', after: { selector: '[data-confirm-edit-reset]' }, is: 'the front page reset confirmation opening' }
+,
+  { name: 'wear-week-earlier', at: '/body/wear', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the wear week earlier' },
+  { name: 'wear-week-later', at: '/body/wear', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the wear week later' },
+  { name: 'hair-removal-week-earlier', at: '/body/hair-removal', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the hair-removal week earlier' },
+  { name: 'hair-removal-week-later', at: '/body/hair-removal', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the hair-removal week later' },
+  { name: 'dilation-week-earlier', at: '/health/dilation', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the dilation week earlier' },
+  { name: 'dilation-week-later', at: '/health/dilation', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the dilation week later' },
+  { name: 'cycle-week-earlier', at: '/health/cycle-events', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week earlier' },
+  { name: 'cycle-week-later', at: '/health/cycle-events', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week later' },
+  { name: 'roadmap-track-switch', at: '/transition/roadmap', act: '[data-segmented="roadmap-track"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="roadmap-track"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the roadmap track' },
+  { name: 'roadmap-track-dismiss', at: '/transition/roadmap', act: '[data-track-panel]:not([hidden]) [data-track-toggle]', after: { selector: '[data-track-panel]:not([hidden]) [data-track-toggle]', attribute: 'data-dismissed' }, is: 'dismissing or restoring the visible roadmap track' },
+  { name: 'comfort-reorder', at: '/doubt/comfort', prepare: ['[data-comfort-arrange]'], act: '[data-comfort-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-comfort-item]', order: 'data-comfort-item' }, is: 'moving the first comfort row down with keyboard' },
+  { name: 'today-editor-reorder', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-edit-pinned-row]', order: 'data-edit-pinned-row' }, is: 'moving a pinned row down with keyboard' },
+  { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },
+  { name: 'tryout-new', at: '/transition/tryouts', act: 'a[href="/transition/tryouts/new"]', after: { route: '/transition/tryouts/new' }, is: 'opening the new tryout editor' },
+  { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' }
+
 ];
 
 /** The scenes a run covers: the table above, narrowed to `only`, with the
  *  proof scene always prepended when the run is out to show it can fail. */
 export function scenesFor({ prove = false, only = [] } = {}) {
+  for (const name of only) if (!SCENES.some((scene) => scene.name === name)) throw new Error(`unknown gesture scene: ${name}`);
   const scenes = only.length ? SCENES.filter((s) => only.includes(s.name)) : SCENES;
   return prove
     ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'six marks built to be wrong, so the arithmetic can be seen to catch them' }, ...scenes]
     : scenes;
 }
+
+/** Semantic labels explain a mark; node identity decides whether it left. */
+export function createMarkIdentity() {
+  const identities = new WeakMap();
+  let next = 0;
+  return (node, semantic) => {
+    if (!identities.has(node)) identities.set(node, `${semantic}#node-${++next}`);
+    return identities.get(node);
+  };
+}
+
+export function sceneForTheme(scene, theme) {
+  if (scene.name !== 'settings-theme-switcher') return scene;
+  const target = theme === 'light' ? 'dark' : 'light';
+  return { ...scene, startTheme: theme, act: `[data-segmented="theme"] [data-segment="${target}"]`, after: { selector: 'html', attribute: 'data-theme', value: target } };
+}
+
+/** Dispatch proof travels with the first sampled frame on both transports. */
+export function dispatchSceneAction(scene, env = globalThis) {
+  const { document, location } = env;
+  const requested = scene.act;
+  const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme };
+  if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
+  if (requested === 'inject') {
+    if (typeof env.__yankProof !== 'function') throw new Error('missing injected proof action');
+    env.__yankProof();
+    return { ...evidence, programmatic: 'injected proof', dispatched: true };
+  }
+  const selector = requested === 'back' ? '[data-screen-back]' : requested;
+  const hits = [...document.querySelectorAll(selector)];
+  if (!hits.length) throw new Error(`missing target: ${selector}`);
+  const visible = hits.filter((el) => {
+    if (el.checkVisibility) return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+    for (let node = el; node; node = node.parentElement) {
+      const style = env.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+    }
+    const box = el.getBoundingClientRect();
+    const css = env.getComputedStyle(el);
+    return box.width > 0 && box.height > 0 && css.display !== 'none' && css.visibility !== 'hidden' && Number(css.opacity) > 0;
+  });
+  if (!visible.length) throw new Error(`target not visible: ${selector}`);
+  const hit = visible.find((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('[inert]'));
+  if (!hit) throw new Error(`no enabled target: ${selector}`);
+  const after = scene.after;
+  if (after?.selector) evidence.beforePresent = !!document.querySelectorAll(after.selector)[0];
+  if (after?.attribute) {
+    const subject = after.selector ? document.querySelectorAll(after.selector)[0] : hit;
+    evidence.beforeValue = subject?.getAttribute(after.attribute) ?? null;
+  }
+  if (after?.text) evidence.beforeValue = document.querySelectorAll(after.selector)[0]?.textContent ?? null;
+  if (after?.order) evidence.beforeValue = [...document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|');
+  evidence.chosen = { selector, tag: hit.tagName, text: hit.textContent?.trim().slice(0, 100), href: hit.getAttribute('href') };
+  if (scene.key) {
+    hit.dispatchEvent(new env.KeyboardEvent('keydown', { key: scene.key, bubbles: true, cancelable: true }));
+    evidence.key = scene.key;
+  } else hit.click();
+  evidence.dispatched = true;
+  return evidence;
+}
+
+/** Check an explicit route or state outcome, never infer success from zero yanks. */
+export function verifySceneAction(scene, action, env = globalThis) {
+  if (!action?.dispatched) throw new Error('action was not dispatched');
+  if (scene.act === 'inject' || scene.act === 'none') return { ...action, verified: true };
+  const after = scene.after;
+  if (!after) throw new Error(`missing action postcondition: ${scene.name ?? scene.act}`);
+  const route = env.location.pathname;
+  if (after.route) {
+    const expected = after.route === 'chosen-href' ? action.chosen?.href?.split(/[?#]/)[0] : after.route;
+    if (route !== expected) throw new Error(`postcondition route: expected ${expected}, got ${route}`);
+    if (route === action.beforeRoute && env.location.search === (action.beforeSearch ?? '')) throw new Error(`postcondition route unchanged: ${route}`);
+  } else {
+    const subject = env.document.querySelectorAll(after.selector)[0];
+    if (after.absent ? !!subject : !subject) throw new Error(`postcondition ${after.absent ? 'absent' : 'present'}: ${after.selector}`);
+    if (!after.attribute && !after.text && !after.order && (after.absent ? !action.beforePresent : action.beforePresent)) throw new Error(`postcondition state unchanged: ${after.selector}`);
+    if (after.text || after.order) {
+      const value = after.order ? [...env.document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|') : subject?.textContent;
+      if (value === action.beforeValue) throw new Error(`postcondition content unchanged: ${after.selector}`);
+    }
+    if (after.attribute) {
+      const value = subject?.getAttribute(after.attribute) ?? null;
+      if (after.value !== undefined ? value !== after.value || value === action.beforeValue : value === action.beforeValue) throw new Error(`postcondition attribute unchanged or wrong: ${after.attribute}=${value}`);
+    }
+  }
+  return { ...action, verified: true, afterRoute: route, afterTheme: env.document.documentElement?.dataset.theme, postcondition: after };
+}
+
+export const actionPostconditionExpression = (scene, action) => `(${verifySceneAction})(${JSON.stringify(scene)}, ${JSON.stringify(action)})`;
+
+/** Boot seeding is preparation, not a motion settle window. Poll with feedback. */
+export async function waitForReadiness(read, {
+  timeoutMs = 600000, pollMs = 1000, now = Date.now,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), onProgress = () => {}
+} = {}) {
+  const started = now();
+  let state;
+  let feedbackAt = -Infinity;
+  for (;;) {
+    state = await read();
+    if (state.ready) return { ...state, elapsedMs: now() - started };
+    if (now() - started >= timeoutMs) throw new Error(`boot readiness timed out after ${timeoutMs}ms: ${JSON.stringify(state)}`);
+    if (now() - feedbackAt >= 10000) { onProgress({ ...state, elapsedMs: now() - started }); feedbackAt = now(); }
+    await sleep(pollMs);
+  }
+}
+
+export const BOOT_READINESS_EXPRESSION = `(() => ({
+  ready: document.querySelector('[data-app-root]')?.dataset.boot === 'ready' && !!document.querySelector('[data-home-hello]'),
+  route: location.pathname,
+  gate: document.querySelector('[data-app-root]')?.dataset.boot ?? 'no app root',
+  setup: !!document.querySelector('[data-setup-question]'),
+  access: !!document.querySelector('[data-access-modes]')
+}))()`;
+
+export async function finishFirstRun(evaluate, options = {}) {
+  if (!(await evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION))) throw new Error('first-run finish was not dispatched');
+  return waitForReadiness(() => evaluate(BOOT_READINESS_EXPRESSION), options);
+}
+
+export const PROFILE_KEY = 'yank-sweep-prepared-profile';
+export const markProfileExpression = (profile) => `localStorage.setItem(${JSON.stringify(PROFILE_KEY)}, ${JSON.stringify(profile)}); true;`;
+export const profileProofExpression = (profile) => `(() => {
+  const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+    greeting: document.querySelector('[data-home-hello]')?.textContent?.trim(), route: location.pathname };
+  if (proof.prepared !== ${JSON.stringify(profile)} || proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('wrong journal profile: ' + JSON.stringify(proof));
+  if (${JSON.stringify(profile)} === 'persona' && !proof.greeting?.includes('Alice')) throw new Error('persona greeting missing: ' + JSON.stringify(proof));
+  return proof;
+})()`;
+
+export const coldLoadProofExpression = (href, profile, theme) => `(() => {
+  const expected = new URL(${JSON.stringify(href)}, location.origin);
+  const proof = { requested: expected.pathname + expected.search, route: location.pathname + location.search,
+    profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+    boot: document.querySelector('[data-app-root]')?.dataset.boot, theme: document.documentElement.dataset.theme,
+    loading: !!document.querySelector('[data-gate-skeleton]'), unavailable: !!document.querySelector('[data-unavailable], [data-notice$="-unavailable"]') };
+  if (proof.route !== proof.requested) throw new Error('cold-load wrong route: ' + JSON.stringify(proof));
+  if (proof.profile !== ${JSON.stringify(profile)}) throw new Error('cold-load wrong profile: ' + JSON.stringify(proof));
+  if (proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('cold-load journal profile mismatch: ' + JSON.stringify(proof));
+  if (proof.boot !== 'ready' || proof.unavailable || proof.loading) throw new Error('cold-load unfinished screen: ' + JSON.stringify(proof));
+  if (proof.theme !== ${JSON.stringify(theme)}) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
+  return proof;
+})()`;
+
+/** Partial snapshots survive a stopped sweep and remain explicitly incomplete. */
+export function createReportRecorder(outDir, metadata, inventory, profiles, themes, passes, errors) {
+  const report = [];
+  let pending = Promise.resolve();
+  const persist = () => {
+    const snapshot = JSON.stringify({ ...metadata, complete: false, coverage: coverageSummary(inventory, profiles, themes, passes, report), report, errors }, null, 2);
+    pending = pending.then(async () => {
+      await writeFile(`${outDir}/report.partial.json.tmp`, snapshot);
+      await rename(`${outDir}/report.partial.json.tmp`, `${outDir}/report.partial.json`);
+    });
+  };
+  report.push = (...rows) => { const count = Array.prototype.push.apply(report, rows); persist(); return count; };
+  persist();
+  return { report, persist, flush: () => pending };
+}
+
+/** Expected repeats remain visible even when setup aborts before a scene runs. */
+export function coverageSummary(scenes, profiles, themes, passes, report) {
+  const expected = [];
+  for (const profile of profiles) for (const theme of themes) for (const scene of scenes) {
+    if (scene.when && scene.when !== profile) continue;
+    const repeats = scene.setup ? 1 : passes;
+
+    for (let pass = 1; pass <= repeats; pass++) expected.push({ scene: scene.name, profile, theme, pass });
+  }
+  const key = (row) => `${row.scene}:${row.profile}:${row.theme}:${row.pass ?? 1}`;
+  const rows = new Map(report.map((row) => [key(row), row]));
+  const grouped = {};
+  const counts = { requested: expected.length, attempted: 0, measured: 0, skipped: 0, failed: 0, missing: 0 };
+  const missing = [];
+  for (const run of expected) {
+    const row = rows.get(key(run));
+    const status = !row ? 'missing' : row.error ? 'failed' : row.skipped ? 'skipped' : 'measured';
+    counts[status]++;
+    if (status === 'failed' || status === 'measured') counts.attempted++;
+    if (!row) missing.push(run);
+    const group = `${run.profile}:${run.theme}`;
+    grouped[group] ??= { requested: 0, attempted: 0, measured: 0, skipped: 0, failed: 0, missing: 0 };
+    grouped[group].requested++;
+    grouped[group][status]++;
+    if (status === 'failed' || status === 'measured') grouped[group].attempted++;
+  }
+  return { ...counts, groups: grouped, missingRuns: missing, inventory: scenes };
+}
+
+export const prepareSceneExpression = (scene) => `(async () => {
+  const scene = ${JSON.stringify(scene)};
+  const dispatch = ${dispatchSceneAction};
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  for (const scrim of document.querySelectorAll('.fan-scrim, [data-sheet-scrim]')) scrim.click();
+  for (let i = 0; i < 60 && document.querySelector('.fan-scrim, [data-sheet-scrim]'); i++) await sleep(50);
+  if (document.querySelector('.fan-scrim, [data-sheet-scrim]')) throw new Error('previous overlay did not close');
+  if (scene.name === 'settings-theme-switcher') dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+  if (scene.name === 'settings-palette') dispatch({ act: '[data-palette-pick="trans"]' });
+  if (scene.name === 'settings-unit-switcher') dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
+  if (document.querySelector('[data-edit-done]')) { dispatch({ act: '[data-edit-done]' }); await sleep(500); }
+  if (document.querySelector('[data-comfort-grip]')) { dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
+  const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
+  if (attribution) { attribution.click(); await sleep(500); }
+  for (const act of scene.prepare ?? []) {
+    dispatch({ act });
+    await sleep(500);
+  }
+  const hits = [...document.querySelectorAll(scene.act === 'back' ? '[data-screen-back]' : scene.act === 'inject' ? 'body' : scene.act)];
+  const hit = hits.find((el) => { const b = el.getBoundingClientRect(); return b.width && b.height; });
+  if (hit) hit.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  return true;
+})()`;
 
 /** Furniture rather than the app: the demo bar and a toast are injected over
     whatever is being looked at. A navigation needs no exemption at all now
@@ -492,7 +741,10 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     same code runs through Playwright's evaluate and through the WebView's
     devtools socket on a device. */
 export function samplerExpression(act, ms, names) {
-  const fn = async (act, ms, names) => {
+  const fn = async (scene, ms, names, dispatch, createIdentity) => {
+    const identity = createIdentity();
+    const act = scene.act;
+    let action;
     const root = document.querySelector('[data-app-root]');
     const readPseudo = (pseudo, prop) =>
       getComputedStyle(document.documentElement, pseudo)?.getPropertyValue(prop) ?? '';
@@ -532,7 +784,7 @@ export function samplerExpression(act, ms, names) {
     };
     const STATE_CLS =
       /^(is-active|is-selected|is-open|is-fan-open|is-checked|is-ticked|is-withdrawn|press|press-add|setup-paint-was|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
-    const key = (el) => {
+    const semanticKey = (el) => {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
       const letter = el.closest?.('[data-letter]')?.getAttribute('data-letter');
@@ -566,6 +818,7 @@ export function samplerExpression(act, ms, names) {
         ? '' : (words ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
       return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
+    const key = (el) => identity(el, semanticKey(el));
     /* The browser's own answer to "is a transition running", for the
        length of this sample only; restored before the promise resolves. */
     let active = false;
@@ -620,23 +873,9 @@ export function samplerExpression(act, ms, names) {
        gone by the first sample, no frame held it, and the injected cut in
        --prove went unreported. It also gives the teleport test real
        neighbours at the start of a run instead of a missing one. */
-    const go = () => {
-      if (act === 'none') return;
-      if (act === 'inject') window.__yankProof();
-      else if (act.startsWith('goto:')) location.assign(act.slice(5));
-      else if (act === 'back') {
-        const btn = document.querySelector('[data-screen-back]');
-        if (btn) btn.click();
-        else history.back();
-      }
-      else {
-        const hits = document.querySelectorAll(act);
-        const hit = [...hits].find((el) => el.offsetParent !== null) || hits[0];
-        if (hit) hit.click();
-      }
-    };
+    const go = () => { action = dispatch(scene); frames[0].action = action; };
     let started = false;
-    return await new Promise((done) => {
+    return await new Promise((done, reject) => {
       /* Change a hidden sentinel in rAF. ResizeObserver reads after the app's
          resize actions and before paint, so intermediate layout never enters
          the report. The sentinel changes only once per frame. */
@@ -733,6 +972,7 @@ export function samplerExpression(act, ms, names) {
             let scrollY = window.scrollY;
             for (let up = el.parentElement; up; up = up.parentElement) scrollY += up.scrollTop;
             rows[k] = {
+              semantic: semanticKey(el),
               x: Math.round(box.x * 10) / 10,
               y: Math.round(box.y * 10) / 10,
               w: Math.round(box.width * 10) / 10,
@@ -755,10 +995,12 @@ export function samplerExpression(act, ms, names) {
             const row = vtRow(side, name);
             if (row) vt[`${side}(${name})`] = row;
           }
-        frames.push({ at: Math.round(now), active, rows, vt });
+        frames.push({ at: Math.round(now), wallAt: performance.timeOrigin + performance.now(), active, rows, vt });
         if (!started) {
           started = true;
-          go();
+          try { go(); } catch (error) {
+            observer.disconnect(); sentinel.remove(); restore(); reject(error); return;
+          }
         }
         if (now < ms) requestAnimationFrame(tick);
         else {
@@ -776,7 +1018,7 @@ export function samplerExpression(act, ms, names) {
       requestAnimationFrame(tick);
     });
   };
-  return `(${fn})(${JSON.stringify(act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)})`;
+  return `(${fn})(${JSON.stringify(typeof act === 'string' ? { act } : act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)}, ${dispatchSceneAction}, ${createMarkIdentity})`;
 }
 
 /** The arithmetic, in node: per mark, per consecutive frame pair.
@@ -1544,9 +1786,9 @@ const HYDRATION_SCENES = [
      opens over Home's own cold mount - the after-save state a real quick
      log lands in. */
   { name: 'quick-log-dims', at: '/?quickLogDims={entry}', needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
-  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the quick add fan opening' },
-  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', is: 'the dose editor sheet' },
-  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet' },
+  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
+  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
+  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },
   /* The two prologue scenes. Onboarding only exists before the profile
      finishes it, so the empty profile records its cold mount between the
      jump and the walk. The lock gate is a boot state no route produces:
@@ -1580,6 +1822,7 @@ export const HYDRATION_NEEDS = {
 /** The hydration scenes a run covers: the table above, narrowed to `only`,
  *  with the proof scene always prepended when proving. */
 export function hydrationScreensFor({ prove = false, only = [] } = {}) {
+  for (const name of only) if (!HYDRATION_SCENES.some((scene) => scene.name === name)) throw new Error(`unknown cold-load scene: ${name}`);
   const scenes = only.length ? HYDRATION_SCENES.filter((s) => only.includes(s.name)) : HYDRATION_SCENES;
   return prove
     ? [{ name: PROOF.scene, at: '/', is: 'five marks built to be wrong, so the arithmetic can be seen to catch them' }, ...scenes]
@@ -1728,8 +1971,7 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
   const finish = document.querySelector('[data-finish]');
   if (!finish) throw new Error('no finish control on the done step');
   finish.click();
-  for (let i = 0; i < 60 && !(${ON_TODAY_BOOTED}); i++) await sleep(500);
-  return ${ON_TODAY_BOOTED};
+  return true;
 })()`;
 
 /** The demo bar's theme buttons, so a cold load reads the run's theme out
@@ -1827,6 +2069,22 @@ export function findHydrationYanks(frames) {
     frames: sliced.length,
     sampled: frames.length
   };
+}
+
+export async function saveSceneCast(cast, outDir, name, label) {
+  const directory = `${outDir}/${name}-${label}-cast`;
+  await mkdir(directory, { recursive: true });
+  const ordered = [...cast].sort((a, b) => a.at - b.at);
+  const clock = ordered[0]?.at ?? 0;
+  const frames = [];
+  for (const [index, frame] of ordered.entries()) {
+    const ms = Math.round(frame.at - clock);
+    const file = `${String(index).padStart(3, '0')}-${ms}ms.png`;
+    await writeFile(`${directory}/${file}`, Buffer.from(frame.data, 'base64'));
+    frames.push({ index, ms, at: frame.at, file });
+  }
+  await writeFile(`${directory}/frames.json`, JSON.stringify(frames, null, 2));
+  return { directory, frames: frames.length, clock };
 }
 
 /** The render half over the same scene's cast, with the timestamped
@@ -1937,11 +2195,15 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
   const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`, EVIDENCE_CAP, { readyFrame: result.readyFrame });
   if (dump || dom.yanks.length)
     await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
+  const evidence = dom.yanks.length ? await saveSceneCast(result.cast, outDir, name, `${profile}-${theme}`) : null;
   const entry = {
     scene: name,
+    ...(evidence ? { evidence } : {}),
     profile,
     theme,
     is,
+    ...(result.action ? { action: result.action } : {}),
+    ...(result.coverageProof ? { coverageProof: result.coverageProof } : {}),
     instrument: 'rows',
     styleFrames: dom.frames,
     sampled: dom.sampled,
@@ -1953,6 +2215,13 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
   report.push(entry);
   console.log(`[${profile}-${theme}] ${describeHydrationRun(name, dom, render)}`);
   return entry;
+}
+
+export function missingPaintedProof(report) {
+  const runs = report.filter((run) => run.scene === PROOF.scene);
+  if (!runs.length) return ['the painted proof scene'];
+  return runs.filter((run) => !(run.pixelFindings ?? []).some((finding) => finding.areaPct >= 0.05))
+    .map((run) => `${run.profile}:${run.theme}:pass ${run.pass ?? 1}: camera saw no injected painted defect`);
 }
 
 /** What the proof scene owes but did not deliver, read off whichever
