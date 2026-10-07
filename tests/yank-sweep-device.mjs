@@ -92,16 +92,27 @@ import {
   UNLOCK_PIN_EXPRESSION,
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
+  finishFirstRun,
+  prepareSceneExpression,
+  actionPostconditionExpression,
+  coverageSummary,
+  createReportRecorder,
+  saveSceneCast,
+  coldLoadProofExpression,
+  markProfileExpression,
+  profileProofExpression,
   dropLeadingBlankFrames,
   fillTokens,
   findPixelYanks,
   findYanks,
   hydrationScreensFor,
   missingProofYanks,
+  missingPaintedProof,
   paintBlankSentinel,
   pushHydrationRun,
   replySlices,
   scenesFor,
+  sceneForTheme,
   samplerExpression,
   scrapeIdExpression,
   yesterdayEpochDay
@@ -269,6 +280,8 @@ function connect(url) {
 
 let client = null;
 const errors = [];
+const recorder = createReportRecorder(outDir, { target: 'device' }, SCENES, profiles, themes, hydration ? 1 : passes, errors);
+const report = recorder.report;
 
 async function initClient(c) {
   await c.send('Runtime.enable');
@@ -631,7 +644,7 @@ if (boot !== 'open' && boot !== 'pin') {
   console.log('boot: setup; walking the first run once');
   let walked = false;
   try {
-    walked = await ev(WALK_FIRST_RUN_FINISH_EXPRESSION, 150000);
+    walked = await finishFirstRun((expression) => ev(expression, 150000), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) });
   } catch (err) {
     console.error(`the first run walk failed: ${String(err).slice(0, 200)}`);
     process.exit(1);
@@ -643,10 +656,13 @@ if (boot !== 'open' && boot !== 'pin') {
 }
 console.log(`boot: ${boot}`);
 
-const report = [];
+
 const writeEvidence = createDeviceEvidenceWriter(outDir, SCENES.map((scene) => scene.name), EVIDENCE_CAP);
 const profileKey = 'yank-sweep-profile';
-const markProfile = (profile) => ev(`localStorage.setItem(${JSON.stringify(profileKey)}, ${JSON.stringify(profile)}); true;`);
+const markProfile = async (profile) => {
+  await ev(`localStorage.setItem(${JSON.stringify(profileKey)}, ${JSON.stringify(profile)}); true;`);
+  return ev(markProfileExpression(profile));
+};
 async function requirePersona() {
   const persona = await ev(`localStorage.getItem(${JSON.stringify(profileKey)}) === 'persona' &&
     localStorage.getItem('engender-has-entries') === '1' &&
@@ -702,7 +718,7 @@ if (originalAccessMode === 'passphrase' && (profiles.includes('empty') || SCENES
  *  Nothing is stamped on the page - the theme is already in the
  *  preferences boot stamps, and the cold window is meant to be
  *  untouched. */
-async function hydrationCold(href) {
+async function hydrationCold(href, profile, theme) {
   const pathname = href.split('?')[0].split('#')[0];
   return screencast(async (cast) => {
     await paintBlankSentinel(ev, sleep);
@@ -713,7 +729,8 @@ async function hydrationCold(href) {
       await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
     }
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    return { cast: dropLeadingBlankFrames([...cast]), frames };
+    const coverageProof = await ev(coldLoadProofExpression(href, profile, theme));
+    return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
   });
 }
 
@@ -721,10 +738,12 @@ async function hydrationCold(href) {
  *  recorded together. */
 async function hydrationSheet(scene, theme) {
   await settle(scene.at, theme);
+  await ev(prepareSceneExpression(scene));
   await sleep(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
-    const frames = await evFrames(samplerExpression(scene.act, HYDRATION_MS, VT_NAMES));
-    return { cast: [...cast], frames };
+    const frames = await evFrames(samplerExpression(scene, HYDRATION_MS, VT_NAMES));
+    const action = await ev(actionPostconditionExpression(scene, frames[0]?.action));
+    return { cast: [...cast], frames, action };
   });
 }
 
@@ -763,7 +782,7 @@ async function hydrationRunScene(scene, profile, theme, tokens) {
   }
   const href = fillTokens(scene.at, tokens);
   try {
-    const result = scene.act ? await hydrationSheet(scene, theme) : await hydrationCold(href);
+    const result = scene.act ? await hydrationSheet(scene, theme) : await hydrationCold(href, profile, theme);
     await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
   } catch (err) {
     report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });
@@ -777,6 +796,7 @@ async function hydrationScenes() {
     if (profile === 'persona') {
       if (skipSeed) {
         await requirePersona();
+        await markProfile('persona');
         console.log('[persona] skip-seed: using previously seeded persona');
       } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
@@ -787,38 +807,8 @@ async function hydrationScenes() {
       }
       await sleep(1500);
     } else {
-      /* The onboarding mount exists only here, between the jump and the
-          walk that finishes the first run. The jump happens inside the
-          scene's cast when the scene runs, and here when a --scenes
-          filter has narrowed it away - the walk below assumes the first
-          run is open, and without a jump it would wait on a screen the
-          app never showed. */
-      if (!SCENES.some((s) => s.name === 'onboarding-mount'))
-        await ev(JUMP_FIRST_RUN_EXPRESSION);
-      if (SCENES.some((s) => s.name === 'onboarding-mount')) {
-        try {
-          const mounted = await screencast(async (cast) => {
-            await ev(JUMP_FIRST_RUN_EXPRESSION);
-            await ev(waitForExpression('[data-next]', 30000, '/onboarding'));
-            const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-            return { cast: [...cast], frames };
-          });
-          await pushHydrationRun(report, outDir, {
-            name: 'onboarding-mount',
-            is: 'the first run opening over an empty journal',
-            profile,
-            theme: themes[0],
-            result: mounted
-          });
-        } catch (err) {
-          report.push({ scene: 'onboarding-mount', profile, theme: themes[0], error: String(err).slice(0, 300) });
-          console.log(`[${profile}-${themes[0]}] onboarding-mount: ERROR ${String(err).slice(0, 200)}`);
-        }
-      }
-      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION, 150000))) {
-        console.error('the first run never finished; stopping this profile');
-        continue;
-      }
+      await ev(JUMP_FIRST_RUN_EXPRESSION);
+      await finishFirstRun((expression) => ev(expression, 150000), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) });
       await markProfile('empty');
     }
 
@@ -827,6 +817,22 @@ async function hydrationScenes() {
          cold load reads it out of the preferences boot stamps. */
       await settle('/', theme);
       await ev(DEMO_THEME_EXPRESSION(theme));
+      await ev(profileProofExpression(profile));
+      if (profile === 'empty' && SCENES.some((scene) => scene.name === 'onboarding-mount')) {
+        try {
+          const result = await screencast(async (cast) => {
+            await ev(JUMP_FIRST_RUN_EXPRESSION);
+            await ev(waitForExpression('[data-next]', 30000, '/onboarding'));
+            const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+            return { cast: [...cast], frames };
+          });
+          await pushHydrationRun(report, outDir, { name: 'onboarding-mount', is: 'the first run opening over an empty journal', profile, theme, result, dump });
+        } catch (error) {
+          report.push({ scene: 'onboarding-mount', profile, theme, error: String(error) });
+        }
+        await finishFirstRun((expression) => ev(expression, 150000), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) });
+        await markProfile('empty');
+      }
       const { tokens, skipped } = await hydrationTokens(profile, theme);
       for (const note of skipped)
         console.log(`[${profile}] no ${note} to resolve in this journal; its detail scenes will skip`);
@@ -842,7 +848,8 @@ async function hydrationScenes() {
          dependency on scrape order without touching how later scenes in
          the loop chain from each other. */
       await settle('/', theme);
-      for (const scene of SCENES) {
+      for (const listedScene of SCENES) {
+        const scene = sceneForTheme(listedScene, theme);
         if (scene.setup) continue; /* the prologues run outside the loop */
         if (scene.when && scene.when !== profile) continue;
         if (scene.name === PROOF.scene) {
@@ -856,7 +863,7 @@ async function hydrationScenes() {
             const frames = await evFrames(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
             return { cast: [...cast], frames };
           });
-          await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result });
+          await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, dump });
           continue;
         }
         await hydrationRunScene(scene, profile, theme, tokens);
@@ -869,10 +876,15 @@ async function hydrationScenes() {
      preferences first so the cold load actually boots with it. */
   const lockScene = SCENES.find((s) => s.setup === 'pin');
   if (lockScene && profiles.includes('persona')) {
+    await settle('/', themes[0]);
+    await ev(RESET_PERSONA_EXPRESSION, 2_700_000);
+    await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
+    await markProfile('persona');
+    for (const theme of themes) {
     try {
-      await settle('/', themes[0]);
-      await ev(DEMO_THEME_EXPRESSION(themes[0]));
-      await settle('/settings/access-mode', themes[0]);
+      await settle('/', theme);
+      await ev(DEMO_THEME_EXPRESSION(theme));
+      await settle('/settings/access-mode', theme);
       if ((await accessMode()) !== 'pin') await ev(LOCK_SETUP_EXPRESSION(PIN));
       const result = await screencast(async (cast) => {
         await paintBlankSentinel(ev, sleep);
@@ -885,15 +897,18 @@ async function hydrationScenes() {
         name: 'lock-gate',
         is: lockScene.is,
         profile: 'persona',
-        theme: themes[0],
-        result
+        theme: theme,
+        result,
+      dump
       });
       await ev(UNLOCK_PIN_EXPRESSION(PIN));
     } catch (err) {
-      report.push({ scene: 'lock-gate', profile: 'persona', theme: themes[0], error: String(err).slice(0, 300) });
-      console.log(`[persona-${themes[0]}] lock-gate: ERROR ${String(err).slice(0, 200)}`);
+      report.push({ scene: 'lock-gate', profile: 'persona', theme: theme, error: String(err).slice(0, 300) });
+      console.log(`[persona-${theme}] lock-gate: ERROR ${String(err).slice(0, 200)}`);
     }
   }
+  }
+
 }
 
 /* ---------- the gesture run (ticket 100) ---------- */
@@ -907,6 +922,7 @@ if (hydration) {
       await settle('/', themes[0]);
       if (skipSeed) {
         await requirePersona();
+        await markProfile('persona');
         console.log('[persona] skip-seed: using previously seeded persona');
       } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
         console.error('the persona reset never reached Home; stopping this profile');
@@ -919,7 +935,7 @@ if (hydration) {
     } else {
       await settle('/', themes[0]);
       await ev(JUMP_FIRST_RUN_EXPRESSION);
-      if (!(await ev(WALK_FIRST_RUN_FINISH_EXPRESSION, 150000))) {
+      if (!(await finishFirstRun((expression) => ev(expression, 150000), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) }))) {
         console.error('the first run never finished; stopping this profile');
         continue;
       }
@@ -928,23 +944,37 @@ if (hydration) {
     }
 
     for (const theme of themes) {
+      await settle('/', theme);
+      const profileProof = await ev(profileProofExpression(profile));
       try {
         await ev(DEMO_THEME_EXPRESSION(theme));
         await sleep(300);
       } catch {}
-      for (const scene of SCENES) {
+      for (const listedScene of SCENES) {
+        const scene = sceneForTheme(listedScene, theme);
         if (scene.when && scene.when !== profile) continue;
         for (let pass = 1; pass <= passes; pass++) {
           const label = `[${profile}-${theme}] ${scene.name} p${pass}`;
           try {
+            if (scene.reseed) {
+              await settle('/', theme);
+              await ev(RESET_PERSONA_EXPRESSION, 2_700_000);
+              await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
+              await markProfile(profile);
+            }
             await settle(scene.at, theme);
-            if (scene.firstRun) await ev(firstRunExpression(scene.firstRun));
+            if (scene.firstRun) {
+              await ev(firstRunExpression(scene.firstRun));
+              if (scene.name === 'setup-flag-pick') await ev(`document.querySelector('[data-palette-pick="trans"]')?.click(); true;`);
+            }
+            else await ev(prepareSceneExpression(scene));
             await sleep(1400);
             if (scene.act === 'inject') await ev(`(${INJECT_PROOF_EXPRESSION})()`);
             const result = await screencast(async (cast) => {
-              const frames = await evFrames(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+              const frames = await evFrames(samplerExpression(scene, SCENE_MS, VT_NAMES));
               return { cast: [...cast], frames };
             });
+            const action = await ev(actionPostconditionExpression(scene, result.frames[0]?.action));
             await sleep(600);
             /* The style half, exactly as the desktop sweep reads it. */
             const transitioned = result.frames.some((f) => f.active);
@@ -995,7 +1025,8 @@ if (hydration) {
 
             await writeEvidence({ scene: scene.name, profile, theme, pass }, findings, result.cast, castIndices);
 
-            if (dump)
+            const evidence = styleYanks.length ? await saveSceneCast(result.cast, outDir, scene.name, `${profile}-${theme}-p${pass}`) : null;
+            if (dump || styleYanks.length)
               await writeFile(
                 `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
                 JSON.stringify(result.frames, null, 1)
@@ -1013,6 +1044,9 @@ if (hydration) {
               theme,
               pass,
               is: scene.is,
+              action,
+              profileProof,
+              ...(evidence ? { evidence } : {}),
               instrument,
               styleFrames: styleFrames.length,
               sampled: result.frames.length,
@@ -1032,7 +1066,7 @@ if (hydration) {
                   : '')
             );
           } catch (err) {
-            report.push({ scene: scene.name, profile, theme, pass, error: String(err).slice(0, 300) });
+            report.push({ scene: scene.name, profile, theme, pass, action: { requested: scene.act }, error: String(err).slice(0, 300) });
             console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
           }
         }
@@ -1044,11 +1078,13 @@ if (hydration) {
   await restoreAccessMode(originalAccessMode);
 }
 
+await recorder.flush();
 await writeFile(
   `${outDir}/report.json`,
   JSON.stringify(
     {
       target: 'device',
+      complete: true,
       serial,
       ...(hydration ? { mode: 'hydration', profiles } : {}),
       thresholds: {
@@ -1060,6 +1096,7 @@ await writeFile(
       },
       themes,
       passes,
+      coverage: coverageSummary(SCENES, profiles, themes, hydration ? 1 : passes, report),
       report,
       errors
     },
@@ -1112,9 +1149,7 @@ if (existsSync(comparePath)) {
 if (prove) {
   const proofRuns = report.filter((r) => r.scene === PROOF.scene);
   const missing = missingProofYanks(report, { checkArrival: !args.includes('--hydration') });
-  const cameraSaw = proofRuns.some((r) =>
-    (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05)
-  );
+  const cameraSaw = missingPaintedProof(report).length === 0;
   if (missing.length || !cameraSaw) {
     console.error(
       `proof FAILED: ${missing.length ? `the style arithmetic did not report ${missing.join(' or ')}` : ''}` +
@@ -1130,3 +1165,7 @@ if (errors.length) {
   console.error(`${errors.length} page error(s):`);
   for (const e of errors) console.error(`  ${e.slice(0, 200)}`);
 }
+
+const coverage = coverageSummary(SCENES, profiles, themes, hydration ? 1 : passes, report);
+console.log('coverage:', JSON.stringify(coverage.groups));
+if (coverage.failed || coverage.missing) process.exitCode = 1;
