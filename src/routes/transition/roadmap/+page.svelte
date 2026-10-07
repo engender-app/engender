@@ -763,37 +763,32 @@
      and a done step still says what the next one follows from. The line
      itself is drawn rather than declared (ux-carpet ticket 236): a native
      text-decoration has no "from" state a transition can start from, so it
-     cut into place with the box's own fill. `.roadmap-strike-text` gives
-     the line something sized to the words rather than the row's own
-     column to travel across, `scaleX` from its left edge over the same
-     --dur-fast the box's fill uses. Left undone for a title that wraps to
-     a second line - rare (a custom goal's own words) and a straight line
-     through the middle of two lines still reads as struck, just not per
-     line the way the native property would. */
+     cut into place with the box's own fill.
+
+     Drawn as the inline span's own background, not a pseudo-element over
+     a block: `box-decoration-break: clone` gives every line of a wrapped
+     title its own copy of the background, so each line is struck through
+     its own middle. The old ::after was one line across the whole
+     inline-block, and on a stock title that wraps at 390px ("How you are
+     addressed at work or school") it sat in the gap between the two lines
+     and read as an underline (after-release 28, audit V08). It grows from
+     each line's left edge over the same --dur-fast the box's fill uses. */
   .roadmap-done {
     color: var(--text-2);
   }
 
   .roadmap-strike-text {
-    position: relative;
-    display: inline-block;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: 0 55%;
+    background-size: 0% 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-size var(--dur-fast) var(--ease-out);
   }
 
-  .roadmap-strike-text::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 2px;
-    background: currentColor;
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--dur-fast) var(--ease-out);
-  }
-
-  .roadmap-done .roadmap-strike-text::after {
-    transform: scaleX(1);
+  .roadmap-done .roadmap-strike-text {
+    background-size: 100% 2px;
   }
 
   /* Muted, not struck through: unlike a done step, a not-my-path one was
