@@ -10,6 +10,7 @@
    are stored as '' for built-ins and never read for them. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import type { TableName } from '../live/writes';
 import {
   BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
