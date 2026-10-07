@@ -15,20 +15,12 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
-  import { announce } from '$lib/stores/announcer.svelte';
 
   let ready = $state(updateReady());
   let dismissed = $state(false);
   let applying = $state(false);
 
   $effect(() => onUpdateReadyChange((next) => (ready = next)));
-
-  /* Said once as it appears, through the app's standing live region
-     (announcer.ts): the notice itself is inserted with its words already
-     in it, which a screen reader often does not read (after-release 21). */
-  $effect(() => {
-    if (ready && !dismissed) announce(m.update_ready_title());
-  });
 
   async function apply() {
     if (applying) return;
@@ -40,20 +32,26 @@
   }
 </script>
 
-{#if ready && !dismissed}
-  <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
-    <Icon name="download" size={20} />
-    <div class="notice-body">
-      <span class="notice-title">{m.update_ready_title()}</span>
-      {m.update_ready_body()}
-      <div style="margin-top:var(--space-2)">
-        <button class="btn btn-soft" data-update-apply disabled={applying} onclick={apply}>
-          <span>{m.update_apply()}</span>
-        </button>
+<!-- The status is this element, which stays while the notice comes and
+     goes: a notice inserted already holding its words is often not read
+     (after-release 21, audit L05-07). No box of its own, so the page lays
+     out as before. -->
+<div role="status" style="display: contents">
+  {#if ready && !dismissed}
+    <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
+      <Icon name="download" size={20} />
+      <div class="notice-body">
+        <span class="notice-title">{m.update_ready_title()}</span>
+        {m.update_ready_body()}
+        <div style="margin-top:var(--space-2)">
+          <button class="btn btn-soft" data-update-apply disabled={applying} onclick={apply}>
+            <span>{m.update_apply()}</span>
+          </button>
+        </div>
       </div>
+      <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (dismissed = true)}>
+        <Icon name="x" size={18} />
+      </button>
     </div>
-    <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (dismissed = true)}>
-      <Icon name="x" size={18} />
-    </button>
-  </div>
-{/if}
+  {/if}
+</div>
