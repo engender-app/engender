@@ -115,9 +115,6 @@ export interface EntryDraft {
   save(entries: Pick<EntriesArea, 'upsertEntry'>, creation?: Pick<EntryInput, 'starred' | 'debriefForAppointment'>): Promise<number>;
 }
 
-/** A blank draft for `epochDay`, or one hydrated from `existing` - the
-    one-time fill EntryEditor.svelte's `onFirstResult` applies once the
-    stored entry arrives over the async round trip. */
 /** How many regions actually say something, by the one rule bodyMap.ts
     states: a region on screen still at the midpoint is a slider waiting for
     input, not content. */
@@ -125,6 +122,9 @@ function loggedRegionCount(bodyRegions: Record<string, number>): number {
   return Object.values(bodyRegions).filter((value) => value !== BODY_REGION_MIDPOINT).length;
 }
 
+/** A blank draft for `epochDay`, or one hydrated from `existing` - the
+    one-time fill EntryEditor.svelte's `onFirstResult` applies once the
+    stored entry arrives over the async round trip. */
 export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: number | null): EntryDraft {
   return {
     savedId: undefined,
