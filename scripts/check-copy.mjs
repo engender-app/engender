@@ -80,6 +80,9 @@ const SPOKEN_ATTRIBUTES = new Set([
 /** At least one letter, in any alphabet. Separators and arrows are not copy. */
 const A_WORD = /\p{L}/u;
 
+/** Feminine past-tense endings: "zrobiłaś", "zrobiłeś" and the conditionals. */
+const GENDERED_READER_ENDINGS = ['łaś', 'łeś', 'łabyś', 'łbyś'];
+
 /**
  * Feminine predicate adjectives already found addressing the reader
  * directly, rather than agreeing with an ordinary feminine noun nearby
@@ -186,7 +189,7 @@ function genderedReaderFindings(pl) {
     const words = value.match(/\p{L}+/gu) ?? [];
     for (const word of words) {
       const lower = word.toLowerCase();
-      if (lower.endsWith('łaś') || GENDERED_READER_ADJECTIVES.has(lower)) {
+      if (GENDERED_READER_ENDINGS.some((ending) => lower.endsWith(ending)) || GENDERED_READER_ADJECTIVES.has(lower)) {
         problems.push({ key, message: `${key} genders the reader: "${word}" in messages/pl.json` });
       }
     }

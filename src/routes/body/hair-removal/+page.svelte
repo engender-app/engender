@@ -36,7 +36,6 @@
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';

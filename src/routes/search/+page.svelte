@@ -105,7 +105,7 @@
   import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
   import { fmtDateValue } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
