@@ -28,6 +28,9 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
+  import { crossfade, slideMonit } from '$lib/motion/reveal';
+  import { tallyInWords, type TallyWords } from '$lib/data/tallyWords';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -69,6 +72,19 @@
 
   let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), days));
   let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), days));
+  /* Under two plotted positions a card says its count in words rather than
+     drawing a lone ring in an empty plot (after-release 27, audit UI-12). */
+  let wordsMis = $derived(tallyInWords(misgendered, plottedMis.points.length));
+  let wordsCorrect = $derived(tallyInWords(correctlyGendered, plottedCorrect.points.length));
+  const longDay = (day: number) => fmtDay(day, { day: 'numeric', month: 'long' });
+  const sayTally = (words: TallyWords) =>
+    words.kind === 'none'
+      ? m.tally_words_none()
+      : words.kind === 'once'
+        ? m.tally_words_once({ date: longDay(words.day) })
+        : words.kind === 'one-day'
+          ? m.tally_words_one_day({ count: String(words.count), date: longDay(words.day) })
+          : m.tally_words_span({ count: String(words.count), from: longDay(words.from), to: longDay(words.to) });
 
   /* The presentation chip (ticket 17, ADR-0048): highlights, never
      filters, so both charts above keep drawing exactly what they draw
@@ -214,18 +230,30 @@
   <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
     <ChartCard level={2} heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
-      <AreaChart
-        scrubLabel={grainLabel(plottedMis.grain)}
-        points={plottedMis.points}
-        min={0}
-        max={maxCount}
-        from={rangeEnds.from}
-        to={rangeEnds.to}
-        formatValue={whole}
-        annotations={annotationsQuery.rows}
-        highlight={highlightMis}
-        ariaLabel={m.tally_misgendered()}
-      />
+      {#if wordsMis}
+        <!-- Keyed on the sentence, so a tap or an undo that changes it
+             crossfades the words rather than swapping them in a frame. -->
+        <ChartEmpty>
+          <span class="tally-words" data-tally-words>
+            {#key sayTally(wordsMis)}<span transition:crossfade>{sayTally(wordsMis)}</span>{/key}
+          </span>
+        </ChartEmpty>
+      {:else}
+        <div transition:slideMonit>
+          <AreaChart
+            scrubLabel={grainLabel(plottedMis.grain)}
+            points={plottedMis.points}
+            min={0}
+            max={maxCount}
+            from={rangeEnds.from}
+            to={rangeEnds.to}
+            formatValue={whole}
+            annotations={annotationsQuery.rows}
+            highlight={highlightMis}
+            ariaLabel={m.tally_misgendered()}
+          />
+        </div>
+      {/if}
     </ChartCard>
 
     <!-- This counter's own actions, under this counter's chart: the row sits
@@ -259,18 +287,30 @@
       kind="tally-correctly-gendered"
       role={roleAt(activeFlag.roles, 0)}
     >
-      <AreaChart
-        scrubLabel={grainLabel(plottedCorrect.grain)}
-        points={plottedCorrect.points}
-        min={0}
-        max={maxCount}
-        from={rangeEnds.from}
-        to={rangeEnds.to}
-        formatValue={whole}
-        annotations={annotationsQuery.rows}
-        highlight={highlightCorrect}
-        ariaLabel={m.tally_correctly_gendered()}
-      />
+      {#if wordsCorrect}
+        <!-- Keyed on the sentence, so a tap or an undo that changes it
+             crossfades the words rather than swapping them in a frame. -->
+        <ChartEmpty>
+          <span class="tally-words" data-tally-words>
+            {#key sayTally(wordsCorrect)}<span transition:crossfade>{sayTally(wordsCorrect)}</span>{/key}
+          </span>
+        </ChartEmpty>
+      {:else}
+        <div transition:slideMonit>
+          <AreaChart
+            scrubLabel={grainLabel(plottedCorrect.grain)}
+            points={plottedCorrect.points}
+            min={0}
+            max={maxCount}
+            from={rangeEnds.from}
+            to={rangeEnds.to}
+            formatValue={whole}
+            annotations={annotationsQuery.rows}
+            highlight={highlightCorrect}
+            ariaLabel={m.tally_correctly_gendered()}
+          />
+        </div>
+      {/if}
     </ChartCard>
 
     {#if logsToday}
@@ -310,5 +350,13 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
+  }
+  /* The sentence that stands in for a chart too small to draw. A grid, so
+     the leaving sentence, taken out of flow by crossfade, stays centred
+     where it was while the new one fades in over it. */
+  .tally-words {
+    position: relative;
+    display: grid;
+    justify-items: center;
   }
 </style>
