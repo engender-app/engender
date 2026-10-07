@@ -1776,7 +1776,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    hit circle itself, which scales with everything else. */
 .chart-hit { fill: transparent; cursor: pointer; outline: none; }
 .chart-hit:focus-visible { stroke: var(--focus-ring); stroke-width: 2; }
-.chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-5); text-align: center; }
 
 /* ---------- sheets, toasts ---------- */
 /* Fixed rather than absolute, and against the app frame rather than the
