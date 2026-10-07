@@ -94,7 +94,7 @@ export const AGENDA_CAP = 3;
 export interface AgendaItem {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy.
       Keyed by kind *and* day, since a weekly injection earns one mark per
-      slot inside a seven-day window. */
+      slot inside the window. */
   key: string;
   kind: DayAheadMarkKind;
   epochDay: number;
@@ -142,7 +142,7 @@ export interface AgendaInput {
 }
 
 /** The window Today asks `dayAhead` for: `AGENDA_DAYS` days starting today,
-    both ends inclusive, so a week opened on a Monday ends on the Sunday.
+    both ends inclusive, so the last day is today plus `AGENDA_DAYS - 1`.
     Today itself is in it - today's own appointment is as much a thing
     arriving as Thursday's. */
 export function agendaWindow(todayEpochDay: number): { fromEpochDay: number; toEpochDay: number } {

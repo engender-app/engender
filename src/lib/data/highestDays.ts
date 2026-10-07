@@ -61,7 +61,7 @@ interface HighestDay {
   records: DayRecords;
 }
 
-/** The top `HIGHEST_DAYS_CAP` days by euphoria_dysphoria, highest first. */
+/** The top `HIGHEST_DAYS_CAP` days by the chosen metric's daily value, highest first. */
 export function rankHighestDays(todayEpochDay: number, byDay: DayAverage[]): DayAverage[] {
   return byDay
     .filter((point) => point.day <= todayEpochDay)
@@ -69,7 +69,7 @@ export function rankHighestDays(todayEpochDay: number, byDay: DayAverage[]): Day
     .slice(0, HIGHEST_DAYS_CAP);
 }
 
-/** The top `HIGHEST_DAYS_CAP` days by euphoria_dysphoria, each with what the
+/** The top `HIGHEST_DAYS_CAP` days by the chosen metric, each with what the
     day assembler holds for it. */
 export async function highestDays(
   todayEpochDay: number,

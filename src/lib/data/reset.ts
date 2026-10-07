@@ -1,7 +1,8 @@
 /* "I forgot my PIN": the one way back into the app, and it costs the whole
    journal (ADR-0014). There is no data-preserving recovery to offer -
-   the PIN is a hash - so the honest escape hatch is this one, clearly
-   labeled, with the loss stated before it happens.
+   the PIN only derives the key that wraps the data key (ADR-0041), and a
+   forgotten one cannot be brought back - so the honest escape hatch
+   is this one, clearly labeled, with the loss stated before it happens.
 
    It wipes what this installation holds, not what an archive holds: an
    export made earlier still restores everything, and the reset screen says

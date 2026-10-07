@@ -29,8 +29,9 @@
 
    It does not handle the case of two rate constants being equal, which
    makes the denominators above zero. The published posteriors do not go
-   there: across all 1565 samples the closest two rate constants come within
-   0.52% of each other, which is far from the cancellation that would need
+   there: across the 1565 samples measured (five esters, 313 each, before
+   undecylate was dropped; four remain) the closest two rate constants come
+   within 0.52% of each other, which is far from the cancellation that would need
    the limit forms. A guard that cannot fire would just be a claim that this
    was checked, so the check is written down here instead. */
 
@@ -165,7 +166,7 @@ function bandFor(
   toEpochDay: number
 ): CurveBandPoint[] {
   /* Only the injections that can still be contributing. The caller hands
-     over a year of them (CURVE_LOOKBACK_DAYS) because it cannot know the
+     over CURVE_LOOKBACK_DAYS (63 days) of them because it cannot know the
      ester before it reads them, but a valerate injection is spent in twenty
      days, and every one older than that would otherwise cost 313 evaluations
      per sampled point to add nothing. Measured: this is the difference
