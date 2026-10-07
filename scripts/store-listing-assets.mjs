@@ -10,8 +10,8 @@ import { launchChromium } from '../tests/browser-harness.mjs';
 const output = resolve(process.argv[2] ?? 'fastlane/metadata/android');
 const fixedTime = new Date('2026-10-05T10:00:00Z');
 const locales = [
-  { code: 'en-US', language: 'en', claim: 'Track your transition. Your journal stays on your device.', note: 'The barista called out my new name today and it sounded right.' },
-  { code: 'pl-PL', language: 'pl', claim: 'Zapisuj tranzycję. Dziennik zostaje na urządzeniu.', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
+  { code: 'en-US', language: 'en', claim: 'Track your transition.', note: 'The barista called out my new name today and it sounded right.' },
+  { code: 'pl-PL', language: 'pl', claim: 'Zapisuj tranzycję.', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
 ];
 // Store order: the transition areas the listing describes, HRT first after Today.
 const screens = [
@@ -74,9 +74,9 @@ try {
     await artwork.setContent(`<!doctype html><html lang="${locale.language}"><style>
       @font-face{font-family:Outfit;src:url(data:font/woff2;base64,${font})}
       @font-face{font-family:Outfit;src:url(data:font/woff2;base64,${extendedFont});unicode-range:U+0100-024F}
-      *{box-sizing:border-box}body{margin:0;width:1024px;height:500px;background:#F4F8FB;color:#152F43;font-family:Outfit,sans-serif;padding:100px 72px}
+      *{box-sizing:border-box}body{margin:0;width:1024px;height:500px;background:#F4F8FB;color:#152F43;font-family:Outfit,sans-serif;padding:0 72px 40px;display:flex;flex-direction:column;justify-content:center}
       h1{font-size:92px;line-height:1;margin:0 0 32px;font-weight:600;letter-spacing:-3px}
-      p{font-size:29px;margin:0;white-space:nowrap}
+      p{font-size:40px;margin:0;white-space:nowrap}
       footer{position:absolute;inset:auto 0 0;height:40px;background:linear-gradient(to right,#5BCEFA 0% 20%,#F5A9B8 20% 40%,#FFFFFF 40% 60%,#F5A9B8 60% 80%,#5BCEFA 80% 100%)}
       </style><h1>engender</h1><p>${locale.claim}</p><footer></footer></html>`);
     await artwork.evaluate(() => document.fonts.ready);
