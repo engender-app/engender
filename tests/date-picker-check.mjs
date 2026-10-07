@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
-import { launchChromium, settlePage } from './browser-harness.mjs';
+import { dateValue, launchChromium, settlePage } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -56,7 +56,7 @@ try {
         assert.ok(ownsEdges, 'neighboring dates do not overlap hit regions');
         await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
         await closed(page);
-        assert.match(await input.inputValue(), new RegExp(`-${day}$`), 'adjacent day selected through actual hit target');
+        assert.match(await dateValue(input), new RegExp(`-${day}$`), 'adjacent day selected through actual hit target');
       }
 
       /* Keyboard parity: ArrowDown opens on the chosen day, arrows move a
@@ -78,16 +78,17 @@ try {
       assert.match(await title(page), /2027/, 'Shift+PageDown turns the year');
       await page.keyboard.press('Enter');
       await closed(page);
-      assert.match(await input.inputValue(), /^2027-\d\d-15$/, 'Enter picks the day under the cursor');
+      assert.match(await dateValue(input), /^2027-\d\d-15$/, 'Enter picks the day under the cursor');
       assert.equal(await input.evaluate(el => el === document.activeElement), true, 'picking returns focus to the field');
 
       await input.click();
       await enterDate(page, '2000-02-29');
       await closed(page);
-      assert.equal(await input.inputValue(), '2000-02-29', 'historical leap day preserves local date east of UTC');
+      assert.equal(await dateValue(input), '2000-02-29', 'historical leap day preserves local date east of UTC');
+      assert.equal(await input.inputValue(), language === 'pl' ? '29 lut 2000' : '29 Feb 2000', 'the field writes the day out, not yyyy-mm-dd');
       await input.click();
       await enterDate(page, '2000-02-30');
-      assert.equal(await input.inputValue(), '2000-02-29', 'invalid date does not roll over');
+      assert.equal(await dateValue(input), '2000-02-29', 'invalid date does not roll over');
       assert.equal(await page.locator(`${PICKER} [data-date-picker-entry]`).evaluate(el => el.validity.valid), false);
 
       /* The arrows and the month drum. */
@@ -136,9 +137,9 @@ try {
       await shot(page, `book-${language}-${width}-text200`);
       await page.evaluate(() => document.documentElement.style.fontSize = '');
       await end.click();
-      const previousEnd = await end.inputValue();
+      const previousEnd = await dateValue(end);
       await enterDate(page, '1900-01-01');
-      assert.equal(await end.inputValue(), previousEnd, 'range bound rejects a date before start');
+      assert.equal(await dateValue(end), previousEnd, 'range bound rejects a date before start');
       await page.keyboard.press('Escape');
       await closed(page);
 
@@ -149,15 +150,15 @@ try {
       await optionalEnd.click();
       await enterDate(page, '2020-09-30');
       await closed(page);
-      assert.equal(await optionalEnd.inputValue(), '2020-09-30');
+      assert.equal(await dateValue(optionalEnd), '2020-09-30');
       await optionalEnd.click();
       await page.locator(`${PICKER} [data-date-picker-clear]`).click();
       await closed(page);
-      assert.equal(await optionalEnd.inputValue(), '', 'open-ended range stays empty after clearing');
+      assert.equal(await dateValue(optionalEnd), '', 'open-ended range stays empty after clearing');
       await optionalEnd.click();
       await page.keyboard.press('Escape');
       await closed(page);
-      assert.equal(await optionalEnd.inputValue(), '', 'opening and dismissing empty end does not choose today');
+      assert.equal(await dateValue(optionalEnd), '', 'opening and dismissing empty end does not choose today');
       await page.close();
       console.log(`PASS ${language} ${width}px: adjacent hits, keyboard, history, drum, bounds, clearing, range text and Escape`);
     }
@@ -170,7 +171,7 @@ try {
   await page.locator('#lab-date').click();
   await enterDate(page, '2001-09-30');
   await closed(page);
-  assert.equal(await page.locator('#lab-date').inputValue(), '2001-09-30', 'historical action reachable in short viewport');
+  assert.equal(await dateValue(page.locator('#lab-date')), '2001-09-30', 'historical action reachable in short viewport');
   await page.locator('#lab-date').click();
   /* fill() does not wait for a stable position. Let the sheet finish its
      entrance before measuring the pinch-zoomed action; its fallback can
@@ -198,7 +199,7 @@ try {
   const box = await apply.boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await closed(page);
-  assert.equal(await page.locator('#lab-date').inputValue(), '2001-10-01', 'date action reachable at real 200% page scale');
+  assert.equal(await dateValue(page.locator('#lab-date')), '2001-10-01', 'date action reachable at real 200% page scale');
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#lab-date').click();

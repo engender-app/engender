@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium, screencast } from './browser-harness.mjs';
+import { fillDate, launchChromium, screencast, dateValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -125,8 +125,8 @@ try {
   await page.getByRole('alert').filter({ hasText: 'Could not save' }).waitFor();
   assert.equal(await page.locator('#tr-label').inputValue(), 'Retained tryout');
   assert.equal(await page.locator('#tr-description').inputValue(), 'Complete description');
-  assert.equal(await page.locator('#tr-start').inputValue(), '2024-03-11');
-  assert.equal(await page.locator('#tr-end').inputValue(), '2024-04-12');
+  assert.equal(await dateValue(page.locator('#tr-start')), '2024-03-11');
+  assert.equal(await dateValue(page.locator('#tr-end')), '2024-04-12');
   assert.equal(await page.locator('[data-segment="style"]').getAttribute('aria-checked'), 'true');
   assert.equal(await page.locator('[data-save-tryout]').isEnabled(), true);
   assert.equal(await page.evaluate(() => window.tryoutFault.calls), 1);
@@ -156,8 +156,8 @@ try {
   await navigate(savedPath);
   await page.locator('#tr-description').waitFor();
   assert.equal(await page.locator('#tr-description').inputValue(), 'Complete description');
-  assert.equal(await page.locator('#tr-start').inputValue(), '2024-03-11');
-  assert.equal(await page.locator('#tr-end').inputValue(), '2024-04-12');
+  assert.equal(await dateValue(page.locator('#tr-start')), '2024-03-11');
+  assert.equal(await dateValue(page.locator('#tr-end')), '2024-04-12');
   console.log('PASS pending retry blocks navigation and repeated taps; creation reopens once with photo controls');
   await page.locator('#tr-label').fill('Changed tryout');
   for (const departure of ['header', 'back', 'navigation']) {
@@ -296,7 +296,7 @@ try {
   await navigate(photoOwnerPath);
   await page.locator('#tr-label').waitFor();
   assert.equal(await page.locator('#tr-label').inputValue(), 'Navigation retained');
-  assert.notEqual(await page.locator('#tr-end').inputValue(), '');
+  assert.notEqual(await dateValue(page.locator('#tr-end')), '');
   await navigate('/more');
   await page.waitForURL('**/more');
   await page.locator('[data-hub-search]').waitFor();

@@ -135,20 +135,21 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.ok((await summary.boundingBox()).height >= 48);
     }
-    const storedLabels = await page.evaluate(async title => {
+    /* Written out, never yyyy-mm-dd (after-release 28, audit L08-10). */
+    const writtenDays = locale === 'pl' ? ['3 paź 2024', '5 paź 2024'] : ['3 Oct 2024', '5 Oct 2024'];
+    const storedLabels = await page.evaluate(async ({ title, writtenDays }) => {
       const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
       const { m } = await import('/src/lib/paraglide/messages.js');
-      const { dateInputValueFromEpochDay } = await import('/src/lib/data/epochDay.ts');
       const { moodName } = await import('/src/lib/data/vocabulary/labels.ts');
       const { vocabulary } = await import('/src/lib/data/vocabulary/vocabulary.ts');
       const question = (await journal.savedQuestions.getSavedQuestions()).find(q => q.name === title);
       const tag = vocabulary.tags[0];
       await journal.savedQuestions.upsertSavedQuestion({ ...question, tagIds: [tag.id], moods: [2], startEpochDay: 19999, endEpochDay: 20001, hasNote: true, hasPhoto: true, starred: true });
       return [m.saved_question_tag({ tag: tag.label }), m.search_filter_mood_chip({ mood: moodName(2) }),
-        m.search_filter_start_chip({ date: dateInputValueFromEpochDay(19999) }),
-        m.search_filter_end_chip({ date: dateInputValueFromEpochDay(20001) }), m.search_filter_has_note(), m.search_filter_has_photo(),
+        m.search_filter_start_chip({ date: writtenDays[0] }),
+        m.search_filter_end_chip({ date: writtenDays[1] }), m.search_filter_has_note(), m.search_filter_has_photo(),
         m.search_filter_starred()];
-    }, title);
+    }, { title, writtenDays });
     for (const label of storedLabels) await page.locator('[data-saved-question-definition]').getByText(label, { exact: true }).waitFor();
     /* Starred answers with the starred photo too, and counts it, as /search
        does with the same question (the ticket 16 follow-up). */

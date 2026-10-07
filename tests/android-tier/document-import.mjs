@@ -82,7 +82,7 @@ try {
   tapLabel(picker, fixtureName);
   await page.locator('#document-title').waitFor();
   const text = page.locator('#document-title');
-  const date = await page.locator('#document-day').inputValue();
+  const date = await page.locator('#document-day').getAttribute('data-date-value');
   await text.fill('Native document proof');
   await text.evaluate((el) => el.blur());
   await closeKeyboard();
@@ -90,7 +90,7 @@ try {
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
   assert.equal(await text.inputValue(), 'Native document proof');
-  assert.equal(await page.locator('#document-day').inputValue(), date);
+  assert.equal(await page.locator('#document-day').getAttribute('data-date-value'), date);
   console.log('PASS native Back protects import; Keep editing retains text/date');
 
   await page.locator('[data-sheet]').evaluate((el) => { el.scrollTop = 0; });

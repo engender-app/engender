@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium, settlePage } from './browser-harness.mjs';
+import { dateValue, fillDate, launchChromium, settlePage } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -80,7 +80,10 @@ async function reopen(flow) {
   await page.locator(`${flow.row.slice(0, -1)}="${flow.id}"]`).click();
 }
 async function valuesMatch(flow) {
-  for (const [id, value] of Object.entries(flow.values)) assert.equal(await page.locator(`#${id}`).inputValue(), value, id);
+  for (const [id, value] of Object.entries(flow.values)) {
+    const field = page.locator(`#${id}`);
+    assert.equal((await field.getAttribute('data-date-value')) ?? (await field.inputValue()), value, id);
+  }
   if (flow.handle === 'side-effect') assert.equal(await radio().getAttribute('data-segment'), '3');
   if (flow.handle === 'cycle-event') assert.equal(await radio().getAttribute('data-segment'), 'spotting');
   if (flow.handle === 'hair-stage') assert.equal(await radio().getAttribute('data-pick-scale'), 'other');
@@ -135,7 +138,7 @@ try {
     });
     await openNew(flow);
     const today = await page.evaluate(() => new Date().toLocaleDateString('sv-SE'));
-    assert.equal(await page.locator(`#${flow.date}`).inputValue(), today, 'Existing today default');
+    assert.equal(await dateValue(page.locator(`#${flow.date}`)), today, 'Existing today default');
     if (flow.handle === 'hair-stage') {
       assert.equal(await sheet().getByRole('radio', { checked: true }).count(), 0, 'No guessed hair scale');
       assert.equal(await page.locator('[data-save-hair-stage]').isDisabled(), true);
