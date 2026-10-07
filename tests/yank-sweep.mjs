@@ -120,6 +120,7 @@ import {
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   finishFirstRun,
   prepareSceneExpression,
+  actionPreparationExpression,
   actionPostconditionExpression,
   coverageSummary,
   createReportRecorder,
@@ -254,6 +255,7 @@ for (const profile of profiles) {
           if (scene.firstRun) {
             await firstRunTo(page, scene.firstRun);
             if (scene.name === 'setup-flag-pick') await page.evaluate(() => document.querySelector('[data-palette-pick="trans"]')?.click());
+              await page.evaluate(actionPreparationExpression(scene));
           }
           else await page.evaluate(prepareSceneExpression(scene));
           await page.waitForTimeout(1400);

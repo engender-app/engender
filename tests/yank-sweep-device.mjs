@@ -94,6 +94,7 @@ import {
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   finishFirstRun,
   prepareSceneExpression,
+  actionPreparationExpression,
   actionPostconditionExpression,
   coverageSummary,
   createReportRecorder,
@@ -966,6 +967,7 @@ if (hydration) {
             if (scene.firstRun) {
               await ev(firstRunExpression(scene.firstRun));
               if (scene.name === 'setup-flag-pick') await ev(`document.querySelector('[data-palette-pick="trans"]')?.click(); true;`);
+              await ev(actionPreparationExpression(scene));
             }
             else await ev(prepareSceneExpression(scene));
             await sleep(1400);

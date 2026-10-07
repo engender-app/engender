@@ -4,12 +4,13 @@ import { dispatchSceneAction, verifySceneAction, waitForReadiness, coverageSumma
 
 const control = (over = {}) => ({
   tagName: 'BUTTON', disabled: false, textContent: 'Open',
-  getBoundingClientRect: () => ({ width: 48, height: 48 }),
+  getBoundingClientRect: () => ({ width: 48, height: 48, left: 0, top: 0 }),
+  contains: () => false,
   getAttribute: () => null, closest: () => null, click: vi.fn(),
   ...over
 });
 const environment = (hits = []) => ({
-  document: { querySelectorAll: () => hits },
+  document: { querySelectorAll: () => hits, elementFromPoint: () => hits[0] },
   location: { pathname: '/settings', search: '' },
   getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' })
 });
@@ -166,21 +167,20 @@ it('opens the presentations manager after closing old overlays, then proves the 
 
 describe('keyboard gesture preparation', () => {
   it('focuses and exposes the intended grip before sampling', async () => {
-    const { prepareKeyboardAction } = await import('./yank-sweep-core.mjs');
     const hit = control({ getBoundingClientRect: () => ({ width: 48, height: 48, left: 20, top: 200 }) });
     const env = environment([hit]);
     hit.focus = vi.fn(() => { env.document.activeElement = hit; });
     hit.scrollIntoView = vi.fn();
     hit.contains = () => false;
     env.document.elementFromPoint = () => hit;
-    prepareKeyboardAction(hit, env);
+    dispatchSceneAction({ act: '[data-edit-grip]', key: 'ArrowDown' }, env, true);
     expect(hit.focus).toHaveBeenCalledOnce();
     expect(hit.scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'instant' });
     expect(env.document.activeElement).toBe(hit);
     env.document.elementFromPoint = () => control();
-    expect(() => prepareKeyboardAction(hit, env)).toThrow('covered');
+    expect(() => dispatchSceneAction({ act: '[data-edit-grip]', key: 'ArrowDown' }, env, true)).toThrow('covered');
     hit.focus = () => { env.document.activeElement = null; };
-    expect(() => prepareKeyboardAction(hit, env)).toThrow('focus');
+    expect(() => dispatchSceneAction({ act: '[data-edit-grip]', key: 'ArrowDown' }, env, true)).toThrow('focus');
   });
   it('rejects a keyboard dispatch without prior target focus', () => {
     const hit = control({ dispatchEvent: vi.fn() });
@@ -201,14 +201,47 @@ it('restores the requested real theme after palette preparation resets appearanc
     const env = environment();
     env.document.documentElement = { dataset: { theme } };
     env.document.querySelector = () => null;
-    env.document.querySelectorAll = (selector) => selector.startsWith('[data-palette-pick') || selector.startsWith('[data-segmented="theme"]')
-      ? [control({ scrollIntoView: () => {}, click: () => {
+    const cache = new Map();
+    env.document.querySelectorAll = (selector) => {
+      if (cache.has(selector)) return cache.get(selector);
+      const hits = selector.startsWith('[data-palette-pick') || selector.startsWith('[data-segmented="theme"]')
+      ? [control({ scrollIntoView: () => { env.document.elementFromPoint = () => env.document.querySelectorAll(selector)[0]; }, click: () => {
         selected.push(selector);
         env.document.documentElement.dataset.theme = selector.includes('data-segment="dark"') ? 'dark' : 'light';
       } })] : [];
+      cache.set(selector, hits);
+      return hits;
+    };
     const scene = sceneForTheme(scenesFor().find((item) => item.name === 'settings-palette'), theme);
     await runInNewContext(prepareSceneExpression(scene), env);
     expect(selected).toEqual(['[data-palette-pick="trans"]', `[data-segmented="theme"] [data-segment="${theme}"]`]);
     expect(env.document.documentElement.dataset.theme).toBe(theme);
   }
+});
+
+it('rejects fixed-navigation occlusion and prepares the intended click before capture', () => {
+  const hit = control({ getBoundingClientRect: () => ({ width: 48, height: 48, left: 20, top: 796 }) });
+  const nav = control();
+  const env = environment([hit]);
+  env.document.elementFromPoint = () => nav;
+  hit.contains = () => false;
+  hit.scrollIntoView = vi.fn(() => { env.document.elementFromPoint = () => hit; });
+  expect(() => dispatchSceneAction({ act: '[data-strip-earlier]' }, env)).toThrow('covered');
+  expect(hit.click).not.toHaveBeenCalled();
+  expect(dispatchSceneAction({ act: '[data-strip-earlier]' }, env, true)).toMatchObject({ prepared: true, dispatched: false });
+  expect(hit.scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'instant' });
+  expect(hit.click).not.toHaveBeenCalled();
+  expect(dispatchSceneAction({ act: '[data-strip-earlier]' }, env)).toMatchObject({ dispatched: true });
+  env.document.elementFromPoint = () => ({ parentElement: hit });
+  hit.contains = (node) => node?.parentElement === hit;
+  expect(dispatchSceneAction({ act: '[data-strip-earlier]' }, env)).toMatchObject({ dispatched: true });
+});
+
+it('keeps cold-load and injected proof actions explicitly programmatic', () => {
+  const env = environment();
+  env.document.elementFromPoint = () => { throw new Error('no control to hit-test'); };
+  env.__yankProof = vi.fn();
+  expect(dispatchSceneAction({ act: 'none' }, env)).toMatchObject({ programmatic: 'cold-load', dispatched: true });
+  expect(dispatchSceneAction({ act: 'inject' }, env)).toMatchObject({ programmatic: 'injected proof', dispatched: true });
+  expect(env.__yankProof).toHaveBeenCalledOnce();
 });

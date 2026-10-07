@@ -405,7 +405,7 @@ export function sceneForTheme(scene, theme) {
 }
 
 /** Dispatch proof travels with the first sampled frame on both transports. */
-export function dispatchSceneAction(scene, env = globalThis) {
+export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false) {
   const { document, location } = env;
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme };
@@ -431,6 +431,21 @@ export function dispatchSceneAction(scene, env = globalThis) {
   if (!visible.length) throw new Error(`target not visible: ${selector}`);
   const hit = visible.find((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('[inert]'));
   if (!hit) throw new Error(`no enabled target: ${selector}`);
+  if (prepareOnly) {
+    if (scene.key) {
+      hit.focus();
+      if (document.activeElement !== hit) throw new Error('keyboard target did not receive focus');
+    }
+    hit.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }
+  const box = hit.getBoundingClientRect();
+  const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  const front = document.elementFromPoint(point.x, point.y);
+  if (!box.width || !box.height || (front !== hit && !hit.contains(front))) throw new Error('target remains covered or outside viewport: ' + selector);
+  evidence.point = point;
+  evidence.bounds = { left: box.left, top: box.top, width: box.width, height: box.height };
+  evidence.hit = { tag: front.tagName, id: front.id || null, target: front === hit, descendant: front !== hit };
+  if (prepareOnly) return { ...evidence, prepared: true };
   const after = scene.after;
   if (after?.selector) evidence.beforePresent = !!document.querySelectorAll(after.selector)[0];
   if (after?.attribute) {
@@ -448,6 +463,8 @@ export function dispatchSceneAction(scene, env = globalThis) {
   evidence.dispatched = true;
   return evidence;
 }
+
+export const actionPreparationExpression = (scene) => `(${dispatchSceneAction})(${JSON.stringify(scene)}, globalThis, true)`;
 
 /** Check an explicit route or state outcome, never infer success from zero yanks. */
 export function verifySceneAction(scene, action, env = globalThis) {
@@ -602,28 +619,21 @@ export function coverageSummary(scenes, profiles, themes, passes, report) {
   return { ...counts, groups: grouped, missingRuns: missing, inventory: scenes };
 }
 
-/** Keyboard input starts on a focused, exposed control, as real Tab focus does. */
-export function prepareKeyboardAction(hit, env = globalThis) {
-  if (!hit) throw new Error('keyboard target missing during preparation');
-  hit.focus();
-  if (env.document.activeElement !== hit) throw new Error('keyboard target did not receive focus');
-  hit.scrollIntoView({ block: 'center', behavior: 'instant' });
-  const box = hit.getBoundingClientRect();
-  const front = env.document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-  if (!box.width || !box.height || (front !== hit && !hit.contains(front))) throw new Error('keyboard target remains covered after preparation');
-}
-
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};
-  const dispatch = ${dispatchSceneAction};
+  const control = ${dispatchSceneAction};
+  const dispatch = (step) => { control(step, globalThis, true); return control(step); };
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   for (const scrim of document.querySelectorAll('.fan-scrim, [data-sheet-scrim]')) scrim.click();
   for (let i = 0; i < 60 && document.querySelector('.fan-scrim, [data-sheet-scrim]'); i++) await sleep(50);
   if (document.querySelector('.fan-scrim, [data-sheet-scrim]')) throw new Error('previous overlay did not close');
   if (scene.name === 'settings-theme-switcher') dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
   if (scene.name === 'settings-palette') {
-    dispatch({ act: '[data-palette-pick="trans"]' });
-    dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+    for (const act of ['[data-palette-pick="trans"]', '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]']) {
+      dispatch({ act });
+      for (let i = 0; i < 60 && document.documentElement.dataset.appearanceTransition !== undefined; i++) await sleep(50);
+      if (document.documentElement.dataset.appearanceTransition !== undefined) throw new Error('palette preparation transition did not finish');
+    }
   }
   if (scene.name === 'settings-unit-switcher') dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
   if (document.querySelector('[data-edit-done]')) { dispatch({ act: '[data-edit-done]' }); await sleep(500); }
@@ -634,10 +644,7 @@ export const prepareSceneExpression = (scene) => `(async () => {
     dispatch({ act });
     await sleep(500);
   }
-  const hits = [...document.querySelectorAll(scene.act === 'back' ? '[data-screen-back]' : scene.act === 'inject' ? 'body' : scene.act)];
-  const hit = hits.find((el) => { const b = el.getBoundingClientRect(); return b.width && b.height; });
-  if (scene.key) (${prepareKeyboardAction})(hit);
-  else if (hit) hit.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  if (scene.act !== 'inject' && scene.act !== 'none') control(scene, globalThis, true);
   return true;
 })()`;
 
