@@ -13,11 +13,16 @@
    `.milestone-face` until deepening ticket 21 met ticket 10 at the merge and
    the two had written the same rule twice - a milestone's own face, and the
    day view's hair, recovery and tryout photographs. One rule, and a name
-   that is true of all four. */
+   that is true of all four.
+
+   The icon disc it stands in for became a square block of the stripe in
+   phase 10 (`.kit-row-ico`, --r-block), and this kept the circle, so a
+   photographed row was the one round mark in a column of squares
+   (after-release 28, audit L06-16). It takes the block's radius now. */
 .row-face {
   flex: 0 0 auto;
   display: flex;
-  border-radius: 50%;
+  border-radius: var(--r-block);
   overflow: hidden;
   border: var(--role-hairline);
 }

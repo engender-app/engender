@@ -182,13 +182,13 @@
   <!-- No actions: nothing lives beside the title. The back control returns
        to whichever screen led here, which is the appointment screen and nowhere
        else since phase 11 all-four-doors ticket 12 (smartBack), falling
-       back to it by name for a deep link or a reload (carpet 27). The title stays in the document for the outline
-       and for a screen reader, which is what a chromeless screen owes them
-       when the largest text on it is a question rather than a name. -->
+       back to it by name for a deep link or a reload (carpet 27). The title
+       is shown in the field like every other screen's (after-release 28,
+       audit UI-10): hidden, the field held only the back arrow and read as
+       a band with nothing in it above the question. -->
   <ScreenHeader
     title={m.in_the_room_title()}
     screen="in-the-room"
-    titleHidden
     back="/health/appointments"
   />
 
