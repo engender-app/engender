@@ -18,7 +18,6 @@
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
   import GateScreen from './GateScreen.svelte';
   import { collapse } from '$lib/motion/reveal';
-  import { announce } from '$lib/stores/announcer.svelte';
 
   let looking = $state(false);
   /* What the last look found, said in the line under the button. 'reopen'
@@ -28,19 +27,6 @@
      look; a hand-over that throws after a newer release was found is
      still 'reopen', since the newer release is there. */
   let result = $state<'none' | 'reopen' | 'failed' | null>(null);
-
-  const RESULT_LINE = {
-    none: m.boot_schema_too_new_still_old,
-    failed: m.boot_schema_too_new_check_failed,
-    reopen: m.boot_schema_too_new_reopen
-  };
-
-  /* Said through the app's standing live region (announcer.ts) rather than
-     by the line itself, which arrives already holding its words and is
-     often not read for that reason (after-release 21). */
-  $effect(() => {
-    if (result) announce(RESULT_LINE[result]());
-  });
 
   async function lookForNewer() {
     if (looking) return;
@@ -68,21 +54,29 @@
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
     </button>
-    {#if result === 'none'}
-      <!-- SF-004: this result used to appear with no announcement - a
-           silent content swap for anyone not looking at the screen. The
-           effect above says it now. -->
-      <p class="gate-body" data-nothing-newer transition:collapse>
-        {m.boot_schema_too_new_still_old()}
-      </p>
-    {:else if result === 'failed'}
-      <p class="gate-body" data-update-check-failed transition:collapse>
-        {m.boot_schema_too_new_check_failed()}
-      </p>
-    {:else if result === 'reopen'}
-      <p class="gate-body" data-newer-waiting transition:collapse>
-        {m.boot_schema_too_new_reopen()}
-      </p>
-    {/if}
+    <!-- SF-004: this result used to appear with no announcement - a
+         silent content swap for anyone not looking at the screen. The
+         status is this element, which is always there, rather than each line:
+         a region inserted already holding its words is often not read
+         (after-release 21, audit L05-07), and a line arriving inside a
+         region that was already there is. -->
+    <!-- No box of its own (display: contents), so an empty status adds no
+         gap under the button in .gate-actions' column. Inline rather than
+         a class: a component style block becomes its own stylesheet. -->
+    <div role="status" style="display: contents">
+      {#if result === 'none'}
+        <p class="gate-body" data-nothing-newer transition:collapse>
+          {m.boot_schema_too_new_still_old()}
+        </p>
+      {:else if result === 'failed'}
+        <p class="gate-body" data-update-check-failed transition:collapse>
+          {m.boot_schema_too_new_check_failed()}
+        </p>
+      {:else if result === 'reopen'}
+        <p class="gate-body" data-newer-waiting transition:collapse>
+          {m.boot_schema_too_new_reopen()}
+        </p>
+      {/if}
+    </div>
   </div>
 </GateScreen>
