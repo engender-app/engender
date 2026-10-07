@@ -15,19 +15,21 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
+  import { announce } from '$lib/stores/announcer.svelte';
 
-  /* False on the first render even when an update is already waiting, and
-     set by the effect below: the status element is then on the page empty
-     before the notice arrives inside it, which is what gets it read. This
-     component is loaded after boot, so a waiting update is the common case
-     (after-release 21). */
-  let ready = $state(false);
+  let ready = $state(updateReady());
   let dismissed = $state(false);
   let applying = $state(false);
 
+  $effect(() => onUpdateReadyChange((next) => (ready = next)));
+
+  /* Said through the app's standing live region (announcer.ts), which is on
+     the page long before this: the notice is inserted with its words in it,
+     possibly in the same render as the component itself, since this loads
+     after boot and an update can already be waiting, and a region that
+     arrives holding its words is often not read (after-release 21). */
   $effect(() => {
-    ready = updateReady();
-    return onUpdateReadyChange((next) => (ready = next));
+    if (ready && !dismissed) announce(m.update_ready_title());
   });
 
   async function apply() {
@@ -40,26 +42,20 @@
   }
 </script>
 
-<!-- The status is this element, which stays while the notice comes and
-     goes: a notice inserted already holding its words is often not read
-     (after-release 21, audit L05-07). No box of its own, so the page lays
-     out as before. -->
-<div role="status" style="display: contents">
-  {#if ready && !dismissed}
-    <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
-      <Icon name="download" size={20} />
-      <div class="notice-body">
-        <span class="notice-title">{m.update_ready_title()}</span>
-        {m.update_ready_body()}
-        <div style="margin-top:var(--space-2)">
-          <button class="btn btn-soft" data-update-apply disabled={applying} onclick={apply}>
-            <span>{m.update_apply()}</span>
-          </button>
-        </div>
+{#if ready && !dismissed}
+  <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
+    <Icon name="download" size={20} />
+    <div class="notice-body">
+      <span class="notice-title">{m.update_ready_title()}</span>
+      {m.update_ready_body()}
+      <div style="margin-top:var(--space-2)">
+        <button class="btn btn-soft" data-update-apply disabled={applying} onclick={apply}>
+          <span>{m.update_apply()}</span>
+        </button>
       </div>
-      <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (dismissed = true)}>
-        <Icon name="x" size={18} />
-      </button>
     </div>
-  {/if}
-</div>
+    <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (dismissed = true)}>
+      <Icon name="x" size={18} />
+    </button>
+  </div>
+{/if}
