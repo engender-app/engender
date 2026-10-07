@@ -591,3 +591,16 @@
     <Toasts />
   </div>
 </div>
+
+<style>
+  /* A toast centres in what the rail leaves, the strip the column and the
+     sheets centre in too (after-release 17). A chromeless screen
+     (/coming-back) has no rail to leave room for, and its column centres in
+     the whole width. Here rather than in components.css because .app and
+     .is-chromeless are this file's own classes. */
+  @container app (min-width: 1024px) {
+    .app:not(.is-chromeless) :global(.toast) {
+      left: calc(var(--rail-width) + var(--inset-left));
+    }
+  }
+</style>

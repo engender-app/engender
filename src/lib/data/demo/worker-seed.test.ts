@@ -10,8 +10,8 @@ import { runMigrations } from '../sqlite/migration-runner';
 import { migrations } from '../sqlite/migrations';
 import { openJournal } from '../journal/journal';
 import { persona } from './persona';
-import { preparePersonaJournal, seedPersonaInTransaction } from './worker-seed';
-import { writePersonaJournal } from './journal-seed';
+import { preparePersonaJournal, seedPersonaInTransaction, warmDemoPhotos } from './worker-seed';
+import { personaPhotoSeeds, writePersonaJournal } from './journal-seed';
 
 const photo = async () => ({ full: new Uint8Array([1, 2]), thumb: new Uint8Array([3]) });
 
@@ -221,4 +221,36 @@ test('an empty file claiming a nonzero version keeps the ordinary refusal', asyn
   } finally {
     await db.close();
   }
+});
+
+test('the photo seeds the persona names are the ones writing it asks for', async () => {
+  const asked: number[] = [];
+  const db = await migratedDb();
+  try {
+    const journal = openJournal(db, fakeFileStore());
+    await journal.reconcileBuiltIns();
+    await writePersonaJournal(journal, persona(20_730), async (seed) => { asked.push(seed); return photo(); });
+  } finally {
+    await db.close();
+  }
+  assert.equal(asked.length, 22);
+  assert.deepEqual([...personaPhotoSeeds(persona(20_730))].sort((a, b) => a - b), [...asked].sort((a, b) => a - b));
+});
+
+test('warmed photos are drawn before the seed asks and hand back the same bytes once each', async () => {
+  const drawn: number[] = [];
+  const draw = async (seed: number) => { drawn.push(seed); return { full: new Uint8Array([seed]), thumb: new Uint8Array([seed, 1]) }; };
+  const source = persona(20_730);
+  const take = warmDemoPhotos(source, draw);
+  assert.equal(drawn.length, 22, 'every photo is already drawn when the first one is asked for');
+  const seeds = personaPhotoSeeds(source);
+  const first = await take(seeds[0]);
+  assert.deepEqual(first.full, new Uint8Array([seeds[0]]));
+  for (const seed of seeds.slice(1)) await take(seed);
+  assert.equal(drawn.length, 22, 'every asked seed was served from the warm set');
+  await take(seeds[0]);
+  assert.equal(drawn.length, 23, 'a seed asked for more often than it was warmed is drawn again');
+  await take(-1);
+  assert.equal(drawn.length, 24, 'a seed outside the warm set is drawn on demand');
+  assert.notStrictEqual((await take(seeds[0])).full, first.full, 'no two attachments share one buffer');
 });

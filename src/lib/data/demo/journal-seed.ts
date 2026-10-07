@@ -51,6 +51,19 @@ export async function seedPersonaJournal(journal: Journal, today: number = today
   await writePersonaJournal(journal, persona(today));
 }
 
+/** Every seed `writePersonaJournal` will ask `makePhoto` for, one per photo
+    it attaches. Photos are drawn from the seed alone, so a caller that knows
+    the persona can draw them before the database is open. */
+export function personaPhotoSeeds(source: ReturnType<typeof persona>): number[] {
+  const seeds: number[] = [];
+  for (const { photoCount, epochDay } of source.entries) {
+    for (let i = 0; i < photoCount; i++) seeds.push(epochDay + i);
+  }
+  for (const { hasPhoto, epochDay } of source.milestones) if (hasPhoto) seeds.push(epochDay);
+  for (const { epochDay } of source.documents) seeds.push(epochDay);
+  return seeds;
+}
+
 export async function writePersonaJournal(
   journal: Journal,
   source: ReturnType<typeof persona>,
