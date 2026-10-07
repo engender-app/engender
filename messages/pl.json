@@ -13,7 +13,7 @@
   "about_license": "Wolne oprogramowanie na licencji GPLv3.",
   "about_no_network_body": "Bez konta, bez chmury, bez telemetrii, bez analityki. Dziennik istnieje tylko na tym urządzeniu i w kopiach, które wyeksportujesz.",
   "about_no_network_title": "Ta aplikacja nie wysyła żadnych zapytań sieciowych.",
-  "about_no_network_web_body": "Bez konta, chmury, telemetrii ani analityki. Przeglądarka pobiera aplikację i jej aktualizacje. Przy pierwszym odczycie zdjęcia z wynikami przeglądarka pobiera też silnik OCR (21 MB) i pliki językowe. Potem skaner działa bez sieci. Dziennik zostaje na tym urządzeniu, dopóki go nie wyeksportujesz.",
+  "about_no_network_web_body": "Bez konta i dziennika w chmurze. Przeglądarka pobiera aplikację, aktualizacje i przy pierwszym użyciu pliki skanera wyników badań. Otwarcie aplikacji z połączeniem z siecią wysyła jedno puste zgłoszenie do licznika. Prywatne sumy godzinowe nie zawierają danych dziennika ani profili odwiedzających. Dziennik zostaje na urządzeniu, dopóki go nie wyeksportujesz.",
   "about_no_network_web_title": "Nic, co zapiszesz, nie jest nigdzie wysyłane.",
   "about_privacy_link": "Polityka prywatności",
   "about_site_link": "Strona",

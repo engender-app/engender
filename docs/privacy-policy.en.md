@@ -1,17 +1,17 @@
 # Privacy policy
 
-Last updated: 2026-10-05
+Last updated: 2026-10-07
 
 engender is a journal for tracking a gender transition. It is made and
 published by Alicja Barankiewicz in Warsaw, Poland. This policy covers the
-hosted web app, the Android app and the files you export or share from
-either.
+hosted web app, the Android app, the website and guide, support messages,
+and the files you export or share.
 
 ## Contact
 
 Questions about this policy or about your data:
 
-- Email: [OPEN: contact address, to be chosen before release]
+- Email: engender-app@pm.me
 - Bugs and general questions: https://github.com/engender-app/engender/issues
 - Security problems: https://github.com/engender-app/engender/blob/main/SECURITY.md
 
@@ -19,10 +19,14 @@ You never need to send journal content, a backup file or a key to get help.
 
 ## The short version
 
-There is no engender account, no server that stores journals, no analytics
-and no tracking. Everything you write stays on the device you write it on,
-encrypted, unless you export it yourself. The developer never receives it
-and cannot read it.
+There is no engender account or server holding your journal. Your journal
+stays on your device unless you export or share it. Its database and media
+are encrypted at rest. The developer cannot recover it for you.
+
+The website and hosted web app count online page openings without visitor
+profiles. These counts contain no journal data. Android sends no counts.
+Information you choose to send in a support message is handled separately,
+as described below.
 
 ## What the app stores, and where
 
@@ -32,6 +36,12 @@ appointments, milestones, letters, photos, voice and video recordings,
 documents you import, reminders and your settings. The journal database and
 your photos are encrypted at rest. None of it is sent to the developer or to
 anyone else.
+
+Some preferences needed before unlocking, including theme, palette,
+language, disguise and lock timing, are kept outside the encrypted journal.
+On Android, the camera app temporarily writes a photo to an unencrypted
+cache file before engender imports and encrypts it. Encryption at rest does
+not mean that every temporary file or preference is encrypted.
 
 The web app and the Android app keep separate journals. To move a journal
 from one to the other, you export an encrypted backup and import it.
@@ -44,14 +54,15 @@ of each request:
 
 - your IP address,
 - the time of the request,
-- the files requested and their sizes,
+- the requested URL, including any query string, and the response size,
 - the User-Agent and Referer headers your browser sends.
 
-[OPEN: how long the server keeps these request logs, and whether they are
-kept at all.]
+The app server runs on an OVH VPS. Routine access logs are disabled. Error
+logs can contain an IP address and requested URL; the live server keeps
+them for at most seven days. Page-count requests are not logged.
 
-The server receives no accounts, profile identifiers, analytics or journal
-content. The app loads its fonts and its text recognition files from the
+The app does not upload your journal or create an account or visitor profile.
+Page-opening counts are described below. The app loads its fonts and its text recognition files from the
 same server and asks nothing of any other site. The first time you scan a
 lab photo, the browser downloads the text recognition engine (about 21 MB)
 from that server; scanning itself happens on your device.
@@ -81,11 +92,41 @@ the clipboard after one minute, if the clipboard still holds it. Browsers
 can refuse that, and clipboard managers or sync may already have kept a
 copy.
 
+## Website and guide
+
+The website, guide and these policy pages at `engender.barankiewicz.dev`
+run on lh.pl hosting. The website remembers language and theme in that
+origin's local browser storage, separately from your journal.
+
+lh.pl keeps website access and error logs on its backup server. These logs
+can include IP addresses, requested URLs and browser headers.
+
+## Page-opening counts
+
+The website and hosted web app send one empty request when a document opens
+online. An online opening of a cached web app also counts. Moving between
+screens within the app does not send another count. Offline openings and
+Android do not count. Failed counts are not retried or saved for later.
+
+The request uses a fixed endpoint and sends no journal data, current page
+name, query string, referrer or cookies. The receiving web server necessarily
+sees the connection's IP address and ordinary browser headers. It removes
+those details before passing a fixed label, either app or website, to the
+self-hosted GoatCounter service. Known bots are filtered where possible.
+
+GoatCounter keeps hourly totals for those two labels, which can be viewed
+by day. The totals are private to the maintainer and kept indefinitely.
+Sessions and individual pageview storage are disabled. There are no visitor
+identifiers, unique-visitor counts, location or device breakdowns. Reloads
+count again, so these totals measure openings, not people. The dashboard's
+administrator login is separate from the app and uses an authentication
+cookie; visitors do not receive that cookie from the counter.
+
 ## Android app
 
-Android builds are distributed through Google Play, F-Droid and as an APK
-from GitHub. Each channel has its own terms and sees installs and updates
-under them.
+Android distribution starts with APKs on GitHub. Google Play and F-Droid
+follow their own publication processes. A store or download service sees
+requests made to it and handles those under its own terms.
 
 The Android app does not request the `INTERNET` permission. It opens no
 network connections and sends nothing to any server. It also opts out of
@@ -177,18 +218,16 @@ statement applies to pages on GitHub.
 
 ## Deleting your data
 
-The developer holds none of your journal data, so there is nothing to ask
-anyone else to delete. You can delete everything on your device yourself:
+The app does not send your journal to the developer. You can delete the
+local journal yourself. Support messages and hosting logs have the separate
+retention periods described in this policy:
 
 - **In the app.** Settings, then Privacy & data, then Delete everything. This
   removes the journal, photos and recordings, your settings, scheduled
   reminders and the keys that open the journal, and cannot be undone. If you
   used biometric unlock on the web, the passkey it created stays in your
   browser's or device's passkey list until you remove it there. It opens
-  nothing once the journal is gone. [OPEN: on Android, a photo whose capture
-  never finished can stay unencrypted in the app's cache after this, until
-  after-release ticket 11 (audit SEC-03) lands. Land that fix before
-  release, or keep this sentence qualified.]
+  nothing once the journal is gone. On Android, an interrupted photo capture can leave an unencrypted file in the app’s cache. Clearing the app’s storage removes it.
 - **On Android.** Uninstalling the app, or clearing its storage in the
   system settings, removes everything the app stored on the phone.
 - **On the web.** Clearing the site data for `app.engender.barankiewicz.dev`
@@ -202,10 +241,32 @@ on a schedule to a folder you picked. Delete those where you saved them.
 The developer cannot recover a forgotten passphrase, PIN or backup password,
 or a lost device key or recovery key.
 
-## Children
+## Who the app is for
 
-[OPEN: the age the app is meant for. The Play listing is planned for adults
-only; say so here once that is decided.]
+engender is for any trans person, including teenagers. There is no minimum
+age for using the journal and no age-verification process. Store audience
+and content declarations describe the app honestly; they do not change how
+its local journal handles data.
+
+## Support messages
+
+If you contact engender-app@pm.me, the maintainer receives your email address,
+message and any attachments through Proton Mail. These are used to answer
+your request. Never send a real journal, backup, password, recovery key or
+screenshot containing personal journal content. Support uses app and device
+versions, reproduction steps and invented examples instead.
+
+Private support email and downloaded copies controlled by the maintainer
+are deleted within 30 days after the request is resolved. Sensitive journal
+material sent by mistake is deleted when noticed and is not used to
+investigate the problem. Technical findings may remain in issue records
+without personal journal content. You can ask about or request deletion of
+correspondence through the contact address above.
+
+GitHub issues are public. Security reports use GitHub's private vulnerability
+reporting process. Their visibility and retention follow that service's
+features and policies. The maintainer cannot promise deletion from GitHub's
+systems, provider backups or copies held by someone else.
 
 ## Changes to this policy
 

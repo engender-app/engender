@@ -13,7 +13,8 @@ photos and milestones together on your own device. You can use it as an
 installable web app or an Android app, in English or Polish.
 
 The app is free software under GPLv3. There are no accounts, subscriptions,
-analytics or backend for journal data. Both versions encrypt the journal at
+visitor profiles or backend for journal data. The hosted web app and website
+keep private hourly page-opening totals, without individual visit records. Both versions encrypt the journal at
 rest and work offline. You choose what to record, which parts of the app to
 use, and when to export or share anything.
 
