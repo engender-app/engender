@@ -1,0 +1,12 @@
+/var/log/nginx/engender/*.log {
+    daily
+    missingok
+    rotate 6
+    maxage 6
+    compress
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        invoke-rc.d nginx rotate >/dev/null 2>&1
+    endscript
+}

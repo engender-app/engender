@@ -18,6 +18,8 @@
   import '$lib/motion/materials.css';
 
   import { page } from '$app/state';
+  import { onMount } from 'svelte';
+  import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
   import { afterNavigate, goto, onNavigate } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
@@ -77,6 +79,8 @@
   import UpdateNotice from '$lib/components/UpdateNotice.svelte';
 
   let { children } = $props();
+
+  onMount(countPageLoad);
 
   if (isAndroid()) {
     void import('$lib/android/plugin-registry').then(({ assertAndroidRuntimePluginRegistry }) => {
