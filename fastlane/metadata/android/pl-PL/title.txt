@@ -1,1 +1,1 @@
-engender: dziennik tranzycji
+engender: transition tracker
