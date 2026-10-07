@@ -7,6 +7,7 @@
   import { onDestroy, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
     todayEpochDay,
     epochDayMonthsAgo,
@@ -117,6 +118,7 @@
   }
 
   // Route keys mount a new session for each entry or day.
+  // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
   // svelte-ignore state_referenced_locally
   const session = entrySession({
     entryId, epochDay: epochDay ?? todayEpochDay(), seedMood,
@@ -161,7 +163,9 @@
     const next = !starred;
     session.starred = next;
     if (!existing) return;
-    await journal.entries.setEntryStarred(existing.id, next);
+    const id = existing.id;
+    // The star goes back if the write does not land, with a toast saying so.
+    if (!(await attempt(() => journal.entries.setEntryStarred(id, next), m.write_failed()))) session.starred = !next;
   }
 
   /* A day chosen to see this entry again (phase 8 features ticket 08,
@@ -197,11 +201,18 @@
     }
   };
 
+  const revisitWrite = writer();
   async function setRevisit(targetEpochDay: number) {
-    if (entryId == null) return;
-    await journal.revisits.setRevisit({ entryId, createdEpochDay: todayEpochDay(), targetEpochDay });
+    const id = entryId;
+    if (id == null) return;
+    const set = await revisitWrite.run(
+      () => journal.revisits.setRevisit({ entryId: id, createdEpochDay: todayEpochDay(), targetEpochDay }),
+      m.write_failed()
+    );
+    if (!set) return;
     revisitDateInput = '';
     revisitOpen = false;
+    toast(m.revisit_set_toast({ date: fmtDay(targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) }), { kind: 'record-saved' });
   }
 
   async function setRevisitFromInput() {
@@ -211,9 +222,11 @@
   }
 
   async function cancelRevisit() {
-    if (!revisit) return;
-    await journal.revisits.deleteRevisit(revisit.id);
+    const target = revisit;
+    if (!target) return;
+    if (!(await revisitWrite.run(() => journal.revisits.deleteRevisit(target.id), m.write_failed()))) return;
     revisitOpen = false;
+    toast(m.revisit_cancelled_toast(), { kind: 'record-deleted' });
   }
 
   /* Same reasoning as toggleStarred above, but for one stored photo: the
@@ -223,7 +236,7 @@
     const item = entryDraft.photos[index];
     if (item.kind !== 'stored') return;
     const next = !item.photo.starred;
-    await journal.photos.setStarred(item.photo.id, next);
+    if (!(await attempt(() => journal.photos.setStarred(item.photo.id, next), m.write_failed()))) return;
     entryDraft.photos = entryDraft.photos.map((p, i) =>
       i === index && p.kind === 'stored' ? { ...p, photo: { ...p.photo, starred: next } } : p
     );
@@ -1456,12 +1469,12 @@
         bind:value={revisitDateInput}
         data-revisit-date
       />
-      <button class="btn btn-soft" disabled={!revisitDateInput} data-revisit-set onclick={setRevisitFromInput}>
+      <button class="btn btn-soft" disabled={!revisitDateInput || revisitWrite.busy} data-revisit-set onclick={setRevisitFromInput}>
         <span>{m.revisit_set_confirm()}</span>
       </button>
     </div>
     {#if revisit}
-      <button class="btn btn-ghost" data-revisit-cancel onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
+      <button class="btn btn-ghost" data-revisit-cancel disabled={revisitWrite.busy} onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
     {/if}
   </Sheet>
 

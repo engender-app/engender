@@ -16,6 +16,8 @@
      before anything is written, and there is only ever the one insert to
      make - no second write for a transaction to wrap). */
   import { m } from '$lib/paraglide/messages';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -55,19 +57,30 @@
     composeOpen = true;
   }
 
+  /* One note per tap: a double tap used to add two (after-release 06). The
+     sheet closes once the note is stored, and stays open with a toast when
+     it is not. */
+  const saving = writer();
   async function save() {
     const text = composeText.trim();
     if (!text) return;
-    if (editing) await journal.marginNotes.edit(editing.id, text);
-    else await journal.marginNotes.add({ entryId, epochDay: todayEpochDay(), text });
+    const target = editing;
+    const stored = await saving.run(
+      () => (target ? journal.marginNotes.edit(target.id, text) : journal.marginNotes.add({ entryId, epochDay: todayEpochDay(), text })),
+      m.write_failed()
+    );
+    if (!stored) return;
     composeOpen = false;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
+  const removing = deleter();
   async function confirmDelete() {
     if (!deleting) return;
     const id = deleting.id;
+    if (!(await removing.run(() => journal.marginNotes.remove(id)))) return;
     deleting = null;
-    await journal.marginNotes.remove(id);
+    toast(m.record_deleted(), { kind: 'record-deleted' });
   }
 </script>
 
@@ -112,7 +125,7 @@
   <div class="stack-3" style="margin-top:var(--space-3)">
     <button
       class="btn btn-primary"
-      disabled={!composeText.trim()}
+      disabled={!composeText.trim() || saving.busy}
       data-margin-note-save
       onclick={save}
     >
@@ -129,7 +142,9 @@
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-confirm-delete-margin-note': '' }}
   onConfirm={confirmDelete}
-  onCancel={() => (deleting = null)}
+  onCancel={() => { deleting = null; removing.dismiss(); }}
+  busy={removing.busy}
+  failed={removing.failed}
 />
 
 <style>

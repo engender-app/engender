@@ -23,6 +23,7 @@
      split by the one fact that changes which of them you want, with a
      heading over each half. */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -89,8 +90,10 @@
   async function saveFeeling(input: { mood: number; note: string | null }) {
     const tryout = feelingFor;
     if (!tryout) return;
-    feelingFor = null;
+    // Closed once stored; the sheet holds its button and reports a failure.
     await journal.feltSense.add({ tryoutId: tryout.id }, { epochDay: today, mood: input.mood, note: input.note });
+    feelingFor = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
 

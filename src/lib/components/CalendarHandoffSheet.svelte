@@ -53,14 +53,17 @@
 
   const dayLabel = $derived(fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' }));
 
+  // One file per tap: the share sheet takes a moment to come up.
+  let sharing = $state(false);
   async function share() {
     const trimmed = title.trim();
-    if (!trimmed) return;
+    if (!trimmed || sharing) return;
     const ics = buildCalendarEvent(
       kind === 'appointment'
         ? { kind, epochDay, title: trimmed, time: time || undefined, nowEpochMs: Date.now() }
         : { kind, epochDay, title: trimmed, nowEpochMs: Date.now() }
     );
+    sharing = true;
     try {
       const delivery = await deliverBlob(
         `${nameSlug(trimmed) || 'event'}.ics`,
@@ -75,6 +78,8 @@
     } catch (error) {
       console.error('a calendar file could not be shared', error);
       toast(m.pj_failed());
+    } finally {
+      sharing = false;
     }
   }
 </script>
@@ -102,7 +107,7 @@
   <button
     class="btn btn-primary btn-block"
     data-share-to-calendar
-    disabled={title.trim().length === 0}
+    disabled={title.trim().length === 0 || sharing}
     onclick={share}
   >
     <span>{m.calendar_handoff_share()}</span>
