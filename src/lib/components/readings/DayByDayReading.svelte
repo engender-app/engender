@@ -27,7 +27,7 @@
   import { metricStandings } from '$lib/data/statsCharts';
   import { nativeAmount, nativeValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
+  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -215,7 +215,7 @@
       name={m.stats_day_by_day()}
       href={readingHref('day-by-day', span)}
       headline={activeScaleRow?.value || undefined}
-      note={m.lookback_facts_average({ name: shown.name })}
+      note={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}
     >
       {#snippet drawing()}
         <svg viewBox="0 0 {SPARK_W} {SPARK_H}" preserveAspectRatio="none">
