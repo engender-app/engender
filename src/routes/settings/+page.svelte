@@ -176,14 +176,9 @@
 
   const SITE_URL = 'https://engender.barankiewicz.dev/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
-  /* The source GPLv3 section 6 asks an APK to point at, and the privacy
-     policy in the language the app is in (phase 15 release-blockers ticket
-     10). The policy is the repository's own file: the landing site's
-     /privacy/ page is a security explainer, not this policy, and which of
-     the two becomes the published one is Alicja's call. Changing it is
-     this one line. */
+  // The landing site publishes the repository's canonical policy in both languages.
   const SOURCE_URL = 'https://github.com/engender-app/engender';
-  let privacyUrl = $derived(`${SOURCE_URL}/blob/main/docs/privacy-policy.${getLocale() === 'pl' ? 'pl' : 'en'}.md`);
+  let privacyUrl = $derived(`${SITE_URL}${getLocale() === 'pl' ? 'pl' : 'en'}/privacy/`);
 
   /* Ticket ux/06: ships disabled. While this is empty the row is not drawn
      at all (phase 14 ticket 15, V05): a "coming soon" row that looked like
