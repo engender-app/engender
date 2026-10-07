@@ -229,7 +229,7 @@
              left, so nothing under it jumps and nothing appears whole. -->
         <div class="am-after" data-lock-after-block transition:disclose>
           {#if hasSecret}
-            <h3 class="field-label" id="lock-after-title">{m.lock_after_title()}</h3>
+            <h2 class="field-label" id="lock-after-title">{m.lock_after_title()}</h2>
             <LockAfterChoice
               value={prefs.lockAfter}
               onChange={(next) => (prefs.lockAfter = next)}

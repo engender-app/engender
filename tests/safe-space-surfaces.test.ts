@@ -124,7 +124,7 @@ describe('what Safe Space is built from', () => {
     // The save sits between the six and the control, which is the whole
     // point of the bound - not under all twenty, as it was.
     expect(evidenceMarkup).toMatch(
-      /<EntryDays groups={shown} \/>[\s\S]*?onclick={saveSnapshot}[\s\S]*?data-evidence-see-all/
+      /<EntryDays groups={shown} level=\{2\} \/>[\s\S]*?onclick={saveSnapshot}[\s\S]*?data-evidence-see-all/
     );
     // And it still saves the whole pool, not the six that are showing.
     expect(evidence).toContain('counterevidence.map((e) => ({');
@@ -139,7 +139,7 @@ describe('what Safe Space is built from', () => {
        rather than either cutting into place. */
     expect(evidence).toContain('out:disclose');
     // The held days arrive through EntryDays' own `arrive` (phase 14 ticket 18).
-    expect(evidence).toContain('<EntryDays groups={held} arrive />');
+    expect(evidence).toContain('<EntryDays groups={held} arrive level={2} />');
     expect(read('src/lib/components/EntryDays.svelte')).toContain('animation: kit-block-in');
   });
 

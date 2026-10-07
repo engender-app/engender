@@ -124,7 +124,7 @@
 
   <ReadGate read={counterevidenceQuery} variant="card" count={2}>
     {#snippet rows()}
-      <EntryDays groups={shown} />
+      <EntryDays groups={shown} level={2} />
 
       <!-- Under the six rather than under all twenty (ticket 15). The
            snapshot it saves is the whole pool either way; where the control
@@ -152,7 +152,7 @@
 
       {#if expanded}
         <div data-evidence-rest>
-          <EntryDays groups={held} arrive />
+          <EntryDays groups={held} arrive level={2} />
         </div>
       {/if}
     {/snippet}

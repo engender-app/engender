@@ -120,6 +120,7 @@
     key={String(epochDay)}
     role={entriesRole}
     heading={m.entries_this_day({ count: entries.length })}
+    level={2}
   >
     {#each entries as e (e.id)}
       {@const presentation = entryPresentation(e)}

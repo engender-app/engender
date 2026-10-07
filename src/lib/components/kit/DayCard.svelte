@@ -19,6 +19,7 @@
     role,
     key,
     tight = false,
+    level = 3,
     children
   }: {
     /** The bar's words: the day, or on a day's own screen the count. */
@@ -31,13 +32,18 @@
         whose first entry has to start high on the screen (search's
         results, ticket 16). */
     tight?: boolean;
+    /** The bar's heading level, which is the placing screen's to say
+        (ChartCard's rule): 2 where the card sits straight under the
+        screen's h1, so a screen reader walking the headings finds no
+        skipped level (after-release 21, audit A11Y-13). */
+    level?: 2 | 3;
     children: Snippet;
   } = $props();
 </script>
 
 <section class="kit-day" class:is-tight={tight} data-kit-surface data-day-card={key} {...roleAttrs(role)}>
-  <h3 class="kit-day-bar">
+  <svelte:element this={`h${level}`} class="kit-day-bar">
     {heading}
-  </h3>
+  </svelte:element>
   <div class="kit-day-body">{@render children()}</div>
 </section>
