@@ -1,8 +1,9 @@
 # Android store listing
 
 English and Polish copy comes from the landing repository's
-`content/play/en.md` and `pl.md`. The listing uses the current engender name,
-six built-in scales, 16 palettes and the current Look back span controls.
+`content/play/en.md` and `pl.md`. Change a sentence there first, then copy
+the blockquotes here unchanged. F-Droid reads these same files, and the
+short description is its Summary, so it has no sentence punctuation.
 Changelogs summarize `CHANGELOG.md`; their filenames are Android version
 codes, so `1.0.0` maps to `1000000999.txt` through
 `scripts/android-version.mjs`.
