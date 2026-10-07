@@ -399,7 +399,7 @@ export function createMarkIdentity() {
 }
 
 export function sceneForTheme(scene, theme) {
-  if (scene.name !== 'settings-theme-switcher') return scene;
+  if (scene.name !== 'settings-theme-switcher') return { ...scene, startTheme: theme };
   const target = theme === 'light' ? 'dark' : 'light';
   return { ...scene, startTheme: theme, act: `[data-segmented="theme"] [data-segment="${target}"]`, after: { selector: 'html', attribute: 'data-theme', value: target } };
 }
@@ -451,6 +451,7 @@ export function dispatchSceneAction(scene, env = globalThis) {
 /** Check an explicit route or state outcome, never infer success from zero yanks. */
 export function verifySceneAction(scene, action, env = globalThis) {
   if (!action?.dispatched) throw new Error('action was not dispatched');
+  if (scene.startTheme && action.beforeTheme !== scene.startTheme) throw new Error(`wrong starting theme: expected ${scene.startTheme}, got ${action.beforeTheme}`);
   if (scene.act === 'inject' || scene.act === 'none') return { ...action, verified: true };
   const after = scene.after;
   if (!after) throw new Error(`missing action postcondition: ${scene.name ?? scene.act}`);
@@ -530,6 +531,23 @@ export const coldLoadProofExpression = (href, profile, theme) => `(() => {
   if (proof.theme !== ${JSON.stringify(theme)}) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
   return proof;
 })()`;
+
+export function verifyGateProof(proof, profile, theme) {
+  if (proof.route !== '/') throw new Error('PIN gate wrong route: ' + JSON.stringify(proof));
+  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
+  if (proof.theme !== theme) throw new Error('PIN gate wrong theme: ' + JSON.stringify(proof));
+  if (!proof.pin || proof.home || !['needs-unlock', 'ready'].includes(proof.boot)) throw new Error('PIN gate wrong boot state: ' + JSON.stringify(proof));
+  return { ...proof, gate: 'pin' };
+}
+
+export const gateProofExpression = (profile, theme) => `(${verifyGateProof})({
+  route: location.pathname + location.search,
+  profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
+  hasEntries: localStorage.getItem('engender-has-entries'),
+  theme: document.documentElement.dataset.theme,
+  boot: document.querySelector('[data-app-root]')?.dataset.boot,
+  pin: !!document.querySelector('[data-pin-pad]'), home: !!document.querySelector('[data-home-hello]')
+}, ${JSON.stringify(profile)}, ${JSON.stringify(theme)})`;
 
 /** Partial snapshots survive a stopped sweep and remain explicitly incomplete. */
 export function createReportRecorder(outDir, metadata, inventory, profiles, themes, passes, errors) {
