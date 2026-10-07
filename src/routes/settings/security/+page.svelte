@@ -55,7 +55,7 @@
     <ListCard>
       <ListRow
         key="access-mode"
-        icon="shield"
+        icon="lock"
         title={m.settings_access_mode_row()}
         subtitle={modeLine}
         href="/settings/access-mode"

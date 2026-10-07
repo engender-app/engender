@@ -22,7 +22,7 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { fmtDayBar, fmtTime } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { tablesReadBy } from '$lib/data/live/writes';
@@ -103,7 +103,7 @@
     daysQuery.rows.map((d) => ({
       ...d,
       title: LOOKBACK_TITLE[d.key](),
-      date: fmtDay(d.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }),
+      date: fmtDayBar(d.epochDay, today),
       photos: d.entries.flatMap((entry) => entry.photos)
     }))
   );

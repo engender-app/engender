@@ -118,6 +118,11 @@ describe('the surfaces', () => {
          owns its copy the way PhotoDayPromptSheet does. A screen may say
          more about what is lost in its body line, and nothing else. */
       'DiscardSheet.svelte',
+      /* The app's one fold (after-release 28): a full-width row with its
+         chevron at the far edge and the block it opens growing under it.
+         Not a surface. It replaced native <details> on the managed lists,
+         whose triangle and one-frame opening matched no other fold. */
+      'Disclosure.svelte',
       'Distribution.svelte',
       /* Parts of a whole where the parts have no order (phase 8 UX ticket
          04, ADR-0058): share by tag, share by presentation, share by
@@ -208,6 +213,11 @@ describe('the surfaces', () => {
          its own. */
       'RecordSheet.svelte',
       'SectionHeading.svelte',
+      /* An index of a long screen's halves (after-release 28): names over a
+         rule, each scrolling its half into view. Not a surface, and not a
+         Segmented, whose look now only ever means a swap. Hair progress and
+         Measurements. */
+      'SectionJump.svelte',
       'Tile.svelte',
       'TileGrid.svelte',
       /* One mark rather than a surface (phase 10 redesign ticket 62): words
