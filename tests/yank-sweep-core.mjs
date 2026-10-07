@@ -439,9 +439,21 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
     hit.scrollIntoView({ block: 'center', behavior: 'instant' });
   }
   const box = hit.getBoundingClientRect();
-  const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  const front = document.elementFromPoint(point.x, point.y);
-  if (!box.width || !box.height || (front !== hit && !hit.contains(front))) throw new Error('target remains covered or outside viewport: ' + selector);
+  const left = Math.max(0, box.left), top = Math.max(0, box.top);
+  const right = Math.min(env.innerWidth ?? box.left + box.width, box.left + box.width);
+  const bottom = Math.min(env.innerHeight ?? box.top + box.height, box.top + box.height);
+  const insetX = Math.min(8, (right - left) / 2), insetY = Math.min(8, (bottom - top) / 2);
+  const points = [
+    { x: box.left + box.width / 2, y: box.top + box.height / 2 },
+    { x: left + insetX, y: top + insetY }, { x: right - insetX, y: top + insetY },
+    { x: left + insetX, y: bottom - insetY }, { x: right - insetX, y: bottom - insetY }
+  ];
+  let front;
+  const point = right > left && bottom > top && points.find((point) => {
+    front = document.elementFromPoint(point.x, point.y);
+    return front === hit || hit.contains(front);
+  });
+  if (!point) throw new Error('target remains covered or outside viewport: ' + selector);
   evidence.point = point;
   evidence.bounds = { left: box.left, top: box.top, width: box.width, height: box.height };
   evidence.hit = { tag: front.tagName, id: front.id || null, target: front === hit, descendant: front !== hit };
@@ -624,15 +636,27 @@ export const prepareSceneExpression = (scene) => `(async () => {
   const control = ${dispatchSceneAction};
   const dispatch = (step) => { control(step, globalThis, true); return control(step); };
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const appearanceReady = () => document.documentElement.dataset.appearanceTransition === undefined
+    && JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === scene.startTheme;
+  const waitAppearance = async () => {
+    for (let i = 0; i < 60 && !appearanceReady(); i++) await sleep(50);
+    if (!appearanceReady()) throw new Error('appearance preparation transition or theme mirror did not settle');
+  };
   for (const scrim of document.querySelectorAll('.fan-scrim, [data-sheet-scrim]')) scrim.click();
   for (let i = 0; i < 60 && document.querySelector('.fan-scrim, [data-sheet-scrim]'); i++) await sleep(50);
   if (document.querySelector('.fan-scrim, [data-sheet-scrim]')) throw new Error('previous overlay did not close');
-  if (scene.name === 'settings-theme-switcher') dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+  if (scene.name === 'settings-theme-switcher') {
+    dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+    await waitAppearance();
+  }
   if (scene.name === 'settings-palette') {
     for (const act of ['[data-palette-pick="trans"]', '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]']) {
       dispatch({ act });
-      for (let i = 0; i < 60 && document.documentElement.dataset.appearanceTransition !== undefined; i++) await sleep(50);
-      if (document.documentElement.dataset.appearanceTransition !== undefined) throw new Error('palette preparation transition did not finish');
+      if (act.includes('data-segmented')) await waitAppearance();
+      else {
+        for (let i = 0; i < 60 && document.documentElement.dataset.appearanceTransition !== undefined; i++) await sleep(50);
+        if (document.documentElement.dataset.appearanceTransition !== undefined) throw new Error('palette preparation transition did not finish');
+      }
     }
   }
   if (scene.name === 'settings-unit-switcher') dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
