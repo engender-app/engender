@@ -106,6 +106,7 @@
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { fmtDateValue } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
@@ -477,6 +478,13 @@
      found. */
   let hitsRole = $derived(roleAt(activeFlag.roles, 1));
 
+  /* The chip says the day the way the field above it does (after-release
+     28, audit L08-10: "From: 2026-09-18"). */
+  const chipDate = (iso: string) => {
+    const day = epochDayFromDateInputValue(iso);
+    return day == null ? iso : fmtDateValue(day);
+  };
+
   let activeFilterChips = $derived.by(() => {
     const chips: { key: string; label: string; remove: () => void }[] = [];
     for (const id of selectedTagIds) {
@@ -493,14 +501,14 @@
     if (startDate) {
       chips.push({
         key: 'start',
-        label: m.search_filter_start_chip({ date: startDate }),
+        label: m.search_filter_start_chip({ date: chipDate(startDate) }),
         remove: () => (startDate = '')
       });
     }
     if (endDate) {
       chips.push({
         key: 'end',
-        label: m.search_filter_end_chip({ date: endDate }),
+        label: m.search_filter_end_chip({ date: chipDate(endDate) }),
         remove: () => (endDate = '')
       });
     }

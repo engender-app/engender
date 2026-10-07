@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, fieldValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -79,7 +79,7 @@ async function installFault(area, operation) {
   }, { area, operation });
 }
 async function valuesMatch(values) {
-  for (const [id, value] of Object.entries(values)) assert.equal(await page.locator(`#${id}`).inputValue(), value, id);
+  for (const [id, value] of Object.entries(values)) assert.equal(await fieldValue(page.locator(`#${id}`)), value, id);
   if ('measurement-value' in values) {
     assert.equal(await editorType().getByRole('radio', { checked: true }).innerText(), 'Shoulder width');
     assert.equal(await editorUnit().locator('[aria-checked="true"]').getAttribute('data-segment'), 'in');
@@ -115,7 +115,7 @@ async function saveAndReopen({ handle, area, operation, rows, title, values, cha
   await page.keyboard.press('Escape');
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
-  assert.equal(await page.locator(`#${changeId}`).inputValue(), changedValue);
+  assert.equal(await fieldValue(page.locator(`#${changeId}`)), changedValue);
   await discard();
   await page.locator(selector).click();
   await valuesMatch(values);

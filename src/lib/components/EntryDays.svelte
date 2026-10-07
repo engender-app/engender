@@ -26,8 +26,9 @@
      caller's own transition instead of opening every row at once. Each
      entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
      where a card's first and last entry are (kit.css). */
-  import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { crossesCalendarYear } from '$lib/data/epochDay';
+  import { fmtDayBar, fmtTime } from '$lib/data/dates';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
   import { currentDay } from '$lib/stores/today.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
@@ -41,7 +42,7 @@
 
   let {
     groups,
-    role,
+    role: givenRole,
     clampNotes = true,
     marginNotesByEntry,
     arrive = false,
@@ -77,6 +78,12 @@
      October 2026") that no other day heading in the app carries (audit
      UX-11). */
   const today = $derived(currentDay());
+
+  /* Entries take the days' stripe unless the screen names another, the
+     same stripe Calendar gives its days. Good moments named none, so its
+     tags fell back to the accent and read magenta beside every other
+     screen's cyan (after-release 28, audit UI-08). */
+  const role = $derived(givenRole ?? roleAt(activeFlag.roles, HOME_AREA_ROLE.days));
 </script>
 
 <div class="entry-days" class:is-arriving={arrive}>
@@ -87,12 +94,7 @@
       {role}
       tight
       {level}
-      heading={fmtDay(group.epochDay, {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        ...(crossesCalendarYear(group.epochDay, today) ? { year: 'numeric' } : {})
-      })}
+      heading={fmtDayBar(group.epochDay, today)}
     >
       {#each group.entries as entry (entry.id)}
         {@const presentation = entryPresentation(entry)}

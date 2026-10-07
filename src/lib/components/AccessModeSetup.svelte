@@ -206,7 +206,7 @@
        platform's own check, and only one of them ever is on a given
        platform: device-bound on Android, biometric on the web. */
     if (mode === 'biometric') return 'fingerprint';
-    if (mode === 'unlocked') return 'key';
+    if (mode === 'unlocked') return 'unlock';
     return android ? 'fingerprint' : 'key';
   }
 

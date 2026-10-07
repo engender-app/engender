@@ -39,6 +39,7 @@
      journal/hormoneCurve.ts's, where it has tests. What is left here is
      wording and marks. */
 
+  import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -76,12 +77,6 @@
   import QualitativeCurveChart from '$lib/components/QualitativeCurveChart.svelte';
 
   const WINDOWS = [30, 90, 180] as const;
-  const WINDOW_LABELS = {
-    30: m.curve_window_30,
-    90: m.curve_window_90,
-    180: m.curve_window_180
-  };
-
   let windowDays = $state<(typeof WINDOWS)[number]>(90);
   const today = $derived(currentDay());
   let fromEpochDay = $derived(today - windowDays + 1);
@@ -219,6 +214,12 @@
       29, accessibility audit A05). */
   let markersOpen = $state<Record<string, boolean>>({});
   let resultsOpen = $state<Partial<Record<InjectableEster, boolean>>>({});
+  /* What a legend key's line means, folded under the legend like the
+     results and the marks (after-release 28: these were native <details>
+     with the marker hidden, the one legend key with no chevron, opening in
+     one frame inside the wrapping legend line). */
+  let notesOpen = $state<Record<string, boolean>>({});
+  const toggleNotes = (chart: string) => () => (notesOpen = { ...notesOpen, [chart]: !notesOpen[chart] });
   const toggleMarkers = (chart: string) => () => (markersOpen = { ...markersOpen, [chart]: !markersOpen[chart] });
 
   function pickMarker(chart: string, mark: AnnotationMark) {
@@ -286,6 +287,21 @@
      logged" already explained the marks; it opens below the legend rather
      than inside it, since a list in a wrapping legend line would push the
      other two keys around. -->
+<!-- A legend key whose line has a note under the legend: the band and the
+     qualitative line. Drawn as markerToggle is, chevron and all. -->
+{#snippet notesToggle(chart: string, swatch: string, label: string)}
+  <button
+    type="button"
+    class="legend-item curve-markers-toggle"
+    aria-expanded={notesOpen[chart] === true}
+    aria-controls="curve-notes-{chart}"
+    data-curve-notes-toggle={chart}
+    onclick={toggleNotes(chart)}
+  >
+    <span class={swatch}></span>{label}
+    <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
+  </button>
+{/snippet}
 {#snippet markerToggle(chart: string, shown: number)}
   {#if shown > 0}
     <button
@@ -390,7 +406,7 @@
 
       <Segmented
         name={m.curve_window_label()}
-        options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
+        options={dayRangeOptions(WINDOWS)}
         value={String(windowDays)}
         onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
         compact
@@ -438,11 +454,7 @@
             />
 
             <div class="curve-legend">
-              <details class="curve-legend-detail">
-                <summary class="legend-item"><span class="legend-band"></span>{m.curve_legend_band()}</summary>
-                <p>{m.curve_band_note()}</p>
-                <p>{m.curve_source()}</p>
-              </details>
+              {@render notesToggle(curve.ester, 'legend-band', m.curve_legend_band())}
               <button
                 type="button"
                 class="legend-item curve-markers-toggle"
@@ -455,6 +467,14 @@
                 <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
               </button>
               {@render markerToggle(curve.ester, markersFor(curve.ester).length)}
+            </div>
+            <div id="curve-notes-{curve.ester}">
+              {#if notesOpen[curve.ester]}
+                <div class="disclosed curve-legend-detail" transition:disclose>
+                  <p>{m.curve_band_note()}</p>
+                  <p>{m.curve_source()}</p>
+                </div>
+              {/if}
             </div>
             <div id="curve-results-{curve.ester}">
               {#if resultsOpen[curve.ester]}
@@ -560,11 +580,15 @@
               />
 
               <div class="curve-legend">
-                <details class="curve-legend-detail">
-                  <summary class="legend-item"><span class="legend-qual-line"></span>{m.curve_qual_legend_line()}</summary>
-                  <p>{m.curve_qual_note()}</p>
-                </details>
+                {@render notesToggle(curve.key, 'legend-qual-line', m.curve_qual_legend_line())}
                 {@render markerToggle(curve.key, markersFor(curve.key).length)}
+              </div>
+              <div id="curve-notes-{curve.key}">
+                {#if notesOpen[curve.key]}
+                  <div class="disclosed curve-legend-detail" transition:disclose>
+                    <p>{m.curve_qual_note()}</p>
+                  </div>
+                {/if}
               </div>
               {@render markerList(curve.key, markersFor(curve.key))}
 
@@ -700,13 +724,11 @@
     gap: 6px;
     min-height: var(--touch-target);
     cursor: pointer;
-    list-style: none;
   }
 
-  /* The one legend key that is a button rather than a summary: it opens a
-     list, and a list needs the disclosure's own motion, which a details
-     element's native toggle cannot give it. Drawn as the summaries beside
-     it are, plus the chevron the app's other folds carry. */
+  /* Every legend key that folds something open is a button with the
+     chevron the app's other folds carry, and what it opens grows in under
+     the legend (disclose). */
   .curve-markers-toggle {
     padding: 0;
     border: 0;
@@ -728,10 +750,6 @@
   .curve-markers-note {
     max-width: 48ch;
     margin: 0 0 var(--space-2);
-  }
-
-  .legend-item::-webkit-details-marker {
-    display: none;
   }
 
   .curve-legend-detail {

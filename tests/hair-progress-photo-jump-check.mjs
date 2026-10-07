@@ -79,14 +79,26 @@ try {
   await page.waitForSelector('#hair-photos');
 
   // Verify initial state: active segment is staging
-  const initialSegment = await page.locator('[data-hair-jump] [data-segment="staging"]').getAttribute('aria-checked');
-  assert.equal(initialSegment, 'true', 'Staging segment should be active initially');
+  const initialSegment = await page.locator('[data-hair-jump] [data-jump-to="staging"]').getAttribute('aria-current');
+  assert.equal(initialSegment, 'location', 'Staging segment should be active initially');
 
   // Take screenshot at top (Staging in view)
   await page.screenshot({ path: `${outDir}/01-staging-initial.png` });
 
-  // Jump to photos via Segmented control
-  await page.locator('[data-hair-jump] [data-segment="photos"]').click();
+  // Scrolling is also choosing, once both halves have mounted inside the
+  // body's reserve (audit L08-07: the watcher looked once, found nothing
+  // and never attached)
+  const region = '[data-app-scroll-region]';
+  await page.evaluate(() => document.getElementById('hair-photos').scrollIntoView({ block: 'start', behavior: 'instant' }));
+  await page.waitForFunction(() => document.querySelector('[data-hair-jump] [data-jump-to="photos"]')?.getAttribute('aria-current') === 'location');
+  await page.evaluate(() => document.getElementById('hair-staging').scrollIntoView({ block: 'start', behavior: 'instant' }));
+  await page.waitForFunction(() => document.querySelector('[data-hair-jump] [data-jump-to="staging"]')?.getAttribute('aria-current') === 'location');
+  await page.evaluate((sel) => { document.querySelector(sel).scrollTop = 40; }, region);
+  await page.waitForTimeout(200);
+  const scrollBefore = await page.evaluate((sel) => document.querySelector(sel).scrollTop, region);
+
+  // Jump to photos through the section jump
+  await page.locator('[data-hair-jump] [data-jump-to="photos"]').click();
   await page.waitForTimeout(400);
 
   // Check that photos section is near the top of the viewport
@@ -94,8 +106,8 @@ try {
   assert(photosRect && photosRect.y < 300, `Photos heading should be scrolled into view, got y=${photosRect?.y}`);
 
   // Check active segment updated
-  const photosSegment = await page.locator('[data-hair-jump] [data-segment="photos"]').getAttribute('aria-checked');
-  assert.equal(photosSegment, 'true', 'Photos segment should be active after jumping');
+  const photosSegment = await page.locator('[data-hair-jump] [data-jump-to="photos"]').getAttribute('aria-current');
+  assert.equal(photosSegment, 'location', 'Photos segment should be active after jumping');
 
   // Check that keyboard focus landed on Photos heading or its inner heading
   const focusedTag = await page.evaluate(() => {
@@ -121,13 +133,16 @@ try {
   await page.locator('[data-jump-staging]').click();
   await page.waitForTimeout(400);
 
-  // Check that staging section is scrolled into view
+  // Check that staging comes back where it was left, in the app's own
+  // scroll region (the window never scrolls here)
+  const scrollAfter = await page.evaluate((sel) => document.querySelector(sel).scrollTop, region);
+  assert(Math.abs(scrollAfter - scrollBefore) < 5, `Jumping back should restore the scroll offset, got ${scrollAfter} vs ${scrollBefore}`);
   const stagingRect = await page.locator('#hair-staging').boundingBox();
-  assert(stagingRect && stagingRect.y < 300, `Staging heading should be scrolled back into view, got y=${stagingRect?.y}`);
+  assert(stagingRect && stagingRect.y < 844, `Staging should be back in view, got y=${stagingRect?.y}`);
 
   // Check active segment reverted to staging
-  const returnedSegment = await page.locator('[data-hair-jump] [data-segment="staging"]').getAttribute('aria-checked');
-  assert.equal(returnedSegment, 'true', 'Staging segment should be active after jumping back');
+  const returnedSegment = await page.locator('[data-hair-jump] [data-jump-to="staging"]').getAttribute('aria-current');
+  assert.equal(returnedSegment, 'location', 'Staging segment should be active after jumping back');
 
   // Take screenshot after return
   await page.screenshot({ path: `${outDir}/03-staging-returned.png` });
@@ -140,7 +155,7 @@ try {
 
   // Verify desktop layout (1024x768)
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.locator('[data-hair-jump] [data-segment="staging"]').click();
+  await page.locator('[data-hair-jump] [data-jump-to="staging"]').click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${outDir}/04-desktop-staging.png` });
 

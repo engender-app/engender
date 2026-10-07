@@ -553,7 +553,7 @@
       {:else}
         <div class="screen-part">
           <Notice
-            icon="clock"
+            icon="pill"
             key="doses-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
             title={m.doses_empty_title()}

@@ -13,11 +13,16 @@
    `.milestone-face` until deepening ticket 21 met ticket 10 at the merge and
    the two had written the same rule twice - a milestone's own face, and the
    day view's hair, recovery and tryout photographs. One rule, and a name
-   that is true of all four. */
+   that is true of all four.
+
+   The icon disc it stands in for became a square block of the stripe in
+   phase 10 (`.kit-row-ico`, --r-block), and this kept the circle, so a
+   photographed row was the one round mark in a column of squares
+   (after-release 28, audit L06-16). It takes the block's radius now. */
 .row-face {
   flex: 0 0 auto;
   display: flex;
-  border-radius: 50%;
+  border-radius: var(--r-block);
   overflow: hidden;
   border: var(--role-hairline);
 }
@@ -185,8 +190,7 @@
    two callers keep the wash they were tuned for. */
 .wrapped-cover .rive-stage { background: none; }
 .wrapped-cover-label {
-  font-size: var(--text-xs); font-weight: var(--weight-bold);
-  text-transform: uppercase; letter-spacing: 0.14em;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
   color: var(--text-2);
 }
 /* The year at display size, in the text colour. It was gradient text, which
@@ -619,24 +623,7 @@
 
 /* ---------- Manage tags ---------- */
 .managed-group { border-bottom: 1px solid var(--outline); }
-.managed-group summary {
-  cursor: pointer;
-  min-height: var(--touch-target);
-  padding: var(--space-3) 0;
-  font-weight: var(--weight-bold);
-}
 .managed-tags { display: flex; flex-direction: column; }
-/* `display: flex` above is an author declaration, which beats the UA
-   stylesheet's `details:not([open]) > *:not(summary) { display: none; }`
-   regardless of specificity (ticket 272): a closed group's rows kept a real
-   layout box and painted nothing, but Chromium still treats that subtree as
-   skipped for animation purposes, so a transition running inside froze at
-   its start value and snapped to the end one only once its clock finished -
-   never interpolating. Restoring the native hide for a closed group fixes
-   both: nothing to query while collapsed, and a real transition once a
-   person actually opens it (verified: smooth 150ms ramp with the group open,
-   frozen-then-snap with it closed). */
-.managed-group:not([open]) .managed-tags { display: none; }
 .managed-tag {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) 0;

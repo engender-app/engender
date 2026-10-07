@@ -73,7 +73,7 @@
         {#if row.action === 'prompt' || row.action === 'settings'}
           <button
             type="button"
-            class="btn perm-grant"
+            class="btn btn-soft perm-grant"
             data-grant={row.key}
             disabled={busy}
             aria-label={row.action === 'prompt'
@@ -103,10 +103,11 @@
     animation: perm-swap var(--dur-med) var(--ease-out) both;
   }
 
-  /* A block of the area's own stripe, which is what a control that is the
-     row's one action gets here (rule 4). Narrower than the app's standing
-     button, which spends var(--space-6) either side and would leave a
-     two-word label no room beside a reason. */
+  /* The app's secondary button, an outline block of the page (ADR-0093).
+     It was a filled block of the area's stripe, a button drawn nowhere
+     else in the app (after-release 28, audit UI-08). Narrower than the
+     standing button, which spends var(--space-6) either side and would
+     leave a two-word label no room beside a reason. */
   .perm-grant {
     /* Android's 48dp floor, which PRODUCT.md takes as the app's own because
        it is the stricter of the two platforms. The row is the only thing
@@ -115,8 +116,6 @@
     min-height: var(--touch-target);
     padding: 0 var(--space-3);
     font-size: 15px;
-    background: var(--role-draw);
-    color: var(--role-fill-ink);
     white-space: nowrap;
   }
 

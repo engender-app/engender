@@ -9,6 +9,7 @@
      screen. They do share a scale, though: a chart drawn to its own maximum
      would make one day's single tap as tall as another day's five, and the
      two are counts of the same kind of thing. */
+  import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import { page } from '$app/state';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -249,7 +250,7 @@
   {#if !hasSpan}
     <Segmented
       name={m.stats_range_group()}
-      options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+      options={dayRangeOptions(RANGES)}
       value={String(range)}
       onChange={(v) => (range = Number(v))}
       compact

@@ -16,7 +16,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate, fillTime } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate, fillTime, dateValue } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 import { WALKTHROUGH_GROUPS, groupFlows } from './walkthrough-groups.mjs';
@@ -4352,12 +4352,10 @@ try {
      is that regression's own seam - it fails on the code before this
      ticket's fix and passes after. */
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
+  await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
-  const groupStillOpen = await page
-    .locator('[data-tag-hide="dt-existential"]')
-    .locator('xpath=ancestor::details[1]')
-    .evaluate((el) => el.open);
+  const groupStillOpen =
+    (await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').getAttribute('aria-expanded')) === 'true';
   if (!groupStillOpen) throw new Error('hiding a tag closed its own still-open group');
 
   const unusedPastDay = await page.evaluate(() => {
@@ -4372,7 +4370,7 @@ try {
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
+  await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
@@ -5004,7 +5002,7 @@ try {
   // before that settles gets clobbered right back to today's date.
   const today = localDateInput();
   await page.waitForFunction(
-    ([sel, expected]) => document.querySelector(sel)?.value === expected,
+    ([sel, expected]) => document.querySelector(sel)?.getAttribute('data-date-value') === expected,
     ['#regimen-end', today]
   );
   await fillDate(page, '#regimen-end', localDateInput(1));
@@ -6170,8 +6168,8 @@ try {
   };
   const assertOpensWithSides = async (stretch) => {
     const preceding = precedingWindow(stretch);
-    const gotA = [await page.locator('#compare-a-start').inputValue(), await page.locator('#compare-a-end').inputValue()];
-    const gotB = [await page.locator('#compare-b-start').inputValue(), await page.locator('#compare-b-end').inputValue()];
+    const gotA = [await dateValue(page.locator('#compare-a-start')), await dateValue(page.locator('#compare-a-end'))];
+    const gotB = [await dateValue(page.locator('#compare-b-start')), await dateValue(page.locator('#compare-b-end'))];
     const wantA = [dateInputValueFromEpochDay(stretch.start), dateInputValueFromEpochDay(stretch.end)];
     const wantB = [dateInputValueFromEpochDay(preceding.start), dateInputValueFromEpochDay(preceding.end)];
     if (gotA[0] !== wantA[0] || gotA[1] !== wantA[1] || gotB[0] !== wantB[0] || gotB[1] !== wantB[1]) {
@@ -6689,8 +6687,8 @@ try {
   await page.locator('[data-era-offer-confirm]').click();
   await page.waitForURL('**/settings/eras?**');
   await page.waitForSelector('#era-name');
-  const gotStart = await page.locator('input[name="era-start"]').inputValue();
-  const gotEnd = await page.locator('input[name="era-end"]').inputValue();
+  const gotStart = await dateValue(page.locator('input[name="era-start"]'));
+  const gotEnd = await dateValue(page.locator('input[name="era-end"]'));
   const wantStart = dateInputValueFromEpochDay(settled.start);
   const wantEnd = dateInputValueFromEpochDay(settled.end);
   if (gotStart !== wantStart || gotEnd !== wantEnd) {
@@ -6778,7 +6776,7 @@ try {
      for a value rather than for the selector, the same shape as the skeleton
      wait above. */
   await page.waitForFunction(() => (document.querySelector('#backdate'))?.value, null, { timeout: 8000 });
-  const wanted = await page.locator('#backdate').inputValue();
+  const wanted = await dateValue(page.locator('#backdate'));
   if (!wanted) throw new Error('the backdate field was empty');
   await page.locator('[data-choose="date"]').click();
   await page.waitForSelector('#ed-note');
@@ -8442,7 +8440,7 @@ try {
      calendar affordance on its cell, prefilled with what was just set. */
   await datedCell.locator('xpath=../button[@data-photo-edit-day]').click();
   await page.waitForSelector('[data-photo-day-edit-save]');
-  const prefilled = await page.inputValue('#photo-day-edit');
+  const prefilled = await dateValue(page.locator('#photo-day-edit'));
   if (prefilled !== '1994-03-15') throw new Error(`the edit sheet did not prefill the photo's day: ${prefilled}`);
 
   await fillDate(page, '#photo-day-edit', '1994-04-20');

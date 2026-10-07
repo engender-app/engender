@@ -34,6 +34,29 @@ export function fmtDay(epochDay: number, opts: Intl.DateTimeFormatOptions): stri
   return formatter(opts).format(localDateFromEpochDay(epochDay));
 }
 
+/** A day the person picked or typed, written the way the rest of the app
+    writes a date: "3 Oct 2026", "3 paź 2026". Date fields, the search
+    filter chips and a saved question's criteria all show this, so a field
+    never holds `2026-10-03` while the row under it says "3 Oct" (after-release
+    28, audit V12/UI-08/L08-10). The `yyyy-mm-dd` stays the stored value and
+    the picker's typed-entry format; it is just not what a person reads. */
+export function fmtDateValue(epochDay: number): string {
+  return fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** A day card's bar: "Monday 5 October", with the year only when the day
+    is not in this one ("Saturday 5 September 2025"). The calendar, the
+    entry lists (search, Good moments, a tryout) and On this day each wrote
+    it their own way (after-release 28, audit UI-08); this is the one way. */
+export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
+  return fmtDay(epochDay, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...(crossesCalendarYear(epochDay, todayEpochDay) ? { year: 'numeric' } : {})
+  });
+}
+
 /** The two ends of a chart's range, written so they cannot read backwards.
 
     A gutter says what the ends of the scale are and nothing else

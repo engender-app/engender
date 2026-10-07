@@ -231,7 +231,7 @@
            to the screen that fixes it. -->
       <div class="screen-part">
         <Notice
-          icon="flask"
+          icon="repeat"
           key="dilation-no-procedure"
           role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
           title={m.dilation_no_procedure_title()}
@@ -242,7 +242,7 @@
     {:else if !taper && !editingSchedule}
       <div class="screen-part">
         <Notice
-          icon="flask"
+          icon="repeat"
           key="dilation-schedule-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
           title={m.dilation_schedule_empty_title()}
@@ -338,7 +338,7 @@
       {:else if expectedDays.length === 0}
         <div class="screen-part">
           <Notice
-            icon="flask"
+            icon="repeat"
             key="dilation-sessions-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
             title={m.dilation_sessions_empty_title()}
@@ -417,7 +417,7 @@
           <ListRow
             key="dilation-schedule"
             data-schedule
-            icon="flask"
+            icon="repeat"
             title={m.dilation_schedule_edit_action()}
             subtitle={[
               followedProcedure?.name,

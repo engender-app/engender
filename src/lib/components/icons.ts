@@ -72,6 +72,17 @@ export const PATHS: Record<string, string> = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
   lock: '<rect x="4" y="10.49" width="16" height="10" rx="3"/><path d="M8 10.49V6.49a4 4 0 0 1 8 0v4"/>',
   shield: '<path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z"/>',
+  /* The open padlock: the Unlocked access mode (after-release 28). It drew
+     the key, which is also the recovery key's mark. */
+  unlock: '<rect x="4" y="10.49" width="16" height="10" rx="3"/><path d="M8 10.49V6.49a4 4 0 0 1 7.8-1.25"/>',
+  /* Medication, wherever a dose or a regimen is drawn (after-release 28).
+     Regimen drew the lab's flask, Dose log a clock and Reminders a heart. */
+  pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/>',
+  /* A routine kept up on a schedule: dilation, which drew the lab's flask. */
+  repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  /* A random draw (search's "pick one at random"). It drew `shuffle`, which
+     is Hair removal's mark on the More hub. */
+  dice: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16" cy="16" r="1.3"/>',
   download: '<path d="M12 1.79v12M7 8.79l5 5 5-5"/><path d="M5 19.79h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',
   tag: '<path d="M2.81 12.31V4.81a2 2 0 0 1 2-2h7.5L21.81 12.31a2.1 2.1 0 0 1 0 3L15.31 21.81a2.1 2.1 0 0 1-3 0z"/><circle cx="8.31" cy="8.31" r="1.3"/>',

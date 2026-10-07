@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, dateValue } from './browser-harness.mjs';
 import { makeDensePdf } from './pdf-fixture.mjs';
 import { PALETTES } from './palettes.mjs';
 
@@ -78,7 +78,7 @@ try {
      date and link are said once, in the fields under the page. */
   const heading = page.locator('[data-screen-title]');
   assert.equal(await heading.innerText(), fixture.title);
-  assert.equal(await page.locator('#document-day').inputValue(), '2024-10-04');
+  assert.equal(await dateValue(page.locator('#document-day')), '2024-10-04');
   assert.equal(await page.locator('[data-list-row="document-owner"]').count(), 0, 'one link row');
   assert.equal(await page.locator('[data-document-link]').count(), 1, 'one link row');
   const headingBox = await heading.boundingBox();
@@ -90,7 +90,7 @@ try {
   await page.locator('#document-title').fill(fixture.title);
   await visit(`/media/documents/${fixture.second}`);
   await page.getByRole('heading', { name: 'Referral for the August consultation', exact: true }).waitFor();
-  assert.equal(await page.locator('#document-day').inputValue(), '2024-10-03');
+  assert.equal(await dateValue(page.locator('#document-day')), '2024-10-03');
   await visit(`/media/documents/${fixture.first}`);
   await page.locator('[data-document-page-canvas="drawn"]').waitFor();
   await page.getByRole('button', { name: 'Enlarge page', exact: true }).click();

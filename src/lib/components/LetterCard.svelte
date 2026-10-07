@@ -303,7 +303,7 @@
     color: var(--text-2);
   }
 
-  /* The state marks - SEALED, and READY while a letter is unlocked and
+  /* The state marks - Sealed, and Ready while a letter is unlocked and
      unread. The words take the role's ink, held to 4.5:1 as small text;
      the glyphs keep its mark colour, which only owes a glyph's 3:1. The
      words in --role-mark measured 3.53:1 on trans light (after-release
@@ -311,8 +311,6 @@
   .letter-mark > span:not(.letter-when),
   .letter-ready {
     color: var(--role-ink);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
   .letter-mark > :global(svg),
   .letter-ready > :global(svg) {

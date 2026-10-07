@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, dateValue, fieldValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -141,7 +141,7 @@ try {
   await page.locator('[data-save-lab]').click();
   await page.getByRole('alert').filter({ hasText: 'Could not save' }).waitFor();
   for (const [id, value] of Object.entries({ 'lab-custom-analyte': 'shbg', 'lab-value': '61.25', 'lab-unit': 'nmol/L', 'lab-provider': 'Fixture lab', 'lab-date': '2024-03-11', 'lab-time': '09:35', 'lab-note': 'Manual result' })) {
-    assert.equal(await page.locator(`#${id}`).inputValue(), value);
+    assert.equal(await fieldValue(page.locator(`#${id}`)), value);
   }
   assert.deepEqual(await stored('shbg'), before);
   await page.evaluate(() => { window.labFault.mode = 'pending'; });
@@ -161,7 +161,7 @@ try {
   await page.locator('[data-segment="shbg"]').click();
   await page.locator(`[data-lab-result="${saved.id}"]`).click();
   for (const [id, value] of Object.entries({ 'lab-analyte': 'shbg', 'lab-value': '61.25', 'lab-unit': 'nmol/L', 'lab-provider': 'Fixture lab', 'lab-date': '2024-03-11', 'lab-time': '09:35', 'lab-note': 'Manual result' })) {
-    assert.equal(await page.locator(`#${id}`).inputValue(), value);
+    assert.equal(await fieldValue(page.locator(`#${id}`)), value);
   }
   await page.evaluate(() => { window.labFault.mode = 'pass'; });
   await page.locator('#lab-note').fill('Corrected note');
@@ -234,7 +234,7 @@ try {
   assert.equal((await stored('shbg')).length, before.length + 1);
   await page.locator('[data-segment="estradiol"]').click();
   await page.locator(`[data-lab-result="${imported.id}"]`).click();
-  assert.equal(await page.locator('#lab-date').inputValue(), '2024-03-12');
+  assert.equal(await dateValue(page.locator('#lab-date')), '2024-03-12');
   assert.equal(await page.locator('#lab-time').inputValue(), '');
   await close();
   console.log('PASS fixed OCR retries recognition, marks duplicate, corrects selected row, saves exact fields without skipped rows');

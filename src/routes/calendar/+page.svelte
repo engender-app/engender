@@ -62,7 +62,8 @@
      is drawn. */
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtMonthYear, fmtTime } from '$lib/data/dates';
+  import { fmtDay, fmtDayBar, fmtMonthYear, fmtTime } from '$lib/data/dates';
+  import { currentDay } from '$lib/stores/today.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import MonthJump from '$lib/components/MonthJump.svelte';
@@ -569,7 +570,7 @@
             <DayCard
               key={String(group.epochDay)}
               role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
-              heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+              heading={fmtDayBar(group.epochDay, currentDay())}
             >
               {#each group.entries as entry (entry.id)}
                 {@const presentation = entryPresentation(entry)}

@@ -54,7 +54,7 @@ try {
   await navigate('/transition/letters');
   await page.locator('[data-add]').click();
   const text = page.locator('#letter-text');
-  const date = await page.locator('#letter-unlock').inputValue();
+  const date = await page.locator('#letter-unlock').getAttribute('data-date-value');
   await text.fill('Native letter proof');
   await text.evaluate((el) => el.blur());
   await closeKeyboard();
@@ -62,7 +62,7 @@ try {
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
   assert.equal(await text.inputValue(), 'Native letter proof');
-  assert.equal(await page.locator('#letter-unlock').inputValue(), date);
+  assert.equal(await page.locator('#letter-unlock').getAttribute('data-date-value'), date);
   console.log('PASS native Back protects composition; Keep editing retains text/date');
 
   await page.locator('[data-sheet]').evaluate((el) => { el.scrollTop = 0; });

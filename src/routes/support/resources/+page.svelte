@@ -13,6 +13,7 @@
      because the row and its text each carry a class of this screen's own -
      scoped styles that a component boundary would not reach - and because
      the third thing in the text is a pair of links, not a subtitle. */
+  import SectionJump from '$lib/components/kit/SectionJump.svelte';
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -50,11 +51,14 @@
 <div class="screen">
   <ScreenHeader title={m.resources_title()} back="/more" subtitle={m.resources_intro()} />
 
-  <nav class="resource-jumps" aria-label={m.resources_jump_label()}>
-    {#each GROUPS as group (group.region)}
-      <a class="resource-jump" href={`#${group.id}`}>{group.title()}</a>
-    {/each}
-  </nav>
+  <!-- The kit's in-page jump (after-release 28): these were outline blocks
+       drawn like the contact buttons under each service, a third look for
+       the same move. -->
+  <SectionJump
+    name={m.resources_jump_label()}
+    sections={GROUPS.map((group) => ({ value: group.region, label: group.title(), target: group.id }))}
+    key="resource-groups"
+  />
 
   {#each GROUPS as group, i (group.region)}
     <SectionHeading id={group.id} focusable text={group.title()} />
@@ -119,28 +123,6 @@
   /* Fragments keep every bundled resource in one offline document. They do
      not select or hide a group, and native links retain keyboard navigation
      without a second focus or scroll state to keep in sync. */
-  .resource-jumps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .resource-jump {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-4);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    background: var(--surface-2);
-    color: var(--role-ink);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    text-decoration: none;
-  }
-
-  .resource-jump:hover { border-color: var(--outline); }
-
   :global(#resources-pl),
   :global(#resources-int) {
     scroll-margin-top: var(--space-5);

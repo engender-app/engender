@@ -136,7 +136,7 @@ const SECTION_ROWS: Record<
         key: `dose-${dose.id}`,
         // No screen of its own - a dose sits behind the care row - so there
         // is no single row to read this off and it keeps its own.
-        ...literalIcon('clock'),
+        ...literalIcon('pill'),
         title: doseRowTitle(drug, dose, ', '),
         subtitle: subtitle || undefined,
         href: '/care/doses'

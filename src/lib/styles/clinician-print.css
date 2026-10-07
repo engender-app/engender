@@ -34,8 +34,6 @@
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .dossier-profile-value {

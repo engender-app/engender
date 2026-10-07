@@ -529,7 +529,7 @@ const ROWS = [
   },
   {
     key: 'dilation',
-    icon: 'flask',
+    icon: 'repeat',
     href: '/health/dilation',
     home: 'surgery',
     /* The sessions, not the schedule. `taper` is what was meant to happen
