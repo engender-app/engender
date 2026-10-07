@@ -121,7 +121,7 @@ export async function captureChainOfStream(stream: MediaStream): Promise<string>
     path still opens, because a benchmark under processing beats no
     benchmark. */
 export async function openMicrophone(unprocessed = false): Promise<MediaStream | MicRefusal> {
-  if (!MediaRecorder.isTypeSupported(RECORDING_MIME_TYPE)) return 'unsupported';
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported(RECORDING_MIME_TYPE)) return 'unsupported';
   try {
     return await navigator.mediaDevices.getUserMedia({ audio: unprocessed ? UNPROCESSED_AUDIO : true });
   } catch (error) {
@@ -140,25 +140,35 @@ export async function openMicrophone(unprocessed = false): Promise<MediaStream |
     on Android, two permission moments for one recording. */
 export function recordStream(stream: MediaStream): ActiveRecording {
   const chunks: Blob[] = [];
-  const recorder = new MediaRecorder(stream, { mimeType: RECORDING_MIME_TYPE });
+  let recorder: MediaRecorder;
+  try {
+    recorder = new MediaRecorder(stream, { mimeType: RECORDING_MIME_TYPE });
+  } catch (error) {
+    for (const track of stream.getTracks()) track.stop();
+    throw error;
+  }
   recorder.ondataavailable = (event) => {
     if (event.data.size > 0) chunks.push(event.data);
   };
   const stopped = new Promise<void>((resolve) => {
     recorder.onstop = () => resolve();
   });
-  recorder.start();
+  try {
+    recorder.start();
+  } catch (error) {
+    for (const track of stream.getTracks()) track.stop();
+    throw error;
+  }
 
   return {
     async stop() {
       try {
-        recorder.stop();
+        if (recorder.state !== 'inactive') recorder.stop();
         await stopped;
       } finally {
         // Closes the mic indicator the OS/browser shows while a stream is
         // live - stopping the recorder alone leaves the track open. In a
-        // `finally` so a recorder already inactive (the capture device
-        // vanished mid-take) throwing here still lets the tracks go.
+        // `finally` so a failed stop still lets the tracks go.
         for (const track of stream.getTracks()) track.stop();
       }
       if (chunks.length === 0) return null;

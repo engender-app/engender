@@ -645,6 +645,29 @@ test('correcting the draw day or time re-derives the context', async () => {
   assert.deepEqual((await journal.labs.getResults('estradiol'))[0].timing, { route: 'oral', hoursSinceDose: 3 });
 });
 
+/* Which dose a draw is timed from depends on the analyte (selectTimingDose),
+   so a result moved to another analyte has to be timed again, or it keeps
+   the old drug's context (after-release ticket 01, L01-13). */
+test('changing a result to another analyte re-derives the context from that drug', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.doses.upsertDose({ timestamp: drawn('06:00'), route: 'oral', dose: 2, doseUnit: 'mg', drug: 'estradiol' });
+  await journal.doses.upsertDose({
+    timestamp: drawn('08:00') - 6 * 86400000,
+    route: 'im',
+    dose: 50,
+    doseUnit: 'mg',
+    drug: 'testosterone cypionate',
+    injectionSite: 'thigh-left',
+    vehicle: 'oil'
+  });
+  const id = await journal.labs.upsertResult({ epochDay: DRAW_DAY, analyte: 'estradiol', value: 400, drawTime: '09:00' });
+  assert.deepEqual((await journal.labs.getResultById(id))?.timing, { route: 'oral', hoursSinceDose: 3 });
+
+  await journal.labs.upsertResult({ id, epochDay: DRAW_DAY, analyte: 'testosterone', value: 400, drawTime: '09:00' });
+
+  assert.deepEqual((await journal.labs.getResultById(id))?.timing, { route: 'im', dayOfInterval: 7 });
+});
+
 test('a provider is stored as typed, with no list and no normalization', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.labs.upsertResult({ epochDay: 100, analyte: 'estradiol', value: 400, provider: '  Diagnostyka ' });

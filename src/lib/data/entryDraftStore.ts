@@ -59,12 +59,17 @@ export function isPersistedEntryDraft(value: unknown): value is PersistedEntryDr
     typeof d.dims === 'object' &&
     d.dims !== null &&
     !Array.isArray(d.dims) &&
+    Object.values(d.dims).every(Number.isFinite) &&
     Array.isArray(d.tags) &&
+    d.tags.every(tag => typeof tag === 'string') &&
     typeof d.bodyRegions === 'object' &&
     d.bodyRegions !== null &&
     !Array.isArray(d.bodyRegions) &&
     Object.values(d.bodyRegions).every(Number.isFinite) &&
-    Array.isArray(d.removedPhotoIds)
+    Array.isArray(d.removedPhotoIds) && d.removedPhotoIds.every(id => typeof id === 'string') &&
+    Array.isArray(d.removedRecordingIds) && d.removedRecordingIds.every(id => typeof id === 'string') &&
+    Array.isArray(d.removedVideoIds) && d.removedVideoIds.every(id => typeof id === 'string') &&
+    (d.effectMarkers === undefined || (Array.isArray(d.effectMarkers) && d.effectMarkers.every(marker => marker !== null && typeof marker === 'object')))
   );
 }
 

@@ -209,7 +209,10 @@ function activitiesOf(row: DaylioRow): string[] {
 const entryUuid = (date: string, time: string, mood: string, note: string): Promise<string> =>
   contentUuid([date, time, mood, note]);
 
-function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
+/** Every label a tag in this journal answers to, folded, so an imported
+    activity resolves to a tag that is already here rather than a second one
+    beside it. The Day One and Daylio backup importers use it too. */
+export function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
   const matches = new Map<string, string>();
   for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {
     const labels = tag.builtIn ? [...naming.tagLabels(tag.id), tag.label] : [tag.label];
@@ -311,6 +314,7 @@ export async function daylioPreview(
       }
       candidate.entry.tags.push(tag.id);
     }
+    candidate.entry.tags = [...new Set(candidate.entry.tags)];
   }
 
   const mappings = [...moodMappings].map(([label, mood]) => ({ label, mood }));

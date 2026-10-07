@@ -5,9 +5,9 @@
    there is no second implementation for milestones to drift from this one.
 
    Offering one - at a milestone's own creation, and again on each
-   anniversary showing - is the caller's business (transition/milestones,
-   MilestoneCard); this module only holds the record once someone chooses
-   to add it, and never requires one. */
+   anniversary showing - is the caller's business (transition/milestones);
+   this module only holds the record once someone chooses to add it, and
+   never requires one. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { FeltSenseEntry } from '../types';

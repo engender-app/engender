@@ -8,6 +8,7 @@
   import { crossfade, resize } from '$lib/motion/reveal';
   import { EASE_OUT_CSS } from '$lib/motion/tokens';
   import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
+  import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
 
   let {
     read,
@@ -53,18 +54,23 @@
      mounts on a warm answer has nothing to cross from. */
   let part = $state<HTMLElement>();
   let wasLoading: boolean | undefined;
+  /* What the gate draws: the read's own branch, except that an answer too
+     late in an Android tab arrival to reveal within it keeps the skeleton
+     until the field stops (screenArrival.ts). */
+  const released = holdForArrival(() => branch !== 'loading', () => wasLoading === true);
+  let shown = $derived(released() ? branch : 'loading');
   let revealVersion = 0;
   /* Hide the answer before Svelte inserts it. Android can paint one frame
      before a new Web Animation starts, exposing content through the skeleton. */
   $effect.pre(() => {
-    const loading = branch === 'loading';
+    const loading = shown === 'loading';
     if (wasLoading === true && !loading && part) {
       part.dataset.gateRevealing = '';
       revealVersion += 1;
     }
   });
   $effect(() => {
-    const loading = branch === 'loading';
+    const loading = shown === 'loading';
     if (wasLoading === true && !loading && part) {
       fitReadArrival(part.getAnimations({ subtree: true }));
       const duration = readRevealDuration('--dur-fast');
@@ -100,25 +106,25 @@
      caller's own one used to (see each `rows`/`empty` snippet below) -
      `.screen > .screen-part > *` (app.css) is what gives their content
      its floor. -->
-<div class="screen-part" use:resize={branch} bind:this={part}>
-  {#if branch === 'loading'}
+<div class="screen-part" use:resize={shown} bind:this={part}>
+  {#if shown === 'loading'}
     <div out:crossfade data-gate-skeleton><Skeleton {variant} {count} /></div>
   {:else}
-    {#if branch === 'failed' || branch === 'stale'}
+    {#if shown === 'failed' || shown === 'stale'}
       <div role="status">
-        {#if branch === 'failed' && failed}
+        {#if shown === 'failed' && failed}
           {@render failed()}
         {/if}
         <Notice
-          title={branch === 'stale' ? m.read_refresh_failed() : failed ? undefined : m.read_failed()}
-          text={branch === 'stale' ? m.read_stale_body() : undefined}
+          title={shown === 'stale' ? m.read_refresh_failed() : failed ? undefined : m.read_failed()}
+          text={shown === 'stale' ? m.read_stale_body() : undefined}
           action={{ label: m.read_retry(), onclick: () => read.retry() }}
         />
       </div>
     {/if}
-    {#if branch === 'rows' || (branch === 'stale' && read.rows.length > 0)}
+    {#if shown === 'rows' || (shown === 'stale' && read.rows.length > 0)}
       {@render rows(read.rows)}
-    {:else if branch === 'empty'}
+    {:else if shown === 'empty'}
       {@render empty()}
     {/if}
   {/if}

@@ -8,6 +8,7 @@ import {
   drugSpans,
   earliestEpisode,
   expectedDosesOnDay,
+  lastDayWithin,
   nearestActiveEpisode,
   showAttributionLabel
 } from './regimenEpisode.ts';
@@ -377,18 +378,42 @@ test('expectedDosesOnDay reads the day itself, so an episode starting later stil
 });
 
 test('showAttributionLabel: a lone active episode already named its drug in the title', () => {
-  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol', 1), false);
+  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol'), false);
 });
 
-test('showAttributionLabel: an episode picked out among two concurrent ones still shows', () => {
-  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol', 2), true);
+test('showAttributionLabel: concurrent episodes do not repeat the title drug', () => {
+  assert.equal(showAttributionLabel({ episode: episode('a', 0), ambiguous: false }, 'estradiol'), false);
 });
 
 test('showAttributionLabel: no episode and no drug shows, so the row still says nothing covered it', () => {
-  assert.equal(showAttributionLabel({ episode: null, ambiguous: false }, null, 0), true);
-  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, null, 2), true);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: false }, null), true);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, null), true);
 });
 
 test('showAttributionLabel: two episodes agreeing on one drug hide the "not recorded" text the title contradicts', () => {
-  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol', 2), false);
+  assert.equal(showAttributionLabel({ episode: null, ambiguous: true }, 'estradiol'), false);
+});
+
+/* The day-ahead dose marks read each episode only as far as its own span
+   reaches into the range (after-release ticket 01). */
+
+test('an open episode that began before the range runs to the end of it', () => {
+  assert.equal(lastDayWithin(episode('a', 100), 150, 160), 160);
+});
+
+test('an episode that ends inside the range stops at its own end', () => {
+  assert.equal(lastDayWithin(episode('a', 100, 154), 150, 160), 154);
+});
+
+test('an episode that starts inside the range still reaches its end', () => {
+  assert.equal(lastDayWithin(episode('a', 155), 150, 160), 160);
+});
+
+test('an episode that misses the range on either side answers null', () => {
+  assert.equal(lastDayWithin(episode('a', 161), 150, 160), null);
+  assert.equal(lastDayWithin(episode('a', 100, 149), 150, 160), null);
+});
+
+test('an episode ending on the first day of the range keeps that one day', () => {
+  assert.equal(lastDayWithin(episode('a', 100, 150), 150, 160), 150);
 });

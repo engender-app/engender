@@ -49,10 +49,11 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
+import { contentUuid } from '../journal/support';
 import { photoFileName } from '../photos/names';
 import { audioMimeOf } from '../voiceRecordings/mime';
 import { htmlToText } from './html';
-import type { DaylioNaming } from './daylio';
+import { tagMatches, type DaylioNaming } from './daylio';
 import type {
   ArchiveDimension,
   ArchiveEntry,
@@ -216,11 +217,11 @@ function zipNames(reader: ZipReader): string[] {
     the reader matches names literally, so the raw, possibly leading-slash
     form has to be found first. Decompresses that member alone, and only up
     to the shared reader's ceiling, which is what keeps a preview off the
-    500 photos it is not reading, and off a member declaring more than
+    500 full attachments it is not retaining, and off a member declaring more than
     this app will hold in memory at once. */
-function zipRead(reader: ZipReader, name: string): Uint8Array | null {
+function zipRead(reader: ZipReader, name: string, prefix = false): Uint8Array | null {
   const raw = reader.names().find((candidate) => zipName(candidate) === name);
-  return raw ? reader.read(raw) : null;
+  return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
 }
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:
@@ -289,22 +290,6 @@ function openBackup(file: Uint8Array): { payload: Record_; names: Set<string>; r
 }
 
 /* ---- identity -------------------------------------------------------- */
-
-/** A uuid derived from what identifies a record, so the same backup
-    resolves the same identities every time and a re-import is a no-op
-    through the ordinary merge (ADR-0002).
-
-    daylio.ts derives its entry uuids the same way. Not shared with it:
-    this ticket leaves that file and its tests untouched, and a helper
-    moved out of it would be a change to it. */
-async function derivedUuid(parts: readonly unknown[]): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(parts));
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)).slice(0, 16);
-  digest[6] = (digest[6] & 0x0f) | 0x50; // name-derived, RFC 4122 variant
-  digest[8] = (digest[8] & 0x3f) | 0x80;
-  const hex = [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 /* ---- dates ----------------------------------------------------------- */
 
@@ -451,8 +436,9 @@ export async function daylioBackupPreview(
     assetPaths.set(id, path);
   }
 
-  const readAsset = async (id: number): Promise<Uint8Array> => {
-    const bytes = zipRead(reader, assetPaths.get(id)!);
+  const readAsset = async (id: number, prefix = false): Promise<Uint8Array> => {
+    const path = assetPaths.get(id)!;
+    const bytes = zipRead(reader, path, prefix);
     if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };
@@ -491,6 +477,7 @@ export async function daylioBackupPreview(
 
   const groups = new Map<string, ArchiveTagGroup>();
   const tagIds = new Map<number, string>();
+  const createdTagIds = new Set<string>();
   /* Rows the file holds that carry no name of their own. Nothing can be
      imported from a tag or a milestone that is only an id, so they are
      counted for the preview rather than dropped in silence - and the ids
@@ -525,14 +512,17 @@ export async function daylioBackupPreview(
     // A tag with no group of its own goes where the CSV path puts every
     // imported tag: the built-in group kept for exactly that, whose name
     // is localised rather than carried in the file.
-    const key = named === null ? 'imported' : await derivedUuid(['daylio-tag-group', foldText(named)]);
+    const key = named === null ? 'imported' : await contentUuid(['daylio-tag-group', foldText(named)]);
     let group = groups.get(key);
     if (!group) {
       group = { key, name: named ?? '', enabled: true, builtIn: named === null, tags: [] };
       groups.set(key, group);
     }
-    const tagId = await derivedUuid(['daylio-tag', foldText(label)]);
-    group.tags.push({ id: tagId, label, builtIn: false, hidden: false } satisfies ArchiveTag);
+    const tagId = await contentUuid(['daylio-tag', foldText(label)]);
+    if (!createdTagIds.has(tagId)) {
+      group.tags.push({ id: tagId, label, builtIn: false, hidden: false } satisfies ArchiveTag);
+      createdTagIds.add(tagId);
+    }
     tagIds.set(id, tagId);
   }
   journal.tagGroups = [...groups.values()];
@@ -557,7 +547,7 @@ export async function daylioBackupPreview(
       continue;
     }
 
-    const key = await derivedUuid(['daylio-scale', foldText(name)]);
+    const key = await contentUuid(['daylio-scale', foldText(name)]);
     // Resolved either way: an entry's own value has to name this key even
     // when the dimension itself is already here and travels as nothing.
     dimensionOf.set(id, { key, position: new Map(ids.map((valueId, index) => [valueId, index + 1])) });
@@ -626,7 +616,7 @@ export async function daylioBackupPreview(
     /* Resolved before the attachments are, so an entry this journal
        already holds costs nothing: its assets are neither read out of the
        zip nor counted as work a commit would do. */
-    const uuid = await derivedUuid([
+    const uuid = await contentUuid([
       dateInputValueFromEpochDay(epochDay),
       `${pad(int(record.hour) ?? 0)}:${pad(int(record.minute) ?? 0)}`,
       mood,
@@ -668,7 +658,7 @@ export async function daylioBackupPreview(
       mood,
       note,
       dims,
-      tags,
+      tags: [...new Set(tags)],
       photos,
       recordings,
       videos: [],
@@ -697,7 +687,7 @@ export async function daylioBackupPreview(
     if (epochDay === null) throw new DaylioBackupError('record', `${named} has no readable date`);
     if (flag(record.isAnniversary)) anniversaries += 1;
 
-    const uuid = await derivedUuid(['daylio-milestone', name, epochDay]);
+    const uuid = await contentUuid(['daylio-milestone', name, epochDay]);
     if (existingMilestones.has(uuid)) continue;
 
     const assetId = int(record.assetId);
@@ -738,7 +728,7 @@ export async function daylioBackupPreview(
     const noteScaffold = htmlToText(str(record.body));
     if (!name && !noteScaffold) continue;
 
-    const id = await derivedUuid(['daylio-template', name, noteScaffold]);
+    const id = await contentUuid(['daylio-template', name, noteScaffold]);
     if (existingTemplates.has(id)) continue;
     journal.entryTemplates.push({
       id,
@@ -792,11 +782,11 @@ export async function daylioBackupPreview(
 async function planAsset(
   id: number,
   asset: AssetRow,
-  readAsset: (id: number) => Promise<Uint8Array>,
+  readAsset: (id: number, prefix?: boolean) => Promise<Uint8Array>,
   missing: Set<number>
 ): Promise<{ kind: 'photo' | 'audio'; id: string; fileName: string; asset: DaylioAsset } | null> {
-  const bytes = await readAsset(id);
-  const uuid = await derivedUuid(['daylio-asset', asset.checksum]);
+  const bytes = await readAsset(id, true);
+  const uuid = await contentUuid(['daylio-asset', asset.checksum]);
 
   if (asset.type === AUDIO_ASSET) {
     const extension = audioExtension(bytes) ?? recordingExtensionOf(asset.sourceName);
@@ -834,18 +824,3 @@ const recordingExtensionOf = (name: string): string | null => {
   const extension = extensionOf(name);
   return extension && audioMimeOf(extension) ? extension : null;
 };
-
-/** Every label a tag in this journal answers to, folded, so an imported
-    activity resolves to a tag that is already here rather than a second
-    one beside it. daylio.ts does the same for the CSV path. */
-function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
-  const matches = new Map<string, string>();
-  for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {
-    const labels = tag.builtIn ? [...naming.tagLabels(tag.id), tag.label] : [tag.label];
-    for (const label of labels.filter((one) => one.trim().length > 0)) {
-      const folded = foldText(label);
-      if (!matches.has(folded)) matches.set(folded, tag.id);
-    }
-  }
-  return matches;
-}

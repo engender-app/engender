@@ -39,7 +39,7 @@ import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
-import { iconOf, literalIcon } from './rowIcon';
+import { iconOf } from './rowIcon';
 
 /** One hit as a row: where it goes, and what it says. */
 interface SearchHitRow extends Pick<HubRow, 'icon'> {
@@ -111,14 +111,14 @@ const AREA_ROWS: Record<
     href: (hit) => `${hubRow('tryouts').href}/${hit.id}`
   },
   presentations: {
-    ...literalIcon('palette'),
+    icon: 'palette',
     label: () => m.presentations_title(),
     href: () => '/settings/presentations'
   },
-  eras: { ...literalIcon('columns'), label: () => m.eras_title(), href: () => '/settings/eras' },
+  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
   affirmations: {
-    ...literalIcon('sparkle'),
+    icon: 'sparkle',
     label: () => m.affirmations_row_title(),
     href: () => '/settings/affirmations'
   },
@@ -133,8 +133,8 @@ const AREA_ROWS: Record<
   /* Neither area has a row of its own - both sit behind the care row
      (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW), so there is no single
      screen's icon to read these off and they keep their own. */
-  labResults: { ...literalIcon('flask'), label: () => m.lab_results(), href: () => '/care/labs' },
-  sizeRecords: { ...literalIcon('package'), label: () => m.size_log(), href: () => '/body/sizes' },
+  labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/care/labs' },
+  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
   taperSessions: { ...iconOf('dilation'), label: () => m.dilation(), href: () => hubRow('dilation').href },
   wearSessions: { ...iconOf('wear'), label: () => m.wear_log(), href: () => hubRow('wear').href },
   // The compare surface rather than the recorder: a hit is a take somebody
@@ -159,14 +159,14 @@ const AREA_ROWS: Record<
      a second time. That is the care row's own screen, exactly, so its icon
      comes from there too. */
   medicationStock: { ...iconOf('care'), label: () => m.stock_title(), href: () => hubRow('care').href },
-  reminders: { ...literalIcon('bell'), label: () => m.reminders(), href: () => '/settings/reminders' },
+  reminders: { icon: 'bell', label: () => m.reminders(), href: () => '/settings/reminders' },
   /* A margin note has no screen of its own - it opens the entry it
      annotates, and `date` on the row is already that entry's own day
      (textSearch.ts's own reasoning for dating this area by the owner
      rather than by when the note was written), which is what lets the hit
      name the entry without this label needing to. */
   marginNotes: {
-    ...literalIcon('note'),
+    icon: 'note',
     label: () => m.margin_note_search_label(),
     href: (hit) => `/entry/${hit.context}`
   }
@@ -200,7 +200,7 @@ export function searchHitRows(hits: readonly SearchHit[], query: string): Search
         key: `${hit.area}-${hit.id}`,
         area: hit.area as SearchAreaKey,
         label: declared.label(),
-        ...literalIcon(declared.icon),
+        icon: declared.icon,
         href: declared.href(hit),
         date: hit.epochDay === null ? undefined : photoCaptionDate(hit.epochDay),
         excerpt: excerptOf(hit.value, query)

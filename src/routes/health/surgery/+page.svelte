@@ -1,11 +1,12 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Procedures, dates and your own recovery log, on the surface kit (phase
      5 UX ticket 25 and phase 5 deepening ticket 12).
-     Rebuilt into a comprehensive 4-phase Procedure Care & Recovery Hub:
+     Rebuilt into a five-phase Procedure Care & Recovery Hub:
      1. Planning Phase (no date set): Consult questions, preparation checklist, insurance tasks.
      2. Pre-Op Phase (date set, before surgery day): Live day countdown, packing list, clearance tasks.
      3. Surgery Day: On surgery day, prompts user to record surgery day as transition milestone upon explicit confirmation (ADR-0045).
@@ -14,17 +15,21 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
-  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
+  import { SURGERY_RECOVERY_CUTOFF_DAYS, procedureInArchive, procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { dilationEligible } from '$lib/data/taperSchedule';
   import { fmtDay } from '$lib/data/dates';
-  import { dateInputValueFromEpochDay, epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
+  import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { ChecklistItem, Procedure, ProcedureConsult, ProcedureKind } from '$lib/data/types';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
@@ -53,16 +58,31 @@
   /* The procedures, and the record kept against whichever one is open. */
   const SECTION_ROLE = { procedures: 0, recovery: 1 };
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
-  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedure.archived));
-  let archivedProcedures = $derived(procedures.filter((procedure) => procedure.archived));
+  let ongoingProcedures = $derived(procedures.filter((procedure) => !procedureInArchive(procedure, today)));
+  let archivedProcedures = $derived(procedures.filter((procedure) => procedureInArchive(procedure, today)));
   let procedureGroups = $derived([
     { key: 'ongoing', title: m.surgery_ongoing_title(), procedures: ongoingProcedures },
     { key: 'archive', title: m.surgery_archive_title(), procedures: archivedProcedures }
   ].filter((group) => group.procedures.length));
+
+  let procedureRows = $derived(procedureGroups.flatMap((group, index) => [
+    { key: `heading-${index}`, group: group.key, heading: group.title, procedure: null },
+    ...group.procedures.map((procedure) => ({
+      key: procedure.id, group: group.key, heading: null, procedure
+    }))
+  ]));
+
+  /* A procedure moving between Ongoing and the archive travels there
+     instead of cutting; headings and cards that come or go disclose. */
+  travelOnChange(
+    () => [...document.querySelectorAll<HTMLElement>('.procedure-row[data-travel-key]')],
+    (el) => el.dataset.travelKey ?? '',
+    () => procedureRows
+  );
 
   let sourceId = $derived(page.url.searchParams.get('procedure'));
   let sourceProcedure = $derived(procedures.find((p) => p.id === sourceId));
@@ -163,8 +183,13 @@
         dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn,
         archived: draft.archived
       });
-      selectedId = id;
-      notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
+      /* Editing the open procedure keeps notes typed beside it, and saving
+         another one leaves unsaved notes open where they are rather than
+         replacing them (after-release 06). */
+      if (selectedId !== id && !notesUnsaved()) {
+        selectedId = id;
+        notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
+      }
     },
     async remove(id) {
       if (selectedId === id) selectedId = null;
@@ -185,11 +210,19 @@
   let pickingKind = $state(false);
   let photoDate = $state('');
 
-  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
+  /* Every sheet below closes once its write lands and stays open with a
+     toast when it does not (after-release 06); they used to close first. */
+  const sheetWrite = writer();
+
+  /** False when the write failed, which keeps a reviewed shot under review. */
+  async function storePhoto(photo: NormalizedPhoto): Promise<boolean> {
     const epochDay = epochDayFromDateInputValue(photoDate);
-    if (!selectedId || epochDay === null) return;
+    const id = selectedId;
+    if (!id || epochDay === null) return true;
+    if (!(await sheetWrite.run(() => journal.procedures.addPhoto(id, epochDay, photo), m.write_failed()))) return false;
     photoSheet = false;
-    await journal.procedures.addPhoto(selectedId, epochDay, photo);
+    toast(m.saved(), { kind: 'record-saved' });
+    return true;
   }
 
   const recoveryPhotos = photoSection<ProcedurePhoto>({
@@ -199,6 +232,14 @@
     reference: () => lastPhotoReference(photos)
   });
 
+  /* A consult date asks before it goes and says that it went
+     (after-release 07); it used to vanish on one tap. */
+  const consultRecord = recordEditor<ProcedureConsult>({
+    remove: (id) => journal.procedures.deleteConsult(id),
+    deleted: () => m.surgery_consult_deleted(),
+    findById: (id) => selected?.consults.find((consult) => consult.id === id)
+  });
+
   let itemSheet = $state(false);
   let itemText = $state('');
   const itemRecord = recordEditor<ChecklistItem>({
@@ -206,17 +247,31 @@
     findById: (id) => checklistItems.find((i) => i.id === id)
   });
 
-  async function openSourceProcedure() {
+  /* Notes typed and not saved are asked about before another procedure
+     replaces them, or before the screen goes (after-release 06, L07-09):
+     tapping a second card used to overwrite them without a word. */
+  const notesWrite = writer();
+  const notesUnsaved = () => !!selected && notesDraft !== selected.notes;
+  const notesGuard = leaveGuard({
+    holding: notesUnsaved,
+    busy: () => notesWrite.busy
+  });
+
+  function openSourceProcedure() {
     const procedure = sourceProcedure!;
-    selectedId = procedure.id;
-    notesDraft = procedure.notes;
-    await tick();
-    scrollToHash(`#procedure-log-${procedure.id}`);
+    notesGuard.request(async () => {
+      selectedId = procedure.id;
+      notesDraft = procedure.notes;
+      await tick();
+      scrollToHash(`#procedure-log-${procedure.id}`);
+    });
   }
 
   function select(procedure: Procedure) {
-    selectedId = selectedId === procedure.id ? null : procedure.id;
-    notesDraft = selectedId ? procedure.notes : '';
+    notesGuard.request(() => {
+      selectedId = selectedId === procedure.id ? null : procedure.id;
+      notesDraft = selectedId ? procedure.notes : '';
+    });
   }
 
   /* One entry in the offer registry (phase 8 features ticket 22,
@@ -236,13 +291,17 @@
     milestoneOffer = { procedureId: selectedId };
   }
 
-  /* Closed before the write, the order this screen already kept: the sheet
-     is gone by the time the insert runs, so a second tap cannot re-enter
-     with a live subject and toast twice. */
+  /* Closed once the write lands (after-release 06): the confirm button
+     holds while it runs, so a second tap writes nothing, and a failure
+     leaves the question up with a toast. */
+  const offerWrite = writer();
   async function answerMilestoneOffer(given: OfferAnswer) {
     const subject = milestoneOffer;
+    if (!subject) return;
+    let added = false;
+    if (!(await offerWrite.run(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed()))) return;
     milestoneOffer = null;
-    if (await answerOffer(MILESTONE_OFFER, subject, given, journal)) toast(m.surgery_milestone_added());
+    if (added) toast(m.surgery_milestone_added());
   }
 
   function openConsultSheet() {
@@ -252,14 +311,20 @@
 
   async function addConsult() {
     const epochDay = epochDayFromDateInputValue(consultDate);
-    if (!selectedId || epochDay === null) return;
+    const id = selectedId;
+    if (!id || epochDay === null) return;
+    if (!(await sheetWrite.run(() => journal.procedures.addConsult(id, epochDay), m.write_failed()))) return;
     consultSheet = false;
-    await journal.procedures.addConsult(selectedId, epochDay);
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   async function saveNotes() {
-    if (!selectedId) return;
-    await journal.procedures.setNotes(selectedId, notesDraft);
+    const id = selectedId;
+    const notes = notesDraft;
+    if (!id) return;
+    if (await notesWrite.run(() => journal.procedures.setNotes(id, notes), m.write_failed())) {
+      toast(m.surgery_notes_saved(), { kind: 'record-saved' });
+    }
   }
 
   function openPhotoSheet() {
@@ -274,11 +339,41 @@
 
   async function addItem() {
     const content = itemText.trim();
-    if (!selectedId || !content) return;
+    const id = selectedId;
+    if (!id || !content) return;
+    if (!(await sheetWrite.run(() => journal.procedures.addChecklistItem(id, content), m.write_failed()))) return;
     itemSheet = false;
-    await journal.procedures.addChecklistItem(selectedId, content);
+    toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
+
+{#snippet woundAlbum()}
+        <SectionHeading text={m.surgery_wound_album_title()} />
+        <PhotoSection
+          section={recoveryPhotos}
+          read={photosQuery}
+          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
+          handle="procedure-photo"
+          subtitle={(photo) => dayLabel(photo.epochDay)}
+          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
+          confirm={{
+            title: m.surgery_photo_delete_sheet(),
+            question: () => m.surgery_photo_delete_q(),
+            hint: () => m.surgery_photo_delete_hint(),
+            confirmLabel: m.surgery_photo_delete(),
+            cancelLabel: m.keep_it()
+          }}
+        >
+          {#snippet empty()}
+            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
+          {/snippet}
+          {#snippet addControl()}
+            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
+              <span>{m.add_photo()}</span>
+            </button>
+          {/snippet}
+        </PhotoSection>
+{/snippet}
 
 <div class="screen">
   <ScreenHeader title={m.surgery_journey_title()} back="/more" subtitle={m.surgery_intro()}>
@@ -292,11 +387,13 @@
 
   <ReadGate read={proceduresQuery} variant="line" count={3}>
     {#snippet rows()}
-      {#each procedureGroups as group (group.key)}
-        <SectionHeading text={group.title} />
-        <div data-procedure-group={group.key}>
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
-            {#each group.procedures as procedure (procedure.id)}
+      {#each procedureRows as { key, procedure, group, heading } (key)}
+        <div class="procedure-row" data-procedure-group={procedure ? group : undefined} data-procedure-heading={heading ? key : undefined}
+          data-travel-key={key} use:resize transition:disclose>
+          {#if heading}
+            <SectionHeading text={heading} />
+          {:else if procedure}
+            <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.procedures)}>
               <ProcedureRecoveryCard
                 {procedure}
                 selected={selectedId === procedure.id}
@@ -307,8 +404,8 @@
                 onclick={() => select(procedure)}
                 onedit={() => record.openEditor(procedure)}
               />
-            {/each}
-          </ListCard>
+            </ListCard>
+          {/if}
         </div>
       {/each}
     {/snippet}
@@ -360,7 +457,7 @@
                     role="checkbox"
                     aria-checked={item.checked}
                     aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={async () => await journal.checklists.setItemChecked(item.id, !item.checked)}
+                    onclick={() => attempt(() => journal.checklists.setItemChecked(item.id, !item.checked), m.write_failed())}
                   >
                     <span class="sj-box" class:sj-ticked={item.checked}>
                       {#if item.checked}<Icon name="check" size={20} />{/if}
@@ -376,7 +473,7 @@
                       data-carry-forward={item.id}
                       aria-pressed={item.carriedForward}
                       aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                      onclick={async () => await journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
+                      onclick={() => attempt(() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward), m.write_failed())}
                     >
                       <Icon name="flag" size={18} />
                     </button>
@@ -417,32 +514,34 @@
             ></textarea>
           {/snippet}
         </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
+        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" disabled={notesWrite.busy} onclick={saveNotes}>
           <span>{m.surgery_notes_save()}</span>
         </button>
       {/snippet}
 
       {#snippet consultsBlock()}
         {#if selected!.consults.length}
-          <div style="margin-bottom:var(--space-3)">
+          <div style="margin-bottom:var(--space-3)" transition:collapse>
             <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}>
               {#each selected!.consults as consult (consult.id)}
-                <ListRow
-                  static
-                  data-consult={consult.id}
-                  title={dayLabel(consult.epochDay)}
-                  action={{
-                    icon: 'trash',
-                    label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
-                    onclick: async () => await journal.procedures.deleteConsult(consult.id),
-                    attrs: { 'data-delete-consult': consult.id }
-                  }}
-                />
+                <div class="rows-divide" transition:collapse>
+                  <ListRow
+                    static
+                    data-consult={consult.id}
+                    title={dayLabel(consult.epochDay)}
+                    action={{
+                      icon: 'trash',
+                      label: m.surgery_consult_delete_aria({ date: dayLabel(consult.epochDay) }),
+                      onclick: () => consultRecord.askToDelete(consult),
+                      attrs: { 'data-delete-consult': consult.id }
+                    }}
+                  />
+                </div>
               {/each}
             </ListCard>
           </div>
         {:else}
-          <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_consults_empty()}</p>
+          <p class="muted small" style="margin-bottom:var(--space-3)" transition:collapse>{m.surgery_consults_empty()}</p>
         {/if}
       {/snippet}
 
@@ -572,31 +671,7 @@
 
         {@render notesBlock(m.surgery_feelings_title(), m.surgery_feelings_placeholder())}
 
-        <SectionHeading text={m.surgery_wound_album_title()} />
-        <PhotoSection
-          section={recoveryPhotos}
-          read={photosQuery}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          handle="procedure-photo"
-          subtitle={(photo) => dayLabel(photo.epochDay)}
-          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-          confirm={{
-            title: m.surgery_photo_delete_sheet(),
-            question: () => m.surgery_photo_delete_q(),
-            hint: () => m.surgery_photo_delete_hint(),
-            confirmLabel: m.surgery_photo_delete(),
-            cancelLabel: m.keep_it()
-          }}
-        >
-          {#snippet empty()}
-            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
-          {/snippet}
-          {#snippet addControl()}
-            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-              <span>{m.add_photo()}</span>
-            </button>
-          {/snippet}
-        </PhotoSection>
+        {@render woundAlbum()}
 
         {@render checklistBlock(m.surgery_recovery_checklist_title())}
 
@@ -620,31 +695,7 @@
 
         {@render compareBlock()}
 
-        <SectionHeading text={m.surgery_wound_album_title()} />
-        <PhotoSection
-          section={recoveryPhotos}
-          read={photosQuery}
-          role={roleAt(activeFlag.roles, SECTION_ROLE.recovery)}
-          handle="procedure-photo"
-          subtitle={(photo) => dayLabel(photo.epochDay)}
-          deleteLabel={(photo) => m.surgery_photo_delete_aria({ date: dayLabel(photo.epochDay) })}
-          confirm={{
-            title: m.surgery_photo_delete_sheet(),
-            question: () => m.surgery_photo_delete_q(),
-            hint: () => m.surgery_photo_delete_hint(),
-            confirmLabel: m.surgery_photo_delete(),
-            cancelLabel: m.keep_it()
-          }}
-        >
-          {#snippet empty()}
-            <p class="muted small" style="margin-bottom:var(--space-3)">{m.surgery_wound_album_empty()}</p>
-          {/snippet}
-          {#snippet addControl()}
-            <button class="btn btn-soft press" data-add-photo style="margin-bottom:var(--space-4)" onclick={openPhotoSheet}>
-              <span>{m.add_photo()}</span>
-            </button>
-          {/snippet}
-        </PhotoSection>
+        {@render woundAlbum()}
 
         {@render notesBlock(m.surgery_notes_title(), m.surgery_notes_placeholder())}
 
@@ -762,17 +813,19 @@
     />
   {/if}
 
-  <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
+  <DiscardSheet guard={notesGuard} />
+
+  <Sheet busy={sheetWrite.busy} open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
     <Field label={m.surgery_consult_date_label()} id="surgery-consult-date">
       {#snippet children(id)}
         <DatePicker name="surgery-consult-date" bind:value={consultDate} {id} />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-save-consult onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
+    <button class="btn btn-primary" data-save-consult disabled={sheetWrite.busy} onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
   </Sheet>
 
-  <Sheet open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
     <h3>{m.surgery_photos_title()}</h3>
     <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
       {#snippet children(id)}
@@ -789,7 +842,7 @@
     </div>
   </Sheet>
 
-  <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
     <h3>{m.surgery_checklist_sheet()}</h3>
     <Field label={m.surgery_checklist_sheet()} id="surgery-item" hidden>
       {#snippet children(id)}
@@ -802,12 +855,13 @@
         />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-save-procedure-item onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
+    <button class="btn btn-primary" data-save-procedure-item disabled={sheetWrite.busy} onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
   </Sheet>
 
   <!-- Surgery Day Milestone Confirmation Sheet (ADR-0045 explicit confirmation) -->
   {#if selected}
     <Sheet
+      busy={offerWrite.busy}
       open={milestoneOffer !== null}
       title={MILESTONE_OFFER.copy.title()}
       onClose={() => void answerMilestoneOffer('decline')}
@@ -818,6 +872,7 @@
         <button
           class="btn btn-primary"
           data-confirm-record-milestone
+          disabled={offerWrite.busy}
           onclick={() => void answerMilestoneOffer('confirm')}
         >
           <span>{MILESTONE_OFFER.copy.confirm()}</span>
@@ -828,6 +883,17 @@
       </div>
     </Sheet>
   {/if}
+
+  <RecordSheet
+    record={consultRecord}
+    handle="consult"
+    confirm={{
+      title: m.surgery_consult_delete_sheet(),
+      question: (consult) => m.surgery_consult_delete_q({ date: dayLabel(consult.epochDay) }),
+      confirmLabel: m.surgery_consult_delete_sheet(),
+      cancelLabel: m.keep_it()
+    }}
+  />
 
   <RecordSheet
     record={itemRecord}
@@ -843,6 +909,10 @@
 </div>
 
 <style>
+  .procedure-row {
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
   .recovery {
     margin-top: var(--space-4);
   }

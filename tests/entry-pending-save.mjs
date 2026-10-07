@@ -1,11 +1,11 @@
 /* Run against the demo build: VITE_DEMO=1 npm run build && node tests/entry-pending-save.mjs.
-   Delay the first encrypted attachment write without replacing storage. */
+   Node tests own lifecycle cases; this guard proves media, lock and navigation wiring
+   against delayed encrypted attachment writes without replacing storage. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { launchChromium, previewBuild, settlePage } from './browser-harness.mjs';
 import { INIT_HIDE_DEMO_SCRIPT, STUB_PERSIST_SCRIPT } from './yank-sweep-core.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
-import { PALETTES } from './palettes.mjs';
 
 const app = await previewBuild(process.cwd());
 const base = `http://localhost:${app.httpServer.address().port}`;
@@ -170,19 +170,6 @@ try {
     assert.deepEqual(await barGeometry(), before, 'pending save keeps bar layout');
     assert.equal(await page.locator('[data-save]').evaluate((button) => getComputedStyle(button).opacity), '1', 'pending status stays readable');
     assert.equal(await page.getByRole('status').filter({ hasText: locale === 'en' ? 'Saving' : 'Zapisywanie' }).count(), 1);
-    for (const palette of PALETTES) {
-      for (const theme of ['light', 'dark']) {
-        await page.evaluate(({ palette, theme }) => {
-          document.documentElement.dataset.palette = palette;
-          document.documentElement.dataset.theme = theme;
-        }, { palette, theme });
-        await page.evaluate(async () => {
-          await Promise.all(document.getAnimations().filter((animation) => animation instanceof CSSTransition)
-            .map((animation) => animation.finished.catch(() => {})));
-        });
-        await page.screenshot({ path: `${shots}/${locale}-${palette}-${theme}.png` });
-      }
-    }
     // The minimum supported WebView predates native inert. Native fields
     // and custom scale callbacks must also refuse edits without it.
     await page.evaluate(() => {

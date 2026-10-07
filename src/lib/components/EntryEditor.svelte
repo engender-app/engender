@@ -1,20 +1,3 @@
-<script module lang="ts">
-  import type { EntryDraft } from '$lib/data/entryDraft';
-
-  type EntrySaveRecovery = {
-    entryId: number | undefined;
-    epochDay: number;
-    draft: EntryDraft;
-    starred: boolean;
-    destination: string;
-    settled: Promise<void>;
-  };
-
-  // A privacy gate can unmount the editor while storage still owns its save.
-  // Retain that draft, including media, until the same editor resumes.
-  let detachedEntrySave: EntrySaveRecovery | undefined;
-</script>
-
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -24,24 +7,26 @@
   import { onDestroy, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
     todayEpochDay,
     epochDayMonthsAgo,
     epochDayFromDateInputValue,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { createEntryDraft } from '$lib/data/entryDraft';
+  import { entrySession } from '$lib/components/entrySession.svelte';
   import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
-  import { scrollBehavior } from '$lib/motion/tokens';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
-  import { applyPersistedDraft, draftMatchesRoute, entryDraftFingerprint, serializeDraft } from '$lib/data/entryDraftPersistence';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
-  import { journalDataKey } from '$lib/stores/boot.svelte';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
+  import { isLockedNow } from '$lib/stores/lock.svelte';
+  import { activeEpisodesAt, sameDrug } from '$lib/data/regimenEpisode';
+  import { episodesWithNoDoseLogged, remainingAfterOneDose } from '$lib/data/quickLogChip';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import { stockRemainingLabel } from '$lib/data/vocabulary/stockLabel';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
@@ -62,6 +47,7 @@
   import { entryContainerName } from '$lib/motion/container.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
+  import { followReveal } from '$lib/components/sectionReveal';
   import Field from '$lib/components/kit/Field.svelte';
   import PhotoDayPromptSheet from '$lib/components/kit/PhotoDayPromptSheet.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -79,19 +65,20 @@
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
-  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
   import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
     epochDay,
     entryId,
     seedMood,
-    debriefForAppointment
+    debriefForAppointment,
+    openSection
   }: {
     epochDay?: number;
     entryId?: number;
@@ -104,6 +91,9 @@
         of an existing entry, the same "creation aid, not an editing one"
         rule the prompt and the template sheet already follow. */
     debriefForAppointment?: string;
+    /** A chip section a new entry opens with, from the address (`?open=`).
+        A resumed draft keeps its own open section. */
+    openSection?: EntrySection;
   } = $props();
 
   /* The editor is a writing surface rather than a set of areas to look at,
@@ -125,107 +115,77 @@
      again - not the query's dependencies, which this no longer names. */
   let loaded = liveQuery((j) => (entryId != null ? j.entries.getEntry(entryId) : Promise.resolve(undefined)));
   let existing = $derived(loaded.value);
-  let day = $derived(existing?.epochDay ?? epochDay ?? todayEpochDay());
+  let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
-  /* Local draft; committed as one action on Save (F1), and filled from the
-     stored entry the moment it arrives (entryDraft.ts, ticket 29). */
-  // Captured once on purpose: the route wraps this component in {#key}, so a
-  // different entry or day mounts a fresh editor with a fresh draft.
-  // svelte-ignore state_referenced_locally
-  let entryDraft = $state<EntryDraft>(createEntryDraft(epochDay ?? todayEpochDay(), undefined, seedMood));
-
-  let saving = $state(false);
-  let pendingDraftOperations = $state(0);
-  let saveRecovery: EntrySaveRecovery | undefined;
-  let destroyed = false;
-
-  // Media preparation and prefills must finish before the save snapshots the draft.
-  async function prepareDraft(operation: () => Promise<void>) {
-    if (saving || entryDraft.savedId !== undefined) return;
-    pendingDraftOperations++;
-    try {
-      await operation();
-    } finally {
-      pendingDraftOperations--;
-    }
+  // A mood-only quick log offers the dimension follow-up instead of Home.
+  function offersDims(moodOnly: boolean) {
+    return seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
   }
 
-  /* What the draft held when it was loaded (CONTEXT: "Draft"): the stored
-     entry for an edit, the blank or prefilled one for a new entry. Taken
-     before any process-death mirror is laid over it, so text restored from
-     the mirror counts as unsaved, which it is. Null until it is known. */
-  let baseline = $state<string | null>(null);
-
-  /* Back, the header arrow, Android back and a nav tab all used to drop a
-     changed draft without a word: the only guard here cancelled while a
-     save was in flight, and onDestroy cleared the mirror on every normal
-     departure (ticket 04, audit UX-01). Leaving now asks whenever the
-     draft differs from what was loaded. A saved draft is consumed and
-     never asks. */
-  const guard = leaveGuard({
-    holding: () =>
-      baseline !== null && entryDraft.savedId === undefined && entryDraftFingerprint(entryDraft) !== baseline,
-    busy: () => saving
+  // Route keys mount a new session for each entry or day.
+  // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
+  // svelte-ignore state_referenced_locally
+  const session = entrySession({
+    entryId, epochDay: epochDay ?? todayEpochDay(), seedMood,
+    entries: journal.entries,
+    draftStore: localStorageEntryDraft(journalDataKey),
+    preparing: () => loaded.loading || mediaPreparing,
+    creation: () => ({ debriefForAppointment }),
+    destination: (moodOnly) => {
+      const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
+      const offerDims = offersDims(moodOnly);
+      return (id) => target ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+    },
+    navigate: async (destination) => {
+      const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
+      if (target) await smartBackSettled(target);
+      else await replaceRoute(destination);
+    }
   });
-
-  /* Mirrored to localStorage on every change. Normal departure discards
-     the mirror; a privacy lock during a pending save retains it until the
-     save succeeds or the editor resumes. A killed process can recover the
-     serializable fields; the in-memory recovery also retains pending media.
-
-     What is written there is ciphertext under the open journal's data key
-     (sec-audit 02), which makes both halves async. */
-  const draftStore = localStorageEntryDraft(journalDataKey);
-
-  /* Nothing is mirrored until the first read has been attempted: the write
-     effect below would otherwise fire on mount and put the empty draft over
-     the very snapshot this is about to restore. */
-  let mirrorRead = $state(false);
-
-  async function restoreIfPersisted(target: EntryDraft): Promise<EntryDraft> {
-    const recovery = detachedEntrySave;
-    if (recovery && recovery.entryId === entryId && (entryId != null || recovery.epochDay === target.epochDay)) {
-      baseline ??= entryDraftFingerprint(target);
-      entryDraft = recovery.draft;
-      saving = true;
-      try {
-        await recovery.settled;
-      } finally {
-        saving = false;
-      }
-      if (!destroyed && recovery.draft.savedId !== undefined) draftStore.clear();
-      starred = recovery.starred;
-      savedDestination = recovery.destination;
-      if (!destroyed && detachedEntrySave === recovery) detachedEntrySave = undefined;
-      return recovery.draft;
-    }
-    const persisted = await draftStore.read();
-    if (!persisted) return target;
-    if (draftMatchesRoute(persisted, entryId, target.epochDay)) {
-      baseline ??= entryDraftFingerprint(target);
-      applyPersistedDraft(target, persisted);
-    } else draftStore.clear(); // a different editor's leftovers - not this one's to resume
-    return target;
-  }
-
-  // Existing entries restore once, onto their loaded draft. Mirroring starts
-  // only after that draft is installed, so the blank draft cannot overwrite recovery.
+  let entryDraft = $derived(session.draft);
+  let saving = $derived(session.saving);
+  const guard = session.guard;
+  const prepareDraft = session.prepare;
+  const leave = session.leave;
+  /* Before the mirror is read, so a resumed draft's own open section wins
+     over the address's. */
   // svelte-ignore state_referenced_locally
-  const persistedRestore = entryId == null
-    ? restoreIfPersisted(entryDraft).then((draft) => { entryDraft = draft; }).finally(() => { mirrorRead = true; })
-    : Promise.resolve();
-
-  onFirstResult(loaded, (entry) => prepareDraft(async () => {
-    if (entryId == null) return;
-    const fresh = entry ? createEntryDraft(entry.epochDay, entry) : entryDraft;
-    baseline = entryDraftFingerprint(fresh);
-    try {
-      entryDraft = await restoreIfPersisted(fresh);
-      if (entry) starred = entry.starred;
-    } finally {
-      mirrorRead = true;
-    }
-  }));
+  if (entryId == null && openSection) session.draft.setOpenSection(openSection);
+  // svelte-ignore state_referenced_locally
+  const persistedRestore = entryId == null ? session.resume() : Promise.resolve();
+  /* Opened from the address, the open section and the chip row over it
+     are scrolled into view once they are drawn: below Mode and Gender the
+     section would otherwise open out of sight. A smooth scroll rather than
+     followReveal, which follows a section's growth and has none to follow
+     here, so it would jump the whole distance in one frame. */
+  // svelte-ignore state_referenced_locally
+  let revealFromAddress = entryId == null && openSection ? openSection : null;
+  $effect(() => {
+    if (!revealFromAddress || !chipRowEl || entryDraft.openSection !== revealFromAddress) return;
+    const section = chipRowEl.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${revealFromAddress}"]`);
+    if (!section) return;
+    revealFromAddress = null;
+    const region = chipRowEl.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!region) return;
+    /* The section's foot to the region's, the edge followReveal brings it
+       to, so the chip row directly above it stays in view. Measured once the
+       arrival has settled: started during it, the main thread stalled for
+       ~180ms mid-scroll and the next frame landed 92px further on, and the
+       save bar rising afterwards shortened the region by 196px and left the
+       section under it. So after the idle callback, and after every finite
+       animation on the page has finished (two seconds at most). */
+    const started = performance.now();
+    const settled = () => {
+      const moving = document
+        .getAnimations()
+        .some((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity);
+      if (moving && performance.now() - started < 2000) return requestAnimationFrame(settled);
+      const travel = section.getBoundingClientRect().bottom - region.getBoundingClientRect().bottom;
+      if (travel > 0) region.scrollBy({ top: travel, behavior: scrollBehavior() });
+    };
+    requestIdleCallback(settled, { timeout: 1000 });
+  });
+  onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
 
   /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
      `existing` and kept in its own local state rather than `entryDraft`:
@@ -238,13 +198,20 @@
      18's "starred before it is saved". The journal includes that flag in
      the creation transaction. An existing entry keeps writing
      immediately, the same as it always has. */
-  let starred = $state(false);
+  let starred = $derived(session.starred);
 
+  /* One star write at a time, so a failed one can go back to what was
+     stored: two taps racing two failures used to leave the star showing
+     the opposite of the journal. */
+  const starWrite = writer();
   async function toggleStarred() {
+    if (starWrite.busy) return;
     const next = !starred;
-    starred = next;
+    session.starred = next;
     if (!existing) return;
-    await journal.entries.setEntryStarred(existing.id, next);
+    const id = existing.id;
+    // The star goes back if the write does not land, with a toast saying so.
+    if (!(await starWrite.run(() => journal.entries.setEntryStarred(id, next), m.write_failed()))) session.starred = !next;
   }
 
   /* A day chosen to see this entry again (phase 8 features ticket 08,
@@ -280,11 +247,18 @@
     }
   };
 
+  const revisitWrite = writer();
   async function setRevisit(targetEpochDay: number) {
-    if (entryId == null) return;
-    await journal.revisits.setRevisit({ entryId, createdEpochDay: todayEpochDay(), targetEpochDay });
+    const id = entryId;
+    if (id == null) return;
+    const set = await revisitWrite.run(
+      () => journal.revisits.setRevisit({ entryId: id, createdEpochDay: todayEpochDay(), targetEpochDay }),
+      m.write_failed()
+    );
+    if (!set) return;
     revisitDateInput = '';
     revisitOpen = false;
+    toast(m.revisit_set_toast({ date: fmtDay(targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) }), { kind: 'record-saved' });
   }
 
   async function setRevisitFromInput() {
@@ -294,9 +268,11 @@
   }
 
   async function cancelRevisit() {
-    if (!revisit) return;
-    await journal.revisits.deleteRevisit(revisit.id);
+    const target = revisit;
+    if (!target) return;
+    if (!(await revisitWrite.run(() => journal.revisits.deleteRevisit(target.id), m.write_failed()))) return;
     revisitOpen = false;
+    toast(m.revisit_cancelled_toast(), { kind: 'record-deleted' });
   }
 
   /* Same reasoning as toggleStarred above, but for one stored photo: the
@@ -306,24 +282,13 @@
     const item = entryDraft.photos[index];
     if (item.kind !== 'stored') return;
     const next = !item.photo.starred;
-    await journal.photos.setStarred(item.photo.id, next);
+    if (!(await attempt(() => journal.photos.setStarred(item.photo.id, next), m.write_failed()))) return;
     entryDraft.photos = entryDraft.photos.map((p, i) =>
       i === index && p.kind === 'stored' ? { ...p, photo: { ...p.photo, starred: next } } : p
     );
   }
 
-  $effect(() => {
-    if (entryDraft.savedId !== undefined) return;
-    const snapshot = serializeDraft(entryDraft);
-    if (!mirrorRead) return;
-    void draftStore.write(snapshot);
-  });
-
-  onDestroy(() => {
-    destroyed = true;
-    if (saveRecovery) detachedEntrySave = saveRecovery;
-    else if (!saving) draftStore.clear();
-  });
+  onDestroy(() => session.dispose(isLockedNow(bootState.accessMode)));
 
   let deleteOpen = $state(false);
   let templateSheetOpen = $state(false);
@@ -454,7 +419,16 @@
       .filter((d): d is GenderDimension => !!d);
     return [...active.map((dim) => ({ dim, ticked: true })), ...extras.map((dim) => ({ dim, ticked: false }))];
   });
-  let isToday = $derived(day === todayEpochDay());
+  let isToday = $derived(day === currentDay());
+  /* The header's own subtitle, so it sits 12 under the field the way every
+     screen's does (components.css), rather than a paragraph of the editor's
+     own that had to guess the header's spacing and twice guessed wrong. An
+     existing entry's day is a read away; until it lands the line holds its
+     height blank rather than naming today, which is the wrong day for
+     almost every entry anyone reopens. */
+  let dateLine = $derived(
+    entryId != null && !existing ? '\u00a0' : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
+  );
 
   /* The chip row and the section it opens (phase 11 ticket 19). Nothing
      takes the focus on arrival, a new entry included: a focused note put
@@ -489,26 +463,17 @@
     revealSection(section);
   }
 
-  /* Brings the opened section into view on the same clock it discloses
-     on: the scroll region moves by however much of the section's settled
-     height would land under the foot, and never so far that the chip row
+  /* Brings the opened section into view on the same clock it discloses on
+     (sectionReveal.ts has why it follows the growth frame by frame rather
+     than asking for one smooth scroll), never so far that the chip row
      itself leaves the top of the window - the row is what the person just
      tapped, and a section that scrolled its own chip away would be a
-     section with no visible way to close it. `scrollHeight` is the
-     section's content height even while `disclose` still clips its box,
-     which is what makes the settled height readable on the first frame. */
+     section with no visible way to close it. */
   function revealSection(section: EntrySection) {
     const sectionEl = chipRowEl?.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
     const region = chipRowEl?.closest<HTMLElement>('[data-app-scroll-region]');
     if (!sectionEl || !region || !chipRowEl) return;
-    const regionBox = region.getBoundingClientRect();
-    const settledBottom = sectionEl.getBoundingClientRect().top + sectionEl.scrollHeight;
-    const overflow = settledBottom + 20 - regionBox.bottom;
-    if (overflow <= 0) return;
-    const rowRoom = chipRowEl.getBoundingClientRect().top - regionBox.top - 8;
-    const travel = Math.min(overflow, rowRoom);
-    if (travel <= 0) return;
-    region.scrollBy({ top: travel, behavior: scrollBehavior() });
+    followReveal(sectionEl, region, chipRowEl);
   }
 
   /* Contextual Inline Cards (ticket 04, ADR-0044) */
@@ -523,14 +488,11 @@
   );
 
   let todayDosesQuery = liveQuery((j) => j.doses.getDoses(day, day));
-  let loggedDoseDrugs = $derived(
-    new Set((todayDosesQuery.value ?? []).map((d) => d.drug?.toLowerCase().trim()).filter(Boolean))
-  );
 
   let dueScheduledDoses = $derived.by(() => {
     if (!activeEpisodes) return [];
-    return activeEpisodes
-      .filter((ep) => ep.dose != null && ep.dose > 0 && !loggedDoseDrugs.has(ep.drug.toLowerCase().trim()))
+    return episodesWithNoDoseLogged(episodesQuery.value ?? [], activeEpisodes, todayDosesQuery.value ?? [])
+      .filter((ep) => ep.dose != null && ep.dose > 0)
       .map((ep) => ({
         episodeId: ep.id,
         dose: ep.dose!,
@@ -549,8 +511,7 @@
       (ADR-0046). */
   let stockQuery = liveQuery((j) => j.stock.getProjections(day));
   let stockRows = $derived(stockQuery.value ?? []);
-  /** Exact trimmed match, the same rule drugsMatch (stockProjection.ts) uses. */
-  const stockFor = (drug: string) => stockRows.find((row) => row.entry.drug.trim() === drug.trim()) ?? null;
+  const stockFor = (drug: string) => stockRows.find((row) => sameDrug(row.entry.drug, drug)) ?? null;
 
   let proceduresQuery = liveQuery((j) => j.procedures.getProcedures());
   let recoveringProcedure = $derived.by(() => {
@@ -599,7 +560,7 @@
      editor's cards into that registry would give the next one the cascade for
      free and is worth its own ticket. */
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, todayEpochDay()));
+  let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, currentDay()));
 
   let tryoutReflection = $state('');
   let procRecoveryNote = $state('');
@@ -679,7 +640,14 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => queueForDayPrompt([photo]));
+  /* A photo taken with the camera just now was taken today, so on today's
+     entry there is nothing to ask (audit UX-05: Save and Skip did the same
+     thing). A picked file has had its date stripped and could be from any
+     day, so it is still asked; so is a capture on a backdated entry. */
+  const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
+    if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
+    else queueForDayPrompt([photo]);
+  });
 
   // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
   // closed.
@@ -796,99 +764,45 @@
     activeVideo?.stop();
   });
 
-  let draftPreparing = $derived(
-    !mirrorRead || loaded.loading || pendingDraftOperations > 0 ||
+  let mediaPreparing = $derived(
     activeRecording !== null || activeVideo !== null || compressingVideo ||
     dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
   );
+  let draftPreparing = $derived(session.preparing);
   let moodMissing = $derived(entryDraft.mood == null);
-
-  /* A new entry's baseline is the draft once every prefill (a template, a
-     debrief's notes) has landed and nothing restored it from the mirror. */
-  $effect(() => {
-    if (baseline !== null || draftPreparing) return;
-    baseline = untrack(() => entryDraftFingerprint(entryDraft));
-  });
-  let savedDestination = $state('/');
-  let navigationFailed = $state(false);
-
-  /* Where saving or deleting goes: the list the entry was opened from
-     (`from`) or the source record that sent it here (`returnTo`), through
-     the app's own history so that list comes back as it was left; anything
-     else replaces the editor with the destination saving chose, so Back
-     does not bounce into it. */
-  async function leave() {
-    const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
-    if (target) await smartBackSettled(target);
-    else await replaceRoute(savedDestination);
-  }
-
-  async function leaveSavedEntry() {
-    try {
-      await leave();
-      return true;
-    } catch (error) {
-      console.error('could not navigate after saving the entry', error);
-      navigationFailed = true;
-      await tick();
-      document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
-      return false;
-    }
-  }
+  let savedDestination = $derived(session.savedDestination);
+  let navigationFailed = $derived(session.navigationFailed);
 
   async function saveEntry() {
     if (saving || draftPreparing) return;
-    if (entryDraft.savedId !== undefined) {
-      await leaveSavedEntry();
-      return;
-    }
-    /* The requirement is on the button's own label while it is unmet
-       ("Pick a mood to save"), so a tap here fires no toast: it hands the
-       focus to the faces, which are on the same bar, and that is the whole
-       answer. The toast's own string (entry_needs_mood) had no caller left
-       and is gone from both catalogues. */
-    if (moodMissing) {
+    if (entryDraft.savedId === undefined && moodMissing) {
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    saving = true;
-    let settle!: () => void;
-    const recovery: EntrySaveRecovery = {
-      entryId, epochDay: entryDraft.epochDay, draft: entryDraft, starred, destination: '/',
-      settled: new Promise<void>((resolve) => { settle = resolve; })
-    };
-    saveRecovery = recovery;
-    const moodOnly = entryDraft.hasMoodOnlyContent;
-    const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
-    let id: number;
-    try {
-      id = await entryDraft.save(journal.entries, { starred, debriefForAppointment });
-    } catch (error) {
+    const offerDims = offersDims(entryDraft.hasMoodOnlyContent);
+    let result;
+    try { result = await session.save(); }
+    catch (error) {
       console.error('could not save the entry', error);
       toast(m.entry_save_failed());
       return;
-    } finally {
-      saving = false;
-      saveRecovery = undefined;
-      settle();
     }
-    draftStore.clear();
-    savedDestination = listReturnTo(page.url) ?? sourceReturnTo(page.url) ?? (offerDims ? `/?quickLogDims=${id}` : '/');
-    recovery.destination = savedDestination;
-    if (destroyed) return;
-    if (!await leaveSavedEntry()) return;
+    if (session.navigationFailed) {
+      await tick();
+      document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
+    }
+    if (!result?.navigated) return;
+    const { id, moodOnly } = result;
     if (!offerDims && prefs.entryNudges && moodOnly) {
       toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
-    } else {
-      toast(m.saved(), { kind: 'saved' });
-    }
+    } else toast(m.saved(), { kind: 'saved' });
   }
 
   async function confirmDelete() {
     deleteOpen = false;
     if (!existing) {
       // Deleting answered the question leaving would have asked.
-      baseline = entryDraftFingerprint(entryDraft);
+      session.acceptDiscard();
       await leave();
       return;
     }
@@ -900,7 +814,7 @@
       toast(m.entry_delete_failed());
       return;
     }
-    baseline = entryDraftFingerprint(entryDraft);
+    session.acceptDiscard();
     try {
       await leave();
     } catch (error) {
@@ -940,8 +854,13 @@
      huge text transition"). The plain fill grows now; the real content
      sits outside the named element and crossfades in place through the
      screen's own transition instead. -->
-<div class="screen editor" inert={saving}>
-  <fieldset class="editor-fields" disabled={saving}>
+<!-- The fieldset is the screen rather than a wrapper inside it. Its
+     `disabled` is what stops native fields taking edits during a save on a
+     WebView that predates `inert`, and as a `display: contents` wrapper it
+     hid every block from `.screen > *` and the header from the field's bleed
+     rule: the field drew 20px inset with no 20px between the blocks under
+     it (audit UI-01). As the screen, its children are the screen's again. -->
+<fieldset class="screen editor" inert={saving} disabled={saving}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
   <!-- Back goes wherever you opened it from, not to the entry's own day. An
        entry is drawn on Home, on a day, in search, on the timeline, inside a
@@ -952,6 +871,7 @@
        (NAV-005, CARPET-05). -->
   <ScreenHeader
     title={entryId != null ? m.entry() : m.new_entry()}
+    subtitle={dateLine}
     screen="entry"
     back={existing ? `/day/${day}` : '/'}
   >
@@ -983,10 +903,6 @@
     {/snippet}
   </ScreenHeader>
   <SourceRecordHandoff id={entryId == null ? null : String(entryId)} ready={!loaded.loading && !loaded.failed} found={!!existing} />
-
-  <p class="editor-date">
-    {isToday ? `${m.today()} · ` : ''}{fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}{existing ? ` · ${fmtTime(existing.timestamp)}` : ''}
-  </p>
 
   {#if entryDraft.savedId !== undefined}
     <Notice
@@ -1063,7 +979,7 @@
         {@const role = roleAt(activeFlag.roles, p.roleIndex)}
         <button
           type="button"
-          class="contextual-chip presentation-chip press"
+          class="contextual-chip presentation-chip hit-floor press"
           class:is-active={entryDraft.presentationId === p.id}
           {...roleAttrs(role)}
           role="radio"
@@ -1298,7 +1214,7 @@
         ] as opt (opt.step)}
           <button
             type="button"
-            class="contextual-chip press"
+            class="contextual-chip hit-floor press"
             class:is-active={entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id && entryDraft.tryoutFeltSense?.mood === opt.step}
             role="radio"
             aria-checked={entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id && entryDraft.tryoutFeltSense?.mood === opt.step}
@@ -1339,7 +1255,7 @@
   {/if}
 
   {#if prefs.entryDoseQuickLogEnabled && scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
-    <!-- Off the two reads as well as off the schedule: `loggedDoseDrugs` is
+    <!-- Off the two reads as well as off the schedule: the logged doses are
          `[]` until today's doses answer, so a chip for a dose already logged
          once stood on screen for the length of the round trip and then had
          to withdraw - the row offering a double log and vanishing
@@ -1347,13 +1263,15 @@
     <div class="contextual-row" data-contextual="dose-quick-log">
       {#each dueScheduledDoses as doseItem (doseItem.episodeId)}
         {@const stockRow = stockFor(doseItem.drug)}
+        {@const selectedDrug = entryDraft.doseLog?.drug}
+        {@const doseSelected = selectedDrug != null && sameDrug(selectedDrug, doseItem.drug)}
         <button
           type="button"
-          class="contextual-chip dose-chip press"
-          class:is-active={entryDraft.doseLog?.drug === doseItem.drug}
-          aria-pressed={entryDraft.doseLog?.drug === doseItem.drug}
+          class="contextual-chip dose-chip hit-floor press"
+          class:is-active={doseSelected}
+          aria-pressed={doseSelected}
           onclick={() => {
-            if (entryDraft.doseLog?.drug === doseItem.drug) {
+            if (doseSelected) {
               entryDraft.setDoseLog(null);
             } else {
               entryDraft.setDoseLog({
@@ -1365,7 +1283,7 @@
             }
           }}
         >
-          <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
+          <Icon name={doseSelected ? 'check' : 'plus'} size={16} />
           <!-- Two lines rather than one run-on sentence: a fully-rounded
                pill's ends stop reading as a pill once its text wraps, so a
                chip carrying a second fact gets a plainer rounded rect
@@ -1376,7 +1294,7 @@
             </span>
             {#if stockRow}
               <span class="dose-chip-sub">
-                {stockRemainingLabel(stockRow.projection.remaining - 1, stockRow.entry.unit)}
+                {stockRemainingLabel(remainingAfterOneDose(stockRow.projection.remaining, stockRow.entry), stockRow.entry.unit)}
               </span>
             {/if}
           </span>
@@ -1454,7 +1372,7 @@
       {/each}
       <button
         type="button"
-        class="contextual-chip press"
+        class="contextual-chip hit-floor press"
         onclick={() => (effectSheetOpen = true)}
       >
         <Icon name="plus" size={16} />
@@ -1476,7 +1394,7 @@
         ] as item (item.kind)}
           <button
             type="button"
-            class="contextual-chip press"
+            class="contextual-chip hit-floor press"
             class:is-active={entryDraft.cycleEvent?.kind === item.kind}
             aria-pressed={entryDraft.cycleEvent?.kind === item.kind}
             onclick={() => {
@@ -1567,7 +1485,7 @@
 
   <DiscardSheet {guard} />
 
-  <Sheet bind:open={revisitOpen} title={m.revisit_sheet_title()}>
+  <Sheet busy={revisitWrite.busy} bind:open={revisitOpen} title={m.revisit_sheet_title()}>
     <SectionHeading text={m.revisit_sheet_title()} />
     {#if revisit}
       <p class="editor-hint">
@@ -1593,17 +1511,17 @@
       <DatePicker
         id="revisit-date"
         name="revisit-date"
-        min={dateInputValueFromEpochDay(todayEpochDay() + 1)}
+        min={dateInputValueFromEpochDay(currentDay() + 1)}
         ariaLabel={m.revisit_pick_date_label()}
         bind:value={revisitDateInput}
         data-revisit-date
       />
-      <button class="btn btn-soft" disabled={!revisitDateInput} data-revisit-set onclick={setRevisitFromInput}>
+      <button class="btn btn-soft" disabled={!revisitDateInput || revisitWrite.busy} data-revisit-set onclick={setRevisitFromInput}>
         <span>{m.revisit_set_confirm()}</span>
       </button>
     </div>
     {#if revisit}
-      <button class="btn btn-ghost" data-revisit-cancel onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
+      <button class="btn btn-ghost" data-revisit-cancel disabled={revisitWrite.busy} onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
     {/if}
   </Sheet>
 
@@ -1622,6 +1540,7 @@
     open={dayPromptQueue.length > 0}
     bind:day={dayPromptValue}
     fieldId="entry-photo-day-prompt"
+    hint={m.photo_day_prompt_hint_entry()}
     onSave={() => resolveDayPrompt(dayPromptValue)}
     onSkip={() => resolveDayPrompt(null)}
   />
@@ -1630,13 +1549,13 @@
     photo={entryPhotoReview.photo}
     reference={entryPhotoReview.reference}
     onAccept={entryPhotoReview.accept}
+    busy={entryPhotoReview.busy}
     onRetake={() => prepareDraft(entryPhotoReview.capture)}
     onCancel={entryPhotoReview.cancel}
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
-  </fieldset>
-</div>
+</fieldset>
 
 <style>
   /* The container transform's own layer - a plain fill behind the real
@@ -1651,6 +1570,11 @@
      this screen alone rather than reordering anything outside it. */
   .screen.editor {
     isolation: isolate;
+    /* The browser's own fieldset box, taken back to the screen's: no
+       groove, and auto rather than 0 inline so the desktop column still
+       centres (a full-width box resolves auto to 0 on the phone). */
+    border: 0;
+    margin: 0 auto;
   }
   .editor-bg {
     position: absolute;
@@ -1658,7 +1582,6 @@
     z-index: -1;
     background: var(--bg);
   }
-  .editor-date { color: var(--text-2); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
 
   .editor-save-row {
     display: flex;
@@ -1667,7 +1590,6 @@
     gap: var(--space-2);
   }
   .editor-save-row [data-entry-saving] { opacity: 1; }
-  .editor-fields { display: contents; }
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
@@ -1787,12 +1709,12 @@
     align-items: center;
     justify-content: space-between;
   }
+  /* The field label's type, sentence case (after-release 28): "Tryout:
+     she/her" read as TRYOUT: SHE/HER and changed the name it quotes. */
   .contextual-title {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
     color: var(--text-2);
-    text-transform: uppercase;
   }
   .contextual-chips {
     display: flex;
@@ -1817,25 +1739,19 @@
     cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  /* Only where the chip is itself the control (ticket 99 item 19, "when i
+  /* The 48px target is the shared .hit-floor box (components.css), and only
+     on the chips that are themselves a <button> (ticket 99 item 19, "when i
      select an effect, i cannot deselect it even though i am clicking on the
-     'x'"). This box exists to grow a 36px pill's hit area to the touch
-     target, which is worth doing on a chip that is a <button> and is worth
-     nothing on the one chip that is a <div> wrapping its own dismiss
-     button - there it was an overlay with no handler, painted after its
+     'x'"). The one chip that is a <div> wrapping its own dismiss button
+     must not carry it: an overlay with no handler, painted after its
      sibling button because a positioned pseudo-element with auto z-index
-     paints in tree order, so it swallowed every press on the x. */
-  button.contextual-chip::after {
-    content: '';
-    position: absolute;
-    inset: -6px 0;
-  }
+     paints in tree order, swallowed every press on the x. */
   .contextual-chip:hover {
     border-color: var(--accent-border, var(--outline));
   }
   .contextual-chip.is-active {
     background: var(--accent-soft, var(--accent));
-    color: var(--on-accent-soft, var(--accent-fg));
+    color: var(--on-accent-soft);
     border-color: var(--accent);
   }
 

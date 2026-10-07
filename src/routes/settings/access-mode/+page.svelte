@@ -27,7 +27,7 @@
   import { disclose, resize } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
-  import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
@@ -229,12 +229,17 @@
              left, so nothing under it jumps and nothing appears whole. -->
         <div class="am-after" data-lock-after-block transition:disclose>
           {#if hasSecret}
-            <h3 class="field-label" id="lock-after-title">{m.lock_after_title()}</h3>
+            <h2 class="field-label" id="lock-after-title">{m.lock_after_title()}</h2>
             <LockAfterChoice
               value={prefs.lockAfter}
               onChange={(next) => (prefs.lockAfter = next)}
               aria-labelledby="lock-after-title"
             />
+            <!-- What a lock does on the web since after-release ticket 10, and
+                 what it cannot do. Android's lock path is its own. -->
+            {#if !isAndroid()}
+              <p class="ob-text" data-lock-after-web>{m.lock_after_web_note()}</p>
+            {/if}
           {:else}
             <p class="ob-text" data-lock-after-none>{m.lock_after_no_secret()}</p>
           {/if}
@@ -244,6 +249,11 @@
       <!-- Changing the secret without changing the mode. Two rows rather than
            one, because only one of them applies at a time and a disabled row
            explaining why would be a third thing to read. -->
+      <!-- Only for a mode with a secret to change: the other three drew an
+           empty card here (after-release ticket 09). Opens and closes by its
+           height when a change of mode adds or takes away the secret. -->
+      {#if current === 'passphrase' || current === 'pin'}
+      <div transition:disclose>
       <ListCard>
         {#if current === 'passphrase'}
           <ListRow
@@ -264,6 +274,8 @@
           />
         {/if}
       </ListCard>
+      </div>
+      {/if}
     </ReadReserve>
   {/if}
 </div>

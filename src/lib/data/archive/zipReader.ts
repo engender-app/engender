@@ -29,7 +29,7 @@
    the running total either, or the ceiling would refuse a backup for less
    than it actually holds. */
 
-import { unzipSync } from 'fflate';
+import { Unzip, UnzipInflate, UnzipPassThrough, unzipSync } from 'fflate';
 
 /** 1536 MiB allows headroom above the 851.2 MiB ten-year import estimate
     documented in docs/architecture.md. This bounds allocations; it does
@@ -65,6 +65,8 @@ export interface ZipReader {
       the ceiling it was opened with - otherwise throws `ZipTooLargeError`
       rather than returning anything. */
   read(name: string): Uint8Array | null;
+  /** Uncached prefix, inflated in bounded chunks for attachment sniffing. */
+  readPrefix(name: string, length: number): Uint8Array | null;
 }
 
 /** A reader over one zip's bytes, bounding the total it will ever
@@ -73,16 +75,26 @@ export interface ZipReader {
     many small members that individually look harmless. */
 export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_CEILING_BYTES): ZipReader {
   const names = new Set<string>();
+  const sizes = new Map<string, number>();
   unzipSync(bytes, {
     filter: (entry) => {
       if (names.has(entry.name)) throw new Error('duplicate ZIP member name');
       names.add(entry.name);
+      sizes.set(entry.name, entry.originalSize);
       return false;
     }
   });
 
   let total = 0;
   const cache = new Map<string, Uint8Array | null>();
+  const accepted = new Set<string>();
+  function accept(name: string): void {
+    if (accepted.has(name) || !sizes.has(name)) return;
+    const size = sizes.get(name)!;
+    if (total + size > ceilingBytes) throw new ZipTooLargeError(ceilingBytes);
+    total += size;
+    accepted.add(name);
+  }
 
   return {
     names(): string[] {
@@ -92,24 +104,47 @@ export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_C
     read(name: string): Uint8Array | null {
       if (cache.has(name)) return cache.get(name)!;
 
-      let refused = false;
-      let acceptedSize = 0;
-      const found = unzipSync(bytes, {
-        filter: (entry) => {
-          if (entry.name !== name) return false;
-          if (total + entry.originalSize > ceilingBytes) {
-            refused = true;
-            return false;
-          }
-          acceptedSize = entry.originalSize;
-          return true;
-        }
-      });
-      if (refused) throw new ZipTooLargeError(ceilingBytes);
-      total += acceptedSize;
+      accept(name);
+      const found = unzipSync(bytes, { filter: entry => entry.name === name });
       const value = Object.values(found)[0] ?? null;
       cache.set(name, value);
       return value;
+    },
+
+    readPrefix(name: string, length: number): Uint8Array | null {
+      if (!names.has(name)) return null;
+      accept(name);
+      const prefix = new Uint8Array(Math.min(length, sizes.get(name)!));
+      let written = 0;
+      let finished = prefix.length === 0;
+      // Prior members are streamed through a discard decoder, never inflated.
+      const stream = new Unzip(file => {
+        if (file.name !== name) {
+          class Discard {
+            static compression = file.compression;
+            ondata = () => {};
+            push() {}
+          }
+          stream.register(Discard);
+          file.ondata = () => {};
+          file.start();
+          return;
+        }
+        stream.register(file.compression === 0 ? UnzipPassThrough : UnzipInflate);
+        file.ondata = (error, chunk, final) => {
+          if (error) throw error;
+          const taking = Math.min(chunk.length, prefix.length - written);
+          prefix.set(chunk.subarray(0, taking), written);
+          written += taking;
+          finished = written === prefix.length || final;
+        };
+        file.start();
+      });
+      // At most 1024 compressed bytes reach the inflater per push.
+      for (let at = 0; at < bytes.length && !finished; at += 1024) {
+        stream.push(bytes.subarray(at, at + 1024), at + 1024 >= bytes.length);
+      }
+      return prefix.subarray(0, written);
     }
   };
 }

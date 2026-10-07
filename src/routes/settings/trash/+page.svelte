@@ -48,10 +48,10 @@
       </ListCard>
     {/snippet}
     {#snippet empty()}
-      <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} />
+      <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} level={2} />
     {/snippet}
     {#snippet failed()}
-      <EmptyState title={m.trash_read_failed_title()} text={m.trash_read_failed_body()} />
+      <EmptyState title={m.trash_read_failed_title()} text={m.trash_read_failed_body()} level={2} />
     {/snippet}
   </ReadGate>
 </div>

@@ -270,6 +270,20 @@ test('adoptTryout closes the tryout and optionally creates a timeline milestone 
   assert.equal(milestoneFeltSense[0].mood, 5);
 });
 
+test('a tied felt sense stamps the adopted milestone with the most recent reading', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 100, endEpochDay: null });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 101, mood: 5 });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 102, mood: 1 });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 103, mood: 1 });
+  await journal.feltSense.add({ tryoutId: id }, { epochDay: 104, mood: 5 });
+
+  const res = await journal.tryouts.adoptTryout(id, { endEpochDay: 110, createMilestone: true, milestoneEpochDay: 110 });
+
+  const [summary] = await journal.feltSense.forMilestone(res.milestoneId!);
+  assert.equal(summary.mood, 5);
+});
+
 test('deleting an adopted tryout unlinks its milestone rather than orphaning the reference', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alicja', startEpochDay: 100, endEpochDay: null });

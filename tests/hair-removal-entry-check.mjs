@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium, settlePage } from './browser-harness.mjs';
+import { fillDate, launchChromium, settlePage, dateValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -96,7 +96,7 @@ try {
   await page.locator('[data-save-hair-removal-session]').click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.locator('#hair-removal-provider').inputValue(), 'Clinic fixture');
-  assert.equal(await page.locator('#hair-removal-date').inputValue(), '2024-03-12');
+  assert.equal(await dateValue(page.locator('#hair-removal-date')), '2024-03-12');
   assert.equal((await sessions()).length, before);
   assert.equal(await page.locator('[data-add-photo]').count(), 0);
   assert.equal(await page.locator('[data-hair-removal-saved]').count(), 0);
@@ -122,7 +122,7 @@ try {
   console.log('PASS grouping, defaults, draft protection, rejected save, delayed retry and single committed session');
   await notice.getByRole('button').click();
   await page.locator('[data-add-photo]').waitFor();
-  assert.equal(await page.locator('#hair-removal-date').inputValue(), '2024-03-12');
+  assert.equal(await dateValue(page.locator('#hair-removal-date')), '2024-03-12');
   assert.equal(await page.locator('#hair-removal-provider').inputValue(), 'Clinic fixture');
   await page.waitForFunction(() => document.querySelector('[data-sheet]')?.contains(document.activeElement));
   const cancelled = page.waitForEvent('filechooser');
@@ -148,7 +148,7 @@ try {
   await page.locator('[data-photo-owner]').click();
   await page.waitForURL('**/body/hair-removal?session=*');
   await page.locator('[data-add-photo]').waitFor();
-  assert.equal(await page.locator('#hair-removal-date').inputValue(), '2024-03-12');
+  assert.equal(await dateValue(page.locator('#hair-removal-date')), '2024-03-12');
   await page.locator(`[data-hair-removal-photo="${photoId}"]`).waitFor();
   const library = await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
@@ -164,7 +164,7 @@ try {
   await page.locator('#hair-removal-area').waitFor({ state: 'detached' });
   await navigate(`/body/hair-removal?session=${saved.id}`);
   await page.locator(`[data-hair-removal-photo="${photoId}"]`).waitFor();
-  assert.equal(await page.locator('#hair-removal-date').inputValue(), '2024-03-13');
+  assert.equal(await dateValue(page.locator('#hair-removal-date')), '2024-03-13');
   assert.equal(await page.evaluate(async (photoId) => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     return (await journal.photoLibrary.inJournal()).find((photo) => photo.id === photoId).epochDay;

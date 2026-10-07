@@ -168,8 +168,8 @@ function buildEntries(today: number): PersonaEntry[] {
       const dysphoria = clampIntensity(86 - progress * 50 + wobble(day + offset, 9));
       const euphoria = clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9));
       // One slider position per region now (ticket 39, ADR-0081): whichever
-      // intensity is larger sets the side, the same rule the v79 migration
-      // applies to an old both-axes row.
+      // intensity is larger sets the side, and the stored value reads back the
+      // way the reads do: below 50 is dysphoria, above it euphoria.
       logged[region] = Math.round(dysphoria >= euphoria ? 50 - dysphoria / 2 : 50 + euphoria / 2);
     }
     return logged;

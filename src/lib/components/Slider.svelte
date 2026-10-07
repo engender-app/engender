@@ -16,6 +16,7 @@
   import { untrack } from 'svelte';
   import { Slider as MeltSlider } from 'melt/builders';
   import { displayValue, sliderScaleStops, snapToStop } from './sliderScale';
+  import { m } from '$lib/paraglide/messages';
 
   let {
     min = 0,
@@ -39,8 +40,10 @@
         fallback and the accessible name where the two differ, as they do on a
         dimension, whose spoken name carries both endpoints. */
     labelledBy?: string;
-    /** Dims the instrument without hiding it: there is a thumb position but
-        no value behind it yet. */
+    /** No value yet: the thumb and fill are not drawn, and a screen reader
+        hears "Not set" rather than the midpoint the thumb rests on. Melt
+        still writes that midpoint to aria-valuenow, which a role="slider"
+        must carry; readers speak aria-valuetext in its place. */
     unset?: boolean;
     /** True while the control is being operated - a finger is down on it, or
         it holds keyboard focus. Bindable so a label outside the control can
@@ -145,6 +148,7 @@
   data-slider
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}
+  aria-valuetext={unset ? m.slider_unset_aria() : undefined}
   onpointerdowncapture={() => { pressing = true; holding = true; }}
   onpointercancel={cancelDrag}
   onfocus={onFocus}
@@ -169,3 +173,33 @@
     <div {...slider.thumb} class="slider-thumb" tabindex="-1"></div>
   </div>
 </div>
+
+<style>
+  /* An unset slider (ticket 31). The thumb has to rest somewhere, and where
+     it rests is not a value anyone logged - on a body region both axes start
+     this way, so a mid-track thumb would otherwise read as a middling score.
+     Ticket 31 dimmed it; dimmed, a half-filled track beside a "-" still read
+     as a value (audit UX-17), so the thumb and the fill are not drawn at all
+     until the first touch, and fade in under the finger when it lands, over
+     240ms in-out: at 150ms ease-out the first frame took 44% of the fade.
+     The groove and the ruler stay: they are the control, and the scale is
+     true whether or not there is a value on it yet. Here rather than in
+     components.css with the rest of the slider, because that sheet is part
+     of the first load and only an editor draws an unset scale. */
+  .slider-fill { transition: opacity var(--dur-med) var(--ease-in-out); }
+  .slider-thumb {
+    transition: box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-med) var(--ease-in-out);
+  }
+  .slider.is-unset .slider-fill,
+  .slider.is-unset .slider-thumb { opacity: 0; }
+  /* Except while the control holds focus, where the thumb is the focus
+     ring's only carrier and marks where the first arrow key starts from.
+     :focus-within rather than :focus-visible, so a screen reader's focus
+     that arrives without a keyboard still finds something drawn. */
+  .slider.is-unset:focus-within .slider-thumb { opacity: 0.45; }
+  /* And no mark claims to be standing on a value, because there is not one. */
+  .slider.is-unset .slider-tick.is-here {
+    background: color-mix(in oklab, var(--text) 45%, transparent);
+    scale: 1;
+  }
+</style>

@@ -47,7 +47,7 @@ const reasonText = (error: unknown): string => {
 };
 
 const isDestinationFailure = (message: string): boolean =>
-  message.includes('destination-revoked') || message.includes('destination-unavailable');
+  message.includes('destination-revoked');
 
 const isTransientFailure = (message: string): boolean =>
   message.includes('verification-failed') || message.includes('destination-full') || message.includes('partial-write');

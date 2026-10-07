@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { recap, isGoodDay, notifyWrapped, notifyOnThisDay, offeredWrappedPeriod, onThisDayCandidates } = vi.hoisted(
+const { recap, isGoodDay, notifyWrapped, notifyOnThisDay, offeredWrappedPeriod, onThisDayCandidates, getEras, getMutedEraUuids } = vi.hoisted(
   () => ({
     recap: vi.fn(),
     isGoodDay: vi.fn(),
     notifyWrapped: vi.fn(),
     notifyOnThisDay: vi.fn(),
     offeredWrappedPeriod: vi.fn(),
-    onThisDayCandidates: vi.fn()
+    onThisDayCandidates: vi.fn(),
+    getEras: vi.fn(),
+    getMutedEraUuids: vi.fn()
   })
 );
 
@@ -41,7 +43,7 @@ vi.mock('$lib/data/prefs/store.svelte', () => ({
   }
 }));
 vi.mock('$lib/data/live/journal.svelte', () => ({
-  journal: { stats: { recap, isGoodDay } }
+  journal: { stats: { recap, isGoodDay }, eras: { getEras }, eraMutes: { getMutedEraUuids } }
 }));
 vi.mock('$lib/data/wrapped', () => ({ WRAPPED_ENTRY_FLOOR: 5, offeredWrappedPeriod }));
 vi.mock('$lib/data/on-this-day', () => ({ onThisDayCandidates }));
@@ -50,13 +52,14 @@ vi.mock('$lib/retrospective/android-bridge', () => ({
 }));
 
 import { prefs } from '$lib/data/prefs/store.svelte';
+import { journalWithBuiltIns } from './journal/test-support';
 import {
   startRetrospectiveNotificationsScheduler,
   stopRetrospectiveNotificationsScheduler
 } from './retrospective-notifications-scheduler';
 
 const flush = async () => {
-  for (let i = 0; i < 12; i++) await Promise.resolve();
+  for (let i = 0; i < 40; i++) await Promise.resolve();
 };
 
 const WEEK_PERIOD = { cadence: 'week', start: 20300, end: 20306, year: 2026, month: null };
@@ -87,6 +90,8 @@ describe('retrospective notifications scheduler', () => {
     onThisDayCandidates.mockReturnValue(CANDIDATES);
     recap.mockResolvedValue({ entryCount: 10 });
     isGoodDay.mockResolvedValue(false);
+    getEras.mockResolvedValue([]);
+    getMutedEraUuids.mockResolvedValue(new Set());
     prefs.wrappedEnabled = true;
     prefs.wrappedNotificationsEnabled = true;
     prefs.onThisDayEnabled = true;
@@ -114,6 +119,21 @@ describe('retrospective notifications scheduler', () => {
       expect.objectContaining({ route: '/wrapped/week', title: 'Wrapped' })
     );
     expect(prefs.lastWrappedNotifiedPeriodKey).toBe('week:20300');
+  });
+
+  test('keeps a muted wrapped period out of notifications without recording dedup', async () => {
+    const { journal } = await journalWithBuiltIns();
+    const era = await journal.eras.upsertEra({ name: 'kept out', startEpochDay: 20302, endEpochDay: 20304 });
+    await journal.eraMutes.setEraMuted(era, true);
+    getEras.mockImplementation(() => journal.eras.getEras());
+    getMutedEraUuids.mockImplementation(() => journal.eraMutes.getMutedEraUuids());
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyWrapped).not.toHaveBeenCalled();
+    expect(recap).not.toHaveBeenCalled();
+    expect(prefs.lastWrappedNotifiedPeriodKey).toBeNull();
   });
 
   test('does not notify wrapped when entries are under the floor', async () => {
@@ -177,6 +197,34 @@ describe('retrospective notifications scheduler', () => {
       expect.objectContaining({ route: '/on-this-day?lookback=sixMonths', title: 'On this day' })
     );
     expect(prefs.lastOnThisDayNotifiedEpochDay).toBe(TODAY);
+  });
+
+  test('skips a muted good day and notifies for the next unmuted candidate', async () => {
+    const { journal } = await journalWithBuiltIns();
+    const era = await journal.eras.upsertEra({ name: 'kept out', startEpochDay: TODAY - 365, endEpochDay: TODAY - 365 });
+    await journal.eraMutes.setEraMuted(era, true);
+    getEras.mockImplementation(() => journal.eras.getEras());
+    getMutedEraUuids.mockImplementation(() => journal.eraMutes.getMutedEraUuids());
+    isGoodDay.mockResolvedValue(true);
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyOnThisDay).toHaveBeenCalledWith(expect.objectContaining({ route: '/on-this-day?lookback=sixMonths' }));
+    expect(isGoodDay).not.toHaveBeenCalledWith(TODAY - 365);
+  });
+
+  test('does not notify or record a day when every candidate is muted', async () => {
+    getEras.mockResolvedValue([{ id: 'kept-out', startEpochDay: null, endEpochDay: TODAY - 1 }]);
+    getMutedEraUuids.mockResolvedValue(new Set(['kept-out']));
+    isGoodDay.mockResolvedValue(true);
+
+    startRetrospectiveNotificationsScheduler();
+    await flush();
+
+    expect(notifyOnThisDay).not.toHaveBeenCalled();
+    expect(isGoodDay).not.toHaveBeenCalled();
+    expect(prefs.lastOnThisDayNotifiedEpochDay).toBeNull();
   });
 
   test('does not notify on-this-day when no lookback qualifies', async () => {

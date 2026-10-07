@@ -326,7 +326,7 @@ const GOOD_DAY_MOOD_FLOOR = 3;
    orders by, so two entries stamped the same second still have one
    answer. `bodyRegionValues` below carries no ordinal because nothing asks
    a body region for its order. */
-function metricValues(metric: string): { sql: string; params: (string | number)[] } {
+export function metricValues(metric: string): { sql: string; params: (string | number)[] } {
   if (metric === 'mood') {
     return {
       sql: `SELECT e.id AS entry_id, e.epoch_day AS epoch_day, e.mood AS value, e.timestamp AS ordinal
@@ -401,11 +401,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
   };
 
-  /* Deliberately the same fragment, the same window and the same grouping
-     as averageByDay above: the calendar draws both on one cell, so a day
-     one of them counts and the other does not is a cell contradicting
-     itself. MIN and MAX over the same rows AVG runs over is what makes
-     that true by construction rather than by two statements agreeing. */
   const spreadByDay = async (
     values: { sql: string; params: (string | number)[] },
     fromEpochDay: number,
@@ -767,16 +762,19 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
          Two left joins and a COALESCE for the same reason photos.inJournal
          has them: exactly one owner column is set (the photo table's
          CHECK), so a milestone's photo dates itself off the milestone and an
-         entry's off the entry, in one query rather than two. */
+         entry's off the entry, in one query rather than two. A day the
+         person moved the photo to wins over both, as it does in the library
+         (photoLibrary.ts), so a moved photo is a highlight of the period it
+         was moved into (after-release 27, audit L01-08). */
       const photoRowsRead = driver.query<{ uuid: string; file_path: string; epoch_day: number; starred: number }>(
         `WITH dated AS (
            SELECT p.uuid AS uuid, p.file_path AS file_path, p.starred AS starred,
-                  COALESCE(e.epoch_day, m.epoch_day) AS epoch_day,
+                  COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
                   p.order_index AS order_index, p.id AS id
            FROM photo p
            LEFT JOIN entry e ON e.id = p.entry_id
            LEFT JOIN milestone m ON m.id = p.milestone_id
-           WHERE COALESCE(e.epoch_day, m.epoch_day) BETWEEN ? AND ?
+           WHERE COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) BETWEEN ? AND ?
              AND (p.entry_id IS NULL OR e.trashed_at IS NULL)
          ),
          bucketed AS (

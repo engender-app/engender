@@ -32,7 +32,8 @@
 
   import { bootState } from '$lib/stores/boot.svelte';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
-  import { bootStates, bootTransitions } from '$lib/stores/boot-state';
+  import { bootStates, bootTransitions, type BootFailure } from '$lib/stores/boot-state';
+  import BootFailureNotice from '$lib/components/BootFailureNotice.svelte';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import RecoveryKeyEntry from '$lib/components/RecoveryKeyEntry.svelte';
@@ -59,8 +60,7 @@
     'session-biometric',
     /* Unchanged by this ticket, kept so a regression in the shared shell
        shows up here rather than in the app. */
-    'converting',
-    'conversion-refused',
+    'legacy-refused',
     'android-key',
     'android-key-no-lock',
     'android-key-invalidated',
@@ -76,8 +76,30 @@
     'post-recovery',
     'unlock-pin-with-key',
     'device-recovery-with-key',
-    'android-key-invalidated-with-key'
+    'android-key-invalidated-with-key',
+    /* The boot-failure notice, one scene per failure the boot can name
+       (after-release ticket 09). Not a gate, but drawn where the gates are
+       and from the same boot state, so it is looked at beside them. */
+    'boot-failure-unreadable',
+    'boot-failure-below-baseline',
+    'boot-failure-engine',
+    'boot-failure-unknown',
+    'boot-failure-recoverable'
   ];
+
+  /** What each failure scene's driver said, so a check can prove the notice
+      never shows it. Exported on window for tests/gates-say-what-happened.mjs. */
+  const BOOT_FAILURES: Record<string, { kind: BootFailure; raw: string }> = {
+    'boot-failure-unreadable': { kind: 'unreadable', raw: 'file is not a database (code 26)' },
+    'boot-failure-below-baseline': {
+      kind: 'below-baseline',
+      raw: "Database schema version 50 is older than this build's baseline (78). It comes from a development build and cannot be migrated."
+    },
+    'boot-failure-engine': { kind: 'engine', raw: 'the database worker stopped: no message' },
+    'boot-failure-unknown': { kind: 'unknown', raw: 'table entry already exists' },
+    'boot-failure-recoverable': { kind: 'unknown', raw: 'table entry already exists' }
+  };
+  (window as { bootFailureScenes?: typeof BOOT_FAILURES }).bootFailureScenes = BOOT_FAILURES;
 
   /** The scenes that need a recovery key on disk before they mount. */
   const RECOVERY_SCENES = new Set([
@@ -162,22 +184,8 @@
       Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'passphrase')));
     } else if (scene === 'unlock-biometric') {
       Object.assign(bootState, bootTransitions.toNeedsUnlock(bootTransitions.setAccessMode(from, 'biometric')));
-    } else if (scene === 'converting') {
-      const setup = bootTransitions.toNeedsSetup(from, { conversionRequired: true });
-      const converting = bootTransitions.toConverting(setup);
-      Object.assign(
-        bootState,
-        bootTransitions.updateConversionProgress(converting, { stage: 'photos', done: 34, total: 91 })
-      );
-    } else if (scene === 'conversion-refused') {
-      Object.assign(
-        bootState,
-        bootTransitions.toConversionRefused(from, {
-          reason: 'not-enough-space',
-          needBytes: 214 * 1024 * 1024,
-          freeBytes: 37 * 1024 * 1024
-        })
-      );
+    } else if (scene === 'legacy-refused') {
+      Object.assign(bootState, bootTransitions.toLegacyRefused(from));
     } else if (scene === 'android-key') {
       Object.assign(bootState, bootTransitions.toNeedsAuthentication(from));
     } else if (scene === 'android-key-no-lock') {
@@ -204,6 +212,13 @@
       Object.assign(bootState, bootTransitions.setAccessMode(from, 'pin'));
     } else if (scene === 'schema-too-new') {
       Object.assign(bootState, bootTransitions.toSchemaTooNew(from));
+    } else if (scene in BOOT_FAILURES) {
+      const { kind, raw } = BOOT_FAILURES[scene];
+      const failed = bootTransitions.toError(from, raw, kind);
+      Object.assign(
+        bootState,
+        scene === 'boot-failure-recoverable' ? bootTransitions.markErrorRecoverable(failed, true) : failed
+      );
     } else {
       // Every access-* scene is the first-run setup state.
       Object.assign(bootState, bootTransitions.toNeedsSetup(from));
@@ -291,7 +306,7 @@
           <SessionUnlock mode="passphrase" />
         {:else if scene === 'session-biometric'}
           <SessionUnlock mode="biometric" />
-        {:else if scene.startsWith('unlock-') || scene === 'converting' || scene === 'conversion-refused'}
+        {:else if scene.startsWith('unlock-') || scene === 'legacy-refused'}
           <JournalGate />
         {:else if scene.startsWith('android-key')}
           <AndroidKeyGate />
@@ -299,6 +314,8 @@
           <DeviceBoundRecovery />
         {:else if scene === 'schema-too-new'}
           <SchemaTooNew />
+        {:else if scene in BOOT_FAILURES}
+          <BootFailureNotice />
         {/if}
       {/key}
     </main>

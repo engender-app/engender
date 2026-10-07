@@ -10,7 +10,8 @@
      letterStatus.ts, checked against the read set too, since being handed a
      letter and leaving it closed is still having met it. Meeting it is
      unconditional in one direction only - the way past does not open the
-     letter, and nothing here reaches the text before the card is opened.
+     letter, and nothing here reaches the text before the card is opened:
+     an unread card draws no line of it (LetterCard's `read`).
 
      **It is the card, alone**, rather than a second drawing of one: the same
      `LetterCard` in its ready state, so opening it here is the same unfold it

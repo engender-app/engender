@@ -9,11 +9,14 @@
      screen. They do share a scale, though: a chart drawn to its own maximum
      would make one day's single tap as tall as another day's five, and the
      two are counts of the same kind of thing. */
+  import { dayRangeOptions } from '$lib/components/dayRangeOptions';
+  import { page } from '$app/state';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import type { TallyKind } from '$lib/data/types';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { toast } from '$lib/stores/toasts.svelte';
   import { liveList, liveQuery, journal } from '$lib/data/live/journal.svelte';
@@ -26,6 +29,9 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
+  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
+  import { crossfade, slideMonit } from '$lib/motion/reveal';
+  import { tallyInWords, type TallyWords } from '$lib/data/tallyWords';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
 
   const RANGES = [7, 14, 30, 90, 180, 365];
@@ -34,24 +40,54 @@
   // Same inclusive-range rule as the stats screen (ticket 10): the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
-  let today = $derived(todayEpochDay());
-  let from = $derived(today - range + 1);
+  let today = $derived(currentDay());
 
-  let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, today));
+  /* Look back's tile opens this screen on the span it counted (after-release
+     17), at the query /body-map and /compare read too. That span is the
+     range then, and the range switch, which only knows windows ending
+     today, is left off. A visit from a day row or a chart note carries no
+     span and gets the switch. */
+  let queryFrom = $derived(epochDayFromDateInputValue(page.url.searchParams.get('from') ?? ''));
+  let queryTo = $derived(epochDayFromDateInputValue(page.url.searchParams.get('to') ?? ''));
+  let hasSpan = $derived(queryFrom !== null && queryTo !== null && queryFrom <= queryTo);
+  let to = $derived(hasSpan ? (queryTo as number) : today);
+  let from = $derived(hasSpan ? (queryFrom as number) : today - range + 1);
+  let days = $derived(to - from + 1);
+  /* A tap is logged today, so a span that ends before today could not show
+     it: the chart and the spoken count would both stay the same while a tap
+     landed out of sight. Such a span is read-only (after-release 17 review). */
+  let logsToday = $derived(to >= today);
+
+  let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, to));
   let misgendered = $derived(misgenderedQuery.rows);
-  let correctlyGenderedQuery = liveList((j) => j.stats.tallyTrend('correctly_gendered', from, today));
+  let correctlyGenderedQuery = liveList((j) => j.stats.tallyTrend('correctly_gendered', from, to));
   /* Both counters take the same annotations: they are two readings of the
      same days, and a thing that happened happened to both of them (ticket
      23). */
-  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, today, today));
+  let annotationsQuery = liveList((j) => j.chartAnnotations.getAnnotations(from, to, today));
   let correctlyGendered = $derived(correctlyGenderedQuery.rows);
 
   let maxCount = $derived(
     Math.max(1, ...misgendered.map((p) => p.value), ...correctlyGendered.map((p) => p.value))
   );
 
-  let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), range));
-  let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), range));
+  let plottedMis = $derived(atGrain(misgendered.map((p) => ({ x: p.day, y: p.value })), days));
+  let plottedCorrect = $derived(atGrain(correctlyGendered.map((p) => ({ x: p.day, y: p.value })), days));
+  /* Under two plotted positions a card says its count in words rather than
+     drawing a lone ring in an empty plot (after-release 27, audit UI-12). */
+  type Plotted = typeof plottedMis;
+  type Highlight = typeof highlightMis;
+  let wordsMis = $derived(tallyInWords(misgendered, plottedMis.points.length));
+  let wordsCorrect = $derived(tallyInWords(correctlyGendered, plottedCorrect.points.length));
+  const longDay = (day: number) => fmtDay(day, { day: 'numeric', month: 'long' });
+  const sayTally = (words: TallyWords) =>
+    words.kind === 'none'
+      ? m.tally_words_none()
+      : words.kind === 'once'
+        ? m.tally_words_once({ date: longDay(words.day) })
+        : words.kind === 'one-day'
+          ? m.tally_words_one_day({ count: String(words.count), date: longDay(words.day) })
+          : m.tally_words_span({ count: String(words.count), from: longDay(words.from), to: longDay(words.to) });
 
   /* The presentation chip (ticket 17, ADR-0048): highlights, never
      filters, so both charts above keep drawing exactly what they draw
@@ -61,10 +97,10 @@
      reading. */
   let selectedPresentation = $state<string | null>(null);
   let presentationDaysQuery = liveList((j) =>
-    selectedPresentation ? j.stats.presentationDays(selectedPresentation, from, today) : Promise.resolve([])
+    selectedPresentation ? j.stats.presentationDays(selectedPresentation, from, to) : Promise.resolve([])
   );
   let highlightRole = $derived(presentationRole(selectedPresentation));
-  // Both charts share one grain (chooseGrain reads only `range`), so the
+  // Both charts share one grain (chooseGrain reads only the day count), so the
   // day set maps to chart positions once and each series reads its own hits.
   let highlightedAt = $derived(highlightedPositions(presentationDaysQuery.rows, null, plottedMis.grain));
   let highlightMis = $derived(
@@ -86,7 +122,7 @@
 
   let rangeEnds = $derived({
     from: fmtDay(from, { day: 'numeric', month: 'short' }),
-    to: fmtDay(today, { day: 'numeric', month: 'short' })
+    to: fmtDay(to, { day: 'numeric', month: 'short' })
   });
   // A count is a whole number, whatever the scale's top happens to be.
   const whole = (v: number) => String(Math.round(v));
@@ -126,7 +162,7 @@
      a live region announces a change of text, and setting the same string
      twice is not one (quick add's status region runs the same rule). */
   async function speakCount(kind: TallyKind) {
-    const rows = await journal.stats.tallyTrend(kind, from, today);
+    const rows = await journal.stats.tallyTrend(kind, from, to);
     const count = rows.reduce((sum, p) => sum + p.value, 0);
     announcement = m.tally_count_spoken({ kind: kindName(kind), count: String(count) });
   }
@@ -178,35 +214,56 @@
   const tallyRemember = (px: number) => rememberReserve('tally', px);
 </script>
 
-<div class="screen">
-  <ScreenHeader title={m.tally_trend_title()} subtitle={m.tally_trend_sub()} screen="tally" back="/stats" />
-
-  <Segmented
-    name={m.stats_range_group()}
-    options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
-    value={String(range)}
-    onChange={(v) => (range = Number(v))}
-    compact
-    key="tally-range"
-  />
-
-  <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
-
-  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
-  <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
-    <ChartCard level={2} heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
+<!-- One counter's body: its chart, or under two plotted positions the
+     sentence that stands in for it (after-release 27, audit UI-12). The two
+     slide in and out of each other, and the sentence is keyed on its own
+     words, so a tap or an undo that changes it crossfades rather than
+     swapping in a frame. -->
+{#snippet counter(words: TallyWords | null, plotted: Plotted, highlight: Highlight, ariaLabel: string)}
+  {#if words}
+    <ChartEmpty>
+      <span class="tally-words" data-tally-words>
+        {#key sayTally(words)}<span transition:crossfade>{sayTally(words)}</span>{/key}
+      </span>
+    </ChartEmpty>
+  {:else}
+    <div transition:slideMonit>
       <AreaChart
-        scrubLabel={grainLabel(plottedMis.grain)}
-        points={plottedMis.points}
+        scrubLabel={grainLabel(plotted.grain)}
+        points={plotted.points}
         min={0}
         max={maxCount}
         from={rangeEnds.from}
         to={rangeEnds.to}
         formatValue={whole}
         annotations={annotationsQuery.rows}
-        highlight={highlightMis}
-        ariaLabel={m.tally_misgendered()}
+        {highlight}
+        {ariaLabel}
       />
+    </div>
+  {/if}
+{/snippet}
+
+<div class="screen">
+  <ScreenHeader title={m.tally_trend_title()} subtitle={m.tally_trend_sub()} screen="tally" back="/stats" />
+
+  {#if !hasSpan}
+    <Segmented
+      name={m.stats_range_group()}
+      options={dayRangeOptions(RANGES)}
+      value={String(range)}
+      onChange={(v) => (range = Number(v))}
+      compact
+      key="tally-range"
+    />
+  {/if}
+
+  <PresentationChipRow value={selectedPresentation} onPick={(id) => (selectedPresentation = id)} />
+
+  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <ReadReserve ready={tallyRevealed} estimate={tallyEstimate} onrest={tallyRemember}>
+    <ChartCard level={2} heading={m.tally_misgendered()} kind="tally-misgendered" role={roleAt(activeFlag.roles, 0)}>
+      {@render counter(wordsMis, plottedMis, highlightMis, m.tally_misgendered())}
     </ChartCard>
 
     <!-- This counter's own actions, under this counter's chart: the row sits
@@ -214,62 +271,55 @@
          it moves. Undo is enabled exactly while that kind has an event
          logged today to remove - an earlier day's taps are not undo's to
          take, and a disabled button is how that is shown (.btn:disabled). -->
-    <div class="tally-actions">
-      <button
-        class="btn btn-soft"
-        data-tally-log="misgendered"
-        disabled={busy === 'misgendered'}
-        onclick={() => logTally('misgendered')}
-      >
-        {m.tally_log_misgendered()}
-      </button>
-      <button
-        class="btn btn-ghost"
-        data-tally-undo="misgendered"
-        disabled={busy === 'misgendered' || !misLatestQuery.value}
-        onclick={() => undoTally('misgendered')}
-      >
-        {m.tally_undo_misgendered()}
-      </button>
-    </div>
+    {#if logsToday}
+      <div class="tally-actions">
+        <button
+          class="btn btn-soft"
+          data-tally-log="misgendered"
+          disabled={busy === 'misgendered'}
+          onclick={() => logTally('misgendered')}
+        >
+          {m.tally_log_misgendered()}
+        </button>
+        <button
+          class="btn btn-ghost"
+          data-tally-undo="misgendered"
+          disabled={busy === 'misgendered' || !misLatestQuery.value}
+          onclick={() => undoTally('misgendered')}
+        >
+          {m.tally_undo_misgendered()}
+        </button>
+      </div>
+    {/if}
 
     <ChartCard level={2}
       heading={m.tally_correctly_gendered()}
       kind="tally-correctly-gendered"
       role={roleAt(activeFlag.roles, 0)}
     >
-      <AreaChart
-        scrubLabel={grainLabel(plottedCorrect.grain)}
-        points={plottedCorrect.points}
-        min={0}
-        max={maxCount}
-        from={rangeEnds.from}
-        to={rangeEnds.to}
-        formatValue={whole}
-        annotations={annotationsQuery.rows}
-        highlight={highlightCorrect}
-        ariaLabel={m.tally_correctly_gendered()}
-      />
+      {@render counter(wordsCorrect, plottedCorrect, highlightCorrect, m.tally_correctly_gendered())}
     </ChartCard>
 
-    <div class="tally-actions">
-      <button
-        class="btn btn-soft"
-        data-tally-log="correctly_gendered"
-        disabled={busy === 'correctly_gendered'}
-        onclick={() => logTally('correctly_gendered')}
-      >
-        {m.tally_log_correctly_gendered()}
-      </button>
-      <button
-        class="btn btn-ghost"
-        data-tally-undo="correctly_gendered"
-        disabled={busy === 'correctly_gendered' || !correctLatestQuery.value}
-        onclick={() => undoTally('correctly_gendered')}
-      >
-        {m.tally_undo_correctly_gendered()}
-      </button>
-    </div>
+    {#if logsToday}
+      <div class="tally-actions">
+        <button
+          class="btn btn-soft"
+          data-tally-log="correctly_gendered"
+          disabled={busy === 'correctly_gendered'}
+          onclick={() => logTally('correctly_gendered')}
+        >
+          {m.tally_log_correctly_gendered()}
+        </button>
+        <button
+          class="btn btn-ghost"
+          data-tally-undo="correctly_gendered"
+          disabled={busy === 'correctly_gendered' || !correctLatestQuery.value}
+          onclick={() => undoTally('correctly_gendered')}
+        >
+          {m.tally_undo_correctly_gendered()}
+        </button>
+      </div>
+    {/if}
   </ReadReserve>
 </div>
 
@@ -287,5 +337,13 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
+  }
+  /* The sentence that stands in for a chart too small to draw. A grid, so
+     the leaving sentence, taken out of flow by crossfade, stays centred
+     where it was while the new one fades in over it. */
+  .tally-words {
+    position: relative;
+    display: grid;
+    justify-items: center;
   }
 </style>

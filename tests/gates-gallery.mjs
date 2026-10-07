@@ -66,8 +66,7 @@ const SCENES = [
   'session-pin',
   'session-passphrase',
   'session-biometric',
-  'converting',
-  'conversion-refused',
+  'legacy-refused',
   'android-key',
   'android-key-no-lock',
   'android-key-invalidated',
@@ -233,7 +232,7 @@ await fixture.listen();
          screen the last click left it on. Measured without this, the first
          size reported 5px hidden on `access-choice` that belonged to a
          passphrase detail screen left standing from the loop before it. */
-      await select('Scene', scene === 'converting' ? 'schema-too-new' : 'converting');
+      await select('Scene', scene === 'legacy-refused' ? 'schema-too-new' : 'legacy-refused');
       await select('Scene', scene);
       const read = await page.evaluate(() => {
         const frame = document.querySelector('.screen-gate');

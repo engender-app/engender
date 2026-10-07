@@ -27,5 +27,5 @@ export function dayLabel(day: number, todayEpochDay: number): string {
 export function spanLabel(span: Span, todayEpochDay: number): string {
   const year = localDateFromEpochDay(todayEpochDay).getFullYear();
   const days = span.end - span.start + 1;
-  return `${m.wrapped_week_range({ from: dayWithYear(span.start, year), to: dayWithYear(span.end, year) })}, ${m.n_days({ n: days })}`;
+  return m.span_range_days({ from: dayWithYear(span.start, year), to: dayWithYear(span.end, year), days: m.n_days({ n: days }) });
 }

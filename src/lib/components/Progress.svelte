@@ -15,11 +15,15 @@
      `.rail` alone cannot say: a sweep for an operation that does not know
      how much is left, and a number for one that does.
 
-     Announcement is split on purpose. The sentence is the live region, so
-     a stage change ("Copying photos" to "Writing your journal") is spoken;
-     the percent sits in the bar's own aria-valuenow instead, where it is
-     available without being read out four times a second. */
+     Announcement is split on purpose. The sentence is spoken, so a stage
+     change ("Copying photos" to "Writing your journal") is heard; the
+     percent sits in the bar's own aria-valuenow instead, where it is
+     available without being read out four times a second. The sentence
+     goes through the app's standing live region (announcer.ts) rather than
+     being one: this whole block is inserted with its words already in it,
+     which a screen reader often does not read (after-release 21). */
   import { m } from '$lib/paraglide/messages';
+  import { announce } from '$lib/stores/announcer.svelte';
   import { progressPercent } from './progress';
   import type { ProgressRun } from './progress.svelte';
 
@@ -39,12 +43,16 @@
   } = $props();
 
   let percent = $derived(progressPercent(run.fraction));
+
+  $effect(() => {
+    if (run.visible) announce(label);
+  });
 </script>
 
 {#if run.visible}
   <div class="progress" data-progress={handle}>
     <div class="progress-head">
-      <span class="progress-label" role="status">{label}</span>
+      <span class="progress-label">{label}</span>
       {#if percent !== null}
         <span class="progress-percent">{m.progress_percent({ percent: String(percent) })}</span>
       {/if}

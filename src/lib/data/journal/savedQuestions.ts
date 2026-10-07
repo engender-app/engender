@@ -10,7 +10,7 @@
    scalar SQLite can hold. They travel as a comma-joined column instead, and
    this module is the one place that joins and splits them - `flatArea` never
    sees an array, and every reader of `SavedQuestion` never sees a CSV
-   string. `hasNote`/`hasPhoto` get the same treatment for the reason
+   string. `hasNote`/`hasPhoto`/`starred` get the same treatment for the reason
    `areaStates.ts` already gives: node:sqlite has no boolean binding, so
    every write here goes through the same 0/1 convention that module's
    `hidden` column uses. */
@@ -34,11 +34,12 @@ export interface SavedQuestionsArea {
 /** The row exactly as `flatArea` reads and writes it: every column a
     scalar, with `tagIds`/`moods` still comma-joined and `hasNote`/
     `hasPhoto` still 0/1. */
-type StoredSavedQuestion = Omit<SavedQuestion, 'tagIds' | 'moods' | 'hasNote' | 'hasPhoto'> & {
+type StoredSavedQuestion = Omit<SavedQuestion, 'tagIds' | 'moods' | 'hasNote' | 'hasPhoto' | 'starred'> & {
   tagIds: string;
   moods: string;
   hasNote: number;
   hasPhoto: number;
+  starred: number;
 };
 
 const joinIds = (ids: readonly string[]): string => ids.join(',');
@@ -52,7 +53,8 @@ function toDomain(row: StoredSavedQuestion): SavedQuestion {
     tagIds: splitIds(row.tagIds),
     moods: splitMoods(row.moods),
     hasNote: row.hasNote === 1,
-    hasPhoto: row.hasPhoto === 1
+    hasPhoto: row.hasPhoto === 1,
+    starred: row.starred === 1
   };
 }
 
@@ -62,7 +64,8 @@ function toStored(input: SavedQuestionInput): FlatInput<StoredSavedQuestion> {
     tagIds: joinIds(input.tagIds),
     moods: joinMoods(input.moods),
     hasNote: input.hasNote ? 1 : 0,
-    hasPhoto: input.hasPhoto ? 1 : 0
+    hasPhoto: input.hasPhoto ? 1 : 0,
+    starred: input.starred ? 1 : 0
   };
 }
 
@@ -77,7 +80,8 @@ export function makeSavedQuestionsArea(driver: SqliteDriver): SavedQuestionsArea
       startEpochDay: 'start_epoch_day',
       endEpochDay: 'end_epoch_day',
       hasNote: 'has_note',
-      hasPhoto: 'has_photo'
+      hasPhoto: 'has_photo',
+      starred: 'starred'
     }
   });
 

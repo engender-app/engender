@@ -56,7 +56,8 @@
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday, todayEpochDay } from '$lib/data/epochDay';
-  import { dilationEligible, expectedSessionDays } from '$lib/data/taperSchedule';
+  import { currentDay } from '$lib/stores/today.svelte';
+  import { dilationEligible, expectedSessionDays, stagesFromInput } from '$lib/data/taperSchedule';
   import type { TaperSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -70,7 +71,7 @@
   const SECTION_ROLE = { strip: 0, schedule: 1, sessions: 2 };
 
   const dayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let taperQuery = liveQuery((j) => j.taper.getTaper());
   let taper = $derived(taperQuery.value ?? null);
@@ -101,7 +102,7 @@
      one, there is nothing to ask, and `scheduleCanSave` refuses to save
      around the gap either way. */
   let selectedProcedureId = $state<string | null>(null);
-  let startDayInput = $state(dateInputValueFromEpochDay(today));
+  let startDayInput = $state(dateInputValueFromEpochDay(todayEpochDay()));
   let stagesInput = $state<{ everyNDays: string; days: string }[]>([]);
 
   function openScheduleEditor() {
@@ -121,21 +122,18 @@
   }
 
   /* A frequency of 0 is a real stage - a rest stretch a surgeon writes into
-     the plan, expecting nothing for its days (taperSchedule.ts) - so this
-     only rules out a negative or blank one, never zero. */
-  let scheduleCanSave = $derived(
-    selectedProcedureId !== null &&
-      stagesInput.length > 0 &&
-      stagesInput.every((s) => Number(s.everyNDays) >= 0 && s.everyNDays !== '' && Number(s.days) > 0)
-  );
+     the plan, expecting nothing for its days (taperSchedule.ts) - so
+     stagesFromInput only rules out a negative or missing one, never zero. */
+  let stagesToSave = $derived(stagesFromInput(stagesInput));
+  let scheduleCanSave = $derived(selectedProcedureId !== null && stagesToSave !== null);
 
   async function saveSchedule() {
-    if (!scheduleCanSave || !selectedProcedureId) return;
+    if (!selectedProcedureId || !stagesToSave) return;
     await journal.taper.upsertTaper({
       id: taper?.id,
       procedureId: selectedProcedureId,
       startEpochDay: epochDayFromDateInputValueOrToday(startDayInput),
-      stages: stagesInput.map((s) => ({ everyNDays: Number(s.everyNDays), days: Number(s.days) }))
+      stages: stagesToSave
     });
     editingSchedule = false;
   }
@@ -233,7 +231,7 @@
            to the screen that fixes it. -->
       <div class="screen-part">
         <Notice
-          icon="flask"
+          icon="repeat"
           key="dilation-no-procedure"
           role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
           title={m.dilation_no_procedure_title()}
@@ -244,7 +242,7 @@
     {:else if !taper && !editingSchedule}
       <div class="screen-part">
         <Notice
-          icon="flask"
+          icon="repeat"
           key="dilation-schedule-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}
           title={m.dilation_schedule_empty_title()}
@@ -340,7 +338,7 @@
       {:else if expectedDays.length === 0}
         <div class="screen-part">
           <Notice
-            icon="flask"
+            icon="repeat"
             key="dilation-sessions-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
             title={m.dilation_sessions_empty_title()}
@@ -419,7 +417,7 @@
           <ListRow
             key="dilation-schedule"
             data-schedule
-            icon="flask"
+            icon="repeat"
             title={m.dilation_schedule_edit_action()}
             subtitle={[
               followedProcedure?.name,

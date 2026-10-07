@@ -27,7 +27,7 @@
   import { metricStandings } from '$lib/data/statsCharts';
   import { nativeAmount, nativeValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
+  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -215,7 +215,7 @@
       name={m.stats_day_by_day()}
       href={readingHref('day-by-day', span)}
       headline={activeScaleRow?.value || undefined}
-      note={m.lookback_facts_average({ name: shown.name })}
+      note={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}
     >
       {#snippet drawing()}
         <svg viewBox="0 0 {SPARK_W} {SPARK_H}" preserveAspectRatio="none">
@@ -304,7 +304,7 @@
   {#if valueRows.length}
     <ul class="visually-hidden" data-values-list aria-label={valuesLabel}>
       {#each valueRows as row (row.key)}
-        <li>{row.name}: {row.value}{row.note ? `, ${row.note}` : ''}</li>
+        <li>{row.note ? m.reading_day_value_with_note({ day: row.name, value: row.value, note: row.note }) : m.reading_day_value({ day: row.name, value: row.value })}</li>
       {/each}
     </ul>
   {/if}
@@ -321,33 +321,9 @@
 {/if}
 
 <style>
-  .reading-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
 
-  .reading-axes {
-    display: grid;
-    gap: var(--space-1);
-    margin-top: var(--space-3);
-  }
 
-  .reading-axis {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
 
-  /* Widened past the picker's own 52% cap: the other half of this row is
-     one word (stats/+page.svelte's own reason, kept with the row). */
-  .reading-axis :global(.kit-chart-pick) {
-    max-width: 74%;
-  }
 
   .reading-compare-add {
     min-height: var(--touch-target);

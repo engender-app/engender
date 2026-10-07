@@ -14,6 +14,7 @@
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import RecoveryKeyOffer from '$lib/components/RecoveryKeyOffer.svelte';
@@ -23,6 +24,10 @@
   let next = $state('');
   let confirmation = $state('');
   let error = $state('');
+  /** Which field the error is about, so that field is marked invalid and
+      points at the sentence (after-release 21, audit A11Y-14). Null for a
+      failure that is nobody's typing. */
+  let errorAt = $state<'current' | 'next' | 'confirmation' | null>(null);
   let busy = $state(false);
   /* Whether a recovery key already covers this journal (ADR-0054, ticket
      sec-02). A changed passphrase rewraps the same data key, so an existing
@@ -37,13 +42,16 @@
     event.preventDefault();
     if (busy) return;
     error = '';
+    errorAt = null;
 
     if (next.length < MIN_PASSPHRASE_LENGTH) {
       error = m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
+      errorAt = 'next';
       return;
     }
     if (next !== confirmation) {
       error = m.pp_change_mismatch();
+      errorAt = 'confirmation';
       return;
     }
 
@@ -56,8 +64,14 @@
         return;
       }
       goto('/settings/security');
-    } catch {
-      error = m.pp_change_wrong_current();
+    } catch (e) {
+      /* Only a passphrase that did not unwrap the key is the current
+         passphrase's fault. A keystore that would not read or write is
+         something else, and blaming the typing sent people to retype a
+         passphrase that was right (after-release ticket 09). */
+      console.error('changing the passphrase failed', e);
+      error = e instanceof DecryptionFailedError ? m.pp_change_wrong_current() : m.pp_change_failed();
+      if (e instanceof DecryptionFailedError) errorAt = 'current';
     } finally {
       busy = false;
     }
@@ -82,7 +96,9 @@
           name="current"
           autocomplete="current-password"
           bind:value={current}
-          disabled={busy}
+          aria-invalid={errorAt === 'current'}
+          aria-describedby={errorAt === 'current' ? 'passphrase-status' : undefined}
+          readonly={busy}
         />
       </div>
       <div>
@@ -94,7 +110,9 @@
           name="next"
           autocomplete="new-password"
           bind:value={next}
-          disabled={busy}
+          aria-invalid={errorAt === 'next'}
+          aria-describedby={errorAt === 'next' ? 'passphrase-status' : undefined}
+          readonly={busy}
         />
       </div>
       <div>
@@ -106,10 +124,14 @@
           name="confirmation"
           autocomplete="new-password"
           bind:value={confirmation}
-          disabled={busy}
+          aria-invalid={errorAt === 'confirmation'}
+          aria-describedby={errorAt === 'confirmation' ? 'passphrase-status' : undefined}
+          readonly={busy}
         />
       </div>
-      <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
+      <!-- The fields above go read-only rather than disabled while the change
+           runs, so the one that had the focus keeps it (after-release 21). -->
+      <p class="pin-status small" role="alert" id="passphrase-status" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-change-passphrase disabled={busy}>
         <span>
           {#if busy}{m.pp_change_running()}

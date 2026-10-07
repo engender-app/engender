@@ -1,4 +1,3 @@
-import type { ConversionProgress, ConversionRefusal } from '../data/conversion/conversion.ts';
 import type { JournalAccessMode } from '../data/journal-access-mode.ts';
 import type { Journal } from '../data/journal/journal.ts';
 import type { AndroidKeyRefusal } from '../lock/android-key.ts';
@@ -9,24 +8,36 @@ type BootStatus =
   | 'needs-unlock'
   | 'needs-authentication'
   | 'needs-device-recovery'
-  | 'converting'
-  | 'conversion-refused'
+  | 'legacy-refused'
   | 'ready'
   | 'schema-too-new'
   | 'error';
 
-type PendingConversion = { progress: null };
-type ConversionState = { progress: ConversionProgress | null };
+/** Which failure a boot ended in, in the terms the failure screen speaks
+    (after-release ticket 09). The raw text stays in `error`, which the screen
+    shows only behind its bug-report control.
+
+    - `unreadable`: the key does not read the journal file. SQLCipher reports a
+      wrong key and a file that is not a database the same way, SQLITE_NOTADB
+      (ADR-0020), and retrying cannot fix either (ux-carpet 210).
+    - `below-baseline`: a development build's journal from before the
+      squashed baseline (migrations.ts), which this build cannot carry forward.
+    - `android-plaintext`: a phone still holding a journal from before Android
+      encryption.
+    - `engine`: the database itself never started - the worker or its wasm
+      failed to load, or the SQLite build lacks FTS5.
+    - `unknown`: anything nobody has named yet. */
+export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'unknown';
+
 
 interface BootShape {
   status: BootStatus;
   accessMode: JournalAccessMode;
   error: string | null;
+  failure: BootFailure | null;
   persistDenied: boolean;
   recoverable: boolean;
   journal: Journal | null;
-  conversion: ConversionState | null;
-  conversionRefusal: ConversionRefusal | null;
   androidKey: AndroidKeyRefusal | null;
 }
 
@@ -36,8 +47,6 @@ type BootingState = BootShape & {
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: null;
-  conversionRefusal: null;
   androidKey: null;
 };
 
@@ -47,8 +56,6 @@ type NeedsSetupState = BootShape & {
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: PendingConversion | null;
-  conversionRefusal: null;
   androidKey: null;
 };
 
@@ -58,8 +65,6 @@ type NeedsUnlockState = BootShape & {
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: PendingConversion | null;
-  conversionRefusal: null;
   androidKey: null;
 };
 
@@ -69,8 +74,6 @@ type NeedsAuthenticationState = BootShape & {
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: null;
-  conversionRefusal: null;
 };
 
 type NeedsDeviceRecoveryState = BootShape & {
@@ -79,30 +82,15 @@ type NeedsDeviceRecoveryState = BootShape & {
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: null;
-  conversionRefusal: null;
   androidKey: null;
 };
 
-type ConvertingState = BootShape & {
-  status: 'converting';
+type LegacyRefusedState = BootShape & {
+  status: 'legacy-refused';
   error: null;
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: ConversionState;
-  conversionRefusal: null;
-  androidKey: null;
-};
-
-type ConversionRefusedState = BootShape & {
-  status: 'conversion-refused';
-  error: null;
-  recoverable: false;
-  persistDenied: false;
-  journal: null;
-  conversion: null;
-  conversionRefusal: ConversionRefusal;
   androidKey: null;
 };
 
@@ -110,9 +98,8 @@ type ReadyState = BootShape & {
   status: 'ready';
   error: null;
   recoverable: false;
-  journal: Journal;
-  conversion: null;
-  conversionRefusal: null;
+  /** Null while a web lock has the journal closed (after-release ticket 10). */
+  journal: Journal | null;
   androidKey: null;
 };
 
@@ -122,18 +109,15 @@ type SchemaTooNewState = BootShape & {
   recoverable: false;
   persistDenied: false;
   journal: null;
-  conversion: null;
-  conversionRefusal: null;
   androidKey: null;
 };
 
 type ErrorState = BootShape & {
   status: 'error';
   error: string;
+  failure: BootFailure;
   journal: null;
   persistDenied: false;
-  conversion: null;
-  conversionRefusal: null;
   androidKey: null;
 };
 
@@ -143,24 +127,22 @@ export type BootState =
   | NeedsUnlockState
   | NeedsAuthenticationState
   | NeedsDeviceRecoveryState
-  | ConvertingState
-  | ConversionRefusedState
+  | LegacyRefusedState
   | ReadyState
   | SchemaTooNewState
   | ErrorState;
 
 interface SetupUnlockOptions {
   accessMode?: JournalAccessMode;
-  conversionRequired?: boolean;
 }
 
 type MutableTarget =
+  | 'booting'
   | 'needs-setup'
   | 'needs-unlock'
   | 'needs-authentication'
   | 'needs-device-recovery'
-  | 'conversion-refused'
-  | 'converting'
+  | 'legacy-refused'
   | 'schema-too-new'
   | 'ready';
 
@@ -171,11 +153,10 @@ function invalidTransition(state: BootState, target: MutableTarget): never {
 function base() {
   return {
     error: null,
+    failure: null,
     persistDenied: false,
     recoverable: false,
     journal: null,
-    conversion: null,
-    conversionRefusal: null,
     androidKey: null
   } as const;
 }
@@ -193,7 +174,6 @@ function needsUnlockState(accessMode: JournalAccessMode = null): NeedsUnlockStat
     status: 'needs-unlock',
     accessMode,
     ...base(),
-    conversion: null
   };
 }
 
@@ -204,7 +184,6 @@ function needsSetup(state: BootState, options: SetupUnlockOptions = {}): NeedsSe
     status: 'needs-setup',
     accessMode,
     ...base(),
-    conversion: options.conversionRequired ? { progress: null } : null
   };
 }
 
@@ -215,7 +194,6 @@ function needsUnlock(state: BootState, options: SetupUnlockOptions = {}): NeedsU
     status: 'needs-unlock',
     accessMode,
     ...base(),
-    conversion: options.conversionRequired ? { progress: null } : null
   };
 }
 
@@ -242,36 +220,11 @@ function needsDeviceRecovery(state: BootState): NeedsDeviceRecoveryState {
   };
 }
 
-function conversionRefused(state: BootState, refusal: ConversionRefusal): ConversionRefusedState {
+function legacyRefused(state: BootState): LegacyRefusedState {
   if (state.status !== 'booting' && state.status !== 'needs-unlock') {
-    invalidTransition(state, 'conversion-refused');
+    invalidTransition(state, 'legacy-refused');
   }
-  return {
-    status: 'conversion-refused',
-    accessMode: state.accessMode,
-    ...base(),
-    conversionRefusal: refusal
-  };
-}
-
-function converting(state: BootState): ConvertingState {
-  if ((state.status !== 'needs-setup' && state.status !== 'needs-unlock') || state.conversion === null) {
-    invalidTransition(state, 'converting');
-  }
-  return {
-    status: 'converting',
-    accessMode: state.accessMode,
-    ...base(),
-    conversion: { progress: state.conversion.progress }
-  };
-}
-
-function conversionProgress(state: BootState, progress: ConversionProgress): ConvertingState {
-  if (state.status !== 'converting') invalidTransition(state, 'converting');
-  return {
-    ...state,
-    conversion: { progress }
-  };
+  return { status: 'legacy-refused', accessMode: state.accessMode, ...base() };
 }
 
 function schemaTooNew(state: BootState): SchemaTooNewState {
@@ -293,6 +246,14 @@ function ready(state: BootState, payload: { journal: Journal }): ReadyState {
   };
 }
 
+/** Swaps the journal handle a ready boot holds: null when a web lock closes
+    it, the reopened one after the unlock (after-release ticket 10). Any
+    other state is left as it is. */
+function withJournal(state: BootState, journal: Journal | null): BootState {
+  if (state.status !== 'ready') return state;
+  return { ...state, journal };
+}
+
 /** The persistence request's answer, arriving whenever the browser gets to
     it (ticket 202: no longer awaited before `ready`). A no-op once the
     journal has moved past `ready` - a late answer is still true, but there
@@ -302,12 +263,13 @@ function markPersistDenied(state: BootState): BootState {
   return { ...state, persistDenied: true };
 }
 
-function failure(state: BootState, error: string): ErrorState {
+function failure(state: BootState, error: string, kind: BootFailure): ErrorState {
   return {
     status: 'error',
     accessMode: state.accessMode,
     ...base(),
-    error
+    error,
+    failure: kind
   };
 }
 
@@ -327,6 +289,10 @@ function accessMode(state: BootState, mode: JournalAccessMode): BootState {
 }
 
 function resetToBooting(state: BootState): BootingState {
+  if (state.status === 'booting') return state;
+  if (state.status === 'ready' || state.status === 'schema-too-new' || state.status === 'legacy-refused') {
+    invalidTransition(state, 'booting');
+  }
   return booting(state.accessMode);
 }
 
@@ -338,26 +304,16 @@ export function isErrorState(state: BootState): state is ErrorState {
   return state.status === 'error';
 }
 
-/** A boot that failed because the key does not read the journal file:
-    SQLCipher reports a wrong key and a file that is not a database the same
-    way, SQLITE_NOTADB (ADR-0020). Retrying cannot fix either, so the error
-    screen offers a restore or a fresh start beside the retry (ux-carpet
-    210). The plaintext-journal case has its own sentence and is not this. */
-export function journalIsUnreadable(state: BootState): boolean {
-  return isErrorState(state) && /not a database|SQLITE_NOTADB/i.test(state.error);
-}
-
 type BootGate = 'none' | 'passphrase' | 'authentication' | 'device-recovery' | 'schema-too-new';
 
 type PassphraseMode = 'setup' | 'unlock';
-type PassphraseScreen = 'none' | 'form' | 'converting' | 'conversion-refused';
+type PassphraseScreen = 'none' | 'form' | 'legacy-refused';
 
 export function bootGate(state: BootState): BootGate {
   switch (state.status) {
     case 'needs-setup':
     case 'needs-unlock':
-    case 'converting':
-    case 'conversion-refused':
+    case 'legacy-refused':
       return 'passphrase';
     case 'needs-authentication':
       return 'authentication';
@@ -398,8 +354,7 @@ export function passphraseMode(state: BootState): PassphraseMode | null {
     case 'booting':
     case 'needs-authentication':
     case 'needs-device-recovery':
-    case 'converting':
-    case 'conversion-refused':
+    case 'legacy-refused':
     case 'ready':
     case 'schema-too-new':
     case 'error':
@@ -407,21 +362,9 @@ export function passphraseMode(state: BootState): PassphraseMode | null {
   }
 }
 
-/** A brand new install: no keystore of any kind exists yet, so there is
-    nothing to unlock and nothing chosen (ticket 54). This is the one gate
-    state onboarding's own flow is allowed to render over instead of - every
-    other passphrase state (an unlock, a conversion) still meets the gate
-    first, which is why this checks `passphraseMode` rather than `bootGate`
-    alone.
-
-    `state.conversion` is what excludes the one `needs-setup` this is not
-    true of: a device already holding a plaintext Journal (ticket 10) reports
-    `needs-setup` with a pending conversion attached, and that conversion has
-    to survive the rewrite - it is not a free choice among the four modes the
-    way a truly empty device's setup is, so it keeps meeting the gate
-    directly (JournalGate's own `converting` reads the same field). */
+/** Onboarding renders only over an empty journal's setup gate. */
 export function needsOnboardingAccessMode(state: BootState): boolean {
-  return bootGate(state) === 'passphrase' && passphraseMode(state) === 'setup' && state.conversion === null;
+  return bootGate(state) === 'passphrase' && passphraseMode(state) === 'setup';
 }
 
 export function passphraseScreen(state: BootState): PassphraseScreen {
@@ -429,10 +372,8 @@ export function passphraseScreen(state: BootState): PassphraseScreen {
     case 'needs-setup':
     case 'needs-unlock':
       return 'form';
-    case 'converting':
-      return 'converting';
-    case 'conversion-refused':
-      return 'conversion-refused';
+    case 'legacy-refused':
+      return 'legacy-refused';
     case 'booting':
     case 'needs-authentication':
     case 'needs-device-recovery':
@@ -455,12 +396,11 @@ export const bootTransitions = {
   toNeedsUnlock: needsUnlock,
   toNeedsAuthentication: needsAuthentication,
   toNeedsDeviceRecovery: needsDeviceRecovery,
-  toConversionRefused: conversionRefused,
-  toConverting: converting,
-  updateConversionProgress: conversionProgress,
+  toLegacyRefused: legacyRefused,
   toSchemaTooNew: schemaTooNew,
   toReady: ready,
   toError: failure,
   markErrorRecoverable: errorRecoverable,
-  markPersistDenied
+  markPersistDenied,
+  withJournal
 };

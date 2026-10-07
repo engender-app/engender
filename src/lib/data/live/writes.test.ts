@@ -428,6 +428,10 @@ const READS_ITS_OWN_SQL: Partial<Record<keyof Journal, string>> = {
     'one UNION ALL over the six tables that hold a photograph, so that the ordering rule is applied once by the thing holding the index rather than assembled from six reads above the seam (photoLibrary.ts)'
 };
 
+const READ_OPERATIONS_ITS_OWN_SQL = {
+  'lastWrite.getWritingDays': 'one bounded query over entry and dose history'
+};
+
 test('a composing read declares exactly the tables of the reads it composes', () => {
   for (const { read, composes, narrows } of COMPOSING_READS) {
     const [area, operation] = read;
@@ -477,7 +481,7 @@ test('every read-only area either says what it composes or says it reads its own
 
     for (const operation of operations) {
       assert.ok(
-        listed.has(`${areaName}.${operation}`),
+        listed.has(`${areaName}.${operation}`) || `${areaName}.${operation}` in READ_OPERATIONS_ITS_OWN_SQL,
         `journal.${areaName}.${operation} is a read-only area's read that names neither the reads it composes nor a reason it composes none`
       );
     }
@@ -488,6 +492,10 @@ test('nothing sits in the own-SQL list that composes reads after all', () => {
   const composing = new Set(COMPOSING_READS.map(({ read: [area] }) => area));
   for (const areaName of Object.keys(READS_ITS_OWN_SQL)) {
     assert.ok(!composing.has(areaName), `journal.${areaName} composes reads, so it does not read its own SQL alone`);
+  }
+  const composingOperations = new Set(COMPOSING_READS.map(({ read }) => read.join('.')));
+  for (const operation of Object.keys(READ_OPERATIONS_ITS_OWN_SQL)) {
+    assert.ok(!composingOperations.has(operation), `journal.${operation} composes reads`);
   }
 });
 

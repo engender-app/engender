@@ -18,11 +18,9 @@
      empty field: a chart with bands and no trace looks like a take that had
      no voice in it, which is a different and much worse claim.
 
-     Motion: tier 3, one authored moment. The trace uncovers from the left,
-     oldest to newest, so the take is drawn in the direction it was spoken -
-     the same gesture AreaChart's first draw makes, and for the same reason.
-     Under reduced motion it is an instant cut; the bands and the figures do
-     not move at all. */
+     Motion: tier 3. The chart, reference bands and figures uncover together
+     from the left through the wrapper's wipe transition. Where clip-path
+     is unavailable the wrapper fades in; reduced motion reveals it at once. */
   import { m } from '$lib/paraglide/messages';
   import { decodePitchTrack } from '$lib/audio/track';
   import { pitchDensity } from '$lib/audio/density';
@@ -122,13 +120,13 @@
     margin: 0;
     font-size: var(--text-xs);
     line-height: 1.5;
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .vt-none {
     margin: 0;
     font-size: var(--text-sm);
     line-height: 1.5;
-    color: var(--muted);
+    color: var(--text-2);
   }
 </style>

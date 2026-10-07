@@ -43,10 +43,14 @@
   import { goto } from '$app/navigation';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
+  import { TODAY_PHOTO_HREF } from '$lib/data/entrySections';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
+  import { currentDay } from '$lib/stores/today.svelte';
+  import { backupAgeDays, backupIsStale, storageNoticeShows } from '$lib/data/backupHealth';
+  import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { latestMood } from '$lib/data/latestMood';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
@@ -86,8 +90,9 @@
   } from '$lib/data/stockProjection';
   import { stockNotice } from '$lib/data/vocabulary/stockLabel';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { collapse, disclose, markScreenArrival, markSlotReplacement, stillArriving } from '$lib/motion/reveal';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
 
   /* A fold's label changes under a standing button - "Ready letter, Active
      tryout" loses a name when a tile is closed - and words cut, as a rule
@@ -102,7 +107,7 @@
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /* Every block on this screen that appears and disappears takes the same
      `skip` (phase 9 carpet ticket 04): a screen leaving should not spend
@@ -116,7 +121,7 @@
      the `{#each}` and the one sheet a tile opens rather than handles in
      place. */
   let letterDismissSheetOpen = $state(false);
-  const liveTiles = homeTiles(today, {
+  const liveTiles = homeTiles(() => today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
   });
 
@@ -405,9 +410,9 @@
   };
   const GETTING_STARTED: StartOffer[] = [
     { key: 'milestones', area: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
-    { key: 'regimen', area: 'care', icon: 'flask', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
+    { key: 'regimen', area: 'care', icon: 'pill', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', area: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
-    { key: 'photos', area: 'photos', icon: 'camera', href: '/media/photos', title: m.home_start_photos_title, sub: m.home_start_photos_sub },
+    { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', area: null, icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
   ];
 
@@ -499,6 +504,16 @@
      below it shoved down. Waiting means it arrives on a screen that has
      stopped moving, which is where a notice opening its own height reads as
      the change it is. Nothing about the read waits; only the appearing. */
+  /* The browser refused to keep the journal's storage (after-release 17).
+     It shows only before the first backup, and the stale-backup notice
+     only after one, so the two never ask for an export together. */
+  let showStorageNotice = $derived(
+    storageNoticeShows({
+      persistDenied: storageRisk.persistDenied,
+      dismissed: prefs.storageNoticeDismissed,
+      lastBackupAt: prefs.lastBackupAt
+    }) && !ui.appOpening
+  );
   let showBackupNotice = $derived(
     backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
   );
@@ -520,10 +535,7 @@
   let showDebriefOffer = $derived(!!debriefStateQuery.value && debriefOfferVisible(debriefStateQuery.value));
 
   let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
-  let isStockNoticeSnoozedState = $state(false);
-  $effect(() => {
-    isStockNoticeSnoozedState = isStockNoticeSnoozed();
-  });
+  let isStockNoticeSnoozedState = $state(isStockNoticeSnoozed());
   let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
   let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
   let stockNoticeCopy = $derived(
@@ -605,9 +617,21 @@
     { i: 8, x: 95, d: 0.05, r: 180 }
   ];
 
+  /* Today's latest mood, ringed on the strip, and when it was logged, on the
+     heading's own line (after-release 06, UX-16): after a save, Today used
+     to ask "How is today?" with nothing picked, as if nothing had been
+     written. A face still opens a new entry, the ringed one included, so
+     the strip stays the way to add another. */
+  let todayEntriesQuery = liveQuery((j) => j.entries.entriesForDay(today));
+  let latestToday = $derived(latestMood(todayEntriesQuery.value ?? []));
+  const loggedFade = (_node: Element) =>
+    stillArriving() ? { duration: 0 } : fadeOnly(crossfadeDuration());
+
   function onQuickLog(v: number | null) {
-    if (v == null) return;
-    goto(`/entry/new/today?seedMood=${v}`);
+    // The ringed face hands back null (MoodChips' own toggle), which here means its mood again.
+    const mood = v ?? latestToday?.mood;
+    if (mood == null) return;
+    goto(`/entry/new/today?seedMood=${mood}`);
   }
 
   /* The tally widget's two buttons (phase 4 ticket 33) deep-link here with
@@ -622,7 +646,7 @@
     const raw = page.url.searchParams.get('tally');
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
-    if (kind) journal.tally.log({ epochDay: today, kind });
+    if (kind) void attempt(() => journal.tally.log({ epochDay: todayEpochDay(), kind }), m.write_failed());
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
@@ -648,16 +672,21 @@
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
+  const dimsWrite = writer();
   async function saveQuickLogDims() {
-    if (dimsPromptEntryId == null) return;
+    const id = dimsPromptEntryId;
+    if (id == null) return;
     const dims: Record<string, number> = {};
     for (const dim of vocabulary.activeDimensions) {
       const n = dimInputs[dim.key];
       if (n == null || Number.isNaN(n)) continue;
       dims[dim.key] = Math.min(dim.max, Math.max(dim.min, Math.round(n)));
     }
-    if (Object.keys(dims).length) await journal.entries.upsertEntry({ id: dimsPromptEntryId, dims });
+    const any = Object.keys(dims).length > 0;
+    // The sheet stays up with the numbers in it when the write fails.
+    if (any && !(await dimsWrite.run(() => journal.entries.upsertEntry({ id, dims }), m.write_failed()))) return;
     dimsPromptEntryId = null;
+    if (any) toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
 
@@ -723,7 +752,7 @@
            Diary" while the tab, the launcher and the rail all say "Notes"
            undoes the rest of the disguise in one line. Two sites in Settings
            still name the app under disguise; those are ticket 24's screen. -->
-      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name())}</h1>
+      <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</h1>
     </div>
     <!-- The foot: one line of who and when, one of how much, and the gear at
          the line's end. On the page rather than the field because all three
@@ -731,7 +760,7 @@
          competed with the wordmark (Alicja, ticket 06 round one). -->
     <div class="home-foot" data-home-foot>
       <div class="home-foot-lines">
-        <p class="home-hello" data-home-hello>{prefs.name ? `${m.hello()} ${prefs.name} · ` : ''}{fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <p class="home-hello" data-home-hello>{prefs.name ? m.home_hello_named({ name: prefs.name, date: fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' }) }) : fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         <!-- How much is here, and since when. The streak stood in this slot
              and was a run that could break; this only grows. Same size as the
              greeting above it, so the foot reads as today, then history, and
@@ -849,7 +878,7 @@
       </div>
     {/if}
 
-    <!-- The agenda (ticket 04, ADR-0074): the week ahead as a list, since it
+    <!-- The agenda (ticket 04, ADR-0074): the next thirty days as a list, since it
          is one (rule 6), each row carrying its day as a block because a date
          is a value (rule 3) and the kind in the day view's own words, going
          to the screen that owns the fact. The block is always one of the
@@ -947,9 +976,21 @@
        daily check-in has should not get worse; the heading says what they
        do rather than naming the strip. It draws under disguise too, every
        role fallen to the accent, so the thin app still writes. -->
-  <SectionHeading text={m.home_log_heading()} />
+  <SectionHeading text={m.home_log_heading()}>
+    {#snippet action()}
+      <!-- One grid cell, so a later entry's time crosses the earlier one in
+           place; the line is the heading's own, so nothing below moves. -->
+      <span class="home-log-logged">
+        {#if latestToday}
+          {#key latestToday.timestamp}
+            <span data-home-log-logged transition:loggedFade>{m.home_log_logged({ time: fmtTime(latestToday.timestamp) })}</span>
+          {/key}
+        {/if}
+      </span>
+    {/snippet}
+  </SectionHeading>
   <div data-home-log {...roleAttrs(roleAt(activeFlag.roles, HOME_AREA_ROLE.log))}>
-    <MoodChips onPick={onQuickLog} />
+    <MoodChips value={latestToday?.mood ?? null} onPick={onQuickLog} />
   </div>
 
   <!-- The notices, below the strip since phase 11 ticket 03. They used to
@@ -966,6 +1007,19 @@
        real preferences, which land when the journal opens, and drawn then
        it shoved the pinned rows 179px in the frame boot went ready. -->
   <ReadReserve ready={foldRevealed} estimate={reserveBelow} onrest={rememberBelow} data-home-reserve="below">
+    {#if showStorageNotice}
+      <Notice
+        icon="download"
+        key="storage"
+        title={m.storage_notice_title()}
+        text={m.storage_notice_body()}
+        action={{ label: m.backup_now(), href: '/settings/export' }}
+        dismiss={{ label: m.dismiss(), onclick: () => (prefs.storageNoticeDismissed = true) }}
+        aria-live="polite"
+        data-storage-notice=""
+      />
+    {/if}
+
     {#if showBackupNotice}
       <Notice
         icon="download"
@@ -1016,7 +1070,7 @@
         }}
         dismiss={{
           label: m.dismiss(),
-          onclick: () => journal.checklists.setDebriefDismissed(lastAppointmentId!)
+          onclick: () => attempt(() => journal.checklists.setDebriefDismissed(lastAppointmentId!), m.write_failed())
         }}
         aria-live="polite"
         data-debrief-offer=""
@@ -1232,7 +1286,7 @@
     </div>
   {/if}
 
-  <Sheet
+  <Sheet busy={dimsWrite.busy}
     open={dimsPromptEntryId !== null}
     title={m.quick_log_dims_title()}
     onClose={() => (dimsPromptEntryId = null)}
@@ -1266,8 +1320,8 @@
           </Field>
         {/each}
         <div class="stack-3">
-          <button class="btn btn-primary" data-qld-add onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
-          <button class="btn btn-ghost" data-qld-skip onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
+          <button class="btn btn-primary" data-qld-add disabled={dimsWrite.busy} onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
+          <button class="btn btn-ghost" data-qld-skip disabled={dimsWrite.busy} onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
         </div>
       </div>
     {/if}
@@ -1298,6 +1352,7 @@
           onclick={() => {
             prefs.readyLetterEnabled = false;
             letterDismissSheetOpen = false;
+            toast(m.notice_turned_off_toast());
           }}
         >
           <span>{m.tile_letter_dont_show_btn()}</span>
@@ -1332,6 +1387,7 @@
           onclick={() => {
             prefs.stockNoticeEnabled = false;
             stockDismissSheetOpen = false;
+            toast(m.notice_turned_off_toast());
           }}
         >
           <span>{m.notice_stock_dont_show_btn()}</span>
@@ -1581,14 +1637,15 @@
      becomes a route, and a chevron pointing right would promise the
      opposite. It names what it holds so you can tell whether to open it.
 
-     Full width and 44px tall: it is the control for everything the cap left
-     out, and the touch floor applies to it like any other row. */
+     Full width and the touch floor tall: it is the control for everything
+     the cap left out, and the floor applies to it like any other row. It
+     was 44px under a comment calling that the floor (after-release 18). */
   .home-fold {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     width: 100%;
-    min-height: 44px;
+    min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
     background: transparent;
     border: 1px solid var(--outline);
@@ -1622,6 +1679,20 @@
   :global(html[data-a11y-motion='reduce']) .home-fold-mark { transition: none; }
   @media (prefers-reduced-motion: reduce) {
     .home-fold-mark { transition: none; }
+  }
+
+  /* The time today's latest mood was logged, secondary type on the log
+     heading's line (UX-16). */
+  .home-log-logged {
+    display: grid;
+    justify-items: end;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+  .home-log-logged > span {
+    grid-area: 1 / 1;
+    white-space: nowrap;
   }
 
   /* A grid of one cell, so the outgoing and incoming labels stand on the

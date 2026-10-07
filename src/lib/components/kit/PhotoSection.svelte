@@ -128,6 +128,7 @@
   photo={section.review.photo}
   reference={section.review.reference}
   onAccept={section.review.accept}
+  busy={section.review.busy}
   onRetake={section.review.capture}
   onCancel={section.review.cancel}
 />

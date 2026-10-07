@@ -35,6 +35,15 @@ describe('testosteroneActive', () => {
     expect(testosteroneActive([episode({ drug: 'TESTOSTERONE UNDECANOATE' })], NOON)).toBe(true);
   });
 
+  it('reads the Polish name and a bare T, and not methyltestosterone (after-release 01, L03-06)', () => {
+    expect(testosteroneActive([episode({ drug: 'Testosteron' })], NOON)).toBe(true);
+    expect(testosteroneActive([episode({ drug: 'cypionian testosteronu' })], NOON)).toBe(true);
+    expect(testosteroneActive([episode({ drug: 'T' })], NOON)).toBe(true);
+    expect(testosteroneActive([episode({ drug: 'methyltestosterone' })], NOON)).toBe(false);
+    expect(cycleTrackingVisible([episode({ drug: 'Testosteron' })], NOON, false, null)).toBe(true);
+    expect(cycleTrackingVisible([episode({ drug: 'methyltestosterone' })], NOON, false, null)).toBe(false);
+  });
+
   it('is false for an episode that names no testosterone, active or not', () => {
     const estradiol = episode({ drug: 'Estradiol valerate', id: 'e2' });
     expect(testosteroneActive([estradiol], NOON)).toBe(false);

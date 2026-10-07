@@ -74,7 +74,7 @@ const DOSE_SLOT_REACH_DAYS = SPINE_FORWARD_DAYS;
 
     The same page size the letters tile takes. A page rather than a count
     because the row needs both the soonest unlock day and whether more than
-    one is still sealed, and sixty sealed letters is already far past what
+    one is still sealed, and a hundred sealed letters is already far past what
     anybody writes - somebody past this page has a row that says "next one
     opens in ..." either way, which is the only thing the number changes. */
 const LETTER_SEAL_PAGE = 100;

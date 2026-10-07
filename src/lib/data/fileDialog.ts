@@ -23,9 +23,11 @@ export async function chooseFiles(
     if (options.capture) input.capture = options.capture;
 
     let settled = false;
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     const done = (result: File[] | Error) => {
       if (settled) return;
       settled = true;
+      clearTimeout(focusTimer);
       window.removeEventListener('focus', onFocusReturn);
       input.remove();
       if (result instanceof Error) reject(result);
@@ -35,16 +37,11 @@ export async function chooseFiles(
     input.addEventListener('change', () => done([...(input.files ?? [])]));
     input.addEventListener('cancel', () => done([]));
 
-    // Ticket 66: the native picker can be torn down without ever firing
-    // `change` or `cancel` (that ticket's own bug did exactly this, on the
-    // Android side, before either event had a chance to fire). The window
-    // only regains focus once the native picker is gone either way, so if
-    // neither event has settled the promise by the next tick after focus
-    // returns, nothing more is coming - resolve empty, the same outcome a
-    // cancel produces, rather than leave the caller waiting forever.
+    // Focus can return before Chromium delivers `change`. Give the files
+    // time to arrive before treating an empty picker as a cancellation.
     const onFocusReturn = () => {
       window.removeEventListener('focus', onFocusReturn);
-      setTimeout(() => done([]), 0);
+      focusTimer = setTimeout(() => done([...(input.files ?? [])]), 500);
     };
     window.addEventListener('focus', onFocusReturn);
 

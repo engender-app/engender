@@ -297,9 +297,10 @@
   --danger-soft: #F6E7E2;
   --warn-soft: #F7EEDA;
   --on-warn-soft: #6B542A;
-  /* ADR-0025: heat-3 (70% accent) sits in a contrast dead zone for two
+  /* ADR-0025: heat-3 (70% accent) sits in a contrast dead zone for some
      palettes - neither --text nor --on-accent clears 4.5:1 against it - so
-     the generic default is overridden below for those two. */
+     the generic default is overridden in each palette block that needs it
+     (eleven palettes today, some in one theme only). */
   --on-heat-3: var(--text);
 }
 [data-theme="dark"] {
@@ -372,6 +373,15 @@
      works over a card and over the page tint underneath it. */
   --outline: color-mix(in oklab, var(--text) 19%, transparent);
   --hairline: color-mix(in oklab, var(--text) 14%, transparent);
+  /* The edge of a text field, and nothing else. A field's fill is the card
+     on a page barely lighter than it, so its edge is the only thing that
+     says where it is, and at --outline's 19% that was 1.44:1. 53% is the
+     least that clears 3:1 (WCAG 1.4.11) on bg, surface and surface-2 in
+     all 16 palettes x 2 themes; demiboy light is the tightest at 3.1:1.
+     Alicja approved an input-only token rather than a stronger rule 4
+     (pre-release-human 03 item 18, after-release 21); guarded in
+     tests/palette-contrast.test.ts. */
+  --input-edge: color-mix(in oklab, var(--text) 53%, transparent);
 }
 
 /* ============================================================

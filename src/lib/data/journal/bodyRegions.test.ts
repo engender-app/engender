@@ -55,3 +55,16 @@ test('a custom region can be hidden by its uuid too', async () => {
   const stored = (await journal.bodyRegions.getBodyRegions()).find((r) => r.id === region.id);
   assert.equal(stored?.hidden, true);
 });
+
+test('a custom region can be renamed by its uuid; a built-in or unknown id cannot', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const region = await journal.bodyRegions.addCustomRegion('scar tisue');
+  await journal.bodyRegions.renameCustomRegion(region.id, 'scar tissue');
+
+  const stored = (await journal.bodyRegions.getBodyRegions()).find((r) => r.id === region.id);
+  assert.deepEqual(stored, { id: region.id, name: 'scar tissue', builtIn: false, hidden: false });
+
+  // A built-in's name is the catalogue's, in whichever language is on.
+  await assert.rejects(journal.bodyRegions.renameCustomRegion('chest', 'torso'), /unknown/);
+  await assert.rejects(journal.bodyRegions.renameCustomRegion('nope', 'x'), /unknown/);
+});

@@ -51,7 +51,6 @@
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
-  import type { BarRow } from './kit/barRow';
   import YearRows from './kit/YearRows.svelte';
   import YearDaysList, { type YearDaysFormat } from './kit/YearDaysList.svelte';
   import ChartCard from './kit/ChartCard.svelte';

@@ -294,3 +294,10 @@ test('every declared key has a rule, and no rule invents a key', () => {
   );
   assert.deepEqual(Object.keys(map).sort(), [...ROW_FORWARD_KEYS].sort());
 });
+
+test('letters opening today are already open, so only future letters count as next', () => {
+  assert.equal(rowForward(facts({ letterUnlockDays: [TODAY] })).letters, undefined);
+  assert.deepEqual(rowForward(facts({ letterUnlockDays: [TODAY, TODAY + 1] })).letters, {
+    kind: 'next', epochDay: TODAY + 1, what: { area: 'letter', several: false }
+  });
+});

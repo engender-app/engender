@@ -3,6 +3,7 @@
    a pass-through for epochDay.ts — it imports paraglide, which is why it
    has no Node-tier tests (ADR-0016) and why the split exists at all. */
 
+import { formatNumber } from './numbers';
 import { getLocale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
 import { crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
@@ -10,6 +11,10 @@ import type { CalendarDuration, DurationUnit } from './epochDay';
 
 export function intlLocale(): string {
   return getLocale() === 'pl' ? 'pl-PL' : 'en-GB';
+}
+
+export function fmtNumber(value: number, options: Intl.NumberFormatOptions = {}): string {
+  return formatNumber(value, intlLocale(), options);
 }
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
@@ -27,6 +32,29 @@ function formatter(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
 
 export function fmtDay(epochDay: number, opts: Intl.DateTimeFormatOptions): string {
   return formatter(opts).format(localDateFromEpochDay(epochDay));
+}
+
+/** A day the person picked or typed, written the way the rest of the app
+    writes a date: "3 Oct 2026", "3 paź 2026". Date fields, the search
+    filter chips and a saved question's criteria all show this, so a field
+    never holds `2026-10-03` while the row under it says "3 Oct" (after-release
+    28, audit V12/UI-08/L08-10). The `yyyy-mm-dd` stays the stored value and
+    the picker's typed-entry format; it is just not what a person reads. */
+export function fmtDateValue(epochDay: number): string {
+  return fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** A day card's bar: "Monday 5 October", with the year only when the day
+    is not in this one ("Saturday 5 September 2025"). The calendar, the
+    entry lists (search, Good moments, a tryout) and On this day each wrote
+    it their own way (after-release 28, audit UI-08); this is the one way. */
+export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
+  return fmtDay(epochDay, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...(crossesCalendarYear(epochDay, todayEpochDay) ? { year: 'numeric' } : {})
+  });
 }
 
 /** The two ends of a chart's range, written so they cannot read backwards.

@@ -286,6 +286,7 @@ public class SqlitePlugin extends Plugin {
         sequenced(call, () -> {
             try {
                 connection.close();
+                sequencer.finish(call.getString("session"));
                 call.resolve();
             } catch (Exception e) {
                 call.reject(message(e), e);

@@ -243,7 +243,7 @@
   async function share() {
     if (!showing) return;
     try {
-      const delivery = await deliverBlob(journeyFileName(prefs.name, output), showing.blob);
+      const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, prefs.disguise), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
         return;

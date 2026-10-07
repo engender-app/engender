@@ -1,37 +1,10 @@
 <script lang="ts">
-  /* The pre-unlock gate (ticket 09, rebuilt by ticket 53), formerly
-     PassphraseGate. Renamed because it no longer only asks for a passphrase:
-     a first run picks an access mode here through the setup module, and an
-     unlock asks for whichever secret the chosen mode uses. Rendered by the
-     layout instead of the app, like AndroidKeyGate, so no route can show
-     journal content before the database can even be opened.
-
-     Four screens live here. Setup is the module (AccessModeSetup) with no
-     "Skip" in it, because device-bound mode is one of its rows now rather
-     than the way past a wall. Unlock is a passphrase field, a PIN pad or a
-     single button that asks the device (ticket 55), chosen by the mode the
-     keystore itself recorded. The other two are the conversion screens,
-     unchanged.
-
-     Copy rules: setup's per-mode consequences belong to the module, which
-     states each before it is chosen. Unlock keeps the rule it always had -
-     a wrong secret and a damaged keystore are one indistinguishable failure
-     (aesGcm.ts), so the error names only the likely cause and never
-     diagnoses. The failures that are not that get their own sentences,
-     because no amount of retyping fixes them: a PIN whose device key has
-     gone, and an authenticator that will not release the biometric secret.
-
-     Ticket 10's case still applies. Where the device already holds a Journal
-     that is not encrypted, the copy has to say what is about to happen to
-     the entries already there, and say it BEFORE the secret is set rather
-     than after (ADR-0018). A conversion therefore skips the mode choice and
-     asks for a passphrase directly: conversion is the one path where the
-     mode is not a free choice, since it has to survive the rewrite. */
+  /* Setup and unlock render before journal data can appear. Unsupported
+     legacy storage reaches the same refusal screen without changing files. */
 
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { appWordmark } from '$lib/disguise/identity';
-  import { createProgress } from '$lib/components/progress.svelte';
   import {
     bootState,
     submitAccessModeSetup,
@@ -51,12 +24,20 @@
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
 
   let passphrase = $state('');
   let error = $state('');
   let busy = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
+  let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
   /* Which row of the module is open, so this gate's own title can name it
      rather than leaving "How should your journal open?" over a screen where
      that has already been answered. */
@@ -71,96 +52,19 @@
 
   let mode = $derived(passphraseMode(bootState));
   let screen = $derived(passphraseScreen(bootState));
-  /** The device holds a plaintext Journal, so this secret converts it rather
-      than opening one. */
-  let converting = $derived(bootState.conversion !== null);
   /** Which secret an unlock is asking for, read off the keystore rather than
       guessed: boot recorded it during the survey. */
   let unlockingPin = $derived(mode === 'unlock' && bootState.accessMode === 'pin');
   /** The one unlock with nothing to type: the platform's own prompt is the
       secret, and this screen is a button and a sentence around it. */
   let unlockingBiometric = $derived(mode === 'unlock' && bootState.accessMode === 'biometric');
-  /** A first run offers the module. A conversion does not - it needs a
-      passphrase specifically, and says why above the field. */
-  let choosingMode = $derived(mode === 'setup' && !converting);
-
-  /** Whole units, for a person deciding whether to go and delete
-      something. Nobody needs three decimal places of megabyte, and both
-      catalogues write the unit the same way. */
-  function megabytes(bytes: number): string {
-    return bytes >= 1024 * 1024
-      ? `${Math.round(bytes / (1024 * 1024))} MB`
-      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  }
+  let choosingMode = $derived(mode === 'setup');
 
   /* Hoisted out of the template so its length can decide whether it is a
      line to centre or a paragraph to left-align (GateScreen). */
   let formBody = $derived(
-    converting && mode === 'setup'
-      ? m.pp_convert_setup_body()
-      : converting
-        ? m.pp_convert_resume_body()
-        : unlockingPin
-          ? m.su_pin_body()
-          : unlockingBiometric
-            ? m.bm_unlock_body()
-            : m.pp_unlock_body()
+    unlockingPin ? m.su_pin_body() : unlockingBiometric ? m.bm_unlock_body() : m.pp_unlock_body()
   );
-
-  let refusalBody = $derived(
-    bootState.conversionRefusal?.reason === 'not-enough-space'
-      ? m.pp_convert_refused_space({
-          need: megabytes(bootState.conversionRefusal.needBytes),
-          free: megabytes(bootState.conversionRefusal.freeBytes)
-        })
-      : bootState.conversionRefusal?.reason === 'schema-too-new'
-        ? m.pp_convert_refused_schema()
-        : ''
-  );
-
-  let progress = $derived(bootState.conversion?.progress ?? null);
-  let progressLine = $derived(
-    progress === null
-      ? m.pp_converting_preparing()
-      : progress.stage === 'database'
-        ? m.pp_converting_database()
-        : progress.stage === 'photos'
-          ? progress.total === 0
-            ? m.pp_converting_no_photos()
-            : m.pp_converting_photos()
-          : m.pp_converting_retire()
-  );
-
-  /* Conversion on the shared bar (phase 9 audit ticket 11, ADR-0070). It
-     had the app's first honest progress bar and keeps its shape; what it
-     gains is the throttle and the hold at full, and what it loses is the
-     instant cut - reaching 100% and having the screen replaced in the same
-     frame reads as the bar having lied about how much was left. */
-  const conversion = createProgress();
-  /** The converting screen outliving the conversion by the length of that
-      hold. Without this the gate swaps to the unlock form the moment boot
-      says the conversion is done, and finish() would be holding a bar
-      nothing is rendering. */
-  let settling = $state(false);
-  let showConverting = $derived(screen === 'converting' || settling);
-
-  $effect(() => {
-    if (screen !== 'converting') return;
-    // No show delay: this screen exists for the conversion and nothing
-    // else, so there is nothing for a bar to flash over.
-    conversion.start({ immediate: true });
-    return () => {
-      settling = true;
-      void conversion.finish().then(() => (settling = false));
-    };
-  });
-
-  /* The photo stage, and only where there is something to divide by: the
-     other two stages have no count to report, so the bar sweeps through
-     them, and a journal with no photos reports a total of zero. */
-  $effect(() => {
-    if (progress?.stage === 'photos' && progress.total > 0) conversion.report(progress.done, progress.total);
-  });
 
   /* The way-out sheet says which secret is missing, and biometric mode has
      none to have forgotten - what it has is a device that will not answer.
@@ -177,15 +81,9 @@
      gate can never greet by name: it renders before the journal the name
      lives in can be read. */
   let gateTitle = $derived(
-    converting && mode === 'setup'
-      ? m.pp_convert_setup_title()
-      : converting
-        ? m.pp_convert_resume_title()
-        : choosingMode
-          ? chosenMode === null
-            ? m.am_setup_title()
-            : accessModeTitle(chosenMode)
-          : appWordmark(prefs.disguise, m.app_name())
+    choosingMode
+      ? chosenMode === null ? m.am_setup_title() : accessModeTitle(chosenMode)
+      : appWordmark(prefs.disguise, m.app_name(), m.disguise_name())
   );
 
   /** The setup module's answer, wired through boot.svelte.ts's own submit
@@ -264,8 +162,7 @@
     } catch (e) {
       console.error('the app reset failed', e);
       resetting = false;
-      resetOpen = false;
-      error = m.reset_failed();
+      resetError = m.reset_failed();
     }
   }
 </script>
@@ -275,26 +172,9 @@
        the gates themselves, so there is one screen at a time and no field
        behind this one holding a half-typed secret. -->
   <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
-{:else if screen === 'conversion-refused'}
-  <GateScreen title={m.pp_convert_refused_title()}>
-    <p class="gate-body" data-conversion-refusal>{refusalBody}</p>
-  </GateScreen>
-{:else if showConverting}
-  <GateScreen title={m.pp_converting_title()}>
-    <!-- SF-004: conversion used to advance through stages with no
-         announcement - a silent content swap for anyone not watching the
-         screen during a process that can take a while. The sentence is the
-         bar's own label now, and Progress.svelte makes it the live region,
-         so the announcement it added survives the retrofit. -->
-    <div class="gate-progress">
-      {#await import('$lib/components/Progress.svelte') then { default: Progress }}
-        <Progress run={conversion} label={progressLine} handle="conversion" />
-      {/await}
-    </div>
-    <!-- True, and worth saying: every step is written down before it
-         happens, so a closed tab or a dead battery resumes rather than
-         starts over (conversion.ts). -->
-    <p class="gate-body" style="margin-top:var(--space-5)">{m.pp_converting_note()}</p>
+{:else if screen === 'legacy-refused'}
+  <GateScreen title={m.pp_legacy_refused_title()}>
+    <p class="gate-body" data-legacy-refusal>{m.pp_legacy_refused_body()}</p>
   </GateScreen>
 {:else if screen === 'form'}
   <GateScreen title={gateTitle}>
@@ -336,8 +216,6 @@
           <button class="btn btn-primary" type="submit" data-passphrase-submit disabled={busy}>
             <span>
               {#if busy}{mode === 'setup' ? m.pp_encrypting() : m.pp_decrypting()}
-              {:else if converting && mode === 'setup'}{m.pp_convert_submit_setup()}
-              {:else if converting}{m.pp_convert_submit_resume()}
               {:else if mode === 'setup'}{m.pp_submit_setup()}
               {:else}{m.pp_submit_unlock()}{/if}
             </span>
@@ -383,14 +261,24 @@
           >{recoveryKeyPresence.exists ? m.dbr_recovery_offer() : m.pp_forgot_no_recovery()}</span
         >
       {/if}
+      <!-- The gate's own notes, not the mid-session ones: those send
+           somebody to reopen the app for the recovery key, and this gate
+           already offers it beside the button that opened this sheet
+           (after-release ticket 09). -->
       {unlockingPin
-        ? m.pin_forgot_key_note()
+        ? m.pin_forgot_gate_note()
         : unlockingBiometric
-          ? m.bm_forgot_key_note()
-          : m.pp_forgot_key_note()}
+          ? m.bm_forgot_gate_note()
+          : m.pp_forgot_gate_note()}
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {#if resetError}
+    <!-- In the sheet, which stays open: the sheet is where the button was
+         pressed, and closing it on a failure left the gate looking as if
+         nothing had happened (after-release ticket 09). -->
+    <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
+  {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
       <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>

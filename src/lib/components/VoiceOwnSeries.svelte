@@ -297,14 +297,14 @@
 <style>
   /* The break. Its own rule across the card rather than a gap, because a
      gap is what a reader interprets: the words are the mark, and the rule
-     under them is only there to say where the two runs part. In --muted
+     under them is only there to say where the two runs part. In --text-2
      and at the small size, so it reads as the card telling you what it did
      not do rather than as a reading of its own. */
   .vos-break {
     margin: var(--space-4) 0 var(--space-3);
     padding-top: var(--space-3);
     border-top: 1px solid var(--hairline);
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
   }
 
@@ -313,7 +313,7 @@
      and this only says which half of it. */
   .vos-line {
     margin: var(--space-3) 0 var(--space-1);
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
   }
 
@@ -322,7 +322,7 @@
      rather than collapsing around a missing plot. */
   .vos-unmeasured {
     margin: 0;
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
   }
 

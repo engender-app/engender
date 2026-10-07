@@ -585,6 +585,23 @@ test("a milestone's photo is a highlight too, and a photo outside the range is n
   ]);
 });
 
+/* A photo moved to another day (the library's "this was taken on") belongs
+   to that day's period, the same way the library itself files it
+   (after-release 27, audit L01-08). */
+test('a photo with a day override counts in the period of its override, not of its entry', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const before = await journal.entries.upsertEntry({ epochDay: 50, mood: 3 });
+  const movedIn = await journal.photos.attach({ entryId: before }, shot('in', 'IN'));
+  await journal.photos.setEpochDayOverride(movedIn, 112);
+  const during = await journal.entries.upsertEntry({ epochDay: 115, mood: 3 });
+  const movedOut = await journal.photos.attach({ entryId: during }, shot('out', 'OUT'));
+  await journal.photos.setEpochDayOverride(movedOut, 300);
+
+  const { photoHighlights } = await journal.stats.recap(100, 129);
+
+  assert.deepEqual(photoHighlights, [{ id: movedIn, fileName: `${movedIn}.jpg`, starred: false, epochDay: 112 }]);
+});
+
 test('the biggest dimension change is picked across ranges but reported in native units', async () => {
   const { journal } = await journalWithBuiltIns();
   const voice = await journal.dimensions.addCustomDimension({

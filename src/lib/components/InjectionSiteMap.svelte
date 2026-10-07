@@ -24,6 +24,7 @@
      different scale. injectionSiteMap.ts keeps everything about them. -->
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
+  import { disclose } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { INJECTION_SITES, type InjectionSiteKey } from '$lib/data/doseSchedule';
   import { recencyHeatLevel, recencySpan } from '$lib/data/metricRange';
@@ -125,8 +126,11 @@
   {/each}
 </div>
 
+<!-- Opens its own height when the first site is picked, rather than
+     pushing the reason line and Save down 42px in one frame (after-release
+     26 measured it on the coming-back sheet). -->
 {#if value}
-  <p class="muted small site-map-caption">{injectionSiteLabel(value)}</p>
+  <p class="muted small site-map-caption" transition:disclose|local>{injectionSiteLabel(value)}</p>
 {/if}
 
 <!-- The ramp's key, on the pattern of the calendar heat-map's (ADR-0012):

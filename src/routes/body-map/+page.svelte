@@ -32,7 +32,8 @@
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { DEFAULT_SPAN_DAYS } from '$lib/data/lookBackSpan';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { plotDaySeriesGroup, type AxisPlot, type DayAxis } from '$lib/charts/dayAxis';
@@ -88,7 +89,7 @@
   // Same inclusive-range rule as the stats screen (ticket 10): the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   /* The span, reached from Look back (redesign ticket 05) at the same query
      /wrapped/range reads (stats/+page.svelte's spanRangeQuery) - this screen

@@ -61,6 +61,8 @@
      an inches one still draws a single continuous line instead of two
      that stop and start where the habit changed. */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { paddedSeries } from '$lib/charts/geometry';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -75,6 +77,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
+  import SectionJump from '$lib/components/kit/SectionJump.svelte';
   import ChoiceChips from '$lib/components/kit/ChoiceChips.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
@@ -89,7 +92,6 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { disclose } from '$lib/motion/reveal';
-  import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -231,20 +233,23 @@
       write's own mirror refresh lands, so `key` is excluded explicitly
       rather than trusted to already read hidden. */
   async function setTypeHidden(key: string, hidden: boolean) {
-    await journal.measurements.setMeasurementTypeHidden(key, hidden);
+    if (!(await attempt(() => journal.measurements.setMeasurementTypeHidden(key, hidden), m.write_failed()))) return;
     if (hidden && type === key) {
       const fallback = vocabulary.measurementTypes.find((t) => t.key !== key && !t.hidden);
       if (fallback) pickedType = fallback.key;
     }
   }
 
+  const typeWrite = writer();
   async function addType() {
     const name = newTypeName.trim();
     if (!name) return;
-    const created = await journal.measurements.addCustomMeasurementType(name);
+    let created: { key: string } | undefined;
+    if (!(await typeWrite.run(async () => { created = await journal.measurements.addCustomMeasurementType(name); }, m.write_failed()))) return;
     newTypeName = '';
     manageOpen = false;
-    pickedType = created.key;
+    if (created) pickedType = created.key;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   function dismissProtocol() {
@@ -337,83 +342,24 @@
      Sizes used to be discoverable only by scrolling: the screen's title
      says both words, but the size log itself sat a full screen and a
      chart below the fold, so a person arriving for clothing sizes had to
-     scroll to learn the task existed. A compact Segmented under the
-     header names both halves and jumps between them - the same pattern
-     hair-progress uses for its staging and photographs halves.
+     scroll to learn the task existed. The kit's SectionJump under the
+     header names both halves and jumps between them, as on Hair progress
+     (after-release 28 moved both off a Segmented, whose look means a
+     swap).
 
      A jump, not a task switch: nothing here unmounts, so the selected
      type, the open editor and its unsaved draft ride along unchanged.
      The measurements anchor (`#measurements-picker`) is the type picker
      itself - this half has no heading of its own, and the comment up top
      explains why it never got one - so the anchor is named for the one
-     element it wraps, and its focus target is that picker's radiogroup,
+     element it wraps, and SectionJump focuses that picker's radiogroup,
      which already carries the group's name. The sizes anchor is the
-     log's heading.
-
-     Jumping away remembers the scroll offset, and jumping back restores
-     it: the chart and the log are long, and a person who jumped from deep
-     in the measurement history should land back in it, not at the top.
-     The offset is read off the app's own scroll region, which is what
-     actually scrolls here - the window never does. */
-  let activeSection = $state<'measurements' | 'sizes'>('measurements');
-  let savedReadingScroll = $state<number | null>(null);
-
-  const sectionOptions = $derived([
-    { value: 'measurements', label: m.measurements_jump_measurements() },
-    { value: 'sizes', label: m.size_log() }
+     log's heading. */
+  let jumper = $state<SectionJump>();
+  const jumpSections = $derived([
+    { value: 'measurements', label: m.measurements_jump_measurements(), target: 'measurements-picker' },
+    { value: 'sizes', label: m.size_log(), target: 'sizes-log' }
   ]);
-
-  function focusAnchor(el: HTMLElement) {
-    const target = el.querySelector<HTMLElement>('[role="radiogroup"], h2') ?? el;
-    target.setAttribute('tabindex', '-1');
-    target.focus({ preventScroll: true });
-  }
-
-  function jumpToSection(section: string) {
-    activeSection = section === 'sizes' ? 'sizes' : 'measurements';
-    const region = document.querySelector<HTMLElement>('[data-app-scroll-region]');
-    const motion = scrollBehavior();
-    if (activeSection === 'sizes') {
-      savedReadingScroll = region?.scrollTop ?? null;
-      const el = document.getElementById('sizes-log');
-      if (!el) return;
-      el.scrollIntoView({ behavior: motion, block: 'start' });
-      focusAnchor(el);
-    } else {
-      if (region && savedReadingScroll !== null) {
-        region.scrollTo({ top: savedReadingScroll, behavior: motion });
-      } else {
-        document.getElementById('measurements-picker')?.scrollIntoView({ behavior: motion, block: 'start' });
-      }
-      const el = document.getElementById('measurements-picker');
-      if (el) focusAnchor(el);
-    }
-  }
-
-  /* Scrolling is also choosing: a person who walks down the screen has
-      picked the sizes half by the time its heading crosses the upper
-      band, and the pill should say so. The lower 60% is excluded so the
-      choice lands when a section is actually being read, not while it is
-      still arriving at the bottom edge. */
-  $effect(() => {
-    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
-    const reading = document.getElementById('measurements-picker');
-    const sizes = document.getElementById('sizes-log');
-    if (!reading || !sizes) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (entry.target.id === 'sizes-log') activeSection = 'sizes';
-          else if (entry.target.id === 'measurements-picker') activeSection = 'measurements';
-        }
-      },
-      { rootMargin: '0px 0px -60% 0px' }
-    );
-    observer.observe(reading);
-    observer.observe(sizes);
-    return () => observer.disconnect();
-  });
 </script>
 
 <div class="screen">
@@ -428,14 +374,7 @@
     {/snippet}
   </ScreenHeader>
   <div data-measurements-jump>
-    <Segmented
-      name={m.measurements_jump_label()}
-      options={sectionOptions}
-      value={activeSection}
-      onChange={jumpToSection}
-      compact
-      key="measurement-sections"
-    />
+    <SectionJump bind:this={jumper} name={m.measurements_jump_label()} sections={jumpSections} key="measurement-sections" />
   </div>
   <!-- What is true now, before anything explains how to measure or lists
        what was measured (audit item 8): the span for the picked type and,
@@ -546,7 +485,7 @@
           class="icon-btn press"
           data-jump-measurements
           aria-label={m.measurements_jump_back_aria()}
-          onclick={() => jumpToSection('measurements')}
+          onclick={() => jumper?.jump('measurements')}
         >
           <span class="jump-up"><Icon name="chevronDown" size={20} /></span>
         </button>
@@ -641,8 +580,8 @@
       </Field>
       <div class="cd-endpoints measurement-pair">
         <Field label={m.measurement_value_label()} id="measurement-value" hint={!validValue(editor.value) ? m.measurement_invalid_value() : undefined}>
-          {#snippet children(id, hintId)}
-            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+          {#snippet children(id, hintId, touched)}
+            <input class="input" type="number" step="any" {id} required aria-invalid={touched && !validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
           {/snippet}
         </Field>
         <Field label={m.measurement_unit_label()} legend>
@@ -694,8 +633,8 @@
         {/snippet}
       </Field>
       <Field label={m.size_log_size_label()} id="size-log-size" hint={!editor.size.trim() ? m.size_log_required_size() : undefined}>
-        {#snippet children(id, hintId)}
-          <input class="input" {id} required aria-invalid={!editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
+        {#snippet children(id, hintId, touched)}
+          <input class="input" {id} required aria-invalid={touched && !editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
         {/snippet}
       </Field>
       <Field label={m.size_log_brand_label()} id="size-log-brand">
@@ -716,7 +655,7 @@
     {/snippet}
   </RecordSheet>
 
-  <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
+  <Sheet busy={typeWrite.busy} open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurement_manage_types_intro()}</p>
     <div class="managed-tags">
@@ -750,7 +689,7 @@
         />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-add-measurement-type onclick={addType}><span>{m.measurement_type_add()}</span></button>
+    <button class="btn btn-primary" data-add-measurement-type disabled={typeWrite.busy} onclick={addType}><span>{m.measurement_type_add()}</span></button>
   </Sheet>
 </div>
 

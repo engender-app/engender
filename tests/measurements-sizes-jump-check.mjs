@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, dateValue } from './browser-harness.mjs';
 
 const outDir = '.claude/measurements-jump-shots';
 await mkdir(outDir, { recursive: true });
@@ -97,9 +97,9 @@ try {
   const jump = await frameBox('[data-measurements-jump]');
   assert(jump && jump.top < 400, `Jump control should sit near the start, got top=${jump?.top}`);
   const measurementsActive = await page
-    .locator('[data-measurements-jump] [data-segment="measurements"]')
-    .getAttribute('aria-checked');
-  assert.equal(measurementsActive, 'true', 'Measurements segment should be active on arrival');
+    .locator('[data-measurements-jump] [data-jump-to="measurements"]')
+    .getAttribute('aria-current');
+  assert.equal(measurementsActive, 'location', 'Measurements segment should be active on arrival');
 
   // The finding, reproduced: the size log starts well below the fold
   const sizesAtLoad = await frameBox('#sizes-log');
@@ -109,9 +109,9 @@ try {
 
   // Scrolling changes the active pill after the cold reserve reveals its picker.
   await page.evaluate(() => document.getElementById('sizes-log').scrollIntoView({ block: 'start', behavior: 'instant' }));
-  await page.waitForFunction(() => document.querySelector('[data-measurements-jump] [data-segment="sizes"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForFunction(() => document.querySelector('[data-measurements-jump] [data-jump-to="sizes"]')?.getAttribute('aria-current') === 'location');
   await page.evaluate(() => document.getElementById('measurements-picker').scrollIntoView({ block: 'start', behavior: 'instant' }));
-  await page.waitForFunction(() => document.querySelector('[data-measurements-jump] [data-segment="measurements"]')?.getAttribute('aria-checked') === 'true');
+  await page.waitForFunction(() => document.querySelector('[data-measurements-jump] [data-jump-to="measurements"]')?.getAttribute('aria-current') === 'location');
 
   // Pick the hips dimension and open an editor with an unsaved value;
   // the date field arrives prefilled with today
@@ -122,7 +122,7 @@ try {
   await page.waitForSelector('[data-sheet] input[name="measurement-value"]');
   await page.locator('[data-sheet] input[name="measurement-value"]').fill('55.5');
   // The date field carries the draft's date, which is what preservation is about
-  const dateBefore = await page.locator('[data-sheet] input[name="measurement-date"]').inputValue();
+  const dateBefore = await dateValue(page.locator('[data-sheet] input[name="measurement-date"]'));
   assert(dateBefore, 'The new editor should arrive with a date');
 
   // While the editor is open it owns the screen: the jump control sits
@@ -131,14 +131,14 @@ try {
   // what happens to an unsaved input), and the draft's value and date
   // are still exactly as left
   const blocked = await page.evaluate(() => {
-    const jump = document.querySelector('[data-measurements-jump] [data-segment="sizes"]');
+    const jump = document.querySelector('[data-measurements-jump] [data-jump-to="sizes"]');
     const box = jump.getBoundingClientRect();
     const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
     return Boolean(hit?.closest('[data-sheet], [data-sheet-scrim]'));
   });
   assert(blocked, 'An open editor must block the jump control');
   assert.equal(await page.locator('[data-sheet] input[name="measurement-value"]').inputValue(), '55.5');
-  assert.equal(await page.locator('[data-sheet] input[name="measurement-date"]').inputValue(), dateBefore);
+  assert.equal(await dateValue(page.locator('[data-sheet] input[name="measurement-date"]')), dateBefore);
 
   // Closing a changed draft offers the discard choice, and only then is
   // the jump reachable - switching preserves the selected dimension
@@ -154,14 +154,14 @@ try {
   // remembered: jumping back must land where the jump left, not at the
   // top of the screen.
   const scrollBefore = await page.evaluate(() => document.querySelector('[data-app-scroll-region]').scrollTop);
-  await page.locator('[data-measurements-jump] [data-segment="sizes"]').click();
+  await page.locator('[data-measurements-jump] [data-jump-to="sizes"]').click();
   await page.waitForTimeout(400);
   const sizesJumped = await frameBox('#sizes-log');
   assert(sizesJumped && sizesJumped.top < 300, `Sizes heading should be in view after the jump, got top=${sizesJumped?.top}`);
   const sizesActive = await page
-    .locator('[data-measurements-jump] [data-segment="sizes"]')
-    .getAttribute('aria-checked');
-  assert.equal(sizesActive, 'true', 'Sizes segment should be active after jumping');
+    .locator('[data-measurements-jump] [data-jump-to="sizes"]')
+    .getAttribute('aria-current');
+  assert.equal(sizesActive, 'location', 'Sizes segment should be active after jumping');
   const focusedId = await page.evaluate(() => document.activeElement?.closest('[id]')?.id ?? document.activeElement?.tagName.toLowerCase());
   assert.equal(focusedId, 'sizes-log', `Focus should land on the sizes heading, got ${focusedId}`);
   const hipsAfter = await page.locator('[data-segment="hips"]').getAttribute('aria-checked');
@@ -181,16 +181,15 @@ try {
   const readingBack = await frameBox('#measurements-picker');
   assert(readingBack && readingBack.top < 600, `Measurements anchor should be back in view, got top=${readingBack?.top}`);
   const backActive = await page
-    .locator('[data-measurements-jump] [data-segment="measurements"]')
-    .getAttribute('aria-checked');
-  assert.equal(backActive, 'true', 'Measurements segment should be active after jumping back');
+    .locator('[data-measurements-jump] [data-jump-to="measurements"]')
+    .getAttribute('aria-current');
+  assert.equal(backActive, 'location', 'Measurements segment should be active after jumping back');
 
   await page.screenshot({ path: `${outDir}/03-measurements-back.png` });
 
   // Keyboard: the type picker is reachable and its options scroll into
   // view as arrows move through it. The picker is the radiogroup inside
-  // the measurements anchor - the jump's own Segmented is a radiogroup
-  // too, and it sits earlier in the screen.
+  // the measurements anchor.
   const typeGroup = () => page.evaluate(() => document.querySelector('#measurements-picker [role="radiogroup"]'));
   assert.notEqual(await typeGroup(), null, 'The measurements anchor should hold the type picker');
   await page.evaluate(() => document.querySelector('#measurements-picker [role="radiogroup"]').focus());
@@ -260,7 +259,7 @@ try {
   const hitHeights = await page.evaluate(() => {
     const heights = [];
     for (const el of document.querySelectorAll(
-      '[data-measurements-jump] .segment, [data-jump-measurements]'
+      '[data-measurements-jump] [data-jump-to], [data-jump-measurements]'
     )) {
       heights.push(el.getBoundingClientRect().height);
     }

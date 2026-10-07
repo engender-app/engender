@@ -10,7 +10,9 @@
 import { test, expect } from 'vitest';
 import {
   todayEpochDay,
+  msUntilNextLocalMidnight,
   epochDayFromLocalDate,
+  epochDayFromCalendarDate,
   localDateFromEpochDay,
   epochDayFromTimestamp,
   startOfDayTimestamp,
@@ -447,4 +449,23 @@ test(`relativeDayFromToday is "passed" rather than clamped for a day already gon
 
 test(`relativeDayFromToday is "passed" with days: 1 for yesterday under TZ=${tz}`, () => {
   expect(relativeDayFromToday(99, 100)).toEqual({ kind: 'passed', days: 1 });
+});
+
+
+test('calendar fields count skipped local dates and avoid the year 0–99 remapping', () => {
+  expect(epochDayFromCalendarDate(2011, 12, 30)).toBe(15338);
+  expect(epochDayFromCalendarDate(1970, 1, 1)).toBe(0);
+  expect(epochDayFromCalendarDate(0, 1, 1)).toBe(-719528);
+  expect(epochDayFromCalendarDate(2025, 2, 29)).toBeNull();
+  expect(epochDayFromCalendarDate(2024, 2, 29)).toBe(19782);
+});
+
+test('msUntilNextLocalMidnight lands on the next local midnight', () => {
+  const now = new Date(2026, 9, 5, 23, 59, 30);
+  expect(msUntilNextLocalMidnight(now)).toBe(30_000);
+  const after = new Date(now.getTime() + msUntilNextLocalMidnight(now));
+  expect(epochDayFromLocalDate(after)).toBe(epochDayFromLocalDate(now) + 1);
+  expect(after.getHours()).toBe(0);
+  const morning = new Date(2026, 9, 5, 0, 0, 0);
+  expect(epochDayFromLocalDate(new Date(morning.getTime() + msUntilNextLocalMidnight(morning)))).toBe(epochDayFromLocalDate(morning) + 1);
 });

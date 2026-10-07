@@ -2,12 +2,14 @@
   /* One saved question, answered as a run (phase 8 features ticket 06,
      CONTEXT: "Saved question").
 
-     Two reads, the same two `/search` makes and with the same shape - the
+     Three reads, the same three `/search` makes and with the same shape - the
      acceptance criterion is that a saved question's results equal the
      equivalent ad hoc search's results, and the only way that is true by
-     construction rather than by careful copying is to call the same two
+     construction rather than by careful copying is to call the same
      functions with filters read straight off the saved row
-     (entrySearchFiltersOf, savedQuestionQuery.ts). No filter sheet here:
+     (entrySearchFiltersOf, savedQuestionQuery.ts). The third is the starred
+     photos a Starred question also answers with, read and counted through
+     the same helpers /search uses. No filter sheet here:
      what narrows the read is what the question was saved with, not
      something this screen offers to change.
 
@@ -20,15 +22,17 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { fmtDateValue } from '$lib/data/dates';
   import { disclose } from '$lib/motion/reveal';
   import { whileStaying } from '$lib/motion/whileStaying';
-  import { entrySearchFiltersOf } from '$lib/data/savedQuestionQuery';
+  import { answerTotal, entrySearchFiltersOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -45,6 +49,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
 
   const PAGE = 30;
@@ -133,7 +138,7 @@
     const limit = PAGE * hitPages;
     return j.textSearch.search({
       query: typed,
-      today: todayEpochDay(),
+      today: currentDay(),
       startEpochDay: criteria.filters.startEpochDay ?? null,
       endEpochDay: criteria.filters.endEpochDay ?? null,
       limit
@@ -164,16 +169,33 @@
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, stableSearch?.queryText.trim() ?? ''));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
-  let foundTotal = $derived(total + elsewhereResults.total);
-  let loading = $derived(search.loading || elsewhere.loading);
-  let foundNothing = $derived(hits.length === 0 && hitRows.length === 0);
-  /* Reads retain old values and failures during a new run. Wait for both
-     attempts to use this question's criteria before showing an answer. */
+  /* A Starred question also answers with every starred photo, the grid
+     /search shows under the same filter, and counts them in its total. */
+  let photosAttempt = $state<typeof stableSearch>(null);
+  let photos = liveQuery((j) => {
+    const criteria = stableSearch;
+    photosAttempt = criteria;
+    if (!criteria) return Promise.resolve(null);
+    return starredPhotosAsked(j.photoLibrary, criteria.filters).then((rows) => ({ criteria, rows }));
+  });
+  let starredPhotos = $derived.by(() => {
+    const value = photos.value;
+    return value?.criteria === stableSearch ? value.rows : [];
+  });
+  let photosShown = $derived(starredPhotos.length > 0);
+
+  let foundTotal = $derived(answerTotal(total, elsewhereResults.total, starredPhotos.length));
+  let loading = $derived(search.loading || elsewhere.loading || photos.loading);
+  let anyFailed = $derived(search.failed || elsewhere.failed || photos.failed);
+  let foundNothing = $derived(hits.length === 0 && hitRows.length === 0 && !photosShown);
+  /* Reads retain old values and failures during a new run. Wait for all
+     three attempts to use this question's criteria before showing an answer. */
   let resultsReady = $derived(
     !!stableSearch && stableSearch.signature === searchSignature &&
-    searchAttempt === stableSearch && elsewhereAttempt === stableSearch &&
+    searchAttempt === stableSearch && elsewhereAttempt === stableSearch && photosAttempt === stableSearch &&
     (search.value?.criteria === stableSearch || (search.failed && !search.running)) &&
-    (elsewhere.value?.criteria === stableSearch || (elsewhere.failed && !elsewhere.running)) && !loading
+    (elsewhere.value?.criteria === stableSearch || (elsewhere.failed && !elsewhere.running)) &&
+    (photos.value?.criteria === stableSearch || (photos.failed && !photos.running)) && !loading
   );
   let revealedCriteria = $state<typeof stableSearch>(null);
   $effect.pre(() => {
@@ -190,27 +212,32 @@
     renamingName = question.name;
     renamingOpen = true;
   }
+  const renameWrite = writer();
   async function confirmRename() {
     if (!question) return;
     const name = renamingName.trim();
     if (!name) return;
-    await journal.savedQuestions.upsertSavedQuestion({ ...question, name });
+    const renamed = { ...question, name };
+    if (!(await renameWrite.run(() => journal.savedQuestions.upsertSavedQuestion(renamed), m.write_failed()))) return;
     renamingOpen = false;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   let deleteOpen = $state(false);
+  const removing = deleter();
   async function confirmDelete() {
     if (!question) return;
     const deletedId = question.id;
+    if (!(await removing.run(() => journal.savedQuestions.deleteSavedQuestion(deletedId)))) return;
     deleteOpen = false;
-    await journal.savedQuestions.deleteSavedQuestion(deletedId);
-    void goto('/search/questions');
+    toast(m.record_deleted(), { kind: 'record-deleted' });
+    void goto('/search');
   }
 </script>
 
 <div class="screen" data-screen>
   {#if question}
-    <ScreenHeader title={question.name} back="/search/questions">
+    <ScreenHeader title={question.name} back="/search">
       {#snippet actions()}
         <!-- Random sits with the question's other actions rather than over
              its results, as on /search (ticket 16). -->
@@ -244,13 +271,14 @@
             <li>{m.search_filter_mood_chip({ mood: moodName(mood) })}</li>
           {/each}
           {#if question.startEpochDay != null}
-            <li>{m.search_filter_start_chip({ date: dateInputValueFromEpochDay(question.startEpochDay) })}</li>
+            <li>{m.search_filter_start_chip({ date: fmtDateValue(question.startEpochDay) })}</li>
           {/if}
           {#if question.endEpochDay != null}
-            <li>{m.search_filter_end_chip({ date: dateInputValueFromEpochDay(question.endEpochDay) })}</li>
+            <li>{m.search_filter_end_chip({ date: fmtDateValue(question.endEpochDay) })}</li>
           {/if}
           {#if question.hasNote}<li>{m.search_filter_has_note()}</li>{/if}
           {#if question.hasPhoto}<li>{m.search_filter_has_photo()}</li>{/if}
+          {#if question.starred}<li>{m.search_filter_starred()}</li>{/if}
         </ul>
       </div>
     {/if}
@@ -258,17 +286,29 @@
     <div aria-live="polite">
       {#key searchSignature}
       <ReadReserve ready={!!stableSearch && (resultsReady || revealedCriteria === stableSearch)} estimate={240}>
-      {#if search.failed || elsewhere.failed}
+      {#if anyFailed}
         <Notice
           title={m.read_failed()}
-          action={{ label: m.read_retry(), onclick: () => { search.retry(); elsewhere.retry(); } }}
+          action={{ label: m.read_retry(), onclick: () => { search.retry(); elsewhere.retry(); photos.retry(); } }}
         />
       {/if}
       {#if !foundNothing}
 
+        {#if photosShown}
+          <!-- The same grid and the same headings as /search's: photos
+               lead, named only when entries or other records follow. -->
+          <div transition:disclose={whileStaying}>
+            {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
+            <StarredPhotoGrid photos={starredPhotos} />
+          </div>
+        {/if}
+
         {#if hits.length}
           <div transition:disclose={whileStaying}>
-            <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} />
+            {#if photosShown}
+              <div transition:disclose={whileStaying}><SectionHeading text={m.search_entries_heading()} /></div>
+            {/if}
+            <EntryDays {groups} {role} clampNotes={false} {marginNotesByEntry} level={photosShown ? 3 : 2} />
             {#if remaining > 0}
               <button class="btn btn-soft search-more" data-search-more onclick={() => (pages += 1)}>
                 <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
@@ -279,9 +319,9 @@
 
         {#if hitRows.length}
           <div transition:disclose={whileStaying}>
-            <!-- Named only under entries, to be elsewhere from: the call
-                 /search makes about the same two lists (ticket 16). -->
-            {#if hits.length}<SectionHeading text={m.search_elsewhere_heading()} />{/if}
+            <!-- Named only under entries or photos, to be elsewhere from:
+                 the call /search makes about the same lists (ticket 16). -->
+            {#if hits.length || photosShown}<SectionHeading text={m.search_elsewhere_heading()} />{/if}
             <ListCard role={hitsRole}>
               {#each hitRows as row (row.key)}
                 <ListRow
@@ -309,14 +349,14 @@
         <!-- One count, the total, in the same words and the same place as
              /search's: under the results (ticket 16). -->
         <p class="search-count" data-search-count>{m.results_count({ count: foundTotal })}</p>
-      {:else if !search.failed && !elsewhere.failed}
+      {:else if !anyFailed}
         <Notice icon="bookmark" key="saved-question-none" title={m.no_results()} text={m.saved_question_no_results()} />
       {/if}
       </ReadReserve>
       {/key}
     </div>
 
-    <Sheet bind:open={renamingOpen} title={m.saved_question_edit_sheet()}>
+    <Sheet busy={renameWrite.busy} bind:open={renamingOpen} title={m.saved_question_edit_sheet()}>
       <h3>{m.saved_question_edit_sheet()}</h3>
       <Field label={m.saved_question_name_label()} id="saved-question-rename-name">
         {#snippet children(fieldId)}
@@ -327,7 +367,7 @@
         <button
           class="btn btn-primary"
           data-saved-question-rename-confirm
-          disabled={!renamingName.trim()}
+          disabled={!renamingName.trim() || renameWrite.busy}
           onclick={confirmRename}
         >
           <span>{m.saved_question_rename_confirm()}</span>
@@ -344,10 +384,12 @@
       cancelLabel={m.keep_it()}
       confirmAttrs={{ 'data-confirm-delete-saved-question': '' }}
       onConfirm={confirmDelete}
-      onCancel={() => (deleteOpen = false)}
+      onCancel={() => { deleteOpen = false; removing.dismiss(); }}
+      busy={removing.busy}
+      failed={removing.failed}
     />
   {:else if !questionsQuery.loading}
-    <ScreenHeader title={m.saved_questions_title()} back="/search/questions" />
+    <ScreenHeader title={m.saved_questions_title()} back="/search" />
     <Notice icon="bookmark" key="saved-question-gone" title={m.saved_question_gone_title()} text={m.saved_question_gone_body()} action={{ label: m.search(), href: '/search' }} />
   {/if}
 </div>

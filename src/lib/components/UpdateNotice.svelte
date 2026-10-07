@@ -15,12 +15,22 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
+  import { announce } from '$lib/stores/announcer.svelte';
 
   let ready = $state(updateReady());
   let dismissed = $state(false);
   let applying = $state(false);
 
   $effect(() => onUpdateReadyChange((next) => (ready = next)));
+
+  /* Said through the app's standing live region (announcer.ts), which is on
+     the page long before this: the notice is inserted with its words in it,
+     possibly in the same render as the component itself, since this loads
+     after boot and an update can already be waiting, and a region that
+     arrives holding its words is often not read (after-release 21). */
+  $effect(() => {
+    if (ready && !dismissed) announce(m.update_ready_title());
+  });
 
   async function apply() {
     if (applying) return;
@@ -33,7 +43,7 @@
 </script>
 
 {#if ready && !dismissed}
-  <div class="notice notice-info" role="status" data-update-notice style="margin:var(--space-3)">
+  <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
     <Icon name="download" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.update_ready_title()}</span>

@@ -297,7 +297,30 @@ async function androidArrival(to) {
               }
               return false;
             }),
-          placeholder: !!screen?.querySelector('[data-gate-skeleton], [data-read-reserve-hold], .read-group-members.is-held'),
+          placeholder: !!screen?.querySelector('[data-gate-skeleton], [data-read-reserve-hold], .read-group-members.is-held, [data-lookback-rail-wait]'),
+          /* Every fade-in or tile entrance outside the field, as the length
+             it plays at: its authored duration over its playback rate. */
+          reveals: (screen?.getAnimations({ subtree: true }) ?? []).flatMap((animation) => {
+            const target = animation.effect?.target;
+            if (!target || field?.contains(target) || animation.playState === 'idle') return [];
+            const timing = animation.effect.getComputedTiming();
+            if (timing.iterations === Infinity) return [];
+            const keys = animation.effect.getKeyframes();
+            /* Read layers reveal by a two-keyframe opacity animation or
+               transition, or by the kit's tile entrance. A Svelte
+               transition samples its curve into many keyframes, and is a
+               heading's line crossfading in place rather than a read
+               arriving. */
+            const fadesIn = keys.length === 2 && keys[0].opacity !== undefined && Number(keys[0].opacity) < Number(keys[1].opacity);
+            if (animation.animationName !== undefined ? animation.animationName !== 'kit-block-in' : !fadesIn) return [];
+            return [{
+              length: Number(timing.duration) / Math.abs(animation.playbackRate || 1),
+              running: animation.playState === 'running',
+              left: (Number(timing.endTime) - Number(animation.currentTime ?? 0)) / Math.abs(animation.playbackRate || 1),
+              started: animation.startTime === null ? null : Number(animation.startTime) - start,
+              what: (target.className && typeof target.className === 'string' ? target.className.split(' ')[0] : target.tagName) + ':' + (animation.animationName || animation.transitionProperty || 'opacity')
+            }];
+          }),
           height: gate?.getBoundingClientRect().height ?? null
         });
         if (performance.now() - start > 1200) done(frames);
@@ -307,27 +330,71 @@ async function androidArrival(to) {
     });
   })()`);
 }
-for (const pass of ['first', 'repeat']) for (const to of ['/calendar', '/stats', '/more', '/']) {
-  const frames = await androidArrival(to);
+/* What a read answering during the field's travel may do (Alicja's call
+   on 2026-10-06, after a squeezed rail fade "looks shit and yanks"): reveal
+   at full length and be done by the frame the field stops, or keep its
+   placeholder, with nothing fading, through that frame and reveal at full
+   length after it. A reveal shorter than --dur-fast is a squeeze, and one
+   still running in the field-end frame overran the stop. */
+const MIN_REVEAL_MS = 150;
+function judgeArrival(frames) {
   const lastMotion = frames.findLastIndex((f) => f.route && f.moving);
   const deadline = frames[lastMotion + 1];
   const readable = frames.find((f) => f.route && f.readable);
-  const ok = lastMotion >= 0 && deadline?.readable;
-  if (!ok) failed = true;
-  console.log(`${ok ? 'ok  ' : 'FAIL'} Android presentation ${pass} ${to}: readable ${Math.round(readable?.at ?? -1)}ms, field end ${Math.round(deadline?.at ?? -1)}ms`);
+  const shortest = Math.min(Infinity, ...frames.flatMap((f) => f.route ? f.reveals.map((r) => r.length) : []));
+  /* A reveal that began while the field still moved and has more than a
+     frame left when it stops overran the stop. One that begins in the frame
+     the field stops is the held answer arriving. */
+  const lastMoving = frames[lastMotion]?.at ?? -Infinity;
+  const overran = !!deadline && deadline.reveals.some((r) => r.running && r.started !== null && r.started <= lastMoving && r.left > 17);
+  /* Held: the placeholder was still up in the last frame the field moved,
+     and what is not readable at the stop only begins to reveal there (a
+     held answer is let go in the very frame the field stops). */
+  const held = !!deadline && !deadline.readable && !!frames[lastMotion]?.placeholder && !overran;
+  const after = held && frames.some((f) => f.at > deadline.at && f.readable);
+  const ok = lastMotion >= 0 && !!deadline && shortest >= MIN_REVEAL_MS - 1 && !overran && (deadline.readable || after);
+  const squeezed = frames.flatMap((f) => f.reveals).find((r) => r.length < MIN_REVEAL_MS - 1);
+  return { ok, deadline, readable, shortest, held, overran, lastMotion, squeezed };
+}
+const describe = ({ deadline, readable, shortest, held, overran, squeezed }) =>
+  `readable ${Math.round(readable?.at ?? -1)}ms, field end ${Math.round(deadline?.at ?? -1)}ms` +
+  `${held ? ', held through the stop' : ''}${overran ? ', a reveal overran the stop' : ''}, shortest reveal ${Number.isFinite(shortest) ? Math.round(shortest) + 'ms' : 'none'}` +
+  `${squeezed ? ` (${squeezed.what})` : ''}`;
+
+/* The frames around the stop, for a failure: CI printed only the verdict
+   when this went red on main (run 37385237608). */
+function printFrames(frames, { lastMotion }) {
+  for (const f of frames.slice(Math.max(0, lastMotion - 7), lastMotion + 6)) {
+    const lengths = f.reveals.map((r) => `${Math.round(r.length)}${r.running ? '@' + Math.round(r.started ?? -1) : ' waiting'}`).join(',');
+    console.log(`     ${Math.round(f.at)}ms ${f.moving ? 'moving' : 'still '} ${f.readable ? 'readable' : 'unread  '}${f.placeholder ? ' placeholder' : ''}${lengths ? ' reveals ' + lengths : ''}`);
+  }
+}
+
+for (const pass of ['first', 'repeat']) for (const to of ['/calendar', '/stats', '/more', '/']) {
+  const frames = await androidArrival(to);
+  const judged = judgeArrival(frames);
+  if (!judged.ok) failed = true;
+  console.log(`${judged.ok ? 'ok  ' : 'FAIL'} Android presentation ${pass} ${to}: ${describe(judged)}`);
+  if (!judged.ok) printFrames(frames, judged);
   const heights = frames.filter((f) => f.route && f.height !== null).map((f) => f.height);
   const reversal = heights.some((height, i) => i > 0 && height < heights[i - 1] - 2);
   if (reversal) failed = true;
   if (to === '/calendar') console.log(`${reversal ? 'FAIL' : 'ok  '} Journal arrival never expands then collapses before settling`);
 }
 
-await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
-await page.evaluate(`window.Capacitor.getPlatform = () => 'android'; window.__lateReadUntil = performance.now() + 250`);
-const during = await androidArrival('/stats');
-const duringEnd = during.findLastIndex((f) => f.route && f.moving);
-const duringOk = during[duringEnd + 1]?.readable;
-if (!duringOk) failed = true;
-console.log(`${duringOk ? 'ok  ' : 'FAIL'} reads finishing during motion also finish nested tile entrances by field end`);
+/* Reads held to 150ms land with more than a fade's length of the travel
+   left and are fitted into it; held to 330ms they land with less, the case
+   a slow runner reached on main (run 37385237608) and the one that used to
+   be squeezed; 250ms falls either side depending on the machine. */
+for (const releaseMs of [150, 250, 330]) {
+  await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
+  await page.evaluate(`window.Capacitor.getPlatform = () => 'android'; window.__lateReadUntil = performance.now() + ${releaseMs}`);
+  const during = await androidArrival('/stats');
+  const judged = judgeArrival(during);
+  if (!judged.ok) failed = true;
+  console.log(`${judged.ok ? 'ok  ' : 'FAIL'} reads released at ${releaseMs}ms reveal at full length, done by field end or held through it: ${describe(judged)}`);
+  if (!judged.ok) printFrames(during, judged);
+}
 
 /* Hold actual worker reads past the field deadline on an uncached visit.
    Releasing every first-wave query at one time avoids fabricating a slow
@@ -540,8 +607,10 @@ try {
   await page.locator('[data-nav-item="settings"]').click();
   await waitFor(`location.pathname === '/more'`);
   await page.waitForTimeout(300);
-  await page.evaluate(() => { window.__scopeQueries = []; window.__scopeFailWear = true; });
-  await page.locator('[data-nav-item="home"]').click();
+  // A fresh document drops the driver read cache while retaining the journal
+  // and pins. A warm visit can reuse wear data without reaching this fault.
+  await page.addInitScript(() => { window.__scopeFailWear = true; });
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
   await waitFor(`${TILES['/']} && window.__scopeReadFailed === true`);
   await page.waitForTimeout(100);
   const pinSql = await page.evaluate(() => window.__scopeQueries);
@@ -571,7 +640,10 @@ try {
   await waitFor(`!!document.querySelector('[data-today-editor]')`);
   const expandedSql = await page.evaluate(() => window.__scopeQueries);
   const expandedInventory = await page.locator('[data-edit-pinned-row], [data-edit-add]').evaluateAll((rows) => rows.map((row) => row.dataset.editPinnedRow ?? row.dataset.editAdd).sort());
-  scopeCheck(expandedSql.some(cycleLastWrite) && JSON.stringify(expandedInventory) === JSON.stringify(inventory), 'Editor expands reads and retains complete pin inventory');
+  // The layout already cached cycle data. Voice last-write is absent from
+  // the pin-only reads, so it proves the editor requested expanded data.
+  const voiceLastWrite = (query) => query.sql.includes('MAX(e.epoch_day) AS day') && query.sql.includes('FROM voice_recording');
+  scopeCheck(!pinSql.some(voiceLastWrite) && expandedSql.some(voiceLastWrite) && JSON.stringify(expandedInventory) === JSON.stringify(inventory), 'Editor expands reads and retains complete pin inventory');
   const careLine = await page.locator('[data-edit-add="care"]').innerText();
   await page.locator('[data-edit-add="voice-benchmark"]').click();
   await page.locator('[data-edit-grip="voice-benchmark"]').press('ArrowUp');

@@ -2,13 +2,15 @@
    older journals without one keep the regimen rule and legacy opt-in. */
 
 import { activeEpisodesAt } from './regimenEpisode';
+import { isTestosteroneDrug } from './hormoneTestosteroneEster';
 import type { RegimenEpisode } from './types';
 
 /** Whether any episode active at `timestamp` names testosterone. The drug
-    is free text a person typed, so this matches a substring, case
-    ignored - the same loose read the ticket's own rule spells out. */
+    is free text a person typed, so it is read by isTestosteroneDrug, the
+    rule the hormone curve already uses: the Polish "testosteron" and a
+    bare "T" count, methyltestosterone does not. */
 export function testosteroneActive(episodes: readonly RegimenEpisode[], timestamp: number): boolean {
-  return activeEpisodesAt(episodes, timestamp).some((episode) => episode.drug.toLowerCase().includes('testosterone'));
+  return activeEpisodesAt(episodes, timestamp).some((episode) => isTestosteroneDrug(episode.drug));
 }
 
 /** Whether app-owned entry points and prompts offer cycle tracking.

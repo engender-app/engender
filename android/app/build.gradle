@@ -94,7 +94,7 @@ dependencies {
     // reach the device credential below API 30.
     implementation "androidx.biometric:biometric:$androidxBiometricVersion"
     // SAF tree/document operations for scheduled backup destinations.
-    implementation "androidx.documentfile:documentfile:1.0.1"
+    implementation "androidx.documentfile:documentfile:$androidxDocumentFileVersion"
     // WebMessageListener/ArrayBuffer transfer for the photo write channel -
     // lets bytes cross into native as a structured clone instead of a
     // JSON string.

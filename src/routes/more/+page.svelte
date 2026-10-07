@@ -47,6 +47,7 @@
      about grouping hits by area, and Apple's own settings search, in the
      Mobbin pass). An empty box shows the grouped index, which is the door at
      rest. */
+  import { handOverQuery } from '$lib/navigation/searchReturn';
   import { m } from '$lib/paraglide/messages';
   import { navigating } from '$app/state';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -60,6 +61,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
   import { AREA_STATES_BEFORE_READ } from '$lib/data/areaState';
   import { hubIconMaskImage } from '$lib/components/hubIconMasks';
@@ -68,7 +70,7 @@
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { collapse, disclose } from '$lib/motion/reveal';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
@@ -147,6 +149,9 @@
   let box = $state<HTMLInputElement | undefined>(undefined);
 
   let typed = $derived(query.trim());
+  /* The handoff row's query travels in memory to Search rather than in its
+     address (after-release ticket 10). */
+  const handOffSearch = () => handOverQuery(typed);
   let searching = $derived(typed.length > 0);
 
   /* Clearing the box is the one case that is not waited out: an empty query
@@ -395,16 +400,9 @@
               </ListRow>
             </div>
           {/each}
-          <!-- Where a query like this is actually finished (audit item 11).
-               The door used to page its own hits twenty at a time with no
-               filters and no date range, which is a second, weaker search -
-               this screen's own comment said a query answering with a
-               screenful of records is better finished on the search screen,
-               and then never linked there. The last row does, carrying the
-               query with it - the debounced one, not what is in the box this
-               instant, so the row never quotes a word the rows above it have
-               not answered yet (the same discipline `settled` keeps for the
-               count and the notice). -->
+          <!-- Search continues with the current typed query. The row label
+               describes the settled results above; handOffSearch reads the
+               input when tapped. -->
           <div class="rows-divide" transition:disclose={{ skip: leaving }}>
             <ListRow
               key="hub-search-handoff"
@@ -412,7 +410,8 @@
               icon="search"
               title={m.hub_search_handoff({ query: debouncedQuery })}
               subtitle={m.hub_search_handoff_sub()}
-              href={`/search?q=${encodeURIComponent(typed)}`}
+              href="/search"
+              onclick={handOffSearch}
             />
           </div>
         </ListCard>

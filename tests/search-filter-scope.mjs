@@ -25,15 +25,16 @@ async function visit(path) {
    per section: ticket 16 left one count line, the total, in the same words
    on Search and on a saved question. So the rows are counted here and the
    one line is checked to state their sum in `results_count`'s own wording. */
-async function counts(entries, other) {
-  await page.waitForFunction(([entries, other]) =>
+async function counts(entries, other, photos = 0) {
+  await page.waitForFunction(([entries, other, photos]) =>
     document.querySelectorAll('[data-entry-card]').length === entries &&
-    document.querySelectorAll('[data-search-hit]').length === other, [entries, other]);
+    document.querySelectorAll('[data-search-hit]').length === other &&
+    document.querySelectorAll('[data-starred-photos] .starred-photo-cell').length === photos, [entries, other, photos]);
   const lines = await page.locator('[data-search-count]').allInnerTexts();
   const expected = await page.evaluate(async (count) => {
     const { m } = await import('/src/lib/paraglide/messages.js');
     return m.results_count({ count });
-  }, entries + other);
+  }, entries + other + photos);
   assert.deepEqual(lines.map((line) => line.trim()), [expected], 'one count line, in one format');
   /* And no second count anywhere on the screen: the audit found "Entries:
      27" on Search and a count per section on a saved question. The
@@ -68,6 +69,13 @@ try {
     await clearJournal(journal);
     await journal.entries.upsertEntry({ epochDay: 20000, mood: 3, note: 'scopeprobe appointment' });
     await journal.documents.addDocument({ epochDay: 20000, title: 'scopeprobe document' }, { pdfBytes: new TextEncoder().encode('%PDF-1.4\n%%EOF') });
+    /* One starred photo, on an entry nothing below searches for, so only a
+       Starred question brings it. */
+    const canvas = Object.assign(document.createElement('canvas'), { width: 8, height: 8 });
+    const jpeg = async () => new Uint8Array(await (await new Promise((done) => canvas.toBlob(done, 'image/jpeg'))).arrayBuffer());
+    const owner = await journal.entries.upsertEntry({ epochDay: 19000, mood: 4 });
+    const photo = await journal.photos.attach({ entryId: owner }, { full: await jpeg(), thumb: await jpeg() });
+    await journal.photos.setStarred(photo, true);
   });
   for (const locale of ['en', 'pl']) {
     await page.evaluate(async locale => {
@@ -116,6 +124,12 @@ try {
     await page.locator('[data-search-idle]').waitFor();
     await page.getByRole('link', { name: title, exact: true }).click();
     await counts(0, 1);
+    const savedPath = new URL(page.url()).pathname;
+    assert.equal(await page.locator('[data-screen-back]').getAttribute('href'), '/search');
+    await page.locator('[data-screen-back]').click();
+    await page.waitForURL((url) => url.pathname === '/search');
+    await visit(savedPath);
+    await counts(0, 1);
     const summary = page.locator('[data-saved-question-criteria]');
     await summary.focus();
     await page.keyboard.press('Enter');
@@ -127,21 +141,26 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.ok((await summary.boundingBox()).height >= 48);
     }
-    const storedLabels = await page.evaluate(async title => {
+    /* Written out, never yyyy-mm-dd (after-release 28, audit L08-10). */
+    const writtenDays = locale === 'pl' ? ['3 paź 2024', '5 paź 2024'] : ['3 Oct 2024', '5 Oct 2024'];
+    const storedLabels = await page.evaluate(async ({ title, writtenDays }) => {
       const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
       const { m } = await import('/src/lib/paraglide/messages.js');
-      const { dateInputValueFromEpochDay } = await import('/src/lib/data/epochDay.ts');
       const { moodName } = await import('/src/lib/data/vocabulary/labels.ts');
       const { vocabulary } = await import('/src/lib/data/vocabulary/vocabulary.ts');
       const question = (await journal.savedQuestions.getSavedQuestions()).find(q => q.name === title);
       const tag = vocabulary.tags[0];
-      await journal.savedQuestions.upsertSavedQuestion({ ...question, tagIds: [tag.id], moods: [2], startEpochDay: 19999, endEpochDay: 20001, hasNote: true, hasPhoto: true });
+      await journal.savedQuestions.upsertSavedQuestion({ ...question, tagIds: [tag.id], moods: [2], startEpochDay: 19999, endEpochDay: 20001, hasNote: true, hasPhoto: true, starred: true });
       return [m.saved_question_tag({ tag: tag.label }), m.search_filter_mood_chip({ mood: moodName(2) }),
-        m.search_filter_start_chip({ date: dateInputValueFromEpochDay(19999) }),
-        m.search_filter_end_chip({ date: dateInputValueFromEpochDay(20001) }), m.search_filter_has_note(), m.search_filter_has_photo()];
-    }, title);
+        m.search_filter_start_chip({ date: writtenDays[0] }),
+        m.search_filter_end_chip({ date: writtenDays[1] }), m.search_filter_has_note(), m.search_filter_has_photo(),
+        m.search_filter_starred()];
+    }, { title, writtenDays });
     for (const label of storedLabels) await page.locator('[data-saved-question-definition]').getByText(label, { exact: true }).waitFor();
-    await counts(0, 1);
+    /* Starred answers with the starred photo too, and counts it, as /search
+       does with the same question (the ticket 16 follow-up). */
+    await counts(0, 1, 1);
+    const savedTotal = (await page.locator('[data-search-count]').innerText()).trim();
     if (process.argv.includes('--gallery')) {
       await mkdir('.claude/u23-shots', { recursive: true });
       await page.setViewportSize({ width: 390, height: 844 });
@@ -173,7 +192,28 @@ try {
     assert.equal(await summary.getAttribute('aria-expanded'), 'false');
     await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
     await cdp.detach();
-    await visit('/search');
+    await visit('/search?q=scopeprobe&starred=1');
+    await counts(0, 1, 1);
+    assert.equal((await page.locator('[data-search-count]').innerText()).trim(), savedTotal, 'a saved Starred question and /search say the same total');
+    /* Unstarring on the saved screen takes the photo off it and out of the
+       count; starred again after, for the next locale's pass. */
+    await page.goBack();
+    await counts(0, 1, 1);
+    await page.locator('[data-starred-photos] .starred-photo-unstar').click();
+    await counts(0, 1, 0);
+    await page.evaluate(async () => {
+      const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
+      for (const photo of await journal.photos.inJournal()) await journal.photos.setStarred(photo.id, true);
+    });
+    await counts(0, 1, 1);
+    await page.locator('[data-saved-question-delete]').click();
+    await page.locator('[data-confirm-delete]').click();
+    await page.waitForURL((url) => url.pathname === '/search');
+    await visit(savedPath);
+    await page.locator('[data-screen-back]').waitFor();
+    assert.equal(await page.locator('[data-screen-back]').getAttribute('href'), '/search');
+    await page.locator('[data-screen-back]').click();
+    await page.waitForURL((url) => url.pathname === '/search');
     await page.locator('#q').fill('nothingmatchesu23');
     await page.locator('[data-notice="search-none"]').waitFor();
     // Nothing matched, so there is no question worth saving (ticket 16).
@@ -183,7 +223,7 @@ try {
     await page.locator('[data-search-idle]').waitFor();
   }
   assert.deepEqual(errors, []);
-  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, no save for nothing, save/reopen criteria, EN/PL and narrow layouts');
+  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, no save for nothing, save/reopen criteria, saved-question Back/delete, EN/PL and narrow layouts');
 } catch (error) {
   console.error('FAILED AT', page.url(), (await page.locator('body').innerText()).slice(0, 2500));
   throw error;

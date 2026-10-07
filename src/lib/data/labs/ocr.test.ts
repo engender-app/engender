@@ -7,6 +7,7 @@ import {
   buildDuplicateKeys,
   isPermissionDenied,
   makeReviewRows,
+  formatLabReviewValue,
   parseLabNumeric,
   parseOcrLabRows,
   validateRowsForSave
@@ -252,4 +253,20 @@ PRL 18,5 ng/mL
     expect(prolactin).toHaveLength(1);
     expect(prolactin[0].value).toBe(18.5);
   });
+});
+
+test('formats review values for the selected language', () => {
+  const parsed = [{ analyte: 'estradiol', value: 123.4, unit: 'pg/mL', date: '2026-01-15', note: '', lowConfidence: false, unresolvedAnalyte: false, line: '' }];
+  const format = (locale: string) => (value: number) => new Intl.NumberFormat(locale).format(value);
+  expect(makeReviewRows(parsed, new Set(), format('en-GB'))[0].value).toBe('123.4');
+  expect(makeReviewRows(parsed, new Set(), format('pl-PL'))[0].value).toBe('123,4');
+});
+
+test.each(['en-GB', 'pl-PL'])('localized OCR review values round-trip through the editor validator (%s)', (locale) => {
+  for (const value of [1234.5, 12345.6, -12345.6, 0]) {
+    const parsed = [{ analyte: 'estradiol', value, unit: 'pg/mL', date: '2026-01-15', note: '', lowConfidence: false, unresolvedAnalyte: false, line: '' }];
+    const review = makeReviewRows(parsed, new Set(), (value) => formatLabReviewValue(value, locale));
+    expect(parseLabNumeric(review[0].value)).toBe(value);
+    expect(validateRowsForSave(review).ok).toBe(true);
+  }
 });

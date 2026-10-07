@@ -38,6 +38,6 @@
     transition:collapse={whileStaying}
     onclick={draw}
   >
-    <Icon name="shuffle" />
+    <Icon name="dice" />
   </button>
 {/if}

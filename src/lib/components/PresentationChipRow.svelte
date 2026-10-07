@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { rovingRadio } from '$lib/components/rovingRadio';
   /* The presentation chip (phase 8 features ticket 17, ADR-0048): choosing
      a mode highlights the days logged under it on whatever chart sits
      below - tally, wear, voice and calendar all take this same row rather
@@ -106,7 +105,10 @@
         <span class="tag-group-name" id="presentation-highlight-label">
           {m.presentation_highlight_label()}
         </span>
-        <div class="tag-row" role="radiogroup" use:rovingRadio aria-labelledby="presentation-highlight-label">
+        <!-- Toggles rather than radios (after-release 21, audit L05-08):
+             pressing the chosen mode again clears the highlight, and a
+             radio group is one that cannot be emptied. -->
+        <div class="tag-row" role="group" aria-labelledby="presentation-highlight-label">
           {#each presentations as p (p.id)}
             {@const role = roleAt(activeFlag.roles, p.roleIndex)}
             <button
@@ -114,8 +116,7 @@
               class="tag-chip presentation-chip press"
               class:is-active={value === p.id}
               {...roleAttrs(role)}
-              role="radio"
-              aria-checked={value === p.id}
+              aria-pressed={value === p.id}
               data-presentation-highlight={p.id}
               onclick={() => onPick(value === p.id ? null : p.id)}
             >

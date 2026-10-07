@@ -25,7 +25,6 @@ import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,16 +47,37 @@ public class PhotosPlugin extends Plugin {
         the number hold() checks a content provider's declared size against
         before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
+    private static final long PHOTO_SIZE_CEILING = 32L * 1024 * 1024;
 
+    @Override
+    public void load() {
+        CameraCapture.cancel(getContext());
+    }
+
+    /**
+     * One image, or several in one trip when the call asks for
+     * {@code multiple}, the way the web's file input picks them
+     * (after-release 27, audit L10-10). The photo picker takes at most
+     * {@link MediaStore#getPickImagesMaxLimit()} and refuses a larger
+     * {@code EXTRA_PICK_IMAGES_MAX}; the document picker on older Android
+     * takes {@code EXTRA_ALLOW_MULTIPLE}. pickedImages already reads
+     * either shape of result.
+     */
     @PluginMethod
     public void pickImages(PluginCall call) {
+        boolean multiple = Boolean.TRUE.equals(call.getBoolean("multiple", false));
         Intent intent;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent = new Intent(MediaStore.ACTION_PICK_IMAGES);
+            if (multiple) {
+                int max = MediaStore.getPickImagesMaxLimit();
+                if (max > 1) intent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, max);
+            }
         } else {
             intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("image/*");
+            if (multiple) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         }
         startActivityForResult(call, intent, "pickedImages");
     }
@@ -129,7 +149,7 @@ public class PhotosPlugin extends Plugin {
             } else if (data.getData() != null) {
                 uris.add(data.getData());
             }
-            for (String token : hold(uris)) tokens.put(token);
+            for (String token : hold(uris, PHOTO_SIZE_CEILING)) tokens.put(token);
             result.put("tokens", tokens);
             call.resolve(result);
         } catch (Exception e) {
@@ -180,7 +200,7 @@ public class PhotosPlugin extends Plugin {
         }
 
         try {
-            result.put("token", hold(Collections.singletonList(uri)).get(0));
+            result.put("token", hold(Collections.singletonList(uri), DOCUMENT_SIZE_CEILING).get(0));
             call.resolve(result);
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -266,12 +286,20 @@ public class PhotosPlugin extends Plugin {
         }
         try {
             File target = fileFor(call, name);
-            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            try (FileOutputStream out = new FileOutputStream(target, false)) {
-                out.write(bytes);
-                out.getFD().sync();
+            PhotoWriteOrder.Request request = PhotoFiles.reserveWrite(target);
+            try {
+                request.accept(Base64.decode(base64, Base64.DEFAULT));
+            } catch (Exception error) {
+                request.fail(error);
+                throw error;
             }
-            call.resolve();
+            request.result.whenComplete((ignored, error) -> {
+                if (error == null) call.resolve();
+                else {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    call.reject(PhotoFiles.message(cause));
+                }
+            });
         } catch (Exception e) {
             call.reject(message(e), e);
         }
@@ -388,7 +416,7 @@ public class PhotosPlugin extends Plugin {
             if (names == null) names = new String[0];
             Arrays.sort(names);
             JSArray list = new JSArray();
-            for (String name : names) list.put(name);
+            for (String name : names) if (!name.startsWith(".")) list.put(name);
             JSObject result = new JSObject();
             result.put("names", list);
             call.resolve(result);
@@ -432,15 +460,15 @@ public class PhotosPlugin extends Plugin {
         activity result it came from by as long as it takes the WebView to
         ask for the bytes, and a static map holding an Activity would be a
         leak. */
-    private List<String> hold(List<Uri> uris) throws IOException {
+    private List<String> hold(List<Uri> uris, long ceiling) throws IOException {
         for (Uri uri : uris) {
-            if (querySize(uri) > DOCUMENT_SIZE_CEILING) throw new IOException("too-large");
+            if (querySize(uri) > ceiling) throw new IOException("too-large");
         }
 
         Context context = getContext().getApplicationContext();
         List<PickedFiles.Source> sources = new ArrayList<>(uris.size());
         for (Uri uri : uris) {
-            sources.add(() -> context.getContentResolver().openInputStream(uri));
+            sources.add(() -> PhotoPickChannel.limit(context.getContentResolver().openInputStream(uri), ceiling));
         }
         return PickedFiles.hold(sources);
     }

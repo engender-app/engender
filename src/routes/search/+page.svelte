@@ -82,8 +82,10 @@
      already carried it, "reached from search"), so it is a toggle in the
      sheet below rather than a screen elsewhere, and the starred photo grid
      that page also drew moves in beside it, shown whenever the toggle is on.
-     The two old routes redirect here with the filter already applied
-     (`?starred=1`, `?questions=1`) so a bookmark still lands somewhere real.
+     The old starred route redirects here with the filter applied
+     (`?starred=1`) and the old questions route to the bare screen, whose
+     opening state carries the saved questions, so a bookmark still lands
+     somewhere real.
 
      Saved questions keep their own run (`/search/questions/[id]`, unmoved -
      rename and delete live there, on the one question being looked at) but
@@ -99,29 +101,31 @@
      `recentSearches.ts` for what "recent" means, since a search's own
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
-  import { EMPTY_SEARCH, holdSearch, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
+  import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY, todayEpochDay } from '$lib/data/epochDay';
+  import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
+  import { fmtDateValue } from '$lib/data/dates';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { listRecentSearches, recordRecentSearch } from '$lib/data/recentSearches';
-  import { savedQuestionInputOf } from '$lib/data/savedQuestionQuery';
+  import { answerTotal, savedQuestionInputOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { photoCaptionDate } from '$lib/data/dates';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SearchActions from '$lib/components/SearchActions.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
+  import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
@@ -159,9 +163,14 @@
      falls back to: `?starred=1` above, and `?q=` from the Transition door's
      "finish this search" row, which linked here with the query and landed
      on an empty box (ticket 16). */
+  /* More's search hands its query over in memory rather than in the
+     address, so what was typed stays out of the browser's history
+     (after-release ticket 10). `?q=` still works for an address typed or
+     bookmarked by hand. */
+  const handedQuery = takeHandedQuery();
   const asked = (): SearchSnapshot => ({
     ...EMPTY_SEARCH,
-    query: page.url.searchParams.get('q') ?? '',
+    query: handedQuery ?? page.url.searchParams.get('q') ?? '',
     starredOnly: page.url.searchParams.has('starred')
   });
   /* Saving a question keeps the query and every filter that is on, never
@@ -170,12 +179,15 @@
   let savingOpen = $state(false);
   let savingName = $state('');
 
+  const questionWrite = writer();
   async function saveQuestion() {
     const name = savingName.trim();
     if (!name) return;
-    await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf(name, query.trim(), filters));
+    const input = savedQuestionInputOf(name, query.trim(), filters);
+    if (!(await questionWrite.run(() => journal.savedQuestions.upsertSavedQuestion(input), m.write_failed()))) return;
     savingOpen = false;
     savingName = '';
+    toast(m.saved(), { kind: 'record-saved' });
   }
   /* How many pages have been asked for, one counter per read. Reset by
      anything that changes what is being searched for, because page four of
@@ -361,7 +373,7 @@
     const key = elsewhereKeyOf(typed, startEpochDay, endEpochDay);
     if (!typed) return Promise.resolve({ ...NOTHING_ELSEWHERE, key });
     return j.textSearch
-      .search({ query: typed, today: todayEpochDay(), startEpochDay, endEpochDay, limit })
+      .search({ query: typed, today: currentDay(), startEpochDay, endEpochDay, limit })
       .then((answer) => ({ ...answer, key }));
   });
 
@@ -410,18 +422,14 @@
      self-limiting by how much a person actually stars, not by how large
      the journal is (ADR-0004's concern is a per-render bound, not a floor
      under every read). */
-  let starredPhotosQuery = liveList((j) => (starredOnly ? j.photoLibrary.starred() : Promise.resolve([])));
+  let starredPhotosQuery = liveList((j) => starredPhotosAsked(j.photoLibrary, { starred: starredOnly }));
   let starredPhotos = $derived(starredPhotosQuery.rows);
-
-  async function unstarPhoto(id: string) {
-    await journal.photos.setStarred(id, false);
-  }
 
   /* One count over both reads, and the starred photo grid when that filter
      is on - stating the entries' total alone while five letters or a row of
      photos sat underneath it would be the screen describing part of what it
      found. */
-  let foundTotal = $derived(total + elsewhereResults.total + (starredOnly ? starredPhotos.length : 0));
+  let foundTotal = $derived(answerTotal(total, elsewhereResults.total, starredOnly ? starredPhotos.length : 0));
   let loading = $derived(search.loading || elsewhere.loading);
   let foundNothing = $derived(
     hits.length === 0 && hitRows.length === 0 && (!starredOnly || starredPhotos.length === 0)
@@ -472,6 +480,13 @@
      found. */
   let hitsRole = $derived(roleAt(activeFlag.roles, 1));
 
+  /* The chip says the day the way the field above it does (after-release
+     28, audit L08-10: "From: 2026-09-18"). */
+  const chipDate = (iso: string) => {
+    const day = epochDayFromDateInputValue(iso);
+    return day == null ? iso : fmtDateValue(day);
+  };
+
   let activeFilterChips = $derived.by(() => {
     const chips: { key: string; label: string; remove: () => void }[] = [];
     for (const id of selectedTagIds) {
@@ -488,14 +503,14 @@
     if (startDate) {
       chips.push({
         key: 'start',
-        label: m.search_filter_start_chip({ date: startDate }),
+        label: m.search_filter_start_chip({ date: chipDate(startDate) }),
         remove: () => (startDate = '')
       });
     }
     if (endDate) {
       chips.push({
         key: 'end',
-        label: m.search_filter_end_chip({ date: endDate }),
+        label: m.search_filter_end_chip({ date: chipDate(endDate) }),
         remove: () => (endDate = '')
       });
     }
@@ -504,7 +519,7 @@
     if (starredOnly) chips.push({ key: 'starred', label: m.search_filter_starred(), remove: () => (starredOnly = false) });
     return chips;
   });
-  let todayInput = $derived(dateInputValueFromEpochDay(todayEpochDay()));
+  let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
 
   /* What the opening state offers before a character is typed (ticket 18):
      the eight most-used tags, the saved questions that exist, and this
@@ -512,7 +527,7 @@
      `hasCriteria` - cheap, bounded reads a person is about to want the
      moment they clear the field again. */
   const POPULAR_TAG_COUNT = 8;
-  let tagShareQuery = liveList((j) => j.stats.tagShare(FIRST_EPOCH_DAY, todayEpochDay()));
+  let tagShareQuery = liveList((j) => j.stats.tagShare(FIRST_EPOCH_DAY, currentDay()));
   let popularTags = $derived(
     tagShareQuery.rows
       .map((t) => vocabulary.tag(t.id))
@@ -571,8 +586,11 @@
       aria-expanded={filtersOpen}
       onclick={() => (filtersOpen = true)}
     >
-      <Icon name="tag" size={20} />
-      <span>{m.search_filters_count({ count: activeFilterChips.length })}</span>
+      <!-- A word and, only once there is one, a count. With an icon and
+           "(0)" this button was 152px and left the field 118px to type in
+           (audit UX-11); the chips under the row already show which
+           filters are on. -->
+      <span>{activeFilterChips.length ? m.search_filters_count({ count: activeFilterChips.length }) : m.search_filters()}</span>
     </button>
   </div>
 
@@ -673,18 +691,7 @@
                Starred toggle instead of behind a second door. -->
           <div transition:disclose={whileStaying}>
             {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
-            <p class="search-hint">{m.search_starred_photos_scope()}</p>
-            <div class="photo-grid" data-starred-photos>
-              {#each starredPhotos as p (p.id)}
-                <div class="starred-photo-cell">
-                  <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
-                  <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
-                  <button class="starred-photo-unstar press" aria-label={m.unstar_photo()} onclick={() => unstarPhoto(p.id)}>
-                    <Icon name="star" size={16} cls="is-starred" />
-                  </button>
-                </div>
-              {/each}
-            </div>
+            <StarredPhotoGrid photos={starredPhotos} />
           </div>
         {/if}
 
@@ -693,7 +700,7 @@
             {#if photosShown}
               <div transition:disclose={whileStaying}><SectionHeading text={m.search_entries_heading()} /></div>
             {/if}
-            <EntryDays {groups} {role} {marginNotesByEntry} />
+            <EntryDays {groups} {role} {marginNotesByEntry} level={photosShown ? 3 : 2} />
             {#if remaining > 0}
               <button class="btn btn-soft search-more" data-search-more transition:disclose={whileStaying} onclick={() => (pages += 1)}>
                 <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>
@@ -827,7 +834,7 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
+  <Sheet busy={questionWrite.busy} bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
     <h3>{m.saved_question_save_sheet()}</h3>
     <Field label={m.saved_question_name_label()} id="saved-question-name">
       {#snippet children(id)}
@@ -845,7 +852,7 @@
       <button
         class="btn btn-primary"
         data-saved-question-save-confirm
-        disabled={!savingName.trim()}
+        disabled={!savingName.trim() || questionWrite.busy}
         onclick={saveQuestion}
       >
         <span>{m.saved_question_save_confirm()}</span>
@@ -885,5 +892,8 @@
   .search-controls .search-box {
     flex: 1 1 8rem;
     min-width: 0;
+  }
+  .search-controls [data-filter-toggle] {
+    flex: 0 0 auto;
   }
 </style>

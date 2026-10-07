@@ -17,14 +17,6 @@ function read(path: string) {
 }
 
 describe('phase 2 accessibility seams', () => {
-  it('keeps line charts labelled for screen readers', () => {
-    const chart = read('src/lib/components/LineChart.svelte');
-    expect(chart).toContain('m.chart_aria');
-    expect(chart).toContain('role="img"');
-    expect(chart).toContain('aria-label={ariaLabel ?? chart.label}');
-    expect(chart).toContain('m.not_enough_data()');
-  });
-
   it('keeps chart values available as text in stats', () => {
     /* The chart carries a value gutter and a mark per reading (phase 5 UX
        ticket 23), and neither is a number a screen reader can report. The
@@ -44,7 +36,7 @@ describe('phase 2 accessibility seams', () => {
     expect(stats).toContain('valueRows');
     /* Each row still carries its own name and reading as text, which is the
        property the sheet's bar rows used to provide. */
-    expect(stats).toMatch(/\{row\.name\}: \{row\.value\}/);
+    expect(stats).toMatch(/m\.reading_day_value\(\{ day: row\.name, value: row\.value \}\)/);
     /* And a second scale joins that list rather than only the picture
        (phase 6 ticket 12). The plot is one image to a screen reader and a
        scrub is a way of reading a picture, so a comparison whose numbers

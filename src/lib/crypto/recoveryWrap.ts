@@ -22,6 +22,7 @@
 
 import { unwrapDataKey, wrapDataKey, type DataKeyWrap } from './keystore.ts';
 import { resolveCredentialProfile } from './credential-consumers.ts';
+import { parseWrap, toBase64 } from './wrapEncoding.ts';
 
 const RECOVERY_WRAP_VERSION = 1;
 
@@ -65,10 +66,6 @@ export async function unwrapDataKeyWithRecoveryKey(
   return unwrapDataKey(wrap, canonicalKey);
 }
 
-const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
-const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
-  Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
-
 export function serializeRecoveryWrap(wrap: RecoveryWrap): string {
   return JSON.stringify({
     version: wrap.version,
@@ -84,6 +81,7 @@ export function parseRecoveryWrap(serialized: string): RecoveryWrap {
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(serialized) as Record<string, unknown>;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error();
   } catch {
     throw new RecoveryWrapUnreadableError('the recovery file is not JSON');
   }
@@ -92,39 +90,8 @@ export function parseRecoveryWrap(serialized: string): RecoveryWrap {
       `recovery file version ${String(raw.version)} is not one this build reads`
     );
   }
-  if (
-    raw.kdf !== 'argon2id' ||
-    typeof raw.salt !== 'string' ||
-    typeof raw.nonce !== 'string' ||
-    typeof raw.wrappedKey !== 'string'
-  ) {
-    throw new RecoveryWrapUnreadableError('the recovery file is missing fields');
-  }
-  /* The parameters are fed to the KDF as they are found, so a mangled block
-     has to fail here by name. Reaching the derivation with a broken cost
-     would surface as a key that mysteriously never opens the journal, which
-     is the one message this file must never produce by accident. */
-  const params = raw.params as Partial<DataKeyWrap['params']> | undefined;
-  const numbers: (keyof DataKeyWrap['params'])[] = ['memorySize', 'iterations', 'parallelism', 'hashLength'];
-  if (!params || numbers.some((field) => typeof params[field] !== 'number')) {
-    throw new RecoveryWrapUnreadableError('the recovery file has no usable KDF parameters');
-  }
-
-  let salt: Uint8Array<ArrayBuffer>, nonce: Uint8Array<ArrayBuffer>, wrappedKey: Uint8Array<ArrayBuffer>;
-  try {
-    salt = fromBase64(raw.salt);
-    nonce = fromBase64(raw.nonce);
-    wrappedKey = fromBase64(raw.wrappedKey);
-  } catch {
-    throw new RecoveryWrapUnreadableError('the recovery file has unreadable base64');
-  }
-
   return {
     version: RECOVERY_WRAP_VERSION,
-    kdf: 'argon2id',
-    params: params as DataKeyWrap['params'],
-    salt,
-    nonce,
-    wrappedKey
+    ...parseWrap(raw, 'the recovery file', RecoveryWrapUnreadableError)
   };
 }

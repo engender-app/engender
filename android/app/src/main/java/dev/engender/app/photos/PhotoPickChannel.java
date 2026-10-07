@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The pick half of the photo bridge (phase 9 audit ticket 06), the same
@@ -42,7 +43,10 @@ import java.util.concurrent.Executors;
  *       one port along with it.</li>
  *   <li>This class redeems that token with {@link PickedFiles}, reads the
  *       file on a worker thread, and posts the bytes back on the transferred
- *       port as an {@code ArrayBuffer}.</li>
+ *       port as an {@code ArrayBuffer}. JavaScript sends {@code received}
+ *       before closing its port; only that acknowledgement consumes the
+ *       token. A {@code cancel} closes the reader while keeping the source
+ *       available for the chunked fallback.</li>
  *   <li>A failure comes back on the same port as a JSON string,
  *       {@code {"ok":false,"error":...}} ({@link WebMessageReplies}, shared
  *       with the write channel). A WebMessage carries either bytes or a
@@ -108,34 +112,88 @@ public final class PhotoPickChannel {
             return;
         }
 
-        PickedFiles.Source source = PickedFiles.take(token);
-        if (source == null) {
-            WebMessageReplies.replyError(port, "unknown picked file");
-            return;
-        }
-
-        reads.execute(() -> readAndReply(port, source));
+        AtomicBoolean cancelled = new AtomicBoolean();
+        port.setWebMessageCallback(new WebMessagePortCompat.WebMessageCallbackCompat() {
+            @Override
+            public void onMessage(@NonNull WebMessagePortCompat p, @Nullable WebMessageCompat reply) {
+                if (reply == null || reply.getType() != WebMessageCompat.TYPE_STRING) return;
+                if ("received".equals(reply.getData())) {
+                    PickedFiles.release(token);
+                    port.close();
+                } else if ("cancel".equals(reply.getData())) {
+                    cancelled.set(true);
+                    PickedFiles.cancelChannelRead(token);
+                    port.close();
+                }
+            }
+        });
+        reads.execute(() -> readAndReply(port, token, cancelled));
     }
 
-    private void readAndReply(WebMessagePortCompat port, PickedFiles.Source source) {
-        try (InputStream input = source.open()) {
-            if (input == null) throw new IllegalStateException("could not read selected file");
-            port.postMessage(new WebMessageCompat(readFully(input)));
-        } catch (Exception e) {
-            WebMessageReplies.replyError(port, PhotoFiles.message(e));
+    private void readAndReply(WebMessagePortCompat port, String token, AtomicBoolean cancelled) {
+        if (cancelled.get()) return;
+        InputStream input = null;
+        try {
+            input = PickedFiles.openForChannel(token);
+            if (input == null) throw new IllegalStateException("unknown picked file");
+            if (cancelled.get()) return;
+            byte[] bytes = readFully(input);
+            if (!cancelled.get()) port.postMessage(new WebMessageCompat(bytes));
+        } catch (Exception error) {
+            if (!cancelled.get()) {
+                PickedFiles.release(token);
+                try {
+                    WebMessageReplies.replyError(port, PhotoFiles.message(error));
+                } finally {
+                    port.close();
+                }
+            }
+        } finally {
+            PickedFiles.finishChannelRead(input);
         }
+    }
+
+    static InputStream limit(InputStream input, long ceiling) {
+        return new java.io.FilterInputStream(input) {
+            private long readBytes;
+
+            private void count(int count) throws java.io.IOException {
+                if (count > 0) readBytes += count;
+                if (readBytes > ceiling) throw new java.io.IOException("too-large");
+            }
+
+            @Override
+            public int read() throws java.io.IOException {
+                int value = in.read();
+                count(value == -1 ? 0 : 1);
+                return value;
+            }
+
+            @Override
+            public int read(byte[] bytes, int offset, int length) throws java.io.IOException {
+                int count = in.read(bytes, offset, length);
+                count(count);
+                return count;
+            }
+        };
     }
 
     /** The one buffer the bytes pass through. The size a content provider
         declares is not trusted to size it: {@code PhotosPlugin} has already
         refused anything declaring more than the ceiling, and a provider that
         declares nothing (or lies low) would otherwise size this array wrong
-        rather than simply growing it. */
-    private static byte[] readFully(InputStream input) throws Exception {
+        rather than simply growing it. The read also enforces the ceiling when
+        the provider reports no size or reports less than it returns. */
+    static byte[] readFully(InputStream input) throws Exception {
         ByteArrayOutputStream collected = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
         int read;
-        while ((read = input.read(buffer)) != -1) collected.write(buffer, 0, read);
+        while ((read = input.read(buffer)) != -1) {
+            if (read > 32 * 1024 * 1024 - collected.size()) {
+                throw new java.io.IOException("too-large");
+            }
+            collected.write(buffer, 0, read);
+        }
         return collected.toByteArray();
     }
 }

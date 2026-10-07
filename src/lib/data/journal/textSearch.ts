@@ -287,10 +287,6 @@ const AREAS = [
     date: null,
     columns: ['text']
   }),
-  /* The lines somebody wrote themselves. A built-in's row holds an empty
-     `text` and its wording comes from the message catalogue (reconcile.ts),
-     so what is matched here is the custom pool - the same division of labour
-     tag labels have. */
   /* Every presentation name is typed by the person - there are no built-ins
      whose wording lives in the message catalogue (ADR-0048), so the
      reference-data opt-out the built-in areas above use does not apply
@@ -323,6 +319,10 @@ const AREAS = [
     date: null,
     columns: ['name']
   }),
+  /* The lines somebody wrote themselves. A built-in's row holds an empty
+     `text` and its wording comes from the message catalogue (reconcile.ts),
+     so what is matched here is the custom pool - the same division of labour
+     tag labels have. */
   area({
     key: 'affirmations',
     covers: ['affirmations'],
@@ -415,7 +415,8 @@ const AREAS = [
   }),
   /* The drug and the ester somebody typed for an episode (regimen.ts's own
      text fields), dated by the day the episode started. The dose, the unit
-     and the route are picked from closed vocabularies and are not text. */
+     and the route are picked from closed vocabularies and are not text. An
+     episode that was put away is not found (after-release 07). */
   area({
     key: 'regimenEpisodes',
     covers: ['regimenEpisodes'],
@@ -423,7 +424,8 @@ const AREAS = [
     from: 'regimen_episode',
     uuid: 'uuid',
     date: { kind: 'epochDay', column: 'start_epoch_day' },
-    columns: ['drug', 'ester']
+    columns: ['drug', 'ester'],
+    where: { sql: 'hidden = 0', params: () => [] }
   }),
   area({
     key: 'medicationStock',
@@ -697,9 +699,9 @@ interface SearchResults {
   hits: SearchHit[];
   /** How many hits there are in total, which is not the page's length: the
       screen states how many results a query found and shows a page of them.
-      Its own query beside the page, the same split the entry side keeps
-      (entries.ts's countSearchMatches) and for the same reason - taking the
-      count from the page would report thirty for a query with fifty. */
+      Read as a window over the same statement (`COUNT(*) OVER ()`), so
+      it counts every match rather than the page's own rows: taking it from
+      the page would report thirty for a query with fifty. */
   total: number;
 }
 

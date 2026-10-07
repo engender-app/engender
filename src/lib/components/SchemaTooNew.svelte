@@ -17,22 +17,33 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
   import GateScreen from './GateScreen.svelte';
+  import { collapse } from '$lib/motion/reveal';
 
   let looking = $state(false);
-  let nothingNewer = $state(false);
+  /* What the last look found, said in the line under the button. 'reopen'
+     is a newer release that could not take over this page (applyUpdate
+     answered false): the button used to stay on "Looking…" for good then
+     (after-release 06, L05-06). A look that throws says it could not
+     look; a hand-over that throws after a newer release was found is
+     still 'reopen', since the newer release is there. */
+  let result = $state<'none' | 'reopen' | 'failed' | null>(null);
 
   async function lookForNewer() {
     if (looking) return;
     looking = true;
-    nothingNewer = false;
-    if (await checkForNewerRelease()) {
+    result = null;
+    let found = false;
+    try {
+      found = await checkForNewerRelease();
       // Reloads onto the new release, so this screen is replaced by a boot
       // that can read the Journal. Nothing is in flight to interrupt: this
       // one never opened it.
-      await applyUpdate();
-      return;
+      if (found && (await applyUpdate())) return;
+      result = found ? 'reopen' : 'none';
+    } catch (error) {
+      console.error('could not look for a newer release', error);
+      result = found ? 'reopen' : 'failed';
     }
-    nothingNewer = true;
     looking = false;
   }
 </script>
@@ -43,12 +54,29 @@
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
     </button>
-    {#if nothingNewer}
-      <!-- SF-004: this result used to appear with no announcement - a
-           silent content swap for anyone not looking at the screen. -->
-      <p class="gate-body" role="status" data-nothing-newer>
-        {m.boot_schema_too_new_still_old()}
-      </p>
-    {/if}
+    <!-- SF-004: this result used to appear with no announcement - a
+         silent content swap for anyone not looking at the screen. The
+         status is this element, which is always there, rather than each line:
+         a region inserted already holding its words is often not read
+         (after-release 21, audit L05-07), and a line arriving inside a
+         region that was already there is. -->
+    <!-- No box of its own (display: contents), so an empty status adds no
+         gap under the button in .gate-actions' column. Inline rather than
+         a class: a component style block becomes its own stylesheet. -->
+    <div role="status" style="display: contents">
+      {#if result === 'none'}
+        <p class="gate-body" data-nothing-newer transition:collapse>
+          {m.boot_schema_too_new_still_old()}
+        </p>
+      {:else if result === 'failed'}
+        <p class="gate-body" data-update-check-failed transition:collapse>
+          {m.boot_schema_too_new_check_failed()}
+        </p>
+      {:else if result === 'reopen'}
+        <p class="gate-body" data-newer-waiting transition:collapse>
+          {m.boot_schema_too_new_reopen()}
+        </p>
+      {/if}
+    </div>
   </div>
 </GateScreen>

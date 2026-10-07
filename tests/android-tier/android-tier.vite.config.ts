@@ -20,7 +20,6 @@
    ANDROID_TIER_PROBE picks which one; run.mjs builds both. */
 import { defineConfig } from 'vite';
 import { join } from 'node:path';
-import sqlocal from 'sqlocal/vite';
 
 const ASSETS = 'android/app/src/androidTest/assets';
 
@@ -50,7 +49,7 @@ export default defineConfig({
       $lib: join(repo, 'src/lib')
     }
   },
-  plugins: [sqlocal()],
+  plugins: [],
   define: {
     __DEMO__: JSON.stringify(false)
   },

@@ -34,12 +34,13 @@
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
   import { isAndroid } from '$lib/platform';
   import {
-    parseLabNumeric,
-    type OcrReviewRow
-  } from '$lib/data/labs/ocr';
+  formatLabReviewValue,
+  type OcrReviewRow
+} from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
+  import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { LabResult } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import Progress from '$lib/components/Progress.svelte';
@@ -55,7 +56,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -131,12 +132,12 @@
      there is no single range to ask for - and asking once per chart would be
      one query per unit for the same six tables. */
   let drawnOn = $derived(series.flatMap((s) => s.results.map((r) => r.epochDay)));
-  let span = $derived(annotationSpan(drawnOn, todayEpochDay()));
+  let span = $derived(annotationSpan(drawnOn, currentDay()));
   let annotationsAnsweredFor = $state('');
   let annotationsQuery = liveList((j) => {
     const asked = `${span.from}:${span.to}`;
     return j.chartAnnotations
-      .getAnnotations(span.from, span.to, todayEpochDay())
+      .getAnnotations(span.from, span.to, currentDay())
       .finally(() => (annotationsAnsweredFor = asked));
   });
 
@@ -215,6 +216,7 @@
 
   const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
 
+  let unitStated = false;
   const record = recordEditor<LabResult, LabDraft>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
@@ -276,12 +278,15 @@
 
       /* Stated, not warned about: a new unit is a normal thing for a lab to
          report, and all that follows from it is a second line. */
-      if (otherUnits.size && !otherUnits.has(unit)) {
+      unitStated = otherUnits.size > 0 && !otherUnits.has(unit);
+      if (unitStated) {
         toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
           kind: 'lab-new-unit'
         });
       }
     },
+    // The new-unit toast already says the result went in; one toast at a time.
+    saved: () => (unitStated ? null : m.saved()),
     remove: (id) => journal.labs.deleteResult(id),
     findById: (id) => results.find((result) => result.id === id)
   });
@@ -314,7 +319,8 @@
     ocrSaver,
     (next) => {
       ocrState = next;
-    }
+    },
+    (value) => formatLabReviewValue(value, intlLocale())
   );
 
   /** The recognizing screen outliving the pass by the length of the bar's
@@ -373,7 +379,9 @@
             ? m.labs_ocr_missing_date()
             : m.labs_ocr_invalid_date()
       : ocrState.tag === 'save-failed'
-        ? m.labs_ocr_save_failed()
+        ? ocrState.saved > 0
+          ? m.labs_ocr_save_partial({ saved: String(ocrState.saved) })
+          : m.labs_ocr_save_failed()
         : ''
   );
 
@@ -750,6 +758,13 @@
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_failed()}</div>
+      </div>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+    {:else if ocrState.tag === 'lookup-failed'}
+      <h3>{m.labs_ocr_pick_sheet()}</h3>
+      <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
+        <Icon name="alert" size={20} />
+        <div class="notice-body">{m.labs_ocr_lookup_failed()}</div>
       </div>
       <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
     {:else if ocrState.tag === 'no-rows'}

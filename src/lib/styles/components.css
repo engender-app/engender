@@ -1,6 +1,8 @@
 /* ============================================================
-   Component styles. Everything reads tokens only — no raw colour
-   values in this file (rule: colour lives in tokens/palettes.css).
+   Component styles. Everything reads tokens (colour lives in
+   theme/palettes.css) except three values that must not follow the theme:
+   the white label and black scrim on a photo thumbnail, and the black seam
+   on the sun's rings (each is explained where it appears).
    ============================================================ */
 
 /* ---------- text & primitives ---------- */
@@ -463,26 +465,27 @@
   .screen-header.is-chrome .screen-back { display: none; }
 }
 
-.section-title {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin: var(--space-8) 0 var(--space-3);
-}
-.section-title h2 {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-display);
-  color: var(--text);
-  margin: 0;
-  display: flex; align-items: center; gap: var(--space-2);
-}
-.section-title h2::before {
+
+/* The 48px floor for a control drawn smaller than that (after-release
+   ticket 18). A transparent box centred on the control grows its target
+   to --touch-target on whichever axis is short and adds nothing on an axis
+   that already clears it, so a chip that grows at 200% text stops reaching
+   out once it is tall enough. Percentages in `inset` resolve against the
+   padding box, height for top and bottom and width for left and right, so
+   one expression serves both axes.
+
+   Only what is missing, never a fixed overhang: a 41px chip reaches 3.5px
+   past each edge, and two wrapped rows 8px apart keep their targets apart.
+   The old fixed -6px met in the middle of that gap and the lower row's
+   overlay took 1px off the chip above it. The control has to be positioned;
+   `:where` keeps this from overriding one that is already absolute. */
+:where(.hit-floor) { position: relative; }
+.hit-floor::after,
+.tag-chip::after {
   content: '';
-  width: 16px; height: 7px; border-radius: 4px;
-  background: var(--text);
-  flex-shrink: 0;
+  position: absolute;
+  inset: min(0px, calc((100% - var(--touch-target)) / 2));
 }
-.section-aside { font-size: var(--text-sm); color: var(--text-2); }
-.section-aside a, a.section-aside { color: var(--accent); text-decoration: none; font-weight: var(--weight-medium); }
 
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -550,56 +553,6 @@
    --bg as the type. No box-shadow - the kit's one shadow belongs to the
    floating add button, not this control. */
 .btn-primary { background: var(--text); color: var(--bg); position: relative; overflow: hidden; }
-/* PROTOTYPE, not part of ticket 37 - a press-triggered light-sweep in the
-   flag's own colour, left to right, no vertical travel. The band itself
-   stays skewed (a parallelogram, not a vertical bar); only its two edges
-   move, and on two clocks rather than one - the leading edge (right)
-   starts at once, the trailing edge (left) follows a beat later, the
-   same lead/trail stagger $lib/motion/indicator.ts drives the nav pill
-   and segment-pill with, so the band stretches out while travelling and
-   gives back the width as the trailing edge catches up at the end. Solid
-   fill, no gradient falloff - a soft edge read as motion blur. Paints
-   behind the button's own label and icon (the z-index pair below), not
-   over them.
-
-   --field, not --accent: --accent is adjusted for legibility as small
-   text/icon fills (trans's rose is darkened from the flag's own #C25B79
-   to #B85272 for exactly that reason, a few lines up in palettes.css) and
-   reads as a slightly different colour from the flag itself. --field is
-   the flag's own hex undisturbed - the same value activeFlag.svelte.ts
-   already paints a screen's own field with (ADR-0075).
-
-   .is-swiping is toggled by a caller on press and removed on
-   transitionend - the same one-shot pattern .nav-add.is-catching already
-   uses - since :active alone cannot guarantee the sweep finishes on a tap
-   shorter than its duration. */
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  top: -35%;
-  bottom: -35%;
-  left: -45%;
-  right: 120%;
-  background: var(--field);
-  transform: skewX(-18deg);
-  pointer-events: none;
-  transition:
-    left var(--dur-med) linear var(--stagger-step),
-    right var(--dur-med) linear;
-}
-.btn-primary.is-swiping::after {
-  left: 145%;
-  right: -70%;
-}
-/* A positioned descendant (::after, position: absolute) paints above
-   static in-flow content by default, so without this the sweep covered
-   the icon and label instead of passing behind them. Positioning the
-   children too puts them in the same z-index-ordered bucket the pseudo
-   is in, where an explicit z-index wins over the pseudo's implicit auto. */
-.btn-primary > * {
-  position: relative;
-  z-index: 1;
-}
 /* Behind a hover query because this rule sits after .btn:active and carries
    the same specificity, so on a touch screen it wins. Chromium applies
    :hover on tap and leaves it applied until something else is tapped, which
@@ -738,7 +691,9 @@
   min-width: 0;
   background: var(--surface-2);
   /* A square track (phase 10, rule 5): 8px around 6px segments, so the
-     corners stay concentric at a 3px inset. */
+     corners stay concentric at a 3px inset. Both are raw on purpose: they
+     are derived from --r-block, and neither is on the radius or spacing
+     scale. */
   border-radius: 8px;
   padding: 3px;
   overflow-x: auto;
@@ -985,7 +940,13 @@ a.segment {
    last label at that width already. tests/voice-task-names.mjs sweeps every
    compact control the app renders at both widths and holds that claim,
    rather than leaving it as a sentence somebody measured once. */
-.segmented.is-compact .segment { flex: 1 1 auto; min-width: max-content; padding-inline: var(--space-1); }
+/* `width: max-content` rather than `min-width`: the min-width is the
+   segment's 48px floor, which `min-width: max-content` used to replace -
+   "cm" came out 28px wide and "in" 21px in Settings, "7d" 40px on the
+   tallies (after-release ticket 18). As the flex basis, max-content still
+   hands an overflowing label back to the track, and `flex-shrink: 0` keeps
+   it from being squeezed under its words. */
+.segmented.is-compact .segment { flex: 1 0 auto; width: max-content; min-width: var(--touch-target); padding-inline: var(--space-1); }
 /* 5px, not 9px. The inset was tuned when the compact form carried six
    segments across the full width, where the pill is wider than it is tall
    whatever the inset. With three or six *short* labels the segments are wide
@@ -1041,7 +1002,7 @@ a.segment {
 .input, textarea.input, select.input {
   font: inherit; color: var(--text);
   background: var(--surface);
-  border: 1.5px solid var(--outline);
+  border: 1.5px solid var(--input-edge);
   border-radius: var(--r-block);
   padding: 12px var(--space-4);
   min-height: var(--touch-target);
@@ -1084,7 +1045,7 @@ a.segment {
   color: var(--text);
   background: none;
   border: 0;
-  border-bottom: 3px solid var(--outline);
+  border-bottom: 3px solid var(--input-edge);
   border-radius: 0;
 }
 .rule-input::placeholder {
@@ -1631,19 +1592,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .slider-thumb:focus-visible { outline: none; }
 .slider:focus-visible .slider-thumb { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-/* An unset slider (ticket 31). The thumb has to rest somewhere, and where it
-   rests is not a value anyone logged - on a body region both axes start this
-   way, so a mid-track thumb would otherwise read as a middling score. Dimmed
-   rather than hidden: the control is still there to be used. The ruler is not
-   dimmed with it, because the scale is true whether or not there is a value
-   on it yet. */
-.slider.is-unset .slider-fill,
-.slider.is-unset .slider-thumb { opacity: 0.45; }
-/* And no mark claims to be standing on a value, because there is not one. */
-.slider.is-unset .slider-tick.is-here {
-  background: color-mix(in oklab, var(--text) 45%, transparent);
-  scale: 1;
-}
+/* An unset slider's own drawing lives with the control (Slider.svelte), out
+   of this first-load sheet: only an editor ever draws one. */
 .dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
 
 /* Inset to the lane, so the two endpoint words line up under the two
@@ -1656,7 +1606,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
-.tag-group-name { font-size: var(--text-xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); display: block; margin-bottom: var(--space-2); }
+/* A group's name over its chips, in the field label's own type (after-release
+   28: one small-label style, sentence case, no letterspaced capitals). */
+.tag-group-name { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); display: block; margin-bottom: var(--space-2); }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 /* A region's slider slides in under the chip row it answers to (ticket 99);
    the margin rides the sliding element, so the gap is part of the motion
@@ -1688,7 +1640,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .tag-chip {
   position: relative;
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 8px 14px; min-height: 36px;
+  /* 14px across has no spacing token (it falls between --space-3 and
+     --space-4), so it stays as drawn; 8px is --space-2. */
+  padding: var(--space-2) 14px; min-height: 36px;
   /* A tag is the one capsule left (phase 10, rule 5). */
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--outline);
@@ -1698,14 +1652,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-/* -6px each way over a 36px pill is 48px. The row's own gap is 8px, so two
-   stacked rows of chips extend towards each other without their targets
-   meeting. */
-.tag-chip::after {
-  content: '';
-  position: absolute;
-  inset: -6px 0;
-}
+/* The chip's ::after is the shared .hit-floor box above. */
 .tag-chip:hover { border-color: var(--accent-border); }
 .tag-chip.is-selected {
   background: var(--accent-soft); border-color: var(--accent);
@@ -1741,21 +1688,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 .legend-swatch { width: 16px; height: 16px; border-radius: var(--r-block); display: inline-block; }
 
 /* ---------- charts ---------- */
-/* overflow visible so a focus ring on the first or last point is not clipped
-   by the viewBox it sits against - the card's padding absorbs the few px. */
-.line-chart { width: 100%; height: auto; display: block; overflow: visible; }
-.chart-line { fill: none; stroke: var(--chart-line); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.chart-area { fill: var(--chart-fill); }
-/* The second series (ticket 31), told apart the way WearTrendChart tells its
-   two apart: accent-2 and a dash, not a second weight of the same colour.
-   Dashed as well as recoloured so the two lines stay distinguishable without
-   relying on hue alone. Same stroke width as the first, and the first gives
-   up its area fill whenever this one is present: two readings of one spot,
-   neither of them the other's footnote. */
-.chart-line-overlay { fill: none; stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; stroke-linejoin: round; }
 .chart-gridline { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
-.chart-dot { fill: var(--surface); stroke: var(--chart-line); stroke-width: 2; }
-.chart-dot.is-selected { fill: var(--chart-line); stroke-width: 4; }
 /* Invisible tap targets over the dots. `fill: transparent` rather than
    `fill: none`, which would make them ignore pointer events entirely. */
 /* No outline in any focus state: a rectangle drawn around a point on a
@@ -1763,7 +1696,6 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    hit circle itself, which scales with everything else. */
 .chart-hit { fill: transparent; cursor: pointer; outline: none; }
 .chart-hit:focus-visible { stroke: var(--focus-ring); stroke-width: 2; }
-.chart-too-little { color: var(--text-2); font-size: var(--text-sm); padding: var(--space-5); text-align: center; }
 
 /* ---------- sheets, toasts ---------- */
 /* Fixed rather than absolute, and against the app frame rather than the
@@ -1974,12 +1906,9 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
      with enough in it.
 
      It has to be the sheet's own padding rather than the scrim's. The scrim
-     is absolutely positioned inside `.app-main`, which scrolls, so it is
-     sized to the scrolled content rather than to the app frame - padding it
-     grows the scroll area and moves nothing. That mismatch is also why
-     `max-height: 85%` is 85% of the content height rather than of the frame
-     the comment below believes it is measuring; worth a shell ticket, and
-     too wide to take here.
+     is `position: fixed` and bottom-aligns the sheet, so padding on it would
+     lift the sheet off the floor rather than give the sheet's own rows room
+     to scroll clear of the bar.
 
      `--nav-clearance` is the token the scroll region and the editor's save
      bar already agree on, so the three cannot drift, and it drops to the
@@ -2050,7 +1979,7 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
    used; the toast goes under the scrim with everything else. */
 .fan-scrim {
   position: absolute; inset: 0; z-index: 54;
-  /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+  /* Keep CSS transitions disabled so Svelte's
      transition controls opacity without CSS transition interference (ticket 105, 116). */
   transition: none;
 }
@@ -2173,34 +2102,6 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
 .fan-mood:hover,
 .fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
 
-/* The magnifier (phase 5 ticket 31). --mood-mag is written per face by
-   QuickAdd.svelte from the pointer's distance to that face, so this rule is
-   only the shape of the response: bigger, and lifted by enough that the
-   growth goes upward into the row above rather than down through the label.
-   At the 1.24 peak on a 34px face that is 8px of growth against 5px of lift,
-   so the bottom of the face stays where it is and the top rises.
-
-   Tier 1, so --dur-fast, and the transition is doing a second job here: the
-   scale is re-aimed on every pointermove, so the easing reads as a filter on
-   a moving finger rather than as a delay behind it.
-
-   The `scale` and `translate` properties rather than one `transform`, because
-   the picker's own states use `transform` on this same element and a
-   shorthand here would be a second author of the same property on a
-   different surface.
-
-   Nothing is declared for reduced motion, and nothing needs to be: QuickAdd
-   leaves --mood-mag at 1 there rather than not writing it, so there is no
-   scale to undo, and the armed colour above is the whole answer. That is the
-   substitution rather than a deletion - what goes is the movement, not the
-   cue.
-
-   The scale and the lift are both the base .mood-face rule's now - every
-   mood row reads --mood-mag and rises with it, the fan included (Alicja,
-   phase 5 ticket 99: the fan was how the hover was supposed to look). The
-   selector stays only as a marker; the day a surface needs its own lift
-   apart from the rows' is the day it gets a declaration again. */
-
 /* The mark travelling from the row you chose into the add control (phase 5
    ticket 18, tier 3). Transform and opacity only, over the same
    --dur-med/--ease-out every other tier-2 and tier-3 move in the app uses,
@@ -2283,9 +2184,6 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
   100% { transform: translateX(0); }
 }
 
-/* Substitute, never delete: nothing travels and nothing pulses, and the
-   tick still appears on the button for exactly as long. What goes is the
-   movement, not the news. */
 /* Substitute, never delete, and symmetrically: the tick and the alert both
    still appear on the control for exactly as long. What goes is the
    travelling, the pulse and the shake - the movement, never the news. */
@@ -2324,15 +2222,20 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 
 .toast {
-  position: absolute; left: 50%; bottom: var(--nav-clearance);
-  transform: translate(-50%, 10px);
+  /* Centred by its two insets and auto margins rather than by left: 50%
+     and a -50% translate (after-release 17, U2/UI-19). The translate was
+     the transform the arrival composes with, and at desktop width it
+     centred the toast on the window, 105px off the column it belongs to;
+     an inset can take the rail's width instead, and the right one the
+     scroll region's scrollbar gutter (+layout.svelte measures it). */
+  position: absolute; left: 0; right: var(--scroll-gutter, 0px); margin-inline: auto; bottom: var(--nav-clearance);
+  transform: translateY(10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--r-block);
   padding: var(--space-3) var(--space-4);
   display: flex; align-items: center; gap: var(--space-4);
-  /* Positioned at left: 50%, a toast's shrink-to-fit width is capped at half
-     the screen, which wrapped "Moved to trash" onto two lines beside its
-     action. It takes the width of its text, up to max-width below. */
+  /* The width of its text, up to max-width below: a toast with one word in
+     it is not a bar across the screen. */
   width: max-content;
   font-size: var(--text-sm); font-weight: var(--weight-medium);
   /* No shadow, and none needed: this is already rule 4's ink treatment -
@@ -2354,7 +2257,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      instead and goes nowhere until it clears. */
   pointer-events: none;
 }
-.toast.is-open { opacity: 1; transform: translate(-50%, 0); }
+.toast.is-open { opacity: 1; transform: none; }
 /* Measured at 48.3x32 by ticket 30, under the same floor and fixed the same
    way. A toast is a single line and growing this to 48px would grow the toast
    around it; the target grows instead. There is only ever one action in a
@@ -2461,7 +2364,7 @@ html[data-a11y-motion='reduce'] .bloom-core {
   text-align: center; padding: var(--space-6) var(--space-5);
   display: flex; flex-direction: column; gap: var(--space-3); align-items: center;
 }
-.empty-state h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: var(--space-2) 0 0; }
+.empty-state :is(h2, h3) { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: var(--space-2) 0 0; }
 .empty-state p { color: var(--text-2); font-size: var(--text-sm); margin: 0; max-width: 34ch; }
 .empty-state .rive-stage { width: 100%; }
 
@@ -2752,6 +2655,11 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 .pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
 .pin-wait + .pin-status { margin-top: var(--space-3); }
 
+/* A failed reset, inside the sheet that asked for it (after-release ticket
+   09). Spaced by padding rather than margin, so the line's own disclose
+   travels the space it takes instead of the space arriving in one frame. */
+.reset-failed { color: var(--danger); margin: 0; padding-top: var(--space-3); }
+
 /* ---------- misc ---------- */
 .muted { color: var(--text-2); }
 .small { font-size: var(--text-sm); }
@@ -2782,6 +2690,8 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
+  /* Its left inset, the rail's width, is set by +layout.svelte, the one
+     file that knows whether a rail is drawn. */
   .toast { bottom: var(--space-6); }
 }
 

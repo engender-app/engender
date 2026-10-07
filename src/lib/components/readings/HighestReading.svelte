@@ -81,12 +81,12 @@
       name={m.stats_highest_days()}
       href={readingHref('highest', span)}
       headline={topRow.name}
-      note={`${topRow.value} ${highestMetric.name}`}
+      note={m.reading_highest_value({ value: topRow.value, metric: highestMetric.name })}
     >
       {#snippet drawing()}
-        <span class="highest-bars">
+        <span class="reading-bars">
           {#each highestRows.slice(0, 3) as row (row.key)}
-            <span class="highest-bar" style={`width: ${Math.round(Math.max(row.amount, 0.04) * 100)}%`}></span>
+            <span class="reading-bar" style={`width: ${Math.round(Math.max(row.amount, 0.04) * 100)}%`}></span>
           {/each}
         </span>
       {/snippet}
@@ -113,27 +113,3 @@
     {/if}
   </ChartCard>
 {/if}
-
-<style>
-  .highest-bars {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 4px;
-    width: 100%;
-    height: 100%;
-  }
-
-  .highest-bar {
-    display: block;
-    flex: 0 0 8px;
-    border-radius: 2px;
-    background: var(--ink);
-  }
-
-  .reading-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
-</style>

@@ -35,7 +35,7 @@
    one is gone. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributeDrug, drugSpans } from './regimenEpisode';
+import { attributeDrug, drugSpans, drugNameKey, sameDrug } from './regimenEpisode';
 import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -62,14 +62,25 @@ export interface StockEntry {
   quantity: number;
   unit: string;
   recordedEpochDay: number;
+  /** How many doses one unit holds (after-release ticket 01): five doses to
+      a vial, 28 to a blister. Null or missing means one dose per unit, the
+      only reading there was before. */
+  dosesPerUnit?: number | null;
 }
+
+/** The doses one unit of `stock` holds: its own figure when one was typed
+    and is usable, one otherwise. */
+export const dosesInOneUnit = (stock: Pick<StockEntry, 'dosesPerUnit'>): number =>
+  stock.dosesPerUnit != null && stock.dosesPerUnit > 0 ? stock.dosesPerUnit : 1;
 
 export interface StockProjection {
   /** `quantity` minus every non-skipped dose logged against this drug on
-      or after `recordedEpochDay`. Can go negative - the count that was
+      or after `recordedEpochDay`, in the entry's own unit: each dose takes
+      1 / `dosesPerUnit` of a unit. Can go negative - the count that was
       recorded has already been outrun. */
   remaining: number;
-  /** Non-skipped doses per calendar day over the trailing window, or null
+  /** Units used per calendar day over the trailing window (non-skipped
+      doses per day, divided by `dosesPerUnit`), or null
       when the window held no calendar days to average over (a stock entry
       recorded after `asOfEpochDay`, which only backdating could produce). */
   dailyRate: number | null;
@@ -90,13 +101,6 @@ export interface StockProjection {
 
 const isConsuming = (dose: DoseEvent) => dose.status !== 'skipped';
 
-/** Whether two drug names are the same drug. Exported because pairing a
-    stock entry to a regimen is the same question outside this file as in
-    it - Care pairs each running drug's lane to the stock it is counting
-    down (phase 11 ticket 10), and a second comparison written there could
-    disagree with the one the projection itself is made from. */
-export const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
-
 /** Whether `dose` counts against `stock`'s drug: taken or changed - a
     skipped dose used nothing - and attributed (regimenEpisode.ts) to this
     drug, not necessarily to the episode active when the stock was
@@ -104,7 +108,7 @@ export const drugsMatch = (a: string, b: string) => a.trim() === b.trim();
 function consumesStock(dose: DoseEvent, stock: StockEntry, episodes: readonly RegimenEpisode[]): boolean {
   if (!isConsuming(dose)) return false;
   const { drug } = attributeDrug(episodes, dose);
-  return drug !== null && drugsMatch(drug, stock.drug);
+  return drug !== null && sameDrug(drug, stock.drug);
 }
 
 /** The first day of the trailing window the consumption rate is estimated
@@ -140,15 +144,24 @@ function projectStockFromCounts(
   counts: StockDoseCounts,
   asOfEpochDay: number
 ): StockProjection {
-  const remaining = stock.quantity - counts.consumed;
+  /* Worked in doses and turned into units only at the end, so the run-out
+     day comes out of whole-number arithmetic: 7 doses left at 3 doses in
+     21 days is 7 * 21 / 3 = 49 days, where dividing by a rate of 3/21
+     first lands a hair over 49 and ceil() adds a day. */
+  const perUnit = dosesInOneUnit(stock);
+  const remainingDoses = stock.quantity * perUnit - counts.consumed;
+  const remaining = remainingDoses / perUnit;
   const excludedDoses = counts.excluded;
 
   const windowDays = asOfEpochDay - trailingWindowStart(stock, asOfEpochDay) + 1;
-  const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays : null;
+  const dailyRate = windowDays > 0 ? counts.consumedInTrailingWindow / windowDays / perUnit : null;
 
-  if (remaining <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
+  // Asked of the dose count, not the divided figure, so a fractional
+  // quantity cannot leave 1e-16 standing in for "out".
+  if (remainingDoses <= 0) return { remaining, dailyRate, runOutEpochDay: asOfEpochDay, excludedDoses };
   if (!dailyRate) return { remaining, dailyRate, runOutEpochDay: null, excludedDoses };
-  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + Math.ceil(remaining / dailyRate), excludedDoses };
+  const daysLeft = Math.ceil((remainingDoses * windowDays) / counts.consumedInTrailingWindow);
+  return { remaining, dailyRate, runOutEpochDay: asOfEpochDay + daysLeft, excludedDoses };
 }
 
 /** How many non-skipped doses carry each stored `drug` value in each of
@@ -205,7 +218,7 @@ export async function projectEveryStock(
     return span;
   });
 
-  /* Doses that named a drug are keyed by that name, trimmed the way a drug
+  /* Doses that named a drug are keyed by that name, normalized the way a drug
      is matched everywhere else; doses that named none are kept apart,
      because which drug they count against is the span's answer rather than
      their own. A falsy `drug` is what attributeDrug treats as naming
@@ -218,13 +231,13 @@ export async function projectEveryStock(
         unnamedByRange[index] += n;
         return;
       }
-      const key = row.drug.trim();
+      const key = drugNameKey(row.drug);
       namedByRange[index].set(key, (namedByRange[index].get(key) ?? 0) + n);
     });
   }
 
   return entries.map((entry) => {
-    const drug = entry.drug.trim();
+    const drug = drugNameKey(entry.drug);
     const windowStart = trailingWindowStart(entry, asOfEpochDay);
     const counts: StockDoseCounts = { consumed: 0, consumedInTrailingWindow: 0, excluded: 0 };
 
@@ -233,7 +246,7 @@ export async function projectEveryStock(
       const span = spanForRange[index];
       const unnamed = unnamedByRange[index];
       const attributed =
-        (namedByRange[index].get(drug) ?? 0) + (span.drug !== null && span.drug.trim() === drug ? unnamed : 0);
+        (namedByRange[index].get(drug) ?? 0) + (span.drug !== null && sameDrug(span.drug, drug) ? unnamed : 0);
 
       counts.consumed += attributed;
       if (range.fromEpochDay >= windowStart) counts.consumedInTrailingWindow += attributed;

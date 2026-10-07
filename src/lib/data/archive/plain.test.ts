@@ -136,6 +136,13 @@ test('+, - and @ are guarded the same way, and a later one in the field is not',
   ]);
 });
 
+test('leading tabs and carriage returns stay text in spreadsheet cells', () => {
+  const tab = journalCsv(journalOf([entry({ note: '\t=1+1' })]), naming);
+  assert.equal(rows(tab)[1], "2026-01-15,07:15,,,'\t=1+1");
+  const carriageReturn = journalCsv(journalOf([entry({ note: '\r=1+1' })]), naming);
+  assert.ok(carriageReturn.includes("\"'\r=1+1\""));
+});
+
 test('a custom dimension name and a custom tag label get the same guard, header included', () => {
   // csvField backs every column, not just the note - a custom dimension
   // name and a custom tag label are the person's own free text too, so a

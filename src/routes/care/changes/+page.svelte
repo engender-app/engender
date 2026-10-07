@@ -47,6 +47,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -76,7 +77,7 @@
   import {
     EFFECT_DIRECTIONS,
     effectDirectionLabel,
-    type EffectDirection
+    type EffectDirectionGroup
   } from '$lib/data/effectDirections';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
@@ -96,7 +97,7 @@
   let markers = $derived(markersQuery.rows);
   const markerFor = (effect: string) => markers.find((marker) => marker.effect === effect) ?? null;
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /* The catalogue a hidden effect or a disabled category has already
      removed (CONTEXT: "Hidden", "Effect category") - what the timeline and
@@ -113,7 +114,7 @@
     anchor == null ? null : new Map(visibleEffects.map((e) => [e.key, literatureWindowDays(e.key, anchor)] as const))
   );
 
-  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirection => e.direction ?? 'other';
+  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirectionGroup => e.direction ?? 'other';
 
   /* Category, then direction, is the coarse control (CONTEXT: "Effect
      category"); collapsed by default so a new journal's screen stays no
@@ -122,13 +123,17 @@
      together, since the same category groups separately under each
      direction. */
   let expandedGroups = $state(new Set<string>());
-  const groupKey = (direction: EffectDirection, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
+  const groupKey = (direction: EffectDirectionGroup, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
   function toggleGroup(key: string) {
     const next = new Set(expandedGroups);
     if (next.has(key)) next.delete(key);
     else next.add(key);
     expandedGroups = next;
   }
+
+  let hasDrawnBands = $derived(visibleEffects.some((effect) =>
+    expandedGroups.has(groupKey(directionOf(effect), effect.categoryKey)) && bands?.get(effect.key) != null
+  ));
 
   function timelineRowsFor(effects: PersonalEffectCatalogEntry[]) {
     return effects.map((e) => ({
@@ -333,6 +338,26 @@
   }
 </script>
 
+{#snippet groupBody(groupEffects: typeof visibleEffects)}
+                    {#if anchorEpochDay !== null}
+                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {/if}
+                    {#each groupEffects as e (e.key)}
+                      {@const marker = markerFor(e.key)}
+                      <ListRow
+                        key={e.key}
+                        title={e.name}
+                        subtitle={marker
+                          ? m.effect_first_noticed({
+                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                            })
+                          : m.effect_not_marked()}
+                        chevron={false}
+                        onclick={() => openEditor(e)}
+                      />
+                    {/each}
+{/snippet}
+
 <div class="screen">
   <!-- The intro stays in the body rather than becoming the header's
        subtitle. At 420 characters it is by some way the longest of these
@@ -388,31 +413,32 @@
     {/if}
 
     <!-- These explanations concern the literature's bands, so they keep
-         the company of the chart that draws them: with no regimen there is
-         no band on the screen for them to be describing. A short limitation
-         stays visible while longer context stays in an
-         accessible disclosure (ticket 20, UX17). -->
-    {#if anchorEpochDay !== null}
-      <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
-      <div class="effects-methodology">
-        <button
-          type="button"
-          class="effects-methodology-toggle"
-          aria-expanded={methodologyOpen}
-          data-methodology-toggle
-          onclick={() => (methodologyOpen = !methodologyOpen)}
-        >
-          <span>{m.effects_methodology_disclosure()}</span>
-          <span class="effects-methodology-chev">
-            <Icon name="chevronDown" size={18} />
-          </span>
-        </button>
-        {#if methodologyOpen}
-          <div class="disclosed" transition:disclose>
-            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
-            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
-          </div>
-        {/if}
+         the company of the chart that draws them: a collapsed group has
+         no bands on screen, even when a regimen supplies their windows.
+         Longer context stays in an accessible disclosure (ticket 20, UX17). -->
+    {#if hasDrawnBands}
+      <div data-bands-context transition:disclose>
+        <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
+        <div class="effects-methodology">
+          <button
+            type="button"
+            class="effects-methodology-toggle"
+            aria-expanded={methodologyOpen}
+            data-methodology-toggle
+            onclick={() => (methodologyOpen = !methodologyOpen)}
+          >
+            <span>{m.effects_methodology_disclosure()}</span>
+            <span class="effects-methodology-chev">
+              <Icon name="chevronDown" size={18} />
+            </span>
+          </button>
+          {#if methodologyOpen}
+            <div class="disclosed" transition:disclose>
+              <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
+              <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
+            </div>
+          {/if}
+        </div>
       </div>
     {/if}
 
@@ -435,23 +461,7 @@
                 </ListRow>
                 {#if expanded}
                   <div class="effect-group-body" transition:disclose>
-                    {#if anchorEpochDay !== null}
-                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
-                    {/if}
-                    {#each groupEffects as e (e.key)}
-                      {@const marker = markerFor(e.key)}
-                      <ListRow
-                        key={e.key}
-                        title={e.name}
-                        subtitle={marker
-                          ? m.effect_first_noticed({
-                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                            })
-                          : m.effect_not_marked()}
-                        chevron={false}
-                        onclick={() => openEditor(e)}
-                      />
-                    {/each}
+                    {@render groupBody(groupEffects)}
                   </div>
                 {/if}
               </ListCard>
@@ -477,23 +487,7 @@
               </ListRow>
               {#if expanded}
                 <div class="effect-group-body" transition:disclose>
-                  {#if anchorEpochDay !== null}
-                    <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
-                  {/if}
-                  {#each uncategorized as e (e.key)}
-                    {@const marker = markerFor(e.key)}
-                    <ListRow
-                      key={e.key}
-                      title={e.name}
-                      subtitle={marker
-                        ? m.effect_first_noticed({
-                            date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                          })
-                        : m.effect_not_marked()}
-                      chevron={false}
-                      onclick={() => openEditor(e)}
-                    />
-                  {/each}
+                  {@render groupBody(uncategorized)}
                 </div>
               {/if}
             </ListCard>
@@ -573,16 +567,9 @@
     {/if}
   </ReadReserve>
 
-  <!-- Hair progress, the one change that keeps its own screen (phase 9
-       carpet ticket 16): a published scale and a camera behind it, so it
-       stays hosted rather than folded in here.
-
-       Outside the `anchorEpochDay` branch above on purpose. That branch
-       replaces this whole screen with a "set up a regimen first" notice, and
-       hair progress is usable without one. Inside it, the row would be the
-       dead route the ticket forbids. cycle-events shares this host too
-       (ticket 13) but draws by hand above rather than through this
-       component - `HostedRows.svelte` excludes it by key. -->
+  <!-- Hair progress remains available outside the regimen-dependent bands.
+       It uses a published scale and photos, so no regimen is required.
+       Cycle events are hosted above; HostedRows excludes their key. -->
   <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>

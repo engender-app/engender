@@ -60,7 +60,7 @@ import { photoFileName } from '../photos/names';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
 import { mintUuid } from '../journal/support';
-import type { DaylioNaming } from './daylio';
+import { tagMatches, type DaylioNaming } from './daylio';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
 import { openZip, type ZipReader } from './zipReader';
 
@@ -239,18 +239,6 @@ export function normalizeDayOneUuid(raw: string, entryLabel: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
-  const matches = new Map<string, string>();
-  for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {
-    const labels = tag.builtIn ? [...naming.tagLabels(tag.id), tag.label] : [tag.label];
-    for (const label of labels.filter((l) => l.trim().length > 0)) {
-      const folded = foldText(label);
-      if (!matches.has(folded)) matches.set(folded, tag.id);
-    }
-  }
-  return matches;
-}
-
 const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]): ArchiveJournal => ({
   ...emptyArchiveJournal(),
   tagGroups: [tagGroup],
@@ -385,7 +373,7 @@ export async function dayonePreview(
     builtIn: true,
     tags: [...newTags.values()]
   };
-  const entries = candidates.map((c) => c.entry);
+  const entries = candidates.map(({ entry }) => ({ ...entry, tags: [...new Set(entry.tags)] }));
   return {
     entryCount: entries.length,
     matchedTagCount: matchedTags.size,

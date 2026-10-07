@@ -5,16 +5,21 @@
    it first and only. */
 
 import { m } from '$lib/paraglide/messages';
-import { fmtDay } from '../dates';
+import { fmtDay, intlLocale } from '../dates';
 import { RUN_OUT_LEAD_DAYS, type StockProjection } from '../stockProjection';
 import { inUseWindowEndEpochDay, isPastInUseWindow, type InUseWindow } from '../inUseWindow';
 
 /** "N unit left" - the one sentence for a remaining count, in mg, vials,
     pills or whatever the entry's own unit says. Also stands alone: the
     quick-log chip states only this, deliberately dropping the run-out
-    reading (see stockRunOutLabel's doc). */
+    reading (see stockRunOutLabel's doc).
+
+    The count can be a fraction once a unit holds several doses (1.4 vials),
+    so it is rounded to two places and localized: a Polish reader expects
+    "1,4", not "1.4". */
 export function stockRemainingLabel(remaining: number, unit: string): string {
-  return m.stock_remaining({ count: remaining, unit });
+  const count = new Intl.NumberFormat(intlLocale(), { maximumFractionDigits: 2 }).format(remaining);
+  return m.stock_remaining({ count, unit });
 }
 
 interface StockRunOutLabel {

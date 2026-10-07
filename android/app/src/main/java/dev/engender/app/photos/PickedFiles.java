@@ -11,7 +11,7 @@ import java.util.UUID;
 
 /**
  * What a pick hands the WebView instead of bytes (phase 9 audit ticket 06):
- * a token per file, redeemable once for that file's bytes.
+ * a token per file, released when its bytes have been received.
  *
  * <p>The point of the indirection is that the redeeming can then happen over
  * whichever transport the WebView can carry - {@link PhotoPickChannel} as a
@@ -25,9 +25,9 @@ import java.util.UUID;
  * interval between the pick and the read - the read itself buffers the whole
  * file for {@link PhotoPickChannel} and a chunk of it for the base64
  * fallback, which is those transports' price and not this store's. And
- * either transport can consume the same entry its own way: {@link #take}
- * hands the whole source over at once, and {@link #readChunk} walks the same
- * source a buffer at a time.
+ * the channel keeps its source until JavaScript acknowledges the bytes,
+ * while {@link #readChunk} consumes it a buffer at a time. A timed-out
+ * channel closes its reader and lets the chunked transport reopen the source.
  *
  * <p><b>The chunked read is the one entry that outlives a single call</b>
  * (phase 9 audit ticket 14). A Capacitor plugin response is one JSON string
@@ -59,10 +59,11 @@ public final class PickedFiles {
         person picked them; the map is small and always one pick's worth. */
     private static final Map<String, Source> HELD = new LinkedHashMap<>();
 
-    /** The one chunked read in flight, and the token it belongs to. Both
+    /** The one channel or chunked read in flight, and its token. Both
         null between reads. */
     private static String readingToken;
     private static InputStream reading;
+    private static boolean channelReading;
 
     private PickedFiles() {}
 
@@ -96,6 +97,42 @@ public final class PickedFiles {
         return token == null ? null : HELD.remove(token);
     }
 
+    /** Keeps the source redeemable until JavaScript acknowledges the bytes.
+        A timeout can then reopen it through the chunked transport. */
+    static InputStream openForChannel(String token) throws Exception {
+        final Source source;
+        synchronized (PickedFiles.class) {
+            source = HELD.get(token);
+            if (source == null) return null;
+            endRead();
+        }
+        InputStream opened = source.open();
+        if (opened == null) throw new IllegalStateException("could not read selected file");
+        synchronized (PickedFiles.class) {
+            if (HELD.get(token) != source || reading != null) {
+                close(opened);
+                return null;
+            }
+            readingToken = token;
+            reading = opened;
+            channelReading = true;
+        }
+        return opened;
+    }
+
+    static synchronized void finishChannelRead(InputStream stream) {
+        if (channelReading && reading == stream) endRead();
+    }
+
+    static synchronized void cancelChannelRead(String token) {
+        if (channelReading && token.equals(readingToken)) endRead();
+    }
+
+    static synchronized void release(String token) {
+        HELD.remove(token);
+        cancelChannelRead(token);
+    }
+
     /** The next {@code buffer.length} bytes of the file {@code token} names,
         filling {@code buffer} from the start and answering how many bytes
         went into it. The file is opened on the first call for a token and
@@ -120,7 +157,7 @@ public final class PickedFiles {
         arriving mid-read from racing the stream it is about to close. */
     public static synchronized int readChunk(String token, byte[] buffer) throws Exception {
         if (token == null) return -1;
-        if (!token.equals(readingToken)) {
+        if (!token.equals(readingToken) || channelReading) {
             endRead();
             Source source = HELD.remove(token);
             if (source == null) return -1;
@@ -152,6 +189,7 @@ public final class PickedFiles {
         close(reading);
         readingToken = null;
         reading = null;
+        channelReading = false;
     }
 
     private static void close(Closeable stream) {

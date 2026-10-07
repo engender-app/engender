@@ -47,6 +47,7 @@
   } from '$lib/data/letterStatus';
   import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { Letter } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LetterArrival from '$lib/components/LetterArrival.svelte';
@@ -67,7 +68,7 @@
 
   const HISTORY_LIMIT = 100;
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   type Composition = { id?: string; text: string; unlockDate: string };
   let sealOutcome = $state('');
 
@@ -94,8 +95,8 @@
      from the screen this absorbed. `starredPhotos()` reads oldest first
      (CONTEXT: "Starred", the shelf's own order) and somebody reaching for
      what they kept wants the newest of it. Six, so a large starred
-     collection stays a glance; the shelf itself (/search/starred) is
-     unbounded and one tap further. */
+     collection stays a glance. The full photo library remains available
+     from the Media group. */
   const PHOTO_LIMIT = 6;
   let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
   let starredPhotos = $derived([...starredPhotosQuery.rows].reverse().slice(0, PHOTO_LIMIT));
@@ -171,11 +172,12 @@
     upsert: async (draft) => {
       if (requirement(draft)) return false;
       const unlockEpochDay = epochDayFromDateInputValue(draft.unlockDate)!;
-      await journal.letters.addLetter({ epochDay: today, text: draft.text.trim(), unlockEpochDay });
+      await journal.letters.addLetter({ epochDay: todayEpochDay(), text: draft.text.trim(), unlockEpochDay });
       if (record.editor === draft && unlockEpochDay !== today) {
         sealOutcome = isLetterSealed({ unlockEpochDay }, today) ? m.letters_seal_done() : m.letters_ready_done();
       }
     },
+    saved: () => sealOutcome || m.saved(),
     remove: (id) => journal.letters.deleteLetter(id),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
@@ -299,8 +301,6 @@
     {/snippet}
   </ReadGate>
 
-  <p class="visually-hidden" role="status" data-letter-outcome>{sealOutcome}</p>
-
   {#if calendarFor}
     <CalendarHandoffSheet
       open={calendarFor !== null}
@@ -328,26 +328,26 @@
   />
   {#snippet fields(draft: Composition)}
     <Field label={m.letters_text_label()} id="letter-text">
-      {#snippet children(id)}
+      {#snippet children(id, _hint, touched)}
         <textarea
           class="input"
           {id}
           rows="6"
           placeholder={m.letters_compose_placeholder()}
           bind:value={draft.text}
-          aria-invalid={!draft.text.trim()}
-          aria-describedby={!draft.text.trim() ? 'letter-requirements' : undefined}
+          aria-invalid={touched && !draft.text.trim()}
+          aria-describedby="letter-requirements"
         ></textarea>
       {/snippet}
     </Field>
 
     <Field label={m.letters_unlock_label()} id="letter-unlock">
-      {#snippet children(id)}
+      {#snippet children(id, _hint, touched)}
         <DatePicker
           name="letter-unlock"
           bind:value={draft.unlockDate}
           {id}
-          aria-invalid={!draft.unlockDate || !Number.isFinite(epochDayFromDateInputValue(draft.unlockDate))}
+          aria-invalid={touched && (!draft.unlockDate || !Number.isFinite(epochDayFromDateInputValue(draft.unlockDate)))}
           describedBy="letter-requirements"
         />
       {/snippet}

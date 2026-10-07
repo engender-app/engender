@@ -4,11 +4,12 @@
    registry.ts's. */
 
 import { describe, expect, it } from 'vitest';
-import { RESURFACING_SURFACE_ROWS, RESURFACING_SURFACES, unregisteredSurfaces } from './resurfacing.ts';
+import { journalWithBuiltIns } from '../data/journal/test-support';
+import { RESURFACING_SURFACE_ROWS, RESURFACING_SURFACES, unregisteredSurfaces, resurfacing } from './resurfacing.ts';
 
 describe('the resurfacing surface registry', () => {
-  it('lists the four surfaces: a route and a Home tile, for on-this-day and for Wrapped', () => {
-    expect(RESURFACING_SURFACES).toEqual(['on-this-day', 'on-this-day-home-card', 'wrapped', 'wrapped-home-card']);
+  it('registers routes, Home tiles, notifications and sharing', () => {
+    expect(RESURFACING_SURFACES).toEqual(['on-this-day', 'on-this-day-home-card', 'wrapped', 'wrapped-home-card', 'on-this-day-notification', 'wrapped-notification', 'wrapped-share']);
   });
 
   it('gives every row a key of its own', () => {
@@ -29,5 +30,21 @@ describe('the resurfacing surface registry', () => {
   it('the completeness check can fail: a shortened registry names exactly the surface it is missing', () => {
     const shortened = RESURFACING_SURFACE_ROWS.filter((row) => row.key !== 'wrapped-home-card');
     expect(unregisteredSurfaces(shortened)).toEqual(['wrapped-home-card']);
+  });
+});
+
+describe('resurfacing consent through the registered interface', () => {
+  it.each(RESURFACING_SURFACES)('%s excludes muted days and whole overlapping periods', async (surface) => {
+    const { journal } = await journalWithBuiltIns();
+    const era = await journal.eras.upsertEra({ name: 'kept out', startEpochDay: 19000, endEpochDay: 19100 });
+    await journal.eraMutes.setEraMuted(era, true);
+
+    const consent = await resurfacing(surface, journal);
+    expect(consent.allowedDays([{ epochDay: 19050 }, { epochDay: 19200 }])).toEqual([{ epochDay: 19200 }]);
+    expect(consent.mayResurface({ start: 18900, end: 19200 })).toBe(false);
+    expect(consent.mayResurface({ start: 19101, end: 19200 })).toBe(true);
+
+    await journal.eraMutes.setEraMuted(era, false);
+    expect((await resurfacing(surface, journal)).mayResurface({ start: 19050, end: 19050 })).toBe(true);
   });
 });

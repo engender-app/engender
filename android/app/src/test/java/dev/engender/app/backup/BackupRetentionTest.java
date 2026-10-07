@@ -34,7 +34,7 @@ public class BackupRetentionTest {
         documents.add(foreign);
         documents.add(manual);
 
-        BackupRetention.prune(verified, documents);
+        BackupRetention.prune(verified, documents, (uri) -> true);
 
         assertEquals(Arrays.asList("uri-3", "uri-4", "uri-5", "uri-6", "uri-7", "manual"), verified);
         for (int i = 0; i < 8; i++) assertEquals(i < 3, documents.get(i).deleted);
@@ -50,19 +50,25 @@ public class BackupRetentionTest {
             documents.add(new Document("uri-" + i, "auto-backup-" + i + ".ttbackup"));
         }
         documents.get(0).removable = false;
-        BackupRetention.prune(verified, documents);
+        BackupRetention.prune(verified, documents, (uri) -> true);
         assertEquals(6, verified.size());
         assertFalse(documents.get(0).deleted);
 
         documents.get(0).removable = true;
-        BackupRetention.prune(verified, documents);
+        BackupRetention.prune(verified, documents, (uri) -> true);
         assertEquals(5, verified.size());
         assertTrue(documents.get(0).deleted);
     }
 
-    @Test public void leavesPreviouslyChosenFoldersAndDirectoriesAlone() {
+    @Test public void forgetsDocumentsProvedMissing() {
         List<String> verified = new ArrayList<>(Arrays.asList("old-folder"));
-        BackupRetention.prune(verified, new ArrayList<Document>());
-        assertEquals(Arrays.asList("old-folder"), verified);
+        BackupRetention.prune(verified, new ArrayList<Document>(), (uri) -> false);
+        assertTrue(verified.isEmpty());
     }
+    @Test public void retainsOwnershipWhenAnotherFolderIsPresentOrCannotBeChecked() {
+        List<String> verified = new ArrayList<>(Arrays.asList("old-folder", "unavailable"));
+        BackupRetention.prune(verified, new ArrayList<Document>(), (uri) -> true);
+        assertEquals(Arrays.asList("old-folder", "unavailable"), verified);
+    }
+
 }

@@ -4,6 +4,28 @@ engender keeps journal data on the device and encrypts it at rest. Security
 reports still matter, and a report should be possible without posting the
 details in public first.
 
+## What the lock protects
+
+On the web, locking a journal that opens with a passphrase, PIN or the
+device's biometric unlock closes its database, stops the worker that held
+the database key, and drops the app's references to that key. Unlocking
+derives the key again from your secret. While locked, the page keeps your
+settings, which the lock screen needs for its theme, language and timing,
+and an encrypted copy of an unsaved entry draft.
+
+JavaScript cannot overwrite memory on demand. The browser frees what the
+app let go of on its own schedule, so the lock does not promise that the
+key's bytes are gone from memory, and it does not protect against
+software that can read the browser's memory.
+
+A journal in device-bound or unlocked mode has no secret to ask for, so
+it does not lock mid-session. On Android, the lock hides the journal and
+keeps the database open; the key stays behind Android Keystore.
+
+Changing the passphrase or replacing the recovery key rewraps the same
+data key. A copy of the journal's files taken before the change still
+opens with the old passphrase or recovery key.
+
 ## Report a vulnerability
 
 Use GitHub private vulnerability reporting for this repository:

@@ -16,12 +16,15 @@ import java.util.UUID;
 public class BackupDocumentsProvider extends DocumentsProvider {
     public static final String AUTHORITY = "dev.engender.app.test.backups";
     private volatile String fault = "none";
+    private String grantTarget = "dev.engender.app";
     private volatile boolean blocked;
     private volatile java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
 
     public static class Bootstrap extends android.content.BroadcastReceiver {
         @Override public void onReceive(android.content.Context context, android.content.Intent intent) {
-            context.getContentResolver().call(android.net.Uri.parse("content://" + AUTHORITY), "reset", null, null);
+            android.os.Bundle extras = new android.os.Bundle();
+            extras.putString("targetPackage", intent.getStringExtra("targetPackage"));
+            context.getContentResolver().call(android.net.Uri.parse("content://" + AUTHORITY), "reset", null, extras);
         }
     }
 
@@ -46,16 +49,20 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         if ("blocked".equals(method)) { Bundle out = new Bundle(); out.putBoolean("blocked", blocked); return out; }
         if ("release".equals(method)) { release.countDown(); return Bundle.EMPTY; }
         if ("reset".equals(method)) {
+            if (extras != null && extras.getString("targetPackage") != null) grantTarget = extras.getString("targetPackage");
             release.countDown();
             File[] files = directory().listFiles();
             if (files != null) for (File file : files) file.delete();
             getContext().getSharedPreferences("backup-document-names", 0).edit().clear().commit();
             fault = "none";
-            getContext().grantUriPermission("dev.engender.app",
-                android.provider.DocumentsContract.buildTreeDocumentUri(AUTHORITY, "root"),
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    | android.content.Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+            for (String root : new String[] {"root", "root-second"}) {
+                getContext().grantUriPermission(grantTarget,
+                    android.provider.DocumentsContract.buildTreeDocumentUri(AUTHORITY, root),
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        | android.content.Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+                        | android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            }
             return Bundle.EMPTY;
         }
         return super.call(method, arg, extras);
@@ -69,14 +76,14 @@ public class BackupDocumentsProvider extends DocumentsProvider {
     }
 
     private void row(MatrixCursor cursor, String id) throws FileNotFoundException {
-        boolean root = "root".equals(id);
+        boolean root = id.startsWith("root");
         MatrixCursor.RowBuilder row = cursor.newRow();
         for (String column : cursor.getColumnNames()) {
             switch (column) {
                 case Document.COLUMN_DOCUMENT_ID: row.add(id); break;
                 case Document.COLUMN_DISPLAY_NAME: row.add(getContext().getSharedPreferences("backup-document-names", 0).getString(id, id)); break;
                 case Document.COLUMN_MIME_TYPE: row.add(root ? Document.MIME_TYPE_DIR : "application/octet-stream"); break;
-                case Document.COLUMN_FLAGS: row.add(root ? Document.FLAG_DIR_SUPPORTS_CREATE
+                case Document.COLUMN_FLAGS: row.add(root ? ("unmounted".equals(fault) ? 0 : Document.FLAG_DIR_SUPPORTS_CREATE)
                     : Document.FLAG_SUPPORTS_WRITE | Document.FLAG_SUPPORTS_DELETE); break;
                 case Document.COLUMN_SIZE: row.add(root ? 0L : file(id).length()); break;
                 default: row.add(null);

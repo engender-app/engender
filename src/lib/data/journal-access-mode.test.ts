@@ -31,8 +31,7 @@ test('web first run asks for setup, not unlock', () => {
     describeWebBootPlan({
       keystoreSecretSource: null,
       deviceBoundKeystoreExists: false,
-      plaintextJournalPresent: false,
-      marker: null
+      legacyStoragePresent: false,
     })
   ).toBe('needs-setup');
 });
@@ -42,8 +41,7 @@ test('web device-bound mode cold-boots straight into an automatic local unlock',
     describeWebBootPlan({
       keystoreSecretSource: null,
       deviceBoundKeystoreExists: true,
-      plaintextJournalPresent: false,
-      marker: null
+      legacyStoragePresent: false,
     })
   ).toBe('auto-unlock');
 });
@@ -53,8 +51,7 @@ test('web passphrase mode cold-boots into the passphrase gate', () => {
     describeWebBootPlan({
       keystoreSecretSource: 'passphrase',
       deviceBoundKeystoreExists: false,
-      plaintextJournalPresent: false,
-      marker: null
+      legacyStoragePresent: false,
     })
   ).toBe('needs-unlock');
 });
@@ -64,21 +61,19 @@ test('web PIN mode cold-boots into a gate rather than unlocking itself', () => {
     describeWebBootPlan({
       keystoreSecretSource: 'pin',
       deviceBoundKeystoreExists: false,
-      plaintextJournalPresent: false,
-      marker: null
+      legacyStoragePresent: false,
     })
   ).toBe('needs-unlock');
 });
 
-test('web conversion stays on the existing conversion plan rather than offering a mode choice', () => {
+test('web refuses legacy storage before offering setup or unlock', () => {
   expect(
     describeWebBootPlan({
       keystoreSecretSource: null,
       deviceBoundKeystoreExists: false,
-      plaintextJournalPresent: true,
-      marker: null
+      legacyStoragePresent: true,
     })
-  ).toBe('convert');
+  ).toBe('legacy-refused');
 });
 
 test('android first run becomes an explicit setup choice', () => {

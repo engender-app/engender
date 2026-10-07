@@ -7,15 +7,14 @@
      the entries carrying that tag, over the span.
 
      The tile's figure is the top row's tag, with its shift and the scale
-     it moved on under it. The picker still writes the screen's stored
-     metric, the same mirrored control the day-by-day chart keeps in step
-     with; it is not what filters this card's rows. */
+     it moved on under it. No metric picker: the ranking spans every scale
+     and each row names its own, so a picker here changed nothing on the
+     card and only rewrote the day-by-day chart's stored metric
+     (after-release 27, audit L06-06). */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { selectMetric } from '$lib/data/prefs/store.svelte';
   import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { CorrelationCard } from '$lib/data/correlationCards';
@@ -27,7 +26,6 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
-  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
@@ -50,10 +48,6 @@
 
   /** How many entries the sheet behind a tag row lists. */
   const INSIGHT_ENTRIES = 20;
-
-  let metrics = $derived(metricChoices());
-  let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(shownMetric(metrics));
 
   let correlationCardsQuery = liveList((j) => j.correlationCards.getCards(from, to));
   /* Whether there is a tile is settled once this answers (ReadGroup). */
@@ -85,11 +79,11 @@
         without: card.withoutAvg,
         ...bounds,
         gap: signedValue(card.withAvg - card.withoutAvg, (v) => nativeValue(card.metric, v)),
-        note: `${vocabulary.metricNameOf(card.metric)} · ${m.insight_row_sub({
+        note: m.reading_tag_detail({ metric: vocabulary.metricNameOf(card.metric), detail: m.insight_row_sub({
           count: String(card.count),
           with: nativeValue(card.metric, card.withAvg),
           without: nativeValue(card.metric, card.withoutAvg)
-        })}`
+        }) })
       };
     })
   );
@@ -125,20 +119,11 @@
       name={m.stats_tags_moved()}
       href={readingHref('tags', span)}
       headline={topRow.name}
-      note={`${topRow.gap} ${vocabulary.metricNameOf(topCard.metric)}`}
+      note={m.reading_tag_gap({ value: topRow.gap, metric: vocabulary.metricNameOf(topCard.metric) })}
     />
   {/if}
 {:else}
   <ChartCard level={2} heading={m.stats_tags_moved()} kind="tags-moved" role={roleAt(activeFlag.roles, CHART_ROLE)}>
-    {#snippet control()}
-      <ChartPicker
-        key="stats-insight-metric"
-        label={m.stats_tags_moved()}
-        value={shown.key}
-        options={metricOptions}
-        onPick={(value) => selectMetric(value === 'mood' ? null : value)}
-      />
-    {/snippet}
     <ReadGate read={correlationCardsQuery} variant="line" count={3}>
       {#snippet rows()}
         <PairedDots rows={correlationRows} onPick={pickCorrelationRow} />
@@ -172,11 +157,3 @@
     {/if}
   </Sheet>
 {/if}
-
-<style>
-  .reading-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
-</style>

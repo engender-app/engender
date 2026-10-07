@@ -5,8 +5,7 @@
      formatted date, a formatted time, resolved tag labels and icon names, and
      know nothing about a journal. This is the caller that knows: it owns the
      date and time formats, the resolution of a tag id to a word, which media
-     marks an entry carries and where an entry opens. `WeekStrip` stands in the
-     same relation to `BareStrip`.
+     marks an entry carries and where an entry opens.
 
      It exists because search and the starred shelf were drawing the identical
      eighteen lines, down to the date format, and Home and a day are two more
@@ -26,7 +25,10 @@
      caller's own transition instead of opening every row at once. Each
      entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
      where a card's first and last entry are (kit.css). */
-  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { fmtDayBar, fmtTime } from '$lib/data/dates';
+  import { activeFlag } from '$lib/theme/activeFlag.svelte';
+  import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { disclose } from '$lib/motion/reveal';
   import { entryMarks, type EntryDayGroup } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
@@ -39,10 +41,11 @@
 
   let {
     groups,
-    role,
+    role: givenRole,
     clampNotes = true,
     marginNotesByEntry,
-    arrive = false
+    arrive = false,
+    level
   }: {
     groups: EntryDayGroup[];
     role?: Role;
@@ -63,7 +66,23 @@
         way every block in the app arrives (rule 10, ADR-0078). Without
         it a run mounts as it stands, and only a day added later opens. */
     arrive?: boolean;
+    /** Each day's heading level, handed to DayCard: the placing screen's
+        to say. */
+    level?: 2 | 3;
   } = $props();
+
+  /* A day heads its card the way the day screen heads itself: weekday,
+     day and month, and the year only when it is not this one. The year on
+     every heading brought a comma with it in English ("Thursday, 1
+     October 2026") that no other day heading in the app carries (audit
+     UX-11). */
+  const today = $derived(currentDay());
+
+  /* Entries take the days' stripe unless the screen names another, the
+     same stripe Calendar gives its days. Good moments named none, so its
+     tags fell back to the accent and read magenta beside every other
+     screen's cyan (after-release 28, audit UI-08). */
+  const role = $derived(givenRole ?? roleAt(activeFlag.roles, HOME_AREA_ROLE.days));
 </script>
 
 <div class="entry-days" class:is-arriving={arrive}>
@@ -73,7 +92,8 @@
       key={String(group.epochDay)}
       {role}
       tight
-      heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+      {level}
+      heading={fmtDayBar(group.epochDay, today)}
     >
       {#each group.entries as entry (entry.id)}
         {@const presentation = entryPresentation(entry)}
@@ -91,7 +111,7 @@
         >
           {#snippet marginNotes()}
             {#if marginNotesByEntry}
-              <MarginNotes entryId={entry.id} notes={marginNotesByEntry.get(entry.id) ?? []} />
+              <MarginNotes entryId={entry.id} notes={marginNotesByEntry.get(entry.id) ?? []} addable={false} />
             {/if}
           {/snippet}
         </DayEntry>

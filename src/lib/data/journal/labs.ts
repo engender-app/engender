@@ -3,6 +3,9 @@
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
+import { resolveCurveDrug } from '../hormoneDrug';
+import { drugSpans } from '../regimenEpisode';
+import { FIRST_EPOCH_DAY, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { drawUpperBound, labTimingFor, selectTimingDose, type CandidateDose, type LabDraw } from '../labTiming';
 import { assertChanged, mintUuid, now } from './support';
 import { normalizeUnit } from '../labs/units';
@@ -67,6 +70,7 @@ export interface LabsArea {
       clinician summary, having no per-day read to reach for, walks
       `getUsedAnalytes` and filters. */
   getResultsOnDay(epochDay: number): Promise<LabResult[]>;
+  getResultsInRange(fromEpochDay: number, toEpochDay: number): Promise<LabResult[]>;
   /** The most recently drawn result of any analyte, or null with no results
       at all. What the care overview marks its draw at (phase 5 deepening
       ticket 07): the rail asks "when was blood last taken", which is a
@@ -184,20 +188,38 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       over exactly as if it weren't there, rather than reported as this
       draw's context (phase 8 features ticket 37). */
   const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
-    const [rows, episodes] = await Promise.all([
-      driver.query<{ timestamp: number; route: string; drug: string | null }>(
-        `SELECT timestamp, route, drug FROM dose_event
-          WHERE timestamp <= ? AND status <> 'skipped'
-          ORDER BY timestamp DESC, id DESC`,
-        [drawUpperBound(draw)]
+    const curveDrug = resolveCurveDrug(analyte);
+    if (curveDrug === null) return null;
+    const upper = drawUpperBound(draw);
+    const [names, episodes] = await Promise.all([
+      driver.query<{ drug: string | null }>(
+        "SELECT DISTINCT drug FROM dose_event WHERE timestamp <= ? AND status <> 'skipped' AND drug IS NOT NULL AND drug <> ''",
+        [upper]
       ),
       regimen.getEpisodes()
     ]);
-    const doses: CandidateDose[] = rows.map((row) => ({
-      timestamp: row.timestamp,
-      route: row.route as DoseRoute,
-      drug: row.drug
-    }));
+    const drugs = names.filter((row) => row.drug && resolveCurveDrug(row.drug) === curveDrug).map((row) => row.drug);
+    const spans = drugSpans(episodes, FIRST_EPOCH_DAY, epochDayFromTimestamp(upper)).filter((span) =>
+      !span.ambiguous && (span.drug === null || resolveCurveDrug(span.drug) === curveDrug)
+    );
+    const clauses: string[] = [];
+    const params: unknown[] = [upper];
+    if (drugs.length) {
+      clauses.push(`drug IN (${drugs.map(() => '?').join(', ')})`);
+      params.push(...drugs);
+    }
+    for (const span of spans) {
+      clauses.push("((drug IS NULL OR drug = '') AND timestamp >= ? AND timestamp < ?)");
+      params.push(startOfDayTimestamp(span.fromEpochDay), startOfDayTimestamp(span.toEpochDay + 1));
+    }
+    if (!clauses.length) return null;
+    const rows = await driver.query<{ timestamp: number; route: string; drug: string | null }>(
+      `SELECT timestamp, route, drug FROM dose_event
+       WHERE timestamp <= ? AND status <> 'skipped' AND (${clauses.join(' OR ')})
+       ORDER BY timestamp DESC, id DESC LIMIT 1`,
+      params
+    );
+    const doses: CandidateDose[] = rows.map((row) => ({ ...row, route: row.route as DoseRoute }));
     const dose = selectTimingDose(analyte, doses, episodes);
     return dose ? labTimingFor(draw, dose) : null;
   };
@@ -217,6 +239,14 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
     },
 
     getResults: resultsFor,
+
+    async getResultsInRange(fromEpochDay, toEpochDay) {
+      const rows = await driver.query<LabRow>(
+        `SELECT ${LAB_COLUMNS} FROM lab_result WHERE epoch_day >= ? AND epoch_day <= ? ORDER BY epoch_day, analyte, id`,
+        [fromEpochDay, toEpochDay]
+      );
+      return rows.map(toLabResult);
+    },
 
     async getResultsOnDay(epochDay) {
       const rows = await driver.query<LabRow>(`SELECT ${LAB_COLUMNS} FROM lab_result WHERE epoch_day = ? ORDER BY id`, [
@@ -270,9 +300,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
 
        That is the whole of ticket 03's box 6: editing or correcting a dose
        event months later cannot reach a context already saved, because no
-       edit to a dose passes through here. Correcting the draw's own day or
-       time does recompute, because moving the draw voids the old figure
-       outright rather than adjusting what it was measured from - and
+       edit to a dose passes through here. Correcting the draw's own day,
+       time or analyte does recompute, because moving the draw voids the
+       old figure outright rather than adjusting what it was measured from
+       (and an analyte can be timed from another drug's dose) - and
        without that, a result saved with no draw time could never be given
        one afterwards, since the hours figure that unlocks would never be
        derived. */
@@ -282,8 +313,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
 
       if (input.id) {
         const existing = (
-          await driver.query<Pick<LabRow, 'epoch_day' | 'draw_time' | 'timing_route' | 'timing_hours' | 'timing_day_of_interval'>>(
-            'SELECT epoch_day, draw_time, timing_route, timing_hours, timing_day_of_interval FROM lab_result WHERE uuid = ?',
+          await driver.query<
+            Pick<LabRow, 'epoch_day' | 'draw_time' | 'analyte' | 'timing_route' | 'timing_hours' | 'timing_day_of_interval'>
+          >(
+            'SELECT epoch_day, draw_time, analyte, timing_route, timing_hours, timing_day_of_interval FROM lab_result WHERE uuid = ?',
             [input.id]
           )
         )[0];
@@ -292,7 +325,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
            at the write, it named a result that is not there. */
         if (!existing) throw new Error(`unknown lab result: ${input.id}`);
 
-        const moved = existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime;
+        /* A different analyte can be timed from a different drug's dose
+           (selectTimingDose), so it voids the old figure the same way. */
+        const moved =
+          existing.epoch_day !== draw.epochDay || existing.draw_time !== draw.drawTime || existing.analyte !== input.analyte;
         const timing = moved
           ? timingColumns(await deriveTiming(draw, input.analyte))
           : ([existing.timing_route, existing.timing_hours, existing.timing_day_of_interval] as const);

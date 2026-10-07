@@ -20,10 +20,10 @@
    and stop (PRODUCT.md:109, and labTiming.ts's own header for the
    precedent). */
 
-import { adherence, expectedSlots, type DoseSlot } from './doseSchedule';
+import { adherence, expectedSlots, slotToleranceDays, type DoseSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
 import { resolveCurveDrug } from './hormoneDrug';
-import { attributeDose, attributeDrug } from './regimenEpisode';
+import { attributeDose, attributeDrug, sameDrug } from './regimenEpisode';
 import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
 
 /** How far the rail can reach either side of today.
@@ -263,7 +263,7 @@ export function nextExpectedSlot(
   todayEpochDay: number
 ): DoseSlot | null {
   const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS);
-  return adherence(slots, doses, pauses).rows.find((row) => row.dose === null)?.slot ?? null;
+  return adherence(slots, doses, pauses, slotToleranceDays(schedule)).rows.find((row) => row.dose === null)?.slot ?? null;
 }
 
 type MarkEntry = { kind: SpineMarkKind; epochDay: number; recordId?: string | null };
@@ -425,8 +425,10 @@ export function scheduleDoseFacts(
   pauses: readonly DosePause[],
   todayEpochDay: number
 ): { lastDoseEpochDay: number | null; lastDoseId: string | null; nextDoseEpochDay: number | null } {
-  const drug = episode.drug.trim();
-  const ownDoses = doses.filter((dose) => attributeDrug(episodes, dose).drug?.trim() === drug);
+  const ownDoses = doses.filter((dose) => {
+    const { drug } = attributeDrug(episodes, dose);
+    return drug !== null && sameDrug(drug, episode.drug);
+  });
   const lastDose = lastLoggedDose(ownDoses);
   const lastDoseEpochDay = lastDose ? epochDayFromTimestamp(lastDose.timestamp) : null;
   const lastDoseId = lastDose?.id ?? null;

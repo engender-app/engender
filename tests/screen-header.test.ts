@@ -30,7 +30,6 @@ const svelteFiles = globSync('src/**/*.svelte', { cwd: root });
 const WITHOUT = new Map([
   ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
-  ['src/routes/entry/new/[day]/+page.svelte', 'renders EntryEditor, which carries the header'],
   ['src/routes/onboarding/+page.svelte', 'chromeless, and its own first-run flow']
 ]);
 

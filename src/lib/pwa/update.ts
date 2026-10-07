@@ -32,6 +32,8 @@ import { onJournalBusyChange, journalIsBusy } from '../data/journal-busy';
 /* WatchedRegistration stays exported only for its own test (AU-09 test-only
    review). */
 export interface WatchedRegistration {
+  /** The release this page runs on; null until a first install activates. */
+  readonly active: object | null;
   readonly waiting: { postMessage(message: unknown): void } | null;
   /** The release currently being fetched and precached, if any. */
   readonly installing: InstallingWorker | null;
@@ -43,6 +45,7 @@ export interface WatchedRegistration {
 interface InstallingWorker {
   readonly state: string;
   addEventListener(type: 'statechange', listener: () => void): void;
+  removeEventListener(type: 'statechange', listener: () => void): void;
 }
 
 /** What only a real page can do, injected so both test tiers can stand in
@@ -59,6 +62,7 @@ interface UpdateEnvironment {
     handler doing work; short enough that a person is not left looking at a
     disabled button. */
 const TAKEOVER_LIMIT_MS = 5000;
+const INSTALL_LIMIT_MS = 30_000;
 
 let watched: WatchedRegistration | null = null;
 let environment: UpdateEnvironment | null = null;
@@ -67,9 +71,14 @@ const listeners = new Set<(ready: boolean) => void>();
 let stopWatchingWrites: (() => void) | null = null;
 
 /** True when a new release is installed and waiting and the journal is idle -
-    which is exactly when the update action may be on screen. */
+    which is exactly when the update action may be on screen.
+
+    Waiting behind an active release, that is. A first install passes through
+    `waiting` too: the browser reports it 'installed' and only then activates
+    it, because nothing is running for it to wait behind. Offered at that
+    moment, the notice stayed for the whole visit with nothing to apply. */
 export function updateReady(): boolean {
-  return watched?.waiting != null && !journalIsBusy();
+  return watched?.waiting != null && watched.active != null && !journalIsBusy();
 }
 
 /** Called on the edges of that answer. Returns the way to stop listening. */
@@ -97,7 +106,22 @@ export function watchForUpdates(registration: WatchedRegistration, updateEnviron
   /* A release that installed before this page existed is already sitting in
      `waiting` and no event is coming for it, so the answer is worked out now
      as well as on every later change. */
-  registration.addEventListener('updatefound', reconsider);
+  const watchInstalling = () => {
+    if (watched !== registration) return;
+    const installing = registration.installing;
+    if (installing) {
+      const changed = () => {
+        if (installing.state === 'installing') return;
+        installing.removeEventListener('statechange', changed);
+        if (watched === registration) reconsider();
+      };
+      installing.addEventListener('statechange', changed);
+      changed();
+    }
+    reconsider();
+  };
+  registration.addEventListener('updatefound', watchInstalling);
+  watchInstalling();
   stopWatchingWrites = onJournalBusyChange(reconsider);
   reconsider();
 }
@@ -122,11 +146,17 @@ export async function checkForNewerRelease(): Promise<boolean> {
   const installing = registration.installing;
   if (installing && installing.state === 'installing') {
     await new Promise<void>((resolve) => {
-      installing.addEventListener('statechange', () => {
-        // Anything but 'installing' is an answer: 'installed' is the release
-        // arriving, 'redundant' is an install that failed.
-        if (installing.state !== 'installing') resolve();
-      });
+      const done = () => {
+        clearTimeout(timer);
+        installing.removeEventListener('statechange', changed);
+        resolve();
+      };
+      const changed = () => {
+        if (installing.state !== 'installing') done();
+      };
+      const timer = setTimeout(done, INSTALL_LIMIT_MS);
+      installing.addEventListener('statechange', changed);
+      changed();
     });
   }
 

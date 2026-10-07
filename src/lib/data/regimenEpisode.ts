@@ -27,13 +27,16 @@ function isActiveOn(episode: RegimenEpisode, day: number): boolean {
   return spanCoversDay(episode, day);
 }
 
-/** Every episode in effect at `timestamp` - zero, one, or several when more
-    than one drug's episode overlaps that day. `episodes` need not be
-    sorted for this question; the order only matters where downstream code
-    still keys off a "next" episode (timeOnEachRegimen and friends, which
-    read `startEpochDay`/`endEpochDay` directly and no longer infer one
-    from the other). Hidden episodes still resolve: hiding takes an episode
-    out of pickers, not out of history. */
+/** A stable key for grouping free-text drug names. Identity comparisons use
+    sameDrug; counters use this key so their groups follow the same rule. */
+export const drugNameKey = (drug: string): string => drug.trim().toLowerCase();
+
+/** Whether two stored drug names name the same drug, ignoring surrounding
+    whitespace and case. Attribution, stock, Care and quick log share it. */
+export const sameDrug = (a: string, b: string): boolean => drugNameKey(a) === drugNameKey(b);
+
+/** Every episode covering the timestamp's calendar day, including hidden
+    episodes and concurrent regimens. */
 export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp: number): RegimenEpisode[] {
   const day = epochDayFromTimestamp(timestamp);
   return episodes.filter((episode) => isActiveOn(episode, day));
@@ -56,26 +59,12 @@ export type DoseAttribution =
   | { episode: RegimenEpisode; ambiguous: false }
   | { episode: null; ambiguous: boolean };
 
-/** Whether a dose row's trailing edge should repeat `attributionLabel` (doseLabels.ts)
-    beyond what its title already says (audit U8, ticket 17). `drug` is the
-    same value `doseRowTitle` above was given - the row's title already
-    said everything `attributionLabel` (doseLabels.ts) would if it agrees:
-
-    - One episode active: nothing to pick between, so the title already
-      named the only drug there was.
-    - No episode resolved, but `attributeDrug` still landed on a single
-      name (several active episodes agreeing on one drug, say - a dose
-      change recorded as a new episode before the old one ended):
-      `attributionLabel` (doseLabels.ts) would claim the drug "was not recorded", which
-      the title's own name already contradicts.
-
-    Otherwise - more than one episode active and named, or nothing named
-    at all - the trailing text says something the title didn't. */
+/** The title already names a resolved drug, including concurrent regimens.
+    Keep attribution text only when the row has no drug to name. */
 export const showAttributionLabel = (
   attribution: DoseAttribution,
-  drug: string | null,
-  activeEpisodeCount: number
-): boolean => (attribution.episode ? activeEpisodeCount > 1 : drug === null);
+  drug: string | null
+): boolean => attribution.episode ? drug === null || !sameDrug(attribution.episode.drug, drug) : drug === null;
 
 /** Which episode `dose` belongs to, for reading its drug, ester and route
     parameters against - not only its drug's name (attributeDrug below is
@@ -92,8 +81,8 @@ export function attributeDose(
   const active = activeEpisodesAt(episodes, dose.timestamp);
 
   if (dose.drug) {
-    const named = dose.drug.trim();
-    const matching = active.filter((episode) => episode.drug.trim() === named);
+    const named = dose.drug;
+    const matching = active.filter((episode) => sameDrug(episode.drug, named));
     return matching.length === 1 ? { episode: matching[0], ambiguous: false } : { episode: null, ambiguous: true };
   }
 
@@ -125,8 +114,23 @@ export function attributeDrug(
   if (dose.drug) return { drug: dose.drug, ambiguous: false };
   const active = activeEpisodesAt(episodes, dose.timestamp);
   if (active.length === 0) return { drug: null, ambiguous: false };
-  const drugs = new Set(active.map((episode) => episode.drug.trim()));
-  return drugs.size === 1 ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
+  return active.every((episode) => sameDrug(episode.drug, active[0].drug)) ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
+}
+
+/** The last day of `from`..`to` on which `episode` can expect a dose: `to`
+    itself, or the episode's own planned end when that comes first. Null
+    when the episode misses the range, starting after it or ending before
+    it. The day-ahead marks read every episode through this (after-release
+    ticket 01), so a course that ends on Friday expects nothing the week
+    after and one that starts next week still has its first dose there. */
+export function lastDayWithin(
+  episode: Pick<RegimenEpisode, 'startEpochDay' | 'endEpochDay'>,
+  from: number,
+  to: number
+): number | null {
+  if (episode.startEpochDay > to) return null;
+  const last = Math.min(to, episode.endEpochDay ?? to);
+  return last < from ? null : last;
 }
 
 /** One stretch of days over which a dose naming no drug of its own

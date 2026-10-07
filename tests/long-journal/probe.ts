@@ -27,6 +27,10 @@ import { sweepOrphanPhotos } from '../../src/lib/data/journal/photos.ts';
 import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
 import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
+import { mountHome } from './mount-home.svelte';
+import { prepareScreenJournal } from '../browser-tier/screen-journal';
+import { installWorkerReadRecorder } from './worker-reads';
+const workerReads = installWorkerReadRecorder();
 import { compareJournalSizes } from './scaling.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 import { publish as publishResult } from '../probe-handshake.mjs';
@@ -36,6 +40,14 @@ const publish = (value: unknown) => publishResult(NAME, value);
 // Failure snapshots distinguish a late fixture from a stalled storage scan.
 const progress = {
   stages: [] as { name: string; days: number; at: number }[],
+  generation: null as {
+    startedAt: number;
+    lastProgressAt: number;
+    entriesStarted: number;
+    entriesCompleted: number;
+    photosStarted: number;
+    photosCompleted: number;
+  } | null,
   storage: null as {
     operation: 'list' | 'size' | 'complete';
     startedAt: number;
@@ -47,7 +59,10 @@ Object.assign(window, { __longJournalProgress: progress });
 const stage = (name: string, days: number) => {
   progress.stages.push({ name, days, at: performance.now() });
   if (progress.stages.length > 32) progress.stages.shift();
-  if (name === 'reset-origin') progress.storage = null;
+  if (name === 'reset-origin') {
+    progress.storage = null;
+    progress.generation = null;
+  }
   document.body.setAttribute('data-long-journal-stage', name);
   document.body.setAttribute('data-long-journal-days', String(days));
 };
@@ -78,9 +93,11 @@ function noiseTile(): OffscreenCanvas {
 
 function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
   const tile = noiseTile();
+  const fullCanvas = new OffscreenCanvas(FULL.width, FULL.height);
+  const thumbCanvas = new OffscreenCanvas(THUMB.width, THUMB.height);
 
-  const draw = async (size: { width: number; height: number }, hue: number): Promise<Uint8Array> => {
-    const canvas = new OffscreenCanvas(size.width, size.height);
+  const draw = async (canvas: OffscreenCanvas, hue: number): Promise<Uint8Array> => {
+    const size = canvas;
     const context = canvas.getContext('2d')!;
     const gradient = context.createLinearGradient(0, 0, size.width, size.height);
     gradient.addColorStop(0, `hsl(${hue} 45% 72%)`);
@@ -104,7 +121,7 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
 
   return async (n) => {
     const hue = (n * 37) % 360;
-    return { full: await draw(FULL, hue), thumb: await draw(THUMB, hue) };
+    return { full: await draw(fullCanvas, hue), thumb: await draw(thumbCanvas, hue) };
   };
 }
 
@@ -126,14 +143,51 @@ async function run(days: number) {
   stage('generate', days);
   // Fixture writes are setup, before any scored operation. Keep the public
   // journal transactions and defer SQLite durability syncs during generation.
-  // Restore the captured setting and commit a header write before reopening.
+  // The rollback journal goes to memory for the same reason: with it on the
+  // OPFS pool, every page a transaction first touches is written out to a
+  // second encrypted file, and that was most of generation (ten years:
+  // in-transaction statements 118s of 238s on a hosted runner, 1.9s locally
+  // once the journal was in memory). Neither changes a row or a photo byte.
+  // Restore the captured settings and commit a header write before reopening.
   const [{ synchronous }] = await booted.driver.query<{ synchronous: number }>('PRAGMA synchronous');
+  const [{ journal_mode: journalMode }] = await booted.driver.query<{ journal_mode: string }>('PRAGMA journal_mode');
   const startedAt = performance.now();
+  // Setup counters show whether fixture work advances or waits on one operation.
+  // The adapter keeps the same journal writes and photo bytes; scored reads use
+  // the original journal after generation finishes.
+  const generation = {
+    startedAt, lastProgressAt: startedAt,
+    entriesStarted: 0, entriesCompleted: 0, photosStarted: 0, photosCompleted: 0
+  };
+  progress.generation = generation;
+  const generatingJournal = {
+    ...journal,
+    entries: {
+      ...journal.entries,
+      async upsertEntry(input: Parameters<typeof journal.entries.upsertEntry>[0]) {
+        generation.entriesStarted++;
+        const id = await journal.entries.upsertEntry(input);
+        generation.entriesCompleted++;
+        generation.lastProgressAt = performance.now();
+        return id;
+      }
+    }
+  };
+  const makePhoto = photoMaker();
+  const generatingPhoto = async (n: number) => {
+    generation.photosStarted++;
+    const photo = await makePhoto(n);
+    generation.photosCompleted++;
+    generation.lastProgressAt = performance.now();
+    return photo;
+  };
   let summary: LongJournalSummary;
   try {
     await booted.driver.exec('PRAGMA synchronous = OFF');
-    summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+    await booted.driver.exec('PRAGMA journal_mode = MEMORY');
+    summary = await generateLongJournal(generatingJournal, { days, makePhoto: generatingPhoto });
   } finally {
+    await booted.driver.exec(`PRAGMA journal_mode = ${journalMode}`);
     await booted.driver.exec(`PRAGMA synchronous = ${synchronous}`);
     const version = await booted.driver.getUserVersion();
     await booted.driver.transaction((scope) => scope.setUserVersion(version));
@@ -239,7 +293,14 @@ async function run(days: number) {
   const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
-    recorder
+    recorder, mountHome: async (journal) => {
+      await prepareScreenJournal(journal);
+      // End the preceding benchmark's read generation before the cold mount.
+      await recorder.driver.readSnapshot(async () => {});
+      const { result, crossings } = await workerReads.record(() => mountHome());
+      if (crossings.duplicates) throw new Error(`Mounted Home sent ${crossings.duplicates} duplicate SQL statements`);
+      return { ...result, crossings };
+    }
   });
 
   stage('measured-close', days);
@@ -257,4 +318,4 @@ async function main() {
   publish({ ...tenYears, oneYear, scaling: compareJournalSizes(oneYear, tenYears) });
 }
 
-main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) }));
+main().catch((error) => publish({ error: String((error as Error)?.stack ?? error) })).finally(() => workerReads.restore());

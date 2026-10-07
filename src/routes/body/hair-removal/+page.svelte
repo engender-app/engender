@@ -16,6 +16,7 @@
   import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '$lib/data/hairRemovalAreas';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { HairRemovalSession, HairRemovalMethod } from '$lib/data/types';
   import { HAIR_REMOVAL_METHODS } from '$lib/data/types';
   import type { HairRemovalPhoto } from '$lib/data/journal/hairRemoval';
@@ -35,7 +36,6 @@
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import { lastPhotoReference } from '$lib/components/kit/photoSection';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -50,7 +50,7 @@
 
   const PAIN_RATINGS = [1, 2, 3, 4, 5];
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /** The untouched draft every open starts from, named once so the
       header's add control, a strip day and a recency row cannot drift
@@ -174,6 +174,8 @@
       });
       if (!draft.id) savedId = id;
     },
+    // A new session's notice below says more than a toast would.
+    saved: (draft) => (draft.id ? m.saved() : null),
     remove: (id) => journal.hairRemoval.deleteSession(id),
     findById: (id) => sessions.find((session) => session.id === id)
   });

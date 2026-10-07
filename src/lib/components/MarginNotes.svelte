@@ -16,6 +16,8 @@
      before anything is written, and there is only ever the one insert to
      make - no second write for a transaction to wrap). */
   import { m } from '$lib/paraglide/messages';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -24,7 +26,19 @@
   import Sheet from './Sheet.svelte';
   import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
 
-  let { entryId, notes }: { entryId: number; notes: MarginNote[] } = $props();
+  let {
+    entryId,
+    notes,
+    addable = true
+  }: {
+    entryId: number;
+    notes: MarginNote[];
+    /** Off in a list of hits (audit UX-11): "Add a margin note" under every
+        result was 29 rows of the same words for one search, and about two
+        and a half results fitted a screen. A note is added from the
+        entry's own day, where this stays on. */
+    addable?: boolean;
+  } = $props();
 
   let composeOpen = $state(false);
   let composeText = $state('');
@@ -43,19 +57,30 @@
     composeOpen = true;
   }
 
+  /* One note per tap: a double tap used to add two (after-release 06). The
+     sheet closes once the note is stored, and stays open with a toast when
+     it is not. */
+  const saving = writer();
   async function save() {
     const text = composeText.trim();
     if (!text) return;
-    if (editing) await journal.marginNotes.edit(editing.id, text);
-    else await journal.marginNotes.add({ entryId, epochDay: todayEpochDay(), text });
+    const target = editing;
+    const stored = await saving.run(
+      () => (target ? journal.marginNotes.edit(target.id, text) : journal.marginNotes.add({ entryId, epochDay: todayEpochDay(), text })),
+      m.write_failed()
+    );
+    if (!stored) return;
     composeOpen = false;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
+  const removing = deleter();
   async function confirmDelete() {
     if (!deleting) return;
     const id = deleting.id;
+    if (!(await removing.run(() => journal.marginNotes.remove(id)))) return;
     deleting = null;
-    await journal.marginNotes.remove(id);
+    toast(m.record_deleted(), { kind: 'record-deleted' });
   }
 </script>
 
@@ -80,12 +105,14 @@
   </div>
 {/if}
 
-<button class="margin-note-add" data-margin-note-add onclick={openAdd}>
-  <Icon name="note" size={14} />
-  <span>{m.margin_note_add()}</span>
-</button>
+{#if addable}
+  <button class="margin-note-add" data-margin-note-add onclick={openAdd}>
+    <Icon name="note" size={14} />
+    <span>{m.margin_note_add()}</span>
+  </button>
+{/if}
 
-<Sheet bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
+<Sheet busy={saving.busy} bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
   <h3>{editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}</h3>
   <textarea
     class="input"
@@ -98,7 +125,7 @@
   <div class="stack-3" style="margin-top:var(--space-3)">
     <button
       class="btn btn-primary"
-      disabled={!composeText.trim()}
+      disabled={!composeText.trim() || saving.busy}
       data-margin-note-save
       onclick={save}
     >
@@ -115,7 +142,9 @@
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-confirm-delete-margin-note': '' }}
   onConfirm={confirmDelete}
-  onCancel={() => (deleting = null)}
+  onCancel={() => { deleting = null; removing.dismiss(); }}
+  busy={removing.busy}
+  failed={removing.failed}
 />
 
 <style>
@@ -172,8 +201,6 @@
     display: block;
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
     /* `--role-ink`, not `--role-mark`: this is small text somebody reads,
        not a chart line or an icon, and only the ink variant is held to
        4.5:1 (kit.css's own [data-kit-role] comment) - the mark variant

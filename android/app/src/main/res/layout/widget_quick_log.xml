@@ -4,13 +4,19 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:paddingStart="9dp"
+    android:paddingEnd="9dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
 
     <TextView
         android:id="@+id/widget_header"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        android:layout_marginStart="3dp"
+        android:layout_marginEnd="3dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
         android:textColor="#1A1A1A"
         android:textSize="13sp"
         android:text="@string/widget_quick_log_title" />
@@ -43,7 +49,6 @@
         <TextView
             android:id="@+id/widget_mood_5"
             style="@style/WidgetMoodButton"
-            android:layout_marginEnd="0dp"
             android:text="5" />
 
     </LinearLayout>

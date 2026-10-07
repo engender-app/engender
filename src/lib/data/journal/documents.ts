@@ -217,7 +217,9 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
     },
 
     async updateDocument(document) {
-      await documents.upsert({ ...document, title: titled(document.title) });
+      const result = await driver.run('UPDATE document SET title = ?, epoch_day = ?, updated_at = ? WHERE uuid = ?',
+        [titled(document.title), document.epochDay, now(), document.id]);
+      assertChanged(result, `document: ${document.id}`);
     },
 
     async deleteDocument(id) {

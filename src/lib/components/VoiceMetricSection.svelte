@@ -133,7 +133,7 @@
   .vms-field h3 {
     margin: 0;
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     color: var(--role-ink);
   }
 
@@ -141,7 +141,7 @@
     margin: 0;
     font-size: var(--text-sm);
     line-height: 1.6;
-    color: var(--text-1);
+    color: var(--text);
   }
 
   /* The published ranges, set off from the sentence that introduces them by
@@ -180,7 +180,7 @@
   }
 
   .vms-bands dt {
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .vms-bands dd {
@@ -198,7 +198,7 @@
   .vms-field p.vms-source {
     font-size: var(--text-xs);
     line-height: 1.5;
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   /* The averages sentence is about both language blocks, so it sits clear

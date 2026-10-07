@@ -4,7 +4,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { expectedSessionDays } from './taperSchedule.ts';
+import { expectedSessionDays, stagesFromInput } from './taperSchedule.ts';
 import type { TaperStage } from './types.ts';
 
 const taper = (startEpochDay: number, stages: TaperStage[]) => ({ startEpochDay, stages });
@@ -87,4 +87,22 @@ test('an edit to an earlier stage shifts every later stage, since nothing is sto
   // the edit has already moved to the every-third-day one.
   assert.deepEqual(before.slice(3), [103, 104, 105]);
   assert.deepEqual(after.slice(3), [103]);
+});
+
+/* The schedule editor's fields are `type=number bind:value`, so an emptied
+   field reaches the page as null, not '' (after-release ticket 01, L07-03).
+   A cleared frequency used to pass as 0 and save a rest stage. */
+test('a cleared, blank or non-numeric frequency is no frequency at all, and 0 is still a rest stage', () => {
+  for (const missing of [null, undefined, '', '  ', 'abc', Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(stagesFromInput([{ everyNDays: missing, days: 5 }]), null, String(missing));
+  }
+  assert.deepEqual(stagesFromInput([{ everyNDays: 0, days: 5 }]), [{ everyNDays: 0, days: 5 }]);
+  assert.deepEqual(stagesFromInput([{ everyNDays: '2', days: '7' }]), [{ everyNDays: 2, days: 7 }]);
+});
+
+test('a stage needs at least one day, and a negative frequency is refused', () => {
+  assert.equal(stagesFromInput([{ everyNDays: 1, days: null }]), null);
+  assert.equal(stagesFromInput([{ everyNDays: 1, days: 0 }]), null);
+  assert.equal(stagesFromInput([{ everyNDays: -1, days: 3 }]), null);
+  assert.equal(stagesFromInput([]), null);
 });

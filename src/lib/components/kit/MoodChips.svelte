@@ -34,9 +34,9 @@
      Labels come from the vocabulary rather than from a catalogue read here,
      which is where every other mood label in the app comes from.
 
-     The handle is , which is what the entry editor's own picker
+     The handle is `data-mood`, which is what the entry editor's own picker
      already carries: one concept, one handle (ADR-0029). This component had
-     a  of its own while it had no screen to live on, and
+     a `data-mood-chip` of its own while it had no screen to live on, and
      two names for "a mood option in a picker" is the drift the ADR exists
      to stop - the walkthrough would have had to learn which of the two a
      given screen happened to use. */

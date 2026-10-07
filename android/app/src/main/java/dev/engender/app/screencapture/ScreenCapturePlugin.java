@@ -11,13 +11,10 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import dev.engender.app.lock.LockTimingPlugin;
-
 /**
  * Mirrors prefs.allowScreenCapture into SharedPreferences, so
  * MainActivity.onCreate can decide FLAG_SECURE before the window has a
- * frame - the same reason LockTimingPlugin mirrors prefs.lockAfter. Unlike
- * that read-only mirror, setAllowed also flips the flag on the window that
+ * frame. Unlike LockTimingPlugin's read-only mirror, setAllowed also flips the flag on the window that
  * is already running: a person who just turned this on in Settings wants to
  * record right now, not after restarting the app.
  */
@@ -44,11 +41,13 @@ public class ScreenCapturePlugin extends Plugin {
         return prefs(context).getBoolean(KEY_ALLOWED, true);
     }
 
-    /** Android 13 separates Recents thumbnails from screenshots. Older Android
-        needs a temporary secure flag while a locked journal is out of sight. */
+    /** The capture choice alone decides both screenshots and the Recents
+        preview; a journal lock hides neither (Alicja, 2026-10-06). Android 13
+        separates the two, so the Recents half needs its own call there;
+        below 13 FLAG_SECURE covers both. */
     public static void applyWindowFlags(Activity activity, boolean allowed) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.setRecentsScreenshotEnabled(allowed && !LockTimingPlugin.isEnabled(activity));
+            activity.setRecentsScreenshotEnabled(allowed);
         }
         if (allowed) {
             activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);

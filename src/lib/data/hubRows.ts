@@ -529,7 +529,7 @@ const ROWS = [
   },
   {
     key: 'dilation',
-    icon: 'flask',
+    icon: 'repeat',
     href: '/health/dilation',
     home: 'surgery',
     /* The sessions, not the schedule. `taper` is what was meant to happen
@@ -566,13 +566,13 @@ export function hubRow(key: HubRowKey): HubRow {
   return ROWS_BY_KEY.get(key)!;
 }
 
-/** The screen behind a row, without the query string one row carries.
+/** The screen behind a row, without any query string it carries.
 
-    `voice-benchmark` opens the voice screen on its benchmark tab, which is
-    that row's business; anything asking which screen is behind the row - the
-    stats card that fronts the same area, the test that holds every feature
-    screen to the kit - means the screen. Here rather than as a `split` at
-    each of those call sites. */
+    No row carries one today (`voice-benchmark` did until ticket 17), but
+    anything asking which screen is behind the row - the stats card that
+    fronts the same area, the test that holds every feature screen to the
+    kit - means the screen, and a row given a query later still answers with
+    it. Here rather than as a `split` at each of those call sites. */
 export function rowScreen(row: HubRowSpec): string {
   return row.href.split('?')[0];
 }
@@ -744,6 +744,15 @@ export type EveryForwardKeyIsARow = AssertEveryForwardKeyIsARow<UnknownForwardKe
 const FORWARD_KEYS: ReadonlySet<string> = new Set(ROW_FORWARD_KEYS);
 const hasForward = (key: string): key is RowForwardKey => FORWARD_KEYS.has(key);
 
+/** The later of two nullable days, or null where neither has one - `voice-
+    benchmark`'s own fold of a registry read and its second, non-registry
+    read (the field's own doc on `HubReading`). */
+function laterEpochDay(a: number | null, b: number | null): number | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.max(a, b);
+}
+
 /** What one row says under its title.
 
     Four questions in order, and the order is the whole of the rule (phase
@@ -770,15 +779,6 @@ const hasForward = (key: string): key is RowForwardKey => FORWARD_KEYS.has(key);
 
     **Then the reading it always had**, unchanged: what was last written,
     worded as an observation once a whole quiet window has passed. */
-/** The later of two nullable days, or null where neither has one - `voice-
-    benchmark`'s own fold of a registry read and its second, non-registry
-    read (the field's own doc on `HubReading`). */
-function laterEpochDay(a: number | null, b: number | null): number | null {
-  if (a === null) return b;
-  if (b === null) return a;
-  return Math.max(a, b);
-}
-
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
@@ -802,7 +802,11 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   if (epochDay === null) return { kind: 'not-yet' };
 
   const daysAgo = reading.todayEpochDay - epochDay;
-  return { kind: daysAgo >= FINISH_SUGGESTION_QUIET_DAYS ? 'quiet' : 'last', epochDay, daysAgo };
+  /* Quiet is the observation the finish offer is made from, so a row with
+     nothing to finish never turns quiet (after-release 17, UX-18): on
+     Documents it read as a nag about a paperwork vault. */
+  const quiet = spec.finishes !== null && daysAgo >= FINISH_SUGGESTION_QUIET_DAYS;
+  return { kind: quiet ? 'quiet' : 'last', epochDay, daysAgo };
 }
 
 /** A row as a screen draws it: what the registry declared, and what its
@@ -859,6 +863,22 @@ export function hubSections(reading: HubReading): HubSection[] {
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
 }
 
+/** The one row a search by name may not reach, and why.
+
+    ADR-0043: whether the cycle row exists at all is not this file's to say.
+    `cycleEvents` is outside `HideableArea` precisely so that nothing here
+    can reverse the decision, and the row's *positive* gate - an active
+    testosterone regimen or an explicit opt-in - belongs to
+    /care/changes, which is the only screen that asks. A search
+    that answered "Cycle events" to somebody the app has decided not to ask
+    about cycles would put that prompt back on the hub through the box, which
+    is exactly what ticket 16 took off it.
+
+    Named here rather than left to fall out of a rule, because every rule
+    that would exclude it also excludes something that should be found: the
+    row fronts one area, and that area is not hideable. */
+const NOT_SEARCHABLE: readonly HubRowKey[] = ['cycle-events'];
+
 /** The rows whose name contains what somebody typed, flat: the hub's own in
     the order its groups draw them, then the rows drawn on a screen of their
     own (phase 10 redesign ticket 15).
@@ -904,22 +924,6 @@ export function hubSections(reading: HubReading): HubSection[] {
     An empty query matches nothing rather than everything, because the screen
     shows the grouped list for an empty box; a flat copy of every row would
     be the same list twice. */
-/** The one row a search by name may not reach, and why.
-
-    ADR-0043: whether the cycle row exists at all is not this file's to say.
-    `cycleEvents` is outside `HideableArea` precisely so that nothing here
-    can reverse the decision, and the row's *positive* gate - an active
-    testosterone regimen or an explicit opt-in - belongs to
-    /care/changes, which is the only screen that asks. A search
-    that answered "Cycle events" to somebody the app has decided not to ask
-    about cycles would put that prompt back on the hub through the box, which
-    is exactly what ticket 16 took off it.
-
-    Named here rather than left to fall out of a rule, because every rule
-    that would exclude it also excludes something that should be found: the
-    row fronts one area, and that area is not hideable. */
-const NOT_SEARCHABLE: readonly HubRowKey[] = ['cycle-events'];
-
 export function hubRowsMatching(
   reading: HubReading,
   query: string,
@@ -961,7 +965,7 @@ export interface MatchedRow extends DrawnRow {
     what to pin.
 
     A section's place in the list rather than its place among whatever
-    rendered, so Body keeps one stripe whether or not a finished group sits
+    rendered, so Health keeps one stripe whether or not a finished group sits
     below it and whether or not hiding an area emptied a group above it. The
     finished set takes the index after the last group: it is set apart by its
     heading and by every row in it stating the day it ended, not by losing

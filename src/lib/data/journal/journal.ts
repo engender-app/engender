@@ -439,7 +439,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   const wearSessions = makeWearSessionsArea(driver, reminders);
   const hairProgress = makeHairProgressArea(driver, files);
   const hairRemoval = makeHairRemovalArea(driver, files);
-  const tryouts = makeTryoutsArea(driver, files, milestones, feltSense);
+  const tryouts = makeTryoutsArea(driver, files);
   const voiceBenchmarks = makeVoiceBenchmarksArea(driver, files);
   const journalingPauses = makeJournalingPausesArea(driver);
   const marginNotes = makeMarginNotesArea(driver);
@@ -567,7 +567,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
       procedures,
       tryouts,
       documents
-    }),
+    }, driver),
     dayAhead: makeDayAheadArea({
       appointments,
       procedures,
@@ -613,7 +613,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     checklists,
     stats,
     correlationCards: deferredArea<CorrelationCardsArea>(async () =>
-      (await import('./correlationCards')).makeCorrelationCardsArea(stats, doses, dimensions)
+      (await import('./correlationCards')).makeCorrelationCardsArea(driver, doses, dimensions)
     )(['getCards']),
     intervalMoodPattern: deferredArea<IntervalMoodPatternArea>(async () =>
       (await import('./intervalMoodPattern')).makeIntervalMoodPatternArea(stats, doses)

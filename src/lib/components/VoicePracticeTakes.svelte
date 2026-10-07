@@ -24,7 +24,7 @@
      other would be wrong in both directions (schema.ts's own note). */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { isSealedUntil } from '$lib/data/sealedUntil';
   import type { VoicePracticeTake } from '$lib/data/types';
@@ -44,7 +44,7 @@
 
   let takesQuery = liveList((j) => j.voicePracticeTakes.getTakes());
   let takes = $derived(takesQuery.rows);
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 

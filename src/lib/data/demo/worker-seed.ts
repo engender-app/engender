@@ -3,7 +3,27 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { MigrationFileOps } from '../sqlite/migration-runner';
 import { migrateJournal } from '../sqlite/boot';
 import { openPreferences } from '../prefs/preferences';
-import { clearJournal, demoPhoto, writePersonaJournal } from './journal-seed';
+import { clearJournal, demoPhoto, personaPhotoSeeds, writePersonaJournal } from './journal-seed';
+import type { NormalizedPhoto } from '../journal/photos';
+
+/** Draws the persona's photos now and serves them to the seed later. The worker
+    sits idle while the database module downloads, and drawing the 22 photos
+    is a third of what the seed costs once it arrives. One draw per photo the
+    persona attaches, handed out once each; a seed asked for beyond that, or
+    not named by the persona, is drawn on demand as before. */
+export function warmDemoPhotos(
+  source: Parameters<typeof personaPhotoSeeds>[0],
+  makePhoto: typeof demoPhoto = demoPhoto
+): typeof demoPhoto {
+  const warm = new Map<number, Promise<NormalizedPhoto>[]>();
+  for (const seed of personaPhotoSeeds(source)) {
+    const drawing = makePhoto(seed);
+    // A failed draw surfaces where the seed takes it, not as an unhandled rejection here.
+    drawing.catch(() => {});
+    warm.set(seed, [...(warm.get(seed) ?? []), drawing]);
+  }
+  return (seed) => warm.get(seed)?.shift() ?? makePhoto(seed);
+}
 
 /** The worker owns its connection until this call finishes. Journal writes
     join this transaction rather than opening nested transactions. A failed

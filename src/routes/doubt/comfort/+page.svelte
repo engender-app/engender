@@ -14,6 +14,7 @@
      changes nothing about that. */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { attempt } from '$lib/stores/attempt.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import type { ComfortItem } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -94,9 +95,16 @@
     const before = measureTops(rowElements(), rowId);
     reorder.release();
     pendingOrder = ids;
-    void journal.comfortItems.reorder(ids);
+    const stored = attempt(() => journal.comfortItems.reorder(ids), m.write_failed());
     await tick();
     travelFrom(rowElements(), rowId, before);
+    /* A refused order goes back to the stored one, travelling there rather
+       than standing on screen as an order that was never kept. */
+    if (await stored) return;
+    const shown = measureTops(rowElements(), rowId);
+    pendingOrder = null;
+    await tick();
+    travelFrom(rowElements(), rowId, shown);
   }
 
   function moved(id: string, targetId: string): string[] {

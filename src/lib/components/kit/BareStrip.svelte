@@ -6,7 +6,7 @@
 
      Presentational: the caller brings the days and their levels, so the
      strip draws a week of a journal, a week of a metric, or a week of
-     demo data without knowing which. WeekStrip.svelte is the app's
+     demo data without knowing which. DayStrip.svelte is the app's
      journal-connected caller. Seven of them on a phone, and --strip-count
      lets a wider caller hand over more without this file caring how many
      (CARPET-02) - kit.css's desktop breakpoint shrinks the cells' own cap
@@ -38,7 +38,7 @@
   /* `onPick` turns each day into a control (ticket 44): dilation and wear
      both open that day's session sheet from the strip, which is the write
      path their per-day rows used to carry. Without it the strip stays what
-     it has always been, a drawing - WeekStrip passes none. The whole
+     it has always been, a drawing. The whole
      column is the target rather than the cell, so the letter under it is
      part of the tap and the target is taller than the 44px cell. */
   let {

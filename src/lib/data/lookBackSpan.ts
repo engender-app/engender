@@ -42,20 +42,22 @@ export const DEFAULT_SPAN_DAYS = 30;
 /** Where the rail begins: the earliest day the person authored anything
     dated, rather than the earliest day they logged. An entry's own day (the
     journal's bounds already skip the trash), a milestone's day, an era's
-    start. A milestone still ahead is not history, and an era with no start
-    reaches back before the journal rather than to a day, so neither moves
-    the edge. Null where nothing dated exists yet: the door has an empty
+    start, a tally tap's day. A milestone still ahead is not history, and an
+    era with no start reaches back before the journal rather than to a day,
+    so neither moves the edge. Null where nothing dated exists yet: the door has an empty
     state for that, and a rail from today to today is not it. */
 export function historyStart(
   input: {
     bounds: JournalBounds | null;
     milestones: readonly { epochDay: number }[];
     eras: readonly EraSpan[];
+    firstTallyDay?: number | null;
   },
   todayEpochDay: number
 ): number | null {
   const days: number[] = [];
   if (input.bounds) days.push(input.bounds.firstEpochDay);
+  if (input.firstTallyDay != null) days.push(input.firstTallyDay);
   for (const milestone of input.milestones) if (milestone.epochDay <= todayEpochDay) days.push(milestone.epochDay);
   for (const era of input.eras) if (era.startEpochDay !== null) days.push(era.startEpochDay);
   if (!days.length) return null;
@@ -255,10 +257,13 @@ export interface RailMark {
   epochDay: number;
 }
 
-/** What the legend can name. `era` and `surgery` are not band kinds - the
-    eras are the rail's own top layer and a procedure is a mark - but the
-    legend names what the rail draws rather than how it draws it. */
-export type RailLegendKind = 'era' | RailHistoryKind | 'surgery';
+/** What the legend can name. `era` and the marks are not band kinds - the
+    eras are the rail's own top layer and a milestone or a procedure is a
+    mark - but the legend names what the rail draws rather than how it draws
+    it. A milestone and a surgery day are the same mark on the rail, so they
+    share one key, named for whichever of the two the rail holds. */
+export type RailLegendKind = 'era' | RailHistoryKind | RailMarkKey;
+export type RailMarkKey = 'milestone' | 'surgery' | 'milestone-and-surgery';
 
 const HISTORY_OF_ANNOTATION: Partial<Record<ChartAnnotation['kind'], RailHistoryKind>> = {
   regimen: 'regimen',
@@ -314,17 +319,23 @@ export function historyKindsPresent(bands: readonly RailBand[]): RailHistoryKind
 /** What the legend names, in the rail's own order: the eras first, since
     they are the layer that stands up, then the lanes bottom-up, then the
     marks. Absent kinds are absent - a journal with no tryouts does not read
-    "Tryouts". */
+    "Tryouts". The marks take one key whatever they are, since they look the
+    same, and the key says what it covers (after-release 27, audit L05-12). */
 export function railLegendKinds(
   bands: readonly RailBand[],
-  marks: readonly RailMark[],
+  milestones: readonly unknown[],
+  surgeries: readonly RailMark[],
   hasEras: boolean
 ): RailLegendKind[] {
-  return [
-    ...(hasEras ? (['era'] as const) : []),
-    ...historyKindsPresent(bands),
-    ...(marks.length ? (['surgery'] as const) : [])
-  ];
+  const markKey: RailMarkKey | null =
+    milestones.length && surgeries.length
+      ? 'milestone-and-surgery'
+      : milestones.length
+        ? 'milestone'
+        : surgeries.length
+          ? 'surgery'
+          : null;
+  return [...(hasEras ? (['era'] as const) : []), ...historyKindsPresent(bands), ...(markKey ? [markKey] : [])];
 }
 
 /** The query string a span is read at on /wrapped/range: the same one the

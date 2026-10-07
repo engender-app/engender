@@ -27,6 +27,8 @@ const role: Role = {
   ink: '#665f00',
   mark: '#8f8500',
   paired: '#FCF434',
+  edge: null,
+  pairedEdge: null,
   heat: [
     { fill: '#FFFFFF', ink: '#131019' },
     { fill: '#FCF434', ink: '#131019' }
@@ -67,6 +69,15 @@ describe('roleAttrs', () => {
 
   it('always carries data-kit-role, given a role too', () => {
     expect(roleAttrs(role)['data-kit-role']).toBe('');
+  });
+
+  /* Phase 15 ticket 20: a chart line in a stripe under 3:1 is cased in the
+     role's edge. Only where there is one - kit.css turns a missing edge into
+     transparent, which is how every line that already read stays as it was. */
+  it('hands a chart line its edge where the stripe needs one, and nothing where it does not', () => {
+    const edged = roleAttrs({ ...role, edge: '#8f8500' }).style!;
+    expect(edged).toContain('--role-edge-in: #8f8500');
+    expect(roleAttrs(role).style).not.toContain('--role-edge-in');
   });
 });
 

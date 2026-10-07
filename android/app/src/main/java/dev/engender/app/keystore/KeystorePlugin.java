@@ -16,6 +16,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.security.UnrecoverableKeyException;
+import java.util.Arrays;
 
 import javax.crypto.Cipher;
 
@@ -102,11 +103,15 @@ public class KeystorePlugin extends Plugin {
             byte[] dataKey = fromHex(hexKey);
             JournalKeystore.Variant variant =
                 authRequired ? JournalKeystore.Variant.GATED : JournalKeystore.Variant.UNLOCKED;
-            keystore.wrap(variant, dataKey);
-            JournalKeystore.Variant opposite =
-                authRequired ? JournalKeystore.Variant.UNLOCKED : JournalKeystore.Variant.GATED;
-            keystore.erase(opposite);
-            call.resolve(outcome("wrapped", null));
+            try {
+                keystore.wrap(variant, dataKey);
+                JournalKeystore.Variant opposite =
+                    authRequired ? JournalKeystore.Variant.UNLOCKED : JournalKeystore.Variant.GATED;
+                keystore.erase(opposite);
+                call.resolve(outcome("wrapped", null));
+            } finally {
+                Arrays.fill(dataKey, (byte) 0);
+            }
         } catch (Exception e) {
             call.reject(message(e), e);
         }
@@ -323,7 +328,10 @@ public class KeystorePlugin extends Plugin {
     private static JSObject outcome(String outcome, byte[] dataKey) {
         JSObject result = new JSObject();
         result.put("outcome", outcome);
-        if (dataKey != null) result.put("hexKey", hex(dataKey));
+        if (dataKey != null) {
+            try { result.put("hexKey", hex(dataKey)); }
+            finally { Arrays.fill(dataKey, (byte) 0); }
+        }
         return result;
     }
 

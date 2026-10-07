@@ -7,8 +7,9 @@
    Built-ins hide rather than delete, like a Tag or a GenderDimension, so a
    hidden region's logged intensities keep resolving and charting
    (CONTEXT: "Hidden"); ticket 30 does not offer a delete for either kind,
-   so there is no deleteRegion here at all. A custom region's name is
-   never edited either - the ticket asks only for add, hide and unhide. */
+   so there is no deleteRegion here at all. A custom region's name can be
+   corrected (after-release 07: a typo otherwise sat in every picker for
+   good); a built-in's cannot, since its name is the catalogue's. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { BodyRegion } from '../types';
@@ -18,6 +19,8 @@ export interface BodyRegionsArea {
   getBodyRegions(): Promise<BodyRegion[]>;
   addCustomRegion(name: string): Promise<BodyRegion>;
   setRegionHidden(id: string, hidden: boolean): Promise<void>;
+  /** Custom regions only. A built-in or unknown id throws. */
+  renameCustomRegion(id: string, name: string): Promise<void>;
 }
 
 type BodyRegionRow = {
@@ -56,6 +59,15 @@ export function makeBodyRegionsArea(driver: SqliteDriver): BodyRegionsArea {
         id
       ]);
       assertChanged(result, `body region: ${id}`);
+    },
+
+    async renameCustomRegion(id, name) {
+      const result = await driver.run('UPDATE body_region SET name = ?, updated_at = ? WHERE uuid = ? AND key IS NULL', [
+        name,
+        now(),
+        id
+      ]);
+      assertChanged(result, `custom body region: ${id}`);
     }
   };
 }

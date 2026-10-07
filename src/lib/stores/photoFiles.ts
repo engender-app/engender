@@ -7,15 +7,18 @@
    arrangement ADR-0017 already uses for the journal: one app-level module
    constructs the real thing and the UI reads it.
 
-   Not reactive: the store is set before the first screen renders and never
-   replaced, so nothing needs to re-run when it changes. */
+   Not reactive: the store is set before the first screen renders, and
+   replaced only around a lock on the web (after-release ticket 10), which
+   sets it to null and back while every screen that reads it is unmounted
+   behind the lock - so nothing needs to re-run when it changes. Null reads
+   as "no store yet", the answer a read during boot already got. */
 
 import { thumbFileName } from '../data/photos/names';
 import type { PhotoFileStore } from '../data/journal/journal';
 
 let store: PhotoFileStore | null = null;
 
-export function setPhotoFiles(files: PhotoFileStore): void {
+export function setPhotoFiles(files: PhotoFileStore | null): void {
   store = files;
 }
 
@@ -120,25 +123,9 @@ export async function readThumbnailFile(name: string): Promise<Uint8Array | null
   return enqueue(name);
 }
 
-/** A stored photo's full bytes, on the same terms. Only the journey export
-    (ticket 27) reads these: a screen drawing a photo wants the thumbnail,
-    and a composed collage at 360px a cell would show the difference. Not
-    batched - one deliberate pass over one photo at a time is what that is,
-    and a queue would only hold its bytes in memory for longer. */
+/** A stored file's full bytes, on the same terms. The journey export reads
+    full photos; voiceFiles.ts exposes this read for recordings and videos.
+    These deliberate reads are not batched with the thumbnail queue. */
 export async function readPhoto(fileName: string): Promise<Uint8Array | null> {
   return store ? store.read(fileName) : null;
-}
-
-/** The combined size of every named file - the documents index's present
-    reading (ticket 58) wants a number straight away, and 0 for no store
-    yet (server-side, or before boot finishes) reads the same as an empty
-    vault rather than as a missing one. Not routed through `enqueue`: that
-    queue exists for bytes a screen is about to decode, and a size is
-    metadata no store has to read a file's bytes to produce
-    (opfs-file-store.ts's own `size`). */
-export async function totalSize(names: string[]): Promise<number> {
-  const files = store;
-  if (!files || names.length === 0) return 0;
-  const sizes = files.sizeMany ? await files.sizeMany(names) : await Promise.all(names.map((name) => files.size(name)));
-  return sizes.reduce<number>((total, size) => total + (size ?? 0), 0);
 }

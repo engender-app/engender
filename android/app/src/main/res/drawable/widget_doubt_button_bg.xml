@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The doubt widget is one cell wide by default (57dp), so its only
+     button needs almost the whole width to be 48dp: the layout pads 4dp
+     and this inset draws the pill 8dp further in, 12dp from each edge as
+     before. Keep left and right equal, for the same right-to-left reason
+     as widget_mood_button_bg. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="8dp"
+    android:insetRight="8dp"
+    android:insetTop="4dp"
+    android:insetBottom="4dp"
+    android:drawable="@drawable/widget_pill" />

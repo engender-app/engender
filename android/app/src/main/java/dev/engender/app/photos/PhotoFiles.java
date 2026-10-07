@@ -3,6 +3,7 @@ package dev.engender.app.photos;
 import android.content.Context;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -15,14 +16,22 @@ import java.io.IOException;
 final class PhotoFiles {
     static final String DEFAULT_DIRECTORY = "photos";
 
+    private static final PhotoWriteOrder writes = new PhotoWriteOrder();
+
     private PhotoFiles() {}
+
+    static PhotoWriteOrder.Request reserveWrite(File target) {
+        return writes.reserve(target.getAbsolutePath(), bytes -> {
+            try (FileOutputStream out = new FileOutputStream(target, false)) {
+                out.write(bytes);
+                out.getFD().sync();
+            }
+        });
+    }
 
     static File directory(Context context, String directoryName) {
         if (directoryName == null) directoryName = DEFAULT_DIRECTORY;
-        if (directoryName.trim().isEmpty() || directoryName.contains("/") || directoryName.contains("\\")
-            || directoryName.contains("..")) {
-            throw new IllegalArgumentException("invalid photo directory name");
-        }
+        validateDirectory(context, directoryName);
 
         File directory = new File(context.getFilesDir(), directoryName);
         if (!directory.exists() && !directory.mkdirs() && !directory.isDirectory()) {
@@ -61,10 +70,7 @@ final class PhotoFiles {
      * a part: a reset that half happened has to say so.
      */
     static void deleteDirectory(Context context, String directoryName) throws IOException {
-        if (directoryName == null || directoryName.trim().isEmpty() || directoryName.contains("/")
-            || directoryName.contains("\\") || directoryName.contains("..")) {
-            throw new IllegalArgumentException("invalid photo directory name");
-        }
+        validateDirectory(context, directoryName);
         File directory = new File(context.getFilesDir(), directoryName);
         if (!directory.exists()) return;
         File[] children = directory.listFiles();
@@ -74,6 +80,17 @@ final class PhotoFiles {
             }
         }
         if (!directory.delete() && directory.exists()) throw new IOException("could not delete " + directory);
+    }
+
+    private static void validateDirectory(Context context, String name) {
+        if (DEFAULT_DIRECTORY.equals(name)) return;
+        boolean debug = (context.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        if (debug && name != null && (java.util.Arrays.asList(
+            "write-channel-test", "wipe-test-photos", "initialization-test-photos",
+            "contract-probe-photos", "encryption-probe-photos", "long-journal-photos",
+            "long-journal-photos-one-year").contains(name)
+            || name.matches("(?:ee|me|me2)-(?:wa|aw)-(?:source|replace|merge)-photos"))) return;
+        throw new IllegalArgumentException("invalid photo directory name");
     }
 
     static File fileFor(Context context, String directoryName, String name) {
@@ -87,7 +104,7 @@ final class PhotoFiles {
     /** Shared by both transports so a failure looks the same to either
         caller: a message when the exception has one, the exception's own
         class name when it does not. */
-    static String message(Exception e) {
+    static String message(Throwable e) {
         String detail = e.getMessage();
         return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
     }

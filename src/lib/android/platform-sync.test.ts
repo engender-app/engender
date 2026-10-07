@@ -341,7 +341,6 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
   return {
     isAndroid: () => true,
     isReady: () => true,
-    lockEnabled: true,
     todayEpochDay: () => 20313,
     prefs: {
       checkInEnabled: true,
@@ -507,14 +506,8 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
-    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart', enabled: true });
+    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart' });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
-  });
-
-  test('unlocked mode clears the native Recents lock policy', () => {
-    const deps = makeDeps({ lockEnabled: false });
-    platformSync.startAndroidPlatformSync(deps);
-    expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart', enabled: false });
   });
 
   test('hands the launcher both halves of its identity, so the icon follows the flag', async () => {
@@ -666,4 +659,38 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(windowListeners.focus ?? []).toHaveLength(0);
     expect(documentListeners.visibilitychange ?? []).toHaveLength(0);
   });
+  test('permanent write listeners and queued work do nothing after stop', async () => {
+    const listeners: ((tables: string[]) => void)[] = [];
+    const deps = makeDeps({ onTablesWritten: (listener) => listeners.push(listener) });
+    let finishRead: (value: typeof REMINDER[]) => void;
+    vi.mocked(deps.journal.reminders.getReminders).mockReturnValue(new Promise((resolve) => { finishRead = resolve; }));
+    platformSync.startAndroidPlatformSync(deps);
+    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    await flush();
+    platformSync.stopAndroidPlatformSync();
+    const reconciles = vi.mocked(deps.journal.stock.reconcileRunOutReminders).mock.calls.length;
+    finishRead!([REMINDER]);
+    await flush();
+    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    await flush();
+    expect(deps.androidReminders.sync).not.toHaveBeenCalled();
+    expect(deps.journal.reminders.getReminders).toHaveBeenCalledTimes(1);
+    expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledTimes(reconciles);
+  });
+
+  test('preference bridge failures are caught and reported', async () => {
+    const error = new Error('bridge failed');
+    const deps = makeDeps();
+    vi.mocked(deps.androidDisguise.setLauncherIdentity).mockRejectedValue(error);
+    vi.mocked(deps.androidLockTiming.setTiming).mockRejectedValue(error);
+    vi.mocked(deps.androidScreenCapture.setAllowed).mockRejectedValue(error);
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      platformSync.startAndroidPlatformSync(deps);
+      await flush();
+      expect(report).toHaveBeenCalledTimes(3);
+      expect(report).toHaveBeenCalledWith(error);
+    } finally { report.mockRestore(); }
+  });
+
 });

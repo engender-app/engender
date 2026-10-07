@@ -250,7 +250,8 @@ export async function everySectionDevice(): Promise<{ driver: SqliteDriver; jour
     startEpochDay: null,
     endEpochDay: null,
     hasNote: true,
-    hasPhoto: false
+    hasPhoto: false,
+    starred: false
   });
   await journal.revisits.setRevisit({ entryId: entry, createdEpochDay: 20000, targetEpochDay: 20100 });
 
