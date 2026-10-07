@@ -54,6 +54,10 @@ function safeIsFile(p: string): boolean {
 /** Entry points the bundler reaches by path, not by import. */
 const ENTRY_POINTS = new Set(['src/lib/data/demo/prewarm.ts']); // vite.config.ts demo build input
 
+/** An import named only inside a comment is not an import. */
+const stripComments = (text: string) =>
+  text.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+
 const SPEC = /(?:from\s*|import\s*\(\s*|import\s+|new URL\(\s*)['"]([^'"]+)['"]/g;
 
 describe('module importers', () => {
@@ -66,7 +70,7 @@ describe('module importers', () => {
 
   const imported = new Set<string>();
   for (const file of all) {
-    const text = readFileSync(file, 'utf8');
+    const text = stripComments(readFileSync(file, 'utf8'));
     for (const m of text.matchAll(SPEC)) {
       const hit = resolveSpecifier(file, m[1]);
       if (!hit || hit === file) continue;
@@ -87,6 +91,11 @@ describe('module importers', () => {
 
   it('finds modules to check', () => {
     expect(modules.length).toBeGreaterThan(200);
+  });
+
+  it('does not count an import written inside a comment', () => {
+    const text = stripComments("/* import a from './a' */ // import b from './b'\n<!-- import c from './c' -->\nimport d from './d';");
+    expect([...text.matchAll(SPEC)].map((m) => m[1])).toEqual(['./d']);
   });
 
   it('gives every module under src/lib an importer', () => {
