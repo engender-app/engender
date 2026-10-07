@@ -80,7 +80,7 @@ const SPOKEN_ATTRIBUTES = new Set([
 /** At least one letter, in any alphabet. Separators and arrows are not copy. */
 const A_WORD = /\p{L}/u;
 
-/** Feminine past-tense endings: "zrobiłaś", "zrobiłeś" and the conditionals. */
+/** Gendered second-person verb endings: "zrobiłaś", "zrobiłeś" and the conditional forms. */
 const GENDERED_READER_ENDINGS = ['łaś', 'łeś', 'łabyś', 'łbyś'];
 
 /**

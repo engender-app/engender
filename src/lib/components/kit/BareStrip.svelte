@@ -38,7 +38,7 @@
   /* `onPick` turns each day into a control (ticket 44): dilation and wear
      both open that day's session sheet from the strip, which is the write
      path their per-day rows used to carry. Without it the strip stays what
-     it has always been, a drawing - the journal-connected caller passes none. The whole
+     it has always been, a drawing. The whole
      column is the target rather than the cell, so the letter under it is
      part of the tap and the target is taller than the 44px cell. */
   let {
