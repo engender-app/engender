@@ -84,7 +84,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { crossfade, disclose, resize, slideMonit } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { isAndroid } from '$lib/platform';
@@ -656,32 +656,37 @@
              with one day in it, which is a point and no line (after-release
              27, audit L05-14). -->
         {#if legendEntries.length}
-          <WearTrendChart
-            wearPoints={wearTrend}
-            regionPoints={regionTrend}
-            {wearMax}
-            regionMin={BODY_REGION_INTENSITY_MIN}
-            regionMax={BODY_REGION_INTENSITY_MAX}
-            highlight={trendHighlight}
-            ariaLabel={readAxis.keying
-              ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
-              : m.wear_session_trend_title()}
-          />
-          <p class="muted small wear-trend-legend" use:resize>
-            {#each legendEntries as entry (entry.series)}
-              {@const label =
-                entry.series === 'wear'
-                  ? m.wear_session_trend_wear_legend()
-                  : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
-              {#if entry.state === 'empty'}
-                <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
-              {:else if entry.state === 'one-day'}
-                <span out:crossfade>{m.wear_session_trend_series_one_day({ series: label })}</span>
-              {:else}
-                <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
-              {/if}
-            {/each}
-          </p>
+          <!-- Slid in and out against the sentence that stands in for it,
+               which ChartEmpty slides the same way: a range going from one
+               day to two mounted the chart at full height in one frame. -->
+          <div transition:slideMonit>
+            <WearTrendChart
+              wearPoints={wearTrend}
+              regionPoints={regionTrend}
+              {wearMax}
+              regionMin={BODY_REGION_INTENSITY_MIN}
+              regionMax={BODY_REGION_INTENSITY_MAX}
+              highlight={trendHighlight}
+              ariaLabel={readAxis.keying
+                ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
+                : m.wear_session_trend_title()}
+            />
+            <p class="muted small wear-trend-legend" use:resize>
+              {#each legendEntries as entry (entry.series)}
+                {@const label =
+                  entry.series === 'wear'
+                    ? m.wear_session_trend_wear_legend()
+                    : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
+                {#if entry.state === 'empty'}
+                  <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
+                {:else if entry.state === 'one-day'}
+                  <span out:crossfade>{m.wear_session_trend_series_one_day({ series: label })}</span>
+                {:else}
+                  <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
+                {/if}
+              {/each}
+            </p>
+          </div>
         {:else}
           <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
         {/if}
