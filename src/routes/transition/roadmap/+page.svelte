@@ -772,7 +772,14 @@
      inline-block, and on a stock title that wraps at 390px ("How you are
      addressed at work or school") it sat in the gap between the two lines
      and read as an underline (after-release 28, audit V08). It grows from
-     each line's left edge over the same --dur-fast the box's fill uses. */
+     each line's left edge over the same --dur-fast the box's fill uses.
+
+     background-size is not one of the motion system's transform, opacity
+     and clip, and this is the stated exception ADR-0078 allows: the ticket
+     prescribes the technique ("an inline span with a gradient background
+     and box-decoration-break: clone, still animatable"), and no transform
+     or clip can address the separate line fragments of one inline box. It
+     is a paint, never a layout, and lasts --dur-fast. */
   .roadmap-done {
     color: var(--text-2);
   }
