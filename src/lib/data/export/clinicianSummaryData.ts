@@ -134,6 +134,28 @@ export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] 
   return names.sort((a, b) => a.localeCompare(b));
 }
 
+/** Saved exclusions can use a spelling hidden by the deduplicated choices. */
+export function excludedClinicianDrugs(
+  drugNames: readonly string[],
+  preferences: Partial<Record<string, boolean>>
+): Set<string> {
+  const saved = Object.entries(preferences);
+  return new Set(drugNames.filter((drug) => saved.some(([name, excluded]) => excluded && sameDrug(name, drug))));
+}
+
+/** Update old spellings too, so an earlier exclusion cannot override this pick. */
+export function withClinicianDrugIncluded(
+  preferences: Partial<Record<string, boolean>>,
+  drug: string,
+  included: boolean
+): Partial<Record<string, boolean>> {
+  const next = { ...preferences, [drug]: !included };
+  for (const name of Object.keys(preferences)) {
+    if (sameDrug(name, drug)) next[name] = !included;
+  }
+  return next;
+}
+
 const spacedWords = (text: string) =>
   ` ${text.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
 
