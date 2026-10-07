@@ -15,18 +15,18 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { DECOY_NAME, appWordmark, hubTabLabel, tabIdentity } from './identity.ts';
+import { appWordmark, hubTabLabel, tabIdentity } from './identity.ts';
 
 describe('the wordmark a surface prints', () => {
   it('is the decoy name under disguise, whatever the app is called', () => {
-    expect(appWordmark(true, 'engender')).toBe('Notes');
-    expect(appWordmark(true, 'engender')).toBe(DECOY_NAME);
+    expect(appWordmark(true, 'engender', 'Notes')).toBe('Notes');
+    expect(appWordmark(true, 'engender', 'Notatki')).toBe('Notatki');
   });
 
   it('is the app name the caller was given otherwise', () => {
     /* The name is a parameter because it is a catalogue lookup and this
        tier may not import paraglide (ADR-0016). */
-    expect(appWordmark(false, 'engender')).toBe('engender');
+    expect(appWordmark(false, 'engender', 'Notatki')).toBe('engender');
   });
 });
 
@@ -44,7 +44,7 @@ describe('what the tab says', () => {
   const chromeIcon = 'favicon-trans.svg';
 
   it('says the app name over the running app', () => {
-    expect(tabIdentity({ disguised: false, appName: 'engender', icon: chromeIcon })).toEqual({
+    expect(tabIdentity({ disguised: false, appName: 'engender', decoyName: 'Notes', icon: chromeIcon })).toEqual({
       title: 'engender',
       icon: 'favicon-trans.svg'
     });
@@ -52,7 +52,7 @@ describe('what the tab says', () => {
 
   it('says the decoy name over the running app when disguised', () => {
     expect(
-      tabIdentity({ disguised: true, appName: 'engender', icon: 'favicon-notes.svg' })
+      tabIdentity({ disguised: true, appName: 'engender', decoyName: 'Notes', icon: 'favicon-notes.svg' })
     ).toEqual({
       title: 'Notes',
       icon: 'favicon-notes.svg'
@@ -85,7 +85,7 @@ describe('where the decoy name is allowed to appear', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-  it('is this module and nothing else', () => {
+  it('is supplied by catalogues after the pre-paint script', () => {
     /* ADR-0035 asks for the disguise check to live in one place, and the
        cost of a surface forgetting it is not cosmetic: it shows the real
        app name to whoever the person was hiding it from.
@@ -100,7 +100,7 @@ describe('where the decoy name is allowed to appear', () => {
          happens to start with the word. */
       .filter((path) => path !== 'src/lib/data/demo/fullFixture.ts')
       .filter((path) => /\bNotes\b/.test(withoutComments(readFileSync(root + path, 'utf8'))));
-    expect(naming).toEqual(['src/lib/disguise/identity.ts']);
+    expect(naming).toEqual(['src/app.html']);
   });
 
   it('is asked by every surface that says the app name out loud', () => {

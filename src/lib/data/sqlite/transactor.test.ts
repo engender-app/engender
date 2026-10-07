@@ -2,7 +2,7 @@
    Node tier; run with `npm test`. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { oneTransactionAtATime } from './transactor.ts';
 
 /** A connection that records the statements a transaction sends it, and
@@ -97,4 +97,25 @@ test('a rejected transaction does not fail the ones queued behind it', async () 
 
   await assert.rejects(failing, /first/);
   assert.equal(await following, 'second');
+});
+
+ test('a failed post-commit cleanup preserves the committed result and runs later cleanups', async () => {
+  const { migratedDb } = await import('./test-support/migrated-db');
+  const db = await migratedDb();
+  const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const later = vi.fn(async () => {});
+  try {
+    assert.equal(await db.transaction(async (scope) => {
+      await scope.run("INSERT INTO pref (key, value) VALUES ('cleanup-proof', 'kept')");
+      scope.deferUntilCommit!(async () => { throw new Error('file busy'); });
+      scope.deferUntilCommit!(later);
+      return 'saved';
+    }), 'saved');
+    assert.equal((await db.query<{ value: string }>("SELECT value FROM pref WHERE key = 'cleanup-proof'"))[0].value, 'kept');
+    assert.equal(warned.mock.calls.length, 1);
+    assert.equal(later.mock.calls.length, 1);
+  } finally {
+    warned.mockRestore();
+    await db.close();
+  }
 });

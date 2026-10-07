@@ -10,8 +10,8 @@
      there is no fixed set of rows the way personal effects has one per
      marker).
 
-     Purely a renderer, the same philosophy EffectsTimeline and LineChart
-     state for themselves: the caller resolves every label via
+     Purely a renderer, the same philosophy EffectsTimeline
+     states for itself: the caller resolves every label via
      cycleEventKindName, and this file adds only its own fixed legend
      wording. Decorative only - the textual list the caller renders
      alongside this is what a screen reader needs. -->

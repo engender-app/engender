@@ -28,6 +28,6 @@ test('the three attribution states each have their own wording', () => {
   assert.equal(attributionLabel({ episode: null, ambiguous: false }), 'No regimen episode covers this date');
   assert.equal(
     attributionLabel({ episode: null, ambiguous: true }),
-    'More than one regimen was active: drug not recorded'
+    'Drug unknown: more than one regimen was running'
   );
 });

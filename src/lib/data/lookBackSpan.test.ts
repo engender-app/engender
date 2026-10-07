@@ -62,6 +62,14 @@ describe('historyStart: the earliest day the person authored anything dated', ()
     expect(start).toBe(20000);
   });
 
+  /* After-release 17 review: a journal holding only tally taps had no rail
+     and so no way to the counters' tile. */
+  it('reaches back to the first tally tap, and starts at one on its own', () => {
+    expect(historyStart({ bounds: { firstEpochDay: 20000, lastEpochDay: TODAY }, milestones: [], eras: [], firstTallyDay: 19500 }, TODAY)).toBe(19500);
+    expect(historyStart({ bounds: null, milestones: [], eras: [], firstTallyDay: 20650 }, TODAY)).toBe(20650);
+    expect(historyStart({ bounds: null, milestones: [], eras: [], firstTallyDay: null }, TODAY)).toBeNull();
+  });
+
   it('is null when nothing dated exists yet', () => {
     expect(historyStart({ bounds: null, milestones: [], eras: [] }, TODAY)).toBeNull();
     expect(historyStart({ bounds: null, milestones: [{ epochDay: TODAY + 1 }], eras: [] }, TODAY)).toBeNull();
@@ -235,14 +243,24 @@ describe('the rail draws every dated history, not only the eras', () => {
   });
 
   it('names in the legend only the kinds this journal has', () => {
-    expect(railLegendKinds(historyBands(annotations), surgeryMarks(annotations), true)).toEqual([
+    expect(railLegendKinds(historyBands(annotations), [], surgeryMarks(annotations), true)).toEqual([
       'era',
       'regimen',
       'tryout',
       'surgery'
     ]);
-    expect(railLegendKinds([], [], false)).toEqual([]);
-    expect(railLegendKinds([], surgeryMarks(annotations), false)).toEqual(['surgery']);
+    expect(railLegendKinds([], [], [], false)).toEqual([]);
+    expect(railLegendKinds([], [], surgeryMarks(annotations), false)).toEqual(['surgery']);
+  });
+
+  /* A milestone and a surgery day draw the same mark, so the legend gives
+     them one key and names what that key covers (after-release 27, audit
+     L05-12): it used to call every mark "Surgery" when both were there, and
+     name nothing when there were only milestones. */
+  it('names the marks by what they are: milestones, surgeries, or both under one key', () => {
+    const milestone = [{ id: 'm1', name: 'HRT start', epochDay: 20200 }];
+    expect(railLegendKinds([], milestone, [], false)).toEqual(['milestone']);
+    expect(railLegendKinds([], milestone, surgeryMarks(annotations), false)).toEqual(['milestone-and-surgery']);
   });
 
   it('sets the span to the thirty days ending on a mark', () => {

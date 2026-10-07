@@ -173,9 +173,7 @@
   }
 
   /* A reading: a 7px round dot, drawn as a zero-length stroke so the
-       viewBox's own stretch cannot turn it into an ellipse. The ring of
-       background around it is what keeps two readings a day apart from
-       merging into one blob. */
+       viewBox's own stretch cannot turn it into an ellipse. */
   .felt-mark {
     stroke: var(--role-draw, var(--accent));
     stroke-width: 7;
@@ -184,7 +182,7 @@
   }
 
   /* A day the span does not reach, drawn at the end it was pulled in to
-     and hollowed so the line does not claim it happened there. The same
+     and faded so the line does not claim it happened there. The same
      treatment the phase rail gives a consult beyond its own reach. */
   .felt-mark.is-beyond {
     opacity: 0.55;

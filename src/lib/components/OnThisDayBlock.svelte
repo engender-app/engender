@@ -22,16 +22,17 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtTime } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { fmtDayBar, fmtTime } from '$lib/data/dates';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
+  import { tablesReadBy } from '$lib/data/live/writes';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
-  import { onThisDayCandidates, type OnThisDayLookback } from '$lib/data/on-this-day';
+  import { onThisDayCandidates, onThisDayQualifies, type OnThisDayLookback } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT, type RetrospectiveLetter } from '$lib/data/letterRetrospective';
-  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { Entry } from '$lib/data/types';
@@ -52,8 +53,8 @@
     scrollTo?: string | null;
   } = $props();
 
-  const today = todayEpochDay();
-  const candidates = onThisDayCandidates(today);
+  const today = $derived(currentDay());
+  const candidates = $derived(onThisDayCandidates(today));
 
   const LOOKBACK_TITLE: Record<OnThisDayLookback, () => string> = {
     year: () => m.on_this_day_year_title(),
@@ -70,21 +71,23 @@
     letters: RetrospectiveLetter[];
   }
 
+  /* Seeded with the two reads made after an await (the good-day check and
+     the day's entries), so the first run does not discover them late and
+     start again from the top, the same round trip OnThisDayHomeCard saves. */
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
-    const [letters, eras, mutedEraUuids] = await Promise.all([
+    // Read before the first await, so the query re-runs when the day changes.
+    const asOf = today;
+    const lookbacks = candidates;
+    const [letters, consent] = await Promise.all([
       j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
-      j.eras.getEras(),
-      j.eraMutes.getMutedEraUuids()
+      resurfacing('on-this-day', j)
     ]);
     const results = await Promise.all(
-      candidates.map(async (c): Promise<QualifyingDay | null> => {
-        // A muted era's day resurfaces nothing at all - not the entries,
-        // not the letters - so this is checked before either read.
-        if (touchesMutedEra(eras, mutedEraUuids, c.epochDay, c.epochDay)) return null;
-        const dayLetters = onThisDayLetters(letters, c.epochDay, today);
+      consent.allowedDays(lookbacks).map(async (c): Promise<QualifyingDay | null> => {
+        const dayLetters = onThisDayLetters(letters, c.epochDay, asOf);
         const good = await j.stats.isGoodDay(c.epochDay);
-        if (!good && dayLetters.length === 0) return null;
+        if (!onThisDayQualifies(good, dayLetters)) return null;
         return {
           key: c.key,
           epochDay: c.epochDay,
@@ -94,19 +97,24 @@
       })
     );
     return results.filter((d): d is QualifyingDay => d !== null);
-  });
+  }, [...tablesReadBy('stats', 'isGoodDay'), ...tablesReadBy('entries', 'entriesForDay')]);
 
   let days = $derived(
     daysQuery.rows.map((d) => ({
       ...d,
       title: LOOKBACK_TITLE[d.key](),
-      date: fmtDay(d.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }),
+      date: fmtDayBar(d.epochDay, today),
       photos: d.entries.flatMap((entry) => entry.photos)
     }))
   );
 
+  /* Once per target: `days` is replaced on every refresh of the query, and
+     scrolling again each time would pull the page back from wherever the
+     reader had moved on to. */
+  let scrolledTo: string | null = null;
   $effect(() => {
-    if (!days.length || !scrollTo) return;
+    if (!days.length || !scrollTo || scrolledTo === scrollTo) return;
+    scrolledTo = scrollTo;
     document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 

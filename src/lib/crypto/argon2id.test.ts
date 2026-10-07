@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { deriveKey, randomSalt } from './argon2id.ts';
+import { deriveKey, randomSalt, prewarmArgon2 } from './argon2id.ts';
 import type { Argon2Params } from './params.ts';
 
 /* Deliberately not one of the shipped profiles: these tests are about what
@@ -109,4 +109,31 @@ test('a worker that never starts leaves the derivation to this thread', async ()
   } finally {
     g.Worker = prior;
   }
+});
+
+
+test('a prewarmed worker load failure falls back before a secret is posted', async () => {
+  const g = globalThis as Record<string, unknown>;
+  const prior = g.Worker;
+  let worker: { onerror?: (event: { message: string; preventDefault(): void }) => void; terminate(): void; postMessage(): void };
+  let posts = 0;
+  let terminated = false;
+  g.Worker = class {
+    constructor() { worker = this; }
+    postMessage() { posts++; }
+    terminate() { terminated = true; }
+  };
+  try {
+    prewarmArgon2();
+    worker!.onerror?.({ message: 'chunk 404', preventDefault() {} });
+    g.Worker = prior;
+    const salt = randomSalt();
+    const actual = await Promise.race([
+      deriveKey('correct horse', salt, CHEAP),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 100))
+    ]);
+    expect(actual).toEqual(await deriveKey('correct horse', salt, CHEAP));
+    expect(posts).toBe(0);
+    expect(terminated).toBe(true);
+  } finally { g.Worker = prior; }
 });

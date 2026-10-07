@@ -8,6 +8,8 @@ describe('roleAt', () => {
     ink: stripe,
     mark: stripe,
     paired: stripe,
+    edge: null,
+    pairedEdge: null,
     heat: []
   }));
 
@@ -25,7 +27,7 @@ describe('roleAt', () => {
 });
 
 describe('eraBandRoles', () => {
-  const role = (stripe: string) => ({ stripe, ink: stripe, mark: stripe, paired: stripe, heat: [] });
+  const role = (stripe: string) => ({ stripe, ink: stripe, mark: stripe, paired: stripe, edge: null, pairedEdge: null, heat: [] });
 
   it('cycles over the flag colours where there are two or more', () => {
     const roles = [role('#2E3192'), role('#EC008C'), role('#FFFFFF')];

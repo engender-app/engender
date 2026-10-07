@@ -20,13 +20,16 @@
     ongoingWindowRange,
     todayEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { printCurrentPage } from '$lib/print/print';
   import {
     assembleClinicianDossier,
     CLINICIAN_DOSSIER_INCLUSION_KEYS,
     DEFAULT_CLINICIAN_DOSSIER_INCLUSION,
+    excludedClinicianDrugs,
     regimenDrugNames,
+    withClinicianDrugIncluded,
     type ClinicianDossierInclusion,
     type ClinicianDossierInclusionKey
   } from '$lib/data/export/clinicianSummaryData';
@@ -47,13 +50,16 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
 
-  const today = todayEpochDay();
-  const todayInput = dateInputValueFromEpochDay(today);
-  const defaultRange = ongoingWindowRange(today, 90);
+  const today = $derived(currentDay());
+  const todayInput = $derived(dateInputValueFromEpochDay(today));
+  const defaultRange = ongoingWindowRange(todayEpochDay(), 90); // mount-day: the form starts on the day it opened
 
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));
   let dobInput = $state('');
+  /* Transient like the date of birth: typed for this summary, never kept as
+     a preference (after-release 22, confirmed in pre-release-human 03). */
+  let pronounsInput = $state('');
   let inclusion = $state<ClinicianDossierInclusion>({ ...DEFAULT_CLINICIAN_DOSSIER_INCLUSION });
 
   /* Ticket 08: the range, the sections and the drugs are all still set on
@@ -79,11 +85,11 @@
   const rowEstimate = readReserve('clinician-summary-row');
   const rememberRow = (px: number) => rememberReserve('clinician-summary-row', px);
   let excludedDrugs = $derived(
-    new Set(drugNames.filter((drug) => prefs.clinicianSummaryDrugExcluded[drug]))
+    excludedClinicianDrugs(drugNames, prefs.clinicianSummaryDrugExcluded)
   );
 
   function toggleDrug(drug: string, included: boolean) {
-    prefs.clinicianSummaryDrugExcluded = { ...prefs.clinicianSummaryDrugExcluded, [drug]: !included };
+    prefs.clinicianSummaryDrugExcluded = withClinicianDrugIncluded(prefs.clinicianSummaryDrugExcluded, drug, included);
   }
 
   /* A shortcut for the two fields below, nothing else: it fills the same
@@ -111,6 +117,7 @@
           toEpochDay: range.end,
           demographics: {
             name: prefs.name,
+            pronouns: pronounsInput.trim() || null,
             dob: dobInput.trim() || null
           },
           inclusion,
@@ -174,7 +181,7 @@
 </script>
 
 <div class="screen clinician-summary">
-  <ScreenHeader title={m.clinician_summary_title()} back="/more" class="no-print" />
+  <ScreenHeader title={m.clinician_summary_title()} back="/care" class="no-print" />
 
   <!-- The settings row shows the included items and opens their controls. -->
   <!-- Held until the regimen read answers: the row names the drugs, and
@@ -210,7 +217,7 @@
       <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
         <PrintLetterhead />
         <h1>{m.clinician_summary_title()}</h1>
-        <p>{dayLong(range.start)} – {dayLong(range.end)}</p>
+        <p>{m.clinician_summary_period_range({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
       </div>
       {#if dossierQuery.loading || !dossier}
@@ -278,7 +285,18 @@
     <p class="muted small">{m.clinician_summary_range_required()}</p>
   {/if}
 
-  <div style="margin-bottom:var(--space-4)">
+  <div class="cd-person">
+    <Field label={m.clinician_summary_pronouns_optional()} id="clinician-summary-pronouns">
+      {#snippet children(id)}
+        <input
+          {id}
+          type="text"
+          class="input"
+          placeholder={m.clinician_summary_pronouns_placeholder()}
+          bind:value={pronounsInput}
+        />
+      {/snippet}
+    </Field>
     <Field label={m.clinician_summary_dob_optional()} id="clinician-summary-dob">
       {#snippet children(id)}
         <input
@@ -347,6 +365,16 @@
      the wrap's own 8 under it. */
   .settings-row-wrap :global(.read-reserve-body > *) {
     margin-bottom: 0;
+  }
+
+  /* The two facts about the person this summary asks for, one under the
+     other: side by side, "Date of birth (optional)" wrapped and set its
+     input lower than its neighbour's at phone width. */
+  .cd-person {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
   }
 
   .cd-since-appointment {

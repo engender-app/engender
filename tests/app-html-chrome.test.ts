@@ -92,6 +92,9 @@ function stamp(
       querySelectorAll: (selector: string) => (selector === 'link[rel="x-modulepreload"]' ? heldLinks : [])
     },
     addEventListener: (type: string, listener: () => void) => void ((window[type] ??= []) as Array<() => void>).push(listener),
+    /* An HTTP/2 navigation, the protocol on which the hints stay held to the
+       first frame; module-preload-hold.test.ts covers HTTP/1.1. */
+    performance: { getEntriesByType: (type: string) => (type === 'navigation' ? [{ nextHopProtocol: 'h2' }] : []) },
     requestAnimationFrame: (callback: () => void) => callback(),
     setTimeout: (callback: () => void) => callback()
   });

@@ -3,7 +3,7 @@
      with the path between them traced by a scrubber (phase 5 deepening
      ticket 19, ADR-0048).
 
-     A dumb renderer, like WearTrendChart and LineChart beside it. It takes
+     A dumb renderer, like WearTrendChart beside it. It takes
      positions already read to 0..1 ($lib/data/constellationData), the two
      scales' own end words, a formatter for a date and the modes with their
      resolved roles. It knows no dimension key, no message and no colour of
@@ -160,6 +160,12 @@
       dataset-arrives sweep it shares its one mechanism with. */
   let replay = $state(0);
 
+  /** True while the sweep below draws the head across, which rewrites the
+      readout every frame. The readout is an <output>, a live region, and
+      would be read out at every reading it passes (after-release 21, audit
+      L04-13); it is muted until the head comes to rest. */
+  let sweeping = $state(false);
+
   $effect(() => {
     void replay;
     if (signature === '') {
@@ -178,10 +184,15 @@
       const t = Math.min(1, (now - began) / duration);
       head = Math.round(EASE_OUT(t) * last);
       if (t < 1) frame = requestAnimationFrame(step);
+      else sweeping = false;
     };
     head = 0;
+    sweeping = true;
     frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      sweeping = false;
+    };
   });
 
   /* Held to the dataset on the way out rather than corrected on the way in,
@@ -322,6 +333,16 @@
                mode's own colour so the ring answers the same question the
                points do. -->
           <g {...roleAttrs(headMode?.role)} aria-hidden="true">
+            <!-- The ring's ground and its edge: the card colour inside, and
+                 the role's edge a pixel either side of the ring drawn over
+                 it (transparent where the stripe reads by itself). -->
+            <circle
+              class="cn-head-casing"
+              class:is-unset={!headMode}
+              cx={px(at)}
+              cy={py(at)}
+              r={DOT + 3}
+            />
             <circle
               class="cn-head"
               class:is-unset={!headMode}
@@ -334,7 +355,7 @@
       </svg>
 
       {#if at}
-        <output class="cn-readout" data-constellation-readout>
+        <output class="cn-readout" data-constellation-readout aria-live={sweeping ? 'off' : 'polite'}>
           <span class="visually-hidden">{readingLabel(at)}</span>
           <span aria-hidden="true">{dayLabel(at.day)}</span>
           {#if headMode}
@@ -432,17 +453,33 @@
     stroke-linecap: round;
   }
 
-  /* The flag's own stripe, undiluted (kit.css's --role-draw). A fill owes
-     no contrast ratio, and applying one is what turned nonbinary's yellow
-     to olive. */
+  /* The flag's own stripe, undiluted (kit.css's --role-draw). Flooring the
+     fill to a contrast ratio is what turned nonbinary's yellow to olive, so
+     the boundary is a ring instead: --role-edge, the stripe's hue at 3:1,
+     where the stripe alone is under it on the plot and transparent where it
+     is not (phase 15 ticket 20). Painted under the fill, so of its 2px only
+     the outer pixel shows and the dot keeps its size and its colour. */
   .cn-dot {
     fill: var(--role-draw);
+    stroke: var(--role-edge);
+    stroke-width: 2;
+    paint-order: stroke;
   }
 
   .cn-head {
-    fill: var(--surface);
+    fill: none;
     stroke: var(--role-draw);
     stroke-width: 2.5;
+  }
+
+  .cn-head-casing {
+    fill: var(--surface);
+    stroke: var(--role-edge);
+    stroke-width: 4.5;
+  }
+
+  .cn-head-casing.is-unset {
+    stroke: none;
   }
 
   /* An entry carrying no mode is absence and not a category (ADR-0048), so
@@ -453,6 +490,7 @@
      person had named pink. */
   .cn-dot.is-unset {
     fill: var(--text-2);
+    stroke: none;
   }
 
   .cn-head.is-unset {

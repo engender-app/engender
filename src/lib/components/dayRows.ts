@@ -43,7 +43,7 @@ import {
 } from '$lib/data/vocabulary/labels';
 import { doseRowTitle, statusLabel } from '$lib/data/vocabulary/doseLabels';
 import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-import { iconOf, literalIcon } from './rowIcon';
+import { iconOf } from './rowIcon';
 
 /** One line in the day's context list. `subtitle` is the earned exception
     (DIRECTION 3b), not the standard: most rows say everything in the
@@ -136,7 +136,7 @@ const SECTION_ROWS: Record<
         key: `dose-${dose.id}`,
         // No screen of its own - a dose sits behind the care row - so there
         // is no single row to read this off and it keeps its own.
-        ...literalIcon('clock'),
+        icon: 'pill',
         title: doseRowTitle(drug, dose, ', '),
         subtitle: subtitle || undefined,
         href: '/care/doses'
@@ -148,7 +148,7 @@ const SECTION_ROWS: Record<
       key: `lab-${result.id}`,
       // No screen of its own - labs sit behind the care row too
       // (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so this keeps its own.
-      ...literalIcon('flask'),
+      icon: 'flask',
       // The analyte in the person's own words and their own unit
       // (ADR-0026), with no range, no reading and no colour beside it.
       title: `${result.analyte} ${result.value} ${result.unit}`,
@@ -184,7 +184,7 @@ const SECTION_ROWS: Record<
       key: `size-${record.id}`,
       // No screen of its own - a size record sits behind the measurements
       // row - so this keeps its own.
-      ...literalIcon('package'),
+      icon: 'package',
       title: `${garmentCategoryName(record.category)} ${record.size}`,
       subtitle: record.brand || undefined,
       href: '/body/sizes'
@@ -239,7 +239,7 @@ const SECTION_ROWS: Record<
         // No screen of its own to read a row from - its own tab, not a hub
         // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it keeps its
         // own icon.
-        ...literalIcon('stats'),
+        icon: 'stats',
         title: kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered(),
         href: '/tally',
         count

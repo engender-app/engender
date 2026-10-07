@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, dateValue } from './browser-harness.mjs';
 
 const server = await createServer({ cacheDir: '.svelte-kit/letter-composition-vite', server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
@@ -42,7 +42,7 @@ try {
   await navigate('/transition/letters');
   await page.waitForURL('**/transition/letters');
   await open();
-  const baseline = await page.locator('#letter-unlock').inputValue();
+  const baseline = await dateValue(page.locator('#letter-unlock'));
   await page.locator('textarea').fill('Keep this letter');
   await page.keyboard.press('Escape');
   await keep();
@@ -58,7 +58,7 @@ try {
     await journal.milestones.upsertMilestone({ name: 'Letter milestone', epochDay: day + 30 });
   }, dates.today);
   await page.getByRole('button', { name: 'Letter milestone', exact: true }).click();
-  assert.equal(await page.locator('#letter-unlock').inputValue(), dates.future);
+  assert.equal(await dateValue(page.locator('#letter-unlock')), dates.future);
   console.log('PASS milestone shortcut still selects unlock date');
   for (const path of ['scrim', 'drag', 'close', 'back', 'navigation']) {
     if (path === 'scrim') await page.locator('[data-sheet-scrim]').click({ position: { x: 2, y: 2 } });
@@ -75,7 +75,7 @@ try {
     if (path === 'navigation') await navigate('/more');
     await keep();
     assert.equal(await page.locator('textarea').inputValue(), 'Keep this letter');
-    assert.equal(await page.locator('#letter-unlock').inputValue(), dates.future);
+    assert.equal(await dateValue(page.locator('#letter-unlock')), dates.future);
     assert.equal(new URL(page.url()).pathname, '/transition/letters');
     assert.equal(await page.locator('[data-sheet-drag]').evaluate((el) => el.style.transform), '');
   }
@@ -109,7 +109,7 @@ try {
   await page.waitForURL('**/transition/letters');
   await open();
   assert.equal(await page.locator('textarea').inputValue(), '');
-  assert.equal(await page.locator('#letter-unlock').inputValue(), baseline);
+  assert.equal(await dateValue(page.locator('#letter-unlock')), baseline);
   console.log('PASS requirements explain disabled seal; navigation discard clears only draft');
 
   await page.evaluate(async () => {
@@ -133,7 +133,7 @@ try {
   await page.locator('[data-save-letter]').click();
   await page.getByRole('alert').filter({ hasText: 'Could not save' }).waitFor();
   assert.equal(await page.locator('textarea').inputValue(), 'A future letter worth keeping');
-  assert.equal(await page.locator('#letter-unlock').inputValue(), dates.future);
+  assert.equal(await dateValue(page.locator('#letter-unlock')), dates.future);
   assert.equal((await stored()).length, 0);
   await page.evaluate(() => { window.letterFault.mode = 'pending'; });
   await page.locator('[data-save-letter]').click();
@@ -150,7 +150,7 @@ try {
   await page.evaluate(() => window.letterFault.resolve());
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   await page.locator('[data-letter-state="sealed"]').waitFor();
-  assert.match(await page.locator('[data-letter-outcome]').innerText(), /Letter sealed/);
+  assert.match(await page.locator('[data-toast-kind="record-saved"]').last().innerText(), /Letter sealed/);
   assert.equal(await page.evaluate(() => window.letterFault.calls), 2);
   const letters = await stored();
   assert.equal(letters.length, 1);
@@ -161,7 +161,7 @@ try {
 
   await open();
   assert.equal(await page.locator('textarea').inputValue(), '');
-  assert.equal(await page.locator('#letter-unlock').inputValue(), baseline);
+  assert.equal(await dateValue(page.locator('#letter-unlock')), baseline);
   await page.locator('textarea').fill('Readable past letter');
   await fillDate(page, '#letter-unlock', dates.past);
   await page.evaluate(() => { window.letterFault.mode = 'normal'; });
@@ -170,7 +170,7 @@ try {
   const readyId = await page.evaluate(() => window.letterFault.id);
   await page.locator(`[data-letter-open="${readyId}"]`).click();
   assert.equal(await page.locator('[data-letter-text]').innerText(), 'Readable past letter');
-  assert.match(await page.locator('[data-letter-outcome]').innerText(), /ready to read/);
+  assert.match(await page.locator('[data-toast-kind="record-saved"]').last().innerText(), /ready to read/);
   await page.locator('[data-letter-close]').click();
   console.log('PASS past date remains permissible; saved text reopens through reading flow');
 
@@ -240,7 +240,17 @@ try {
   });
   await page.locator('#letter-text').waitFor({ state: 'detached' });
   assert.equal(await page.locator('[data-discard-record]').count(), 0);
-  assert.equal((await stored()).length, 3);
+  // A web lock closes the journal (after-release ticket 10): while the gate is
+  // up there is no handle to read letters through. Waited for rather than read
+  // once: the gate is drawn a moment before the lock lets go of the handle.
+  await page.waitForFunction(async () => {
+    const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+    return bootState.journal === null;
+  });
+  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('[data-session-submit]').click();
+  await page.locator('[data-applock]').waitFor({ state: 'detached' });
+  assert.equal((await stored()).length, 3, 'the letters saved before the lock read back through the reopened journal');
   console.log('PASS Polish labels and discard at 200% zoom; disguise lock conceals unsaved text');
   assert.deepEqual(errors, []);
 } catch (error) {

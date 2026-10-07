@@ -38,7 +38,8 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { eraConflict, eraRange, type EraSpan } from '$lib/data/eras';
   import type { Era } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -66,7 +67,7 @@
     end: string;
   }
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const longDay = { day: 'numeric', month: 'short', year: 'numeric' } as const;
 
   let erasQuery = liveList((j) => j.eras.getEras());

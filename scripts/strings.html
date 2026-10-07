@@ -13,6 +13,7 @@
   td:first-child { overflow-wrap: anywhere; width: 20%; }
   td:nth-child(2), td:nth-child(3) { width: 30%; }
   textarea { width: 100%; min-height: 4rem; box-sizing: border-box; resize: vertical; }
+  td p { white-space: pre-wrap; }
   label { display: block; }
   a { display: block; overflow-wrap: anywhere; }
   .finding { color: #a00000; }
@@ -43,7 +44,7 @@
   #replace-preview td { white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 <h1>Message catalogues</h1>
-<p>Edit existing values. Save writes to <code>messages/en.json</code> or <code>messages/pl.json</code>.</p>
+<p>Edit existing values. Save writes each value back to the file it came from: <code>messages/en.json</code> and <code>messages/pl.json</code>, the Android resources, the web manifests, the store listing or the privacy policy.</p>
 <p>Check off a key or the shown keys in a group after reading both languages. Progress survives reloads and restarts. Changed copy needs review again.</p>
 <div class="toolbar">
   <button id="save-all" type="button" disabled>Save all changes</button>
@@ -348,6 +349,7 @@
       const input = element('textarea');
       input.setAttribute('aria-label', `${record.key} ${locale.toUpperCase()} ${field.form ?? 'text'}`);
       input.value = field.text;
+      input.rows = Math.min(24, Math.max(2, Math.ceil(field.text.length / 70) + field.text.split('\n').length - 1));
       label.append(input);
       const save = element('button', 'Save');
       save.type = 'button';

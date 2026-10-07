@@ -13,7 +13,8 @@ photos and milestones together on your own device. You can use it as an
 installable web app or an Android app, in English or Polish.
 
 The app is free software under GPLv3. There are no accounts, subscriptions,
-analytics or backend for journal data. Both versions encrypt the journal at
+visitor profiles or backend for journal data. The hosted web app and website
+keep private hourly page-opening totals, without individual visit records. Both versions encrypt the journal at
 rest and work offline. You choose what to record, which parts of the app to
 use, and when to export or share anything.
 
@@ -60,7 +61,8 @@ entries, or use search and filters to find something across the journal.
 Choose a period to review day-by-day charts, tag insights, recaps and entries
 that resurface from your history. The period you choose carries through the
 section's readings. You can also prepare a journal book for printing or PDF
-export, or share retrospective cards as images.
+export, or share retrospective cards as images. Muted eras stay out of
+On this day and Wrapped, including their notifications and share cards.
 
 ### Transition
 
@@ -96,6 +98,8 @@ Disguise mode uses a neutral name and icon and hides pride motifs. An app
 lock controls access to the journal, and lock screens show no entries or
 other journal data. Lock timing decides when the lock comes back: as soon as
 you leave the app, after one or five minutes away, or only on a restart.
+On the web, locking also closes the journal's database and lets go of its
+key until you unlock again.
 Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
@@ -130,7 +134,9 @@ The full policies are available in
 
 Export an encrypted Archive when you want a backup or need to move your
 journal. Archives use a backup password you choose and can be restored on
-another device. Android also supports scheduled encrypted backups.
+another device. Android also supports scheduled encrypted backups. It keeps
+the five newest verified automatic backups and prunes older automatic backups
+only after a new one verifies. Manual backups remain untouched.
 
 The import tools accept supported exports from Daylio, Day One, TransTracks,
 Track & Graph and Pixels. Plain CSV and JSON exports are available when you
@@ -138,7 +144,11 @@ want to work with your own records outside the app.
 
 Daylio backups may be up to 1024 MiB on disk. ZIP imports from Daylio, Day One
 and TransTracks allow up to 1536 MiB of decompressed content. Large imports
-also need enough free memory on the device.
+also need enough free memory on the device. Daylio attachment previews read
+only file headers; attachment bodies are loaded when the import commits.
+
+This build refuses journals left by the old plaintext version and leaves
+their files untouched. It does not convert them.
 
 An optional recovery key can unlock the journal on the device that still
 holds it. It cannot restore deleted data, move a journal to another device
@@ -212,6 +222,12 @@ service worker, so edits are served directly rather than from a cached
 release.
 
 Build once on a fresh checkout before running the type checks or Node tests.
+The build compiles one English and one Polish client graph, then joins their
+assets into one static release. The shell selects the saved language before
+loading scripts; changing language still reloads the page. The service worker
+caches both graphs for offline switching. Development serves both catalogues
+through the ordinary Vite server.
+
 The build generates the translation runtime and service-worker asset list;
 some tests also inspect the built app.
 
@@ -251,8 +267,8 @@ literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
 The browser suites use Chromium. Set `CHROMIUM_PATH` if its executable is
-not at the harness's default location. They cover storage contracts, complete
-user flows and offline startup of the production build:
+not at the harness's default location. They cover storage contracts, rendered screens, complete user flows and
+offline startup of the production build:
 
 ```sh
 npm run test:browser
@@ -298,6 +314,11 @@ container queries. User-facing strings live in
 
 For copy review, run `npm run strings` and open the local URL it prints.
 The editor shows English and Polish together, with theme and review filters.
+Besides the catalogues it lists the copy kept elsewhere: Android widget and
+notification strings, both web manifests, the Play Store listing and the
+privacy policy, one paragraph per row. Those rows are keyed `android:`,
+`manifest:`, `notes-manifest:`, `store:` and `privacy:`, and a save rewrites
+only that value in its own file.
 Save individual fields or use **Save all changes**, which includes edits
 hidden by filters. Review checkboxes work per key or for the shown keys in a
 group. Progress is saved in `.scratch/copy-review.json`; changing either

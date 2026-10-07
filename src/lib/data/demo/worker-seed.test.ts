@@ -4,14 +4,12 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store';
 import { migratedDb, noopFileOps } from '../sqlite/test-support/migrated-db';
 import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver';
 import { openPreferences } from '../prefs/preferences';
-import { InterruptedRestoreError, SchemaTooNewError } from '../sqlite/migration-runner';
+import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from '../sqlite/migration-runner';
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
-import { runMigrations } from '../sqlite/migration-runner';
-import { migrations } from '../sqlite/migrations';
 import { openJournal } from '../journal/journal';
 import { persona } from './persona';
-import { preparePersonaJournal, seedPersonaInTransaction } from './worker-seed';
-import { writePersonaJournal } from './journal-seed';
+import { preparePersonaJournal, seedPersonaInTransaction, warmDemoPhotos } from './worker-seed';
+import { personaPhotoSeeds, writePersonaJournal } from './journal-seed';
 
 const photo = async () => ({ full: new Uint8Array([1, 2]), thumb: new Uint8Array([3]) });
 
@@ -179,32 +177,32 @@ test('failed cold preparation retains migrated schema and leaves the persona and
 });
 
 
-test('an authored schema keeps the ordinary upgrade boundary after failure', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((migration) => migration.version <= 78));
+/* One step short of the v88 baseline (after-release ticket 42): fixed rather
+   than read off LATEST_SCHEMA_VERSION, which a later migration moves past it. */
+const BELOW_BASELINE = 87;
+
+test('an authored journal below the baseline is refused before preparation touches it', async () => {
+  /* A development build's journal from partway up the retired chain
+     (after-release ticket 42): it has a schema, rows and preferences, and the
+     steps that would carry it to the baseline are gone. Preparation must
+     neither seed over it nor clear it. */
+  const db = await migratedDb();
   await db.run(
     'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
     ['00000000-0000-4000-8000-000000000001', 20_730, 1_791_104_400_000, 2, 'Keep this authored note', 0]
   );
   await (await openPreferences(db)).set('name', 'Existing journal');
-  const originalTransaction = db.transaction.bind(db);
-  db.transaction = (work) => originalTransaction((scope) => work({
-    ...scope,
-    exec: (sql) => scope.exec(sql.replace(
-      'ALTER TABLE medication_stock ADD COLUMN lead_time_days',
-      'SELECT * FROM missing_demo_migration; ALTER TABLE medication_stock ADD COLUMN lead_time_days'
-    ))
-  }));
+  await db.setUserVersion(BELOW_BASELINE);
+  const copy = vi.fn();
   try {
-    await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo),
-      /no such table: missing_demo_migration/);
-    assert.equal(await db.getUserVersion(), 78);
+    await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), {
+      ...noopFileOps(), copyDatabaseFile: copy
+    }, persona(20_730), photo), JournalBelowBaselineError);
+    assert.equal(await db.getUserVersion(), BELOW_BASELINE);
+    assert.equal(copy.mock.calls.length, 0);
     assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
-    assert.equal((await db.query('SELECT note FROM entry'))[0].note, 'Keep this authored note');
-    db.transaction = originalTransaction;
-    assert.equal(await preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo), false);
-    assert.equal((await db.query('SELECT note FROM entry'))[0].note, 'Keep this authored note');
-    assert.equal(await db.getUserVersion(), LATEST_SCHEMA_VERSION);
+    assert.deepEqual((await db.query<{ note: string }>('SELECT note FROM entry')).map(({ note }) => note), ['Keep this authored note']);
+    assert.equal((await openPreferences(db)).get('name'), 'Existing journal');
   } finally {
     await db.close();
   }
@@ -213,12 +211,45 @@ test('an authored schema keeps the ordinary upgrade boundary after failure', asy
 test('an empty file claiming a nonzero version keeps the ordinary refusal', async () => {
   const db = makeNodeSqliteDb();
   try {
-    await db.setUserVersion(78);
+    await db.setUserVersion(BELOW_BASELINE);
     await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo),
-      /no such table: medication_stock/);
-    assert.equal(await db.getUserVersion(), 78);
+      JournalBelowBaselineError);
+    assert.equal(await db.getUserVersion(), BELOW_BASELINE);
     assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
+    assert.deepEqual(await db.query("SELECT name FROM sqlite_master WHERE type = 'table'"), []);
   } finally {
     await db.close();
   }
+});
+
+test('the photo seeds the persona names are the ones writing it asks for', async () => {
+  const asked: number[] = [];
+  const db = await migratedDb();
+  try {
+    const journal = openJournal(db, fakeFileStore());
+    await journal.reconcileBuiltIns();
+    await writePersonaJournal(journal, persona(20_730), async (seed) => { asked.push(seed); return photo(); });
+  } finally {
+    await db.close();
+  }
+  assert.equal(asked.length, 22);
+  assert.deepEqual([...personaPhotoSeeds(persona(20_730))].sort((a, b) => a - b), [...asked].sort((a, b) => a - b));
+});
+
+test('warmed photos are drawn before the seed asks and hand back the same bytes once each', async () => {
+  const drawn: number[] = [];
+  const draw = async (seed: number) => { drawn.push(seed); return { full: new Uint8Array([seed]), thumb: new Uint8Array([seed, 1]) }; };
+  const source = persona(20_730);
+  const take = warmDemoPhotos(source, draw);
+  assert.equal(drawn.length, 22, 'every photo is already drawn when the first one is asked for');
+  const seeds = personaPhotoSeeds(source);
+  const first = await take(seeds[0]);
+  assert.deepEqual(first.full, new Uint8Array([seeds[0]]));
+  for (const seed of seeds.slice(1)) await take(seed);
+  assert.equal(drawn.length, 22, 'every asked seed was served from the warm set');
+  await take(seeds[0]);
+  assert.equal(drawn.length, 23, 'a seed asked for more often than it was warmed is drawn again');
+  await take(-1);
+  assert.equal(drawn.length, 24, 'a seed outside the warm set is drawn on demand');
+  assert.notStrictEqual((await take(seeds[0])).full, first.full, 'no two attachments share one buffer');
 });

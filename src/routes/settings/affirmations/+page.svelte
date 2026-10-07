@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -14,6 +15,8 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import type { Affirmation } from '$lib/data/types';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   let language = $state<'en' | 'pl'>(getLocale() === 'pl' ? 'pl' : 'en');
 
@@ -38,6 +41,8 @@
     remove: (id) => journal.affirmations.deleteLine(id),
     findById: (id) => vocabulary.affirmations.find((a) => a.id === id)
   });
+  const adding = writer();
+  const editing = writer();
 </script>
 
 <div class="screen">
@@ -110,8 +115,7 @@
       {/each}
     </div>
 
-    <details class="managed-group">
-      <summary>{m.affirmations_builtin_heading()}</summary>
+    <Disclosure class="managed-group" label={m.affirmations_builtin_heading()} id="affirmations-builtin" strong>
       <div class="managed-tags">
         {#each builtIns as a (a.id)}
           <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
@@ -122,7 +126,7 @@
                 class="icon-btn"
                 data-affirmation-hide={a.id}
                 aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
-                onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
+                onclick={() => attempt(() => journal.affirmations.setHidden(a.id, !a.hidden), m.write_failed())}
               >
                 <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
               </button>
@@ -130,10 +134,10 @@
           </div>
         {/each}
       </div>
-    </details>
+    </Disclosure>
   </ReadReserve>
 
-  <Sheet bind:open={addOpen} title={addLabel}>
+  <Sheet busy={adding.busy} bind:open={addOpen} title={addLabel}>
     <h3>{addLabel}</h3>
     <Field label={addLabel} hidden>
       {#snippet children(id)}
@@ -142,14 +146,17 @@
     </Field>
     <button
       class="btn btn-primary"
-      onclick={() => {
-        if (newText.trim()) journal.affirmations.addLine(language, newText.trim());
+      disabled={adding.busy}
+      onclick={async () => {
+        const text = newText.trim();
+        if (text && !(await adding.run(() => journal.affirmations.addLine(language, text), m.write_failed()))) return;
         addOpen = false;
+        if (text) toast(m.saved(), { kind: 'record-saved' });
       }}><span>{m.affirmations_save()}</span></button
     >
   </Sheet>
 
-  <Sheet open={editTarget !== null} title={m.affirmations_edit_sheet()} onClose={() => (editTarget = null)}>
+  <Sheet busy={editing.busy} open={editTarget !== null} title={m.affirmations_edit_sheet()} onClose={() => (editTarget = null)}>
     {#if editTarget}
       <h3>{m.affirmations_edit_sheet()}</h3>
       <Field label={m.affirmations_edit_sheet()} hidden>
@@ -159,9 +166,13 @@
       </Field>
       <button
         class="btn btn-primary"
-        onclick={() => {
-          if (editText.trim()) journal.affirmations.editLine(editTarget!.id, editText.trim());
+        disabled={editing.busy}
+        onclick={async () => {
+          const text = editText.trim();
+          const id = editTarget!.id;
+          if (text && !(await editing.run(() => journal.affirmations.editLine(id, text), m.write_failed()))) return;
           editTarget = null;
+          if (text) toast(m.saved(), { kind: 'record-saved' });
         }}><span>{m.affirmations_save()}</span></button
       >
     {/if}

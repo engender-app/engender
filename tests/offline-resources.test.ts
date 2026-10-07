@@ -90,9 +90,11 @@ test('every outbound link opens outside the app', () => {
 test('geographic jumps address every directory group by its heading', () => {
   const screen = readFileSync(join(rootPath, SCREEN), 'utf8');
 
-  expect(screen).toContain('aria-label={m.resources_jump_label()}');
+  // The kit's SectionJump since after-release 28: it draws each group as a
+  // link to `#target` and names the nav with `name`.
+  expect(screen).toContain('name={m.resources_jump_label()}');
   expect(screen).toContain("id: 'resources-pl'");
   expect(screen).toContain("id: 'resources-int'");
-  expect(screen).toContain('href={`#${group.id}`}');
+  expect(screen).toContain('target: group.id');
   expect(screen).toContain('id={group.id} focusable text={group.title()}');
 });

@@ -35,7 +35,7 @@ export function pickedPhoto<TPhoto>(picked: TPhoto[]): TPhoto | null {
     from the device call so a fake owner can stand in for it. */
 export async function addPickedPhoto<TPhoto>(
   picked: TPhoto[],
-  add: (photo: TPhoto) => void | Promise<void>
+  add: (photo: TPhoto) => void | boolean | Promise<void | boolean>
 ): Promise<void> {
   const photo = pickedPhoto(picked);
   if (photo) await add(photo);

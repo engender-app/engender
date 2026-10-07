@@ -412,7 +412,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   bodyRegions: classify<Journal['bodyRegions']>()({
     writes: {
       addCustomRegion: ['bodyRegion'],
-      setRegionHidden: ['bodyRegion']
+      setRegionHidden: ['bodyRegion'],
+      renameCustomRegion: ['bodyRegion']
     },
     reads: { getBodyRegions: ['bodyRegion'] }
   }),
@@ -438,6 +439,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getMilestones: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
       getMilestonesOnDay: ['milestone', 'photo', 'procedure', 'tryout', 'roadmapGoal'],
+      getNonProcedureDaysInRange: ['milestone'],
       // No photo join: the registry wants the date, not the photo indicator.
       lastWriteEpochDay: ['milestone']
     }
@@ -563,6 +565,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       getLatestResult: ['lab'],
       getResults: ['lab'],
       getResultsOnDay: ['lab'],
+      getResultsInRange: ['lab'],
       getResultById: ['lab'],
       getSeries: ['lab'],
       lastWriteEpochDay: ['lab']
@@ -744,6 +747,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // procedure row is not read to find it.
     reads: {
       getProcedures: ['procedure', 'appointment'],
+      getSurgeryDaysInRange: ['procedure'],
       getPhotos: ['procedure'],
       photosByProcedure: ['procedure'],
       getDayRecords: ['procedure'],
@@ -889,11 +893,17 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   tally: classify<Journal['tally']>()({
     writes: { log: ['tally'], deleteEvent: ['tally'] },
-    reads: { getEvents: ['tally'], getEventsOnDay: ['tally'], lastWriteEpochDay: ['tally'], latestEvent: ['tally'] }
+    reads: {
+      getEvents: ['tally'],
+      getEventsOnDay: ['tally'],
+      lastWriteEpochDay: ['tally'],
+      latestEvent: ['tally'],
+      firstEpochDay: ['tally']
+    }
   }),
   regimen: classify<Journal['regimen']>()({
-    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'] },
-    reads: { getEpisodes: ['regimen'], hasAny: ['regimen'] }
+    writes: { upsertEpisode: ['regimen'], endEpisode: ['regimen'], setEpisodeHidden: ['regimen'] },
+    reads: { getEpisodes: ['regimen'], getHiddenEpisodes: ['regimen'], hasAny: ['regimen'] }
   }),
   doses: classify<Journal['doses']>()({
     writes: {
@@ -926,7 +936,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   stock: classify<Journal['stock']>()({
     writes: {
-      upsertEntry: ['stock'],
+      // A rename drops the old name's run-out Reminder (after-release 01).
+      upsertEntry: ['stock', 'reminder'],
       deleteEntry: ['stock', 'reminder'],
       // Box 4: reconciling can create, move or clear the drug's run-out
       // Reminder as well as this drug's own bookkeeping.
@@ -1007,7 +1018,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
      an area registered after this line was written. */
   lastWrite: classify<Journal['lastWrite']>()({
     writes: {},
-    reads: { getLastWrites: LAST_WRITE_TABLES }
+    reads: { getLastWrites: LAST_WRITE_TABLES, getWritingDays: ['entry', 'dose'] }
   }),
   /* Read-only, and its table list is its own registry's for the reason
      day's is (dayAhead.ts's DAY_AHEAD_TABLES): a kind registered there

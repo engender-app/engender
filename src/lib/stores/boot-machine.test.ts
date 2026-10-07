@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
+import {
+  Fts5UnavailableError,
+  InterruptedRestoreError,
+  JournalBelowBaselineError,
+  SchemaTooNewError
+} from '../data/sqlite/migration-runner.ts';
 import { interpretAuthentication } from '../lock/biometric-outcome.ts';
 import {
   initialBoot,
@@ -37,8 +42,7 @@ function surveyedWeb(survey: Partial<Extract<BootEvent, { type: 'web-surveyed' }
     type: 'web-surveyed',
     keystoreSecretSource: null,
     deviceBoundKeystoreExists: false,
-    plaintextJournalPresent: false,
-    marker: null,
+    legacyStoragePresent: false,
     ...survey
   };
 }
@@ -71,7 +75,6 @@ test('a web first run reaches the setup gate with no access mode yet', () => {
 
   expect(machine.boot.status).toBe('needs-setup');
   expect(machine.boot.accessMode).toBeNull();
-  expect(machine.boot.conversion).toBeNull();
   expect(effects).toEqual([]);
 });
 
@@ -107,76 +110,6 @@ test('a device-bound key the browser will not hand over reaches the recovery gat
   expect(machine.boot.status).toBe('needs-device-recovery');
 });
 
-test('plaintext left behind by a finished conversion is retired once, then surveyed again', () => {
-  const retire = surveyedWeb({ keystoreSecretSource: 'passphrase', plaintextJournalPresent: true });
-  const first = walk(started('web'), retire);
-
-  expect(first.effects).toEqual([{ type: 'finish-retirement' }]);
-
-  /* The second survey is the one the retirement itself asked for. Even if it
-     still reads as retire - a delete that did not take - the sequence moves on
-     rather than retiring in a circle. */
-  const second = walk(started('web'), retire, retire);
-  expect(second.effects).toEqual([]);
-  expect(second.machine.boot.status).toBe('needs-unlock');
-});
-
-test('a plaintext journal is prechecked before anyone is asked for a passphrase', () => {
-  const { machine, effects } = walk(
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true })
-  );
-
-  expect(machine.boot.status).toBe('booting');
-  expect(effects).toEqual([{ type: 'precheck-conversion' }]);
-});
-
-test('a refused conversion reaches the refusal screen with its reason', () => {
-  const { machine } = walk(started('web'), surveyedWeb({ plaintextJournalPresent: true }), {
-    type: 'conversion-prechecked',
-    result: { ok: false, reason: 'not-enough-space', needBytes: 500, freeBytes: 120 }
-  });
-
-  expect(machine.boot.status).toBe('conversion-refused');
-  expect(machine.boot.conversionRefusal).toMatchObject({
-    reason: 'not-enough-space',
-    needBytes: 500,
-    freeBytes: 120
-  });
-});
-
-test('an accepted conversion asks for a new passphrase, or for the saved one when resuming', () => {
-  const fresh = walk(started('web'), surveyedWeb({ plaintextJournalPresent: true }), {
-    type: 'conversion-prechecked',
-    result: { ok: true }
-  });
-
-  expect(fresh.machine.boot.status).toBe('needs-setup');
-  expect(fresh.machine.boot.accessMode).toBe('passphrase');
-  expect(fresh.machine.boot.conversion).toEqual({ progress: null });
-
-  const resuming = walk(
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true, keystoreSecretSource: 'passphrase', marker: 'database' }),
-    { type: 'conversion-prechecked', result: { ok: true } }
-  );
-
-  expect(resuming.machine.boot.status).toBe('needs-unlock');
-  expect(resuming.machine.boot.conversion).toEqual({ progress: null });
-});
-
-test('a demo build wipes a plaintext journal rather than converting it, then sets up', () => {
-  const wiping = walk(started('web', true), surveyedWeb({ plaintextJournalPresent: true }));
-  expect(wiping.effects).toEqual([{ type: 'wipe-demo-journal' }]);
-
-  const afterWipe = walk(
-    started('web', true),
-    surveyedWeb({ plaintextJournalPresent: true }),
-    { type: 'demo-journal-wiped' }
-  );
-  expect(afterWipe.effects).toEqual([{ type: 'demo-setup' }]);
-});
-
 test('a demo build unlocks itself, and falls back to the gate when the passphrase changed', () => {
   const unlocking = walk(started('web', true), surveyedWeb({ keystoreSecretSource: 'passphrase' }));
   expect(unlocking.effects).toEqual([{ type: 'demo-unlock' }]);
@@ -205,7 +138,7 @@ test('android reaches each of its four gates', () => {
   const plaintext = walk(started('android'), surveyedAndroid({ plaintextJournalPresent: true }));
   expect(plaintext.machine.boot).toMatchObject({
     status: 'error',
-    error: 'android-plaintext-journal'
+    failure: 'android-plaintext'
   });
 });
 
@@ -265,7 +198,7 @@ test('a key nobody authenticated for leaves app lock its own question to ask', (
   expect(effects).toEqual([{ type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }]);
 });
 
-test('a key with no conversion waiting opens the journal straight away', () => {
+test('a key opens the journal straight away', () => {
   const { machine, effects } = walk(
     started('android'),
     surveyedAndroid({ nativeDeviceKeyExists: true }),
@@ -275,36 +208,6 @@ test('a key with no conversion waiting opens the journal straight away', () => {
   expect(machine.boot.status).toBe('booting');
   expect(machine.boot.accessMode).toBe('device-bound');
   expect(effects).toEqual([{ type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }]);
-});
-
-test('a key with a conversion waiting converts first, reporting progress, then opens', () => {
-  const upToKey: BootEvent[] = [
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true }),
-    { type: 'conversion-prechecked', result: { ok: true } },
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }
-  ];
-
-  const converting = walk(...upToKey);
-  expect(converting.machine.boot.status).toBe('converting');
-  expect(converting.effects).toEqual([
-    { type: 'mark-unlocked' },
-    { type: 'run-conversion', dataKey: KEY, accessMode: 'passphrase' }
-  ]);
-
-  const progressed = walk(...upToKey, {
-    type: 'conversion-progressed',
-    progress: { stage: 'photos', done: 2, total: 5 }
-  });
-  expect(progressed.machine.boot.conversion).toEqual({
-    progress: { stage: 'photos', done: 2, total: 5 }
-  });
-
-  const opened = walk(...upToKey, { type: 'converted', dataKey: KEY, accessMode: 'passphrase' });
-  expect(opened.machine.boot.status).toBe('booting');
-  expect(opened.effects).toEqual([
-    { type: 'open-journal', dataKey: KEY, accessMode: 'passphrase' }
-  ]);
 });
 
 test('an opened journal is ready, and journal-opened alone asks for no warning', () => {
@@ -410,6 +313,48 @@ test('any other failed open asks the disk whether it can offer a way back', () =
   ).toBe(false);
 });
 
+/* After-release ticket 09: the failure screen says what happened in the
+   person's words, so the state carries which failure this was and keeps the
+   raw text only as the detail a bug report needs. */
+test('a journal from below the baseline names itself and asks for no restore', () => {
+  const { machine, effects } = failedOpen(new JournalBelowBaselineError(50, 78));
+
+  expect(machine.boot).toMatchObject({ status: 'error', failure: 'below-baseline', recoverable: false });
+  expect(machine.boot.error).toContain('50');
+  /* Putting the previous journal back would reopen the same old journal, so
+     the disk is not even asked whether there is a copy. */
+  expect(effects).toEqual([]);
+});
+
+test('a below-baseline refusal that arrives as text is still named', () => {
+  /* A bridge or a worker hands over the message, not the class. */
+  const text = new JournalBelowBaselineError(50, 78).message;
+  expect(walk(started('web'), { type: 'boot-failed', message: text }).machine.boot.failure).toBe('below-baseline');
+});
+
+test('a key that does not read the file is the unreadable failure, however it arrives', () => {
+  expect(failedOpen(new Error('file is not a database (code 26)')).machine.boot.failure).toBe('unreadable');
+  expect(
+    walk(started('web'), { type: 'boot-failed', message: 'SQLITE_NOTADB: file is not a database' }).machine.boot
+      .failure
+  ).toBe('unreadable');
+});
+
+test('a database that never starts is the engine failure', () => {
+  expect(failedOpen(new Fts5UnavailableError(new Error('no such module: fts5'))).machine.boot.failure).toBe(
+    'engine'
+  );
+  expect(
+    walk(started('web'), { type: 'boot-failed', message: 'the database worker stopped: no message' }).machine.boot
+      .failure
+  ).toBe('engine');
+});
+
+test('a failure nobody has named yet is unknown, and still keeps its text for the bug report', () => {
+  const failed = failedOpen(new Error('no such table: entry'));
+  expect(failed.machine.boot).toMatchObject({ failure: 'unknown', error: 'no such table: entry' });
+});
+
 test('anything else that goes wrong is the plain failure screen, with nothing to offer', () => {
   const { machine, effects } = walk(started('web'), {
     type: 'boot-failed',
@@ -465,31 +410,6 @@ test('a PIN keystore beside a leftover device key still boots as PIN', () => {
   expect(effects).toEqual([]);
 });
 
-test('illegal events throw rather than moving the boot somewhere it cannot be', () => {
-  const setup = walk(started('web'), surveyedWeb()).machine;
-
-  expect(() =>
-    reduce(setup, { type: 'conversion-progressed', progress: { stage: 'database' } })
-  ).toThrow(/invalid transition/i);
-  expect(() =>
-    reduce(setup, { type: 'journal-opened', journal: {} as never })
-  ).toThrow(/invalid transition/i);
-  expect(() => reduce(setup, { type: 'pre-migration-copy-checked', usable: true })).toThrow(
-    /invalid transition/i
-  );
-  /* The one the gates make hardest to reach and the adapter now nets: a
-     second submit landing while the first is already converting. */
-  const converting = walk(
-    started('web'),
-    surveyedWeb({ plaintextJournalPresent: true }),
-    { type: 'conversion-prechecked', result: { ok: true } },
-    { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }
-  ).machine;
-  expect(() =>
-    reduce(converting, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true })
-  ).toThrow(/invalid transition/i);
-});
-
 test('choosing device-bound mode names what the android refusal leaves to do', () => {
   expect(deviceBoundSetupOutcome({ kind: 'key', dataKey: KEY })).toBe('ok');
   expect(
@@ -526,6 +446,7 @@ test('journal-open-failed with database lock preserves the lock error and allows
 
   expect(retried.machine.boot.status).toBe('booting');
   expect(retried.machine.boot.error).toBeNull();
+  expect(retried.machine.boot.failure).toBeNull();
   expect(retried.effects).toEqual([
     { type: 'mark-unlocked' },
     { type: 'open-journal', dataKey: KEY, accessMode: 'device-bound' }
@@ -554,20 +475,6 @@ test.each(['pin', 'passphrase'] as const)(
    uncached boot already reaches (see the equivalent uncached tests further
    up), to prove a stale or merely unconfirmed cache doesn't trade a proper
    refusal screen for the generic boot-failed one. */
-test('a cached access mode does not block a refused conversion from reaching its screen', () => {
-  const seeded = reduce(initialBoot('pin'), started('web'));
-  const surveyed = reduce(seeded.machine, surveyedWeb({ plaintextJournalPresent: true }));
-  expect(surveyed.machine.boot.status).toBe('needs-unlock');
-
-  const { machine } = reduce(surveyed.machine, {
-    type: 'conversion-prechecked',
-    result: { ok: false, reason: 'not-enough-space', needBytes: 500, freeBytes: 120 }
-  });
-
-  expect(machine.boot.status).toBe('conversion-refused');
-  expect(machine.boot.conversionRefusal).toMatchObject({ reason: 'not-enough-space' });
-});
-
 test('a cached access mode does not block a device-key refusal from reaching its screen', () => {
   const seeded = reduce(initialBoot('pin'), started('web'));
   const surveyed = reduce(seeded.machine, surveyedWeb({ deviceBoundKeystoreExists: true }));
@@ -576,4 +483,105 @@ test('a cached access mode does not block a device-key refusal from reaching its
   const { machine } = reduce(surveyed.machine, { type: 'device-key-unavailable' });
 
   expect(machine.boot.status).toBe('needs-device-recovery');
+});
+
+for (const demo of [false, true]) {
+  for (const keystoreSecretSource of [null, 'passphrase'] as const) {
+    test(`legacy storage refuses boot without write effects, demo=${demo}, keystore=${keystoreSecretSource}`, () => {
+      const { machine, effects } = walk(started('web', demo), surveyedWeb({ legacyStoragePresent: true, keystoreSecretSource }));
+      expect(machine.boot.status).toBe('legacy-refused');
+      expect(effects).toEqual([]);
+      expect(reduce(machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects).toEqual([]);
+    });
+  }
+}
+
+/* After-release ticket 10: a web lock closes the journal, and the handle
+   boot state held for the page is built over the key a lock lets go of. */
+test('a lock takes the journal handle out of ready state and the unlock puts the new one in', () => {
+  const before = {} as never;
+  const after = {} as never;
+  const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained',
+    dataKey: KEY,
+    accessMode: 'passphrase',
+    unlocked: true
+  }, { type: 'journal-opened', journal: before });
+
+  const closed = reduce(opened.machine, { type: 'journal-closed' });
+  expect(closed.machine.boot.status).toBe('ready');
+  expect(closed.machine.boot.journal).toBeNull();
+  expect(closed.effects).toEqual([]);
+
+  const reopened = reduce(closed.machine, { type: 'journal-reopened', journal: after });
+  expect(reopened.machine.boot.status).toBe('ready');
+  expect(reopened.machine.boot.journal).toBe(after);
+  expect(reopened.effects).toEqual([]);
+});
+
+test('a lock that lands after the boot left ready changes nothing', () => {
+  const failed = walk(started('web'), { type: 'boot-failed', message: 'the database worker stopped' });
+  expect(reduce(failed.machine, { type: 'journal-closed' }).machine).toEqual(failed.machine);
+  expect(reduce(failed.machine, { type: 'journal-reopened', journal: {} as never }).machine).toEqual(failed.machine);
+});
+
+
+test('a second key while the journal opens leaves the first open alone', () => {
+  const first = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
+  });
+  const duplicate = reduce(first.machine, {
+    type: 'key-obtained', dataKey: new Uint8Array(32), accessMode: 'pin', unlocked: true
+  });
+  expect(duplicate.effects).toEqual([]);
+  expect(duplicate.machine.boot).toBe(first.machine.boot);
+});
+
+
+test('a duplicate key never replaces a ready journal or changes its access mode', () => {
+  const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
+  }, { type: 'journal-opened', journal: {} as never });
+  const before = KEY.slice();
+  const duplicate = reduce(opened.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'pin', unlocked: true });
+  expect(duplicate.effects).toEqual([]);
+  expect(duplicate.machine.boot).toBe(opened.machine.boot);
+  expect(KEY).toEqual(before);
+});
+
+/* A mid-session unlock reaches the reopen through `key-obtained` like every
+   other key, so ticket 29's guard against a second key covers it too. */
+function lockedReady() {
+  const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
+    type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
+  }, { type: 'journal-opened', journal: {} as never });
+  return reduce(opened.machine, { type: 'journal-closed' }).machine;
+}
+
+test('a key while a web lock has the journal closed reopens it, and nothing else', () => {
+  const unlocked = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'pin', unlocked: true });
+  /* No mark-unlocked: the unlock screen lifts the gate itself once the
+     reopen has answered, inside the app's opening transition. */
+  expect(unlocked.effects).toEqual([{ type: 'reopen-journal', dataKey: KEY }]);
+  expect(unlocked.machine.boot.status).toBe('ready');
+  expect(unlocked.machine.boot.accessMode).toBe('passphrase');
+});
+
+test('a second key while the reopen is under way is the duplicate ticket 29 refuses', () => {
+  const first = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true });
+  const second = reduce(first.machine, { type: 'key-obtained', dataKey: new Uint8Array(32), accessMode: 'passphrase', unlocked: true });
+  expect(second.effects).toEqual([]);
+  expect(second.machine.boot).toBe(first.machine.boot);
+});
+
+test('a reopen that failed can be asked for again, and one that landed cannot', () => {
+  const first = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true });
+  const failed = reduce(first.machine, { type: 'journal-reopen-ended' });
+  expect(failed.machine.boot.journal).toBeNull();
+  expect(reduce(failed.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects)
+    .toEqual([{ type: 'reopen-journal', dataKey: KEY }]);
+
+  const landed = reduce(first.machine, { type: 'journal-reopened', journal: {} as never });
+  expect(reduce(landed.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects)
+    .toEqual([]);
 });

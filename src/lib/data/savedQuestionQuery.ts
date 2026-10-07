@@ -9,23 +9,26 @@
    computation of it (the ticket's own acceptance criterion). */
 
 import type { EntrySearchFilters } from './journal/entries';
+import type { PhotoLibraryArea } from './journal/photoLibrary';
+import type { LibraryPhoto } from './photos/library';
 import type { SavedQuestion } from './types';
 
 /** The filters a saved question was kept under, in the shape
     `searchEntries`/`countSearchMatches` already take. The free-text query
     itself is `queryText` on the same row, passed alongside these rather than
     folded in - tag ids matched by *typing* stay a live lookup at run time
-    (searchQuery.ts's `tagIdsMatching`), the same as an ad hoc search. */
-export function entrySearchFiltersOf(
-  saved: Pick<SavedQuestion, 'tagIds' | 'moods' | 'startEpochDay' | 'endEpochDay' | 'hasNote' | 'hasPhoto'>
-): EntrySearchFilters {
+    (searchQuery.ts's `tagIdsMatching`), the same as an ad hoc search.
+    The Pick follows `EntrySearchFilters` and the return is `Required`, so a
+    filter added there fails to compile here until it is carried through. */
+export function entrySearchFiltersOf(saved: Pick<SavedQuestion, keyof EntrySearchFilters>): Required<EntrySearchFilters> {
   return {
     tagIds: saved.tagIds,
     moods: saved.moods,
     startEpochDay: saved.startEpochDay,
     endEpochDay: saved.endEpochDay,
     hasNote: saved.hasNote,
-    hasPhoto: saved.hasPhoto
+    hasPhoto: saved.hasPhoto,
+    starred: saved.starred
   };
 }
 
@@ -47,6 +50,25 @@ export function savedQuestionInputOf(
     startEpochDay: filters.startEpochDay ?? null,
     endEpochDay: filters.endEpochDay ?? null,
     hasNote: filters.hasNote ?? false,
-    hasPhoto: filters.hasPhoto ?? false
+    hasPhoto: filters.hasPhoto ?? false,
+    starred: filters.starred ?? false
   };
+}
+
+/** The starred photos an answer carries beside its entries: every starred
+    photo when Starred is on, none otherwise. The photo library's own read,
+    not narrowed by the query or the entry filters, which the screens say in
+    a line above the grid. /search and a saved question both read it here so
+    the two answers cannot drift apart again. */
+export function starredPhotosAsked(
+  photoLibrary: Pick<PhotoLibraryArea, 'starred'>,
+  filters: EntrySearchFilters
+): Promise<LibraryPhoto[]> {
+  return filters.starred ? photoLibrary.starred() : Promise.resolve([]);
+}
+
+/** The one count under an answer: entries, records from elsewhere and
+    starred photos together, so the number describes everything shown. */
+export function answerTotal(entries: number, elsewhere: number, starredPhotos: number): number {
+  return entries + elsewhere + starredPhotos;
 }

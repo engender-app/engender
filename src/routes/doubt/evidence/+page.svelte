@@ -34,9 +34,12 @@
      src/lib/data/journal/safeSpaceReads.test.ts pins it at the driver):
      opening this screen writes nothing. */
   import { m } from '$lib/paraglide/messages';
+  import { deleter, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { COUNTEREVIDENCE_LIMIT, previewWholeDays } from '$lib/data/counterevidence';
   import type { CounterevidenceEntry, CounterevidenceSnapshot } from '$lib/data/types';
@@ -56,7 +59,7 @@
 
   const HISTORY_LIMIT = 50;
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   let counterevidenceQuery = liveList((j) =>
     j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT)
@@ -83,6 +86,7 @@
   let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.rows);
 
+  const snapshotWrite = writer();
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;
     const items: CounterevidenceEntry[] = counterevidence.map((e) => ({
@@ -90,15 +94,20 @@
       mood: e.mood,
       note: e.note
     }));
-    await journal.doubtJournal.saveSnapshot(today, items);
+    // One snapshot per tap: a double tap used to write two identical ones.
+    if (await snapshotWrite.run(() => journal.doubtJournal.saveSnapshot(todayEpochDay(), items), m.write_failed())) {
+      toast(m.saved(), { kind: 'record-saved' });
+    }
   }
 
   let snapshotDeleteTarget = $state<CounterevidenceSnapshot | null>(null);
+  const removing = deleter();
   async function deleteSnapshot() {
     if (!snapshotDeleteTarget) return;
     const id = snapshotDeleteTarget.id;
+    if (!(await removing.run(() => journal.doubtJournal.deleteSnapshot(id)))) return;
     snapshotDeleteTarget = null;
-    await journal.doubtJournal.deleteSnapshot(id);
+    toast(m.record_deleted(), { kind: 'record-deleted' });
   }
 
   const dayLabel = (epochDay: number) =>
@@ -115,13 +124,13 @@
 
   <ReadGate read={counterevidenceQuery} variant="card" count={2}>
     {#snippet rows()}
-      <EntryDays groups={shown} />
+      <EntryDays groups={shown} level={2} />
 
       <!-- Under the six rather than under all twenty (ticket 15). The
            snapshot it saves is the whole pool either way; where the control
            sits is about whether a person on their worst day can reach it
            without scrolling, and that is the only thing the bound is for. -->
-      <button type="button" class="btn btn-soft btn-block press" onclick={saveSnapshot}>
+      <button type="button" class="btn btn-soft btn-block press" disabled={snapshotWrite.busy} onclick={saveSnapshot}>
         <Icon name="heart" size={18} /> <span>{m.doubt_save_snapshot()}</span>
       </button>
 
@@ -143,7 +152,7 @@
 
       {#if expanded}
         <div data-evidence-rest>
-          <EntryDays groups={held} arrive />
+          <EntryDays groups={held} arrive level={2} />
         </div>
       {/if}
     {/snippet}
@@ -194,7 +203,9 @@
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-confirm-delete-doubt-snapshot': '' }}
     onConfirm={deleteSnapshot}
-    onCancel={() => (snapshotDeleteTarget = null)}
+    onCancel={() => { snapshotDeleteTarget = null; removing.dismiss(); }}
+    busy={removing.busy}
+    failed={removing.failed}
   />
 </div>
 

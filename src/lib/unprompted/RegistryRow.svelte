@@ -21,7 +21,8 @@
     title,
     subtitle,
     surface,
-    notify
+    notify,
+    notifyColumn = true
   }: {
     key: string;
     title: string;
@@ -30,6 +31,11 @@
     surface?: { label: string; checked: boolean; onChange: (v: boolean) => void };
     /** Present when this kind has a notification switch on this row. */
     notify?: { label: string; checked: boolean; onChange: (v: boolean) => void };
+    /** Off where no row can notify (the web): the empty notify slot used
+        to hold its 48px anyway, so the Home switches sat one column in from
+        the trailing edge while every other switch on the screen sat on it
+        (after-release 28, audit UI-09). */
+    notifyColumn?: boolean;
   } = $props();
 </script>
 
@@ -44,11 +50,13 @@
         <Switch checked={surface.checked} label={surface.label} onChange={surface.onChange} />
       {/if}
     </span>
-    <span class="kit-row-toggle" data-notification={notify ? key : undefined}>
-      {#if notify}
-        <Switch checked={notify.checked} label={notify.label} onChange={notify.onChange} />
-      {/if}
-    </span>
+    {#if notifyColumn}
+      <span class="kit-row-toggle" data-notification={notify ? key : undefined}>
+        {#if notify}
+          <Switch checked={notify.checked} label={notify.label} onChange={notify.onChange} />
+        {/if}
+      </span>
+    {/if}
   </span>
 </div>
 

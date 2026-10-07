@@ -13,12 +13,3 @@ export function iconOf(key: HubRowKey): Pick<HubRow, 'icon'> {
   const { icon } = hubRow(key);
   return { icon };
 }
-
-/** A row's icon where no hub row owns its screen - a Settings reference
-    list, or content with no route beyond the record it annotates. Kept as
-    one call rather than naming the property inline, so every icon these
-    two files' rows carry, hub-owned or not, comes out of a function rather
-    than being declared by hand. */
-export function literalIcon(value: string): Pick<HubRow, 'icon'> {
-  return { icon: value };
-}

@@ -74,7 +74,7 @@
     padding: 0;
     list-style: none;
     font-size: var(--text-xs);
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .pbc-legend li {
@@ -117,6 +117,6 @@
     margin: 0;
     font-size: var(--text-xs);
     line-height: 1.5;
-    color: var(--muted);
+    color: var(--text-2);
   }
 </style>

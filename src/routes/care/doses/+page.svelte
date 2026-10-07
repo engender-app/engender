@@ -23,6 +23,7 @@
      episode with nothing else to update. `drug` only exists to break a
      tie when more than one episode is active at once for different drugs
      (regimenEpisode.ts). */
+  import { travelOnChange } from '$lib/motion/reorder.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -35,7 +36,7 @@
   import { DOSE_LOG_WINDOW_DAYS, NO_DOSE_LOG, readDoseLog } from '$lib/data/doseLogReads';
   import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft, type DoseDraft } from '$lib/data/doseDraft';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, sameDrug } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -44,12 +45,12 @@
     siteRecency,
     APPLICATION_SITES
   } from '$lib/data/doseSchedule';
-  import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { fmtNumber, fmtDay, fmtTime } from '$lib/data/dates';
   import {
     epochDayFromDateInputValueOrToday,
-    epochDayFromTimestamp,
-    todayEpochDay
+    epochDayFromTimestamp
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     ROUTE_OPTIONS,
     STATUS_OPTIONS,
@@ -87,8 +88,10 @@
   const SECTION_ROLE = { doses: 0, schedule: 1, leftover: 2 };
 
   let windowDays = $state(DOSE_LOG_WINDOW_DAYS);
-  const today = todayEpochDay();
-  let through = $state(today);
+  const today = $derived(currentDay());
+  /* The latest day a save has pushed the window to, if it went past today. */
+  let extendedTo = $state<number | null>(null);
+  const through = $derived(Math.max(today, extendedTo ?? today));
   let from = $derived(today - windowDays);
 
   /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
@@ -127,6 +130,26 @@
     deepLinkedDoseId ? logRows.findIndex(({ dose }) => dose.id === deepLinkedDoseId) : -1
   );
 
+  function dayRows(rows: typeof logRows) {
+    return rows.flatMap((row, index) => {
+      const day = epochDayFromTimestamp(row.dose.timestamp);
+      const startsDay = index === 0 || epochDayFromTimestamp(rows[index - 1].dose.timestamp) !== day;
+      return [
+        ...(startsDay ? [{ key: `day-${day}`, day, row: null }] : []),
+        { key: row.dose.id, day: null, row }
+      ];
+    });
+  }
+
+  /* A dose saved to another day travels to its new heading rather than
+     cutting there; rows that arrive or leave disclose (no-yank clause). */
+  let doseLog = $state<HTMLElement>();
+  travelOnChange(
+    () => [...(doseLog?.querySelectorAll<HTMLElement>('[data-travel-key]') ?? [])],
+    (el) => el.dataset.travelKey ?? '',
+    () => logRows
+  );
+
   function loadEarlier() {
     windowDays += DOSE_LOG_WINDOW_DAYS;
   }
@@ -149,6 +172,11 @@
   };
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+  /* A day heading in the log names the weekday, which is how a person
+     finds "the Tuesday I missed"; the year only when it is not this one. */
+  const yearOf = (epochDay: number) => fmtDay(epochDay, { year: 'numeric' });
+  const dayHeading = (epochDay: number) =>
+    fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long', ...(yearOf(epochDay) === yearOf(today) ? {} : { year: 'numeric' }) });
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
@@ -189,11 +217,13 @@
       const stored = allDoses.find((dose) => dose.id === draft.id);
       await journal.doses.upsertDose(stored?.source === 'schedule' ? { ...input, source: 'schedule' } : input);
       windowDays = Math.max(windowDays, today - epochDayFromTimestamp(input.timestamp));
-      through = Math.max(through, epochDayFromTimestamp(input.timestamp));
+      extendedTo = Math.max(extendedTo ?? today, epochDayFromTimestamp(input.timestamp));
       view = 'log';
       validationTouched = false;
       toast(m.dose_saved(), { kind: 'dose-saved' });
     },
+    // "Dose saved." above says it, with the handle the walkthrough grips.
+    saved: () => null,
     remove: (id) => journal.doses.deleteDose(id),
     findById: (id) => allDoses.find((dose) => dose.id === id)
   });
@@ -252,15 +282,8 @@
      all once the log batches (ticket 67) - this only has to wait for the
      layout scrollToHash's own settle loop already handles. */
   $effect(() => {
-    if (!loading && view === 'log' && !deepLinkedDoseUnavailable) {
-      if (deepLinkedDoseId) {
-        if (deepLinkedDoseIndex >= 0) scrollToHash();
-      } else {
-        scrollToHash();
-      }
-    } else {
-      scrollToHash();
-    }
+    if (!loading && view === 'log' && !deepLinkedDoseUnavailable && deepLinkedDoseId && deepLinkedDoseIndex < 0) return;
+    scrollToHash();
   });
 
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
@@ -315,7 +338,7 @@
     const draft = editor;
     if (!draft) return null;
     const at = activeEpisodesAt(episodes, draftTimestamp(draft.day, draft.time));
-    if (draft.drug) return at.find((e) => e.drug === draft.drug) ?? null;
+    if (draft.drug) return at.find((e) => sameDrug(e.drug, draft.drug)) ?? null;
     return at.length === 1 ? at[0] : null;
   });
 
@@ -461,105 +484,60 @@
       {#if doses.length}
         <div class="screen-part">
           <p class="muted small" style="margin:var(--space-3) 0">{m.doses_window({ days: windowDays })}</p>
-          <BatchedList
-            items={logRows}
-            key="doses"
-            role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
-            focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null}
-          >
-            {#snippet rows(shownRows)}
-              {#each shownRows as { dose, attribution, drug, showAttribution, offersSkip } (dose.id)}
-                {@const site = siteOf(dose)}
-                {@const sourceNote = sourceNoteOf(dose)}
-                <!-- Keyed on what the row says about itself, so correcting an
-                     auto-logged dose crossfades its words instead of cutting
-                     them (ADR-0078, and this ticket's standing motion clause).
-
-                     `out` only, which is what this primitive is: the replacing
-                     row is simply there, in flow, at the same height, and the
-                     one it replaced fades off underneath it from its own
-                     static position. An `in:crossfade` as well would take the
-                     arriving row out of flow for the length of the fade and
-                     every row below it would jump up and back - a yank, for a
-                     change of four words.
-
-                     `rows-divide` because the wrapper is now what the card
-                     sees between two rows, and the hairline rule matches
-                     adjacent siblings (kit.css). -->
-                {#key sourceNote}
-                  <div class="rows-divide" class:is-target-dose={dose.id === deepLinkedDoseId} out:crossfade>
-                  <ListRow
-                    key={dose.id}
-                    data-dose={dose.id}
-                    id={dose.id}
-                    icon="clock"
-                    title={doseRowTitle(drug, dose)}
-                    subtitle={[
-                      [
-                        whenOf(dose),
-                        site,
-                        isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '',
-                        sourceNote ? attributionLabel(attribution) : ''
-                      ]
-                        .filter(Boolean)
-                        .join(' · '),
-                      sourceNote
-                    ]}
-                    chevron={false}
-                    onclick={() => openEditor(dose)}
-                    action={offersSkip
-                      ? {
-                          /* The app's own word for the status this sets, not a
-                             sentence: a dose row already carries an amount, a
-                             route, a time, where it came from and which episode
-                             it is under, and a four-word button at 390px left
-                             the title wrapping one character to a line. The
-                             accessible name is the whole sentence, which is
-                             what a control read out of its row needs and what a
-                             control sitting in one does not. */
-                          text: statusLabel('skipped'),
-                          label: m.dose_from_schedule_skip_action(),
-                          attrs: { 'data-dose-skip': dose.id },
-                          onclick: () => skipAutoLoggedDose(dose)
-                        }
-                      : undefined}
-                  >
-                    {#snippet trailing()}
-                      <!-- The bookkeeping, at the end of the row rather than as
-                           two more lines under the dose: which episode the app
-                           attributed it to, whether it was taken as logged, and
-                           what a schedule had asked for. All three are about the
-                           record rather than about the dose.
-
-                           An auto-logged row says the first two on its second
-                           line instead, in one sentence with where it came from.
-                           Partly because "skipped" beside "skipped, was logged
-                           from your schedule" is the same word twice - and
-                           partly because that row carries a control at this
-                           trailing edge, and a 390px row cannot hold an icon, a
-                           dose, an episode name and a button. Measured: the
-                           title had 78px to wrap "100 mg · Oral" in. -->
-                      <span class="dose-trail">
-                        {#if dose.status !== 'taken' && !sourceNote}
-                          <span class="dose-status">{statusLabel(dose.status)}</span>
-                        {/if}
-                        {#if !sourceNote && showAttribution}
-                          <span>{attributionLabel(attribution)}</span>
-                        {/if}
-                        {#if dose.scheduled}
-                          <span>
-                            {m.dose_scheduled_legend()}: {dose.scheduled.dose}
-                            {dose.doseUnit} · {routeLabel(dose.scheduled.route)} · {fmtTime(dose.scheduled.timestamp)}
-                          </span>
-                        {/if}
-                      </span>
-                    {/snippet}
-                  </ListRow>
+          <div data-dose-log bind:this={doseLog}>
+            <BatchedList items={logRows} key="doses" autoGrow={false}
+              focusIndex={deepLinkedDoseIndex >= 0 ? deepLinkedDoseIndex : null} role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}>
+              {#snippet rows(shownRows)}
+                {#each dayRows(shownRows) as item (item.key)}
+                  <div class="rows-divide dose-log-row" class:is-day={item.row === null} data-dose-row={item.row?.dose.id}
+                    data-travel-key={item.key} transition:disclose>
+                    {#if item.row}
+                      {@const { dose, attribution, drug, showAttribution, offersSkip } = item.row}
+                      {@const site = siteOf(dose)}
+                      {@const sourceNote = sourceNoteOf(dose)}
+                      {#key sourceNote}
+                        <div class:is-target-dose={dose.id === deepLinkedDoseId}
+                          data-dose-target={dose.id === deepLinkedDoseId ? true : undefined} out:crossfade>
+                          <ListRow
+                            key={dose.id}
+                            data-dose={dose.id}
+                            id={dose.id}
+                            title={`${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}`}
+                            subtitle={[
+                              [fmtTime(dose.timestamp), routeLabel(dose.route), site,
+                                isInjectionDose(dose) && dose.vehicle ? vehicleLabel(dose.vehicle) : '']
+                                .filter(Boolean).join(' · '),
+                              sourceNote,
+                              showAttribution ? attributionLabel(attribution) : '',
+                              dose.scheduled ? m.doses_adherence_detail({ dose: fmtNumber(dose.scheduled.dose), unit: attribution.episode?.doseUnit ?? dose.doseUnit, route: routeLabel(dose.scheduled.route), time: fmtTime(dose.scheduled.timestamp) }) : ''
+                            ]}
+                            chevron={false}
+                            onclick={() => openEditor(dose)}
+                            action={offersSkip
+                              ? {
+                                  text: statusLabel('skipped'),
+                                  label: m.dose_from_schedule_skip_action(),
+                                  attrs: { 'data-dose-skip': dose.id },
+                                  onclick: () => skipAutoLoggedDose(dose)
+                                }
+                              : undefined}
+                          >
+                            {#snippet trailing()}
+                              {#if dose.status !== 'taken' && !sourceNote}
+                                <span class="dose-status">{statusLabel(dose.status)}</span>
+                              {/if}
+                            {/snippet}
+                          </ListRow>
+                        </div>
+                      {/key}
+                    {:else if item.day !== null}
+                      <h2 class="dose-day" data-dose-day={item.day}>{dayHeading(item.day)}</h2>
+                    {/if}
                   </div>
-                {/key}
-              {/each}
-            {/snippet}
-          </BatchedList>
+                {/each}
+              {/snippet}
+            </BatchedList>
+          </div>
           {#if hasOlderDoses}
             {@render earlierControl()}
           {/if}
@@ -567,7 +545,7 @@
       {:else}
         <div class="screen-part">
           <Notice
-            icon="clock"
+            icon="pill"
             key="doses-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
             title={m.doses_empty_title()}
@@ -788,25 +766,29 @@
         {#if openGroup === 'what'}
           <div class="disclosed" transition:disclose|local>
             {#if editorNeedsDrugPick}
-              <Field label={m.dose_drug_label()} legend>
-                {#snippet children(id)}
-                  <div class="tag-row" role="group" aria-labelledby={id}>
-                    {#each activeDrugChoices as drug (drug)}
-                      <button
-                        type="button"
-                        class="tag-chip press"
-                        class:is-selected={editor!.drug === drug}
-                        aria-pressed={editor!.drug === drug}
-                        data-dose-drug={drug}
-                        onblur={() => { validationTouched = true; }}
-                        onclick={() => pickDrug(drug)}
-                      >
-                        {drug}
-                      </button>
-                    {/each}
-                  </div>
-                {/snippet}
-              </Field>
+              <!-- No visible legend: the line that opened this group already
+                   asks "Which drug was this?", and a legend under it asked
+                   the same question a second time (audit UX-11). The group
+                   keeps the question as its accessible name. Picking one
+                   answers it, so the chips close their own height then
+                   rather than leaving in one frame. -->
+              <div class="field" transition:disclose|local>
+                <div class="tag-row" role="group" aria-label={m.dose_drug_label()}>
+                  {#each activeDrugChoices as drug (drug)}
+                    <button
+                      type="button"
+                      class="tag-chip press"
+                      class:is-selected={sameDrug(editor!.drug, drug)}
+                      aria-pressed={sameDrug(editor!.drug, drug)}
+                      data-dose-drug={drug}
+                      onblur={() => { validationTouched = true; }}
+                      onclick={() => pickDrug(drug)}
+                    >
+                      {drug}
+                    </button>
+                  {/each}
+                </div>
+              </div>
             {/if}
 
             <!-- One value, one control. The amount and its unit were two
@@ -1052,12 +1034,19 @@
         </Field>
       {/if}
 
-      {#if validationTouched && !editorCanSave}
+      <!-- Beside Save whenever Save is refused, from the first frame: an
+           injection opens with no site picked and a dose that several
+           regimens could own opens with no drug, and a greyed button with
+           no reason was the whole of what those sheets said (audit UX-11).
+           The fields themselves only turn invalid once they have been left. -->
+      {#if !editorCanSave}
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
-          {#if !editorHasAmount}<p>{m.dose_amount_required()}</p>{/if}
-          {#if editorNeedsDrugPick}<p>{m.dose_drug_required()}</p>{/if}
-          {#if editorIsInjection && !editor.injectionSite}<p>{m.dose_injection_site_required()}</p>{/if}
-          {#if editorIsTopical && !editor.applicationSite}<p>{m.dose_app_site_required()}</p>{/if}
+          <!-- The amount comes with the drug where a regimen sets one, so it
+               is not asked for while the drug still is. -->
+          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+          {#if editorNeedsDrugPick}<p transition:disclose|local>{m.dose_drug_required()}</p>{/if}
+          {#if editorIsInjection && !editor.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
+          {#if editorIsTopical && !editor.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}
         </div>
       {/if}
   {/snippet}
@@ -1098,18 +1087,24 @@
     transform: rotate(180deg);
   }
 
-  /* The bookkeeping stacks at the end of the row rather than running along
-     it: three facts on one line at 390px is an ellipsis, and the widest of
-     them is a whole scheduled dose written out. Right-aligned, so the
-     column of them reads down the edge of the card. */
-  .dose-trail {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    text-align: right;
-    max-width: 12rem;
-    line-height: 1.25;
+  /* A day is a group of rows, said by space and a heading rather than by
+     more hairlines: the rule above and below a heading row would sit one
+     heading-height apart and read as a stray box. */
+  .dose-log-row {
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+
+  .rows-divide.is-day::before,
+  .is-day + .rows-divide::before {
+    content: none;
+  }
+
+  .dose-day {
+    padding: var(--space-5) 0 var(--space-1);
+    margin: 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
   }
 
   .dose-status {
@@ -1281,7 +1276,7 @@
     color: var(--text-2);
   }
 
-  .rows-divide.is-target-dose,
+  .is-target-dose,
   .rows-divide.is-target-slot {
     background: var(--surface-2);
     border-radius: var(--r-block);

@@ -33,7 +33,8 @@ const readings = {
   highest: read('src/lib/components/readings/HighestReading.svelte'),
   themes: read('src/lib/components/readings/ThemesReading.svelte'),
   bodyMap: read('src/lib/components/readings/BodyMapTile.svelte'),
-  compare: read('src/lib/components/readings/CompareTile.svelte')
+  compare: read('src/lib/components/readings/CompareTile.svelte'),
+  tally: read('src/lib/components/readings/TallyTile.svelte')
 };
 const markup = (source: string) =>
   source
@@ -157,7 +158,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   /* Colour on the rail means an era and nothing else: the history rows are
      ink, one solid and one hollow. */
   it('names only the kinds present, and asks the flag for nothing but the eras', () => {
-    expect(timeline).toContain('railLegendKinds(history, surgeries, bands.length > 0)');
+    expect(timeline).toContain('railLegendKinds(history, marks, surgeries, bands.length > 0)');
     expect(timeline).toMatch(/\.span-tl-hband\[data-span-band='regimen'\] \{[^}]*background: var\(--text-2\);/);
     expect(timeline).toMatch(
       /\.span-tl-hband\[data-span-band='tryout'\] \{[^}]*background: var\(--bg\);\s*border-color: var\(--text-2\);/
@@ -211,7 +212,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
      scale's, that card is the day-by-day reading's now. */
   it('shows the active scale\'s average, not always mood, off one series', () => {
     expect(stats).toContain('j.stats.dayAverages(shown.key, from, to)');
-    expect(stats).toContain('m.lookback_facts_average({ name: shown.name })');
+    expect(stats).toContain('m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })');
     expect(stats).not.toContain('metrics.map((mt) => mt.key)');
   });
 
@@ -278,9 +279,18 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('waits for the rail and has a day-one shape', () => {
-    expect(stats).toContain('if (!railLoading) railRevealed = true');
-    expect(stats).toMatch(/\{#if !railRevealed\}\s*<div out:crossfade><Skeleton/);
+    expect(stats).toContain('if (railReleased()) railRevealed = true');
+    expect(stats).toMatch(/\{#if !railRevealed\}\s*<div out:crossfade data-lookback-rail-wait><Skeleton/);
     expect(stats).toMatch(/\{:else if railStart === null\}\s*<Notice icon="clock" key="lookback-empty"/);
+  });
+
+  it('fades in what replaced the rail within the tab arrival, or holds it through the arrival', () => {
+    /* A rail answering late in an Android tab change used to fade for a
+       full --dur-fast after the field had stopped, and then was squeezed
+       into what was left of the travel (tile-arrival-timing). */
+    expect(stats).toContain('const railReleased = holdForArrival(() => !railLoading, () => railPainted);');
+    expect(stats).toContain("const duration = readRevealDuration('--dur-fast');");
+    expect(stats).toContain('playAfterPaint(screen, animations, { fitArrival: true });');
   });
 });
 
@@ -317,6 +327,20 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(stats).toContain("href={readingHref('words', resolvedSpan)}");
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
     expect(readings.compare).toContain('href={`/compare${spanRangeQuery(span)}`}');
+    expect(readings.tally).toContain('href={`/tally${spanRangeQuery(span)}`}');
+  });
+
+  /* Review finding: the tile counted the span and its screen opened on the
+     last thirty days, so a tile from an older era opened onto empty charts. */
+  it('opens the tally screen on the span the tile counted', () => {
+    const tally = read('src/routes/tally/+page.svelte');
+    expect(tally).toContain("page.url.searchParams.get('from')");
+    expect(tally).toContain("page.url.searchParams.get('to')");
+    expect(tally).toContain("j.stats.tallyTrend('misgendered', from, to)");
+    expect(tally).toContain("j.stats.tallyTrend('correctly_gendered', from, to)");
+    // A tap lands today, so a span ending earlier offers no log or undo.
+    expect(tally).toContain('let logsToday = $derived(to >= today);');
+    expect((tally.match(/\{#if logsToday\}\s*<div class="tally-actions">/g) ?? []).length).toBe(2);
   });
 
   it('has a tile only where the span holds data for it', () => {
@@ -329,6 +353,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(readings.themes).toMatch(/\{#if !poolQuery\.loading && top\}\s*<ReadingTile/);
     expect(readings.bodyMap).toMatch(/\{#if !mapQuery\.loading && region\}\s*<ReadingTile/);
     expect(readings.compare).toMatch(/\{#if !short\}\s*<ReadingTile/);
+    expect(readings.tally).toMatch(/\{#if !misgenderedQuery\.loading && !correctQuery\.loading && misgendered \+ correct > 0\}\s*<ReadingTile/);
   });
 
   /* The plane's tile is its drawing (Alicja on the spike: "drop the title -
@@ -336,7 +361,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('gives the plane\'s tile no headline and every other tile one', () => {
     const planeTile = markup(readings.plane).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
     expect(planeTile).not.toContain('headline=');
-    for (const key of ['dayByDay', 'days', 'words', 'tags', 'highest', 'themes', 'bodyMap', 'compare'] as const) {
+    for (const key of ['dayByDay', 'days', 'words', 'tags', 'highest', 'themes', 'bodyMap', 'compare', 'tally'] as const) {
       const tile = markup(readings[key]).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
       expect(tile, key).toContain('headline=');
     }
@@ -384,6 +409,13 @@ describe('the merged tag card draws as paired dots', () => {
 
   it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
     expect(readings.tags).toMatch(/const pickCorrelationRow = \(key: string\) => \{[\s\S]{0,200}occurrence\.kind === 'tag'/);
+  });
+  /* After-release 27 (audit L06-06): the ranking spans every scale and
+     never read a picked metric, so the picker that sat on it changed
+     nothing on the card. */
+  it('carries no metric picker, since the ranking spans every scale', () => {
+    expect(readings.tags).not.toContain('<ChartPicker');
+    expect(readings.tags).not.toContain('selectMetric');
   });
 });
 

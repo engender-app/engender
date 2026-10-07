@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -13,6 +14,8 @@
   import { discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   let renameTarget = $state<{ id: string; label: string } | null>(null);
 
@@ -29,7 +32,16 @@
   function moveUp(g: TagGroup, index: number) {
     const ids = g.tags.map((t) => t.id);
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-    journal.tags.reorder(g.key, ids);
+    attempt(() => journal.tags.reorder(g.key, ids), m.write_failed());
+  }
+
+  /* Each sheet closes once its write lands, and stays open with a toast
+     when it does not (after-release 06). */
+  const sheetWrite = writer();
+  async function saveFromSheet(write: (() => unknown) | null, close: () => void) {
+    if (write && !(await sheetWrite.run(write, m.write_failed()))) return;
+    close();
+    if (write) toast(m.saved(), { kind: 'record-saved' });
   }
   let customGroups = $derived(vocabulary.tagGroups.filter((g) => !g.builtIn));
   let builtInGroups = $derived(vocabulary.tagGroups.filter((g) => g.builtIn));
@@ -62,13 +74,14 @@
   <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
   {#snippet groupSection(g: TagGroup)}
-    <details
+    <Disclosure
       class="managed-group"
       data-tag-group={g.key}
-      open={openGroups[g.key] ?? !g.builtIn}
-      ontoggle={(e) => (openGroups[g.key] = e.currentTarget.open)}
+      label={g.builtIn ? g.name : `${g.name} · ${m.custom_suffix()}`}
+      id={`tag-group-${g.key}`}
+      strong
+      bind:open={() => openGroups[g.key] ?? !g.builtIn, (next) => (openGroups[g.key] = next)}
     >
-      <summary>{g.name}{#if !g.builtIn} · {m.custom_suffix()}{/if}</summary>
       <div class="tag-group-action">
         <button class="btn btn-soft" data-add-tag aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
           <Icon name="plus" size={20} /><span>{m.tags_new_tag()}</span>
@@ -90,7 +103,7 @@
               </button>
               {#if tg.builtIn}
                 <button class="icon-btn" data-tag-hide={tg.id} aria-label={tg.hidden ? m.tags_show_aria({ label: tg.label }) : m.tags_hide_aria({ label: tg.label })}
-                  onclick={() => journal.tags.setTagHidden(tg.id, !tg.hidden)}>
+                  onclick={() => attempt(() => journal.tags.setTagHidden(tg.id, !tg.hidden), m.write_failed())}>
                   <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
                 </button>
               {:else}
@@ -103,7 +116,7 @@
           </div>
         {/each}
       </div>
-    </details>
+    </Disclosure>
   {/snippet}
 
   <!-- Your own groups and the way to make one come before the built-in
@@ -125,12 +138,12 @@
   <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
     <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>
       {#each customGroups as g (g.key)}{@render groupSection(g)}{/each}
-      <SectionHeading text={m.affirmations_builtin_heading()} />
+      <SectionHeading text={m.tags_builtin_heading()} />
       {#each builtInGroups as g (g.key)}{@render groupSection(g)}{/each}
     </ReadReserve>
   </div>
 
-  <Sheet open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
+  <Sheet busy={sheetWrite.busy} open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
       <h3>{m.tags_rename_sheet()}</h3>
       <Field label={m.tags_rename_sheet()} id="rename-input" hidden>
@@ -140,9 +153,10 @@
       </Field>
       <button
         class="btn btn-primary"
+        disabled={sheetWrite.busy}
         onclick={() => {
-          if (renameTarget!.label.trim()) journal.tags.renameTag(renameTarget!.id, renameTarget!.label.trim());
-          renameTarget = null;
+          const { id, label } = renameTarget!;
+          saveFromSheet(label.trim() ? () => journal.tags.renameTag(id, label.trim()) : null, () => (renameTarget = null));
         }}><span>{m.tags_save()}</span></button
       >
     {/if}
@@ -160,7 +174,7 @@
     }}
   />
 
-  <Sheet open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>
+  <Sheet busy={sheetWrite.busy} open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>
     {#if addTarget}
       <h3>{m.tags_new_tag()}</h3>
       <Field label={m.tags_new_tag()} id="newtag-input" hidden>
@@ -171,15 +185,17 @@
       <button
         class="btn btn-primary"
         data-save-new-tag
+        disabled={sheetWrite.busy}
         onclick={() => {
-          if (newLabel.trim()) journal.tags.addTag(addTarget!, newLabel.trim());
-          addTarget = null;
+          const group = addTarget!;
+          const label = newLabel.trim();
+          saveFromSheet(label ? () => journal.tags.addTag(group, label) : null, () => (addTarget = null));
         }}><span>{m.tags_add_tag()}</span></button
       >
     {/if}
   </Sheet>
 
-  <Sheet bind:open={groupSheet} title={m.tags_new_group()}>
+  <Sheet busy={sheetWrite.busy} bind:open={groupSheet} title={m.tags_new_group()}>
     <h3>{m.tags_new_group()}</h3>
     <Field label={m.tags_new_group()} id="newgroup-input" hidden>
       {#snippet children(id)}
@@ -189,9 +205,10 @@
     <button
       class="btn btn-primary"
       data-save-new-tag-group
+      disabled={sheetWrite.busy}
       onclick={() => {
-        if (newGroupName.trim()) journal.tags.addGroup(newGroupName.trim());
-        groupSheet = false;
+        const name = newGroupName.trim();
+        saveFromSheet(name ? () => journal.tags.addGroup(name) : null, () => (groupSheet = false));
       }}><span>{m.tags_add_group()}</span></button
     >
   </Sheet>

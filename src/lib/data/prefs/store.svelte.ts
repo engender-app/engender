@@ -173,6 +173,17 @@ export function applyPortablePreferences(portable: Partial<PortablePreferences>)
   }
 }
 
+/** The lock's half (after-release ticket 10): the database is about to
+    close, so the writes already out at it are waited for, and anything
+    written from here on is held the way writes before the first open are,
+    for `attachPreferences` to replay once the journal reopens. The values
+    stay: the lock screen itself is drawn in the person's theme, palette and
+    language, and asks for the lock timing. */
+export async function detachPreferences(): Promise<void> {
+  backing = null;
+  await flushPreferences();
+}
+
 /** Boot step 2: SQLite is open and authoritative from here. Anything
     written during step 1 survives - it is newer than what the table holds. */
 export async function attachPreferences(preferences: Preferences) {

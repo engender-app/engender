@@ -13,9 +13,7 @@
    throws into a failed boot, which is what the four sequences this replaced
    each ended in. */
 
-import { releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
 import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
-import { markJournalBusy } from '../data/journal-busy';
 import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
 import { readKeystoreSource } from '../data/keystore-file';
 import { surveyAndroid } from './android-survey';
@@ -24,26 +22,10 @@ import {
   DeviceBoundKeyUnavailableError,
   unlockDeviceBoundJournal
 } from '../data/device-bound-journal';
-import { opfsConversionMarker } from '../data/conversion/marker-file';
-import {
-  JOURNAL_DATABASE,
-  plaintextJournalPresent,
-  removePlaintextRemnants
-} from '../data/conversion/plaintext-journal';
-
-import { LATEST_SCHEMA_VERSION } from '../data/sqlite/schema-version';
-import { localStorageCache } from '../data/prefs/boot-cache';
-import { clearBrowserMirrors, wipeLocalData } from '../data/reset';
+import { JOURNAL_DATABASE, legacyStoragePresent } from '../data/legacy-journal';
 import { openAndroidDataKey } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
-import type { ListableDirectory } from '../data/photos/opfs-file-store';
 import type { BootEffect, BootEvent } from './boot-machine';
-
-/* The conversion itself, and the ports that read the old plaintext file
-   through SQLocal, load only when an install that predates encryption is
-   actually converting (ux-carpet ticket 223) - not on every launch. */
-const conversion = () => import('../data/conversion/conversion');
-const conversionPorts = () => import('../data/conversion/web-ports');
 
 type BootDispatch = (event: BootEvent) => void;
 
@@ -54,14 +36,10 @@ type PlatformEffect = Extract<
     type:
       | 'survey-web'
       | 'survey-android'
-      | 'finish-retirement'
-      | 'wipe-demo-journal'
       | 'demo-setup'
       | 'demo-unlock'
-      | 'precheck-conversion'
       | 'auto-unlock-device-bound'
-      | 'auto-unlock-android'
-      | 'run-conversion';
+      | 'auto-unlock-android';
   }
 >;
 
@@ -74,8 +52,7 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
         type: 'web-surveyed',
         keystoreSecretSource,
         deviceBoundKeystoreExists,
-        plaintextJournalPresent: await plaintextJournalPresent(),
-        marker: await opfsConversionMarker().read()
+        legacyStoragePresent: await legacyStoragePresent()
       });
       return;
     }
@@ -94,27 +71,10 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
       return;
     }
 
-    case 'finish-retirement': {
-      const { finishRetirement } = await conversion();
-      await finishRetirement(opfsConversionMarker(), removePlaintextRemnants);
-      await performPlatformEffect({ type: 'survey-web' }, dispatch);
-      return;
-    }
-
-    case 'wipe-demo-journal':
     case 'demo-setup':
     case 'demo-unlock':
       await performDemoEffect(effect, dispatch);
       return;
-
-    case 'precheck-conversion': {
-      const [{ prepareConversion }, { webConversionPrecheckPorts }] = await Promise.all([conversion(), conversionPorts()]);
-      dispatch({
-        type: 'conversion-prechecked',
-        result: await prepareConversion(webConversionPrecheckPorts(), LATEST_SCHEMA_VERSION)
-      });
-      return;
-    }
 
     case 'auto-unlock-device-bound': {
       let dataKey;
@@ -148,26 +108,7 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
       return;
     }
 
-    case 'run-conversion': {
-      /* The longest of the four windows an update must not land in (ticket
-         04): a whole Journal and every photo, rewritten on a phone. The
-         conversion survives being killed and resumes, but code replaced under
-         it mid-write is not an interruption it can reason about. */
-      /* Busy before the modules load, not after: the window starts when
-         the decision to convert is made, and a chunk fetch is exactly the
-         kind of wait an update could otherwise land in. */
-      const converting = markJournalBusy();
-      try {
-        const [{ runConversion }, { webConversionPorts }] = await Promise.all([conversion(), conversionPorts()]);
-        await runConversion(webConversionPorts(effect.dataKey), (progress) => {
-          dispatch({ type: 'conversion-progressed', progress });
-        });
-      } finally {
-        converting();
-      }
-      dispatch({ type: 'converted', dataKey: effect.dataKey, accessMode: effect.accessMode });
-      return;
-    }
+
   }
 }
 
@@ -181,28 +122,13 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     05). The reducer emits none of these effects outside a demo build either;
     the guard is what keeps them out of the bundle. */
 async function performDemoEffect(
-  effect: Extract<PlatformEffect, { type: 'wipe-demo-journal' | 'demo-setup' | 'demo-unlock' }>,
+  effect: Extract<PlatformEffect, { type: 'demo-setup' | 'demo-unlock' }>,
   dispatch: BootDispatch
 ): Promise<void> {
   if (!__DEMO__) return;
   const DEMO_PASSPHRASE = 'demo';
 
   switch (effect.type) {
-    /* A demo journal is throwaway by definition - reseeded from the persona
-       on every empty boot - so a plaintext leftover from before encryption is
-       wiped rather than converted. */
-    case 'wipe-demo-journal':
-      await wipeLocalData({
-        /* Nothing is open yet, but the database worker started at boot
-           (ux-carpet ticket 209) holds the pool this is about to delete. */
-        closeDatabase: releasePrewarmedJournalWorker,
-        storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
-        clearBrowserMirrors: () => clearBrowserMirrors(localStorage),
-        clearBootCache: () => localStorageCache().clear()
-      });
-      dispatch({ type: 'demo-journal-wiped' });
-      return;
-
     /* `unlocked: true`, unlike the two real setup paths, because nobody
        typed anything and nobody should have to. Until ticket 53 the casual-
        access gate read `prefs.pinHash`, which a demo journal never has, so

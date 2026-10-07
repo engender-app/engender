@@ -3,6 +3,7 @@ import { writeOverChannel } from './android-write-channel.ts';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 /** A fake of the native side of the protocol: reads the header off the
@@ -69,4 +70,37 @@ describe('writeOverChannel', () => {
 
     await writeOverChannel('a.jpg', 'photos', view);
   });
+});
+
+
+test('a native write reply that never arrives times out and closes both ports', async () => {
+  vi.useFakeTimers();
+  const close = vi.fn();
+  vi.stubGlobal('MessageChannel', class {
+    port1 = { onmessage: null, postMessage() {}, close };
+    port2 = { close };
+  });
+  vi.stubGlobal('androidPhotoWriteChannel', { postMessage() {} });
+  const answer = writeOverChannel('a.jpg', 'photos', new Uint8Array([1]));
+  const rejected = expect(answer).rejects.toThrow('timed out');
+  await vi.advanceTimersByTimeAsync(30_000);
+  await rejected;
+  expect(close).toHaveBeenCalledTimes(2);
+});
+
+
+test('a late write reply after timeout is ignored', async () => {
+  vi.useFakeTimers();
+  let reply: (event: { data: unknown }) => void;
+  const port = { onmessage: null as unknown, postMessage() {}, close: vi.fn() };
+  vi.stubGlobal('MessageChannel', class { port1 = port; port2 = { close: vi.fn() }; });
+  vi.stubGlobal('androidPhotoWriteChannel', { postMessage() { reply = port.onmessage as typeof reply; } });
+  const answer = writeOverChannel('a.jpg', 'photos', new Uint8Array([1]));
+  const rejected = expect(answer).rejects.toThrow('timed out');
+  await vi.advanceTimersByTimeAsync(30_000);
+  await rejected;
+  reply!({ data: "{\"ok\":true}" });
+  expect(port.onmessage).toBeNull();
+  expect(port.close).toHaveBeenCalledTimes(1);
+  expect(vi.getTimerCount()).toBe(0);
 });

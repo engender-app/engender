@@ -2,13 +2,15 @@
   /* Getting back in mid-session (ticket 53, replacing LockScreen's unlock
      job).
 
-     Lock timing locks the app while the unlocked data key is
-     still in memory, so this screen only has to establish that the person in
-     front of it is the one who opened the journal. It does that by asking for
-     the access mode's own secret and actually re-deriving with it, rather
-     than by comparing against a second, weaker secret kept around to make
-     re-entry cheap. That second secret was the app-lock PIN, and ADR-0041
-     retires it: one word, one meaning.
+     It asks for the access mode's own secret and actually re-derives with
+     it, rather than comparing against a second, weaker secret kept around
+     to make re-entry cheap. That second secret was the app-lock PIN, and
+     ADR-0041 retires it: one word, one meaning. On the web the derived key
+     is also what opens the journal again, since a lock there closes the
+     database and lets go of the key (after-release ticket 10); the wait
+     for that reopen sits inside the same busy state as the derivation, a
+     few tens of milliseconds on top of it. Android's lock keeps its key and
+     does not reopen anything.
 
      The price is one Argon2id derivation per re-entry, which is honest and
      which the PIN profile was sized around (crypto/params.ts).
@@ -31,7 +33,7 @@
   import { unlockJournalBiometric } from '$lib/data/journal-biometric';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { markUnlocked } from '$lib/stores/lock.svelte';
-  import { resetApp } from '$lib/stores/boot.svelte';
+  import { reopenJournalAfterUnlock, resetApp } from '$lib/stores/boot.svelte';
   import { confirmWithBiometrics } from '$lib/lock/android-key';
   import { lockAfterNote } from '$lib/lock/lock-after-words';
   import { androidKeystore } from '$lib/lock/keystore-bridge';
@@ -44,6 +46,7 @@
   import PinEntry, { type PinAttempt } from './PinEntry.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
+  import { disclose } from '$lib/motion/reveal';
 
   let { mode }: { mode: JournalAccessMode } = $props();
 
@@ -66,18 +69,49 @@
   let busy = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
+  let resetError = $state('');
+  /* A failure belongs to the attempt it reports. Kept while the sheet is
+     open, so a second failed press does not blink it out and back; let go
+     once the sheet closes, so reopening starts clean. */
+  $effect(() => {
+    if (!resetOpen) resetError = '';
+  });
+
+  /* The derived key opens the journal the lock closed. False when the
+     database would not open, which is not a wrong secret and is not
+     counted as one: most likely another tab has the journal open now. */
+  async function reopened(dataKey: Uint8Array<ArrayBuffer>): Promise<boolean> {
+    try {
+      await reopenJournalAfterUnlock(dataKey);
+      return true;
+    } catch (e) {
+      console.error('the journal did not open again after the unlock', e);
+      return false;
+    }
+  }
 
   /* PIN mode's attempts go through PinEntry, which owns the pad and the
      growing delay for both this screen and the cold-start gate. */
   async function submitPin(entered: string): Promise<PinAttempt> {
+    let dataKey;
     try {
-      await unlockJournalPin(entered);
-      opened();
-      return 'ok';
+      dataKey = await unlockJournalPin(entered);
     } catch (e) {
       return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
     }
+    if (!(await reopened(dataKey))) return 'unopened';
+    opened();
+    return 'ok';
   }
+
+  /* Back to idle after a refusal, never after the way in: the gate leaves
+     inside the app's opening transition, and turning the button back to
+     its idle label and emptying the field first painted both for two
+     frames before the gate went (after-release ticket 10, sampled per
+     frame). The field and label leave with the gate instead. */
+  const settle = () => {
+    if (!ui.appOpening) busy = false;
+  };
 
   /* The passphrase has its own field and its own button, and no throttle:
      its input space is not something anybody types their way through, and
@@ -88,14 +122,17 @@
     busy = true;
     error = '';
     try {
-      await unlockJournalPassphrase(passphrase);
-      passphrase = '';
+      const dataKey = await unlockJournalPassphrase(passphrase);
+      if (!(await reopened(dataKey))) {
+        error = m.su_reopen_failed();
+        return;
+      }
       opened();
     } catch (e) {
       const deviceGone = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
       error = e instanceof DeviceBindingUnavailableError ? deviceGone : m.pp_wrong();
     } finally {
-      busy = false;
+      settle();
     }
   }
 
@@ -106,13 +143,17 @@
     busy = true;
     error = '';
     try {
-      await unlockJournalBiometric();
+      const dataKey = await unlockJournalBiometric();
+      if (!(await reopened(dataKey))) {
+        error = m.su_reopen_failed();
+        return;
+      }
       opened();
     } catch (e) {
       console.error('the biometric unlock failed', e);
       error = m.bm_unlock_failed();
     } finally {
-      busy = false;
+      settle();
     }
   }
 
@@ -144,7 +185,7 @@
       console.error('the device-lock prompt failed', e);
       error = m.ak_failed();
     } finally {
-      busy = false;
+      settle();
     }
   }
 
@@ -158,8 +199,7 @@
       // act on.
       console.error('the app reset failed', e);
       resetting = false;
-      resetOpen = false;
-      error = m.reset_failed();
+      resetError = m.reset_failed();
     }
   }
 
@@ -188,7 +228,7 @@
   /* The wordmark, never the person's name, although the name has been read
      by now: whoever is holding a locked phone is exactly who should not see
      it. GateScreen.svelte argues the rest for all six gates. */
-  let title = $derived(appWordmark(prefs.disguise, m.app_name()));
+  let title = $derived(appWordmark(prefs.disguise, m.app_name(), m.disguise_name()));
 </script>
 
 <GateScreen {title} data-applock>
@@ -264,6 +304,12 @@
     </div>
   </div>
   <p class="ob-text">{m.reset_offer_archive_password()}</p>
+  {#if resetError}
+    <!-- In the sheet, which stays open: the sheet is where the button was
+         pressed, and closing it on a failure left the gate looking as if
+         nothing had happened (after-release ticket 09). -->
+    <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
+  {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">
     <button class="btn btn-danger" data-confirm-reset disabled={resetting} onclick={confirmReset}>
       <span>{resetting ? m.reset_running() : m.reset_confirm()}</span>

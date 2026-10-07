@@ -6,7 +6,7 @@
      so the single-line presentation this ticket rules out is not something a
      caller could ask for by passing a different prop.
 
-     A dumb renderer, like LineChart.svelte beside it: it takes numbers and
+     A dumb renderer, like WearTrendChart beside it: it takes numbers and
      formatters and knows nothing about esters, units or what any of it
      means. The wording, and paraglide, stay with the caller. */
 
@@ -166,7 +166,7 @@
       />{/each}
 
     {#if interactive}
-      <!-- Hit areas over the results, sized the way LineChart sizes its own:
+      <!-- Hit areas over the results, sized so they are
            wider than the mark and narrower than 44px, because at 44px
            neighbouring draws would steal each other's taps.
            data-no-press (ticket 15): fill: transparent below, so there is
@@ -211,13 +211,16 @@
     fill: color-mix(in oklab, var(--chart-line) 34%, transparent);
   }
 
-  /* Faint, and only to give the band a definite edge. Any heavier and the
-     two edges read as two lines rather than as the sides of one shape. */
+  /* The band's boundary, and what an eye finds the modelled range by: the
+     fill is a wash and sits at 1.6:1 to 2.3:1 on the page, so the edge
+     carries the shape (WCAG 1.4.11, phase 15 ticket 20). It was this colour
+     at 35% and measured 1.59:1 on trans light. At full strength it clears
+     4.3:1 on every palette and theme, and it stays 1px so the two edges
+     still read as the sides of one shape rather than as two lines. */
   .band-edge {
     fill: none;
     stroke: var(--chart-line);
     stroke-width: 1;
-    opacity: 0.35;
   }
 
   .band-axis-label {

@@ -55,7 +55,10 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const today = todayEpochDay();
+  /* The day the visit opened on, held on purpose: an appointment that runs
+     past midnight is still the one in the room, and following the clock
+     would drop the chosen appointment and the answer being typed. */
+  let today = $state(todayEpochDay());
 
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
   let items = $derived(checklistQuery.rows);
@@ -102,7 +105,10 @@
       it, or the record's own name when they did not. The place rides under
       it rather than in a second line, the same pairing the appointment screen's
       rows use. */
-  const nameOf = (appointment: { kind: string | null }) => appointment.kind ?? m.appointments_untitled();
+  let proceduresQuery = liveList((j) => j.procedures.getProcedures());
+  let procedureNames = $derived(new Map(proceduresQuery.rows.map((p) => [p.id, p.name])));
+  const nameOf = (appointment: { kind: string | null; procedureId: string | null }) =>
+    appointment.kind ?? (appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined) ?? m.appointments_untitled();
 
   let index = $state(0);
   /* Keyed by item id rather than by position: the list is live, and an item
@@ -176,13 +182,13 @@
   <!-- No actions: nothing lives beside the title. The back control returns
        to whichever screen led here, which is the appointment screen and nowhere
        else since phase 11 all-four-doors ticket 12 (smartBack), falling
-       back to it by name for a deep link or a reload (carpet 27). The title stays in the document for the outline
-       and for a screen reader, which is what a chromeless screen owes them
-       when the largest text on it is a question rather than a name. -->
+       back to it by name for a deep link or a reload (carpet 27). The title
+       is shown in the field like every other screen's (after-release 28,
+       audit UI-10): hidden, the field held only the back arrow and read as
+       a band with nothing in it above the question. -->
   <ScreenHeader
     title={m.in_the_room_title()}
     screen="in-the-room"
-    titleHidden
     back="/health/appointments"
   />
 

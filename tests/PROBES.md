@@ -15,13 +15,15 @@ walkthrough, and 125 deletions. Deleted probes are still in history, and a
 few kept files still name them as the source of a pattern:
 `git log --all -- tests/<name>.mjs` finds the last version.
 
-Most of these start their own Vite server or `vite preview`. Anything that
+Most of these start their own Vite server or serve a build. Anything that
 says "demo build" serves `build/`, which has to be a `VITE_DEMO=1` build. A
-probe that takes `--root <built tree>` starts its preview through
-`previewBuild` in browser-harness.mjs, which changes into that tree first:
-SvelteKit's preview reads the built server from the working directory, so a
-`--root` alone used to serve the checkout the probe was started in (ticket
-226).
+probe that takes `--root <built tree>` serves it through `previewBuild` in
+browser-harness.mjs, which changes into that tree first (ticket 226) and
+serves `build/index.html` itself under the production isolation headers
+(`serve-build.mjs`, after-release ticket 31). Until then it was `vite
+preview`, whose document had no CSP and no held module hints. A probe that
+imports vite's `preview` directly, and the walkthrough, still get that
+document.
 
 CI's Node and Android jobs use `scripts/run-ci-checks.mjs`. Independent
 checks continue after a failure; failed prerequisites leave named blocked
@@ -30,6 +32,15 @@ separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
 ## Walkthrough groups
+
+`page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
+empty counting request, document reload, internal navigation and offline behavior.
+Run after a production build: `node tests/page-load-browser.mjs`.
+
+`page-count-hosting` (`tests/page-count-hosting.mjs`) checks the analytics privacy
+boundary with real nginx and a capture server. Requires Podman:
+`node tests/page-count-hosting.mjs`. It checks both fixed labels, stripped headers
+and bodies, rejected input, and blocked direct collection on the dashboard.
 
 `walkthrough-groups` (`tests/walkthrough-groups.mjs`) assigns contiguous flow ranges to four hosted jobs.
 Run one with `node tests/walkthrough.test.mjs --group journal` after
@@ -90,6 +101,7 @@ To run one on its own, use
 | `voice-task-names` | the voice task chooser's labels fit their segments in both languages |
 | `record-dismissal-check` | a cancelled dismissal keeps unsaved record edits and the sheet's position |
 | `letter-composition-check` | letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock uses real routes |
+| `save-and-failure-check` | a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today |
 | `recovery-key-departure-check` | every way off the recovery key screen asks before the key is lost |
 | `photo-browse-compare` | browsing, selecting and wiping photos on a small library |
 | `photo-grid-batching` | the grid stays whole batches deep at 3000 photos |
@@ -110,6 +122,7 @@ To run one on its own, use
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
 | `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
 | `tryout-save-check` | tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes |
+| `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
 | `lab-entry-check` | lab result field order, saved values, draft dismissal, failures and privacy in English and Polish |
@@ -137,7 +150,7 @@ To run one on its own, use
 | `care-cold-load-yank` | Care's cold load at 1x and 4x CPU: no rail caption steps sideways, nothing below the care read paints before the rail, what it answers with fades in, and the nav pill never paints wider than its tab |
 | `wear-tile-close-yank` | stopping the Home wear-timer tile collapses its own tier's row rather than snapping the agenda up under a still-visible ghost, even when an unrelated fold promotion lands the same tick |
 | `day-cold-load-yank` | The day view's cold load at 4x CPU: margin notes and dose drug names land with the day's records, never after |
-| `entry-editor-return` | The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed |
+| `entry-editor-return` | The entry editor's Save keeps an accessible name, its date line clears the header, save and delete return to Calendar, Search (query kept), a day, and delete says Moved to trash with Restore or says it failed; the header field spans the same box as Care's and Day's, an opened Photos, Voice or Video section lands above the foot, and an untouched scale draws no thumb or fill and saves no value |
 | `calendar-month-a11y-check` | the open calendar month is a list named by its month with one item per day, every day says its date, axe finds nothing in it, Tab walks the date links in order, and every link is 48px or more without overlapping at 360, 390 and 411px phones and the 390px desktop page (320 is printed only) |
 | `quick-add-focus-check` | Enter on the add button puts focus in the quick-add fan, a labelled modal dialog over an inert screen; Tab stays in it and Escape gives focus back to the button, also after a slide onto a target; arrows on Today's mood faces move focus and open nothing; a keyboard screen change and quick add's mood land focus on the new screen's h1 with the tab title unchanged; each onboarding step's question takes focus and names the name field |
 | `chart-a11y-check` | every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws, and the hormone curve's image holds no control while a list beside it names every marked thing and opens its record by keyboard, at 320 and 390px |
@@ -156,21 +169,33 @@ To run one on its own, use
 | `documents-rows-settle` | the documents list's first group never changes height after it paints on a cold load (row link lines and the size line land with the list), at 4x CPU |
 | `tile-arrival-timing` | Today's and Look back's tiles land within 250ms of a warm tab switch and 300ms of a cold shell, and a revisit paints them in its first frame with no placeholder and nothing moving, on the web tier (the Android bridge is ADR-0089's device record, not this) |
 | `home-idle-raster` | Home at idle rasters nothing beyond a timer's tick, and wakes the main thread only while a mood face moves: the flag sun's breath runs on the compositor, and the faces pause their loops between moves |
-| `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; a normal boot, and one at 6x CPU, still reach Today |
+| `boot-error-alone` | a boot that fails on an unreadable journal shows its notice and nothing a booted app draws, and Today leaves by crossfade rather than a cut; a refused SQLite wasm and a worker served without COEP reach the same notice; the notice names the failure in words rather than the driver's, and a development build's journal (below the baseline) gets the start-over way out and no retry; a normal boot, and one at 6x CPU, still reach Today |
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
+| `day-addresses` | malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
 | `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
 
 ### Written as a guard, not in CI yet
 
+`resurfacing-consent-check` requires a demo build. It checks that muting an
+era removes retrospective offers and sharing controls, direct Wrapped share
+URLs show the muted notice, and unmuting restores the offers and sharing.
+
 | Probe | Why not |
 | --- | --- |
+| `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
+| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed reaches 48px by `elementFromPoint` from its centre, at 320 and 390px with text at 100% and 200%, and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. About six minutes over 13 screens, which is more than a CI shard has room for (after-release 18). |
 
-`browser-tier/run.mjs` also imports six probes (`care-read`,
+`browser-tier/run.mjs` also imports seven probes (`care-read`,
 `care-spine-links`, `read-failures`, `source-record-links`,
-`timeline-fact-selection`, `pin-progress-status`), so they run in the browser job with
+`timeline-fact-selection`, `pin-progress-status`, `gates-say-what-happened`), so they run in the browser job with
 `npm run test:browser`. Three of them take `--gallery` as well.
+
+`screen-mount.html` renders Home, Calendar, Settings and related routes over
+seeded encrypted journals. The browser runner checks their DOM, computed
+styles, interactions and loading gates, then repeats the narrow layout checks
+at 230px. The three screen contract suites run here rather than in Node.
 
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
 
@@ -240,7 +265,7 @@ on this page ran green on 2026-09-23.
 ## Helpers
 
 Imported or read by the probes above, never run on their own:
-`browser-harness` (Chromium launch, reporting, `settlePage`),
+`browser-harness` (Chromium launch, reporting, `settlePage`), `serve-build` (build/ as production serves it),
 `cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
@@ -261,6 +286,7 @@ available for the surface or device it measures.
 
 | Probe | Purpose |
 | --- | --- |
+| `device-bound-writes` | verify wrapping-key reuse and failed metadata writes on real OPFS and IndexedDB; run with `node tests/device-bound-writes.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
@@ -271,6 +297,7 @@ available for the surface or device it measures.
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
 | `measurement-notice-proof` | prove delayed stationary appearance, missing content, incomplete observation, unsettled content and injected travel using the cold-load sampler; fresh and remembered reserves against a demo build |
+| `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |
 
 `guard-recovery-proof` runs disposable synthetic guards through the production runner
 and checks recovery, revision identity and retained evidence. The separate Guard

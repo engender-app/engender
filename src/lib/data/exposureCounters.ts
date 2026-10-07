@@ -33,7 +33,7 @@
    running rather than as having ended the regimen. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributeDrug } from './regimenEpisode';
+import { attributeDrug, drugNameKey } from './regimenEpisode';
 import type { DoseEvent, DoseRoute, RegimenEpisode } from './types';
 
 export interface DoseTotal {
@@ -71,7 +71,7 @@ export interface RegimenDays {
   days: number;
 }
 
-const groupKey = (drug: string, route: string, doseUnit: string): string => `${drug} ${route} ${doseUnit}`;
+const groupKey = (drug: string, route: string, doseUnit: string): string => `${drugNameKey(drug)} ${route} ${doseUnit}`;
 
 /** Cumulative dose totals per drug/route/unit, integrated over every
     non-skipped dose whose own epoch day falls in `[fromEpochDay,

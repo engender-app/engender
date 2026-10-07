@@ -23,13 +23,17 @@
   import { isAndroid } from '$lib/platform';
   import { localStorageAttempts } from '$lib/lock/attempt-store';
   import { createPinThrottle } from '$lib/lock/pin-throttle';
+  import { pinWaitSpeech } from '$lib/lock/pin-wait-speech';
+  import { announce } from '$lib/stores/announcer.svelte';
   import type { Snippet } from 'svelte';
   import PinPad from './PinPad.svelte';
 
   /** What the caller's attempt came to. `device-gone` is PIN mode's own
       failure: this browser has lost the key the PIN was bound to, so the PIN
-      is not wrong and retyping will never help. */
-  export type PinAttempt = 'ok' | 'wrong' | 'device-gone';
+      is not wrong and retyping will never help. `unopened`: the PIN was
+      right but the journal would not open again after a web lock
+      (after-release ticket 10); not counted as a guess either. */
+  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened';
 
   let {
     onVerify,
@@ -45,6 +49,8 @@
   let pin = $state('');
   let error = $state('');
   let busy = $state(true);
+  /** Set once an attempt let the person in; nothing resets the pad after. */
+  let opening = false;
   let refusals = $state(0);
   let waitMs = $state(0);
   /** The whole wait, taken the moment it starts, so the rail under the status
@@ -65,15 +71,31 @@
     countdown = null;
   }
 
+  /* The line under the pad redraws the seconds every tick and is not a live
+     region; only the wait starting and the wait ending are said, as an
+     interruption and then politely (after-release 21). */
+  function setWait(remaining: number) {
+    const said = pinWaitSpeech(waitMs, remaining);
+    waitMs = remaining;
+    if (said === 'start') announce(m.pin_throttled({ seconds: String(Math.ceil(remaining / 1000)) }), true);
+    else if (said === 'end') announce(m.pin_wait_over());
+  }
+
+  /** An error is drawn on the status line and said once, here. */
+  function fail(message: string) {
+    error = message;
+    announce(message, true);
+  }
+
   function tickWait() {
     const remaining = throttle?.remainingMs(Date.now()) ?? 0;
-    waitMs = remaining;
+    setWait(remaining);
     if (remaining === 0) stopCountdown();
   }
 
   function startCountdown() {
     const remaining = throttle?.remainingMs(Date.now()) ?? 0;
-    waitMs = remaining;
+    setWait(remaining);
     if (remaining > 0 && !countdown) {
       waitTotalMs = remaining;
       countdown = setInterval(tickWait, 250);
@@ -90,7 +112,7 @@
       throttle = ready;
       startCountdown();
       busy = false;
-    }).catch(() => { if (mounted) error = m.ak_failed(); });
+    }).catch(() => { if (mounted) fail(m.ak_failed()); });
     return () => { mounted = false; stopCountdown(); };
   });
 
@@ -101,11 +123,18 @@
     try {
       const outcome = await onVerify(entered);
       if (outcome === 'ok') {
+        /* The pad stays as it is, full and disabled, while the gate leaves:
+           emptying it and enabling it again painted for a frame or two
+           before the opening took the screen (after-release ticket 10). */
+        opening = true;
         await throttle.reset();
-        pin = '';
         return;
       }
       pin = '';
+      if (outcome === 'unopened') {
+        fail(m.su_reopen_failed());
+        return;
+      }
       if (outcome === 'device-gone') {
         /* Not counted against the throttle: nothing was guessed and no
            number of tries would get anywhere. */
@@ -113,15 +142,18 @@
            places: the browser's own store on the web, and Android Keystore
            on a phone (ticket sec-02-06). "This browser" on a phone would be
            telling somebody about a store their PIN was never bound to. */
-        error = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
+        fail(isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone());
         return;
       }
       await throttle.recordWrong(Date.now());
       error = m.pin_wrong();
       refusals++;
       startCountdown();
+      /* A wrong PIN that starts a wait is said by the wait, which names the
+         seconds as well. */
+      if (waitMs === 0) announce(error, true);
     } finally {
-      busy = false;
+      if (!opening) busy = false;
     }
   }
 </script>
@@ -137,7 +169,7 @@
   {/key}
 {/if}
 
-<p class="pin-status small" role="alert" {...{ [statusHandle]: waitMs > 0 ? 'throttled' : error ? 'wrong' : 'idle' }}>
+<p class="pin-status small" {...{ [statusHandle]: waitMs > 0 ? 'throttled' : error ? 'wrong' : 'idle' }}>
   {#if waitMs > 0}
     {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
   {:else}{error}{/if}

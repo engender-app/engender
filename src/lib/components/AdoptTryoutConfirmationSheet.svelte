@@ -11,7 +11,9 @@
     epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
+  import { adoptionMood } from '$lib/data/adoptionMood';
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
   import type { OfferCopy } from '$lib/data/offers';
 
@@ -48,26 +50,13 @@
 
   let durationDays = $derived.by(() => {
     if (!tryout) return 1;
-    return Math.max(1, todayEpochDay() - tryout.startEpochDay + 1);
+    return Math.max(1, currentDay() - tryout.startEpochDay + 1);
   });
 
-  let majorityMood = $derived.by(() => {
-    if (!feltSense || feltSense.length === 0) return null;
-    const counts = new Map<number, number>();
-    for (const f of feltSense) {
-      counts.set(f.mood, (counts.get(f.mood) ?? 0) + 1);
-    }
-    let maxCount = -1;
-    let majority = feltSense[0].mood;
-    for (let mood = 1; mood <= 5; mood++) {
-      const count = counts.get(mood) ?? 0;
-      if (count > maxCount) {
-        maxCount = count;
-        majority = mood;
-      }
-    }
-    return majority;
-  });
+  /* The same step the adoption will write onto the milestone, and through
+     the same function, so the sheet never promises one reading and stores
+     another. `feltSense` arrives newest first, as forTryout reads it. */
+  let majorityMood = $derived(adoptionMood(feltSense));
 
   $effect(() => {
     if (open && tryout) {

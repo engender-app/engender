@@ -53,7 +53,8 @@
      Look back rail's own era bands use, so the two rails agree on which
      stripe a given era gets. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay, calendarDuration } from '$lib/data/epochDay';
+  import { calendarDuration } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { timelineItems } from '$lib/data/timelineItems';
@@ -78,7 +79,7 @@
     onOpenEra: (eraId: string) => void;
   } = $props();
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let items = $derived(timelineItems(milestones, today));
 
   const statusOf = (milestone: Milestone) => {
@@ -136,7 +137,11 @@
       to breathe, and a band a few pixels short of it reads as broken. */
   const CHAR_HEIGHT_PX = 8;
   const LABEL_PADDING_PX = 16;
-  const minLabelHeight = (name: string) => name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX;
+  /** Never under the touch floor either (`floor`, the --touch-target
+      token): a band is a button, and a three-letter name ("HRT") would
+      otherwise draw a 40px one (after-release 18). */
+  const minLabelHeight = (name: string, floor: number) =>
+    Math.max(floor, name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX);
 
   let bandRects = $state<BandRect[]>([]);
 
@@ -165,6 +170,7 @@
       return;
     }
     const railTop = el.getBoundingClientRect().top;
+    const floor = parseFloat(getComputedStyle(el).getPropertyValue('--touch-target')) || 0;
     const next: BandRect[] = [];
     eraBandRanges.forEach((band, index) => {
       const first = itemEls[band.startIndex];
@@ -185,7 +191,7 @@
 
       // Stretched around its own middle rather than pinned to either end,
       // so a lengthened band still reads as centred on the rows it covers.
-      const needed = minLabelHeight(band.name);
+      const needed = minLabelHeight(band.name, floor);
       if (height < needed) {
         const grown = (needed - height) / 2;
         top -= grown;
@@ -261,7 +267,7 @@
   {#each bandRects as band (band.id)}
     <button
       type="button"
-      class="tl-era-band"
+      class="tl-era-band hit-floor"
       data-tl-era={band.id}
       style:top="{band.top}px"
       style:height="{band.height}px"
@@ -289,15 +295,12 @@
       {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
       <!-- The axis runs behind this rather than being interrupted by it,
            so the label is the only thing here: two dashed rules either
-           side of it were what broke the line into pieces. -->
-      <div
-        class="tl-gap"
-        data-tl-gap
-        bind:this={itemEls[index]}
-        aria-label={m.tl_gap_aria({ duration: label })}
-        transition:collapse|global
-      >
-        <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
+           side of it were what broke the line into pieces. The fuller
+           sentence is hidden text rather than an aria-label, which a plain
+           div does not have read (after-release 21, audit L04-14). -->
+      <div class="tl-gap" data-tl-gap bind:this={itemEls[index]} transition:collapse|global>
+        <span class="tl-gap-label" aria-hidden="true">{m.tl_gap_label({ duration: label })}</span>
+        <span class="visually-hidden">{m.tl_gap_aria({ duration: label })}</span>
       </div>
     {:else}
       {@const origin = resolveMilestoneOrigin(item.milestone)}
@@ -397,7 +400,14 @@
      clean gap through a band or a name behind it, the way it always has
      through the thread). Every band wears an edge, the reason
      SpanTimeline's own bands do - a black or white flag leaves no other
-     way for two adjacent bands to read as separate objects. */
+     way for two adjacent bands to read as separate objects.
+
+     The drawn band is 20px; its target is the 48px floor (.hit-floor in
+     components.css), 14px out each side. That is exactly the room there
+     is: the band's centre is 16px into the rail, so the target runs from
+     8px into the screen's own gutter to the 40px where the milestone cards
+     begin, and covers nothing that is pressable (after-release 18; it
+     was 20px wide). */
   .tl-era-band {
     position: absolute;
     left: 6px;
@@ -438,8 +448,13 @@
   }
 
   /* The point on the axis, centred on the line and cut out of it by a ring in
-     the page colour, so the line appears to pass behind rather than through. */
+     the page colour, so the line appears to pass behind rather than through.
+     Not a control, and it paints over an era's band, so it lets presses
+     through: a press on the dot used to fall to nothing, and the band's
+     target had a 20px hole wherever a milestone sat on it (after-release
+     18). */
   .tl-dot {
+    pointer-events: none;
     position: absolute;
     left: -30px;
     top: 18px;

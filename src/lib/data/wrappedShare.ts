@@ -32,7 +32,7 @@ export function wrappedShareContent(
     wrapped card and a photo journey read as siblings rather than one
     looking like a backup (deliver.ts's exportFileName is the journal's
     own name, which this deliberately does not share). */
-export function wrappedShareFileName(name: string, epochDay: number = todayEpochDay()): string {
-  const slug = nameSlug(name);
+export function wrappedShareFileName(name: string, epochDay: number = todayEpochDay(), disguised = false): string {
+  const slug = disguised ? '' : nameSlug(name);
   return `${slug ? `${slug}-` : ''}wrapped-${dateInputValueFromEpochDay(epochDay)}.png`;
 }

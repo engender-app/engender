@@ -12,7 +12,7 @@
    coloured text, never as a gradient, a glow or a veil.
 
    The classes are prefixed `kit-` while the old world is still standing.
-   `.card`, `.list-row` and `.section-title` in components.css are the
+   `.card` and `.list-row` in components.css are the
    screens' current vocabulary and the screen tickets replace them one
    screen at a time; the prefix is what lets both exist in the same
    stylesheet until the last of them goes. */
@@ -27,7 +27,10 @@
    A role arrives as three values, all from $lib/theme/roles.ts: --role, the
    flag's own stripe; --role-ink-in, the version of it that carries small
    text at 4.5:1; and --role-mark-in, the version that draws a chart line, a
-   bar, an icon or a display number at 3:1.
+   bar, an icon or a display number at 3:1. A fourth, --role-edge-in,
+   arrives only where the stripe itself is under 3:1 against what a chart
+   draws a line over: the edge a line in the raw stripe is cased in
+   (phase 15 ticket 20, --role-edge below).
 
    Two of them because the floors are different and the difference is
    visible. Holding a mark to the text floor darkens every bright stripe on
@@ -107,6 +110,14 @@
      Drawn from --role-mark, the corrected version, so it is there whatever
      band the area got. */
   --role-hairline: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
+  /* The edge a chart line in --role-draw is cased in, so the line can be
+     found against the ground (WCAG 1.4.11, phase 15 ticket 20). The line
+     stays the stripe; the casing is drawn under it, a pixel wider on each
+     side, in the same hue moved to the lightness that clears 3:1
+     (roles.ts, Role.edge). Transparent where the stripe already reads,
+     which is every role with no edge handed in, the accent fallback
+     included: the accent clears 4.1:1 on every surface. */
+  --role-edge: var(--role-edge-in, transparent);
 }
 
 /* A route's own `<style>` block is free to read --role-mark, --role-ink,
@@ -520,7 +531,7 @@
 /* The axis picker and the range control are one decision, so they are one
    block.
 
-   `.screen > *` gives 24px between blocks, deliberately, for blocks that
+   `.screen > *` gives 20px between blocks, deliberately, for blocks that
    are meant to read as separate (app.css, register finding 32.14). These
    two are not separate: picking an axis is what decides whether there is a
    range left to pick. Stacked as two screen blocks they sat 40px apart
@@ -730,6 +741,10 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* None of these four has a token, so they stay as drawn: 11px and 15px
+     are off the spacing scale, 13px falls between --text-xs and --text-sm
+     (and the 4.5:1 test above is held at exactly this size), and the app
+     has no letter-spacing scale. */
   padding: 11px 15px;
   background: var(--text);
   color: var(--bg);
@@ -1248,7 +1263,7 @@ a.kit-entry:active {
 .kit-tile-act.btn {
   align-self: center;
   min-height: 36px;
-  padding: 0 var(--space-3.5);
+  padding: 0 var(--space-4);
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   border-radius: var(--r-block);
@@ -1640,19 +1655,6 @@ button.kit-strip-day .kit-strip-cell {
   border: 1px solid var(--outline);
   display: block;
   background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
-  /* Paging the strip a week back (ticket 44) leaves all seven columns
-     where they are and changes only what is in them, so the change is a
-     fade between two paints rather than anything arriving: no cell is ever
-     painted at a state it did not travel to. `background` cannot be
-     transitioned between two color-mix() values without --level being a
-     registered property, so the property itself is what carries it.
-
-     Only where the strip can be paged, which is what the rule below
-     narrows it to. Left on `.kit-strip-cell` it also reached WeekStrip,
-     whose cells would have started fading from grey to their heat as
-     `dayAverages` lands rather than snapping - an improvement, and the
-     calendar is the one caller ticket 44's own out-of-scope list names, so
-     it is not this ticket's to make. */
 }
 
 /* A bare custom property animates as a string - it swaps at 50% and the
@@ -1687,7 +1689,7 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 /* CARPET-02: the desktop breakpoint app.css already switches the whole
-   shell on - the column WeekStrip.svelte counts 1024px by is the same
+   shell on - the column the strip counts 1024px by is the same
    640px `--content-max` this shrinks into. 14 cells at 44px plus their gaps
    would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap
    that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
@@ -1732,6 +1734,8 @@ button.kit-strip-day .kit-strip-cell {
      stripe and no box. Text on the page between two hairlines, like a list,
      with the ink square below as its mark. The first render set the whole
      notice in ink and Alicja read it as too loud. */
+  /* 14px has no spacing token (it falls between --space-3 and --space-4),
+     so it stays as drawn. */
   padding: 14px 0;
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
@@ -1844,7 +1848,7 @@ button.kit-strip-day .kit-strip-cell {
    `primary` is for an empty state, where the action "is the whole of what
    a first-run Home has to say" - the screen's only call to action, not an
    aside on a remark. Stretching it to the text's own width and giving it
-   `--space-6`, the same gap `.screen > * + *` gives two blocks that do not
+   `--space-5`, the same gap `.screen > *` gives two blocks that do not
    touch (32.14 moved it from --space-4), is that distinction drawn in the
    surface instead of only in the comment. */
 .kit-notice-cta {
@@ -2036,11 +2040,10 @@ button.kit-strip-day .kit-strip-cell {
    surfaces, and every screen in the look-back group has one of them
    somewhere (Alicja, 2026-08-25, three separate notes about gaps).
 
-   --space-7 rather than --space-6, which is what two surfaces get (32.14): a
+   --space-7 rather than --space-5, which is what two surfaces get (32.14): a
    control and the thing it controls are further apart than two cards, or the
-   control reads as part of the card. Was --space-5 against the old
-   --space-4 two-surfaces gap; kept one step above it rather than left even
-   with it now that gap has grown. */
+   control reads as part of the card. Two surfaces get --space-5 (20px), this
+   gets --space-7 (32px). */
 /* The right-hand side is [data-kit-surface] rather than a list of surface
    classes, for the reason [data-kit-role] above is (ticket 41, ADR-0038):
    the list went stale silently. .kit-strip was in the two-surface rule below
@@ -2106,7 +2109,7 @@ button.kit-strip-day .kit-strip-cell {
    next surface and stamps the attribute itself: without it the figures and
    the mood chart met with no gap at all.
 
-   --space-6, matching the floor `.screen > * + *` gives elsewhere (32.14):
+   --space-5, matching the floor `.screen > *` gives elsewhere (32.14):
    this is the same gap by another route, where a heading isn't between
    the two blocks to already own the space. */
 [data-kit-surface] + [data-kit-surface] {
@@ -2149,6 +2152,9 @@ button.kit-strip-day .kit-strip-cell {
      --accent-2 where a screen hands over no role, which is what a second
      line drawn on a card with no section colour has always taken. */
   --role-2-draw: var(--role-2, var(--accent-2));
+  /* Its line's edge, the same way --role-edge is the first's: handed in
+     only where the stripe needs one (Role.pairedEdge). */
+  --role-2-edge: var(--role-2-edge-in, transparent);
 }
 
 /* The one-column state - a plot with no value gutter beside it - lives in
@@ -2226,10 +2232,11 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 /* The latest reading, ringed on the line rather than annotated beside it:
-   the mark is the label. Filled with the card colour so the line does not
-   show through it. */
+   the mark is the label. The card colour inside it, which keeps the line
+   from showing through, is its casing's fill (AreaChart.svelte), so the
+   casing's edge can show on both sides of the ring. */
 .kit-area-ring {
-  fill: var(--surface);
+  fill: none;
   stroke: var(--role-draw);
   stroke-width: 2;
 }
@@ -2322,10 +2329,6 @@ button.kit-strip-day .kit-strip-cell {
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
-  /* Wrapping, since phase 11 UI/UX ticket 49: a tick's own line is a
-     sentence the person wrote, and a sentence held to one line is a
-     sentence nobody can read. What still may not wrap - a number, a name,
-     a position - says so for itself below. */
 }
 
 /* The other three corners readoutCorner can choose. Each is one axis
@@ -3034,4 +3037,47 @@ button.kit-strip-day .kit-strip-cell {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+/* Shared reading notes, axis controls and miniature bars. */
+.reading-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.reading-axes {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.reading-axis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.reading-bars {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+}
+
+.reading-bar {
+  display: block;
+  flex: 0 0 8px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+.reading-axis .kit-chart-pick {
+  max-width: 74%;
 }

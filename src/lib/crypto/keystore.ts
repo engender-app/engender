@@ -20,6 +20,7 @@ import { encrypt, decrypt } from './aesGcm.ts';
 import { deriveKey, randomSalt } from './argon2id.ts';
 import { resolveCredentialProfile } from './credential-consumers.ts';
 import type { Argon2Params } from './params.ts';
+import { parseWrap, toBase64, fromBase64 } from './wrapEncoding.ts';
 
 /* What this build writes. Version 1 is still read: it is what every
    installation before ticket 53 has on disk, and it predates the source
@@ -120,8 +121,12 @@ export async function wrapDataKey(
 ): Promise<DataKeyWrap> {
   const salt = randomSalt();
   const wrappingKey = await deriveKey(secret, salt, params);
-  const { nonce, ciphertext } = await encrypt(wrappingKey, dataKey);
-  return { kdf: 'argon2id', params, salt, nonce, wrappedKey: ciphertext };
+  try {
+    const { nonce, ciphertext } = await encrypt(wrappingKey, dataKey);
+    return { kdf: 'argon2id', params, salt, nonce, wrappedKey: ciphertext };
+  } finally {
+    wrappingKey.fill(0);
+  }
 }
 
 /** Recovers the data key, or throws DecryptionFailedError. Derives under
@@ -132,7 +137,11 @@ export async function unwrapDataKey(
   secret: string
 ): Promise<Uint8Array<ArrayBuffer>> {
   const wrappingKey = await deriveKey(secret, wrap.salt, wrap.params);
-  return decrypt(wrappingKey, wrap.nonce, wrap.wrappedKey);
+  try {
+    return await decrypt(wrappingKey, wrap.nonce, wrap.wrappedKey);
+  } finally {
+    wrappingKey.fill(0);
+  }
 }
 
 export interface KeystoreMetadata extends DataKeyWrap {
@@ -162,7 +171,12 @@ export async function createKeystore(
 ): Promise<{ metadata: KeystoreMetadata; dataKey: Uint8Array<ArrayBuffer> }> {
   const dataKey = crypto.getRandomValues(new Uint8Array(DATA_KEY_LENGTH));
   const chosen = params ?? resolveCredentialProfile(CONSUMERS[secretSource].setup);
-  return { metadata: await wrap(dataKey, secret, chosen, secretSource), dataKey };
+  try {
+    return { metadata: await wrap(dataKey, secret, chosen, secretSource), dataKey };
+  } catch (error) {
+    dataKey.fill(0);
+    throw error;
+  }
 }
 
 export async function wrapDataKeyWithSecret(
@@ -206,7 +220,11 @@ export async function rewrapKeystore(
   newSource: JournalSecretSource = metadata.secretSource
 ): Promise<KeystoreMetadata> {
   const dataKey = await unlockKeystore(metadata, currentSecret);
-  return wrap(dataKey, newSecret, params ?? resolveCredentialProfile(CONSUMERS[newSource].change), newSource);
+  try {
+    return await wrap(dataKey, newSecret, params ?? resolveCredentialProfile(CONSUMERS[newSource].change), newSource);
+  } finally {
+    dataKey.fill(0);
+  }
 }
 
 async function wrap(
@@ -219,10 +237,6 @@ async function wrap(
 }
 
 /* --- the persisted form: JSON with base64 byte fields ------------------- */
-
-const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
-const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
-  Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
 
 export function serializeKeystore(metadata: KeystoreMetadata): string {
   /* The one place every persisted keystore passes through, so it is where
@@ -269,6 +283,7 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(serialized) as Record<string, unknown>;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error();
   } catch {
     throw new KeystoreUnreadableError('keystore file is not JSON');
   }
@@ -286,17 +301,7 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
   if (typeof secretSource !== 'string' || !SECRET_SOURCES.includes(secretSource as JournalSecretSource)) {
     throw new KeystoreUnreadableError(`keystore names a secret source this build does not have: ${String(secretSource)}`);
   }
-  if (raw.kdf !== 'argon2id' || typeof raw.salt !== 'string' || typeof raw.nonce !== 'string' || typeof raw.wrappedKey !== 'string') {
-    throw new KeystoreUnreadableError('keystore file is missing fields');
-  }
-  // The parameters get fed to the KDF as-is (that is the evolvability), so
-  // a mangled block must fail here by name, not later as a derive error
-  // that would read as a wrong passphrase.
-  const params = raw.params as Partial<Argon2Params> | undefined;
-  const numbers: (keyof Argon2Params)[] = ['memorySize', 'iterations', 'parallelism', 'hashLength'];
-  if (!params || numbers.some((field) => typeof params[field] !== 'number')) {
-    throw new KeystoreUnreadableError('keystore file has no usable KDF parameters');
-  }
+  const wrap = parseWrap(raw, 'keystore file', KeystoreUnreadableError);
   /* Biometric mode's two public values, required exactly when it is the
      source. Missing means a keystore nothing can ever open, and saying so
      here keeps it out of the gate, where it would arrive as an unlock that
@@ -306,7 +311,11 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     if (typeof raw.credentialId !== 'string' || typeof raw.prfSalt !== 'string') {
       throw new KeystoreUnreadableError('a biometric keystore is missing its credential id or PRF salt');
     }
-    biometric = { credentialId: fromBase64(raw.credentialId), prfSalt: fromBase64(raw.prfSalt) };
+    try {
+      biometric = { credentialId: fromBase64(raw.credentialId), prfSalt: fromBase64(raw.prfSalt) };
+    } catch {
+      throw new KeystoreUnreadableError('keystore file has unreadable base64');
+    }
   }
 
   /* Absent means the browser key, which is the only binding that existed
@@ -323,23 +332,11 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     pinBinding = named as PinBinding;
   }
 
-  let salt: Uint8Array<ArrayBuffer>, nonce: Uint8Array<ArrayBuffer>, wrappedKey: Uint8Array<ArrayBuffer>;
-  try {
-    salt = fromBase64(raw.salt);
-    nonce = fromBase64(raw.nonce);
-    wrappedKey = fromBase64(raw.wrappedKey);
-  } catch {
-    throw new KeystoreUnreadableError('keystore file has unreadable base64');
-  }
 
   return {
     version: KEYSTORE_VERSION,
-    kdf: 'argon2id',
+    ...wrap,
     secretSource: secretSource as JournalSecretSource,
-    params: params as Argon2Params,
-    salt,
-    nonce,
-    wrappedKey,
     ...(biometric ? { biometric } : {}),
     ...(pinBinding ? { pinBinding } : {})
   };

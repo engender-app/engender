@@ -26,7 +26,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
-import { launchChromium, settlePage, fillDate } from './browser-harness.mjs';
+import { launchChromium, settlePage, fillDate, dateValue } from './browser-harness.mjs';
 
 const gallery = process.argv.includes('--gallery');
 const out = resolve(process.env.TRYOUT_FORM_SHOTS ?? '.claude/tryout-form-shots');
@@ -187,7 +187,7 @@ try {
       await settlePage(page, base, new URL(saved).pathname, 'light');
       await page.waitForSelector('#tr-label');
       assert.equal(await page.inputValue('#tr-label'), LONG_NAME, 'reopening keeps the name');
-      assert.equal(await page.inputValue('#tr-start'), '2026-03-03', 'reopening keeps the start date');
+      assert.equal(await dateValue(page.locator('#tr-start')), '2026-03-03', 'reopening keeps the start date');
       assert.equal(
         await page.locator('[data-segment="style"]').getAttribute('aria-checked'),
         'true',

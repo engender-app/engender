@@ -82,11 +82,17 @@ export function procedurePhase(
   today: number,
   cutoffDays = SURGERY_RECOVERY_CUTOFF_DAYS
 ): ProcedurePhase {
-  if (surgeryEpochDay === null) return 'planning';
-  if (surgeryEpochDay > today) return 'pre_op';
-  if (surgeryEpochDay === today) return 'surgery_day';
-  const days = today - surgeryEpochDay;
-  if (days <= cutoffDays) return 'recovery';
-  return 'archived';
+  const status = recoveryDay(surgeryEpochDay, today);
+  if (status.type === 'unscheduled') return 'planning';
+  if (status.type === 'upcoming') return 'pre_op';
+  if (status.type === 'surgeryDay') return 'surgery_day';
+  return status.days <= cutoffDays ? 'recovery' : 'archived';
 }
 
+/** Group an older procedure with the archive without writing its manual flag. */
+export function procedureInArchive(
+  procedure: { archived: boolean; surgeryEpochDay: number | null },
+  today: number
+): boolean {
+  return procedure.archived || procedurePhase(procedure.surgeryEpochDay, today) === 'archived';
+}

@@ -464,8 +464,9 @@ export interface TryoutPhoto {
     doubt_snapshot_entry, a frozen detail row nobody addresses alone, has
     none. `mood` reuses the app's one five-level mood scale (CONTEXT:
     "Mood") rather than inventing a second one for the same kind of
-    judgement. */
-/** Belongs to exactly one Tryout or Milestone (CONTEXT: "Felt-sense
+    judgement.
+
+    Belongs to exactly one Tryout or Milestone (CONTEXT: "Felt-sense
     entry"); which owner never travels here, the same reasoning `Photo`
     carries no `entryId`/`milestoneId` of its own - the caller already
     knows which owner it asked for. */
@@ -704,6 +705,8 @@ export interface SavedQuestion {
   endEpochDay: number | null;
   hasNote: boolean;
   hasPhoto: boolean;
+  /** Starred entries only (after-release ticket 16). */
+  starred: boolean;
 }
 
 /** A named stretch of the person's own timeline (phase 6 ticket 01,
@@ -969,16 +972,6 @@ export interface HairRemovalSession {
   provider: string;
 }
 
-/** What a person last reported having of one drug (phase 4 ticket 04,
-    CONTEXT: pending). One per drug, matched exactly (`RegimenEpisode.drug`'s
-    own convention) rather than per episode - see schema.ts. Neither
-    `quantity` nor `recordedEpochDay` is a running total: saving a fresh
-    count replaces the old one outright, the way `DoseSchedule` replaces per
-    episode, because a person reporting stock is always answering "how much
-    do I have today", never "how much did I have last time plus what I
-    have now". Remaining and its run-out day are never stored (ADR-0010) -
-    stockProjection.ts derives both from this and the dose log on every
-    read. */
 /* A free-write note to the person's future self, sealed until
    `unlockEpochDay` (phase 4 ticket 19, CONTEXT: "Milestone", "Countdown",
    "Anniversary"). No `sealed` flag: whether it is readable follows from
@@ -1011,6 +1004,16 @@ export interface Revisit {
   targetEpochDay: number;
 }
 
+/** What a person last reported having of one drug (phase 4 ticket 04,
+    CONTEXT: pending). One per drug, matched by `sameDrug` (`RegimenEpisode.drug`'s
+    own convention) rather than per episode - see schema.ts. Neither
+    `quantity` nor `recordedEpochDay` is a running total: saving a fresh
+    count replaces the old one outright, the way `DoseSchedule` replaces per
+    episode, because a person reporting stock is always answering "how much
+    do I have today", never "how much did I have last time plus what I
+    have now". Remaining and its run-out day are never stored (ADR-0010) -
+    stockProjection.ts derives both from this and the dose log on every
+    read. */
 export interface MedicationStock {
   id: string;
   drug: string;
@@ -1038,6 +1041,9 @@ export interface MedicationStock {
       types one. Feeds `reorderByEpochDay` (stockProjection.ts) alongside the
       run-out day; never folded into the run-out projection itself. */
   leadTimeDays: number | null;
+  /** How many doses one unit holds - five to a vial, say (after-release
+      ticket 01). Null means one dose per unit (stockProjection.ts). */
+  dosesPerUnit: number | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind

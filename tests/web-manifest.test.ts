@@ -40,11 +40,28 @@ describe('the web app manifest', () => {
       runInNewContext(script, {
         localStorage: { getItem: () => JSON.stringify({ disguise }) },
         document: { documentElement: { dataset: {} }, querySelector: (key: string) => links[key] },
-        navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {}
+        navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {},
+        performance: { getEntriesByType: () => [] }
       });
       const file = links['link[rel="apple-touch-icon"]'].href.replace('%sveltekit.assets%', 'static');
       expect(file).toBe(disguise ? 'static/apple-touch-icon-notes.png' : 'static/apple-touch-icon.png');
       expect(exists(file)).toBe(true);
+    }
+  });
+
+  it('uses the localised decoy title before first paint', () => {
+    const script = read('src/app.html').match(/<script>([\s\S]*?)<\/script>/)![1];
+    for (const locale of ['en', 'pl']) {
+      const document = {
+        title: 'engender', documentElement: { dataset: {} },
+        querySelector: () => ({ href: '/manifest.webmanifest' })
+      };
+      runInNewContext(script, {
+        localStorage: { getItem: (key: string) => key === 'PARAGLIDE_LOCALE' ? locale : JSON.stringify({ disguise: true }) },
+        document, navigator: { language: 'en' }, matchMedia: () => ({ matches: false }), addEventListener: () => {},
+        performance: { getEntriesByType: () => [] }
+      });
+      expect(document.title).toBe(locale === 'pl' ? 'Notatki' : 'Notes');
     }
   });
 
@@ -107,7 +124,7 @@ describe('the web app manifest', () => {
     // The route reads 'today' as a day parameter, so a long-press shortcut
     // opens the editor on the current epoch day without a date in the URL.
     expect(exists('src/routes/entry/new/[day]/+page.svelte')).toBe(true);
-    expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain("=== 'today'");
+    expect(read('src/routes/entry/new/[day]/+page.svelte')).toContain('parseDayParam(page.params.day, untrack(currentDay))');
   });
 
   it('keeps install text and shortcut destination paired across languages', () => {
@@ -138,7 +155,8 @@ describe('the disguised manifest', () => {
     // more surface to keep neutral, and the disguise loses nothing without it.
     expect(disguised.shortcuts).toBeUndefined();
     expect(disguisedPolish.lang).toBe('pl');
-    expect(disguisedPolish.name).toBe('Notes');
+    expect(disguisedPolish.name).toBe('Notatki');
+    expect(disguisedPolish.short_name).toBe('Notatki');
     expect(disguisedPolish.description).toBe('Miejsce na notatki.');
     expect(disguisedPolish.shortcuts).toBeUndefined();
   });

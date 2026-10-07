@@ -34,7 +34,7 @@
     key="compare"
     name={m.compare_title()}
     href={`/compare${spanRangeQuery(span)}`}
-    headline={m.wrapped_week_range({ from: day(before.start), to: day(before.end) })}
+    headline={m.compare_tile_period_range({ from: day(before.start), to: day(before.end) })}
     note={m.lookback_compare_before()}
   />
 {/if}

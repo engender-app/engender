@@ -2,8 +2,8 @@
    14).
 
    boot-state.ts owns whether a transition is *allowed*. This owns which one is
-   *taken*: web and Android, first run and unlock, a plaintext journal that has
-   to be converted first, a key the platform will not hand over, a schema a
+   *taken*: web and Android, first run and unlock, a plaintext journal that cannot
+   be opened by this build, a key the platform will not hand over, a schema a
    newer build already migrated. Those used to be twenty-six branches spread
    through four near-parallel sequences in boot.svelte.ts, which carries runes
    and so cannot be imported by the node tier - the one module in the codebase
@@ -19,12 +19,6 @@
    platform found, and everything from the data key onwards is shared. */
 
 import {
-  describeJournalState,
-  type ConversionProgress,
-  type ConversionStage,
-  type PrecheckResult
-} from '../data/conversion/conversion.ts';
-import {
   chooseJournalAccessMode,
   describeAndroidBootPlan,
   describeWebBootPlan,
@@ -33,9 +27,14 @@ import {
 import type { CachedAccessMode } from '../data/prefs/boot-cache.ts';
 import type { JournalSecretSource } from '../crypto/keystore.ts';
 import type { Journal } from '../data/journal/journal.ts';
-import { InterruptedRestoreError, SchemaTooNewError } from '../data/sqlite/migration-runner.ts';
+import {
+  Fts5UnavailableError,
+  InterruptedRestoreError,
+  JournalBelowBaselineError,
+  SchemaTooNewError
+} from '../data/sqlite/migration-runner.ts';
 import type { AndroidKeyResult } from '../lock/android-key.ts';
-import { bootStates, bootTransitions, type BootState } from './boot-state.ts';
+import { bootStates, bootTransitions, type BootFailure, type BootState } from './boot-state.ts';
 
 type BootPlatform = 'web' | 'android';
 
@@ -48,14 +47,12 @@ export type BootEvent =
   /** The app came up. Platform and demo build are facts, not branches. */
   | { type: 'started'; platform: BootPlatform; demo: boolean }
   /** What the web found: which kind of secret the keystore names (null for
-      none), a device-bound key, a possible plaintext journal, and the marker
-      an interrupted conversion leaves behind. */
+      none), a device-bound key, and unsupported legacy storage. */
   | {
       type: 'web-surveyed';
       keystoreSecretSource: JournalSecretSource | null;
       deviceBoundKeystoreExists: boolean;
-      plaintextJournalPresent: boolean;
-      marker: ConversionStage | null;
+      legacyStoragePresent: boolean;
     }
   /** What Android found. No marker and no OPFS: this is the first build that
       runs on a phone, so there is nothing from before encryption to convert. */
@@ -66,9 +63,7 @@ export type BootEvent =
       nativeDeviceKeyAuthRequired?: boolean;
       plaintextJournalPresent: boolean;
     }
-  | { type: 'demo-journal-wiped' }
   | { type: 'demo-unlock-failed' }
-  | { type: 'conversion-prechecked'; result: PrecheckResult }
   | { type: 'device-key-unavailable' }
   /** What Android Keystore answered, whole. Which of the two destinations it
       means is decided here, not by the caller reading `kind`. */
@@ -77,8 +72,6 @@ export type BootEvent =
       passphrase and an Android prompt both satisfy the casual-access gate;
       a key the platform handed over unasked does not. */
   | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean }
-  | { type: 'conversion-progressed'; progress: ConversionProgress }
-  | { type: 'converted'; dataKey: DataKey; accessMode: JournalAccessMode }
   | { type: 'journal-opened'; journal: Journal }
   /** The persistence request came back denied, whenever the browser answers
       (ticket 202) - decoupled from `journal-opened` because that no longer
@@ -91,40 +84,38 @@ export type BootEvent =
   | { type: 'boot-failed'; message: string }
   /** Settings, not boot: the access mode was changed while the journal was
       open, so the same data key is now wrapped under a different secret. */
-  | { type: 'access-mode-changed'; accessMode: JournalAccessMode };
+  | { type: 'access-mode-changed'; accessMode: JournalAccessMode }
+  /** A web lock closed the journal (after-release ticket 10). The boot is
+      still done - nothing is surveyed or migrated again - but the handle it
+      published is built over the key the lock lets go of, so it goes too. */
+  | { type: 'journal-closed' }
+  /** The unlock after that lock opened it again under the same key. */
+  | { type: 'journal-reopened'; journal: Journal }
+  /** The reopen a key asked for is over, whether or not it opened the
+      database. If it did not, the journal is still locked and another key
+      may try again. */
+  | { type: 'journal-reopen-ended' };
 
 export type BootEffect =
   | { type: 'apply-cached-preferences' }
   | { type: 'mark-unlocked' }
   | { type: 'survey-web' }
   | { type: 'survey-android' }
-  /** Delete the plaintext files a finished conversion left, then survey again. */
-  | { type: 'finish-retirement' }
-  | { type: 'wipe-demo-journal' }
   | { type: 'demo-setup' }
   | { type: 'demo-unlock' }
-  | { type: 'precheck-conversion' }
   | { type: 'auto-unlock-device-bound' }
   | { type: 'auto-unlock-android' }
-  | { type: 'run-conversion'; dataKey: DataKey; accessMode: JournalAccessMode }
   | { type: 'open-journal'; dataKey: DataKey; accessMode: JournalAccessMode }
+  /** A mid-session unlock's key, for the journal a web lock closed. */
+  | { type: 'reopen-journal'; dataKey: DataKey }
   | { type: 'restore-previous-journal' }
   | { type: 'check-pre-migration-copy' }
   | { type: 'warn-persist-denied' };
 
 export interface BootMachine {
   boot: BootState;
-  /** A demo build converts nothing: its journal is reseeded from the persona
-      on every empty boot, so a plaintext leftover is wiped instead. */
+  /** Demo journals use a fixed passphrase, but still refuse legacy storage. */
   demo: boolean;
-  /** Retirement gets one pass. A delete that did not take must not send the
-      sequence round again. */
-  retired: boolean;
-  /** A keystore already there when the conversion was found means an earlier
-      attempt got past the passphrase screen: ask for that passphrase rather
-      than for a new one. Read from the survey, which is the same moment the
-      old code re-read it - the precheck writes a marker, never a keystore. */
-  conversionResumable: boolean;
   /** A `persist-request-denied` seen before the journal reached `ready`
       (ticket 202: the request is no longer awaited, so its answer can land
       before or after `journal-opened` - Chromium in particular denies fast
@@ -132,6 +123,10 @@ export interface BootMachine {
       `journal-opened` arrives; a denial seen after `ready` is applied right
       away instead, without ever setting this. */
   persistDeniedPending: boolean;
+  /** Distinguishes the initial survey from an open already using a key. */
+  journalOpening: boolean;
+  /** The same for a mid-session unlock: a reopen is already using a key. */
+  journalReopening: boolean;
 }
 
 interface BootStep {
@@ -146,9 +141,9 @@ export function initialBoot(cachedAccessMode: CachedAccessMode | null = null): B
         ? bootStates.booting(cachedAccessMode)
         : bootStates.needsUnlock(cachedAccessMode),
     demo: false,
-    retired: false,
-    conversionResumable: false,
-    persistDeniedPending: false
+    persistDeniedPending: false,
+    journalOpening: false,
+    journalReopening: false
   };
 }
 
@@ -167,12 +162,19 @@ function withDataKey(
   unlocked: boolean
 ): BootStep {
   const unlocking: BootEffect[] = unlocked ? [{ type: 'mark-unlocked' }] : [];
-  if (machine.boot.conversion !== null) {
-    return step(machine, bootTransitions.toConverting(machine.boot), [
-      ...unlocking,
-      { type: 'run-conversion', dataKey, accessMode }
-    ]);
+  /* Ready with no journal is a web lock's doing (after-release ticket 10),
+     and the key is the unlock screen's: it reopens what the lock closed. A
+     key while that reopen is under way is a second submit, refused like
+     the duplicates below. No mark-unlocked and no access mode: the screen
+     lifts the gate itself once the reopen answers, inside the app's
+     opening transition, and the mode is the one the journal already has. */
+  if (machine.boot.status === 'ready' && machine.boot.journal === null) {
+    if (machine.journalReopening) return step(machine, machine.boot);
+    return step({ ...machine, journalReopening: true }, machine.boot, [{ type: 'reopen-journal', dataKey }]);
   }
+  if (machine.boot.status === 'legacy-refused' || machine.boot.status === 'ready' ||
+      machine.boot.status === 'schema-too-new' ||
+      (machine.boot.status === 'booting' && machine.journalOpening)) return step(machine, machine.boot);
   return openingJournal(machine, dataKey, accessMode, unlocking);
 }
 
@@ -182,7 +184,7 @@ function openingJournal(
   accessMode: JournalAccessMode,
   before: BootEffect[] = []
 ): BootStep {
-  return step(machine, bootTransitions.toBooting(bootTransitions.setAccessMode(machine.boot, accessMode)), [
+  return step({ ...machine, journalOpening: true }, bootTransitions.toBooting(bootTransitions.setAccessMode(machine.boot, accessMode)), [
     ...before,
     { type: 'open-journal', dataKey, accessMode }
   ]);
@@ -199,50 +201,17 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       ]);
 
     case 'web-surveyed': {
-      const { keystoreSecretSource, deviceBoundKeystoreExists, plaintextJournalPresent, marker } = event;
+      const { keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent } = event;
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
         chooseJournalAccessMode({ keystoreSecretSource, deviceBoundKeystoreExists })
       );
-      const journal = describeJournalState({
-        keystoreExists: keystoreSecretSource !== null || deviceBoundKeystoreExists,
-        plaintextJournalPresent,
-        marker
-      });
-
-      /* Nothing here needs a data key, so it happens before the gate renders
-         rather than after somebody types a passphrase: ADR-0018's claim is
-         false for as long as those plaintext files are readable. */
-      if (journal === 'retire' && !machine.retired) {
-        return step({ ...machine, retired: true }, surveyed, [{ type: 'finish-retirement' }]);
-      }
-
+      const plan = describeWebBootPlan({ keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent });
+      // Refuse before any key creation, unlock or demo reset can change storage.
+      if (plan === 'legacy-refused') return step(machine, bootTransitions.toLegacyRefused(surveyed));
       if (machine.demo) {
-        if (journal === 'convert') return step(machine, surveyed, [{ type: 'wipe-demo-journal' }]);
-        /* A reviewer may have changed the demo passphrase in Settings; the
-           gate is the honest fallback, and that is `demo-unlock-failed`. */
-        if (journal === 'unlock') return step(machine, surveyed, [{ type: 'demo-unlock' }]);
-        return step(machine, surveyed, [{ type: 'demo-setup' }]);
+        return step(machine, surveyed, [{ type: plan === 'needs-setup' ? 'demo-setup' : 'demo-unlock' }]);
       }
-
-      /* Free space and the schema version, asked before anyone is made to
-         choose a passphrase and write it down: a refusal leaves the plaintext
-         journal exactly as it was. */
-      if (journal === 'convert') {
-        return step({ ...machine, conversionResumable: keystoreSecretSource !== null }, surveyed, [
-          { type: 'precheck-conversion' }
-        ]);
-      }
-
-      /* Whatever the plaintext journal and the marker said, they have been
-         dealt with by now: the plan left to make is the one the keystores
-         describe on their own. */
-      const plan = describeWebBootPlan({
-        keystoreSecretSource,
-        deviceBoundKeystoreExists,
-        plaintextJournalPresent: false,
-        marker: null
-      });
 
       if (plan === 'auto-unlock') return step(machine, surveyed, [{ type: 'auto-unlock-device-bound' }]);
       return step(
@@ -279,7 +248,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         /* Rendered through i18n in +layout: this path is expected and needs a
            user sentence, not a raw SQLite failure string. */
         case 'plaintext-error':
-          return step(machine, bootTransitions.toError(surveyed, 'android-plaintext-journal'));
+          return step(machine, bootTransitions.toError(surveyed, 'android-plaintext-journal', 'android-plaintext'));
         case 'needs-unlock':
           return step(machine, bootTransitions.toNeedsUnlock(surveyed));
         case 'needs-authentication':
@@ -291,24 +260,8 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       }
     }
 
-    case 'demo-journal-wiped':
-      return step(machine, machine.boot, [{ type: 'demo-setup' }]);
-
     case 'demo-unlock-failed':
       return step(machine, bootTransitions.toNeedsUnlock(machine.boot));
-
-    case 'conversion-prechecked': {
-      if (!event.result.ok) {
-        return step(machine, bootTransitions.toConversionRefused(machine.boot, event.result));
-      }
-      const options = { accessMode: 'passphrase', conversionRequired: true } as const;
-      return step(
-        machine,
-        machine.conversionResumable
-          ? bootTransitions.toNeedsUnlock(machine.boot, options)
-          : bootTransitions.toNeedsSetup(machine.boot, options)
-      );
-    }
 
     case 'device-key-unavailable':
       return step(machine, bootTransitions.toNeedsDeviceRecovery(machine.boot));
@@ -323,13 +276,6 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 
     case 'key-obtained':
       return withDataKey(machine, event.dataKey, event.accessMode, event.unlocked);
-
-    case 'conversion-progressed':
-      return step(machine, bootTransitions.updateConversionProgress(machine.boot, event.progress));
-
-    case 'converted':
-      return openingJournal(machine, event.dataKey, event.accessMode);
-
 
     case 'journal-opened': {
       const ready = bootTransitions.toReady(machine.boot, { journal: event.journal });
@@ -370,28 +316,64 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         return step(machine, machine.boot, [{ type: 'restore-previous-journal' }]);
       }
 
+      /* A development build's journal: the copy a restore would put back is
+         the same old journal, so there is nothing to ask the disk about. The
+         screen offers the way out instead (after-release ticket 09). */
+      if (event.error instanceof JournalBelowBaselineError) {
+        return step(machine, bootTransitions.toError(machine.boot, describeError(event.error), 'below-baseline'));
+      }
+
       /* Whether the failure screen can offer a way back is asked of the disk
          rather than assumed from the failure, so the error lands first and
          the answer follows. */
-      return step(machine, bootTransitions.toError(machine.boot, describeError(event.error)), [
-        { type: 'check-pre-migration-copy' }
-      ]);
+      return step(
+        machine,
+        bootTransitions.toError(machine.boot, describeError(event.error), classifyFailure(event.error)),
+        [{ type: 'check-pre-migration-copy' }]
+      );
     }
 
     case 'pre-migration-copy-checked':
       return step(machine, bootTransitions.markErrorRecoverable(machine.boot, event.usable));
 
     case 'boot-failed':
-      return step(machine, bootTransitions.toError(machine.boot, event.message));
+      return step(machine, bootTransitions.toError(machine.boot, event.message, classifyFailure(event.message)));
 
     case 'access-mode-changed':
       return step(machine, bootTransitions.setAccessMode(machine.boot, event.accessMode));
+
+    /* Only from ready: a lock or an unlock landing after the boot moved
+       somewhere else has no handle to take or give back. */
+    case 'journal-closed':
+      return step(machine, bootTransitions.withJournal(machine.boot, null));
+
+    case 'journal-reopened':
+      return step({ ...machine, journalReopening: false }, bootTransitions.withJournal(machine.boot, event.journal));
+
+    case 'journal-reopen-ended':
+      return step({ ...machine, journalReopening: false }, machine.boot);
   }
 }
 
-/** The one place a thrown value becomes a sentence for the error screen. */
+/** The one place a thrown value becomes text. Not a sentence for anybody to
+    read on the failure screen any more (after-release ticket 09): it is the
+    detail a bug report carries, and `classifyFailure` is what the screen
+    speaks from. */
 export function describeError(error: unknown): string {
   return String((error as Error)?.message ?? error);
+}
+
+/** Which named failure a thrown value or its text is. By type where the type
+    survives - a failure from a worker or a bridge arrives as text only, so
+    the text is read too. Unnamed text is `unknown`, never a guess. */
+function classifyFailure(error: unknown): BootFailure {
+  if (error instanceof JournalBelowBaselineError) return 'below-baseline';
+  if (error instanceof Fts5UnavailableError) return 'engine';
+  const text = typeof error === 'string' ? error : describeError(error);
+  if (/older than this build's baseline/i.test(text)) return 'below-baseline';
+  if (/not a database|SQLITE_NOTADB/i.test(text)) return 'unreadable';
+  if (/database worker stopped|FTS5 is not available/i.test(text)) return 'engine';
+  return 'unknown';
 }
 
 export type DeviceBoundSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-unavailable';

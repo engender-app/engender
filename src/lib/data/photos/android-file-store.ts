@@ -21,6 +21,7 @@
 import { Capacitor } from '@capacitor/core';
 import type { PhotoFileStore } from '../journal/journal';
 import { androidPhotos } from './android-bridge';
+import { PhotoChannelTimeoutError } from './channel-timeout';
 import { writeOverChannel } from './android-write-channel';
 
 const BASE64_CHUNK = 0x8000;
@@ -66,8 +67,12 @@ export function appPrivatePhotoFiles(directory = 'photos'): PhotoFileStore {
     async write(name, bytes) {
       const viaChannel = writeOverChannel(name, directory, bytes);
       if (viaChannel) {
-        await viaChannel;
-        return;
+        try {
+          await viaChannel;
+          return;
+        } catch (error) {
+          if (!(error instanceof PhotoChannelTimeoutError)) throw error;
+        }
       }
       await androidPhotos.writeFile({ name, base64: toBase64(bytes), directory });
     },

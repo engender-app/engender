@@ -2,11 +2,10 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import PhotoViewer from '$lib/components/PhotoViewer.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
+  import SectionJump from '$lib/components/kit/SectionJump.svelte';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { scrollBehavior } from '$lib/motion/tokens';
   /* Staging against a published scale, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
 
@@ -17,6 +16,7 @@
      action on it, and the protocol's dismiss is the notice's own rather
      than an icon button wired into a header row. */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -25,7 +25,8 @@
   import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
   import { HAIR_SCALES, gradesOfScale, isGradedScale, stagesByScale } from '$lib/data/hairStageScales';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { HairStage } from '$lib/data/types';
   import type { HairPhoto } from '$lib/data/journal/hairProgress';
   import type { ComparePair } from '$lib/data/photos/compare-state';
@@ -56,7 +57,7 @@
      all, which is the call Home's backup notice makes. */
   const SECTION_ROLE = { stages: 0, photos: 1 };
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
 
   /* Bounded from epoch day 0 rather than from the anchor itself: getDoses
      needs a range (doses.ts has no unbounded read). No dose can predate
@@ -128,6 +129,7 @@
     // than silently keeping the old day.
     prefs.hairAnchorEpochDay = epochDayFromDateInputValue(anchorEditor);
     anchorEditor = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   function clearAnchor() {
@@ -179,7 +181,7 @@
   }
 
   async function storePhoto(photo: NormalizedPhoto): Promise<void> {
-    await journal.hairProgress.addPhoto(today, photo);
+    await journal.hairProgress.addPhoto(todayEpochDay(), photo);
   }
 
   const hairPhotos = photoSection<HairPhoto>({
@@ -207,84 +209,21 @@
     comparing = [photos[next.left].id, photos[next.right].id];
   }
 
-  let activeSection = $state<'staging' | 'photos'>('staging');
-  let savedStagingScrollY = $state<number | null>(null);
-
-  const sectionOptions = $derived([
-    { value: 'staging', label: m.hair_stage_section_title() },
-    { value: 'photos', label: m.hair_jump_photos() }
+  /* The jump between the two halves is the kit's SectionJump (after-release
+     28): it scrolls the app's region, remembers where staging was read to,
+     and follows the scroll once both halves have mounted. */
+  let jumper = $state<SectionJump>();
+  const jumpSections = $derived([
+    { value: 'staging', label: m.hair_stage_section_title(), target: 'hair-staging' },
+    { value: 'photos', label: m.hair_jump_photos(), target: 'hair-photos' }
   ]);
-
-  function jumpToSection(section: 'staging' | 'photos' | string) {
-    activeSection = section === 'photos' ? 'photos' : 'staging';
-    if (activeSection === 'photos') {
-      savedStagingScrollY = window.scrollY;
-      const el = document.getElementById('hair-photos');
-      if (!el) return;
-      el.scrollIntoView({
-        behavior: scrollBehavior(),
-        block: 'start'
-      });
-      const focusTarget = el.querySelector<HTMLElement>('h2') ?? el;
-      focusTarget.setAttribute('tabindex', '-1');
-      focusTarget.focus({ preventScroll: true });
-    } else {
-      if (savedStagingScrollY !== null) {
-        window.scrollTo({
-          top: savedStagingScrollY,
-          behavior: scrollBehavior()
-        });
-      } else {
-        const el = document.getElementById('hair-staging');
-        if (el) {
-          el.scrollIntoView({
-            behavior: scrollBehavior(),
-            block: 'start'
-          });
-        }
-      }
-      const stagingEl = document.getElementById('hair-staging');
-      const focusTarget = stagingEl?.querySelector<HTMLElement>('h2') ?? stagingEl;
-      if (focusTarget) {
-        focusTarget.setAttribute('tabindex', '-1');
-        focusTarget.focus({ preventScroll: true });
-      }
-    }
-  }
 
   $effect(() => {
     if (typeof window === 'undefined') return;
     if (dosesQuery.loading) return;
     if (window.location.hash === '#hair-photos') {
-      jumpToSection('photos');
+      jumper?.jump('photos');
     }
-  });
-
-  $effect(() => {
-    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
-    if (dosesQuery.loading) return;
-    const stagesEl = document.getElementById('hair-staging');
-    const photosEl = document.getElementById('hair-photos');
-    if (!stagesEl || !photosEl) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            if (entry.target.id === 'hair-photos') {
-              activeSection = 'photos';
-            } else if (entry.target.id === 'hair-staging') {
-              activeSection = 'staging';
-            }
-          }
-        }
-      },
-      { rootMargin: '0px 0px -60% 0px' }
-    );
-
-    observer.observe(stagesEl);
-    observer.observe(photosEl);
-    return () => observer.disconnect();
   });
 </script>
 
@@ -294,14 +233,7 @@
   <PhotoViewer photo={viewing} onClose={() => { viewing = null; }} />
 
   <div data-hair-jump>
-    <Segmented
-      name={m.hair_jump_label()}
-      options={sectionOptions}
-      value={activeSection}
-      onChange={jumpToSection}
-      compact
-      key="hair-sections"
-    />
+    <SectionJump bind:this={jumper} name={m.hair_jump_label()} sections={jumpSections} key="hair-sections" />
   </div>
 
   <!-- The body waits for the doses (the anchor line), the stages and the
@@ -377,7 +309,7 @@
           class="icon-btn press"
           data-jump-staging
           aria-label={m.hair_jump_staging_aria()}
-          onclick={() => jumpToSection('staging')}
+          onclick={() => jumper?.jump('staging')}
         >
           <span class="jump-up"><Icon name="chevronDown" size={20} /></span>
         </button>

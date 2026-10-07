@@ -64,7 +64,7 @@
         type="button"
         class="btn btn-ghost icon-btn"
         onclick={close}
-        aria-label={m.done()}
+        aria-label={m.close()}
         data-inspector-close
       >
         <Icon name="x" size={20} />
@@ -172,7 +172,7 @@
             {#each breakdown.hairRemovalSessions as s (s.id)}
               <ListRow
                 icon="sparkle"
-                title={`${hairRemovalAreaName(s.area)} • ${hairRemovalMethodName(s.method as any)}`}
+                title={`${hairRemovalAreaName(s.area)} · ${hairRemovalMethodName(s.method)}`}
                 subtitle={[
                   fmtDay(s.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
                   s.provider || false
@@ -181,7 +181,8 @@
                 chevron={false}
               >
                 {#snippet trailing()}
-                  <span class="muted small">{m.body_region_session_item({ method: hairRemovalMethodName(s.method as any), pain: String(s.painRating) })}</span>
+                  <!-- Pain only: the method is already in the title. -->
+                  <span class="muted small">{m.body_region_session_pain({ pain: String(s.painRating) })}</span>
                 {/snippet}
               </ListRow>
             {/each}
@@ -229,8 +230,12 @@
   .inspector-title {
     margin: 0;
     font-size: var(--text-lg);
-    line-height: var(--leading-tight);
-    text-transform: capitalize;
+  }
+  /* Sentence case from lowercase vocabulary: the first letter only.
+     `capitalize` title-cased every word ("Face And Jaw"), Polish too
+     (audit L04-17). */
+  .inspector-title::first-letter {
+    text-transform: uppercase;
   }
 
   .inspector-loading {

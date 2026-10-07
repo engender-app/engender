@@ -62,7 +62,8 @@
      is drawn. */
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtMonthYear, fmtTime } from '$lib/data/dates';
+  import { fmtDayBar, fmtMonthYear, fmtTime } from '$lib/data/dates';
+  import { currentDay } from '$lib/stores/today.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';
   import MonthJump from '$lib/components/MonthJump.svelte';
@@ -248,20 +249,6 @@
       easing: EASE_OUT,
       css: (_t: number, u: number) => `transform: translateY(${dir * u * 100}%)`
     };
-  }
-
-  function step(delta: number) {
-    dir = delta;
-    let mo = month + delta;
-    if (mo < 0) {
-      mo = 11;
-      year--;
-    }
-    if (mo > 11) {
-      mo = 0;
-      year++;
-    }
-    month = mo;
   }
 
   /* The month, open or folded to a strip. Folded is where the door opens,
@@ -471,10 +458,10 @@
 
   {#if hasEntries}
     <div class="cal-controls">
-      <button class="icon-btn press" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => step(-1)}>
+      <button class="icon-btn press" aria-label={m.prev_month()} data-cal-step="prev" onclick={() => move(-1, false)}>
         <Icon name="chevronLeft" size={22} />
       </button>
-      <button class="icon-btn press" aria-label={m.next_month()} data-cal-step="next" onclick={() => step(1)}>
+      <button class="icon-btn press" aria-label={m.next_month()} data-cal-step="next" onclick={() => move(1, false)}>
         <Icon name="chevronRight" size={22} />
       </button>
       <ChartPicker
@@ -569,7 +556,7 @@
             <DayCard
               key={String(group.epochDay)}
               role={roleAt(activeFlag.roles, HOME_AREA_ROLE.days)}
-              heading={fmtDay(group.epochDay, { weekday: 'long', day: 'numeric', month: 'long' })}
+              heading={fmtDayBar(group.epochDay, currentDay())}
             >
               {#each group.entries as entry (entry.id)}
                 {@const presentation = entryPresentation(entry)}
@@ -756,7 +743,19 @@
     margin-bottom: var(--space-5);
   }
   .cal-month-body.is-folded {
+    position: relative;
     cursor: pointer;
+  }
+  /* The folded strip is 30px tall, and its 31 days cannot be wider than a
+     column of it. What the layout does allow is height: the strip's target
+     reaches 9px up into the gap under the controls and 9px down into the
+     margin under it, so a thumb landing anywhere on a day is at least 48px
+     of target (after-release 27, audit UX-19). Drawn as nothing, and only
+     while folded: open, the grid's own days are the targets. */
+  .cal-month-body.is-folded::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--touch-target) - 30px) / -2) 0;
   }
 
   /* ---------- The days ---------- */

@@ -5,6 +5,7 @@
      its figure and where that region's reading mostly sat under it. A
      tile only: the screen already exists and this component draws nothing
      of it. */
+  import { fmtNumber } from '$lib/data/dates';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { mostMarkedRegion } from '$lib/data/lookBackReadings';
@@ -32,7 +33,7 @@
     if (!region) return '';
     if (region.side === null || region.value === null) return m.n_entries({ n: region.count });
     const axis = region.side === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
-    return `${axis} ${Math.round(region.value)}`;
+    return m.reading_body_region_value({ axis, value: fmtNumber(Math.round(region.value)) });
   });
 </script>
 

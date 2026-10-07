@@ -3,24 +3,6 @@
    components/components.css; colour comes only from tokens.
    ============================================================ */
 
-/* A photograph standing in for a row's icon disc, so it takes the disc's
-   size and the disc's shape. PhotoThumb draws a rounded square, which is
-   right where photos are a grid of photos and wrong here: in a column of
-   circles it was the one row that did not match, and a photo standing in
-   for an icon has to stand in for its shape too. Clipped rather than
-   restyled, so nothing changes for the screens that show photos as photos.
-
-   `.milestone-face` until deepening ticket 21 met ticket 10 at the merge and
-   the two had written the same rule twice - a milestone's own face, and the
-   day view's hair, recovery and tryout photographs. One rule, and a name
-   that is true of all four. */
-.row-face {
-  flex: 0 0 auto;
-  display: flex;
-  border-radius: 50%;
-  overflow: hidden;
-  border: var(--role-hairline);
-}
 /* ---------- Entry editor and friends ---------- */
 
 /* The entry editor's save bar and every other screen's foot left screens.css
@@ -185,8 +167,7 @@
    two callers keep the wash they were tuned for. */
 .wrapped-cover .rive-stage { background: none; }
 .wrapped-cover-label {
-  font-size: var(--text-xs); font-weight: var(--weight-bold);
-  text-transform: uppercase; letter-spacing: 0.14em;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
   color: var(--text-2);
 }
 /* The year at display size, in the text colour. It was gradient text, which
@@ -246,8 +227,6 @@
    what draws a day's shape. */
 .day-add { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
 .day-add .btn { width: 100%; }
-
-/* ---------- The Transition door ----------
 
 /* ---------- Search ---------- */
 .search-box {
@@ -619,24 +598,7 @@
 
 /* ---------- Manage tags ---------- */
 .managed-group { border-bottom: 1px solid var(--outline); }
-.managed-group summary {
-  cursor: pointer;
-  min-height: var(--touch-target);
-  padding: var(--space-3) 0;
-  font-weight: var(--weight-bold);
-}
 .managed-tags { display: flex; flex-direction: column; }
-/* `display: flex` above is an author declaration, which beats the UA
-   stylesheet's `details:not([open]) > *:not(summary) { display: none; }`
-   regardless of specificity (ticket 272): a closed group's rows kept a real
-   layout box and painted nothing, but Chromium still treats that subtree as
-   skipped for animation purposes, so a transition running inside froze at
-   its start value and snapped to the end one only once its clock finished -
-   never interpolating. Restoring the native hide for a closed group fixes
-   both: nothing to query while collapsed, and a real transition once a
-   person actually opens it (verified: smooth 150ms ramp with the group open,
-   frozen-then-snap with it closed). */
-.managed-group:not([open]) .managed-tags { display: none; }
 .managed-tag {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) 0;
@@ -814,13 +776,6 @@
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
-/* Determinate where there is a number to be determinate about. The
-   conversion knows how many photos it has re-encrypted and how many are
-   left, and that was being spent on a sentence alone while the screen it
-   sits on can hold someone for minutes. The shape is .rail's; what this
-   adds is where it sits. */
-.gate-progress { margin: var(--space-5) 0 0; }
-
 /* ---------- the gates, short ----------
 
    Under 640px tall - what a raised keyboard leaves on any phone, and what a
@@ -924,11 +879,19 @@
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-
-  /* Home's outline frame on the web (phase 5 ticket 32.11) is gone with
-     redesign ticket 23: the field is the column's top edge now, a
-     6px-cornered banner the sun is clipped by (+page.svelte), so there is
-     nothing left for a frame to mark. */
+  /* Eight across gives a name 69.5px at 1280, and the widest one on a line
+     is 75.2px ("Panseksualna"), so overflow-wrap: anywhere broke
+     "Genderqueer" as "Genderquee/r" (after-release 17, UI-07). A name is
+     one word or two, so it wraps between words or not at all, and the
+     longest overhangs at most 6px into the 12px gap after its column. */
+  .palette-grid .swatch-name,
+  .palette-grid .palette-swatch.is-active .swatch-name { overflow-wrap: normal; }
+  /* With the text-size boost a name is 12.5% wider and the longest would
+     run past that gap into the next name, so the grid goes back to the
+     four across it has below this width. */
+  html[data-a11y-text-size='boost'] .palette-grid {
+    grid-template-columns: repeat(auto-fill, minmax(max(64px, calc((100% - 3 * var(--space-3)) / 4)), 1fr));
+  }
 }
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */

@@ -38,6 +38,10 @@ export interface TallyArea {
       `todayEpochDay`, or null if there is none (phase 8 features ticket 03,
       lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
+  /** The day of the earliest event of either kind, or null if there is
+      none: where Look back's rail starts for a journal of taps alone
+      (after-release 17, historyStart). */
+  firstEpochDay(): Promise<number | null>;
   /** Idempotent. */
   deleteEvent(id: string): Promise<void>;
 }
@@ -64,6 +68,11 @@ export function makeTallyArea(driver: SqliteDriver): TallyArea {
     async lastWriteEpochDay(todayEpochDay) {
       const [latest] = await events.read('WHERE epoch_day <= ? ORDER BY epoch_day DESC LIMIT 1', [todayEpochDay]);
       return latest?.epochDay ?? null;
+    },
+
+    async firstEpochDay() {
+      const [first] = await events.read('ORDER BY epoch_day LIMIT 1', []);
+      return first?.epochDay ?? null;
     },
 
     deleteEvent: events.delete

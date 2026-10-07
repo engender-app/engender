@@ -25,11 +25,17 @@
 
 import { isReducedMotion } from './tokens';
 
-export type RowTop = { key: string; top: number };
+export type RowTop = { key: string; top: number; left: number };
 
-/** Where each row is painted, keyed. */
+/** Where each row is painted, keyed. Both axes, so a grid that reflows
+    sideways travels as well as a list that reflows down (the clinician
+    summary's profile card, after-release 22); a list's rows only ever
+    differ in `top`. */
 export function measureTops(rows: HTMLElement[], keyOf: (el: HTMLElement) => string): RowTop[] {
-  return rows.map((el) => ({ key: keyOf(el), top: el.getBoundingClientRect().top }));
+  return rows.map((el) => {
+    const box = el.getBoundingClientRect();
+    return { key: keyOf(el), top: box.top, left: box.left };
+  });
 }
 
 /** After a write has re-rendered the rows: start each at the top `before`
@@ -42,16 +48,40 @@ export function travelFrom(rows: HTMLElement[], keyOf: (el: HTMLElement) => stri
     el.style.transition = 'none';
     el.style.translate = '';
   }
-  const from = new Map(before.map((row) => [row.key, row.top]));
+  const from = new Map(before.map((row) => [row.key, row]));
   for (const el of rows) {
-    const top = from.get(keyOf(el));
-    if (top !== undefined) el.style.translate = `0 ${top - el.getBoundingClientRect().top}px`;
+    const was = from.get(keyOf(el));
+    if (!was) continue;
+    const box = el.getBoundingClientRect();
+    el.style.translate = `${was.left - box.left}px ${was.top - box.top}px`;
   }
   requestAnimationFrame(() => {
     for (const el of rows) {
       el.style.transition = '';
       el.style.translate = '';
     }
+  });
+}
+
+/** The same travel for a list that changes under a read rather than under
+    a drag: a dose saved to another day, a procedure that moved to the
+    archive (after-release 05). Measured before the DOM updates, released
+    after it, every time `track` changes. Call it while the component
+    initialises; the rows need the list's own CSS translate transition.
+
+    Hand-written rather than Svelte's `animate:` directive on purpose: the
+    first `animate:` in the app pulls the keyed-each animation runtime into
+    the shared chunk every screen loads first, about 400 bytes gzip of a
+    first-load budget that has none to spare. */
+export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElement) => string, track: () => unknown): void {
+  let before: RowTop[] = [];
+  $effect.pre(() => {
+    track();
+    before = measureTops(rows(), keyOf);
+  });
+  $effect(() => {
+    track();
+    travelFrom(rows(), keyOf, before);
   });
 }
 

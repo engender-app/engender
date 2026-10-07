@@ -1,6 +1,7 @@
 /* A database's shape, as text, for comparing two databases that were built
-   different ways (ticket 34's squash: one baseline statement against the
-   78-step chain it replaced).
+   different ways (the squashes: one baseline statement against the chain
+   it replaced, the 78 steps in ticket 34 and the v78 baseline plus 79 to 88
+   in after-release ticket 42).
 
    Everything compared here comes out of `sqlite_master`, which is the only
    place some of it is written down - a CHECK constraint appears in no pragma,
@@ -132,5 +133,31 @@ export function dumpSchema(raw: DatabaseSync): string {
       (row) =>
         `${row.type} ${row.name} on ${row.tbl_name}\n  ${row.sql === null ? '(implicit)' : normalizeSql(row.sql)}`
     )
+    .join('\n');
+}
+
+/** Every row every table holds, as text, for proving that two ways of building
+    a schema also leave the same data behind (after-release ticket 42). A fresh
+    schema has no authored rows, so what this compares is what the DDL itself
+    writes: FTS5's config and structure records, and the AUTOINCREMENT
+    counters in `sqlite_sequence`. Rows are sorted by their own text rather
+    than by rowid, since a WITHOUT ROWID table has none, and a blob is written
+    as hex so it compares byte for byte. */
+export function dumpRows(raw: DatabaseSync): string {
+  const tables = raw
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+    .all() as { name: string }[];
+
+  return tables
+    .map(({ name }) => {
+      const rows = (raw.prepare(`SELECT * FROM "${name.replace(/"/g, '""')}"`).all() as Record<string, unknown>[])
+        .map((row) =>
+          JSON.stringify(row, (_key, value: unknown) =>
+            value instanceof Uint8Array ? `x'${Buffer.from(value).toString('hex')}'` : value
+          )
+        )
+        .sort();
+      return [`rows ${name}`, ...rows.map((row) => `  ${row}`)].join('\n');
+    })
     .join('\n');
 }

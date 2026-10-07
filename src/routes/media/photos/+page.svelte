@@ -35,6 +35,9 @@
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
+  import { TODAY_PHOTO_HREF } from '$lib/data/entrySections';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
   import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
@@ -336,10 +339,14 @@
     dayEditorValue = dateInputValueFromEpochDay(photo.epochDay);
   }
 
+  const dayWrite = writer();
   async function saveDayEditor() {
-    if (!dayEditorId) return;
-    await journal.photos.setEpochDayOverride(dayEditorId, epochDayFromDateInputValueOrToday(dayEditorValue));
+    const id = dayEditorId;
+    if (!id) return;
+    const day = epochDayFromDateInputValueOrToday(dayEditorValue);
+    if (!(await dayWrite.run(() => journal.photos.setEpochDayOverride(id, day), m.write_failed()))) return;
     dayEditorId = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   const cellDate = (photo: LibraryPhoto) =>
@@ -478,6 +485,7 @@
           role={roleAt(activeFlag.roles, 0)}
           title={m.ph_empty_title()}
           text={m.ph_empty_body()}
+          action={{ label: m.ph_empty_action(), href: TODAY_PHOTO_HREF, primary: true }}
         />
       {/snippet}
     </ReadGate>
@@ -530,7 +538,7 @@
     {/if}
   </Sheet>
 
-  <Sheet open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
+  <Sheet busy={dayWrite.busy} open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
     {#if dayEditorId !== null}
       <h3>{m.photo_day_edit_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_edit_hint()}</p>
@@ -539,7 +547,7 @@
           <DatePicker name="photo-day-edit" bind:value={dayEditorValue} {id} />
         {/snippet}
       </Field>
-      <button class="btn btn-primary press" data-photo-day-edit-save onclick={saveDayEditor}>
+      <button class="btn btn-primary press" data-photo-day-edit-save disabled={dayWrite.busy} onclick={saveDayEditor}>
         <span>{m.photo_day_edit_save()}</span>
       </button>
     {/if}
@@ -563,14 +571,14 @@
      104px cell, so the tap target and the visual circle are two
      differently-sized boxes - the outer button transparent and centred
      on the corner, the smaller ::before disc carrying the surface fill
-     and the shadow that lifts it off whatever the photo underneath
+     and the edge that separates it from whatever the photo underneath
      happens to be. */
   .photo-cell-controls { position: relative; }
   .photo-view-action { width: 100%; margin-top: var(--space-3); }
   .photo-edit-day {
     position: absolute; bottom: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
-    border: none; cursor: pointer; background: none; color: var(--text-1);
+    border: none; cursor: pointer; background: none; color: var(--text);
     display: flex; align-items: center; justify-content: center;
   }
   .photo-edit-day :global(.icon) { position: relative; }
@@ -645,12 +653,13 @@
     line-height: 1;
     writing-mode: vertical-rl;
     color: var(--text-2);
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   }
   /* The drawn tab is 18px; the target is the 48px floor, reaching left
      over the grid's edge. Only a target, never paint, and only while the
      rail is awake: at rest the rail takes no pointer at all. */
   .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
-  .photo-year:hover { color: var(--text-1); border-color: var(--accent-border); }
+  .photo-year:hover { color: var(--text); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
      placeholder takes (PhotoThumb.svelte), because this one is not a
@@ -661,10 +670,18 @@
     width: 100%;
     aspect-ratio: 1;
   }
+  /* The label in the text colour on a solid strip of the card. The shared
+     .photo-label is a 35% black scrim made for a photograph, and over this
+     flat tile it left "Video note" at 1.9:1 (after-release 21, audit
+     A11Y-10). */
+  .photo-video-thumb .photo-label {
+    background: var(--surface);
+    color: var(--text);
+  }
 
   .photo-count {
     font-size: var(--text-sm);
-    color: var(--text-1);
+    color: var(--text);
     margin: 0 0 var(--space-1);
   }
 

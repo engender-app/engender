@@ -58,7 +58,8 @@
   import { journal, liveList, liveQuery, type LiveList } from '$lib/data/live/journal.svelte';
   import type { Appointment, ChecklistItem } from '$lib/data/types';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { mostRecentPastAppointment, soonestFutureAppointment } from '$lib/data/journal/appointments';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
@@ -80,7 +81,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
   const dayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
 

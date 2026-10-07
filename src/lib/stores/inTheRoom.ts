@@ -24,6 +24,7 @@
    two visits holds two answer sets, and which one a debrief means is
    settled by the appointment id the deep link already carries. */
 import type { DebriefAnswer } from '../data/journal/debriefNote';
+import { forgetOnLock } from '../lock/forget-content';
 
 interface HeldRoomAnswers {
   appointmentId: string;
@@ -45,6 +46,15 @@ const held = new Map<string, HeldRoomAnswers>();
 export function holdRoomAnswers(entry: HeldRoomAnswers): void {
   held.set(entry.appointmentId, entry);
 }
+
+/** Lets go of everything jotted, for every appointment (after-release
+    ticket 10). A lock takes it with the rest of the journal: what was said
+    in a consulting room is exactly what a locked app should not still be
+    holding. */
+export function forgetRoomAnswers(): void {
+  held.clear();
+}
+forgetOnLock(forgetRoomAnswers);
 
 /** What was jotted for this appointment, or nothing. */
 export function roomAnswersFor(appointmentId: string): DebriefAnswer[] {

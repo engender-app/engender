@@ -27,9 +27,10 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import type { MilestonesArea } from './milestones';
-import type { FeltSenseArea } from './feltSense';
+import { makeMilestonesArea } from './milestones';
+import { makeFeltSenseArea } from './feltSense';
 import { todayEpochDay } from '../epochDay';
+import { adoptionMood } from '../adoptionMood';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now, rowidByUuid } from './support';
 
@@ -117,9 +118,7 @@ const toTryout = (row: TryoutRow): Tryout => ({
 
 export function makeTryoutsArea(
   driver: SqliteDriver,
-  files: PhotoFileStore,
-  milestones?: MilestonesArea,
-  feltSense?: FeltSenseArea
+  files: PhotoFileStore
 ): TryoutsArea {
   return {
     async getTryouts() {
@@ -241,81 +240,36 @@ export function makeTryoutsArea(
       const tryout = toTryout(rows[0]);
 
       const endEpochDay = options?.endEpochDay ?? todayEpochDay();
-      const result = await driver.run(
-        'UPDATE tryout SET end_epoch_day = ?, updated_at = ? WHERE uuid = ?',
-        [endEpochDay, now(), id]
-      );
-      assertChanged(result, `tryout: ${id}`);
+      const feltSenseRows = options?.createMilestone
+        ? await driver.query<{ mood: number; note: string | null }>(
+          `SELECT f.mood, f.note FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
+           WHERE t.uuid = ? ORDER BY f.epoch_day DESC, f.id DESC`, [id])
+        : [];
+      const majorityMood = adoptionMood(feltSenseRows);
+      const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
 
-      let milestoneId: string | undefined = undefined;
-
-      if (options?.createMilestone) {
-        const milestoneEpochDay = options.milestoneEpochDay ?? endEpochDay;
-        const milestoneTitle = options.milestoneTitle?.trim() || tryout.label;
-
-        if (milestones) {
-          milestoneId = await milestones.upsertMilestone({
-            name: milestoneTitle,
+      return driver.transaction(async (driver) => {
+        const result = await driver.run(
+          'UPDATE tryout SET end_epoch_day = ?, updated_at = ? WHERE uuid = ?',
+          [endEpochDay, now(), id]
+        );
+        assertChanged(result, `tryout: ${id}`);
+        let milestoneId: string | undefined;
+        if (options?.createMilestone) {
+          const milestoneEpochDay = options.milestoneEpochDay ?? endEpochDay;
+          milestoneId = await makeMilestonesArea(driver, files).upsertMilestone({
+            name: options.milestoneTitle?.trim() || tryout.label,
             epochDay: milestoneEpochDay,
             tryoutId: id
           });
-        } else {
-          milestoneId = mintUuid();
-          await driver.run(
-            'INSERT INTO milestone (uuid, name, epoch_day, template_key, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [milestoneId, milestoneTitle, milestoneEpochDay, null, id, now()]
-          );
-        }
-
-        const feltSenseRows = await driver.query<{ mood: number; note: string | null }>(
-          `SELECT f.mood, f.note
-             FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
-            WHERE t.uuid = ?
-            ORDER BY f.epoch_day DESC, f.id DESC`,
-          [id]
-        );
-
-        if (feltSenseRows.length > 0) {
-          const counts = new Map<number, number>();
-          for (const f of feltSenseRows) {
-            counts.set(f.mood, (counts.get(f.mood) ?? 0) + 1);
-          }
-          let majorityMood = feltSenseRows[0].mood;
-          let maxCount = -1;
-          for (let m = 1; m <= 5; m++) {
-            const c = counts.get(m) ?? 0;
-            if (c > maxCount) {
-              maxCount = c;
-              majorityMood = m;
-            }
-          }
-
-          const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
-          if (feltSense) {
-            await feltSense.add(
-              { milestoneId },
-              { epochDay: milestoneEpochDay, mood: majorityMood, note: summaryNote }
-            );
-          } else {
-            const milestoneRowId = await rowidByUuid(driver, 'milestone', milestoneId);
-            const fsUuid = mintUuid();
-            await driver.run(
-              'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-              [fsUuid, null, milestoneRowId, milestoneEpochDay, majorityMood, summaryNote, now()]
+          if (majorityMood !== null) {
+            await makeFeltSenseArea(driver).add(
+              { milestoneId }, { epochDay: milestoneEpochDay, mood: majorityMood, note: summaryNote }
             );
           }
         }
-      }
-
-      return { tryoutId: id, milestoneId };
+        return { tryoutId: id, milestoneId };
+      });
     }
   };
-}
-
-export async function adoptTryout(
-  journal: { tryouts: TryoutsArea },
-  tryoutId: string,
-  options?: AdoptTryoutOptions
-): Promise<AdoptTryoutResult> {
-  return journal.tryouts.adoptTryout(tryoutId, options);
 }

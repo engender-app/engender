@@ -124,3 +124,25 @@ test('a restored wait uses elapsed time after its first reading', () => {
   elapsed = 400;
   expect(throttle.remainingMs(86_400_000)).toBe(600);
 });
+
+
+test('reload after a forward wall clock jump still owes the full earned delay', () => {
+  const { store } = fakeStore({ wrongAttempts: 8, acceptingFrom: 61_000 });
+  const restored = createAttemptThrottle(store);
+  expect(restored.remainingMs(86_400_000)).toBe(60_000);
+});
+
+
+test('a completed monotonic wait stays paid after reload but preserves the attempt count', () => {
+  const { store } = fakeStore();
+  const before = createAttemptThrottle(store);
+  before.recordWrong(1000);
+  before.recordWrong(1000);
+  elapsed = 1000;
+  expect(before.remainingMs(86_400_000)).toBe(0);
+  elapsed = 0;
+  const after = createAttemptThrottle(store);
+  expect(after.remainingMs(86_400_000)).toBe(0);
+  after.recordWrong(86_400_000);
+  expect(after.remainingMs(86_400_000)).toBe(2000);
+});

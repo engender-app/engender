@@ -74,6 +74,7 @@ export interface MeasureOptions {
       optional: a run that quietly produced no mount measurements would
       leave budgets.json describing measurements nobody takes. */
   recorder: RecordingDriver;
+  mountHome?: (journal: Journal) => Promise<{ result: unknown; detail: string; crossings?: { statements: number; bytes: number } }>;
 }
 
 /** Metrics the stats screen charts at once: mood plus every dimension. */
@@ -225,7 +226,7 @@ export async function measureLongJournal(
   async function mount(
     name: string,
     what: string,
-    operation: () => Promise<{ result: unknown; detail: string }>
+    operation: () => Promise<{ result: unknown; detail: string; crossings?: { statements: number; bytes: number } }>
   ): Promise<void> {
     const startedAt = performance.now();
     const { result: measured, recording } = await recorder.record(operation);
@@ -236,8 +237,8 @@ export async function measureLongJournal(
       what,
       ms,
       detail: measured.detail,
-      statements: recording.statements.length,
-      bytes: recording.bytes
+      statements: measured.crossings?.statements ?? recording.statements.length,
+      bytes: measured.crossings?.bytes ?? recording.bytes
     });
   }
 
@@ -803,6 +804,7 @@ export async function measureLongJournal(
   const dimensionKeys = (await journal.dimensions.getDimensions()).map((dimension) => dimension.key);
 
   await mount('mount-home', 'Home, every read its tiles, panels and cards fire on arrival', async () => {
+    if (options.mountHome) return options.mountHome(journal);
     /* Seventeen live queries from `homeTiles()`, five the route holds
        itself, and the three look-back surfaces under it: the wrapped card,
        the on-this-day card and the week strip. The two cards are gated on

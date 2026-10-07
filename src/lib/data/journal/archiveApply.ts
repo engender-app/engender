@@ -316,6 +316,7 @@ export async function applyTagGroups({ driver, mode, journal, ts }: Restoring): 
         'INSERT INTO tag_group (uuid, key, name, enabled, order_index, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         [group.builtIn ? null : group.key, group.key, group.name, flag(group.enabled), groupIndex, ts]
       );
+      groups.add(group.key);
     } else if (mode === 'replace') {
       await driver.run('UPDATE tag_group SET name = ?, enabled = ?, order_index = ?, updated_at = ? WHERE key = ?', [
         group.name,
@@ -345,6 +346,7 @@ export async function applyTagGroups({ driver, mode, journal, ts }: Restoring): 
         'INSERT INTO tag (uuid, key, group_id, label, hidden, order_index, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [tag.builtIn ? null : tag.id, tag.builtIn ? tag.id : null, groupId, tag.label, flag(tag.hidden), orderIndex, ts]
       );
+      tags.add(tag.id);
     }
   }
 }
@@ -413,7 +415,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
       entry.uuid,
       entry.epochDay,
       entry.timestamp,
-      entry.mood,
+      Number.isInteger(entry.mood) && entry.mood! >= 1 && entry.mood! <= 5 ? entry.mood : null,
       entry.note,
       flag(entry.starred),
       // Absent on an archive written before this ticket - null, the same
@@ -490,7 +492,7 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
       dimensionRows.push([entryId, dimensionIds.get(key)!, value]);
     }
 
-    for (const id of entry.tags ?? []) {
+    for (const id of new Set(entry.tags ?? [])) {
       tagRows.push([entryId, tagIds.get(id)!]);
     }
 
@@ -506,8 +508,9 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
       videoRows.push([video.id, entryId, video.fileName, orderIndex, ts]);
     }
 
-    // Unlike dims and tags, a region key is not resolved against a stored
-    // row - there is none (bodyMap.ts) - so it travels straight through,
+    // Unlike dims and tags, a region key is not resolved against a
+    // body_region row - entry_body_region.region is plain text (bodyMap.ts
+    // owns the list of regions) - so it travels straight through,
     // the same forward-compatible treatment lab_result.analyte gets: an
     // archive from a build that knows a region this one does not still
     // restores rather than failing the whole import.
@@ -690,21 +693,23 @@ const nextChecklistItemOrderIndex = async (driver: SqliteDriver, checklistId: nu
    is already here. Only its items are walked in both modes, the same reason
    an existing tag group still has its tags walked. */
 export async function applyChecklists({ driver, mode, journal, ts }: Restoring): Promise<void> {
-  const checklists = await presentIds(driver, 'SELECT uuid AS id FROM checklist');
   const items = await presentIds(driver, 'SELECT uuid AS id FROM checklist_item');
 
   for (const checklist of journal.checklists) {
-    if (!checklists.has(checklist.id)) {
-      await driver.run(
+    // The screen has one list per owner. Remote UUIDs resolve to that list.
+    const existing = await driver.query<{ id: number }>(
+      'SELECT id FROM checklist WHERE uuid = ? OR (owner_kind IS ? AND owner_uuid IS ?) ORDER BY id LIMIT 1',
+      [checklist.id, checklist.ownerKind, checklist.ownerId]
+    );
+    let checklistRowId = existing[0]?.id;
+    if (checklistRowId === undefined) {
+      const inserted = await driver.run(
         'INSERT INTO checklist (uuid, owner_kind, owner_uuid, appointment_epoch_day, updated_at) VALUES (?, ?, ?, ?, ?)',
-        // ?? null: an archive written before ticket 25 has no such key at
-        // all, not even a null one, and JSON.parse leaves that as
-        // undefined rather than the column's own resting value.
         [checklist.id, checklist.ownerKind, checklist.ownerId, checklist.appointmentEpochDay ?? null, ts]
       );
+      checklistRowId = inserted.lastInsertRowid;
     }
 
-    const checklistRowId = await rowidWhere(driver, 'checklist', 'uuid = ?', [checklist.id], 'checklist uuid');
     for (const [itemIndex, item] of checklist.items.entries()) {
       if (items.has(item.id)) {
         if (mode === 'merge') continue;
@@ -721,6 +726,7 @@ export async function applyChecklists({ driver, mode, journal, ts }: Restoring):
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [item.id, checklistRowId, item.content, flag(item.checked), flag(item.carriedForward), orderIndex, ts]
       );
+      items.add(item.id);
     }
   }
 }
@@ -1097,6 +1103,8 @@ export async function applyTaper({ driver, journal, ts }: Restoring): Promise<vo
 
     const rows = await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [taper.procedureId]);
     if (!rows[0]) continue;
+    const existing = await driver.query('SELECT id FROM taper WHERE procedure_id = ? LIMIT 1', [rows[0].id]);
+    if (existing.length > 0) continue;
 
     await driver.run(
       `INSERT INTO taper (uuid, procedure_id, start_epoch_day, stages, updated_at)
@@ -1184,12 +1192,6 @@ export function aliasLegacyConsults(journal: ArchiveJournal): ArchiveJournal {
   return { ...journal, appointments };
 }
 
-
-/** The import log (phase 7 ticket 03): ordinary insert-if-absent by uuid,
-    the same as every other user-owned row. Every record already carries its
-    own minted uuid and timestamp (journal/archive.ts writes it once, on
-    commit), so `ts` here only stamps `updated_at` - the bookkeeping column
-    every insert carries, not the moment the import itself happened. */
 /** The column list import_log's insert shares with `recordImport` below -
     that one writes always and one row at a time (a record is a new fact
     every commit, never insert-if-absent), this one is insert-if-absent,
@@ -1227,6 +1229,11 @@ export function importLogRow(
   return [record.id, record.source, JSON.stringify(record.counts), record.importedAt, ts];
 }
 
+/** The import log (phase 7 ticket 03): ordinary insert-if-absent by uuid,
+    the same as every other user-owned row. Every record already carries its
+    own minted uuid and timestamp (journal/archive.ts writes it once, on
+    commit), so `ts` here only stamps `updated_at` - the bookkeeping column
+    every insert carries, not the moment the import itself happened. */
 export async function applyImportLog({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM import_log');
   const inserting = journal.importLog.filter((record) => !present.has(record.id));

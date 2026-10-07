@@ -5,11 +5,20 @@ import android.content.Context;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.util.Base64;
+import android.system.Os;
+import android.system.OsConstants;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileDescriptor;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
@@ -104,10 +113,18 @@ public final class JournalKeystore {
     private static final String KEYSTORE = "AndroidKeyStore";
     private static final String TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
 
+    interface DirectorySync { void sync(File directory) throws Exception; }
+
     private final Context context;
+    private final DirectorySync directorySync;
 
     public JournalKeystore(Context context) {
+        this(context, JournalKeystore::syncDirectory);
+    }
+
+    JournalKeystore(Context context, DirectorySync directorySync) {
         this.context = context.getApplicationContext();
+        this.directorySync = directorySync;
     }
 
     /** Whether a lock screen exists at all. Without one the platform refuses
@@ -120,7 +137,7 @@ public final class JournalKeystore {
 
     /** True when this device holds a key for the given variant. */
     public boolean hasVariant(Variant variant) throws Exception {
-        return keystoreEntryExists(variant) && wrappedKeyFile(variant).exists();
+        return wrappedKeyExists(variant) && keystoreEntryExists(variant);
     }
 
     /** True when this device already holds a Journal key in either variant. */
@@ -146,8 +163,13 @@ public final class JournalKeystore {
     public byte[] create(Variant variant) throws Exception {
         byte[] dataKey = new byte[DATA_KEY_BYTES];
         new SecureRandom().nextBytes(dataKey);
-        wrap(variant, dataKey);
-        return dataKey;
+        try {
+            wrap(variant, dataKey);
+            return dataKey;
+        } catch (Exception error) {
+            Arrays.fill(dataKey, (byte) 0);
+            throw error;
+        }
     }
 
     /**
@@ -155,13 +177,26 @@ public final class JournalKeystore {
      * Rewraps without re-encrypting the database.
      */
     public void wrap(Variant variant, byte[] dataKey) throws Exception {
-        erase(variant);
-
-        PublicKey wrappingKey = generateKeyPair(variant);
-
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, wrappingKey, oaepParameters());
-        writeWrappedKey(variant, cipher.doFinal(dataKey));
+        String previousAlias = wrappedKeyExists(variant)
+            ? readStoredWrap(variant).alias : null;
+        // A previous rename may have returned before its directory sync failed.
+        // Make its pointer durable before reusing the alternate wrapping key.
+        if (previousAlias != null) directorySync.sync(context.getFilesDir());
+        String nextAlias = variant.alias.equals(previousAlias) ? variant.alias + ".replacement" : variant.alias;
+        KeyStore keystore = loadKeystore();
+        if (keystore.containsAlias(nextAlias)) keystore.deleteEntry(nextAlias);
+        boolean committed = false;
+        try {
+            PublicKey wrappingKey = generateKeyPair(variant, nextAlias);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, wrappingKey, oaepParameters());
+            writeWrappedKey(variant, nextAlias, cipher.doFinal(dataKey));
+            committed = true;
+            directorySync.sync(context.getFilesDir());
+        } finally {
+            if (!committed && keystore.containsAlias(nextAlias)) keystore.deleteEntry(nextAlias);
+        }
+        if (previousAlias != null && keystore.containsAlias(previousAlias)) keystore.deleteEntry(previousAlias);
     }
 
     /**
@@ -236,12 +271,14 @@ public final class JournalKeystore {
     }
 
     public void erase(Variant variant) throws Exception {
-        File wrapped = wrappedKeyFile(variant);
-        if (wrapped.exists() && !wrapped.delete()) {
-            throw new IOException("could not delete " + wrapped);
+        File file = wrappedKeyFile(variant);
+        for (File wrapped : new File[] { file, new File(file.getPath() + ".new") }) {
+            if (wrapped.exists() && !wrapped.delete()) throw new IOException("could not delete " + wrapped);
         }
         KeyStore keystore = loadKeystore();
-        if (keystore.containsAlias(variant.alias)) keystore.deleteEntry(variant.alias);
+        for (String alias : new String[] { variant.alias, variant.alias + ".replacement" }) {
+            if (keystore.containsAlias(alias)) keystore.deleteEntry(alias);
+        }
     }
 
     /* --- the parts above, in Keystore terms -------------------------------- */
@@ -251,9 +288,9 @@ public final class JournalKeystore {
        deprecated call is the only one there is below 30, and the branch that
        chooses between them is right here. */
     @SuppressWarnings("deprecation")
-    private PublicKey generateKeyPair(Variant variant) throws Exception {
+    private PublicKey generateKeyPair(Variant variant, String alias) throws Exception {
         KeyGenParameterSpec.Builder spec =
-            new KeyGenParameterSpec.Builder(variant.alias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+            new KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setKeySize(2048)
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
@@ -297,7 +334,7 @@ public final class JournalKeystore {
     }
 
     private PrivateKey privateKey(Variant variant) throws Exception {
-        PrivateKey key = (PrivateKey) loadKeystore().getKey(variant.alias, null);
+        PrivateKey key = (PrivateKey) loadKeystore().getKey(readStoredWrap(variant).alias, null);
         if (key == null) throw new IllegalStateException("there is no Journal key in the keystore for " + variant.alias);
         return key;
     }
@@ -318,7 +355,7 @@ public final class JournalKeystore {
     }
 
     private boolean keystoreEntryExists(Variant variant) throws Exception {
-        return loadKeystore().containsAlias(variant.alias);
+        return loadKeystore().containsAlias(readStoredWrap(variant).alias);
     }
 
     private static KeyStore loadKeystore() throws Exception {
@@ -338,23 +375,54 @@ public final class JournalKeystore {
         return new File(context.getFilesDir(), variant.filename);
     }
 
-    private void writeWrappedKey(Variant variant, byte[] wrapped) throws IOException {
+    private boolean wrappedKeyExists(Variant variant) {
         File file = wrappedKeyFile(variant);
-        File parent = file.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            throw new IOException("could not create " + parent);
+        return file.exists();
+    }
+
+    private void writeWrappedKey(Variant variant, String alias, byte[] wrapped) throws Exception {
+        byte[] stored = wrapped;
+        if (!alias.equals(variant.alias)) {
+            stored = new JSONObject().put("alias", alias)
+                .put("wrappedKey", Base64.encodeToString(wrapped, Base64.NO_WRAP))
+                .toString().getBytes(StandardCharsets.UTF_8);
         }
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            out.write(wrapped);
-            /* The wrap is the only copy of what opens the Journal, and the
-               next thing that happens is a database being written under it.
-               A blob still in the page cache when the power goes is a
-               Journal nobody can open. */
-            out.getFD().sync();
+        File file = wrappedKeyFile(variant);
+        File staged = new File(file.getPath() + ".new");
+        try {
+            try (FileOutputStream out = new FileOutputStream(staged)) {
+                out.write(stored);
+                out.getFD().sync();
+            }
+            Files.move(staged.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            if (staged.isFile()) staged.delete();
         }
     }
 
-    private byte[] readWrappedKey(Variant variant) throws IOException {
-        return Files.readAllBytes(wrappedKeyFile(variant).toPath());
+    private static void syncDirectory(File directory) throws Exception {
+        FileDescriptor descriptor = Os.open(directory.getPath(), OsConstants.O_RDONLY, 0);
+        try { Os.fsync(descriptor); }
+        finally { Os.close(descriptor); }
+    }
+
+    private static final class StoredWrap {
+        final String alias;
+        final byte[] wrapped;
+        StoredWrap(String alias, byte[] wrapped) { this.alias = alias; this.wrapped = wrapped; }
+    }
+
+    private StoredWrap readStoredWrap(Variant variant) throws Exception {
+        byte[] stored = Files.readAllBytes(wrappedKeyFile(variant).toPath());
+        // Existing files and the base alias keep their original RSA ciphertext format.
+        if (stored.length == 256) return new StoredWrap(variant.alias, stored);
+        JSONObject raw = new JSONObject(new String(stored, StandardCharsets.UTF_8));
+        String alias = raw.getString("alias");
+        if (!alias.equals(variant.alias + ".replacement")) throw new IOException("unknown wrapping key alias");
+        return new StoredWrap(alias, Base64.decode(raw.getString("wrappedKey"), Base64.NO_WRAP));
+    }
+
+    private byte[] readWrappedKey(Variant variant) throws Exception {
+        return readStoredWrap(variant).wrapped;
     }
 }

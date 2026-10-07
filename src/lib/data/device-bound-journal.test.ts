@@ -107,3 +107,114 @@ test('a browser with no IndexedDB at all has nothing to delete, so this resolves
   expect('indexedDB' in globalThis).toBe(false);
   await expect(deleteDeviceKeyDatabase()).resolves.toBeUndefined();
 });
+
+function browserStorage() {
+  let key: CryptoKey | null = null;
+  let metadata = '';
+  const faults = { write: false, close: false, keyCommit: false };
+  const abort = vi.fn(async () => {});
+  const close = vi.fn();
+  const indexedDB = {
+    open() {
+      const request = {} as IDBOpenDBRequest;
+      queueMicrotask(() => {
+        Object.assign(request, { result: {
+          close() {},
+          transaction() {
+            const transaction = {} as IDBTransaction;
+            Object.assign(transaction, { objectStore: () => ({
+              get() {
+                const reading = {} as IDBRequest;
+                queueMicrotask(() => {
+                  Object.assign(reading, { result: key });
+                  reading.onsuccess?.(new Event('success'));
+                });
+                return reading;
+              },
+              put(next: CryptoKey) {
+                const writing = {} as IDBRequest;
+                queueMicrotask(() => {
+                  writing.onsuccess?.(new Event('success'));
+                  queueMicrotask(() => {
+                    if (faults.keyCommit) {
+                      Object.assign(transaction, { error: new DOMException('key commit failed') });
+                      transaction.onabort?.(new Event('abort'));
+                    } else {
+                      key = next;
+                      transaction.oncomplete?.(new Event('complete'));
+                    }
+                  });
+                });
+                return writing;
+              }
+            }) });
+            return transaction;
+          }
+        } });
+        request.onsuccess?.(new Event('success'));
+      });
+      return request;
+    }
+  };
+  vi.stubGlobal('indexedDB', indexedDB);
+  vi.stubGlobal('navigator', { storage: { async getDirectory() {
+    return { async getFileHandle() {
+      return {
+        async getFile() { return { async text() { return metadata; } }; },
+        async createWritable() {
+          let staged = '';
+          return {
+            async write(text: string) {
+              staged = text.slice(0, 10);
+              if (faults.write) throw new Error('metadata write failed');
+              staged = text;
+            },
+            async close() {
+              close();
+              if (faults.close) throw new Error('metadata close failed');
+              metadata = staged;
+            },
+            abort
+          };
+        }
+      };
+    } };
+  } } });
+  return { faults, abort, close, key: () => key };
+}
+
+test.each(['write', 'close'] as const)('failed metadata %s keeps the existing device-bound journal unlockable', async (fault) => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal, unlockDeviceBoundJournal } = await import('./device-bound-journal');
+  const original = crypto.getRandomValues(new Uint8Array(32));
+  try {
+    await addDeviceBoundJournal(original);
+    const wrappingKey = browser.key();
+    browser.faults[fault] = true;
+    await expect(addDeviceBoundJournal(crypto.getRandomValues(new Uint8Array(32)))).rejects.toThrow(`metadata ${fault} failed`);
+    expect(browser.key()).toBe(wrappingKey);
+    expect(browser.abort).toHaveBeenCalledTimes(1);
+    await expect(unlockDeviceBoundJournal()).resolves.toEqual(original);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('a key request that succeeds but whose transaction aborts prevents metadata publication', async () => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal } = await import('./device-bound-journal');
+  browser.faults.keyCommit = true;
+  try {
+    await expect(addDeviceBoundJournal(crypto.getRandomValues(new Uint8Array(32)))).rejects.toThrow('key commit failed');
+    expect(browser.close).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('a fresh metadata write failure aborts instead of closing the partial file', async () => {
+  const browser = browserStorage();
+  const { setupDeviceBoundJournal } = await import('./device-bound-journal');
+  browser.faults.write = true;
+  try {
+    await expect(setupDeviceBoundJournal()).rejects.toThrow('metadata write failed');
+    expect(browser.abort).toHaveBeenCalledTimes(1);
+    expect(browser.close).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); }
+});

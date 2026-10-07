@@ -213,10 +213,6 @@ export function fieldPart(
   };
 }
 
-/**
- * Tier 2, sheets: rise by `--motion-distance-md`. Dismissal is the
- * component's job rather than this one's - it follows the drag rather than
- * replaying this backwards.
 /** How far a sheet has to go to be off the bottom of the frame it is in:
  *  its own height, or the distance from its top edge to that floor, whichever
  *  is further.

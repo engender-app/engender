@@ -184,9 +184,9 @@ function nextMilestone(facts: RowForwardFacts): RowForward | null {
 }
 
 function nextLetter(facts: RowForwardFacts): RowForward | null {
-  const day = soonest(facts.letterUnlockDays, facts.todayEpochDay);
+  const day = soonest(facts.letterUnlockDays, facts.todayEpochDay + 1);
   if (day === null) return null;
-  const stillSealed = facts.letterUnlockDays.filter((each) => each >= facts.todayEpochDay).length;
+  const stillSealed = facts.letterUnlockDays.filter((each) => each > facts.todayEpochDay).length;
   return { kind: 'next', epochDay: day, what: { area: 'letter', several: stillSealed > 1 } };
 }
 

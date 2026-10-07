@@ -41,15 +41,7 @@
   import { lockAfterSub } from '$lib/lock/lock-after-words';
   import { accessModeTitle } from '$lib/components/AccessModeSetup.svelte';
 
-  /* Keyed, not worded, so the swatch names translate with everything else. */
-  const PALETTES: [string, () => string][] = [
-    ['trans', m.palette_trans], ['nonbinary', m.palette_nonbinary], ['genderfluid', m.palette_genderfluid],
-    ['bisexual', m.palette_bisexual], ['lesbian', m.palette_lesbian], ['pansexual', m.palette_pansexual],
-    ['rainbow', m.palette_rainbow], ['agender', m.palette_agender],
-    ['gaymen', m.palette_gaymen], ['genderqueer', m.palette_genderqueer], ['intersex', m.palette_intersex],
-    ['asexual', m.palette_asexual], ['demiboy', m.palette_demiboy], ['demigirl', m.palette_demigirl],
-    ['trigender', m.palette_trigender], ['polish', m.palette_polish],
-  ];
+  import { PALETTES } from '$lib/theme/paletteChoices';
 
   /* COL-001: mood's own fixed 5-step scale, picked independently of the
      gender palette above - see ADR-0025. */
@@ -176,14 +168,9 @@
 
   const SITE_URL = 'https://engender.barankiewicz.dev/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
-  /* The source GPLv3 section 6 asks an APK to point at, and the privacy
-     policy in the language the app is in (phase 15 release-blockers ticket
-     10). The policy is the repository's own file: the landing site's
-     /privacy/ page is a security explainer, not this policy, and which of
-     the two becomes the published one is Alicja's call. Changing it is
-     this one line. */
+  // The landing site publishes the repository's canonical policy in both languages.
   const SOURCE_URL = 'https://github.com/engender-app/engender';
-  let privacyUrl = $derived(`${SOURCE_URL}/blob/main/docs/privacy-policy.${getLocale() === 'pl' ? 'pl' : 'en'}.md`);
+  let privacyUrl = $derived(`${SITE_URL}${getLocale() === 'pl' ? 'pl' : 'en'}/privacy/`);
 
   /* Ticket ux/06: ships disabled. While this is empty the row is not drawn
      at all (phase 14 ticket 15, V05): a "coming soon" row that looked like
@@ -246,7 +233,7 @@
       key="disguise"
       icon="eyeOff"
       title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
+      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
       chevron={false}
       onclick={() => (disguiseSheet = true)}
     >
@@ -351,7 +338,7 @@
     <ListRow key="language" icon="globe" title={m.language()} subtitle={languageName} chevron={false} onclick={() => (languageSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="accessibility" icon="eye" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.off()} chevron={false} onclick={() => (a11ySheet = true)}>
+    <ListRow key="accessibility" icon="eye" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
   </ListCard>
@@ -378,13 +365,13 @@
         key="metric"
         icon="palette"
         title={m.home_cal_colour()}
-        subtitle={`${m.coloured_by()} ${metricName}`}
+        subtitle={m.settings_coloured_by({ metric: metricName })}
         chevron={false}
         onclick={() => (metricSheet = true)}
       >
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
+      <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.settings_row_off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>

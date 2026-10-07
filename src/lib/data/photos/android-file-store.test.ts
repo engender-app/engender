@@ -134,3 +134,36 @@ describe('appPrivatePhotoFiles', () => {
     expect(await files.read('a.jpg')).toEqual(new Uint8Array([1]));
   });
 });
+
+
+test('a stalled write channel retries identical bytes and path over the ordered bridge', async () => {
+  vi.useFakeTimers();
+  const close = vi.fn();
+  vi.stubGlobal('MessageChannel', class {
+    port1 = { onmessage: null, postMessage() {}, close };
+    port2 = { close };
+  });
+  vi.stubGlobal('androidPhotoWriteChannel', { postMessage() {} });
+  vi.mocked(androidPhotos.writeFile).mockClear();
+  try {
+    const writing = appPrivatePhotoFiles('probe-dir').write('a.jpg', new Uint8Array([1, 2, 3]));
+    await vi.advanceTimersByTimeAsync(30_000);
+    await writing;
+    expect(androidPhotos.writeFile).toHaveBeenCalledWith({ name: 'a.jpg', directory: 'probe-dir', base64: 'AQID' });
+    expect(close).toHaveBeenCalledTimes(2);
+  } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
+});
+
+test('native write failures propagate without a second write', async () => {
+  vi.mocked(androidPhotos.writeFile).mockClear();
+  vi.stubGlobal('androidPhotoWriteChannel', {
+    postMessage(_data: string, transfer: Transferable[]) {
+      const port = transfer[0] as MessagePort;
+      port.onmessage = () => port.postMessage('{"ok":false,"error":"disk full"}');
+    }
+  });
+  try {
+    await expect(appPrivatePhotoFiles('probe-dir').write('a.jpg', new Uint8Array([1]))).rejects.toThrow('disk full');
+    expect(androidPhotos.writeFile).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); }
+});

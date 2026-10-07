@@ -3,7 +3,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { activeSurgeryProcedure, procedurePhase, recoveryDay, SURGERY_RECOVERY_CUTOFF_DAYS } from './recoveryDay.ts';
+import { activeSurgeryProcedure, procedureInArchive, procedurePhase, recoveryDay, SURGERY_RECOVERY_CUTOFF_DAYS } from './recoveryDay.ts';
 
 test('procedurePhase returns planning when no surgery date is set', () => {
   assert.equal(procedurePhase(null, 20000), 'planning');
@@ -83,4 +83,13 @@ test('activeSurgeryProcedure picks the nearest procedure when multiple exist', (
 
   // If only pastExpired exists, null is returned
   assert.equal(activeSurgeryProcedure([pastExpired], 20000), null);
+});
+
+test('procedure archive grouping follows the automatic phase without changing the manual flag', () => {
+  const procedure = { surgeryEpochDay: 20000, archived: false };
+  assert.equal(procedureInArchive(procedure, 20090), false);
+  assert.equal(procedureInArchive(procedure, 20091), true);
+  assert.equal(procedure.archived, false);
+  assert.equal(procedureInArchive({ surgeryEpochDay: null, archived: false }, 20100), false);
+  assert.equal(procedureInArchive({ surgeryEpochDay: 20110, archived: true }, 20100), true);
 });

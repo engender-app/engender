@@ -18,6 +18,11 @@ const SHARED = [
   'deploy/nginx/journal-http.conf'
 ];
 const SELF_HOST_SERVERS = ['deploy/self-host/engender.conf', 'deploy/self-host/container.conf'];
+// Analytics has its own responses and never serves journal assets.
+const ANALYTICS = [
+  'deploy/nginx/goatcounter-dashboard.conf', 'deploy/nginx/journal-count-proxy.conf',
+  'deploy/nginx/journal-page-count.conf'
+];
 const DOCKERFILE = 'deploy/self-host/Dockerfile';
 
 /** What only the shared snippets may say. */
@@ -40,7 +45,7 @@ function code(path: string): string {
 test('no config under deploy/ restates a header, cache or compression rule', () => {
   const offenders = files(DEPLOY)
     .filter((path) => /\.conf$|Dockerfile$/.test(path))
-    .filter((path) => !SHARED.includes(path) && !path.endsWith('journal-brotli.conf'))
+    .filter((path) => !SHARED.includes(path) && !ANALYTICS.includes(path) && !path.endsWith('journal-brotli.conf'))
     .filter((path) => OWNED_BY_SHARED.test(code(path)));
   expect(offenders).toEqual([]);
 });

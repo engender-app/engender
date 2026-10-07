@@ -86,4 +86,36 @@ public class CallSequencerTest {
         }, refused::add);
         assertEquals(Arrays.asList("after"), ran);
     }
+
+    @Test public void closingDriversPrunesSessionsAndBoundsRetiredHistory() {
+        for (int i = 0; i < 1000; i++) {
+            String session = "session-" + i;
+            deliver(session, 0, "open");
+            sequencer.accept(session, 1, () -> sequencer.finish(session), refused::add);
+        }
+        assertEquals(0, sequencer.sessionCount());
+        assertEquals(64, sequencer.closedCount());
+        deliver("session-999", 2, "late query");
+        assertEquals(1, refused.size());
+        assertEquals(0, sequencer.sessionCount());
+    }
+
+    @Test public void aCallQueuedAfterCloseIsRefusedInsteadOfStranded() {
+        deliver("s1", 0, "open");
+        deliver("s1", 2, "late query");
+        sequencer.accept("s1", 1, () -> sequencer.finish("s1"), refused::add);
+        assertEquals(Arrays.asList("open"), ran);
+        assertEquals(1, refused.size());
+        assertEquals(0, sequencer.sessionCount());
+    }
+    @Test public void aGapAfterCloseStillRefusesEveryHeldCall() {
+        deliver("s1", 0, "open");
+        deliver("s1", 3, "held query");
+        sequencer.accept("s1", 1, () -> sequencer.finish("s1"), refused::add);
+        deliver("s1", 2, "late query");
+        assertEquals(Arrays.asList("open"), ran);
+        assertEquals(2, refused.size());
+        assertEquals(0, sequencer.sessionCount());
+    }
+
 }

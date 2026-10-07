@@ -47,6 +47,7 @@
   import { fitFormantScale, type VowelFormants, type VowelLabel } from '$lib/audio/vowelScale';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { builtInPassageKey, customPassageKey, wordCountOf } from '$lib/data/voice/passages';
   import { ANALYSIS_SAMPLE_RATE, startTake, type TakeSession } from '$lib/stores/voiceBenchmark';
@@ -119,7 +120,7 @@
   /** Live only across the microphone-opening await, so `onDestroy` can abort
       it if the screen goes before `start()` returns (voiceBenchmark.ts's
       `startTake`, ticket AU-03). */
-  let opening: AbortController | null = null;
+  let opening = $state<AbortController | null>(null);
   let reading = $state<QualityReport | null>(null);
   let frames = $state<readonly PitchFrame[]>([]);
   let failed = $state<QualityCheck[]>([]);
@@ -224,7 +225,7 @@
     return [
       ...benchmarksQuery.rows,
       {
-        epochDay: todayEpochDay(),
+        epochDay: currentDay(),
         passageKey,
         captureChain: vowelTake?.captureChain ?? take.captureChain,
         f0P10Hz: figures.f0P10Hz,
@@ -306,10 +307,15 @@
   }
 
   async function start() {
+    if (opening || session) return;
     const controller = new AbortController();
     opening = controller;
-    const opened = await startTake(gate, controller.signal);
-    if (opening === controller) opening = null;
+    let opened;
+    try {
+      opened = await startTake(gate, controller.signal);
+    } finally {
+      if (opening === controller) opening = null;
+    }
     // The screen went away while the microphone was opening: startTake has
     // already stopped whatever it opened, so there is nothing left to do.
     if (opened === null) return;
@@ -350,7 +356,17 @@
     stopPolling();
     phase = 'analysing';
 
-    const take = await active.finish();
+    /* A finish that throws (the recorder, the decoder) used to leave the
+       flow on "Reading the take" for good (after-release 06, L05-06). */
+    let take: Awaited<ReturnType<typeof active.finish>>;
+    try {
+      take = await active.finish();
+    } catch (error) {
+      console.error('a benchmark take could not be finished', error);
+      toast(m.vb_take_failed(), { kind: 'failed' });
+      phase = 'idle';
+      return;
+    }
     if (!take) {
       phase = 'idle';
       return;
@@ -449,6 +465,10 @@
       takeSaved = true;
       toast(m.vb_saved());
       onSaved();
+    } catch (error) {
+      // The takes stay where they are, so Save can be tapped again.
+      console.error('a benchmark could not be saved', error);
+      toast(m.write_failed(), { kind: 'failed' });
     } finally {
       saving = false;
     }
@@ -726,7 +746,7 @@
       {:else}
         <button
           class="btn btn-primary"
-          data-vb-record
+          data-vb-record disabled={opening !== null}
           onclick={() => start()}
         >
           <Icon name="mic" size={20} />
@@ -805,7 +825,7 @@
 
   .vb-live-label {
     font-size: var(--text-sm);
-    color: var(--muted);
+    color: var(--text-2);
   }
 
   .vb-covered {

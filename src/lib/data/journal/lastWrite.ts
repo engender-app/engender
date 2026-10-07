@@ -50,10 +50,11 @@
    below is that same reasoning, restated for this registry's own
    completeness check rather than copied from day.ts's.
 
-   No consumer reads this yet (tickets 04/05 here, and the UX spec's Home and
-   hub tickets); nothing about this module's shape is allowed to bend toward
-   whichever arrives first. */
+   Home, the More hub and AreaFinish read it, and nothing about this module's
+   shape bends toward whichever of them asks. */
 
+import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
+import type { SqliteDriver } from '../sqlite/driver';
 import type { TableName } from '../live/writes';
 import type { ArchiveSectionName } from './archiveSections';
 import type { AppointmentsArea } from './appointments';
@@ -363,6 +364,8 @@ async function assembleLastWrites(
 }
 
 export interface LastWriteArea {
+  /** Distinct entry and dose days in the last year, bounded by today. */
+  getWritingDays(todayEpochDay: number): Promise<number[]>;
   /** The day of the most recent write in every registered area, at or
       before `todayEpochDay`. Reads only - nothing here writes. */
   getLastWrites(todayEpochDay: number): Promise<Record<LastWriteKey, number | null>>;
@@ -375,9 +378,20 @@ export interface LastWriteArea {
     would. */
 export function makeLastWriteArea(
   areas: LastWriteAreas,
+  driver: SqliteDriver,
   entries: readonly LastWriteEntry[] = LAST_WRITE_ENTRIES
 ): LastWriteArea {
   return {
+    async getWritingDays(todayEpochDay) {
+      const rows = await driver.query<{ epoch_day: number | null; timestamp: number | null }>(
+        `SELECT DISTINCT epoch_day, NULL AS timestamp FROM entry WHERE epoch_day > ? AND epoch_day <= ?
+         UNION ALL
+         SELECT NULL AS epoch_day, timestamp FROM dose_event WHERE timestamp >= ? AND timestamp < ?`,
+        [todayEpochDay - 365, todayEpochDay, startOfDayTimestamp(todayEpochDay - 364), startOfDayTimestamp(todayEpochDay + 1)]
+      );
+      // Dose timestamps use the device's local day, as every dose screen does.
+      return [...new Set(rows.map(row => row.epoch_day ?? epochDayFromTimestamp(row.timestamp!)))].sort((a, b) => a - b);
+    },
     getLastWrites: (todayEpochDay, keys?: readonly LastWriteKey[]) =>
       assembleLastWrites(
         { ...areas, todayEpochDay },

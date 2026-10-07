@@ -120,6 +120,7 @@
     key={String(epochDay)}
     role={entriesRole}
     heading={m.entries_this_day({ count: entries.length })}
+    level={2}
   >
     {#each entries as e (e.id)}
       {@const presentation = entryPresentation(e)}
@@ -211,6 +212,18 @@
 </Sheet>
 
 <style>
+  /* A photograph standing in for a row's icon block, so it takes the
+     block's shape (`.kit-row-ico`, --r-block). PhotoThumb draws a rounded
+     square, which is right where photos are a grid of photos and wrong in a
+     column of icon blocks. Clipped rather than restyled, so nothing changes
+     for the screens that show photos as photos. */
+  .row-face {
+    flex: 0 0 auto;
+    display: flex;
+    border-radius: var(--r-block);
+    overflow: hidden;
+    border: var(--role-hairline);
+  }
   /* How many the row stands for, at the trailing edge before the chevron.
      Tabular figures so a run of counts lines up, and the role's own ink
      rather than grey - it is a number this area owns, not a disabled one. */

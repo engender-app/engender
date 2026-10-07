@@ -14,11 +14,7 @@ import androidx.webkit.WebViewFeature;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.Collections;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * The write half of the photo bridge, moved off the Capacitor
@@ -63,13 +59,6 @@ public final class PhotoWriteChannel {
     private static final String CHANNEL_NAME = "androidPhotoWriteChannel";
 
     private final Context appContext;
-    /** Matches restore.ts's FILE_WRITE_CONCURRENCY, the only caller that puts
-        more than one write in flight at a time - a bigger pool here would let
-        it queue writes restore.ts itself never sends concurrently, and a
-        smaller one would reintroduce the queuing this channel exists to
-        remove. If that constant moves, move this with it. */
-    private final ExecutorService writes = Executors.newFixedThreadPool(8);
-
     private PhotoWriteChannel(Context context) {
         this.appContext = context.getApplicationContext();
     }
@@ -114,33 +103,35 @@ public final class PhotoWriteChannel {
             return;
         }
 
-        awaitBytes(port, name, directory);
-    }
-
-    private void awaitBytes(WebMessagePortCompat port, String name, String directory) {
+        final PhotoWriteOrder.Request request;
+        try {
+            request = PhotoFiles.reserveWrite(PhotoFiles.fileFor(appContext, directory, name));
+        } catch (Exception error) {
+            WebMessageReplies.replyError(port, PhotoFiles.message(error));
+            return;
+        }
+        request.result.whenComplete((ignored, error) -> {
+            try {
+                if (error == null) port.postMessage(new WebMessageCompat("{\"ok\":true}"));
+                else {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    WebMessageReplies.replyError(port, PhotoFiles.message(cause));
+                }
+            } catch (RuntimeException closedPort) {
+                // JavaScript may have timed out and closed its reply port.
+            } finally {
+                port.close();
+            }
+        });
         port.setWebMessageCallback(new WebMessagePortCompat.WebMessageCallbackCompat() {
             @Override
             public void onMessage(@NonNull WebMessagePortCompat p, @Nullable WebMessageCompat payload) {
                 if (payload == null || payload.getType() != WebMessageCompat.TYPE_ARRAY_BUFFER) {
-                    WebMessageReplies.replyError(port, "expected a binary payload");
+                    request.fail(new java.io.IOException("expected a binary payload"));
                     return;
                 }
-                byte[] bytes = payload.getArrayBuffer();
-                writes.execute(() -> writeAndReply(port, name, directory, bytes));
+                request.accept(payload.getArrayBuffer());
             }
         });
-    }
-
-    private void writeAndReply(WebMessagePortCompat port, String name, String directory, byte[] bytes) {
-        try {
-            File target = PhotoFiles.fileFor(appContext, directory, name);
-            try (FileOutputStream out = new FileOutputStream(target, false)) {
-                out.write(bytes);
-                out.getFD().sync();
-            }
-            port.postMessage(new WebMessageCompat("{\"ok\":true}"));
-        } catch (Exception e) {
-            WebMessageReplies.replyError(port, PhotoFiles.message(e));
-        }
     }
 }

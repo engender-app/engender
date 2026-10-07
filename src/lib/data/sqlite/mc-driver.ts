@@ -1,22 +1,18 @@
-/* The encrypted web driver (ticket 09): the same WebSqlite bundle
-   sqlocal-driver.ts builds, implemented over sqlite3mc in mc-worker.ts
-   instead of SQLocal - ADR-0020 replaces the web driver rather than
-   reconfiguring it, because SQLocal hard-codes the async OPFS VFS that
-   sqlite3mc cannot encrypt on. SQLocal itself stays in the tree for
-   ticket 10, which needs to read a plaintext journal during conversion.
+/* The encrypted web driver implements WebSqlite over sqlite3mc in
+   mc-worker.ts (ADR-0020).
 
    The data key arrives as bytes and leaves this file only as the hex the
    worker feeds to PRAGMA hexkey. Nothing here persists it - that is the
    keystore's job (crypto/keystore.ts), and the whole point of ADR-0018 is
    that no usable key sits beside the ciphertext.
 
-   Construction is synchronous like createWebSqlite's: the worker queues
+   Construction is synchronous: the worker queues
    the open behind its own message chain, so a failure to initialize or a
    wrong key surfaces on the first statement - which is inside
    runMigrations, exactly where boot() already catches driver failures.
 
    Transactions are manual BEGIN/COMMIT/ROLLBACK for the same reason as in
-   sqlocal-driver.ts: the migration runner's callback calls back into the
+   driver.ts: the migration runner's callback calls back into the
    driver's own exec, and the worker serializes every statement, so the
    composition holds. What the worker's ordering does not give is one
    transaction at a time - a transaction spans several messages with the
@@ -25,9 +21,9 @@
 
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
-import type { WebSqlite } from './sqlocal-driver.ts';
+import type { WebSqlite } from './driver.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
-import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
+import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -43,15 +39,13 @@ const toHex = (bytes: Uint8Array): string =>
 let recovering: Promise<void> | null = null;
 
 /* Every connection this tab has open, so `releaseOnPageHide` below can reach
-   all of them without each caller (prewarm, the live driver, a conversion,
+   all of them without each caller (prewarm, the live driver,
    a recovery worker) remembering to register its own. Removed in
    `terminate()`, the one place a connection stops being any of this tab's
    business. */
 const liveConnections = new Set<Connection>();
 
-/** One worker and the message plumbing over it. Two things are built on
-    this: the driver below, and ticket 10's conversion, which needs the same
-    pool and the same encryption shim but no open database. */
+/** One worker and the message plumbing for the driver and prewarming. */
 function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
   const worker = new Worker(new URL('./mc-worker.ts', import.meta.url), { type: 'module' });
   /* Taken now rather than read at each post, so a connection waits only for
@@ -108,7 +102,15 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
           transfer = [suppliedWasm];
           suppliedWasm = undefined;
         }
-        worker.postMessage({ id, op, args }, transfer);
+        /* A message that will not clone throws here. Sent from the .then
+           below, that throw was nobody's: the caller waited forever and the
+           page logged an uncaught error. It is this post's failure. */
+        try {
+          worker.postMessage({ id, op, args }, transfer);
+        } catch (error) {
+          pending.delete(id);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
       }
       if (!poolFree) send();
       else
@@ -205,8 +207,7 @@ export function prewarmJournalWorker(databasePath: string, wasmBinary?: Promise<
 
 /** Lets go of a worker started ahead of the key without it ever opening
     anything. The pool's access handles belong to one worker at a time, so
-    anything else about to touch the Journal's files - a conversion writing
-    them, a reset deleting them - has to have this worker gone first. */
+    a reset deleting the Journal's files has to have this worker gone first. */
 export async function releasePrewarmedJournalWorker(): Promise<void> {
   const held = prewarmed;
   prewarmed = null;
@@ -224,38 +225,6 @@ function takePrewarmed(databasePath: string): Connection | null {
   const { connection } = prewarmed;
   prewarmed = null;
   return connection;
-}
-
-/** Writes an encrypted copy of a plaintext-era database as the live
-    Journal (ticket 10). Its own worker, because the pool's sync access
-    handles belong to one at a time and the app's driver must not be
-    holding the file this is about to replace - so a conversion runs, closes
-    and only then lets boot open what it wrote. */
-interface ConversionTarget {
-  writeFrom(plaintext: Uint8Array): Promise<void>;
-  close(): Promise<void>;
-}
-
-export function createConversionTarget(databasePath: string, dataKey: Uint8Array): ConversionTarget {
-  /* The pool is the prewarmed worker's until it lets go, so this one waits
-     for that before it asks for the pool itself. */
-  const released = releasePrewarmedJournalWorker();
-  const { post, terminate } = connectWorker();
-
-  return {
-    async writeFrom(plaintext: Uint8Array) {
-      await released;
-      /* Transferred rather than cloned: this is the whole Journal, and a
-         structured clone would hold two copies of it in memory at once on
-         a phone. The caller's view is detached afterwards, which is what
-         the port's contract already says - it hands the bytes over. */
-      await post('convert', { path: databasePath, hexKey: toHex(dataKey), bytes: plaintext }, [plaintext.buffer]);
-    },
-    async close() {
-      await post('close');
-      terminate();
-    }
-  };
 }
 
 export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Array): WebSqlite {
@@ -371,10 +340,16 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     requestPersistentStorage,
     ...(typeof __DEMO__ !== 'undefined' && __DEMO__ && typeof OffscreenCanvas !== 'undefined' ? {
       prepareDemoPersona: (source: ReturnType<typeof import('../demo/persona').persona>) =>
-      post<boolean | { foundVersion: number; knownVersion: number } | { interruptedRestore: true }>('seedDemoPersona', { source })
+      post<
+        | boolean
+        | { foundVersion: number; knownVersion: number }
+        | { interruptedRestore: true }
+        | { belowBaseline: number; baselineVersion: number }
+      >('seedDemoPersona', { source })
         .then((result) => {
           if (typeof result === 'boolean') return result;
           if ('foundVersion' in result) throw new SchemaTooNewError(result.foundVersion, result.knownVersion);
+          if ('belowBaseline' in result) throw new JournalBelowBaselineError(result.belowBaseline, result.baselineVersion);
           throw new InterruptedRestoreError();
         }) } : {})
   };

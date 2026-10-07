@@ -7,8 +7,7 @@
    outside the demo module reads it.
 
    Capacitor injects `window.Capacitor` into the WebView it hosts, and only
-   the Android build is hosted, so asking it is the honest question until
-   @capacitor/core is a dependency here. A browser has no such global, and
+   the Android build is hosted, so asking it is the honest question. A browser has no such global, and
    that is the whole test - no user-agent sniffing, which would guess wrong
    for a phone browser. */
 

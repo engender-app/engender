@@ -4,7 +4,8 @@
    Node tier touches may import (ADR-0016). */
 
 import { m } from '$lib/paraglide/messages';
-import { relativeDayFromToday, todayEpochDay } from '../epochDay';
+import { relativeDayFromToday } from '../epochDay';
+import { currentDay } from '../../stores/today.svelte';
 import type { Reminder } from '../types';
 
 const TYPE_NAME: Record<Reminder['type'], () => string> = {
@@ -27,7 +28,7 @@ function recurrenceLabel(r: Reminder): string {
 }
 
 function relativeDayLabel(r: Reminder): string {
-  const today = todayEpochDay();
+  const today = currentDay();
   const rel = relativeDayFromToday(r.epochDay ?? today, today);
   switch (rel.kind) {
     case 'today':

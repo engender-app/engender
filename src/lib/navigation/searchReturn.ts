@@ -4,7 +4,10 @@
 
    Kept in sessionStorage, not in memory: the editor can be reloaded before
    it is left, and the person's own typing should still be there. It lives
-   no longer than the tab, and reading it spends it. */
+   no longer than the tab, and reading it spends it. A lock takes it too,
+   with the query More hands over in memory below (after-release ticket 10). */
+
+import { forgetOnLock, HELD_SEARCH_KEY as KEY } from '../lock/forget-content.ts';
 
 export interface SearchSnapshot {
   query: string;
@@ -22,8 +25,6 @@ export const EMPTY_SEARCH: SearchSnapshot = {
   hasNote: false, hasPhoto: false, starredOnly: false
 };
 
-const KEY = 'engender-search-return';
-
 export function holdSearch(snapshot: SearchSnapshot): void {
   try {
     sessionStorage.setItem(KEY, JSON.stringify(snapshot));
@@ -40,3 +41,27 @@ export function takeHeldSearch(): SearchSnapshot | null {
     return null;
   }
 }
+
+/* A query typed into More's search, on its way to the Search screen
+   (after-release ticket 10, audit L09-02). It used to travel in the
+   address as `/search?q=`, which put whatever was typed into the
+   browser's history for good. Held in memory instead, for the one
+   navigation it is for, and taken by a lock like the snapshot above. */
+let handedQuery: string | null = null;
+
+export function handOverQuery(query: string): void {
+  handedQuery = query;
+}
+
+/** The handed-over query, once. */
+export function takeHandedQuery(): string | null {
+  const query = handedQuery;
+  handedQuery = null;
+  return query;
+}
+
+/* A lock drops the query on its way; forget-content.ts removes the held
+   snapshot itself, since a reload can leave one with this module unloaded. */
+forgetOnLock(() => {
+  handedQuery = null;
+});

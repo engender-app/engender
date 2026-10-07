@@ -41,7 +41,7 @@
      the retrospective the "wrapped for this span" link opens, which is
      /wrapped/range at the same query the range picker writes. */
   import { m } from '$lib/paraglide/messages';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -90,15 +90,17 @@
   import ThemesReading from '$lib/components/readings/ThemesReading.svelte';
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
+  import TallyTile from '$lib/components/readings/TallyTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
   import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
+  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
-  import { playAfterPaint } from '$lib/motion/screenArrival';
+  import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
+  import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -112,23 +114,40 @@
 
   /* Read on recompute rather than captured, so a session open across
      midnight moves on (ticket 10). */
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
 
   /* The rail (redesign ticket 11): where the person's history starts, from
      the three things the journal already dates - its own entry bounds, the
      milestones (mirrored, ADR-0004, so no query), and the eras. */
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
-  let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
+  /* And the first tally tap (after-release 17 review): a journal of taps
+     alone had no rail, so no tiles, so no way to the counters' tile. */
+  let firstTallyQuery = liveQuery((j) => j.tally.firstEpochDay());
+  let railLoading = $derived(erasQuery.loading || boundsQuery.loading || firstTallyQuery.loading);
+  /* A rail answering with less than its fade's length of an Android tab
+     arrival left keeps its skeleton until the field stops, then fades in
+     at full length (screenArrival.ts). Before anything has painted there
+     is no skeleton to hold. */
+  let railPainted = false;
+  $effect(() => {
+    requestAnimationFrame(() => setTimeout(() => (railPainted = true)));
+  });
+  const railReleased = holdForArrival(() => !railLoading, () => railPainted);
   let railRevealed = $state(false);
   $effect.pre(() => {
-    if (!railLoading) railRevealed = true;
+    if (railReleased()) railRevealed = true;
   });
   let railStart = $derived(
     railLoading
       ? null
       : historyStart(
-          { bounds: boundsQuery.value ?? null, milestones: vocabulary.milestones, eras: erasQuery.rows },
+          {
+            bounds: boundsQuery.value ?? null,
+            milestones: vocabulary.milestones,
+            eras: erasQuery.rows,
+            firstTallyDay: firstTallyQuery.value ?? null
+          },
           today
         )
   );
@@ -250,10 +269,9 @@
   const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* Two epoch days to the journal, which never reads the clock for a
-     domain answer: the span's own, and wrapped's default until the rail
-     has answered, so the readings have something honest to read while it
-     does. Inclusive of both ends. */
-  let from = $derived(span?.start ?? defaultSpan(today, today).start);
+     domain answer: the span's own, and before the effect above has set it,
+     the default span that effect is about to set. Inclusive of both ends. */
+  let from = $derived(span?.start ?? defaultSpan(railStart ?? today, today).start);
   let to = $derived(span?.end ?? today);
   let resolvedSpan = $derived<Span>({ start: from, end: to });
   let liveLabel = $derived(live ? spanLabel(live, today) : '');
@@ -286,6 +304,12 @@
      change together and the card's own close is the one motion left. */
   let factsQuery = liveQuery(async (j) => {
     const readSpan = { start: from, end: to };
+    /* No span yet and the rail still loading: the span is not known, so
+       wait for it rather than read a stand-in. The stand-in was a one-day
+       read whose answer the real span replaced a hop later, and on a warm
+       switch from Today its seven queries sat at the front of the worker's
+       queue ahead of every tile's own reads. Re-runs when the rail answers. */
+    if (span === null && railLoading) return new Promise<never>(() => {});
     const [recap, series] = await Promise.all([j.stats.recap(from, to), j.stats.dayAverages(shown.key, from, to)]);
     return { recap, series, readSpan };
   });
@@ -378,13 +402,17 @@
       return;
     }
     if (whileLoading.size === 0) return;
-    const duration = motionDuration('--dur-fast');
+    /* Inside a tab's arrival the fade shares the field's deadline, as
+       ReadGate's and ReadReserve's do, never shorter than --dur-fast: an
+       answer with less than that left was held above until the field
+       stopped. */
+    const duration = readRevealDuration('--dur-fast');
     if (duration > 0) {
       const animations: Animation[] = [];
       for (const child of screen.children) {
         if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
       }
-      playAfterPaint(screen, animations);
+      playAfterPaint(screen, animations, { fitArrival: true });
     }
     whileLoading = new Set();
   });
@@ -401,7 +429,7 @@
        nothing dated yet says so instead of drawing a rail from today to
        today. -->
   {#if !railRevealed}
-    <div out:crossfade><Skeleton variant="block" count={1} /></div>
+    <div out:crossfade data-lookback-rail-wait><Skeleton variant="block" count={1} /></div>
   {:else if railStart === null}
     <Notice icon="clock" key="lookback-empty" title={m.lookback_empty_title()} text={m.lookback_empty_body()}
       action={{ label: m.new_entry(), primary: true, onclick: () => (ui.chooserOpen = true) }} />
@@ -457,7 +485,7 @@
             </ListRow>
             {#if closingFacts.activeAverage}
               <div class="rows-divide" transition:collapse>
-                <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
+                <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}>
                   {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
                 </ListRow>
               </div>
@@ -586,6 +614,7 @@
       <HighestReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
+      <TallyTile span={resolvedSpan} />
       <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>

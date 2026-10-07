@@ -21,7 +21,7 @@
    noticed it, and ADR-0012 is the standing rule that no end of a scale is
    the good end. */
 
-import type { EffectDirection } from './effectDirections';
+import type { EffectDirectionGroup } from './effectDirections';
 import { epochDayFromLocalDate, epochDayMonthsAgo, localDateFromEpochDay } from './epochDay';
 
 /** The shortest line the axis will draw, in days.
@@ -61,7 +61,7 @@ const MAX_TICKS = 8;
     months anchored on January and an onset axis's on the start day. */
 const TICK_STRIDES = [1, 2, 3, 6, 12];
 
-export type { EffectDirection } from './effectDirections';
+export type { EffectDirectionGroup } from './effectDirections';
 
 /** The two things that land on this axis (phase 11 all-four-doors ticket 13):
     a personal effect's own catalogue entry, marked at the day it was first
@@ -76,7 +76,7 @@ export type NoticedChangeKind = 'personal-effect' | 'side-effect';
 export interface NoticedChange {
   key: string;
   label: string;
-  direction: EffectDirection;
+  direction: EffectDirectionGroup;
   firstNoticedEpochDay: number;
   kind: NoticedChangeKind;
   /** The severity word, for a side effect that carries one - drawn into the

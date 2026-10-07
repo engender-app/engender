@@ -199,7 +199,7 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.notifyFailure).not.toHaveBeenCalled();
   });
 
-  test('unavailable destination disables schedule and returns needs-destination', async () => {
+  test('temporarily unavailable destination keeps the schedule for another check', async () => {
     vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-unavailable'));
 
     const result = await runAndroidAutoExport(
@@ -210,8 +210,8 @@ describe('runAndroidAutoExport', () => {
       { recordBackup: () => {} }
     );
 
-    expect(result).toEqual({ outcome: 'needs-destination' });
-    expect(androidAutoExport.configure).toHaveBeenCalledWith({ enabled: false, schedule: 'weekly' });
+    expect(result).toEqual({ outcome: 'failed', reason: 'destination-unavailable' });
+    expect(androidAutoExport.configure).not.toHaveBeenCalled();
   });
 
   test('destination-full returns failed and does not disable schedule', async () => {

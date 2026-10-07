@@ -19,8 +19,7 @@ describe('registerServiceWorkerAfterBoot', () => {
     'needs-unlock',
     'needs-authentication',
     'needs-device-recovery',
-    'converting',
-    'conversion-refused',
+    'legacy-refused',
     'schema-too-new',
     'error'
   ])('does not register on %s', async (status) => {

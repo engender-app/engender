@@ -96,6 +96,16 @@ export function colorMixOklab(hexA: string, pctA: number, hexB: string): string 
   return toHex(oklabToRgb([0, 1, 2].map((i) => a[i] * t + b[i] * (1 - t))));
 }
 
+/** `color-mix(in oklab, hex pct%, transparent)` painted over `ground`:
+    the colour at pct% alpha, composited in sRGB, which is how the browser
+    lays a wash over whatever is behind it. Not the same as mixing the two
+    in OKLab, and near a contrast floor the difference shows. */
+export function washOver(hex: string, pct: number, ground: string): string {
+  const [a, g] = [toRgb(hex), toRgb(ground)];
+  const t = pct / 100;
+  return toHex([a.r * t + g.r * (1 - t), a.g * t + g.g * (1 - t), a.b * t + g.b * (1 - t)]);
+}
+
 /** The same colour at a different OKLab lightness: hue and chroma survive,
     which is the whole reason this is here rather than a mix toward black or
     white. Mixing a saturated stripe toward the theme's text colour drags it

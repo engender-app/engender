@@ -60,7 +60,8 @@ export interface ActiveVideoRecording {
 }
 
 const supportedMimeType = (): string | null =>
-  MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? null;
+  typeof MediaRecorder === 'undefined' ? null :
+    MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? null;
 
 /** Opens the camera and microphone and starts capturing. Null if the browser
     refused - permission denied, no camera, or no WebM encoder - which is

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SPLASH_INK, SPLASH_BEGIN, SPLASH_END, readSplashPalettes, splashBlock, sunStops } from '../src/lib/theme/splash.ts';
 import { MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS } from '../src/lib/components/mark.ts';
 import { holdModulePreloads } from '../src/lib/document/holdModulePreloads.ts';
-import { answerSplash, releaseSplash } from '../src/lib/splash.ts';
+import { answerSplash, splashMayLeave } from '../src/lib/splash.ts';
 
 const html = readFileSync(new URL('../src/app.html', import.meta.url), 'utf8');
 const palettesCss = readFileSync(new URL('../src/lib/theme/palettes.css', import.meta.url), 'utf8');
@@ -57,9 +57,19 @@ describe("the first frame is the mark's own numbers", () => {
 });
 
 describe('the first frame holds still', () => {
-  it('has no animation, keyframes or transform: it only fades', () => {
-    expect(handwritten).not.toMatch(/@keyframes|animation|transform\s*:/);
-    expect(handwritten).toMatch(/transition: opacity/);
+  /* Alicja's pick in after-release ticket 31: the fade, on the soft
+     ease-out base.css gives the blind, over the rising edge. */
+  it('has no animation, keyframes, transform or second handover: it only fades, on --ease-out-soft', () => {
+    expect(handwritten).not.toMatch(/@keyframes|animation|transform\s*:|data-splash-handover/);
+    expect(handwritten).toMatch(/#splash \{[^}]*transition: opacity 280ms var\(--ease-out-soft,/);
+  });
+
+  /* The fallback is for the frames before base.css has loaded, so it has
+     to be the token's own value or the curve changes mid-fade. */
+  it("falls back to --ease-out-soft's own value", () => {
+    const baseCss = readFileSync(new URL('../src/lib/theme/base.css', import.meta.url), 'utf8');
+    const token = baseCss.match(/--ease-out-soft:\s*([^;]+);/)![1].trim();
+    expect(handwritten).toContain(`var(--ease-out-soft, ${token})`);
   });
 
   it('draws no mark under disguise', () => {
@@ -99,30 +109,53 @@ describe('the handover', () => {
       }
     };
   }
-  const docOf = (splash: unknown) => ({ getElementById: () => splash }) as unknown as Document;
+  const docOf = (splash: unknown) => {
+    const documentElement = { dataset: { splash: '' } as Record<string, string> };
+    return { getElementById: () => splash, documentElement } as unknown as Document;
+  };
 
-  it('starts leaving the moment the layout mounts, in that same call', () => {
-    const splash = fakeSplash();
-    releaseSplash(docOf(splash));
-    expect(splash.classes.has('is-leaving')).toBe(true);
-    expect(splash.classes.has('is-answered')).toBe(false);
-    expect(splash.removed).toBe(false);
+  /* After-release ticket 31. It used to start leaving when the layout
+     mounted, while boot was still working. On a first visit boot then
+     answered "set up", the layout unmounted Home and drew nothing while it
+     navigated to onboarding, so the first frame faded onto an empty ground
+     and onboarding appeared whole in one frame 0.5 s later. */
+  it('waits for boot to answer, and for the screen it answered with to be the one on show', () => {
+    expect(splashMayLeave('booting', false)).toBe(false);
+    expect(splashMayLeave('needs-setup', true)).toBe(false);
+    expect(splashMayLeave('needs-setup', false)).toBe(true);
+    expect(splashMayLeave('ready', false)).toBe(true);
+    expect(splashMayLeave('error', false)).toBe(true);
   });
 
-  it('is gone 800 ms after boot answers, and not before', () => {
+  /* Alicja, on the flipbooks: "splash with crossfade". The screen waits at
+     opacity 0 under the first frame (html[data-splash]) and fades in while
+     the first frame fades out, so nothing of the app sits at full opacity
+     under a half-transparent mark. */
+  it('crossfades: the answer starts the screen fading in with the first frame fading out, and both end together', () => {
     vi.useFakeTimers();
     const splash = fakeSplash();
-    releaseSplash(docOf(splash));
-    answerSplash(docOf(splash));
+    const doc = docOf(splash);
+    answerSplash(doc);
+    expect(splash.classes.has('is-leaving')).toBe(true);
     expect(splash.classes.has('is-answered')).toBe(true);
+    expect(doc.documentElement.dataset.splash).toBe('leaving');
     vi.advanceTimersByTime(799);
     expect(splash.removed).toBe(false);
     vi.advanceTimersByTime(1);
     expect(splash.removed).toBe(true);
+    expect('splash' in doc.documentElement.dataset).toBe(false);
     vi.useRealTimers();
   });
 
-  it('answering with no release first still leaves, and a second answer does nothing', () => {
+  it('holds the screen at opacity 0 under the first frame and fades it in on the same curve and length', () => {
+    expect(html).toMatch(/<html [^>]*data-splash[ >]/);
+    expect(handwritten).toMatch(/html\[data-splash\] \[data-app-root\] \{\s*opacity: 0;\s*\}/);
+    expect(handwritten).toMatch(
+      /html\[data-splash='leaving'\] \[data-app-root\] \{\s*opacity: 1;\s*transition: opacity 280ms var\(--ease-out-soft, [^)]+\)\);\s*\}/
+    );
+  });
+
+  it('a second answer does nothing', () => {
     vi.useFakeTimers();
     const splash = fakeSplash();
     answerSplash(docOf(splash));
@@ -133,10 +166,9 @@ describe('the handover', () => {
     vi.useRealTimers();
   });
 
-  it('does nothing when there is no first frame', () => {
-    expect(() => {
-      releaseSplash(docOf(null));
-      answerSplash(docOf(null));
-    }).not.toThrow();
+  it('with no first frame, lets the screen show at once rather than holding it at 0', () => {
+    const doc = docOf(null);
+    expect(() => answerSplash(doc)).not.toThrow();
+    expect('splash' in doc.documentElement.dataset).toBe(false);
   });
 });

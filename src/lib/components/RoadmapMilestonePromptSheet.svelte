@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
   import DatePicker from './DatePicker.svelte';
   import Icon from './Icon.svelte';
   import PhotoThumb from './PhotoThumb.svelte';
@@ -56,19 +57,18 @@
     if (photo) pickedPhoto = photo;
   }
 
+  /* One write per tap, and a rejected one says so here, with the name,
+     date and photo left in the sheet (after-release 06, L05-06). */
+  const confirming = writer();
   async function handleConfirm() {
     const trimmed = name.trim() || m.ms_default_name();
     const epochDay = epochDayFromDateInputValueOrToday(date);
-    await onConfirm({
-      title: trimmed,
-      epochDay,
-      photo: pickedPhoto,
-      goalKey
-    });
+    const answer = { title: trimmed, epochDay, photo: pickedPhoto, goalKey };
+    await confirming.run(() => onConfirm(answer), m.write_failed());
   }
 </script>
 
-<Sheet {open} title={copy.title()} onClose={onDismiss}>
+<Sheet busy={confirming.busy} {open} title={copy.title()} onClose={onDismiss}>
   <h3>{m.roadmap_milestone_prompt_title({ goal: goalTitle })}</h3>
   <Field label={m.ms_name_label()} id="roadmap-milestone-name">
     {#snippet children(id)}
@@ -123,6 +123,7 @@
       type="button"
       class="btn btn-primary"
       data-confirm-milestone
+      disabled={confirming.busy}
       onclick={handleConfirm}
     >
       <span>{copy.confirm()}</span>
@@ -131,6 +132,7 @@
       type="button"
       class="btn btn-ghost"
       data-dismiss-milestone
+      disabled={confirming.busy}
       onclick={onDismiss}
     >
       <span>{copy.decline()}</span>

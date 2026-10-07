@@ -169,8 +169,11 @@ export function grantRows(
   states: GrantStates,
   asked: ReadonlySet<GrantKey>
 ): GrantRow[] {
-  return GRANT_KEYS.map((key) => {
-    const state = availableOn(key, platform) ? states[key] : 'unavailable';
+  /* Only what this platform has (after-release 17): the web used to keep
+     Notifications and Exact timing as rows marked "Android only", which a
+     person there could do nothing with. */
+  return GRANT_KEYS.filter((key) => availableOn(key, platform)).map((key) => {
+    const state = states[key];
     const settingsTarget = settingsTargetFor(key, platform);
     const action = actionFor();
     return { key, icon: GRANT_ICON[key], state, settingsTarget, action, note: noteFor() };

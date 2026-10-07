@@ -31,7 +31,7 @@
 import type { TableName } from '../live/writes';
 import { finishedGroups, type AreaGroupKey } from '../areaGroups';
 import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
-import { attributeDrug } from '../regimenEpisode';
+import { attributeDrug, sameDrug } from '../regimenEpisode';
 import { spanOverlapsRange } from '../span';
 import type { AreaStatesArea } from './areaStates';
 import type { ChecklistsArea } from './checklists';
@@ -138,6 +138,10 @@ function section<Key extends ClinicianSummarySectionKey>(declared: {
   return declared;
 }
 
+function excludesDrug(excludedDrugs: ReadonlySet<string>, drug: string): boolean {
+  return [...excludedDrugs].some((excluded) => sameDrug(excluded, drug));
+}
+
 /* An episode belongs in the history if any part of its dated range overlaps
    the window - the same overlap exposureCounters.ts's own overlapDays
    tests, kept here as a filter rather than a count. Composed with the
@@ -146,7 +150,7 @@ function section<Key extends ClinicianSummarySectionKey>(declared: {
 async function readRegimenEpisodes({ regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const episodes = await regimen.getEpisodes();
   return episodes.filter(
-    (episode) => spanOverlapsRange(episode, fromEpochDay, toEpochDay) && !excludedDrugs.has(episode.drug)
+    (episode) => spanOverlapsRange(episode, fromEpochDay, toEpochDay) && !excludesDrug(excludedDrugs, episode.drug)
   );
 }
 
@@ -160,7 +164,7 @@ async function readDoses({ doses, regimen, fromEpochDay, toEpochDay, excludedDru
   const [events, episodes] = await Promise.all([doses.getDoses(fromEpochDay, toEpochDay), regimen.getEpisodes()]);
   return events.filter((dose) => {
     const { drug } = attributeDrug(episodes, dose);
-    return drug === null || !excludedDrugs.has(drug);
+    return drug === null || !excludesDrug(excludedDrugs, drug);
   });
 }
 
@@ -176,27 +180,14 @@ async function readExposure({ exposure, fromEpochDay, toEpochDay, excludedDrugs 
   const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
   return {
     ...counters,
-    doseTotals: counters.doseTotals.filter((total) => !excludedDrugs.has(total.drug)),
-    regimenDays: counters.regimenDays.filter((days) => !excludedDrugs.has(days.drug))
+    doseTotals: counters.doseTotals.filter((total) => !excludesDrug(excludedDrugs, total.drug)),
+    regimenDays: counters.regimenDays.filter((days) => !excludesDrug(excludedDrugs, days.drug))
   };
 }
 
-/* labs.ts has no cross-analyte range read (unlike doses and side effects),
-   so every used analyte's results are read and the range filter applied
-   here - selecting rows, not computing a new figure.
-
-   Exported (phase 5 deepening ticket 25): the appointment prep screen wants
-   the same "every analyte, one range" read for its own "since last time"
-   section, and this is that read's one home rather than a second copy of
-   it - the registry's own reasoning for keeping a section's logic inside
-   its read function, extended to a second caller. */
+/* Shared bounded read for the clinician summary and appointment prep. */
 export async function readLabResultsInRange(labs: LabsArea, fromEpochDay: number, toEpochDay: number) {
-  const analytes = await labs.getUsedAnalytes();
-  const resultsByAnalyte = await Promise.all(analytes.map((a) => labs.getResults(a)));
-  return resultsByAnalyte
-    .flat()
-    .filter((result) => result.epochDay >= fromEpochDay && result.epochDay <= toEpochDay)
-    .sort((a, b) => a.epochDay - b.epochDay);
+  return labs.getResultsInRange(fromEpochDay, toEpochDay);
 }
 
 /* Every procedure, unfiltered. A dose or a lab result is an event on a day,
@@ -300,10 +291,6 @@ export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 /* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test (AU-09
    test-only review). */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
-
-/** Every section's key, in the order they print - what the screen walks to
-    lay a summary out, so it never names a section itself. */
-const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
 
 import { CLINICIAN_SUMMARY_TABLES } from '../live/writes';
 export { CLINICIAN_SUMMARY_TABLES };

@@ -251,3 +251,18 @@ test('a regimen episode still has no delete for a document link to dangle from',
   assert.deepEqual(deletesIn(journal.documents), ['deleteDocument']);
 
   assert.deepEqual(deletesIn(journal.regimen), []);});
+
+test('renaming a stale document keeps its deleted milestone link cleared', async () => {
+  const { journal } = await device();
+  const milestone = await journal.milestones.upsertMilestone({ name: 'Milestone', epochDay: 20000 });
+  const id = await journal.documents.addDocument({ title: 'Referral', epochDay: 20000 }, page());
+  await journal.documents.setDocumentTarget(id, { kind: 'milestone', id: milestone });
+  const stale = (await journal.documents.getDocument(id))!;
+  await journal.milestones.deleteMilestone(milestone);
+  await journal.documents.updateDocument({ ...stale, title: 'New title', epochDay: 20001 });
+  const renamed = (await journal.documents.getDocument(id))!;
+  assert.equal(renamed.title, 'New title');
+  assert.equal(renamed.epochDay, 20001);
+  assert.equal(renamed.targetKind, null);
+  assert.equal(renamed.targetId, null);
+});

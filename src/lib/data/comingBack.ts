@@ -259,18 +259,6 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
 /* PLANNED_AREAS stays exported only for its own test (AU-09 test-only review). */
 export const PLANNED_AREAS = ['milestones', 'procedures', 'appointments'] as const;
 
-/** The registry with `PLANNED_AREAS` dropped - what both the gap itself and
-    its own median are measured over, since a planned day is not a moment
-    somebody wrote something either way. Shared so the two callers below
-    apply one rule rather than two copies of the same filter. */
-function writtenAreas(
-  lastWrites: Partial<Record<string, number | null>>
-): Partial<Record<string, number | null>> {
-  return Object.fromEntries(
-    Object.entries(lastWrites).filter(([area]) => !PLANNED_AREAS.includes(area as never))
-  );
-}
-
 /** How far back the median looks for a write to count (phase 8 features
     ticket 45). "Roughly the last year": long enough to see a person's own
     rhythm rather than one recent cluster, short enough that an area touched
@@ -285,33 +273,14 @@ const MEDIAN_GAP_WINDOW_DAYS = 365;
     say otherwise. */
 const MIN_WRITE_DAYS_FOR_MEDIAN = 5;
 
-/** The journal's own rhythm: the median gap between distinct days something
-    was written, over roughly the last year - or null where there is not
-    enough history to say, in which case `RETURN_GAP_DAYS` governs alone
-    (ticket 45).
-
-    Reads exactly what `returnGap` reads, no new table: the last write per
-    area, the same registry (`journal/lastWrite.ts`) hands both. A full
-    history of every write is not available here and does not need to be -
-    each area's own last-write day already answers "when was this last
-    touched", and a person whose practice spans several areas leaves one
-    such day per area, spread out by how often each area is actually used.
-    Collected, deduplicated (a single sitting that touches four areas is one
-    write-day, not four) and sorted, the gaps between them are this journal's
-    own rhythm.
-
-    `PLANNED_AREAS` drop out here for the same reason `returnGap` drops them
-    from the gap itself: a milestone dated ahead is not a moment somebody
-    wrote something, so it is not a beat in this rhythm either. */
-/* medianWriteGap stays exported only for its own test (AU-09 test-only
-   review). */
+/** Median gap between distinct entry and dose days in the last year. */
 export function medianWriteGap(
-  lastWrites: Partial<Record<string, number | null>>,
+  writeDays: readonly number[],
   todayEpochDay: number
 ): number | null {
   const cutoff = todayEpochDay - MEDIAN_GAP_WINDOW_DAYS;
-  const recentDays = Object.values(writtenAreas(lastWrites)).filter(
-    (day): day is number => day !== null && day !== undefined && day > cutoff
+  const recentDays = writeDays.filter(
+    (day): day is number => day > cutoff && day <= todayEpochDay
   );
   const days = [...new Set(recentDays)].sort((a, b) => a - b);
   if (days.length < MIN_WRITE_DAYS_FOR_MEDIAN) return null;
@@ -355,14 +324,15 @@ const MEDIAN_GAP_MULTIPLE = 1.5;
     wider rhythm is measured against its own pace rather than everyone's. */
 export function returnGap(
   lastWrites: Partial<Record<string, number | null>>,
-  todayEpochDay: number
+  todayEpochDay: number,
+  writeDays: readonly number[] = []
 ): number | null {
   const written = Object.fromEntries(
     Object.entries(lastWrites).filter(([area]) => !PLANNED_AREAS.includes(area as never))
   );
   const since = lastWriteDay(written);
   if (since === null) return null;
-  const median = medianWriteGap(lastWrites, todayEpochDay);
+  const median = medianWriteGap(writeDays, todayEpochDay);
   const threshold =
     median === null ? RETURN_GAP_DAYS : Math.max(RETURN_GAP_DAYS, MEDIAN_GAP_MULTIPLE * median);
   return todayEpochDay - since < threshold ? null : since;

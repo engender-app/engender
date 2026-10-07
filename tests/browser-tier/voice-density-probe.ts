@@ -33,6 +33,7 @@ import { readFlagRoles, roleAt } from '$lib/theme/roles';
 import VoiceTake from '$lib/components/VoiceTake.svelte';
 import VoiceFigures from '$lib/components/VoiceFigures.svelte';
 import { publish } from '../probe-handshake.mjs';
+import { casingOf } from './casing';
 
 const NAME = 'voice-density-probe';
 
@@ -201,7 +202,15 @@ try {
       outlineInk: ink(outline),
       spineInk: ink(spine),
       traceInk: ink(document.querySelector('#drawn .pf-trace')),
-      guideColour: getComputedStyle(document.documentElement).getPropertyValue('--text-2').trim()
+      guideColour: getComputedStyle(document.documentElement).getPropertyValue('--text-2').trim(),
+      /* Phase 15 ticket 20: trans light's first role is under 3:1 on the
+         field, so every line drawn in it sits on a casing in its edge. */
+      edge: role?.edge ?? null,
+      casings: {
+        trace: casingOf(document.querySelector('#drawn [data-pitch-trace]'), role?.edge ?? null),
+        outline: casingOf(outline, role?.edge ?? null),
+        sparkline: casingOf(document.querySelector('#joined .vf-run'), role?.edge ?? null)
+      }
     },
     trackless: {
       densities: document.querySelectorAll('#trackless [data-pitch-density]').length,

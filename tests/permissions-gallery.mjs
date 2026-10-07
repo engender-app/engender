@@ -110,7 +110,7 @@ const wear = async (palette, theme) => {
 
 /** First run, walked forward to the permissions step, the name typed on the
     way so the finish has one. */
-const ORDER = ['welcome', 'name', 'flag', 'scales', 'areas', 'lock', 'permissions', 'done'];
+const ORDER = ['welcome', 'name', 'flag', 'scales', 'features', 'areas', 'lock', 'permissions', 'done'];
 const stepTo = async (target) => {
   await settle('/');
   await page.selectOption('#demo-jump', 'first-run');

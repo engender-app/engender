@@ -18,31 +18,31 @@
   import '$lib/motion/materials.css';
 
   import { page } from '$app/state';
+  import { onMount } from 'svelte';
+  import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
   import { afterNavigate, goto, onNavigate } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { todayEpochDay } from '$lib/data/epochDay';
-  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { journal, onTablesWritten } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
-  import { bootState, recoveryUnlock, restorePreviousJournal, retryBoot, startBoot } from '$lib/stores/boot.svelte';
+  import { speech } from '$lib/stores/announcer.svelte';
+  import { bootState, closeJournalForLock, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
     isReadyState,
-    journalIsUnreadable,
     midSessionLockApplies,
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
   import { registerServiceWorkerAfterBoot } from '$lib/pwa/register';
-  import { answerSplash, releaseSplash } from '$lib/splash';
+  import { answerSplash, splashMayLeave } from '$lib/splash';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
@@ -56,9 +56,9 @@
      components rendering during boot treat their mount as part of screen
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
-  import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
-  import { activeTabKey } from '$lib/navigation/active-tab';
-  import { chromeTabOrigin, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
+  import { depthAfter, navigationDepth, recordNavigation, replaceRoute, sameUrl } from '$lib/navigation/smart-back';
+  import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
+  import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -67,16 +67,15 @@
   import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { createProgress } from '$lib/components/progress.svelte';
+  import BootFailureNotice from '$lib/components/BootFailureNotice.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
   import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
-  import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
-  import UpdateNotice from '$lib/components/UpdateNotice.svelte';
 
   let { children } = $props();
+
+  onMount(countPageLoad);
 
   if (isAndroid()) {
     void import('$lib/android/plugin-registry').then(({ assertAndroidRuntimePluginRegistry }) => {
@@ -95,16 +94,7 @@
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
-  $effect(() => watchLock());
-
-  /* The first frame in app.html starts leaving when this layout mounts, the
-     frame the screen's own entrances begin, and is gone once boot has
-     something to show: a journal, a gate, a first run or a failure are all a
-     screen (lib/splash.ts). */
-  $effect(() => releaseSplash());
-  $effect(() => {
-    if (bootState.status !== 'booting') answerSplash();
-  });
+  $effect(() => watchLock(closeJournalForLock));
 
   /* A side effect with nothing above it to order against, unlike startBoot():
      the registration is not awaited and the worker precaches the shell in the
@@ -117,10 +107,8 @@
 
   /* The passphrase gate (ticket 09) renders before the database can even
      open, the same way the lock renders instead of the app: no route shows
-     journal content, because there is no journal to show yet. Ticket 10's
-     two states belong to the same gate - a conversion running, and one
-     that could not start - because both are the same "there is no journal
-     open yet, and here is why". */
+     journal content, because there is no journal to show yet. Unsupported
+     legacy storage meets this gate's refusal screen. */
   let gate = $derived(bootGate(bootState));
 
   let path = $derived(page.url.pathname);
@@ -182,12 +170,18 @@
      and stopped carrying an index. After the navigation rather than before,
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
-    recordNavigation(navigation.type, navigation.delta);
+    recordNavigation(navigation.type, navigation.delta, sameUrl(navigation));
     /* What the gear will borrow next time it opens settings chrome
        (ADR-0076, audit item 4) - noted from every settled navigation, not
        only ones into a tab, since a screen already inside settings can
        still carry the tab it borrowed forward (chrome-tab-origin.ts). */
-    if (navigation.to) noteTabVisit(activeTabKey(navigation.to.url.pathname, chromeTabOrigin()));
+    if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
+    /* A borrowing page opened cold has no onNavigate to key it, so it keeps
+       the tab it just resolved to here: back to it from Today, it lights
+       that tab again rather than Today (after-release 17 review). */
+    if (navigation.type === 'enter' && navigation.to && borrowsTab(navigation.to.url.pathname)) {
+      noteBorrowingArrival(`0:${navigation.to.url.pathname}`, false);
+    }
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
@@ -214,8 +208,32 @@
     markScreenArrival();
   });
 
+  /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:
+     stable`), published for the toast, which centres on the content
+     column and so has to leave that strip out too (after-release 17
+     review: 5px off centre at 1280). Measured, since a classic scrollbar
+     has a width only the browser knows and an overlay one has none. */
+  function publishScrollGutter(node: HTMLElement) {
+    const publish = () =>
+      document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    publish();
+    return { destroy: () => observer.disconnect() };
+  }
+
   /* Tier 2, one screen becoming another (navigationTransition.ts). */
-  onNavigate((navigation) => navigateWithTransition(navigation, replacesApp));
+  onNavigate((navigation) => {
+    /* Before the page changes, so the nav lights the borrowed tab from the
+       first frame: a page reached through history gets back the tab it was
+       opened from rather than the last one lit (chrome-tab-origin.ts). */
+    const to = navigation.to?.url.pathname;
+    if (to && borrowsTab(to)) {
+      const entry = `${depthAfter(navigation.type, navigation.delta, sameUrl(navigation))}:${to}`;
+      noteBorrowingArrival(entry, navigation.type === 'popstate');
+    }
+    return navigateWithTransition(navigation, replacesApp);
+  });
 
   /* Theme, palette, disguise → document. */
   const systemDark = new MediaQuery('(prefers-color-scheme: dark)');
@@ -243,6 +261,7 @@
     const tab = tabIdentity({
       disguised: prefs.disguise,
       appName: m.app_name(),
+      decoyName: m.disguise_name(),
       icon: chrome.icon
     });
     document.title = tab.title;
@@ -292,6 +311,13 @@
     })
   );
   let redirectingToOnboarding = $derived(onboardingFirstRun && pendingGate === 'onboarding');
+  /* The first frame in app.html leaves once boot has something to show
+     and the layout is showing it: a journal, a gate, onboarding or a
+     failure, but not the empty step on the way to onboarding
+     (lib/splash.ts). */
+  $effect(() => {
+    if (splashMayLeave(bootState.status, redirectingToOnboarding)) answerSplash();
+  });
   $effect(() => {
     if (pendingGate === 'close-chooser') ui.chooserOpen = false;
     else if (pendingGate === 'onboarding') goto('/onboarding');
@@ -333,44 +359,6 @@
     if (isReadyState(bootState) && !locked && isAndroid()) return startBackgroundSchedulers();
   });
 
-  /* Putting the pre-migration copy back (ticket 04). Only reachable from the
-     boot-failure notice, and only when boot found a copy to put back. */
-  let restoring = $state(false);
-  let restoreFailed = $state(false);
-  /* Indeterminate, and it will stay that way (phase 9 audit ticket 11): the
-     restore is one file copy inside the SQLite worker or the native driver
-     (mc-worker.ts, android-driver.ts) with no callback out of it and no unit
-     of work anywhere on this side to count. A sweep says the honest thing -
-     still working, no idea how much longer - where a bar would have to make
-     a number up. Immediate rather than delayed, because this notice is the
-     failed boot and there is nothing else on the screen for a bar to flash
-     over. */
-  const restoreProgress = createProgress();
-  async function restore() {
-    restoring = true;
-    restoreFailed = false;
-    restoreProgress.start({ immediate: true });
-    try {
-      // Reloads on success, so nothing after this runs.
-      await restorePreviousJournal();
-    } catch (e) {
-      console.error('restoring the pre-migration copy failed', e);
-      restoreProgress.abandon();
-      restoring = false;
-      restoreFailed = true;
-    }
-  }
-
-  let retrying = $state(false);
-  async function retry() {
-    retrying = true;
-    try {
-      await retryBoot();
-    } finally {
-      retrying = false;
-    }
-  }
-
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
@@ -407,7 +395,6 @@
     const palette = prefs.palette;
     const launcherIconShape = prefs.launcherIconShape;
     const lockAfter = prefs.lockAfter;
-    const lockEnabled = accessModeHasSecret(bootState.accessMode, true);
     const allowScreenCapture = prefs.allowScreenCapture;
     if (!ready || !isAndroid()) return;
 
@@ -420,7 +407,10 @@
       import('$lib/disguise/android-bridge'),
       import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
-      import('$lib/reminders/affirmations')
+      import('$lib/reminders/affirmations'),
+      // Loaded here rather than at the top: the shell itself draws no
+      // catalogue wording, and this callback is its only reader.
+      import('$lib/data/vocabulary/vocabulary')
     ]).then(
       ([
         { startAndroidPlatformSync },
@@ -429,14 +419,14 @@
         { androidDisguise },
         { androidLockTiming },
         { androidScreenCapture },
-        { affirmationLines }
+        { affirmationLines },
+        { vocabulary }
       ]) => {
         if (unmounted) return;
         cleanup = startAndroidPlatformSync({
           isAndroid,
           isReady: () => isReadyState(bootState),
           todayEpochDay,
-          lockEnabled,
           prefs: {
             checkInEnabled,
             checkInTime,
@@ -530,51 +520,22 @@
     data-boot={bootState.status}
   >
     {#if isErrorState(bootState)}
-      <div class="notice notice-danger" role="alert" style="margin:var(--space-3)">
-        <Icon name="alert" size={20} />
-        <div class="notice-body">
-          <span class="notice-title">{m.boot_db_failed_title()}</span>
-          {bootState.error === 'android-plaintext-journal' ? m.ak_plaintext_journal() : bootState.error}
-          <!-- The way back out of a migration that could not finish (ticket
-               04, ADR-0006): the copy taken before it started is still on the
-               device, and this puts it back. Offered only when there is one,
-               so the button never lies about having something to restore. -->
-          {#if bootState.recoverable}
-            <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
-            <!-- The button keeps naming its action while it is disabled and
-                 the bar under it says what is happening, rather than the
-                 two of them saying the same sentence twice. -->
-            <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
-              <span>{m.boot_restore_action()}</span>
-            </button>
-            {#await import('$lib/components/Progress.svelte') then { default: Progress }}
-              <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
-            {/await}
-            {#if restoreFailed}
-              <p style="margin-top:var(--space-2)" data-restore-failed>{m.boot_restore_failed()}</p>
-            {/if}
-          {/if}
-          <div style="margin-top:var(--space-2)">
-            <button class="btn btn-soft" data-retry-boot disabled={retrying} onclick={retry}>
-              <span>{m.boot_retry_action()}</span>
-            </button>
-          </div>
-          <!-- Retrying never opens a file the key cannot read (ux-carpet 210).
-               Imported here, like Progress above, so a boot that never fails
-               does not carry it. -->
-          {#if journalIsUnreadable(bootState)}
-            {#await import('$lib/components/UnreadableJournalWayOut.svelte') then { default: UnreadableJournalWayOut }}
-              <UnreadableJournalWayOut />
-            {/await}
-          {/if}
-        </div>
-      </div>
+      <!-- What happened, in the person's words, and the doors that failure
+           leaves (after-release ticket 09). -->
+      <BootFailureNotice />
     {/if}
     <!-- Only over a Journal that is open and unlocked. The notice is not
          urgent enough to sit above a passphrase gate or a lock screen, and
          those two screens have one job each. -->
     {#if isReadyState(bootState) && !locked}
-      <UpdateNotice />
+      <!-- Loaded after boot rather than with it, like the schema gate below:
+           neither is drawn on a first visit, and the first-load budget had
+           no room left for the live regions after-release 21 added. The
+           service worker precaches every chunk of a release, so both still
+           load offline. -->
+      {#await import('$lib/components/UpdateNotice.svelte') then { default: UpdateNotice }}
+        <UpdateNotice />
+      {/await}
     {/if}
     <!-- Before <main>, which is what puts the rail to the left of the
          content at desktop width without an `order` (order moves boxes and
@@ -600,9 +561,11 @@
          part of the screen, and left outside <main> it would be a group of
          controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
-      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter>
         {#if schemaTooNew}
-          <SchemaTooNew />
+          {#await import('$lib/components/SchemaTooNew.svelte') then { default: SchemaTooNew }}
+            <SchemaTooNew />
+          {/await}
         {:else if bootFailed}
           <!-- Instead of the route, like the gates: the notice is above. -->
         {:else if needsPassphrase}
@@ -639,4 +602,36 @@
 
     <Toasts />
   </div>
+  <!-- The app's voice (announcer.ts): a toast is drawn in Toasts.svelte and
+       said here, because a region inserted already holding its words is often
+       not read at all. These two never leave the page.
+
+       Outside [data-app-root] on purpose. A sheet makes every child of the
+       root inert while it is open (overlayLock.ts), and an inert region is
+       not read, which is exactly when a failure has to be heard. Out here
+       they are not part of the background at all, so the lock needs no
+       exception for them.
+
+       The urgent one is aria-live="assertive" rather than role="alert". It
+       speaks the same way (an alert is an assertive, atomic live region), but
+       an alert is also something a screen reader lists and a test finds by
+       role, and a permanent empty one is an alert that is not there: it sat
+       beside every real error notice as a second, blank "alert". -->
+  <div data-live-regions style="display: contents">
+    <p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
+    <p class="visually-hidden" aria-live="assertive" aria-atomic="true" data-announce-urgent>{speech.assertive}</p>
+  </div>
 </div>
+
+<style>
+  /* A toast centres in what the rail leaves, the strip the column and the
+     sheets centre in too (after-release 17). A chromeless screen
+     (/coming-back) has no rail to leave room for, and its column centres in
+     the whole width. Here rather than in components.css because .app and
+     .is-chromeless are this file's own classes. */
+  @container app (min-width: 1024px) {
+    .app:not(.is-chromeless) :global(.toast) {
+      left: calc(var(--rail-width) + var(--inset-left));
+    }
+  }
+</style>

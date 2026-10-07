@@ -30,6 +30,7 @@
      anything (PRODUCT.md:109, and labTiming.ts and /care/curve as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
+  import { deleter } from '$lib/stores/attempt.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
@@ -37,6 +38,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
+  import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import HostedRows from '$lib/components/HostedRows.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -55,15 +57,15 @@
     dateInputValueFromEpochDay,
     epochDayFromDateInputValue,
     epochDayFromDateInputValueOrToday,
-    ongoingWindowRange,
-    todayEpochDay
+    ongoingWindowRange
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
   import { fmtDay } from '$lib/data/dates';
   import { resolveCurveDrug } from '$lib/data/hormoneDrug';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
-  import { drugsMatch } from '$lib/data/stockProjection';
+  import { sameDrug } from '$lib/data/regimenEpisode';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
@@ -72,6 +74,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   /* Two areas outside the lanes: the rail's own card, and the readings that
      do not fit on one. The rail takes role 0, the only index that is a
@@ -81,7 +84,7 @@
      drug. */
   const AREA_ROLE = { rail: 0, readings: 1 };
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   /* The weekday said out loud, the same format Today's own dose tile uses
      (liveTiles.svelte.ts): a block states a day somebody has to recognise
@@ -96,7 +99,7 @@
   let latestLab = $derived(careQuery.value?.latestLab ?? null);
   let stock = $derived(careQuery.value?.stock ?? []);
   let stockExcludedDoses = $derived(careQuery.value?.stockExcludedDoses ?? 0);
-  const runOutFor = (drug: string) => lanes.find((lane) => drugsMatch(lane.episode.drug, drug))?.runOut ?? null;
+  const runOutFor = (drug: string) => lanes.find((lane) => sameDrug(lane.episode.drug, drug))?.runOut ?? null;
 
   /* The stock editor (Recorded, Opened, window), off Care rather than its
      own screen (ADR-0084) - the same shape the dose panel's own Log sheet
@@ -111,6 +114,7 @@
     drug: string;
     quantity: string;
     unit: string;
+    dosesPerUnit: string;
     leadTimeDays: string;
     recordedDate: string;
     openedDate: string;
@@ -134,6 +138,7 @@
       drug: row.entry.drug,
       quantity: String(row.entry.quantity),
       unit: row.entry.unit,
+      dosesPerUnit: row.entry.dosesPerUnit === null ? '' : String(row.entry.dosesPerUnit),
       leadTimeDays: row.entry.leadTimeDays === null ? '' : String(row.entry.leadTimeDays),
       recordedDate: dateInputValueFromEpochDay(row.entry.recordedEpochDay),
       openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
@@ -148,6 +153,7 @@
       drug,
       quantity: '',
       unit: '',
+      dosesPerUnit: '',
       leadTimeDays: '',
       recordedDate: dateInputValueFromEpochDay(today),
       openedDate: '',
@@ -185,6 +191,11 @@
     const unit = stockEditor.unit.trim();
     if (isNaN(quantity) || !drug || !unit) return;
 
+    /* A number field hands over null once emptied; anything not above zero
+       is read as nothing typed, one dose per unit. A fraction is allowed:
+       0.5 is two pills to a dose. */
+    const perUnit = Number(stockEditor.dosesPerUnit);
+    const dosesPerUnit = stockEditor.dosesPerUnit !== null && stockEditor.dosesPerUnit !== '' && perUnit > 0 ? perUnit : null;
     const leadTime = parseInt(stockEditor.leadTimeDays, 10);
     const leadTimeDays = isNaN(leadTime) ? null : leadTime;
     const openedEpochDay = stockEditor.openedDate ? epochDayFromDateInputValue(stockEditor.openedDate) : null;
@@ -196,9 +207,11 @@
         : null;
 
     await journal.stock.upsertEntry({
+      id: stockEditor.id,
       drug,
       quantity,
       unit,
+      dosesPerUnit,
       recordedEpochDay: epochDayFromDateInputValueOrToday(stockEditor.recordedDate),
       leadTimeDays,
       openedEpochDay,
@@ -208,10 +221,30 @@
     stockEditor = null;
   }
 
-  async function deleteStockEntry() {
+  /* Stopping tracking takes the automatic run-out reminder with it, so it
+     asks first, over the editor, and says it happened (after-release 07).
+     Named by the saved drug rather than the draft, which may already have
+     been retyped. */
+  let stockDeleteTarget = $state<{ id: string; drug: string } | null>(null);
+
+  function askToDeleteStock() {
     if (!stockEditor?.id) return;
-    await journal.stock.deleteEntry(stockEditor.id);
-    stockEditor = null;
+    const id = stockEditor.id;
+    stockDeleteTarget = { id, drug: stock.find((row) => row.entry.id === id)?.entry.drug ?? stockEditor.drug };
+  }
+
+  const stockRemoving = deleter();
+  async function deleteStockEntry() {
+    const target = stockDeleteTarget;
+    if (!target) return;
+    if (!(await stockRemoving.run(() => journal.stock.deleteEntry(target.id)))) return;
+    stockDeleteTarget = null;
+    /* The whole sheet goes, rather than swapping the editor for the list
+       inside it: that swap resized the open sheet in one frame. The editor
+       stays as it was while the sheet slides away; the next opening sets
+       its own. */
+    stockSheetOpen = false;
+    toast(m.stock_deleted({ drug: target.drug }));
   }
 
   /* The lane a spine mark was tapped from, for one return: written as a
@@ -430,7 +463,7 @@
       the same sentence a second time - it draws only what no lane covers,
       and the list behind it is still the whole drawer. */
   let unlanedStock = $derived(
-    stock.filter((row) => !lanes.some((lane) => drugsMatch(lane.episode.drug, row.entry.drug)))
+    stock.filter((row) => !lanes.some((lane) => sameDrug(lane.episode.drug, row.entry.drug)))
   );
 
   /* Mood between injections (phase 5 ticket 09, moved here whole by
@@ -570,7 +603,7 @@
           {/if}
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
-            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={lane.drug === sourceLane} {...laneAttrs(index, labelRows(lane.marks))}>
+            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={sourceLane !== null && sameDrug(lane.drug, sourceLane)} {...laneAttrs(index, labelRows(lane.marks))}>
               <!-- The name labels its own line from the left, above it
                    rather than beside it: a name column would take around a
                    hundred of the three hundred and thirty pixels a 390px
@@ -843,59 +876,65 @@
     {/snippet}
     <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
     <p class="stats-inline-note">{m.care_interval_all_history()}</p>
-    <ReadGate read={intervalMoodQuery} variant="block" count={1}>
-      {#snippet rows()}
-        {#if foldDrawable(intervalMoodPattern)}
-          {@const ends = positionEnds(intervalMoodPattern)}
-          <AreaChart
-            points={positionPoints(intervalMoodPattern)}
-            min={1}
-            max={5}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => v.toFixed(1)}
-            scrubLabel={positionLabel}
-            ariaLabel={m.interval_mood_chart_aria({
-              count: String(intervalMoodPattern.length),
-              from: String(intervalMoodPattern[0].position),
-              to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-            })}
-          />
-        {:else}
+    <figure class="care-fold" data-care-fold="injections">
+      <figcaption>{m.care_injection_cycle_caption()}</figcaption>
+      <ReadGate read={intervalMoodQuery} variant="block" count={1}>
+        {#snippet rows()}
+          {#if foldDrawable(intervalMoodPattern)}
+            {@const ends = positionEnds(intervalMoodPattern)}
+            <AreaChart
+              points={positionPoints(intervalMoodPattern)}
+              min={1}
+              max={5}
+              from={ends.from}
+              to={ends.to}
+              formatValue={(v) => v.toFixed(1)}
+              scrubLabel={positionLabel}
+              ariaLabel={m.interval_mood_chart_aria({
+                count: String(intervalMoodPattern.length),
+                from: String(intervalMoodPattern[0].position),
+                to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
+              })}
+            />
+          {:else}
+            <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+          {/if}
+        {/snippet}
+        {#snippet empty()}
           <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/if}
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
-    <ReadGate read={customIntervalQuery} variant="block" count={1}>
-      {#snippet rows(customIntervalPattern)}
-        {#if foldDrawable(customIntervalPattern)}
-          {@const ends = positionEnds(customIntervalPattern)}
-          <AreaChart
-            points={positionPoints(customIntervalPattern)}
-            min={1}
-            max={5}
-            from={ends.from}
-            to={ends.to}
-            formatValue={(v) => v.toFixed(1)}
-            scrubLabel={positionLabel}
-            ariaLabel={m.custom_interval_chart_aria({
-              days: String(debouncedCustomIntervalLength),
-              count: String(customIntervalPattern.length),
-              from: String(customIntervalPattern[0].position),
-              to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-            })}
-          />
-        {:else}
+        {/snippet}
+      </ReadGate>
+    </figure>
+    <figure class="care-fold" data-care-fold="interval">
+      <figcaption>{m.care_custom_interval_caption({ days: debouncedCustomIntervalLength })}</figcaption>
+      <ReadGate read={customIntervalQuery} variant="block" count={1}>
+        {#snippet rows(customIntervalPattern)}
+          {#if foldDrawable(customIntervalPattern)}
+            {@const ends = positionEnds(customIntervalPattern)}
+            <AreaChart
+              points={positionPoints(customIntervalPattern)}
+              min={1}
+              max={5}
+              from={ends.from}
+              to={ends.to}
+              formatValue={(v) => v.toFixed(1)}
+              scrubLabel={positionLabel}
+              ariaLabel={m.custom_interval_chart_aria({
+                days: String(debouncedCustomIntervalLength),
+                count: String(customIntervalPattern.length),
+                from: String(customIntervalPattern[0].position),
+                to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
+              })}
+            />
+          {:else}
+            <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
+          {/if}
+        {/snippet}
+        {#snippet empty()}
           <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/if}
-      {/snippet}
-      {#snippet empty()}
-        <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-      {/snippet}
-    </ReadGate>
+        {/snippet}
+      </ReadGate>
+    </figure>
   </ChartCard>
 
   <!-- What came of all of it (phase 9 carpet ticket 16). The card above is
@@ -951,6 +990,22 @@
           {/snippet}
         </Field>
       </div>
+      <Field label={m.stock_doses_per_unit_label()} id="care-stock-doses-per-unit">
+        {#snippet children(id)}
+          <input
+            class="input"
+            type="number"
+            {id}
+            name="stock-doses-per-unit"
+            min="0"
+            step="any"
+            placeholder={m.stock_doses_per_unit_placeholder()}
+            inputmode="decimal"
+            bind:value={stockEditor!.dosesPerUnit}
+          />
+        {/snippet}
+      </Field>
+      <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.stock_doses_per_unit_hint()}</p>
       <Field label={m.stock_lead_time_label()} id="care-stock-lead-time">
         {#snippet children(id)}
           <input
@@ -1012,7 +1067,7 @@
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveStockEntry}><span>{m.stock_save()}</span></button>
         {#if stockEditor.id}
-          <button class="btn btn-ghost" data-delete-stock onclick={deleteStockEntry}>
+          <button class="btn btn-ghost" data-delete-stock onclick={askToDeleteStock}>
             <span>{m.stock_delete_action({ drug: stockEditor.drug })}</span>
           </button>
         {/if}
@@ -1070,9 +1125,36 @@
       {/if}
     {/if}
   </Sheet>
+
+  <ConfirmDeleteSheet
+    open={stockDeleteTarget !== null}
+    title={stockDeleteTarget ? m.stock_delete_action({ drug: stockDeleteTarget.drug }) : ''}
+    question={stockDeleteTarget ? m.stock_delete_q({ drug: stockDeleteTarget.drug }) : ''}
+    hint={m.stock_delete_hint()}
+    confirmLabel={m.stock_delete_confirm()}
+    cancelLabel={m.keep_it()}
+    confirmAttrs={{ 'data-confirm-delete-stock': '' }}
+    onConfirm={deleteStockEntry}
+    onCancel={() => { stockDeleteTarget = null; stockRemoving.dismiss(); }}
+    busy={stockRemoving.busy}
+    failed={stockRemoving.failed}
+  />
 </div>
 
 <style>
+  .care-fold {
+    margin: var(--space-4) 0 0;
+  }
+  .care-fold + .care-fold {
+    margin-top: var(--space-6);
+  }
+  .care-fold figcaption {
+    margin-bottom: var(--space-3);
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+
   .stats-inline-note {
     margin: var(--space-2) 0 0;
     font-size: var(--text-sm);

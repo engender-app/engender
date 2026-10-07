@@ -16,6 +16,15 @@ export function todayEpochDay(): number {
   return epochDayFromLocalDate(new Date());
 }
 
+/** Milliseconds from `now` to the next local midnight. Built from the
+    calendar date rather than `DAY - elapsed`, so a 23 or 25 hour day around
+    a DST change still lands on midnight. At least 1, so a timer set from it
+    always fires after the day has changed. */
+export function msUntilNextLocalMidnight(now: Date = new Date()): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return Math.max(1, next.getTime() - now.getTime());
+}
+
 export function epochDayFromLocalDate(date: Date): number {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY);
 }
@@ -30,10 +39,6 @@ export function epochDayFromTimestamp(ts: number): number {
   return epochDayFromLocalDate(new Date(ts));
 }
 
-/** The timestamp of local midnight at the start of an epoch day. Not
-    `epochDay * DAY`: that's a UTC instant and drifts from local midnight
-    by the zone's offset, and by an extra hour on either side of a DST
-    transition. */
 /** The earliest day anything in this journal can be dated to, and what
     "all history" means as a `from` bound.
 
@@ -52,6 +57,10 @@ export function epochDayFromTimestamp(ts: number): number {
     and cannot go NaN in either. */
 export const FIRST_EPOCH_DAY = 0;
 
+/** The timestamp of local midnight at the start of an epoch day. Not
+    `epochDay * DAY`: that's a UTC instant and drifts from local midnight
+    by the zone's offset, and by an extra hour on either side of a DST
+    transition. */
 export function startOfDayTimestamp(epochDay: number): number {
   return localDateFromEpochDay(epochDay).getTime();
 }
@@ -67,6 +76,18 @@ export function timestampAtLocalTime(epochDay: number, time: string): number {
   const d = localDateFromEpochDay(epochDay);
   d.setHours(h, mi, 0, 0);
   return d.getTime();
+}
+
+/** Calendar fields → epoch day, or null for an invalid date. Month is 1–12.
+    UTC fields validate the calendar without normalizing dates skipped by a
+    timezone change. The Date here counts calendar days, not an instant. */
+export function epochDayFromCalendarDate(year: number, month: number, day: number): number | null {
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day) {
+    return null;
+  }
+  return Math.floor(calendar.getTime() / DAY);
 }
 
 /** `<input type="date">` value → epoch day, or null for the empty string.

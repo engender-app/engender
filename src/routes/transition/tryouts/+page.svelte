@@ -23,9 +23,10 @@
      split by the one fact that changes which of them you want, with a
      heading over each half. */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { tryoutKindName } from '$lib/data/vocabulary/labels';
   import { tryoutReading } from '$lib/data/tryoutReading';
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
@@ -39,7 +40,6 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
@@ -58,7 +58,7 @@
   let feltQuery = liveQuery((j) => j.feltSense.byTryout());
   let feltByTryout = $derived(feltQuery.value ?? new Map<string, FeltSenseEntry[]>());
 
-  let today = $derived(todayEpochDay());
+  let today = $derived(currentDay());
   let running = $derived(tryouts.filter((t) => t.endEpochDay == null));
   let ended = $derived(tryouts.filter((t) => t.endEpochDay != null));
 
@@ -89,8 +89,10 @@
   async function saveFeeling(input: { mood: number; note: string | null }) {
     const tryout = feelingFor;
     if (!tryout) return;
-    feelingFor = null;
+    // Closed once stored; the sheet holds its button and reports a failure.
     await journal.feltSense.add({ tryoutId: tryout.id }, { epochDay: today, mood: input.mood, note: input.note });
+    feelingFor = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
 

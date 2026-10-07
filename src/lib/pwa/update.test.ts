@@ -3,7 +3,7 @@
    activate the new release is tests/browser-tier/update-probe.ts. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { markJournalBusy } from '../data/journal-busy.ts';
 import { SKIP_WAITING } from './sw-messages.ts';
 import {
@@ -17,10 +17,12 @@ import {
 
 /** A registration whose waiting worker can be put there by hand, the way the
     browser puts one there once a new release has finished installing. */
-function fakeRegistration(options: { onUpdate?: () => void } = {}) {
+function fakeRegistration(options: { onUpdate?: () => void; firstInstall?: boolean } = {}) {
   const posted: unknown[] = [];
   const listeners: (() => void)[] = [];
   const registration = {
+    /* The release this page is running, or nothing on a first visit. */
+    active: (options.firstInstall ? null : {}) as object | null,
     waiting: null as { postMessage(message: unknown): void } | null,
     installing: null as { state: string; addEventListener(type: 'statechange', l: () => void): void } | null,
     async update() {
@@ -49,21 +51,40 @@ function fakeRegistration(options: { onUpdate?: () => void } = {}) {
       const stateListeners: (() => void)[] = [];
       const installing = {
         state: 'installing',
-        addEventListener: (_type: 'statechange', listener: () => void) => stateListeners.push(listener)
+        addEventListener: (_type: 'statechange', listener: () => void) => stateListeners.push(listener),
+        removeEventListener: (_type: 'statechange', listener: () => void) => {
+          const index = stateListeners.indexOf(listener);
+          if (index >= 0) stateListeners.splice(index, 1);
+        }
       };
       registration.installing = installing;
+      for (const listener of listeners) listener();
       const reachState = (state: string) => {
         installing.state = state;
-        for (const listener of stateListeners) listener();
+        for (const listener of [...stateListeners]) listener();
       };
       return {
         finishes() {
-          releaseArrives();
+          registration.installing = null;
+          registration.waiting = { postMessage: (message: unknown) => posted.push(message) };
           reachState('installed');
         },
         fails() {
           registration.installing = null;
           reachState('redundant');
+        },
+        /** A first install with nothing running: the browser puts the worker
+            in `waiting` and says 'installed', then activates it straight
+            away because there is no active worker to wait behind. */
+        activatesAtOnce() {
+          registration.installing = null;
+          const worker = { postMessage: (message: unknown) => posted.push(message) };
+          registration.waiting = worker;
+          reachState('installed');
+          registration.waiting = null;
+          registration.active = worker;
+          reachState('activating');
+          reachState('activated');
         }
       };
     }
@@ -237,4 +258,43 @@ test('a listener hears the offer arrive, and not before', () => {
 
   assert.deepEqual(heard, [true], 'nothing while busy, one notice when the journal goes idle');
   stop();
+});
+
+
+test('an install found mid-session offers its release without another write', () => {
+  const worker = fakeRegistration();
+  watchForUpdates(worker.registration, fakeEnvironment().environment);
+  const heard: boolean[] = [];
+  const stop = onUpdateReadyChange((ready) => heard.push(ready));
+  const installing = worker.releaseStartsInstalling();
+  installing.finishes();
+  assert.deepEqual(heard, [true]);
+  stop();
+});
+
+
+test('a first install is not offered as an update', () => {
+  // A first visit installs the worker while the page is open. Between
+  // 'installed' and its own activation it sits in `waiting` with nothing
+  // active, and an offer made then never went away: hosted run 37504870508
+  // drew "update ready" over a fresh desktop page mid-check.
+  const worker = fakeRegistration({ firstInstall: true });
+  watchForUpdates(worker.registration, fakeEnvironment().environment);
+  const heard: boolean[] = [];
+  const stop = onUpdateReadyChange((ready) => heard.push(ready));
+  worker.releaseStartsInstalling().activatesAtOnce();
+  assert.deepEqual(heard, []);
+  assert.equal(updateReady(), false);
+  stop();
+});
+
+test('an install that never finishes stops waiting after 30 seconds', async () => {
+  vi.useFakeTimers();
+  try {
+    const worker = fakeRegistration({ onUpdate: () => worker.releaseStartsInstalling() });
+    watchForUpdates(worker.registration, fakeEnvironment().environment);
+    const looking = checkForNewerRelease();
+    await vi.advanceTimersByTimeAsync(30_000);
+    assert.equal(await looking, false);
+  } finally { vi.useRealTimers(); }
 });

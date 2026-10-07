@@ -7,6 +7,7 @@
    Extends MigrationDb (migration-runner.ts) rather than duplicating it, so
    the same driver that opens the database also runs its migrations. */
 
+import type { MigrationFileOps } from './migration-runner.ts';
 import type { MigrationDb } from './migration-runner.ts';
 
 export interface SqliteReader {
@@ -29,4 +30,12 @@ export interface SqliteDriver extends MigrationDb, SqliteReader {
   run(sql: string, params?: unknown[]): Promise<{ changes: number; lastInsertRowid: number }>;
   /** Disconnects from the database and releases its resources. */
   close(): Promise<void>;
+}
+
+export interface WebSqlite {
+  driver: SqliteDriver;
+  fileOps: MigrationFileOps;
+  requestPersistentStorage: () => Promise<boolean>;
+  /** Demo builds prepare their persona in the database worker. */
+  prepareDemoPersona?: (source: ReturnType<typeof import('../demo/persona').persona>) => Promise<boolean>;
 }

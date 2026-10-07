@@ -16,6 +16,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.security.KeyStore;
+import java.io.File;
+
+import dev.engender.app.photos.CameraCapture;
 
 import javax.crypto.KeyGenerator;
 
@@ -110,6 +113,18 @@ public class DeviceStoresTest {
         wipe();
 
         assertFalse("the wrapping key survived the reset", aliasExists(REMINDERS_ALIAS));
+    }
+
+    @Test
+    public void aResetDeletesAnAbandonedCameraCapture() throws Exception {
+        CameraCapture.prepare(context);
+        File output = new File(context.getCacheDir(), "camera-capture/capture.jpg");
+        java.nio.file.Files.write(output.toPath(), new byte[] { 1, 2, 3 });
+        assertTrue(output.exists());
+
+        wipe();
+
+        assertFalse("camera capture survived the reset", output.exists());
     }
 
     @Test

@@ -4,7 +4,7 @@
     android:minHeight="90dp"
     android:minResizeWidth="70dp"
     android:minResizeHeight="90dp"
-    android:targetCellWidth="1"
+    android:targetCellWidth="2"
     android:targetCellHeight="1"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_doubt"

@@ -1,26 +1,13 @@
-/* Browser-tier smoke test (ticket 03's acceptance criteria). Runs inside a
-   real browser, not Node, because SQLocal needs OPFS. Proves three things
-   the Node tier cannot:
-
-   1. SQLocal opens a database backed by OPFS.
-   2. That database survives a full page reload (run.mjs reloads the page
-      and re-runs this same probe; `markerExisted` tells it which pass it's
-      on).
-   3. FTS5 is compiled into the WASM build, and its diacritics folding
-      matches the exact cases ADR-0005 recorded against SQLite 3.51.2 -
-      including the ł case FTS5's own folding cannot cover, which is why
-      search folds in application code instead (ticket 09).
-
-   This talks to SQLocal directly, not through ticket 04's driver
-   interface, which doesn't exist yet - it's a probe of the WASM SQLite
-   build itself, not of the app's driver. */
-import { SQLocal } from 'sqlocal';
+/* OPFS persistence and FTS5 against the production encrypted driver. */
+import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
+import { PROBE_DATA_KEY } from './fresh-origin.ts';
 import { publish } from '../probe-handshake.mjs';
 
 const NAME = 'probe';
 
 async function run() {
-  const { sql } = new SQLocal('probe.sqlite3');
+  const { driver } = createEncryptedWebSqlite('probe.sqlite3', PROBE_DATA_KEY);
+  const sql = async (strings: TemplateStringsArray, ...params: unknown[]) => driver.query(strings.join('?'), params);
 
   await sql`CREATE TABLE IF NOT EXISTS probe_marker (id INTEGER PRIMARY KEY, n INTEGER NOT NULL)`;
   const existing = await sql`SELECT n FROM probe_marker WHERE id = 1`;
@@ -52,6 +39,7 @@ async function run() {
     zazolc: await matchCount('zazolc')
   };
 
+  await driver.close();
   publish(NAME, { markerExisted, fts5 });
 }
 

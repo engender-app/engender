@@ -295,11 +295,6 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     reason: 'fill: transparent - an invisible hit target has nothing visible to press'
   },
   {
-    file: 'src/lib/components/LineChart.svelte',
-    count: 1,
-    reason: 'fill: transparent - an invisible hit target has nothing visible to press'
-  },
-  {
     file: 'src/lib/components/kit/BarRows.svelte',
     count: 1,
     reason:
@@ -1331,9 +1326,9 @@ describe('the cap on animating layout', () => {
   const LAYOUT_EXEMPT: { selector: string; props: string[]; reason: string }[] = [
     {
       selector: "[data-nav-pill='bar']",
-      props: ['left', 'right'],
+      props: ['left', 'right', 'top', 'bottom'],
       reason:
-        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling'
+        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling. Top and bottom move only in the two-row bar large text brings (after-release 18), the same box crossing rows'
     },
     {
       selector: "[data-nav-pill='rail']",
@@ -1363,17 +1358,11 @@ describe('the cap on animating layout', () => {
     { selector: '.kit-bar-mark', props: ['width'], note: 'the inline bar in a tile' },
     { selector: '.kit-dist-mark', props: ['height'], note: 'a distribution column' },
     { selector: '.kit-ordered-seg', props: ['width'], note: "OrderedStrip's segments" },
-    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" },
+    { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" }
     /* `.setup-reveal` was here, onboarding's one grid-template animation: the
        fold under the check-in switch that opened to show a time field. The
        check-in step left setup with phase 10 redesign ticket 31 and took the
        fold with it, so the app has no grid-template animation left. */
-    {
-      selector: '.btn-primary::after',
-      props: ['left', 'right'],
-      note:
-        "redesign ticket 37's press-swipe prototype - an absolutely positioned empty box out of the button's flow, the same shape as .segment-pill's exemption, but landed here unaudited rather than moved up: nobody has argued or benchmarked the bound yet"
-    }
   ];
 
   const LAYOUT = [
@@ -1501,7 +1490,7 @@ describe("the travelling indicators' shared mechanic", () => {
   const fallbackOf = (word: string) => /^var\(\s*--[\w-]+\s*,\s*([\s\S]+)\)$/.exec(word)?.[1]?.trim();
 
   const PILLS: { sheet: string; prelude: string; props: string[] }[] = [
-    { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='bar']", props: ['left', 'right'] },
+    { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='bar']", props: ['left', 'right', 'top', 'bottom'] },
     { sheet: 'src/lib/styles/app.css', prelude: "[data-nav-pill='rail']", props: ['top', 'bottom'] },
     { sheet: 'src/lib/styles/components.css', prelude: '.segment-pill', props: ['left', 'right'] }
   ];

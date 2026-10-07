@@ -588,12 +588,6 @@ export const tagDescription = (key: string): string | null => {
   const message = (TAG_DESCRIPTION as Record<string, Message | undefined>)[key];
   return message ? message() : null;
 };
-/** All supported wordings of a built-in tag, so a Daylio export matches
-    the stored key whichever app language is active during import. */
-export const tagLabels = (key: string): string[] => {
-  const message = (TAG_LABEL as Record<string, Message | undefined>)[key];
-  return message ? [message({}, { locale: 'en' }), message({}, { locale: 'pl' })] : [key];
-};
 /** The name of a built-in measurement type. Never called for a custom
     one - vocabulary.ts reads a custom's name from its own stored row -
     but falls back to the key like dimensionName does, for a built-in

@@ -8,7 +8,6 @@
         "checks": {
           "update": false,
           "migration": false,
-          "encryptionConversion": false,
           "archiveRoundTrip": false,
           "scheduledBackup": false,
           "rollback": false
@@ -27,7 +26,6 @@
         "checks": {
           "update": false,
           "migration": false,
-          "encryptionConversion": false,
           "archiveRoundTrip": false,
           "scheduledBackup": false,
           "rollback": false
@@ -46,7 +44,6 @@
         "checks": {
           "update": false,
           "migration": false,
-          "encryptionConversion": false,
           "archiveRoundTrip": false,
           "scheduledBackup": false,
           "rollback": false
@@ -64,7 +61,6 @@
         "checks": {
           "update": false,
           "migration": false,
-          "encryptionConversion": false,
           "archiveRoundTrip": false,
           "scheduledBackup": false,
           "rollback": false
@@ -83,7 +79,6 @@
         "checks": {
           "update": false,
           "migration": false,
-          "encryptionConversion": false,
           "archiveRoundTrip": false,
           "scheduledBackup": false,
           "rollback": false
@@ -92,7 +87,6 @@
       "evidence": {
         "update": false,
         "migration": false,
-        "encryptionConversion": false,
         "archiveRoundTrip": false,
         "scheduledBackup": false,
         "rollback": false

@@ -85,3 +85,12 @@ test('a metadata.version other than "1.0" is refused before anything is written'
   await assert.rejects(journal.archive.previewDayOneImport(bytes, naming), /metadata\.version/);
   assert.deepEqual((await journal.archive.snapshot()).journal, before);
 });
+
+test('case-variant duplicate Day One tags import once per entry', async () => {
+  const { journal } = await setup();
+  const file = await makeDayOneExport({ entries: [{uuid: '5E2B69750D5248378592CC8DAE174009', creationDate: '2026-01-15T14:30:00Z', timeZone: 'Europe/Warsaw', text: 'work', tags: ['Work', 'work']} ] });
+  const preview = await journal.archive.previewDayOneImport(file, naming);
+  assert.equal(preview.journal.entries[0].tags.length, 1);
+  await journal.archive.commitDayOneImport(preview, fakeNormalize);
+  assert.equal((await journal.archive.snapshot()).journal.entries[0].tags.length, 1);
+});

@@ -33,16 +33,16 @@
     calendarDuration,
     dateInputValueFromEpochDay,
     dayRangeEndMin,
-    epochDayFromDateInputValue,
-    todayEpochDay
+    epochDayFromDateInputValue
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { readWrappedEras, readWrappedPeriod } from '$lib/data/wrappedReads';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { metricKey } from '$lib/data/prefs/catalogue';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { nameTagInsights, recapDimChange, recapTopTags } from '$lib/data/recapDisplay';
-  import { touchesMutedEra } from '$lib/data/resurfacingConsent';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import {
     WRAPPED_RANGE_CHOICES,
     parseWrappedRangeParams,
@@ -71,8 +71,8 @@
   import WrappedCompact from '$lib/components/WrappedCompact.svelte';
   import WrappedYear from '$lib/components/WrappedYear.svelte';
 
-  const today = todayEpochDay();
-  const todayInput = dateInputValueFromEpochDay(today);
+  const today = $derived(currentDay());
+  const todayInput = $derived(dateInputValueFromEpochDay(today));
 
   /* Validated against the cadences rather than cast: the segment comes out
      of a URL, which a bookmark, a typo or an old link can put anything in.
@@ -106,15 +106,9 @@
   let period = $derived(cadence ? completedWrappedPeriod(cadence, today) : null);
   let range = $derived(isRange ? picked.range : period ? { start: period.start, end: period.end } : null);
 
-  /* Phase 6 ticket 05: whether any day the range covers falls inside a
-     muted era - not just the two ends, so a wide range with a muted stretch
-     in the middle of it is caught too (resurfacingConsent.ts). Checked
-     against the whole range regardless of how it was picked: an era chosen
-     directly and a cadence that happens to fall inside a muted era are the
-     same situation from here. */
-  let muted = $derived(
-    range ? touchesMutedEra(eras, erasQuery.value?.mutedEraUuids ?? new Set(), range.start, range.end) : false
-  );
+  let consentQuery = liveQuery((j) => resurfacing('wrapped', j));
+  let allowed = $derived(!!range && (consentQuery.value?.mayResurface(range) ?? false));
+  let muted = $derived(!!range && !!consentQuery.value && !allowed);
 
   /* The four tabs. Ordered shortest first, the way a person thinks about
      looking back, with the arbitrary range last because it is the one that
@@ -221,7 +215,7 @@
   let on = $derived(prefs.wrappedEnabled);
 
   let periodQuery = liveQuery((j) =>
-    on && range && !muted
+    on && range && allowed
       ? readWrappedPeriod(j, { ...range, today, metric: metricKey(prefs), year: cadence === 'year' })
       : Promise.resolve(null)
   );
@@ -295,7 +289,7 @@
      the off/unknown states. Cadences only: the share screen builds its card
      from a completed period it resolves itself (spec 07 leaves the share
      card unchanged), and there is nothing there for a picked range to be. */
-  let canShare = $derived(on && !!cadence && !!recap && recap.entryCount >= WRAPPED_ENTRY_FLOOR);
+  let canShare = $derived(on && allowed && !!cadence && !!recap && recap.entryCount >= WRAPPED_ENTRY_FLOOR);
 
   /* The journey anchor (phase 5 ticket 25, ADR-0010): independent of the
      period a wrapped screen happens to be showing, so it reads the same
@@ -306,7 +300,7 @@
     anchor ? { name: anchor.name, duration: fmtDuration(calendarDuration(anchor.epochDay, today)) } : null
   );
 
-  let loading = $derived(periodQuery.loading);
+  let loading = $derived(consentQuery.loading || periodQuery.loading);
 </script>
 
 <div class="screen">

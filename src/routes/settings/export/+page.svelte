@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale } from '$lib/data/dates';
   import { m } from '$lib/paraglide/messages';
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
@@ -18,14 +19,14 @@
     runVerify,
     type RestoreFailureKind
   } from '$lib/data/journal/restoreFlow';
-  import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
+  import type { DaylioPreview } from '$lib/data/archive/daylio';
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
   import { recognizeSource } from '$lib/data/archive/sources';
   import { IMPORT_FILE_SIZE_CEILING_BYTES, ZipTooLargeError } from '$lib/data/archive/zipReader';
   import type { ArchiveImportLogRecord } from '$lib/data/archive/payload';
   import { chooseFiles } from '$lib/data/fileDialog';
-  import { dimensionName, moodName, tagLabel, tagLabels } from '$lib/data/vocabulary/labels';
+  import { dimensionName, moodName, tagLabel } from '$lib/data/vocabulary/labels';
   import { journal } from '$lib/data/live/journal.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -99,6 +100,7 @@
      is what someone asked for. */
   let running = $state<ExportPath | null>(null);
   let autoDestination = $state<string | null>(null);
+  let autoDestinationUri = $state<string | null>(null);
   let autoLastSuccessAt = $state<number | null>(null);
   let autoLastFailureAt = $state<number | null>(null);
   let autoLastFailureReason = $state<string | null>(null);
@@ -167,13 +169,14 @@
 
   function stampText(at: number | null): string {
     if (at == null) return m.exp_last_backup_never();
-    return new Date(at).toLocaleString();
+    return new Date(at).toLocaleString(intlLocale());
   }
 
   function applyAutoStatus(status: AutoExportStatus) {
     prefs.autoExportEnabled = status.enabled;
     prefs.autoExportSchedule = status.schedule;
     autoDestination = status.destinationLabel;
+    autoDestinationUri = status.destinationUri;
     autoHasPassword = status.hasPassword;
     autoLastSuccessAt = status.lastSuccessAt;
     autoLastFailureAt = status.lastFailureAt;
@@ -213,7 +216,15 @@
         prefs.autoExportEnabled = false;
         return;
       }
-      await androidAutoExport.setPassword({ password: expPass });
+      try {
+        await androidAutoExport.setPassword({ password: expPass });
+      } catch (error) {
+        // The switch goes back off rather than claiming a schedule with no password behind it.
+        console.error('could not store the auto-export password', error);
+        toast(m.exp_auto_config_failed(), { kind: 'failed' });
+        prefs.autoExportEnabled = false;
+        return;
+      }
       autoHasPassword = true;
     }
     prefs.autoExportEnabled = enabled;
@@ -552,6 +563,7 @@
       daylioName = file.name;
       daylioPreview = null;
       daylioError = '';
+      const { tagLabels } = await import('$lib/data/vocabulary/import-labels');
       daylioPreview = await journal.archive.previewDaylioImport(await file.text(), { tagLabels });
       if (daylioPreview.unmappedMoodLabels.length > 0) {
         daylioError = m.daylio_unmapped({ labels: daylioPreview.unmappedMoodLabels.join(', ') });
@@ -675,6 +687,7 @@
         return;
       }
 
+      const { tagLabels } = await import('$lib/data/vocabulary/import-labels');
       backupPreview = await journal.archive.previewDaylioBackupImport(bytes, { tagLabels });
       if (backupPreview.unmappedMoodNames.length > 0) {
         backupError = m.dlb_unmapped({ names: backupPreview.unmappedMoodNames.join(', ') });
@@ -768,7 +781,10 @@
         <!-- Neither mark until the age is known: the tick was the half of the
              wrong answer that looked most sure of itself. -->
       {:else if stale}
-        <span class="notice-warn" style="padding:4px 10px;border-radius:var(--r-block);font-size:var(--text-xs);font-weight:700">{m.exp_stale_badge()}</span>
+        <!-- The age beside it already says how long ago; the mark only says
+             that it is long enough to act on. It used to be a badge reading
+             "Over 30 days ago" under "34 days ago" (audit UX-11). -->
+        <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()}><Icon name="alert" size={18} /></span>
       {:else}
         <Icon name="check" size={20} />
       {/if}
@@ -819,10 +835,13 @@
 
   <SectionHeading text={m.exp_encrypted_section()} />
   <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
+  <!-- autocomplete off here and on import: an archive's password is not
+       this site's login, and a password manager should not offer to save
+       it as one (after-release 21, audit A11Y-16). -->
   <Field label={m.exp_password_label()} id="exp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
-        autocomplete="new-password" bind:value={expPass} />
+        autocomplete="off" bind:value={expPass} />
     {/snippet}
   </Field>
   <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
@@ -856,14 +875,14 @@
     <div class="spread">
       <span class="small muted">{m.exp_auto_destination_label()}</span>
       <button class="btn btn-soft" type="button" onclick={pickAutoDestination} disabled={autoBusy}>
-        <span>{autoDestination ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
+        <span>{autoDestinationUri ? m.exp_auto_change_destination() : m.exp_auto_choose_destination()}</span>
       </button>
     </div>
     <p class="muted small">
       {m.exp_auto_destination_note()}
     </p>
     <p class="muted small">
-      {autoDestination ?? m.exp_auto_destination_missing()}
+      {autoDestination ?? (autoDestinationUri ? m.exp_auto_destination_chosen() : m.exp_auto_destination_missing())}
     </p>
 
     {#if prefs.autoExportEnabled}
@@ -911,7 +930,7 @@
   </Field>
   <Field label={m.exp_password_label()} id="imp-pass">
     {#snippet children(id)}
-      <input class="input" type="password" {id} name="imp-pass"
+      <input class="input" type="password" {id} name="imp-pass" autocomplete="off"
         placeholder={m.imp_password_placeholder()} bind:value={impPass} />
     {/snippet}
   </Field>
@@ -1211,6 +1230,14 @@
 </div>
 
 <style>
+  /* The same footprint as the tick it stands in for, on the warning ground. */
+  .backup-stale-mark {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-block);
+  }
   /* From components.css once Settings stopped drawing one (ticket 277):
      this screen is the only reader left. */
   .hr {

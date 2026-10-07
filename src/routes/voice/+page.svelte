@@ -39,10 +39,12 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
+  import { deleter } from '$lib/stores/attempt.svelte';
   import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
   import { highlightedPositions } from '$lib/charts/presentationHighlight';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
   import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
@@ -173,9 +175,9 @@
   /* What was happening between the takes (phase 6 ticket 23). Benchmarks are
      months apart and a regimen episode is the thing they are read against,
      so the trend's range is however long there have been benchmarks. */
-  let span = $derived(annotationSpan(anchors.map((b) => b.epochDay), todayEpochDay()));
+  let span = $derived(annotationSpan(anchors.map((b) => b.epochDay), currentDay()));
   let annotationsQuery = liveList((j) =>
-    j.chartAnnotations.getAnnotations(span.from, span.to, todayEpochDay())
+    j.chartAnnotations.getAnnotations(span.from, span.to, currentDay())
   );
 
   let selected = $state<string[]>([]);
@@ -302,10 +304,13 @@
     }
   }
 
+  const removing = deleter();
   async function confirmDeleteBenchmark() {
-    if (!deleteTarget) return;
-    await journal.voiceBenchmarks.deleteBenchmark(deleteTarget);
+    const target = deleteTarget;
+    if (!target) return;
+    if (!(await removing.run(() => journal.voiceBenchmarks.deleteBenchmark(target)))) return;
     deleteTarget = null;
+    toast(m.record_deleted(), { kind: 'record-deleted' });
   }
 
   /** A delta figure as the screen states it: signed, so +35 and -35 are told
@@ -640,7 +645,9 @@
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-confirm-delete-benchmark': '' }}
     onConfirm={confirmDeleteBenchmark}
-    onCancel={() => (deleteTarget = null)}
+    onCancel={() => { deleteTarget = null; removing.dismiss(); }}
+    busy={removing.busy}
+    failed={removing.failed}
   />
 </div>
 
@@ -730,9 +737,9 @@
     display: flex;
     justify-content: space-between;
     margin: var(--space-2) 0 0;
-    color: var(--muted);
+    color: var(--text-2);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
   }
 
@@ -752,10 +759,10 @@
      shape as VoiceBenchmarkFlow.svelte's own .vb-figures, which is scoped to
      that component and out of reach here - two surfaces wanting the same
      small layout is not yet a third one worth lifting into a shared class. */
-  .vc-delta h3 { margin: 0 0 var(--space-3); font-size: var(--text-base); }
+  .vc-delta h3 { margin: 0 0 var(--space-3); font-size: var(--text-md); }
   .vc-delta-figures { display: grid; gap: var(--space-3); margin: 0; }
   .vc-delta-figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-  .vc-delta-figures dt { color: var(--muted); font-size: var(--text-sm); }
+  .vc-delta-figures dt { color: var(--text-2); font-size: var(--text-sm); }
   /* The name is the link, so it keeps the label's own colour and says it
      is pressable with an underline in the section's stripe rather than by
      turning blue. Same treatment as the sentences on a take
@@ -777,6 +784,6 @@
     text-underline-offset: 3px;
   }
   .vc-delta-figures dt a:hover { color: var(--role-ink); text-decoration-color: var(--role-mark); }
-  .vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); text-align: right; }
-  .vc-aside { color: var(--muted); font-weight: 400; }
+  .vc-delta-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--weight-medium); text-align: right; }
+  .vc-aside { color: var(--text-2); font-weight: 400; }
 </style>

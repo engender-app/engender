@@ -1,7 +1,7 @@
 /* Walkable-flow tests (ticket 20's acceptance for tickets 01/07/08) against
    the real app, not a probe page - so this serves the app's own production
    build rather than sharing browser-tier/run.mjs's probe-page dev server.
-   It's `vite preview`, like verify-build.mjs, not `vite dev`: the dev
+   It's `vite preview`, not `vite dev`: the dev
    server's dependency re-optimization forces a full-page reload the first
    time it discovers a new dependency deep in boot() (SQLocal's worker,
    hash-wasm, ...), which raced every flow here and hung page.evaluate calls
@@ -9,11 +9,14 @@
    port (falling back off its 5173 default if that's taken), so there's no
    port literal to keep in sync by hand. Run with `npm run test:walkthrough`
    - it builds first, with the demo bar compiled in (flow 13 drives its
-   #demo-jump control), then serves that build. */
+   #demo-jump control), then serves that build. Since after-release ticket
+   32, vite preview serves build/ itself when the build joined its two
+   locale graphs (vite.config.ts), so this runner loads the shipped
+   document, CSP meta and held module hints included. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate, fillTime } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate, fillTime, dateValue } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 import { WALKTHROUGH_GROUPS, groupFlows } from './walkthrough-groups.mjs';
@@ -939,12 +942,15 @@ try {
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
 
-  /* A tally is the fan's now, and it still resolves in place: the save
-     toast is what says the write came back, and Home is still Home. */
+  /* A tally is the fan's now, and it still resolves in place: the fan's
+     status line is what says the write came back, and Home is still Home.
+     This waited for a toast until after-release 17, and the toast it found
+     was the storage warning every cold load used to raise; the fan has
+     confirmed by its flight and its status line since. */
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan-target="mood-3"]');
   await page.locator('[data-choose="tally-misgendered"]').click();
-  await page.waitForSelector('[data-toast]');
+  await page.waitForFunction(() => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0);
   if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the fan left Home: ' + page.url());
 
   /* The pinned rows: the default set resolves for a journal that never
@@ -1958,7 +1964,7 @@ try {
        flaky under the full suite even though it held reliably alone. The
        toast below is what proves the save actually landed. */
     await page.waitForFunction(
-      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Imported'))
+      () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Results saved'))
     );
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
     ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
@@ -2506,7 +2512,13 @@ try {
   // set this screen chose rather than the one it started with.
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
-  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // scales -> features
+  /* After-release 17 (UX-09): features are their own step before the pins.
+     Measurements arrives off on a new journal. */
+  if ((await page.locator('[data-list-row="feature-measurements"]').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is switched on by default');
+  }
+  await page.locator('[data-next]').click(); // features -> areas
 
   /* Ticket 22: the hub's own groups and rows, met once here and once more on
      the hub - the same headings the More screen draws, in the same order. */
@@ -2526,11 +2538,12 @@ try {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  // The default three arrive ticked. Measurements stays off until chosen.
+  // The default three arrive ticked. Measurements, switched off on the
+  // step before, is not offered as a pin at all.
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  if ((await page.locator('[data-list-row="area-measurements"]').getAttribute('aria-checked')) !== 'false') {
-    throw new Error('measurements is selected by default');
+  if ((await page.locator('[data-list-row="area-measurements"]').count()) !== 0) {
+    throw new Error('measurements is offered as a pin while the feature is off');
   }
   for (const key of ['care', 'milestones', 'tryouts']) {
     if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
@@ -2553,9 +2566,11 @@ try {
   await page.locator('[data-next]').click(); // lock -> permissions
 
   /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
-     step that names everything the app can ask this device for. Four rows
-     it can ask about and a second group it never asks about, and on the web
-     the two Android-only rows say so rather than offering a dead button. */
+     step that names what the app can ask this device for. Since
+     after-release 17 (UX-07, UX-10) it draws only the asks that apply on
+     this platform: on the web that is the microphone and the camera, with
+     no "Android only" rows and none of the no-permission explanations,
+     which stay on /settings/permissions. */
   await page.waitForSelector('[data-permission-list]');
   const grantable = await page.locator('[data-grant]').evaluateAll((els) =>
     els.map((el) => el.dataset.grant)
@@ -2563,37 +2578,13 @@ try {
   if (grantable.join() !== 'microphone,camera') {
     throw new Error('the web build should offer only the two prompts it has: ' + grantable.join());
   }
-  for (const key of ['notifications', 'exactAlarms']) {
-    const row = page.locator(`[data-permission="${key}"]`);
-    if ((await row.count()) !== 1) throw new Error(`the ${key} row is missing from the list`);
-    if ((await row.getAttribute('data-permission-state')) !== 'unavailable') {
-      throw new Error(`${key} should read as unavailable on the web`);
-    }
-    const trailing = await row.textContent();
-    if (!trailing.includes('Android only')) {
-      throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
-    }
-  }
-  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
-    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
-      throw new Error(`the ${key} row is missing from the no-permission group`);
-    }
-  }
-  for (const key of ['backupFolder', 'batteryOptimisation']) {
+  for (const key of ['notifications', 'exactAlarms', 'takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
     if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
-      throw new Error(`the web build has no ${key} and should not list one`);
+      throw new Error(`setup on the web should not list ${key}`);
     }
   }
-  /* The closer is platform copy (UI/UX ticket 09): the web build must not
-     borrow Android's no-internet-permission promise. It says journal
-     content is processed on this device while exports and links can use
-     other services. */
-  const closer = await page.locator('[data-no-internet]').textContent();
-  if (!/processed on this device|przetwarzana na tym urządzeniu/.test(closer)) {
-    throw new Error('the web closer does not state where written data goes: ' + closer);
-  }
-  if (/internet permission|uprawnienia do internetu/.test(closer)) {
-    throw new Error('the web closer borrows the Android-only no-internet-permission claim: ' + closer);
+  if ((await page.locator('[data-no-internet]').count()) !== 0) {
+    throw new Error('setup on the web still carries the explanatory closer');
   }
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
@@ -2649,12 +2640,12 @@ try {
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
   for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
-  const choice = page.locator('[data-list-row="area-measurements"]');
+  const choice = page.locator('[data-list-row="feature-measurements"]');
   if ((await choice.getAttribute('aria-checked')) !== 'false') {
     throw new Error('measurements starts selected in setup');
   }
   await page.locator('[data-skip-step]').click();
-  for (let i = 0; i < 3; i++) await page.locator('[data-next]').click();
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
@@ -2748,7 +2739,7 @@ try {
        the window rather than by opening a keyboard nothing here has. */
     { width: 390, height: 360 }
   ];
-  const STEP_TAPS = 8; // nine steps, eight Continues
+  const STEP_TAPS = 9; // ten steps, nine Continues (features joined in after-release 17)
   for (const size of STEP_SIZES) {
     await page.setViewportSize(size);
     await fresh('/');
@@ -3055,8 +3046,8 @@ try {
   /* A setup draft from the new-journal path must not override the archive.
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
-  for (let i = 0; i < 4; i++) {
-    restoreStage = `next to setup draft ${i + 1}/4`;
+  for (let i = 0; i < 5; i++) {
+    restoreStage = `next to setup draft ${i + 1}/5`;
     await page.locator('[data-next]').click();
   }
   /* Dispatched rather than clicked: with the demo bar's 240px above it, the
@@ -3064,8 +3055,8 @@ try {
      in view and the step's foot takes a real click. Without the bar the
      list has about 280px. */
   await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  for (let i = 0; i < 4; i++) {
-    restoreStage = `back from setup draft ${i + 1}/4`;
+  for (let i = 0; i < 5; i++) {
+    restoreStage = `back from setup draft ${i + 1}/5`;
     await page.locator('[data-back]').click();
   }
   await page.waitForSelector('[data-restore-start]');
@@ -3305,7 +3296,8 @@ try {
   await page.locator('#ob-name').fill('Kit');
   await page.locator('[data-next]').click(); // name -> flag
   await page.locator('[data-next]').click(); // flag -> scales
-  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // scales -> features
+  await page.locator('[data-next]').click(); // features -> areas
   await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -3497,18 +3489,22 @@ try {
     throw new Error('the scales step made Continue wait for something');
   }
   // Untouched, then skipped: the stored default has to survive both.
-  await page.locator('[data-skip-step]').click(); // scales -> areas
+  await page.locator('[data-skip-step]').click(); // scales -> features
+
+  /* The feature choices are their own step since after-release 17: a
+     choice made and then skipped is not kept. */
+  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
+  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
+  await cycleChoice.focus();
+  await cycleChoice.press('Space');
+  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
+  await page.locator('[data-skip-step]').click(); // features -> areas
 
   /* Ticket 22's own version of the same proof: the default three arrive
      ticked, and skipping leaves `onboardingAreas` null rather than storing
      the default. */
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
-  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
-  await cycleChoice.focus();
-  await cycleChoice.press('Space');
-  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
   await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -3547,7 +3543,8 @@ try {
   await choice.focus();
   await choice.press('Space');
   if (await choice.getAttribute('aria-checked') !== 'true') throw new Error('Polish setup cycle choice ignored keyboard');
-  for (let step = 0; step < 4; step++) await page.locator('[data-next]').click();
+  // features -> areas -> lock -> permissions -> disguise -> finish
+  for (let step = 0; step < 5; step++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
@@ -4027,6 +4024,29 @@ try {
   if (returnedTo !== 0) throw new Error('unlocking landed part-way down the screen rather than at its top: ' + returnedTo);
   if (page.url() !== reading) throw new Error(`unlocking moved the URL: ${reading} -> ${page.url()}`);
 
+  /* A draft typed before a lock is there after it (after-release ticket 10).
+     On the web the lock closes the database and lets go of the key, and
+     unmounting the editor used to clear its encrypted mirror as if the
+     person had left; the unlock reopens the journal and the remounted
+     editor reads the mirror back. Cleared again afterwards, so the leave
+     guard has nothing to hold the next navigation for. */
+  await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
+  await booted();
+  const keptNote = 'Typed just before the lock, and still here after it.';
+  await page.locator('#ed-note').fill(keptNote);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
+  });
+  await page.waitForSelector('[data-applock]');
+  if (await page.locator('#ed-note').count()) throw new Error('the editor is still mounted under the lock screen');
+  await sessionPassphrase();
+  await page.waitForFunction((text) => document.querySelector('#ed-note')?.value === text, keptNote, { timeout: 10000 }).catch(async () => {
+    throw new Error('the draft did not come back after the unlock: ' + JSON.stringify(await page.locator('#ed-note').inputValue().catch(() => null)));
+  });
+  await page.locator('#ed-note').fill('');
+
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-settings-list]');
@@ -4332,19 +4352,17 @@ try {
      is that regression's own seam - it fails on the code before this
      ticket's fix and passes after. */
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
+  await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
-  const groupStillOpen = await page
-    .locator('[data-tag-hide="dt-existential"]')
-    .locator('xpath=ancestor::details[1]')
-    .evaluate((el) => el.open);
+  const groupStillOpen =
+    (await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').getAttribute('aria-expanded')) === 'true';
   if (!groupStillOpen) throw new Error('hiding a tag closed its own still-open group');
 
-  const tomorrow = await page.evaluate(() => {
+  const unusedPastDay = await page.evaluate(() => {
     const d = new Date();
-    return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1) / 86400000);
+    return Math.floor(Date.UTC(d.getFullYear() - 2, 0, 1) / 86400000);
   });
-  await page.goto(BASE + `/entry/new/${tomorrow}`, { waitUntil: 'networkidle' });
+  await page.goto(BASE + `/entry/new/${unusedPastDay}`, { waitUntil: 'networkidle' });
   await booted();
   await openSection('tags');
   const afterHide = (await dysphoriaGroup.locator('[data-tag]').allTextContents()).map((t) => t.trim());
@@ -4352,7 +4370,7 @@ try {
   if (afterHide.length !== 6) throw new Error('hiding one type should leave six, found ' + afterHide.length);
 
   await page.goto(BASE + '/settings/tags', { waitUntil: 'networkidle' });
-  await page.locator('[data-tag-hide="dt-existential"]').locator('xpath=ancestor::details[1]//summary').click();
+  await page.locator('[data-tag-group="dysphoria_type"] [data-disclosure-toggle]').click();
   await page.locator('[data-tag-hide="dt-existential"]').click();
 
   ok('dysphoria type: seven categories, per-type descriptions, hide mechanics, euphoria stays independent');
@@ -4725,8 +4743,15 @@ try {
   const after = await boxes.count();
   if (after !== before) throw new Error('the goal count changed from ' + before + ' to ' + after);
 
+  /* A font file is not a call the roadmap makes. The legal track's Polish
+     names are the first text on the page that needs nunito-latin-ext, and
+     since after-release ticket 32 this runner loads the shipped document
+     with its no-cache headers (as nginx serves /fonts/), so after the reload
+     the browser asks for the file again instead of reusing it silently. */
   const requested = [];
-  page.on('request', (request) => requested.push(request.url()));
+  page.on('request', (request) => {
+    if (!new URL(request.url()).pathname.startsWith('/fonts/')) requested.push(request.url());
+  });
 
   await page.locator('[data-segment="legal"]').click(); // the reload above remounted on Social
 
@@ -4911,7 +4936,7 @@ try {
   await addOwnEpisode('Estradiol', '4', 'mg');
   await page.waitForSelector('[data-episode]');
   await addOwnEpisode('Spironolactone', '100', 'mg');
-  await page.waitForSelector('[data-episode]:nth-of-type(2)');
+  await spiroRow().waitFor();
 
   if ((await estradiolRow().locator('[data-active-badge]').count()) !== 1 || (await spiroRow().locator('[data-active-badge]').count()) !== 1) {
     throw new Error('both concurrently active episodes should read Current, not just the latest one');
@@ -4977,7 +5002,7 @@ try {
   // before that settles gets clobbered right back to today's date.
   const today = localDateInput();
   await page.waitForFunction(
-    ([sel, expected]) => document.querySelector(sel)?.value === expected,
+    ([sel, expected]) => document.querySelector(sel)?.getAttribute('data-date-value') === expected,
     ['#regimen-end', today]
   );
   await fillDate(page, '#regimen-end', localDateInput(1));
@@ -5050,9 +5075,8 @@ try {
   const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
     els.map((el) => el.dataset.permission)
   );
+  /* Only what the web can do (after-release 17): no "Android only" rows. */
   const expected = [
-    'notifications',
-    'exactAlarms',
     'microphone',
     'camera',
     'takePhoto',
@@ -6144,8 +6168,8 @@ try {
   };
   const assertOpensWithSides = async (stretch) => {
     const preceding = precedingWindow(stretch);
-    const gotA = [await page.locator('#compare-a-start').inputValue(), await page.locator('#compare-a-end').inputValue()];
-    const gotB = [await page.locator('#compare-b-start').inputValue(), await page.locator('#compare-b-end').inputValue()];
+    const gotA = [await dateValue(page.locator('#compare-a-start')), await dateValue(page.locator('#compare-a-end'))];
+    const gotB = [await dateValue(page.locator('#compare-b-start')), await dateValue(page.locator('#compare-b-end'))];
     const wantA = [dateInputValueFromEpochDay(stretch.start), dateInputValueFromEpochDay(stretch.end)];
     const wantB = [dateInputValueFromEpochDay(preceding.start), dateInputValueFromEpochDay(preceding.end)];
     if (gotA[0] !== wantA[0] || gotA[1] !== wantA[1] || gotB[0] !== wantB[0] || gotB[1] !== wantB[1]) {
@@ -6209,8 +6233,9 @@ try {
   // depends on the ~50 flows already run against this journal, so both
   // outcomes are legitimate and both are checked.
   await page.goto(BASE + '/health/surgery', { waitUntil: 'networkidle' });
-  await page.locator('[data-procedure]').first().click();
-  await page.waitForSelector('[data-phase="archived"]');
+  /* By phase, not position: a procedure past its recovery window is listed
+     under the archive now (after-release 05), below the ongoing ones. */
+  await page.locator('[data-procedure][data-phase="archived"]').first().click();
   const procedureNotice = page.locator('[data-notice="surgery-compare"]');
   await procedureNotice.waitFor();
   const procedureAction = procedureNotice.locator('[data-notice-action]');
@@ -6662,8 +6687,8 @@ try {
   await page.locator('[data-era-offer-confirm]').click();
   await page.waitForURL('**/settings/eras?**');
   await page.waitForSelector('#era-name');
-  const gotStart = await page.locator('input[name="era-start"]').inputValue();
-  const gotEnd = await page.locator('input[name="era-end"]').inputValue();
+  const gotStart = await dateValue(page.locator('input[name="era-start"]'));
+  const gotEnd = await dateValue(page.locator('input[name="era-end"]'));
   const wantStart = dateInputValueFromEpochDay(settled.start);
   const wantEnd = dateInputValueFromEpochDay(settled.end);
   if (gotStart !== wantStart || gotEnd !== wantEnd) {
@@ -6751,7 +6776,7 @@ try {
      for a value rather than for the selector, the same shape as the skeleton
      wait above. */
   await page.waitForFunction(() => (document.querySelector('#backdate'))?.value, null, { timeout: 8000 });
-  const wanted = await page.locator('#backdate').inputValue();
+  const wanted = await dateValue(page.locator('#backdate'));
   if (!wanted) throw new Error('the backdate field was empty');
   await page.locator('[data-choose="date"]').click();
   await page.waitForSelector('#ed-note');
@@ -8047,12 +8072,29 @@ try {
   await paperRows.nth(filed).click();
   await page.waitForSelector('[data-document-page]', { timeout: 15000 });
 
-  /* The page is drawn here and nowhere else (ADR-0065), so the list it came
-     from must not have had one on it. */
+  /* Audit item 9 allows a 48px thumbnail in each row. Wait for the uploaded
+     scan to decode so this check cannot pass before its preview arrives.
+     Full pages still belong behind the row's deliberate tap. */
   await page.goBack({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row]');
-  if (await page.locator('[data-list-row] img').count()) {
-    throw new Error('the documents list is drawing a page image');
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll('[data-list-row]')].find((node) => node.textContent.includes('1994'));
+    const image = row?.querySelector('img');
+    return image?.complete && image.naturalWidth > 0;
+  });
+  const invalidPreview = await page.locator('[data-list-row] img, [data-list-row] canvas').evaluateAll((previews) =>
+    previews.some((preview) => {
+      const bounds = preview.getBoundingClientRect();
+      const parent = preview.parentElement;
+      const container = parent?.getBoundingClientRect();
+      return !(preview instanceof HTMLImageElement) || !parent || !container ||
+        container.width <= 0 || container.height <= 0 || container.width > 48 || container.height > 48 ||
+        bounds.width <= 0 || bounds.height <= 0 || bounds.width > 48 || bounds.height > 48 ||
+        getComputedStyle(parent).overflow !== 'hidden' || getComputedStyle(preview).objectFit !== 'cover';
+    })
+  );
+  if (invalidPreview) {
+    throw new Error('document rows must keep page previews inside 48px thumbnails');
   }
 
   const stillThere = (await page.locator('[data-list-row]').allTextContents()).findIndex((text) => text.includes('1994'));
@@ -8111,8 +8153,10 @@ try {
   await page.waitForSelector('[data-document-unreadable]');  if (await page.locator('[data-document-page]').count()) {
     throw new Error('a PDF nothing could draw is showing a page image');
   }
-  const sizeText = await page.locator('[data-document-size]').textContent();
-  if (!/KB|MB/.test(sizeText)) throw new Error(`the size line does not read as a size: ${sizeText}`);
+  // No byte size on the screen (after-release 26): sizes are Export's.
+  if (/\b\d+(?:[.,]\d+)?\s?(?:KB|MB)\b/.test(await page.locator('main').innerText())) {
+    throw new Error('the document screen shows a byte size');
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
@@ -8413,7 +8457,7 @@ try {
      calendar affordance on its cell, prefilled with what was just set. */
   await datedCell.locator('xpath=../button[@data-photo-edit-day]').click();
   await page.waitForSelector('[data-photo-day-edit-save]');
-  const prefilled = await page.inputValue('#photo-day-edit');
+  const prefilled = await dateValue(page.locator('#photo-day-edit'));
   if (prefilled !== '1994-03-15') throw new Error(`the edit sheet did not prefill the photo's day: ${prefilled}`);
 
   await fillDate(page, '#photo-day-edit', '1994-04-20');
@@ -8674,9 +8718,12 @@ await flow('licence notices', async () => {
 try {
   await fresh('/settings');
   await page.locator('[data-list-row="about"]').click();
-  for (const link of ['privacy', 'source']) {
+  for (const [link, expected] of [
+    ['privacy', 'https://engender.barankiewicz.dev/en/privacy/'],
+    ['source', 'https://github.com/engender-app/engender']
+  ]) {
     const href = await page.locator(`[data-about-link="${link}"]`).getAttribute('href');
-    if (!href?.startsWith('https://github.com/engender-app/engender')) {
+    if (href !== expected) {
       throw new Error(`About's ${link} link goes to ${href}`);
     }
   }

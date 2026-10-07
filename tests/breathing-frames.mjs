@@ -181,6 +181,13 @@ try {
     await page.waitForLoadState('networkidle');
     await page.reload();
     await page.waitForSelector(`${ROOT} svg`, { timeout: 60000 });
+    /* The exercise draws under the first frame, and since the crossfade
+       (c10b9bb8) the app root waits at opacity 0 there until boot answers.
+       Under reduced motion that handover is one cut, the same frame the
+       first frame cuts away in, so a recording that starts before it ends
+       blames the first frame's exit on the figure. On a slow runner boot
+       answers after the second below, so wait for the first frame to go. */
+    await page.waitForFunction(() => !document.getElementById('splash') && !document.documentElement.hasAttribute('data-splash'), null, { timeout: 60000 });
     await page.waitForTimeout(1000);
     /* Clicked from inside the page rather than through Playwright's input
        pipeline. A synthetic click from a task can land after a frame has

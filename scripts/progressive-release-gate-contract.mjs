@@ -9,7 +9,6 @@ export const STAGE_ORDER = Object.freeze(['stage1', 'stage2', 'stage3', 'stage4'
 export const RELEASE_MATRIX_CHECKS = Object.freeze([
   'update',
   'migration',
-  'encryptionConversion',
   'archiveRoundTrip',
   'scheduledBackup',
   'rollback'

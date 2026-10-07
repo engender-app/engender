@@ -17,6 +17,8 @@
    The samples come from `decodeToMono` (audio/decode.ts) at the peaks rate,
    which is where the cost is - see the measurement in the ticket. */
 
+import { forgetOnLock } from '../lock/forget-content';
+
 /** Bars across the track. Enough that a syllable is visible in a 30-second
     memo, few enough that a 2px bar and its gap still fit the narrowest
     player the app draws (about 260px inside the entry editor at 320px). */
@@ -140,8 +142,10 @@ export async function peaksFor(
   return attempt;
 }
 
-/** Test seam: drops everything remembered. */
+/** Drops everything remembered: a lock takes the bars with the rest of
+    the journal (after-release ticket 10), and the tests start clean. */
 export function forgetPeaks(): void {
   cached.clear();
   inFlight.clear();
 }
+forgetOnLock(forgetPeaks);

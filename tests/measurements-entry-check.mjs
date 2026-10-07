@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, fieldValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -79,7 +79,7 @@ async function installFault(area, operation) {
   }, { area, operation });
 }
 async function valuesMatch(values) {
-  for (const [id, value] of Object.entries(values)) assert.equal(await page.locator(`#${id}`).inputValue(), value, id);
+  for (const [id, value] of Object.entries(values)) assert.equal(await fieldValue(page.locator(`#${id}`)), value, id);
   if ('measurement-value' in values) {
     assert.equal(await editorType().getByRole('radio', { checked: true }).innerText(), 'Shoulder width');
     assert.equal(await editorUnit().locator('[aria-checked="true"]').getAttribute('data-segment'), 'in');
@@ -115,7 +115,7 @@ async function saveAndReopen({ handle, area, operation, rows, title, values, cha
   await page.keyboard.press('Escape');
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
-  assert.equal(await page.locator(`#${changeId}`).inputValue(), changedValue);
+  assert.equal(await fieldValue(page.locator(`#${changeId}`)), changedValue);
   await discard();
   await page.locator(selector).click();
   await valuesMatch(values);
@@ -212,6 +212,11 @@ try {
   await page.locator('[data-add]').click();
   await page.locator('#measurement-value').waitFor();
   assert.equal(await page.locator('[data-save-measurement]').isDisabled(), true);
+  // Not invalid before anybody has been in it, invalid once left empty
+  // (after-release 21: aria-invalid only after the field is left).
+  assert.equal(await page.locator('#measurement-value').getAttribute('aria-invalid'), 'false');
+  await page.locator('#measurement-value').focus();
+  await page.locator('#measurement-value').blur();
   assert.equal(await page.locator('#measurement-value').getAttribute('aria-invalid'), 'true');
   assert.equal(await page.locator('#measurement-value').getAttribute('aria-describedby'), 'measurement-value-hint');
   assert.match(await page.locator('#measurement-value-hint').innerText(), /number/i);
@@ -231,6 +236,9 @@ try {
   await page.locator('[data-add-size]').click();
   await page.locator('#size-log-size').waitFor();
   assert.equal(await page.locator('[data-save-size-record]').isDisabled(), true);
+  assert.equal(await page.locator('#size-log-size').getAttribute('aria-invalid'), 'false');
+  await page.locator('#size-log-size').focus();
+  await page.locator('#size-log-size').blur();
   assert.equal(await page.locator('#size-log-size').getAttribute('aria-invalid'), 'true');
   assert.equal(await page.locator('#size-log-size').getAttribute('aria-describedby'), 'size-log-size-hint');
   assert.match(await page.locator('#size-log-size-hint').innerText(), /size/i);

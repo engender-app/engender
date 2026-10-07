@@ -43,7 +43,7 @@
   import PhotoThumb from './PhotoThumb.svelte';
   import ProcedurePhaseRail from './ProcedurePhaseRail.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
@@ -52,7 +52,7 @@
   let {
     procedure,
     selected = false,
-    today = todayEpochDay(),
+    today = currentDay(),
     linkedMilestone = null,
     photos = [],
     checklistCount = 0,
@@ -204,7 +204,13 @@
     >
       <span class="proc-head">
         <span class="proc-name">{procedure.name}</span>
-        <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
+        <!-- An archived card only ever sits under the "Archived procedures"
+             heading, so its pill would say the heading again. A card the
+             person archived by hand keeps its pill: Recovery under that
+             heading still says something the heading does not. -->
+        {#if phase !== 'archived'}
+          <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
+        {/if}
       </span>
       {#if open}
         <!-- The number and the date it counts from, side by side: the block
@@ -266,7 +272,9 @@
 
   <!-- The consult count stays written down even though the rail draws each
        consult as its own mark, because the rail is `aria-hidden` and a
-       drawing nobody can hear is not where a fact may live. The photo count
+       drawing nobody can hear is not where a fact may live. Each number
+       says what it counts in hidden words, since the glyph beside it is
+       hidden too and "2 3" is not a fact (after-release 21). The photo count
        is here only on a collapsed card, which has no strip to count from.
        `collapse` because selecting a procedure is what brings the milestone
        and the checklist count in, and a row that cuts in is the yank the
@@ -282,19 +290,22 @@
       {#if procedure.consults.length > 0}
         <span class="proc-badge-tag">
           <Icon name="calendar" size={13} />
-          <span>{procedure.consults.length}</span>
+          <span aria-hidden="true">{procedure.consults.length}</span>
+          <span class="visually-hidden">{m.surgery_badge_consults({ n: procedure.consults.length })}</span>
         </span>
       {/if}
       {#if !open && photos.length > 0}
         <span class="proc-badge-tag">
           <Icon name="image" size={13} />
-          <span>{photos.length}</span>
+          <span aria-hidden="true">{photos.length}</span>
+          <span class="visually-hidden">{m.surgery_badge_photos({ n: photos.length })}</span>
         </span>
       {/if}
       {#if checklistCount > 0}
         <span class="proc-badge-tag">
           <Icon name="check" size={13} />
-          <span>{checklistCount}</span>
+          <span aria-hidden="true">{checklistCount}</span>
+          <span class="visually-hidden">{m.surgery_badge_checklist({ n: checklistCount })}</span>
         </span>
       {/if}
     </span>

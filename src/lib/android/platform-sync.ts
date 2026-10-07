@@ -50,7 +50,6 @@ import { resolveAndroidBackAction } from './back-navigation';
 export interface PlatformSyncDeps {
   isAndroid: () => boolean;
   isReady: () => boolean;
-  lockEnabled: boolean;
   todayEpochDay: () => number;
   prefs: {
     checkInEnabled: boolean;
@@ -94,7 +93,7 @@ export interface PlatformSyncDeps {
     consumeLaunchRoute(): Promise<{ route: string | null }>;
   };
   androidDisguise: { setLauncherIdentity(options: { disguised: boolean; palette: string; shape: 'current' | 'round' }): Promise<void> };
-  androidLockTiming: { setTiming(options: { timing: LockAfter; enabled: boolean }): Promise<void> };
+  androidLockTiming: { setTiming(options: { timing: LockAfter }): Promise<void> };
   androidScreenCapture: { setAllowed(options: { allowed: boolean }): Promise<void> };
   androidBackButton: {
     addListener(eventName: 'backButton', listener: () => void): Promise<{ remove(): Promise<void> }>;
@@ -229,6 +228,7 @@ function activeDeps(): PlatformSyncDeps {
 
 const syncReminderSchedules = coalescing(
   async () => {
+    if (!active) return;
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
     const [reminders, recentEntries, pauses, areaStates] = await Promise.all([
@@ -237,6 +237,7 @@ const syncReminderSchedules = coalescing(
       deps.journal.journalingPauses.getPauses(),
       deps.journal.areaStates.getAreaStates()
     ]);
+    if (!active || currentDeps !== deps || !deps.isReady()) return;
     await deps.androidReminders.sync(
       assembleReminderSyncPayload({
         reminders,
@@ -261,6 +262,7 @@ const syncReminderSchedules = coalescing(
 
 const reconcileStockRunOutReminders = coalescing(
   async () => {
+    if (!active) return;
     const deps = activeDeps();
     if (!deps.isAndroid() || !deps.isReady()) return;
     await deps.journal.stock.reconcileRunOutReminders(deps.todayEpochDay());
@@ -354,9 +356,9 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     disguised: deps.prefs.disguise,
     palette: deps.prefs.palette,
     shape: deps.prefs.launcherIconShape
-  });
-  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter, enabled: deps.lockEnabled });
-  void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture });
+  }).catch(console.error);
+  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter }).catch(console.error);
+  void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture }).catch(console.error);
 
   stopCurrent = () => {
     if (!active) return;

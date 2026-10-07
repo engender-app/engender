@@ -67,9 +67,8 @@ import type { DoseScheduleComparison } from './journal/doses';
     wall is `AGENDA_CAP` and the fold under it, not the width of the window
     - so the window widened and neither of those moved.
 
-    Not read off `weekStripDayCount`, which is a responsive count of cells a
-    strip has room for rather than a stretch of time, and which leaves Home
-    in phase 10's ticket 13 anyway. */
+    Not a responsive count of cells a strip has room for: that is a width, not
+    a stretch of time. */
 export const AGENDA_DAYS = 30;
 
 /** How many days behind today the passed slot is looked for in, its own
@@ -95,7 +94,7 @@ export const AGENDA_CAP = 3;
 export interface AgendaItem {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy.
       Keyed by kind *and* day, since a weekly injection earns one mark per
-      slot inside a seven-day window. */
+      slot inside the window. */
   key: string;
   kind: DayAheadMarkKind;
   epochDay: number;
@@ -143,7 +142,7 @@ export interface AgendaInput {
 }
 
 /** The window Today asks `dayAhead` for: `AGENDA_DAYS` days starting today,
-    both ends inclusive, so a week opened on a Monday ends on the Sunday.
+    both ends inclusive, so the last day is today plus `AGENDA_DAYS - 1`.
     Today itself is in it - today's own appointment is as much a thing
     arriving as Thursday's. */
 export function agendaWindow(todayEpochDay: number): { fromEpochDay: number; toEpochDay: number } {

@@ -226,8 +226,9 @@ export const JOURNEY_MIME: Record<JourneyOutput, string> = {
 export function journeyFileName(
   name: string,
   output: JourneyOutput,
-  epochDay: number = todayEpochDay()
+  epochDay: number = todayEpochDay(),
+  disguised = false
 ): string {
-  const slug = nameSlug(name);
+  const slug = disguised ? '' : nameSlug(name);
   return `${slug ? `${slug}-` : ''}journey-${dateInputValueFromEpochDay(epochDay)}${EXTENSIONS[output]}`;
 }

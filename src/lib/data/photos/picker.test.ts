@@ -24,6 +24,7 @@ vi.mock('./android-pick-channel.ts', () => ({
 import { chooseFiles } from '../fileDialog.ts';
 import { isAndroid } from '../../platform.ts';
 import { androidPhotos } from './android-bridge.ts';
+import { PhotoChannelTimeoutError } from './channel-timeout';
 import { readPickedOverChannel } from './android-pick-channel.ts';
 import {
   androidPickedBytes,
@@ -32,6 +33,7 @@ import {
   filePhotoPicker
 } from './picker.ts';
 import { DocumentRefusedError } from '../documents/accept.ts';
+import { PHOTO_SIZE_CEILING, PhotoTooLargeError } from './limits';
 import { DOCUMENT_SIZE_CEILING } from '../documents/limits.ts';
 
 /* A fake File whose arrayBuffer() is a spy: every ceiling test below asserts
@@ -130,6 +132,18 @@ describe('filePhotoPicker', () => {
     expect(vi.mocked(chooseFiles)).not.toHaveBeenCalled();
   });
 
+  /* The web picks several photos in one trip, and Android now does too
+     (after-release 27, audit L10-10): the system picker is asked for more
+     than one. */
+  test('asks the Android picker for several photos, as the web does', async () => {
+    vi.mocked(isAndroid).mockReturnValue(true);
+    vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: [] });
+
+    await filePhotoPicker().pick();
+
+    expect(vi.mocked(androidPhotos.pickImages)).toHaveBeenCalledWith({ multiple: true });
+  });
+
   /* Several photos at the ceiling is the shape this guards: fetched one at
      a time, so the heap holds one file rather than the whole multi-pick. */
   test('fetches a multi-pick one file at a time', async () => {
@@ -163,12 +177,11 @@ describe('filePhotoPicker', () => {
 
   test('refuses a file over the ceiling without reading it', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
-    const oversized = fakeFile(DOCUMENT_SIZE_CEILING + 1);
+    const oversized = fakeFile(PHOTO_SIZE_CEILING + 1);
     vi.mocked(chooseFiles).mockResolvedValue([oversized]);
 
     await expect(filePhotoPicker().pick()).rejects.toMatchObject({
-      constructor: DocumentRefusedError,
-      kind: 'too-large'
+      constructor: PhotoTooLargeError,
     });
     expect(oversized.arrayBuffer).not.toHaveBeenCalled();
   });
@@ -176,17 +189,17 @@ describe('filePhotoPicker', () => {
   test('refuses the whole batch, none read, if any one of several is over the ceiling', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
     const fine = fakeFile(1024);
-    const oversized = fakeFile(DOCUMENT_SIZE_CEILING + 1);
+    const oversized = fakeFile(PHOTO_SIZE_CEILING + 1);
     vi.mocked(chooseFiles).mockResolvedValue([fine, oversized]);
 
-    await expect(filePhotoPicker().pick()).rejects.toThrow(DocumentRefusedError);
+    await expect(filePhotoPicker().pick()).rejects.toThrow(PhotoTooLargeError);
     expect(fine.arrayBuffer).not.toHaveBeenCalled();
     expect(oversized.arrayBuffer).not.toHaveBeenCalled();
   });
 
   test('accepts a file at exactly the ceiling', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
-    vi.mocked(chooseFiles).mockResolvedValue([fakeFile(DOCUMENT_SIZE_CEILING, [1])]);
+    vi.mocked(chooseFiles).mockResolvedValue([fakeFile(PHOTO_SIZE_CEILING, [1])]);
 
     const picked = await filePhotoPicker().pick();
 
@@ -201,12 +214,36 @@ describe('filePhotoPicker', () => {
     vi.mocked(androidPhotos.pickImages).mockRejectedValue(new Error('too-large'));
 
     await expect(filePhotoPicker().pick()).rejects.toMatchObject({
-      constructor: DocumentRefusedError,
-      kind: 'too-large'
+      constructor: PhotoTooLargeError,
     });
     expect(vi.mocked(readPickedOverChannel)).not.toHaveBeenCalled();
     expect(vi.mocked(androidPhotos.readPickedChunk)).not.toHaveBeenCalled();
   });
+});
+
+test('a 30 MiB photo passes the raw photo ceiling before normalization', async () => {
+  vi.resetAllMocks();
+  vi.mocked(isAndroid).mockReturnValue(false);
+  const file = fakeFile(30 * 1024 * 1024, [137, 80, 78, 71]);
+  vi.mocked(chooseFiles).mockResolvedValue([file]);
+  expect(await filePhotoPicker().pick()).toEqual([new Uint8Array([137, 80, 78, 71])]);
+  expect(file.arrayBuffer).toHaveBeenCalledOnce();
+});
+
+test('an unknown-size Android photo refused during reading keeps photo wording', async () => {
+  vi.resetAllMocks();
+  vi.mocked(isAndroid).mockReturnValue(true);
+  vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: ['unknown-size'] });
+  vi.mocked(readPickedOverChannel).mockRejectedValue(new Error('too-large'));
+  await expect(filePhotoPicker().pick()).rejects.toThrow(PhotoTooLargeError);
+});
+
+test('an unknown-size Android document refused during reading keeps document wording', async () => {
+  vi.resetAllMocks();
+  vi.mocked(isAndroid).mockReturnValue(true);
+  vi.mocked(androidPhotos.pickDocument).mockResolvedValue({ token: 'unknown-size' });
+  vi.mocked(readPickedOverChannel).mockRejectedValue(new Error('too-large'));
+  await expect(documentPicker().pick()).rejects.toMatchObject({ constructor: DocumentRefusedError, kind: 'too-large' });
 });
 
 describe('cameraPhotoPicker', () => {
@@ -261,12 +298,11 @@ describe('cameraPhotoPicker', () => {
 
   test('refuses a shot over the ceiling without reading it', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
-    const oversized = fakeFile(DOCUMENT_SIZE_CEILING + 1);
+    const oversized = fakeFile(PHOTO_SIZE_CEILING + 1);
     vi.mocked(chooseFiles).mockResolvedValue([oversized]);
 
     await expect(cameraPhotoPicker().pick()).rejects.toMatchObject({
-      constructor: DocumentRefusedError,
-      kind: 'too-large'
+      constructor: PhotoTooLargeError,
     });
     expect(oversized.arrayBuffer).not.toHaveBeenCalled();
   });
@@ -363,4 +399,19 @@ describe('documentPicker', () => {
       kind: 'too-large'
     });
   });
+});
+
+
+test('a stalled pick channel falls back to chunked reads of the same token', async () => {
+  bridgeAnswers([[4, 5, 6]]);
+  vi.mocked(readPickedOverChannel).mockReturnValue(Promise.reject(new PhotoChannelTimeoutError('pick')));
+  expect(await androidPickedBytes('stalled')).toEqual(new Uint8Array([4, 5, 6]));
+  expect(androidPhotos.readPickedChunk).toHaveBeenCalledWith({ token: 'stalled' });
+});
+
+test('a native pick failure propagates without trying the fallback', async () => {
+  vi.mocked(androidPhotos.readPickedChunk).mockClear();
+  vi.mocked(readPickedOverChannel).mockReturnValue(Promise.reject(new Error('read failed')));
+  await expect(androidPickedBytes('broken')).rejects.toThrow('read failed');
+  expect(androidPhotos.readPickedChunk).not.toHaveBeenCalled();
 });

@@ -1,5 +1,5 @@
 /* Browser tier (ticket 03): the Node tier (vitest.config.ts) cannot
-   exercise SQLocal, which needs a real browser's OPFS. This script serves
+   exercise the encrypted SQLite driver, which needs a real browser's OPFS. This script serves
    the probe pages in this directory over a standalone dev server, drives
    a real Chromium through them with Playwright, and prints PASS/FAIL
    lines like tests/walkthrough.test.mjs. Run with `npm run test:browser`.
@@ -13,6 +13,12 @@ import { readFile } from 'node:fs/promises';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
+
+/** A probe's casingOf() reading (casing.ts) says the line is cased: the
+    element under it is stroked in the role's edge, over the same geometry,
+    two pixels wider in all (phase 15 ticket 20). */
+const isCased = (c) =>
+  c?.found && c.expected !== null && c.casing === c.expected && c.widens === 2 && c.sameGeometry === true;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { ok, fail, finish, block } = createReporter();
@@ -69,6 +75,34 @@ async function load(path, name) {
   return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
+
+await block('rendered screen contracts', 171, async () => {
+  const result = await load('/screen-mount.html', 'screen-mount');
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 55, calendar: 59 })) {
+    const cases = result[suite];
+    if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
+    if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
+    for (const item of cases) {
+      if (item.passed) ok(`${suite}: ${item.name}`);
+      else fail(`${suite}: ${item.name}`, item.error ?? 'rendered contract failed');
+    }
+  }
+});
+
+await block('rendered screen contracts at 230px', 2, async () => {
+  const previous = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 230, height: 900 });
+    const result = await load('/screen-mount.html?narrow=1', 'screen-mount');
+    if (!Array.isArray(result.narrow)) throw new Error(result.error ?? 'missing narrow results');
+    for (const item of result.narrow) {
+      if (item.passed) ok(item.name);
+      else fail(item.name, item.error ?? 'rendered narrow contract failed');
+    }
+  } finally {
+    await page.setViewportSize(previous);
+  }
+});
 
 await block('release blockers 03 duplicate display values', 11, async () => {
   const result = await load('/duplicate-keys.html', 'duplicate-keys');
@@ -131,8 +165,8 @@ await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');
   if (first.error) throw new Error(first.error);
 
-  if (first.markerExisted === false) ok('SQLocal opens a fresh database backed by OPFS');
-  else fail('SQLocal opens a fresh database backed by OPFS', 'marker row already existed on first load');
+  if (first.markerExisted === false) ok('sqlite3mc opens a fresh database backed by OPFS');
+  else fail('sqlite3mc opens a fresh database backed by OPFS', 'marker row already existed on first load');
 
   const { fts5 } = first;
   if (fts5.gesla === 1) ok("FTS5 remove_diacritics folds ą/ę/ś in 'zażółć gęślą jaźń'");
@@ -151,14 +185,11 @@ await block('ticket 03 browser tier', 5, async () => {
   else fail('OPFS survives a full page reload', 'marker row was gone after reload');
 });
 
-await block('production foreign key enforcement', 5, async () => {
+await block('production foreign key enforcement', 4, async () => {
   const r = await load('/foreign-keys.html', 'foreign-keys-probe');
   if (r.error) throw new Error(r.error);
   if (r.encryptedOpen === 1) ok('sqlite3mc enables foreign keys before migrations');
   else fail('sqlite3mc enables foreign keys before migrations', String(r.encryptedOpen));
-  if (r.sqlocalOpen === 1 && r.sqlocalRestoredOpen === 1 && r.plaintextOpen === 1)
-    ok('SQLocal enables foreign keys on initial, restored and plaintext opens');
-  else fail('SQLocal enables foreign keys on every open', JSON.stringify(r));
   if (r.encryptedAfterMigration === 1 && r.violations.length === 0)
     ok('migrations leave enforcement on and no foreign key violations');
   else fail('migrations leave enforcement on and no foreign key violations', JSON.stringify(r));
@@ -463,7 +494,7 @@ await block('ticket 13 browser tier', 10, async () => {
 
   /* Ticket 14: the same archive restored into another journal on the real
      platform, where a Replace is a dozen deletes and every insert inside one
-     BEGIN/COMMIT through SQLocal's worker. */
+     BEGIN/COMMIT through the SQLite worker. */
   const restored = r.restored ?? {};
   if (
     restored.entries === 1 &&
@@ -601,103 +632,16 @@ await block('ticket 09 (phase 2) browser tier', 10, async () => {
   else fail('a wrong raw key is refused by SQLite', 'a query under a random key succeeded');
 });
 
-// --- Ticket 10 (phase 2): converting a plaintext-era journal --------------
-await block('ticket 10 (phase 2) browser tier', 14, async () => {
-  const r = await load('/conversion.html', 'conversion-probe');
+// --- Unsupported legacy storage remains untouched -----------------------
+await block('legacy storage refusal', 3, async () => {
+  const r = await load('/legacy-storage.html', 'legacy-storage-probe');
   if (r.error) throw new Error(r.error);
-
-  /* The fixture first, or nothing below it means anything: this journal was
-     written by the pre-encryption app, so every sentinel has to be sitting
-     in the clear on disk before the conversion runs. */
-  /* Against the probe's own sentinel list rather than a copy written here.
-     Which kinds of protected content the fixture plants is that file's
-     decision and it has changed once already; what this has to hold is
-     that every one of them is readable in the clear before the conversion,
-     since finding none of them afterwards is what the whole block rests on.
-     The floor keeps that from passing on an empty list. */
-  const expected = r.plaintextScanExpected ?? [];
-  if (expected.length > 0 && JSON.stringify(r.plaintextScanFound) === JSON.stringify(expected))
-    ok(`the pre-encryption journal really is readable on disk: all ${expected.length} sentinels found before converting`);
-  else
-    fail(
-      'the pre-encryption journal is readable on disk before converting',
-      `found ${JSON.stringify(r.plaintextScanFound)} of ${JSON.stringify(expected)}`
-    );
-
-  if (r.stateBeforeConversion === 'convert') ok('a plaintext journal in the OPFS root is recognised as one to convert');
-  else fail('a plaintext journal is recognised as one to convert', r.stateBeforeConversion);
-
-  if (r.precheck?.ok === true && r.markerAfterPrecheck === 'preparing')
-    ok('the precheck passes on a device with room, and leaves the marker before the keystore');
-  else fail('the precheck passes and leaves a marker', JSON.stringify({ precheck: r.precheck, marker: r.markerAfterPrecheck }));
-
-  // A keystore beside a plaintext journal is only unambiguous because the
-  // marker is already there (conversion.ts's ordering rule).
-  if (r.stateWithKeystoreMidConversion === 'convert')
-    ok('a keystore written mid-conversion does not make the app think the journal is already encrypted');
-  else fail('a keystore written mid-conversion is still a conversion', r.stateWithKeystoreMidConversion);
-
-  if (r.copyBeforeRedoVerifies === true)
-    ok('a copy written by an attempt that then died verifies, and the conversion below writes over it');
-  else fail('an abandoned copy verifies and is written over', JSON.stringify(r.copyBeforeRedoVerifies));
-
-  if (r.interrupted && r.markerAfterInterruption === 'photos' && r.stateAfterInterruption === 'convert' && r.sourceStillPresentMidPhotos)
-    ok('killed part way through the photos: the marker says photos, and the plaintext journal is still on disk');
-  else
-    fail(
-      'killed part way through the photos leaves a resumable state',
-      JSON.stringify({ error: r.interrupted, marker: r.markerAfterInterruption, state: r.stateAfterInterruption })
-    );
-
-  if (r.markerAfterConversion === null && r.stateAfterConversion === 'unlock' && r.plaintextGone)
-    ok('the resume finishes: marker cleared, plaintext journal retired, journal is one that unlocks');
-  else
-    fail(
-      'the resume finishes the conversion',
-      JSON.stringify({ marker: r.markerAfterConversion, state: r.stateAfterConversion, plaintextGone: r.plaintextGone })
-    );
-
-  /* The claim gate, on a journal that was plaintext ten seconds ago. Every
-     OPFS file: the SAHPool pool files holding the converted database and
-     its side files, the encrypted photos, the keystore - and no source, no
-     pre-migration copy and no temporary artifact left over from the copy
-     itself. */
-  if (r.dirtyFiles.length === 0 && r.scan.length >= 3)
-    ok(`closed-app scan after conversion: none of the 8 sentinels readable in any of ${r.scan.length} OPFS files`);
-  else fail('closed-app scan after conversion finds no readable journal content', r.dirtyFiles.join('; ') || `only ${r.scan.length} files scanned`);
-
-  const remnants = r.rootNames.filter((p) => p.includes('engender.sqlite3'));
-  if (remnants.length === 0) ok('no plaintext database, pre-migration copy or side file survives in the OPFS root');
-  else fail('no plaintext database or side file survives in the OPFS root', JSON.stringify(remnants));
-
-  if (r.dirtyKeys.length === 0 && r.bootMirror && !('pinHash' in r.bootMirror))
-    ok('the boot mirror rewrites itself from the encrypted table, without the PIN hash it used to carry');
-  else fail('the boot mirror loses the PIN hash', JSON.stringify({ dirty: r.dirtyKeys, mirror: r.bootMirror }));
-
-  // The journal itself, read back through the passphrase.
-  const carried =
-    r.note === 'sentinel-converted-note-woke-up-early-4182' &&
-    r.photoCount === 1 &&
-    r.photoIntact &&
-    r.milestones?.includes('sentinel-converted-milestone-first-day-2260') &&
-    r.reminders?.includes('sentinel-converted-reminder-progynova-7715') &&
-    r.labs?.includes('sentinel-converted-analyte-estradiol') &&
-    r.preferenceName === 'sentinel-converted-preference-alicja-9014';
-  if (carried) ok('every entry, photo, milestone, reminder, lab result and preference comes back through the passphrase');
-  else fail('the whole journal comes back through the passphrase', JSON.stringify(r));
-
-  // Whole-database, not export/import: restore.ts never touches the pref
-  // table, so a device-local preference that survives proves the mechanism
-  // (ADR-0003/0020).
-  if (r.deviceLocalInDatabase === 'sentinel-converted-device-local-6801')
-    ok('a device-local preference travels too - one an archive would have dropped');
-  else fail('a device-local preference travels with the database', JSON.stringify(r.deviceLocalInDatabase));
-
-  if (r.searchHits >= 1) ok(`the FTS5 index came across with the pages rather than being rebuilt (${r.searchHits} hits)`);
-  else fail('the FTS5 index came across with the pages', `got ${r.searchHits} hits`);
-
-  if (r.secondConvertPhoto === true) ok('converting an already-converted photo again leaves it readable, which is what a resume relies on');
-  else fail('converting an already-converted photo is a no-op', JSON.stringify(r.secondConvertPhoto));
+  if (r.refused) ok('legacy storage refuses boot before setup or unlock');
+  else fail('legacy storage refuses boot', JSON.stringify(r));
+  if (r.demoRefused) ok('demo builds also refuse legacy storage without resetting it');
+  else fail('demo builds preserve legacy storage', JSON.stringify(r));
+  if (r.unchanged) ok('all legacy file names and bytes survive refusal');
+  else fail('legacy refusal leaves files untouched', JSON.stringify(r));
 });
 
 // --- Ticket 04 (phase 2): when a waiting release may take over ------------
@@ -1591,6 +1535,44 @@ try {
   fail('phase 5 audit deepening ticket 03 live reads', e.message ?? String(e));
 }
 
+// --- after-release 10: a web lock closes the database and lets go of the key ---
+for (const cpu of [1, 4]) {
+  const label = cpu === 1 ? 'web lock' : 'web lock, CPU throttled 4x';
+  await block(label, 9, async () => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
+    let lock;
+    try {
+      lock = await load('/session-lock.html', 'session-lock-probe');
+    } finally {
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      await cdp.detach();
+    }
+    if (lock.error) throw new Error(lock.error);
+    if (lock.heldOverLanded) ok(`${label}: a save in flight lands before the database closes`);
+    else fail(`${label}: a save in flight lands before the database closes`, 'still pending after the lock');
+    if (lock.oldDriverRefuses) ok(`${label}: the closed database answers nothing (${lock.oldDriverRefuses})`);
+    else fail(`${label}: the closed database answers nothing`, 'the old driver still answered a query');
+    if (!lock.keyHandedOut) ok(`${label}: the locked session hands out no key`);
+    else fail(`${label}: the locked session hands out no key`, 'session.key.current was still set');
+    if (!lock.mirrorWhileLocked.ready && lock.mirrorWhileLocked.tags === 0) ok(`${label}: the vocabulary mirror is empty while locked`);
+    else fail(`${label}: the vocabulary mirror is empty while locked`, JSON.stringify(lock.mirrorWhileLocked));
+    if (lock.whileLockedWaited && lock.stored.includes('written while locked') && lock.stored.includes('held over the lock'))
+      ok(`${label}: a save made while locked waits and lands on the reopened journal`);
+    else fail(`${label}: a save made while locked waits and lands on the reopened journal`, JSON.stringify({ waited: lock.whileLockedWaited, stored: lock.stored }));
+    if (lock.capturedLate === null && lock.stored.includes('captured before the lock'))
+      ok(`${label}: a save holding the journal from before the lock lands on the reopened database`);
+    else fail(`${label}: a save holding the journal from before the lock lands on the reopened database`, String(lock.capturedLate));
+    if (lock.mirrorFollowed === null) ok(`${label}: the mirror refreshes against the reopened journal`);
+    else fail(`${label}: the mirror refreshes against the reopened journal`, lock.mirrorFollowed);
+    if (lock.roundsLanded) ok(`${label}: five lock and unlock rounds lose no write`);
+    else fail(`${label}: five lock and unlock rounds lose no write`, JSON.stringify(lock.rounds));
+    const reopen = lock.rounds.map((round) => Math.round(round.reopenMs)).sort((a, b) => a - b);
+    const closing = lock.rounds.map((round) => Math.round(round.lockMs)).sort((a, b) => a - b);
+    ok(`${label}: reopen ${reopen.join('/')} ms (median ${reopen[2]}), lock ${closing.join('/')} ms`);
+  });
+}
+
 // --- ux-carpet 201: a revisit paints the last answer, a lock forgets it ----
 try {
   const live = await load('/live-reads.html', 'live-reads-probe');
@@ -1935,7 +1917,7 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
   if (
     ambiguous &&
     ambiguous.title?.startsWith('50 mg') &&
-    ambiguous.subs.some((sub) => sub.includes('More than one regimen was active'))
+    ambiguous.subs.some((sub) => sub.includes('more than one regimen was running'))
   )
     ok('a dose two regimens could both explain says so instead of naming one');
   else fail('a dose two regimens could both explain says so instead of naming one', JSON.stringify(ambiguous));
@@ -2099,10 +2081,10 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
 });
 
 // --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
-await block('phase 8 audit ticket 03 mic teardown', 3, async () => {
+await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
   const r = await load('/mic-teardown.html', 'mic-teardown-probe');
   if (r.error) throw new Error(r.error);
-  const { teardown, throwingRecorder } = r;
+  const { teardown, throwingRecorder, practice, benchmark } = r;
 
   if (teardown.streamOpened && teardown.trackStates.every((s) => s === 'ended'))
     ok('a screen destroyed while the microphone is still opening leaves no track running');
@@ -2117,12 +2099,22 @@ await block('phase 8 audit ticket 03 mic teardown', 3, async () => {
   else fail('no poll interval is armed for a take nobody is on screen for', `${teardown.intervalsArmed} armed`);
 
   if (throwingRecorder.threw && throwingRecorder.trackStates.every((s) => s === 'ended'))
-    ok("a recorder that throws on stop() (already inactive) still leaves its tracks stopped");
+    ok("a recorder that throws on stop() still leaves its tracks stopped");
   else
     fail(
       "a recorder that throws on stop() still leaves its tracks stopped",
       JSON.stringify(throwingRecorder)
     );
+
+  for (const [name, take] of [['practice', practice], ['benchmark', benchmark]]) {
+    if (take.opens === 1 && take.disabledWhileOpening)
+      ok(`${name}: two quick taps open one microphone and disable Record while opening`);
+    else fail(`${name}: duplicate microphone open is guarded`, JSON.stringify(take));
+    if (take.trackStates.length > 0 && take.trackStates.every((state) => state === 'ended'))
+      ok(`${name}: leaving the screen closes every microphone track`);
+    else fail(`${name}: microphone tracks close on destroy`, JSON.stringify(take));
+  }
+
 });
 
 // --- Ticket 16 (phase 8 deepening): the draft mirror's stale-removal repro,
@@ -2248,7 +2240,7 @@ await block('ticket 27 browser tier', 7, async () => {
 
 /* --- Redesign ticket 42: the pitch density, and the figure blocks that
        replaced the definition list. --- */
-await block('redesign ticket 42 browser tier', 8, async () => {
+await block('redesign ticket 42 browser tier', 9, async () => {
   const r = await load('/voice-density.html', 'voice-density-probe');
   if (r.error) throw new Error(r.error);
   const { drawn, trackless, first, joined, broken } = r;
@@ -2281,6 +2273,14 @@ await block('redesign ticket 42 browser tier', 8, async () => {
     ok(`the shape is a 2px square-capped series with no fill, on a 1px guide spine (${outline.stroke})`);
   else fail('the shape is a 2px square-capped series with no fill, on a 1px guide spine', JSON.stringify({ outline, spine }));
 
+  /* Phase 15 ticket 20: a line whose stripe is under 3:1 on the field is
+     drawn on a casing in the role's edge - the trace, the density's outline
+     and a figure's history line alike. Removing a casing fails here. */
+  const cased = Object.entries(drawn.casings).filter(([, c]) => !isCased(c));
+  if (drawn.edge && cased.length === 0)
+    ok(`the trace, the outline and the history lines each sit on a casing in the role's edge (${drawn.edge})`);
+  else fail("the trace, the outline and the history lines each sit on a casing in the role's edge", JSON.stringify({ edge: drawn.edge, cased }));
+
   if (drawn.bandsBehindShape >= 2)
     ok(`the cited bands run behind the shape as well as the plot (${drawn.bandsBehindShape})`);
   else fail('the cited bands run behind the shape as well as the plot', JSON.stringify(drawn.bandsBehindShape));
@@ -2312,10 +2312,13 @@ await block('redesign ticket 42 browser tier', 8, async () => {
 
 /* --- Ticket 29 (phase 8 features): the own-series trends, and that a
        change of capture chain arrives as a break with a reason in it. --- */
-await block('ticket 29 browser tier', 6, async () => {
+await block('ticket 29 browser tier', 7, async () => {
   const r = await load('/voice-own-series.html', 'voice-own-series-probe');
   if (r.error) throw new Error(r.error);
-  const { offered, registered, figures, single, neverMeasured } = r;
+  const { offered, registered, figures, single, neverMeasured, casing } = r;
+
+  if (isCased(casing)) ok(`the area chart's line sits on a casing in its role's edge (${casing.casing})`);
+  else fail("the area chart's line sits on a casing in its role's edge", JSON.stringify(casing));
 
   if (JSON.stringify(offered) === JSON.stringify(registered))
     ok(`the card offers every Own-series figure and nothing else (${offered.join(', ')})`);
@@ -2736,6 +2739,12 @@ await block('PIN count status', 1, async () => {
   const { verifyPinProgressStatus } = await import('../pin-progress-status.mjs');
   await verifyPinProgressStatus();
   ok('EN/PL count-only status updates through keyboard entry, backspace and refusal');
+});
+
+await block('Gates say what happened', 1, async () => {
+  const { verifyGatesSayWhatHappened } = await import('../gates-say-what-happened.mjs');
+  await verifyGatesSayWhatHappened();
+  ok('boot failures speak a sentence, a failed reset shows in its sheet, a mode keeps its own error');
 });
 
 const failures = finish('ALL BROWSER-TIER CHECKS PASS');

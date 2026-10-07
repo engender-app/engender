@@ -14,23 +14,27 @@
       "route": "/"
     },
     {
-      "name": "02-new-entry",
-      "route": "/entry/new/today?seedMood=4"
-    },
-    {
-      "name": "03-journal",
-      "route": "/calendar"
-    },
-    {
-      "name": "04-care",
+      "name": "02-care",
       "route": "/care"
     },
     {
-      "name": "05-look-back",
+      "name": "03-new-entry",
+      "route": "/entry/new/today?seedMood=4"
+    },
+    {
+      "name": "04-roadmap",
+      "route": "/transition/roadmap"
+    },
+    {
+      "name": "05-voice",
+      "route": "/voice?tab=compare"
+    },
+    {
+      "name": "06-look-back",
       "route": "/stats"
     },
     {
-      "name": "06-settings-privacy",
+      "name": "07-settings-privacy",
       "route": "/settings"
     }
   ]

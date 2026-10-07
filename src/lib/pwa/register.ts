@@ -20,7 +20,7 @@ let scheduled = false;
     not answered, `needs-unlock`, `needs-authentication` and
     `needs-device-recovery` are gates a returning person is still standing at
     (they register after unlocking, when the status becomes `ready`), and
-    `converting`, `conversion-refused`, `schema-too-new` and `error` are
+    `legacy-refused`, `schema-too-new` and `error` are
     states where the offline shell is not what anyone is waiting for.
 
     Once: the status changes again at every unlock, and each registration

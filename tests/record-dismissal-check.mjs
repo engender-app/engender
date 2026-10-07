@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, fillTime, launchChromium } from './browser-harness.mjs';
+import { fillDate, fillTime, launchChromium, fieldValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const server = await createServer({ cacheDir: '.svelte-kit/record-dismissal-vite', server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
@@ -46,7 +46,7 @@ async function doseValues() {
   ]) {
     const toggle = page.locator(`[data-dose-${group}]`);
     if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
-    for (const field of fields) values[field] = await page.locator(`#${field}`).inputValue();
+    for (const field of fields) values[field] = await fieldValue(page.locator(`#${field}`));
   }
   await page.locator('[data-dose-what]').click();
   values.route = await page.locator('[data-route][aria-pressed="true"]').getAttribute('data-route');
@@ -125,7 +125,7 @@ try {
   const doseAmount = page.locator('#dose-amount');
   const doseUnit = page.locator('#dose-unit');
   assert.equal(await page.locator('[data-save-dose]').isDisabled(), true);
-  assert.equal(await page.locator('#dose-requirements').count(), 0);
+  assert.match(await page.locator('#dose-requirements').innerText(), /Enter a dose amount/);
   assert.equal(await doseAmount.getAttribute('aria-invalid'), 'false');
   assert.equal(await doseAmount.getAttribute('aria-describedby'), null);
   await doseAmount.focus();

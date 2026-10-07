@@ -10,7 +10,7 @@
    one exception to that: every probe that takes `--root` needs the same
    chdir, and twelve copies of it had already gone wrong (ticket 226). */
 import { chromium } from 'playwright-core';
-import { preview } from 'vite';
+import { serveBuild } from './serve-build.mjs';
 import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
 const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
@@ -59,6 +59,19 @@ export async function fillDate(page, selector, iso) {
   await picker.locator('[data-date-picker-entry]').fill(iso);
   await picker.locator('[data-date-picker-apply]').click();
   await picker.waitFor({ state: 'detached' });
+}
+
+/** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the
+    day written out ("3 Oct 2026", after-release 28), so its `inputValue()`
+    is what a person reads; the stored value rides on `data-date-value`. */
+export async function dateValue(locator) {
+  return locator.getAttribute('data-date-value');
+}
+
+/** Any field's value as a guard compares it: a DatePicker's stored
+    `yyyy-mm-dd`, every other field's own value. */
+export async function fieldValue(locator) {
+  return (await locator.getAttribute('data-date-value')) ?? (await locator.inputValue());
 }
 
 /** fillDate's twin for a TimePicker: the picker's foot takes `HH:MM` and
@@ -139,8 +152,12 @@ export function createReporter() {
     const message = detail instanceof Error ? (detail.message ?? String(detail)) : detail;
     console.log('FAIL', name, '—', message);
   };
+  /* Sets the exit code itself. Six probes called finish() and ignored what
+     it returned, so a run that printed FAILURE(S) still exited 0 and the
+     guard runner recorded a pass (hosted run 37504870508). */
   const finish = (passMessage) => {
     console.log(failures ? `\n${failures} FAILURE(S)` : `\n${passMessage}`);
+    if (failures) process.exitCode = 1;
     return failures;
   };
 
@@ -167,16 +184,17 @@ export function createReporter() {
   return { ok, fail, finish, block };
 }
 
-/** A `vite preview` server over the built app in `root`.
+/** A server over the built app in `root`, serving build/index.html itself
+    under the production headers (serve-build.mjs, ticket 31). It was vite
+    preview until then, whose document had no CSP and no held module hints.
 
-    SvelteKit's preview adapter reads the built server from the working
-    directory, not from the root Vite is handed, so a probe given `--root
-    <other tree>` but started anywhere else served the tree it was started
-    in and compared a build with itself (tickets 224 and 226). This changes
-    into `root` first. Resolve any output path the caller takes before
-    calling it. Without `--root` the root is the checkout the probe runs in
-    and the change is a no-op. */
+    It still changes into `root` first, as it did for vite preview, whose
+    SvelteKit adapter read the built server from the working directory
+    (tickets 224 and 226): a probe given `--root <other tree>` that reads
+    relative paths afterwards keeps reading that tree. Resolve any output
+    path the caller takes before calling it. Without `--root` the root is
+    the checkout the probe runs in and the change is a no-op. */
 export function previewBuild(root) {
   process.chdir(root);
-  return preview({ root, preview: { port: 0 } });
+  return serveBuild(root);
 }

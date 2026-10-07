@@ -13,6 +13,7 @@
    resolving before this script gets a chance to unmount anything. */
 
 import { mount, unmount } from 'svelte';
+import VoiceBenchmarkFlow from '../../src/lib/components/VoiceBenchmarkFlow.svelte';
 import VoicePractice from '../../src/lib/components/VoicePractice.svelte';
 import { recordStream } from '../../src/lib/stores/voiceRecording.ts';
 import { publish } from '../probe-handshake.mjs';
@@ -33,7 +34,7 @@ function installDelayedMicrophone(openDelayMs: number) {
     streams.push(stream);
     return stream;
   };
-  return streams;
+  return { streams, restore: () => { navigator.mediaDevices.getUserMedia = real; } };
 }
 
 /** Mounts the practice screen, taps its record button, then destroys the
@@ -41,7 +42,7 @@ function installDelayedMicrophone(openDelayMs: number) {
     microphone open - the race ticket AU-03 is about - and reports what was
     left running once the open finally resolves. */
 async function teardownDuringOpen() {
-  const streams = installDelayedMicrophone(300);
+  const { streams, restore } = installDelayedMicrophone(300);
   let intervalsArmed = 0;
   const realSetInterval = window.setInterval.bind(window);
   window.setInterval = ((...args: Parameters<typeof setInterval>) => {
@@ -63,6 +64,7 @@ async function teardownDuringOpen() {
   // to wherever this ticket leaves it before anything is asserted.
   await delay(500);
   window.setInterval = realSetInterval;
+  restore();
 
   const [stream] = streams;
   return {
@@ -72,16 +74,14 @@ async function teardownDuringOpen() {
   };
 }
 
-/** The second path to the same place: `discard()`/`finish()` call the
-    recorder's own `stop()` first, which throws when the recorder is already
-    inactive (the capture device disappearing mid-take). Proven against a
-    fake `MediaRecorder` over a real fake-device stream, so the tracks
-    `recordStream` stops are real `MediaStreamTrack`s. */
+/** An unexpected recorder stop failure must still close the tracks. The
+    recorder is fake; its microphone tracks are real fake-device tracks. */
 async function tracksStopDespiteThrowingRecorder() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const RealMediaRecorder = window.MediaRecorder;
 
   class ThrowingRecorder {
+    state = 'recording';
     ondataavailable: ((event: BlobEvent) => void) | null = null;
     onstop: (() => void) | null = null;
     constructor(
@@ -110,10 +110,37 @@ async function tracksStopDespiteThrowingRecorder() {
   return { threw, trackStates: stream.getTracks().map((t) => t.readyState) };
 }
 
+
+async function doubleTap(kind: 'practice' | 'benchmark', selector: string) {
+  const { streams, restore } = installDelayedMicrophone(300);
+  const target = document.createElement('div');
+  document.body.append(target);
+  const instance = kind === 'practice'
+    ? mount(VoicePractice, { target })
+    : mount(VoiceBenchmarkFlow, { target, props: { onSaved() {} } });
+  const button = target.querySelector<HTMLButtonElement>(selector)!;
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await delay(50);
+  const disabledWhileOpening = button.disabled;
+  await delay(450);
+  await unmount(instance);
+  await delay(100);
+  restore();
+  target.remove();
+  return {
+    opens: streams.length,
+    disabledWhileOpening,
+    trackStates: streams.flatMap((stream) => stream.getTracks().map((track) => track.readyState))
+  };
+}
+
 async function run() {
   const teardown = await teardownDuringOpen();
   const throwingRecorder = await tracksStopDespiteThrowingRecorder();
-  return { teardown, throwingRecorder };
+  const practice = await doubleTap('practice', '[data-vp-start]');
+  const benchmark = await doubleTap('benchmark', '[data-vb-record]');
+  return { teardown, throwingRecorder, practice, benchmark };
 }
 
 run().then(

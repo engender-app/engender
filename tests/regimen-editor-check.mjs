@@ -67,6 +67,8 @@ try {
 
   await page.locator('#regimen-every').fill('0');
   assert.equal(await page.locator('[data-save-schedule]').isDisabled(), true);
+  // Marked once the field is left (after-release 21), not while typing.
+  await page.locator('#regimen-every').blur();
   assert.equal(await page.locator('#regimen-every').getAttribute('aria-invalid'), 'true');
   assert.match(await page.locator('#regimen-schedule-requirements').innerText(), /at least 1/);
   await page.locator('#regimen-every').fill('5');
@@ -246,6 +248,8 @@ try {
   assert.equal(await page.locator('#regimen-every').inputValue(), '9');
   await fault('deletePause', 'fail');
   await page.locator('[data-delete-pause]').click();
+  // Deleting a pause asks first (UI 07); the write runs on the confirm.
+  await page.locator('[data-confirm-delete-pause]').click();
   await failed();
   assert.equal((await stored()).pauses.length, 1);
   await page.locator('[data-end-reason="pausedForNow"]').click();
@@ -270,6 +274,7 @@ try {
   await open();
   await fault('deletePause', 'pass');
   await page.locator('[data-delete-pause]').click();
+  await page.locator('[data-confirm-delete-pause]').click();
   await page.locator('[data-delete-pause]').waitFor({ state: 'detached' });
   await page.locator('[data-close-regimen]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });

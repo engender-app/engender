@@ -12,7 +12,8 @@ const SAVED: SavedQuestion = {
   startEpochDay: 100,
   endEpochDay: 200,
   hasNote: true,
-  hasPhoto: false
+  hasPhoto: false,
+  starred: true
 };
 
 describe('turning a saved question into the same filters the screen builds', () => {
@@ -23,19 +24,21 @@ describe('turning a saved question into the same filters the screen builds', () 
       startEpochDay: 100,
       endEpochDay: 200,
       hasNote: true,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: true
     });
   });
 
   it('keeps an unset range and unset toggles as the screen would have left them', () => {
-    const bare: SavedQuestion = { ...SAVED, startEpochDay: null, endEpochDay: null, hasNote: false, hasPhoto: false };
+    const bare: SavedQuestion = { ...SAVED, startEpochDay: null, endEpochDay: null, hasNote: false, hasPhoto: false, starred: false };
     expect(entrySearchFiltersOf(bare)).toEqual({
       tagIds: ['t1', 't2'],
       moods: [4, 5],
       startEpochDay: null,
       endEpochDay: null,
       hasNote: false,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: false
     });
   });
 });
@@ -48,7 +51,8 @@ describe('turning the screen state into what a saved question stores', () => {
       startEpochDay: 100,
       endEpochDay: 200,
       hasNote: true,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: true
     });
     expect(input).toEqual({
       name: 'Therapy check-ins',
@@ -58,7 +62,8 @@ describe('turning the screen state into what a saved question stores', () => {
       startEpochDay: 100,
       endEpochDay: 200,
       hasNote: true,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: true
     });
   });
 
@@ -72,7 +77,8 @@ describe('turning the screen state into what a saved question stores', () => {
       startEpochDay: null,
       endEpochDay: null,
       hasNote: false,
-      hasPhoto: false
+      hasPhoto: false,
+      starred: false
     });
   });
 
@@ -83,7 +89,8 @@ describe('turning the screen state into what a saved question stores', () => {
       startEpochDay: 50,
       endEpochDay: null,
       hasNote: false,
-      hasPhoto: true
+      hasPhoto: true,
+      starred: true
     };
     const input = savedQuestionInputOf('Bad days', 'bad', filters);
     expect(entrySearchFiltersOf(input)).toEqual(filters);

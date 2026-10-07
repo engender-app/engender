@@ -21,7 +21,7 @@
   import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
 
-  const TYPE_ICON: Record<string, string> = { med: 'heart', injection: 'zap', appointment: 'calendar', other: 'bell' };
+  const TYPE_ICON: Record<string, string> = { med: 'pill', injection: 'pill', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
 
   let reminders = liveList((j) => j.reminders.getReminders());

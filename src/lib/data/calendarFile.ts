@@ -50,11 +50,7 @@ function icsUtcStamp(epochMs: number): string {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
 }
 
-/** RFC 5545 §3.3.11 TEXT escaping - backslash first, so escaping a
-    semicolon or comma never doubles an already-escaped backslash. Line
-    folding is left undone on purpose: nothing here writes a title long
-    enough to near the 75-octet limit, and every calendar app this file
-    targets already tolerates an unfolded line. */
+/** RFC 5545 TEXT escaping, before line folding. */
 function escapeIcsText(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
@@ -94,5 +90,22 @@ export function buildCalendarEvent(input: CalendarEventInput): string {
 
   lines.push(`SUMMARY:${escapeIcsText(title)}`, 'END:VEVENT', 'END:VCALENDAR');
 
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(foldLine).join('\r\n') + '\r\n';
+}
+
+/** Continuation whitespace counts toward RFC 5545's 75-octet limit. */
+function foldLine(line: string): string {
+  const encoder = new TextEncoder();
+  let folded = '';
+  let octets = 0;
+  for (const character of line) {
+    const size = encoder.encode(character).length;
+    if (octets + size > 75) {
+      folded += '\r\n ';
+      octets = 1;
+    }
+    folded += character;
+    octets += size;
+  }
+  return folded;
 }

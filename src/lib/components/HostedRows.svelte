@@ -34,6 +34,7 @@
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { rowLine, rowsHostedBy, rowHidden, type HubRowHostKey } from '$lib/data/hubRows';
   import { todayEpochDay } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -52,7 +53,7 @@
     card?: boolean;
   } = $props();
 
-  const today = todayEpochDay();
+  const today = $derived(currentDay());
   let estimate = $derived(readReserve(`hosted-${host}`));
   const remember = (px: number) => rememberReserve(`hosted-${host}`, px);
 

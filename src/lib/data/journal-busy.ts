@@ -3,15 +3,14 @@
 
    A waiting service worker that takes over during a write swaps the code out
    from under a half-finished one. For an entry save that is a spinner that
-   never resolves; for a migration or an encryption conversion it can be the
+   never resolves; for a migration it can be the
    journal. So the app never asks a waiting worker to activate while anything
    here is open, and never offers the update action either - update.ts reads
    this, and the notice appears when it clears.
 
-   Four things enter: every journal write, which writes.ts wraps at one choke
+   Journal writes and migrations enter: every journal write, which writes.ts wraps at one choke
    point and which covers an Archive import too (an import is a declared write
-   on every table); the migrations in boot.ts; and the encryption conversion in
-   boot.svelte.ts.
+   on every table); and the migrations in boot.ts.
 
    A counter rather than a flag, because two writes overlap routinely - an
    entry save and the photo store's write land on their own schedules - and the

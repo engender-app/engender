@@ -15,9 +15,11 @@ import { m } from '$lib/paraglide/messages';
 /** In the order both surfaces show them. */
 export const EFFECT_DIRECTIONS = ['feminizing', 'masculinizing', 'other'] as const;
 
-export type EffectDirection = (typeof EFFECT_DIRECTIONS)[number];
+/** A direction or the bucket for everything without one: three arms, where
+    `EffectDirection` (types.ts) is the two a built-in effect can claim. */
+export type EffectDirectionGroup = (typeof EFFECT_DIRECTIONS)[number];
 
-export function effectDirectionLabel(direction: EffectDirection): string {
+export function effectDirectionLabel(direction: EffectDirectionGroup): string {
   if (direction === 'feminizing') return m.effects_direction_feminizing();
   if (direction === 'masculinizing') return m.effects_direction_masculinizing();
   return m.effects_direction_other();

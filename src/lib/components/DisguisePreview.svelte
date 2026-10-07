@@ -13,7 +13,6 @@
 
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
-  import { DECOY_NAME } from '$lib/disguise/identity';
   import Icon from './Icon.svelte';
 
   let { on }: { on: boolean } = $props();
@@ -26,12 +25,7 @@
 <div class="disguise-preview" class:is-on={on} data-disguise-preview data-on={on}>
   <span class="disguise-icon"><Icon name="book" size={22} /></span>
   <span>
-    <!-- The disguise's own name, from the module every surface that names
-         the app reads (disguise/identity.ts). An expression rather than a
-         text node because check-copy counts bare
-         text as untranslated, and this word is the same in every
-         language. -->
-    <strong data-disguise-name>{DECOY_NAME}</strong><br />
+    <strong data-disguise-name>{m.disguise_name()}</strong><br />
     <span class="muted small">{isAndroid() ? m.disguise_preview_android() : m.disguise_preview_web()}</span>
   </span>
 </div>
@@ -40,7 +34,7 @@
      picker never get a disguised variant, so that gap is named instead. On
      web the manifest is the browser's to refresh, and a promise the app
      cannot keep is worse than none. -->
-<p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : m.disguise_installed_note()}</p>
+<p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : `${m.disguise_installed_note()} ${m.disguise_web_gap_note()}`}</p>
 
 <style>
   /* Moved out of screens.css with the block itself: a class with one

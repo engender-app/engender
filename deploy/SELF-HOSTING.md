@@ -17,13 +17,14 @@ for `app.engender.barankiewicz.dev` is in [README.md](README.md).
   not start. `http://localhost` counts as secure, which is fine for trying
   it out and nothing else.
 - **Serve it over HTTP/2.** A first visit loads about a hundred files. Over
-  HTTP/1.1 a browser fetches six at a time, and on a slow phone the
-  2026-10-03 performance audit measured the first screen at about 6.0 s against
-  about 3.5 s over HTTP/2, before this release's first frame. Nobody has
-  remeasured HTTP/1.1 since, so read those as the audit's numbers, not ours
-  for this release. Caddy and the nginx template below speak HTTP/2 already. The
-  Docker image listens on plain port 80, so the proxy in front of it is the
-  place that matters: don't put it in front of the browser as HTTP/1.1.
+  HTTP/1.1 a browser fetches six at a time. On a slow phone (4x CPU
+  slowdown, 1.6 Mbps, 150 ms latency) this release measured the first screen
+  of a first visit at about 6.9 s over HTTP/1.1 against about 4.0 to 4.7 s
+  over HTTP/2. The app's first frame, its mark on the ground, paints at about
+  0.9 s over HTTP/2 and 1.1 s over HTTP/1.1 either way. Caddy and the nginx
+  template below speak HTTP/2 already. The Docker image listens on plain
+  port 80, so the proxy in front of it is the place that matters: don't put
+  it in front of the browser as HTTP/1.1.
 - **Serve it from the root of a host name.** `journal.example.org` works.
   `example.org/engender/` does not: the offline shell answers every
   navigation with one cached document, and the asset paths in it assume `/`.

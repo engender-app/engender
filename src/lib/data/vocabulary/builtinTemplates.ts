@@ -123,7 +123,7 @@ export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
    includes (BUILT_IN_PRESETS above), so a template's dial reading makes
    sense under any preset a person has chosen.
 
-   The last eight were guided prompts (phase 4 features ticket 17) until
+   The eight with empty tags and dims after the dial templates were guided prompts (phase 4 features ticket 17) until
    phase 6 ticket 07 folded the two concepts into one: a prompt is a
    template with empty tags and empty dims, its note scaffold the whole of
    its content, the same wording it always had (labels.ts's

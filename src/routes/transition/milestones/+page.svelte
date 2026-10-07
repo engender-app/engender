@@ -32,7 +32,7 @@
   import { page } from '$app/state';
   import { goto, afterNavigate } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
@@ -43,6 +43,7 @@
     epochDayFromDateInputValueOrToday,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import type { Milestone, MilestoneTemplate, Photo } from '$lib/data/types';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { EditorPhoto } from '$lib/stores/photoPicking';
@@ -70,6 +71,7 @@
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   let shown = $state(vocabulary.randomTemplates(3));
   let picking = $state(false);
@@ -112,7 +114,7 @@
   /* Offered, never required, right after a brand-new milestone is created
      (CONTEXT: "Felt-sense entry") - editing an existing one never opens
      this, the same reasoning ticket 24 gives for the anniversary showing
-     on MilestoneCard being its own separate offer, not this one repeated. */
+     below being its own separate offer, not this one repeated. */
   let feelingOfferId = $state<string | null>(null);
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
@@ -170,12 +172,14 @@
       });
       if (isNew) feelingOfferId = id;
     },
+    // A new milestone is answered by the felt-sense offer instead.
+    saved: (draft) => (draft.id ? m.saved() : null),
     remove: (id) => journal.milestones.deleteMilestone(id),
     findById: (id) => sorted.find((mi) => mi.id === id)
   });
 
   function statusText(mi: Milestone): string {
-    const s = milestoneStatus(mi, todayEpochDay());
+    const s = milestoneStatus(mi, currentDay());
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
     if (s.type === 'today') return m.ms_status_today();
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
@@ -250,6 +254,8 @@
     remove: () => {
       if (record.editor) record.editor.photo = null;
     },
+    // Only the draft loses it; the milestone keeps its photo until Save.
+    deleted: () => null,
     reference: () => {
       const fileName = record.editor?.originalPhoto?.fileName;
       return fileName ? { fileName } : null;
@@ -270,9 +276,69 @@
       feelingOfferId && input
         ? { owner: { milestoneId: feelingOfferId }, epochDay: todayEpochDay(), ...input }
         : null;
-    /* Closed before the write, so a second tap finds no open offer. */
-    feelingOfferId = null;
+    /* Closed once the write lands; the sheet holds its button meanwhile.
+       Either answer confirms the milestone itself, which this offer stands
+       in for (its own save opts out of the toast). */
+    if (feelingOfferId === null) return;
     await answerOffer(FEELING_OFFER, subject, given, journal);
+    feelingOfferId = null;
+    toast(m.saved(), { kind: 'record-saved' });
+  }
+
+  /* The anniversary showing (phase 5 ticket 24, CONTEXT: "Felt-sense
+     entry"): on the day a milestone comes round again, the screen asks how
+     it feels now. It lived on MilestoneCard, and when redesign 43 made this
+     screen the one place milestones are drawn, nothing here took it over,
+     so the question CONTEXT promises was never asked (phase 15 after-release
+     ticket 15). It sits above the rail because it is what is true today.
+
+     Offered, never required: answering it hides the row because today's
+     reading is now on the milestone, and Skip hides it for this visit only.
+     No offer-once check, for the reason offers.ts gives - last year's
+     answer does not answer this year's. Nothing is drawn until today's
+     felt-sense read has answered, so a row is never shown and then taken
+     back from someone who already answered earlier today. */
+  const ANNIV_OFFER = OFFERS['milestone-anniversary-felt-sense'];
+  let answeredToday = liveQuery((j) =>
+    j.feltSense
+      .onDay(currentDay())
+      .then((rows) => new Set(rows.flatMap((f) => (f.owner.kind === 'milestone' ? [f.owner.id] : []))))
+  );
+  let skippedAnniv = $state<string[]>([]);
+  let anniversaries = $derived.by(() => {
+    const answered = answeredToday.value;
+    if (!answered) return [];
+    const today = currentDay();
+    return sorted.flatMap((mi) => {
+      const s = milestoneStatus(mi, today);
+      return s.isAnnivToday && !answered.has(mi.id) && !skippedAnniv.includes(mi.id) ? [{ mi, years: s.years ?? 0 }] : [];
+    });
+  });
+  let annivOffer = $state<Milestone | null>(null);
+  /* Kept after the offer closes, so the sheet still names its milestone
+     while it slides away rather than losing the line mid-close. */
+  let annivSubject = $state('');
+  /* An offer known by the time the milestones first paint arrives with
+     them, in place, rather than opening a frame later and pushing the rail
+     down 114px under someone who is already looking at it. Once the rail
+     has painted, an offer that answers late, and a row that goes, open and
+     close as usual. */
+  let railPainted = $state(false);
+  $effect(() => {
+    if (railPainted || !vocabulary.ready) return;
+    const id = requestAnimationFrame(() => (railPainted = true));
+    return () => cancelAnimationFrame(id);
+  });
+
+  async function answerAnnivOffer(given: OfferAnswer, input: { mood: number; note: string | null } | null) {
+    const open = annivOffer;
+    if (!open) return;
+    if (given === 'decline') skippedAnniv = [...skippedAnniv, open.id];
+    const subject = input ? { owner: { milestoneId: open.id }, epochDay: todayEpochDay(), ...input } : null;
+    /* Closed once the write lands; the sheet holds its button meanwhile. */
+    const saved = await answerOffer(ANNIV_OFFER, subject, given, journal);
+    annivOffer = null;
+    if (saved) toast(m.ms_feeling_anniv_saved({ name: open.name }));
   }
 
   /* The editor's own draft carries no origin - it's a name, a date, a
@@ -310,6 +376,33 @@
            16). The rail carries today's place among the milestones and the
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
+      {#if anniversaries.length}
+        <div class="screen-part" data-anniv-offers transition:disclose={{ skip: !railPainted }}>
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each anniversaries as { mi, years } (mi.id)}
+              <div class="rows-divide" transition:disclose>
+                <ListRow
+                  data-anniv-feeling={mi.id}
+                  onclick={() => {
+                    annivSubject = mi.name;
+                    annivOffer = mi;
+                  }}
+                  title={ANNIV_OFFER.copy.title()}
+                  subtitle={`${mi.name} · ${m.ms_status_years_ago({ years: m.n_years({ n: years }) })}`}
+                >
+                  {#snippet leading()}
+                    {#if mi.photo}
+                      <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
+                    {:else}
+                      <span class="kit-row-ico"><Icon name="heart" size={22} /></span>
+                    {/if}
+                  {/snippet}
+                </ListRow>
+              </div>
+            {/each}
+          </ListCard>
+        </div>
+      {/if}
       <MilestoneRail
         milestones={sorted}
         eras={erasQuery.rows}
@@ -383,7 +476,7 @@
     <div class="spread" style="margin-bottom:var(--space-3)">
       <h3>{m.ms_add_heading()}</h3>
       <button class="icon-btn press" data-shuffle aria-label={m.ms_shuffle()} onclick={shuffleSuggestions}>
-        <Icon name="shuffle" size={20} />
+        <Icon name="dice" size={20} />
       </button>
     </div>
     <ListCard role={roleAt(activeFlag.roles, 0)}>
@@ -536,6 +629,7 @@
     photo={milestonePhoto.review.photo}
     reference={milestonePhoto.review.reference}
     onAccept={milestonePhoto.review.accept}
+    busy={milestonePhoto.review.busy}
     onRetake={milestonePhoto.review.capture}
     onCancel={milestonePhoto.review.cancel}
   />
@@ -544,8 +638,17 @@
     open={pendingMilestonePhoto !== null}
     bind:day={pendingMilestoneDay}
     fieldId="milestone-photo-day-prompt"
+    hint={m.photo_day_prompt_hint_milestone()}
     onSave={() => resolveMilestonePhotoDay(pendingMilestoneDay)}
     onSkip={() => resolveMilestonePhotoDay(null)}
+  />
+
+  <FeltSenseOfferSheet
+    open={annivOffer !== null}
+    copy={ANNIV_OFFER.copy}
+    subject={annivSubject}
+    onSave={(input) => answerAnnivOffer('confirm', input)}
+    onSkip={() => void answerAnnivOffer('decline', null)}
   />
 
   <FeltSenseOfferSheet

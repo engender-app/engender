@@ -43,8 +43,9 @@ try {
     if (entry === 'today') await page.locator('[data-dose-add]').click();
     await page.locator('[data-save-dose]').waitFor();
     const before = await page.locator('[data-dose]').count();
-    assert.equal(await page.locator('#dose-requirements').count(), 0, 'Opening has no validation announcement');
+    assert.match(await page.locator('#dose-requirements').innerText(), /Choose an injection site/, 'Opening says why Save is refused');
     await page.locator('button[data-site="thigh-left"]').click();
+    await page.locator('#dose-requirements').waitFor({ state: 'detached' });
     assert.equal(await page.locator('[data-app-root]').evaluate((node) => node.scrollTop), 0, 'Sheet cannot scroll the fixed app frame');
     if (entry === 'care') {
       const main = page.locator('[data-app-scroll-region]');
@@ -70,8 +71,11 @@ try {
     await page.locator('[data-save-dose]').click();
     await page.locator('[data-sheet]').waitFor({ state: 'detached', timeout: 2000 });
     const status = page.locator('[data-toast-kind="dose-saved"]');
-    assert.equal(await status.getAttribute('role'), 'status');
     assert.equal(await status.innerText(), 'Dose saved.'); // text-under-test: save confirmation
+    // Said through the app's standing polite region, not by the toast itself:
+    // a region inserted already holding its words is often not read
+    // (after-release 21).
+    await page.waitForFunction(() => document.querySelector('[data-announce][role="status"]')?.textContent === 'Dose saved.', null, { timeout: 2000 });
     await page.waitForFunction((count) => document.querySelectorAll('[data-dose]').length === count, before + 1);
     await page.waitForTimeout(350);
     assert.equal(await page.locator('[data-sheet]').count(), 0, 'Sheet stays closed after live reads settle');

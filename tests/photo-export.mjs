@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { PALETTES } from './palettes.mjs';
-import { launchChromium, fillDate } from './browser-harness.mjs';
+import { launchChromium, fillDate, dateValue } from './browser-harness.mjs';
 
 const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
@@ -89,8 +89,8 @@ try {
     assert.equal(result.deliveries, 0, 'generation never shares');
     await page.locator('[data-again]').click();
     assert.equal(await page.locator('.photo-cell[aria-pressed="true"]').count(), 1);
-    assert.equal(await page.locator('#pj-start').inputValue(), '1997-05-19');
-    assert.equal(await page.locator('#pj-end').inputValue(), '1997-05-19');
+    assert.equal(await dateValue(page.locator('#pj-start')), '1997-05-19');
+    assert.equal(await dateValue(page.locator('#pj-end')), '1997-05-19');
     assert.match(page.url(), /source=hair/);
     assert.equal(await page.getByRole('radio', { name: output === 'collage' ? 'Collage' : 'Timelapse', exact: true }).getAttribute('aria-checked'), 'true');
   }

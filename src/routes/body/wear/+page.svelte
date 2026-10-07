@@ -26,11 +26,14 @@
      (shiftStartToDay) - its time-of-day is never re-typed, so a session
      that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
+  import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
@@ -38,9 +41,9 @@
     epochDayFromTimestamp,
     startOfDayTimestamp,
     timestampAtLocalTime,
-    todayEpochDay,
     FIRST_EPOCH_DAY
   } from '$lib/data/epochDay';
+  import { currentDay } from '$lib/stores/today.svelte';
   import {
     binderCueShowing,
     hoursMinutesOf,
@@ -84,7 +87,8 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, resize, slideMonit } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { isAndroid } from '$lib/platform';
@@ -94,24 +98,24 @@
   let isWeb = $derived(!isAndroid());
 
   /* Colour that carries a value takes role 0 (DIRECTION.md): index 0 is the
-     only role guaranteed chromatic on all 8 palettes, and a two-line chart
+     only role guaranteed chromatic on every palette, and a two-line chart
      drawn in an achromatic band reads as disabled. The sessions take the
      stripe after it. */
-  const SECTION_ROLE = { chart: 0, strip: 0, sessions: 1 };
-
   /* The strip's fill is a colour carrying a value, so it takes role 0 with
      the chart rather than the sessions' stripe (ticket 44) - index 0 is
-     the only one guaranteed chromatic on all 8 palettes, and a logged day
+     the only one guaranteed chromatic on every palette, and a logged day
      filled in a palette's achromatic band is a day drawn as nothing. The
      calendar states the same rule for its own three readings of a day. */
+  const SECTION_ROLE = { chart: 0, strip: 0, sessions: 1 };
+
   import Switch from '$lib/components/Switch.svelte';
   import WearTrendChart from '$lib/components/WearTrendChart.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
   const WINDOW_DAYS = 90;
   const RANGES = [7, 14, 30, 90, 180, 365];
-  const today = todayEpochDay();
-  const from = today - WINDOW_DAYS;
+  const today = $derived(currentDay());
+  const from = $derived(today - WINDOW_DAYS);
 
   let sessionsQuery = liveList((j) => j.wearSessions.getSessions(from, today));
   let runningQuery = liveQuery((j) => j.wearSessions.getRunningSession());
@@ -310,6 +314,21 @@
       };
     },
     async upsert(draft) {
+      /* A running session's only save is Stop, which fills the duration in.
+         It goes through here, so the sheet's own busy state and leave guard
+         cover it like any other save (after-release 06). */
+      if (draft.isRunning) {
+        await journal.wearSessions.upsertSession({
+          id: draft.id,
+          kind: draft.kind,
+          startTimestamp: draft.startTimestamp,
+          durationMs: Date.now() - draft.startTimestamp,
+          note: draft.note.trim() || null,
+          reminderHoursAfterStart: reminderHoursOf(draft),
+          reminderTitle: wearReminderTitle(draft.kind)
+        });
+        return;
+      }
       if (!canSave(draft)) return false;
       const note = draft.note.trim() || null;
       const reminderHoursAfterStart = reminderHoursOf(draft);
@@ -337,9 +356,33 @@
         reminderTitle: wearReminderTitle(draft.kind)
       });
     },
+    saved: (draft) => (draft.isRunning ? m.wear_session_stopped() : m.saved()),
     remove: (id) => journal.wearSessions.deleteSession(id),
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
+
+  /* Stop on the running row itself, worded as Home's wear tile words it
+     (after-release 28, audit UI-08: a bare square here, a labelled Stop
+     there). The same write the tile makes, then the same confirmation the
+     sheet's Stop gives. */
+  const cardIn = (_node: Element) => fadeOnly(crossfadeDuration());
+  const stopper = writer();
+  async function stopRunning() {
+    const session = running;
+    if (!session) return;
+    const stopped = await stopper.run(
+      () =>
+        journal.wearSessions.upsertSession({
+          id: session.id,
+          kind: session.kind,
+          startTimestamp: session.startTimestamp,
+          durationMs: Date.now() - session.startTimestamp,
+          note: session.note
+        }),
+      m.write_failed()
+    );
+    if (stopped) toast(m.wear_session_stopped(), { kind: 'record-saved' });
+  }
 
   let kindOptions = $derived(WEAR_KINDS.map((kind) => ({ value: kind, label: wearKindLabel(kind) })));
 
@@ -374,18 +417,6 @@
   const reminderHoursOf = (editor: Editor): number | null | undefined =>
     isWeb ? undefined : editor.reminderEnabled ? parseFloat(editor.reminderHours) : null;
 
-  async function stopRunning(draft: Editor) {
-    await journal.wearSessions.upsertSession({
-      id: draft.id,
-      kind: draft.kind,
-      startTimestamp: draft.startTimestamp,
-      durationMs: Date.now() - draft.startTimestamp,
-      note: draft.note.trim() || null,
-      reminderHoursAfterStart: reminderHoursOf(draft),
-      reminderTitle: wearReminderTitle(draft.kind)
-    });
-    record.editor = null;
-  }
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -451,7 +482,7 @@
      audit U7): a series with no points in the range gets a note instead of
      a promise it draws nothing on. wearLegend.ts is the pure, node-tested
      half; this just supplies the two booleans. */
-  let legendEntries = $derived(wearTrendLegend(wearTrend.length > 0, regionTrend.length > 0));
+  let legendEntries = $derived(wearTrendLegend(wearTrend.length, regionTrend.length));
 
   /* The presentation chip (ticket 17, ADR-0048): highlights, never
      filters, so both lines above keep drawing exactly what they draw
@@ -511,7 +542,14 @@
         />
       {/if}
 
+      <!-- Stopping from the row (or starting from the sheet) swaps one card
+           for the other in place: the old one fades out of flow over the new
+           one fading in, so neither is painted at full strength in a frame
+           the other still owns, and the wrapper travels the difference in
+           height (a running card with its cue line is taller than Today). -->
+      <div class="wear-now" use:resize>
       {#if running}
+        <div in:cardIn out:crossfade>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
             key="running"
@@ -523,11 +561,13 @@
               : m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })}
             chevron={false}
             onclick={() => record.openEditor(running)}
-          >
-            {#snippet trailing()}
-              <Icon name="stop" size={20} />
-            {/snippet}
-          </ListRow>
+            action={{
+              text: m.wear_session_stop_action(),
+              label: m.wear_session_stop_action(),
+              onclick: () => stopRunning(),
+              attrs: { 'data-wear-stop': '' }
+            }}
+          />
           <!-- The cue (ADR-0064). A line inside the card the running row
                already sits in, rather than anything that interrupts: the
                row keeps its stop control, and nothing about Stop or Save
@@ -536,8 +576,10 @@
             <p class="muted small wear-cue" data-wear-duration-cue transition:disclose>{m.wear_session_cue()}</p>
           {/if}
         </ListCard>
+        </div>
       {:else if earliest !== null}
         <!-- Nothing running, so what is true now is what today came to. -->
+        <div in:cardIn out:crossfade>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
             key="wear-today"
@@ -552,7 +594,9 @@
             {/snippet}
           </ListRow>
         </ListCard>
+        </div>
       {/if}
+      </div>
 
       {#if earliest === null && !running}
         <Notice
@@ -570,8 +614,12 @@
           <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
         {:else}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            <!-- A session joins the list when it is stopped, now in place from
+                 the running row rather than under a sheet, so it opens its own
+                 height instead of pushing the rows under it in one frame. -->
             {#each weekSessions as session (session.id)}
               {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
+              <div class="rows-divide" transition:collapse>
               <ListRow
                 key={session.id}
                 data-wear-session={session.id}
@@ -583,6 +631,7 @@
                 chevron={false}
                 onclick={() => record.openEditor(session)}
               />
+              </div>
             {/each}
           </ListCard>
         {/if}
@@ -619,7 +668,7 @@
             <div out:crossfade>
               <Segmented
                 name={m.stats_range_group()}
-                options={RANGES.map((r) => ({ value: String(r), label: m.range_days({ days: String(r) }) }))}
+                options={dayRangeOptions(RANGES)}
                 value={String(range)}
                 onChange={(v) => (range = Number(v))}
                 compact
@@ -648,32 +697,41 @@
         {/snippet}
         <!-- A chart with nothing in it drew an empty plot and a legend
              naming two lines that were not there. It says so instead, the
-             way every other chart in the kit does. -->
-        {#if wearTrend.length || regionTrend.length}
-          <WearTrendChart
-            wearPoints={wearTrend}
-            regionPoints={regionTrend}
-            {wearMax}
-            regionMin={BODY_REGION_INTENSITY_MIN}
-            regionMax={BODY_REGION_INTENSITY_MAX}
-            highlight={trendHighlight}
-            ariaLabel={readAxis.keying
-              ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
-              : m.wear_session_trend_title()}
-          />
-          <p class="muted small wear-trend-legend" use:resize>
-            {#each legendEntries as entry (entry.series)}
-              {@const label =
-                entry.series === 'wear'
-                  ? m.wear_session_trend_wear_legend()
-                  : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
-              {#if entry.empty}
-                <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
-              {:else}
-                <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
-              {/if}
-            {/each}
-          </p>
+             way every other chart in the kit does - and so does a range
+             with one day in it, which is a point and no line (after-release
+             27, audit L05-14). -->
+        {#if legendEntries.length}
+          <!-- Slid in and out against the sentence that stands in for it,
+               which ChartEmpty slides the same way: a range going from one
+               day to two mounted the chart at full height in one frame. -->
+          <div transition:slideMonit>
+            <WearTrendChart
+              wearPoints={wearTrend}
+              regionPoints={regionTrend}
+              {wearMax}
+              regionMin={BODY_REGION_INTENSITY_MIN}
+              regionMax={BODY_REGION_INTENSITY_MAX}
+              highlight={trendHighlight}
+              ariaLabel={readAxis.keying
+                ? m.chart_axis_reading_aria({ reading: m.wear_session_trend_title(), axis: axisName })
+                : m.wear_session_trend_title()}
+            />
+            <p class="muted small wear-trend-legend" use:resize>
+              {#each legendEntries as entry (entry.series)}
+                {@const label =
+                  entry.series === 'wear'
+                    ? m.wear_session_trend_wear_legend()
+                    : m.wear_session_trend_region_legend({ region: trendRegionLabel })}
+                {#if entry.state === 'empty'}
+                  <span out:crossfade>{m.wear_session_trend_series_empty({ series: label })}</span>
+                {:else if entry.state === 'one-day'}
+                  <span out:crossfade>{m.wear_session_trend_series_one_day({ series: label })}</span>
+                {:else}
+                  <span out:crossfade><span class="legend-dot legend-{entry.series}"></span>{label}</span>
+                {/if}
+              {/each}
+            </p>
+          </div>
         {:else}
           <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
         {/if}
@@ -805,7 +863,7 @@
          its own handle. -->
     {#snippet primary(editor)}
       {#if editor.isRunning}
-        <button class="btn btn-primary" data-stop-wear-session onclick={() => stopRunning(editor)}>
+        <button class="btn btn-primary" data-stop-wear-session onclick={record.save}>
           <span>{m.wear_session_stop_action()}</span>
         </button>
       {:else if editor.mode === 'live' && !editor.id}
@@ -873,5 +931,16 @@
     padding-left: var(--space-4);
     display: grid;
     gap: var(--space-1);
+  }
+  /* Always mounted, so a first session growing it from nothing and a last
+     one taking it away both travel. The block gap under the card is the
+     card's own padding rather than the wrapper's margin, so it is part of
+     the height `resize` travels and leaves with the card instead of
+     snapping when the wrapper empties. */
+  .wear-now {
+    margin-bottom: 0;
+  }
+  .wear-now > div {
+    padding-bottom: var(--space-5);
   }
 </style>

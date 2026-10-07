@@ -4,6 +4,7 @@
   import { journal } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -35,14 +36,19 @@
      had to exist for a scale to be in one. Ticket 35 made the stored choice
      the list itself, so the second and third writes have nothing left to
      do. */
+  const saving = writer();
   async function saveDimension() {
-    const created = await journal.dimensions.addCustomDimension({
-      name: name.trim() || m.cd_default_name(),
-      low: low.trim() || m.cd_default_low(),
-      high: high.trim() || m.cd_default_high(),
-      min: 0,
-      max,
-    });
+    let created: { key: string } | undefined;
+    const added = await saving.run(async () => {
+      created = await journal.dimensions.addCustomDimension({
+        name: name.trim() || m.cd_default_name(),
+        low: low.trim() || m.cd_default_low(),
+        high: high.trim() || m.cd_default_high(),
+        min: 0,
+        max,
+      });
+    }, m.write_failed());
+    if (!added || !created) return;
     prefs.activeScales = [...prefs.activeScales, created.key];
     goto('/settings');
     toast(m.cd_added_toast());
@@ -89,7 +95,7 @@
   {/key}
 
   <SaveBar>
-    <button class="btn btn-primary" data-save onclick={saveDimension}>
+    <button class="btn btn-primary" data-save disabled={saving.busy} onclick={saveDimension}>
       <Icon name="check" size={20} /><span>{m.cd_save()}</span>
     </button>
   </SaveBar>
