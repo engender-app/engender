@@ -38,17 +38,13 @@ export interface RegionSomaticBreakdown {
   isEmpty: boolean;
 }
 
+/* A measurement's type is one of the four built-in keys (waist, hips, chest,
+   underbust) or the uuid a custom type minted for itself, so those four are
+   the only names a region can link to. Other regions link to nothing. */
 const REGION_LINKED_MEASUREMENTS_MAP: Record<string, string[]> = {
   chest: ['chest', 'underbust'],
   hips_waist: ['waist', 'hips'],
-  face_jaw: ['facial_hair_density', 'face_jaw', 'jaw', 'face'],
-  body_facial_hair: ['body_hair', 'facial_hair_density', 'hair_density', 'body_facial_hair'],
-  hairline: ['hairline', 'hair_density'],
-  shoulders: ['shoulders', 'shoulder_width'],
-  hands_feet: ['hands', 'feet'],
-  genitals: ['genitals'],
-  voice_throat: ['pitch', 'voice'],
-  whole_body: ['waist', 'hips', 'chest', 'underbust', 'weight', 'height']
+  whole_body: ['waist', 'hips', 'chest', 'underbust']
 };
 
 /* linkedMeasurementTypesForRegion stays exported only for its own test (AU-09

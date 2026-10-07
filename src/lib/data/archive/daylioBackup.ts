@@ -824,4 +824,3 @@ const recordingExtensionOf = (name: string): string | null => {
   const extension = extensionOf(name);
   return extension && audioMimeOf(extension) ? extension : null;
 };
-
