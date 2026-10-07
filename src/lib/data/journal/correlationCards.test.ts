@@ -9,7 +9,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns } from './test-support.ts';
-import { metricInsights } from './correlationCards.ts';
+import { visibleMetricInsights } from './correlationCards.ts';
 
 const DAY_0 = 20000;
 const at = (epochDay: number, hour = 8) => startOfDayTimestamp(epochDay) + hour * 3600000;
@@ -91,28 +91,52 @@ test('with nothing logged, the range comes back with no cards rather than throwi
 
 test('batched metric inputs match independent reads with two statements regardless of dimension count', async () => {
   const { journal, db } = await journalWithBuiltIns();
+  const custom = await journal.dimensions.addCustomDimension({ name: 'Voice comfort', low: 'strained', high: 'easy', min: 0, max: 10 });
   for (let i = 0; i < 12; i++) {
     await journal.entries.upsertEntry({
       epochDay: DAY_0 + Math.floor(i / 2),
       mood: (i % 5) + 1,
       tags: i < 6 ? ['e-tired'] : [],
-      dims: i % 3 === 0 ? { femininity: i * 5 } : { femininity: i * 5, masculinity: 100 - i * 5 }
+      dims: i % 3 === 0 ? { femininity: i * 5, [custom.key]: i % 10 } : { femininity: i * 5, masculinity: 100 - i * 5 }
     });
   }
   await journal.entries.upsertEntry({ epochDay: DAY_0 - 1, mood: 5, dims: { femininity: 100 } });
-  const metrics = ['mood', 'femininity', 'masculinity', 'unlogged'];
+  await journal.dimensions.setDimensionHidden(custom.key, true);
   const prepare = db.raw.prepare.bind(db.raw);
   let statements = 0;
   db.raw.prepare = ((sql: string) => { statements++; return prepare(sql); }) as typeof db.raw.prepare;
-  const inputs = await metricInsights(db, metrics, DAY_0, DAY_0 + 4);
+  const inputs = await visibleMetricInsights(db, DAY_0, DAY_0 + 4);
   assert.equal(statements, 2);
   db.raw.prepare = prepare;
-  for (const metric of metrics) {
-    assert.deepEqual(inputs.get(metric), {
+  const empty = { dayAverages: [], tagInsights: [] };
+  for (const metric of ['mood', 'femininity', 'masculinity']) {
+    assert.deepEqual(inputs.get(metric) ?? empty, {
       dayAverages: await journal.stats.dayAverages(metric, DAY_0, DAY_0 + 4),
       tagInsights: await journal.stats.tagInsights(metric, DAY_0, DAY_0 + 4)
     });
   }
-  assert.equal((await metricInsights(db, [], DAY_0, DAY_0 + 4)).size, 0);
+  // A hidden dimension is not one of the cards' metrics, logged or not.
+  assert.equal(inputs.has(custom.key), false);
+  await db.close();
+});
+
+test('the cards ask for everything in one round, not the dimensions first', async () => {
+  // Look back's tile grid waits for this read, and the worker answers one
+  // query at a time: a second round after the dimensions came back put the
+  // cards' own two statements at the back of the queue (after-release 06
+  // follow-up, tile-arrival-timing).
+  const { journal, db } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: DAY_0, mood: 3, dims: { femininity: 40 } });
+  const query = db.query.bind(db);
+  const held: (() => void)[] = [];
+  db.query = ((sql: string, params?: unknown[]) =>
+    new Promise<unknown>((resolve, reject) => held.push(() => void query(sql, params as never).then(resolve, reject)))) as typeof db.query;
+  const cards = journal.correlationCards.getCards(DAY_0, DAY_0 + 5);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const firstRound = held.length;
+  db.query = query;
+  for (const release of held) release();
+  await cards;
+  assert.equal(firstRound, 4);
   await db.close();
 });

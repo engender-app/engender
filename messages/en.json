@@ -1906,7 +1906,7 @@
   "lookback_era_offer_confirm": "Name this era",
   "lookback_era_offer_dismiss": "Not now",
   "lookback_era_offer_title": "Name this stretch?",
-  "lookback_facts_average": "Average {name}",
+  "lookback_facts_average": "Average {nameInSentence}",
   "lookback_handle_end": "End of selected period",
   "lookback_handle_start": "Start of selected period",
   "lookback_legend_eras": "Eras",
