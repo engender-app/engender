@@ -205,9 +205,10 @@ or a lost device key or recovery key.
 ## Children
 
 engender is meant for people aged 16 and over. The developer receives no
-journal data from anyone, whatever their age, so there is none to delete for
-someone younger. The only details that reach the developer are the request
-details described above under Hosted web app.
+journal data from anyone, whatever their age, so there is none to delete
+for someone younger. Apart from email someone chooses to send, the only
+details that reach the developer are the request details described above
+under Hosted web app.
 
 ## Changes to this policy
 
