@@ -130,11 +130,14 @@ describe('what Settings is built from', () => {
   });
 
   it('previews all 16 gender palettes and all 4 mood presets', () => {
-    const paletteKeys = [...settings.matchAll(/\['(\w+)', m\.palette_\w+\]/g)].map((mm) => mm[1]);
+    const choices = read('src/lib/theme/paletteChoices.ts');
+    const paletteKeys = [...choices.matchAll(/\['(\w+)', m\.palette_\w+\]/g)].map((mm) => mm[1]);
     expect(paletteKeys).toEqual(PALETTES);
     const onboarding = read('src/routes/onboarding/+page.svelte');
-    const onboardingKeys = [...onboarding.matchAll(/\['(\w+)', m\.palette_\w+\]/g)].map((mm) => mm[1]);
-    expect(onboardingKeys).toEqual(PALETTES);
+    for (const screen of [settings, onboarding]) {
+      expect(screen).toContain("import { PALETTES } from '$lib/theme/paletteChoices'");
+      expect(screen).toContain('{#each PALETTES as [key, label] (key)}');
+    }
     const moodKeys = [...settings.matchAll(/\['(\w+)', m\.mood_preset_\w+\]/g)].map((mm) => mm[1]);
     expect(moodKeys).toEqual(['amber', 'teal', 'plum', 'moss']);
   });
