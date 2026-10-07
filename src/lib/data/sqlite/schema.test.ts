@@ -7,110 +7,183 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
-import { JournalBelowBaselineError, runMigrations } from './migration-runner.ts';
+import { JournalBelowBaselineError, runMigrations, SchemaTooNewError } from './migration-runner.ts';
 import { migrations } from './migrations.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 import { dumpRows, dumpSchema, readSchemaFixture } from './test-support/schema-dump.ts';
 
-/* The version the squash landed on (ticket 34): one baseline statement in
-   place of the 78 steps that used to build up to it, keeping the number those
-   steps had reached so a journal already on the current schema opens without
-   anything running against it. Hardcoded rather than read off
-   LATEST_SCHEMA_VERSION, which moves on as migrations are added after it. */
-const SQUASH_BASELINE_VERSION = 78;
+/* The version the second squash landed on (after-release ticket 42): one
+   baseline statement in place of the v78 baseline and the ten steps after it,
+   keeping the number those steps had reached so a journal already on the
+   current schema opens without anything running against it. Hardcoded rather
+   than read off LATEST_SCHEMA_VERSION, which moves on as migrations are added
+   after it. */
+const SQUASH_BASELINE_VERSION = 88;
 
-test('the squashed baseline builds the schema the 78-step chain built', async () => {
-  /* The ground truth is a dump taken from a database the real 78-step chain
-     built, frozen at the commit that retired the chain - the chain itself is
-     in git history from there, not in the tree, so this file is the only thing
-     left that remembers what it produced. Its own header says which commit
-     holds the chain and how to rebuild the dump, which is the whole of what
-     makes a frozen oracle checkable rather than merely asserted.
+const fixture = (name: string) =>
+  readSchemaFixture(readFileSync(new URL(`./test-support/${name}`, import.meta.url), 'utf8'));
+
+/* The one row the retired chain left that the baseline does not write:
+   v83's INSERT ... SELECT into the rebuilt taper table created taper's
+   AUTOINCREMENT counter at 0 even when it copied nothing. */
+const CHAIN_ONLY_SEQUENCE_ROW = '  {"name":"taper","seq":0}\n';
+
+test('the v88 baseline builds the schema the chain up to 88 built', async () => {
+  /* The ground truth is a dump taken from a database the real chain (the v78
+     baseline plus 79 through 88) built, frozen before this squash touched it.
+     The chain is in git history from there, not in the tree, so the fixture is
+     the only thing left that remembers what it produced; its header says
+     which commit holds the chain and how to rebuild the dump.
 
      Compared through dumpSchema, which forgives comments, whitespace and the
      quoting ALTER TABLE leaves behind, so the baseline is free to be written
      as a readable column list rather than as the appended-column text SQLite
-     happened to store. */
-  const expected = readSchemaFixture(
-    readFileSync(new URL('./test-support/pre-squash-schema.txt', import.meta.url), 'utf8')
-  );
-
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= SQUASH_BASELINE_VERSION)
-  );
-
-  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
-  assert.equal(dumpSchema(db.raw) + '\n', expected);
-});
-
-test('the chain from the v78 baseline through 88 builds the frozen v88 reference', async () => {
-  /* Frozen before the second squash (after-release ticket 42) touched the
-     chain, so the reference is what the real migrations produced rather than
-     what the replacement baseline says. */
-  const fixture = (name: string) =>
-    readSchemaFixture(readFileSync(new URL(`./test-support/${name}`, import.meta.url), 'utf8'));
+     happened to store. Everything else - every table, column, type, default,
+     CHECK, foreign key, index, trigger, and the FTS5 table with its shadow
+     tables - has to match. */
   const db = makeNodeSqliteDb();
   await runMigrations(db, noopFileOps(), migrations);
 
-  assert.equal(db.getUserVersion(), 88);
+  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
   assert.equal(dumpSchema(db.raw) + '\n', fixture('schema-v88-reference.txt'));
-  assert.equal(dumpRows(db.raw) + '\n', fixture('schema-v88-reference-rows.txt'));
 });
 
-test('a journal from below the baseline is refused loudly, with its rows left alone', async () => {
-  /* The price the squash took: the steps that would have carried such a
-     journal forward are gone, so it cannot be opened. What it must not do is
-     go wrong quietly, or as a SQLite message: the version is behind rather
-     than ahead, and the runner says so by name (after-release ticket 09), so
-     the failure screen can tell the person where the journal came from
-     instead of printing "table entry already exists". */
+test('the v88 baseline leaves the rows the chain left, but for one equivalent counter', async () => {
+  /* Seed data, proven apart from the schema. Neither writes rows of its own;
+     what both leave is FTS5's config and structure records, which must match
+     byte for byte. */
   const db = makeNodeSqliteDb();
-  db.raw.exec(`CREATE TABLE entry (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL UNIQUE, epoch_day INTEGER NOT NULL,
-    timestamp INTEGER NOT NULL, mood INTEGER, note TEXT, updated_at INTEGER NOT NULL)`);
-  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, 'still here', 1000)");
-  db.setUserVersion(SQUASH_BASELINE_VERSION - 38);
+  await runMigrations(db, noopFileOps(), migrations);
 
-  const fileOps = noopFileOps();
-  let cleanups = 0;
-  let copies = 0;
-  fileOps.cleanupPreMigrationCopy = () => {
-    cleanups += 1;
+  const reference = fixture('schema-v88-reference-rows.txt');
+  assert.ok(reference.includes(CHAIN_ONLY_SEQUENCE_ROW));
+  assert.equal(dumpRows(db.raw) + '\n', reference.replace(CHAIN_ONLY_SEQUENCE_ROW, ''));
+
+  /* A counter at 0 and no counter hand out the same first id, so the missing
+     row changes nothing a journal can observe. */
+  const withCounter = makeNodeSqliteDb();
+  await runMigrations(withCounter, noopFileOps(), migrations);
+  withCounter.raw.exec("INSERT INTO sqlite_sequence (name, seq) VALUES ('taper', 0)");
+  for (const journal of [db, withCounter]) {
+    journal.raw.exec(`INSERT INTO procedure (uuid, name, notes, kind, updated_at) VALUES ('p', 'v', '', 'vaginoplasty', 1)`);
+    journal.raw.exec(`INSERT INTO taper (uuid, procedure_id, start_epoch_day, stages, updated_at) VALUES ('t', 1, 1, '[]', 1)`);
+    assert.equal((journal.raw.prepare("SELECT id FROM taper WHERE uuid = 't'").get() as { id: number }).id, 1);
+  }
+});
+
+/** A spy over the pre-migration copy hooks, for the boundary tests below. */
+function copySpy(copyAlreadyThere = false) {
+  const calls = { copies: 0, cleanups: 0, restores: 0 };
+  return {
+    calls,
+    fileOps: {
+      preMigrationCopyIsUsable: () => copyAlreadyThere,
+      copyDatabaseFile: () => {
+        calls.copies += 1;
+      },
+      restorePreMigrationCopy: () => {
+        calls.restores += 1;
+      },
+      cleanupPreMigrationCopy: () => {
+        calls.cleanups += 1;
+      }
+    }
   };
-  fileOps.copyDatabaseFile = () => {
-    copies += 1;
-  };
+}
+
+/** A journal with the current schema and something written in it, then
+    renumbered: what a development build's journal from partway up the
+    retired chain looks like to the runner, rows and all. */
+async function journalNumbered(version: number) {
+  const db = await migratedDb();
+  db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, 'still here', 1000)");
+  db.raw.exec("INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('q1', 'asked', 1, 1000)");
+  db.setUserVersion(version);
+  return db;
+}
+
+test.each([1, 78, SQUASH_BASELINE_VERSION - 1])(
+  'a journal at %i, below the baseline, is refused loudly with its rows and its copy left alone',
+  async (version) => {
+    /* The price the squash took: the steps that would have carried such a
+       journal forward are gone, so it cannot be opened. What it must not do is
+       go wrong quietly, or as a SQLite message: the version is behind rather
+       than ahead, and the runner says so by name (after-release ticket 09), so
+       the failure screen can tell the person where the journal came from
+       instead of printing "table entry already exists". 87 is the boundary:
+       one step short of the baseline is as unsupported as 1. */
+    const db = await journalNumbered(version);
+    const before = dumpRows(db.raw);
+    const schemaBefore = dumpSchema(db.raw);
+    // A copy from an earlier failed boot is beside it, which must survive too.
+    const { calls, fileOps } = copySpy(true);
+
+    await assert.rejects(
+      () => runMigrations(db, fileOps, migrations),
+      (error: unknown) =>
+        error instanceof JournalBelowBaselineError &&
+        error.foundVersion === version &&
+        error.baselineVersion === SQUASH_BASELINE_VERSION
+    );
+
+    // Refused before anything runs. No copy is taken, because nothing is
+    // about to change, and the one already there is neither restored nor
+    // retired (ADR-0006, amended by ticket 04).
+    assert.deepEqual(calls, { copies: 0, cleanups: 0, restores: 0 });
+    assert.equal(db.getUserVersion(), version);
+    assert.equal(dumpRows(db.raw), before);
+    assert.equal(dumpSchema(db.raw), schemaBefore);
+  }
+);
+
+test('a journal newer than this build is refused with its rows and its copy left alone', async () => {
+  const db = await journalNumbered(SQUASH_BASELINE_VERSION + 1);
+  const before = dumpRows(db.raw);
+  const { calls, fileOps } = copySpy(true);
 
   await assert.rejects(
     () => runMigrations(db, fileOps, migrations),
     (error: unknown) =>
-      error instanceof JournalBelowBaselineError &&
-      error.foundVersion === SQUASH_BASELINE_VERSION - 38 &&
-      error.baselineVersion === SQUASH_BASELINE_VERSION
+      error instanceof SchemaTooNewError &&
+      error.foundVersion === SQUASH_BASELINE_VERSION + 1 &&
+      error.knownVersion === SQUASH_BASELINE_VERSION
   );
 
-  // Refused before anything runs, so nothing the baseline creates is there
-  // and the entry is untouched. No copy is taken, because nothing is about to
-  // change, and none is retired either (ADR-0006, amended by ticket 04).
-  assert.equal(copies, 0);
-  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION - 38);
-  assert.equal(
-    (db.raw.prepare("SELECT note FROM entry WHERE uuid = 'e1'").get() as { note: string }).note,
-    'still here'
-  );
-  assert.equal(db.raw.prepare("SELECT name FROM sqlite_master WHERE name = 'appointment'").get(), undefined);
-  assert.equal(cleanups, 0);
+  assert.deepEqual(calls, { copies: 0, cleanups: 0, restores: 0 });
+  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION + 1);
+  assert.equal(dumpRows(db.raw), before);
 });
 
-test('the squash left one migration standing where there were 78', async () => {
-  const upToBaseline = migrations.filter((m) => m.version <= SQUASH_BASELINE_VERSION);
+test('a populated journal already at the baseline reopens unchanged, without the baseline running again', async () => {
+  /* What every journal on the current schema does at boot. The lazy source is
+     what boot hands over, and a load here would mean the runner meant to
+     apply something. */
+  const db = await journalNumbered(SQUASH_BASELINE_VERSION);
+  const before = dumpRows(db.raw);
+  const schemaBefore = dumpSchema(db.raw);
+  const { calls, fileOps } = copySpy();
+
+  await runMigrations(db, fileOps, {
+    latestVersion: LATEST_SCHEMA_VERSION,
+    load: async () => {
+      throw new Error('the migration list was loaded for a journal already on the current schema');
+    }
+  });
+  // And the plain array, which a test or a probe hands over.
+  await runMigrations(db, fileOps, migrations);
+
+  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
+  assert.equal(dumpRows(db.raw), before);
+  assert.equal(dumpSchema(db.raw), schemaBefore);
+  // Two clean boots, so whatever copy was left is retired, and none is taken.
+  assert.deepEqual(calls, { copies: 0, cleanups: 2, restores: 0 });
+});
+
+test('the squash left one migration standing, the baseline itself', async () => {
   assert.deepEqual(
-    upToBaseline.map((m) => m.version),
-    [SQUASH_BASELINE_VERSION]
+    migrations.map((m) => ({ version: m.version, baseline: m.baseline })),
+    [{ version: SQUASH_BASELINE_VERSION, baseline: true }]
   );
 });
 
@@ -933,7 +1006,7 @@ test('the hand-written latest version and the migration list agree', async () =>
      case, where two branches each add a version and the loser renumbers. */
   assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
 
-  /* Contiguous from the squashed baseline rather than from 1 (ticket 34): the
+  /* Contiguous from the squashed baseline rather than from 1 (ticket 42): the
      versions below it were retired into one statement and no longer exist to
      be applied, so a gap there is the squash and a gap above it is a
      migration that went missing. */
@@ -950,9 +1023,8 @@ test('the hand-written latest version and the migration list agree', async () =>
 test('every procedure has a kind, and a row from before the column existed gets custom', async () => {
   const db = await migratedDb();
 
-  /* No CHECK on this column (SCHEMA_V80's own comment) - the write layer
-     validates, and the DEFAULT is what a row written before this migration
-     becomes. */
+  /* No CHECK on this column (schema.ts's note on procedure) - the write layer
+     validates, and the DEFAULT is what a write that names no kind gets. */
   db.raw.exec(`INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, updated_at)
     VALUES ('p-old', 'top surgery', NULL, '', 1000)`);
 
@@ -962,76 +1034,6 @@ test('every procedure has a kind, and a row from before the column existed gets 
   };
   assert.equal(row.kind, 'custom');
   assert.equal(row.dilation_opt_in, 0);
-});
-
-test('the taper takes the procedure it dilates for, and its surgery day travels onto that procedure', async () => {
-  /* Audit item 7's own case, in the numbers the audit found: the screen said
-     the surgery was on one day and the procedure hosting it said another,
-     because both kept a copy. Migrating to v83 keeps the taper's - it is
-     what the dilation screen actually showed - and leaves one copy. */
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 82)
-  );
-
-  // First by id and not dilation-eligible, so picking the first row rather
-  // than the first eligible one would pick this one.
-  db.raw.exec(`INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at)
-    VALUES ('p-chest', 'top surgery', 20000, '', 'chest_reconstruction', 0, 1000)`);
-  db.raw.exec(`INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, updated_at)
-    VALUES ('p-vag', 'vaginoplasty', 20250, '', 'vaginoplasty', 0, 1000)`);
-  db.raw.exec(`INSERT INTO taper (uuid, surgery_epoch_day, start_epoch_day, stages, updated_at)
-    VALUES ('t-1', 20080, 20085, '[{"everyNDays":1,"days":14}]', 1000)`);
-
-  await runMigrations(db, noopFileOps(), migrations);
-
-  const taper = db.raw
-    .prepare('SELECT p.uuid AS procedure_uuid, t.start_epoch_day, t.stages FROM taper t JOIN procedure p ON p.id = t.procedure_id')
-    .get() as { procedure_uuid: string; start_epoch_day: number; stages: string };
-  assert.equal(taper.procedure_uuid, 'p-vag');
-  assert.equal(taper.start_epoch_day, 20085);
-  assert.equal(taper.stages, '[{"everyNDays":1,"days":14}]');
-
-  const dates = db.raw.prepare('SELECT uuid, surgery_epoch_day FROM procedure ORDER BY id').all() as {
-    uuid: string;
-    surgery_epoch_day: number;
-  }[];
-  assert.deepEqual(
-    dates.map((row) => [row.uuid, row.surgery_epoch_day]),
-    [
-      ['p-chest', 20000],
-      ['p-vag', 20080]
-    ]
-  );
-
-  // The second copy is gone rather than left behind to drift again.
-  const columns = db.raw.prepare('SELECT name FROM pragma_table_info(?)').all('taper') as { name: string }[];
-  assert.equal(
-    columns.some((column) => column.name === 'surgery_epoch_day'),
-    false
-  );
-});
-
-test('a taper with no procedure to dilate for does not survive v83', async () => {
-  /* Unreachable from the screen - a schedule is typed in against a
-     procedure - and dropped rather than guessed at, because `procedure_id`
-     is NOT NULL and a schedule whose surgery day belongs to nothing says
-     nothing on its own. */
-  const db = makeNodeSqliteDb();
-  await runMigrations(
-    db,
-    noopFileOps(),
-    migrations.filter((m) => m.version <= 82)
-  );
-  db.raw.exec(`INSERT INTO taper (uuid, surgery_epoch_day, start_epoch_day, stages, updated_at)
-    VALUES ('t-orphan', 20080, 20085, '[]', 1000)`);
-
-  await runMigrations(db, noopFileOps(), migrations);
-
-  const count = db.raw.prepare('SELECT count(*) AS n FROM taper').get() as { n: number };
-  assert.equal(count.n, 0);
 });
 
 test('every wear session has a kind, and a write that names none gets the default', async () => {
@@ -1052,21 +1054,6 @@ test('every wear session has a kind, and a write that names none gets the defaul
   assert.equal(row.note, 'a bit tight by the end');
 });
 
-test('weekly migration anchors legacy rows on their recorded local day without changing other reminders', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 85));
-  const recordedAt = Date.parse('2026-08-10T12:00:00+02:00');
-  await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
-    VALUES ('weekly', 'Injection', 'injection', '20:00', 'WEEKLY', ?),
-           ('daily', 'Daily', 'med', '20:00', 'DAILY', ?)`, [recordedAt, recordedAt]);
-  await runMigrations(db, noopFileOps(), migrations);
-  const rows = await db.query('SELECT uuid, recurrence, interval, anchor_epoch_day, updated_at FROM reminder ORDER BY id');
-  assert.deepEqual(rows.map((row) => ({ ...row })), [
-    { uuid: 'weekly', recurrence: 'EVERY_N_DAYS', interval: 7, anchor_epoch_day: 20675, updated_at: recordedAt },
-    { uuid: 'daily', recurrence: 'DAILY', interval: null, anchor_epoch_day: null, updated_at: recordedAt }
-  ]);
-});
-
 test('an old weekly reminder inserted by archive restore is anchored on its recorded local day', async () => {
   const db = await migratedDb();
   await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
@@ -1076,16 +1063,14 @@ test('an old weekly reminder inserted by archive restore is anchored on its reco
     [{ recurrence: 'EVERY_N_DAYS', interval: 7, anchor_epoch_day: 20675 }]);
 });
 
-test('weekly migration uses the local calendar day at a UTC day boundary', async () => {
+test('an old weekly reminder is anchored on its local calendar day at a UTC day boundary', async () => {
   const originalTz = process.env.TZ;
   process.env.TZ = 'Pacific/Kiritimati';
   try {
-    const db = makeNodeSqliteDb();
-    await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 85));
+    const db = await migratedDb();
     await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
       VALUES ('boundary', 'Injection', 'injection', '20:00', 'WEEKLY', ?)`,
       [Date.parse('2026-08-09T10:30:00Z')]);
-    await runMigrations(db, noopFileOps(), migrations);
     const [row] = await db.query('SELECT anchor_epoch_day FROM reminder');
     assert.equal(row.anchor_epoch_day, 20675);
   } finally {
@@ -1094,15 +1079,13 @@ test('weekly migration uses the local calendar day at a UTC day boundary', async
   }
 });
 
-test('a saved question from before v88 reads as not starred, and a new one can be', async () => {
-  const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations.filter((m) => m.version <= 87));
-  await db.run(`INSERT INTO saved_question (uuid, name, updated_at) VALUES ('old', 'Before v88', 1)`);
-  await runMigrations(db, noopFileOps(), migrations);
-  await db.run(`INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('new', 'After v88', 1, 2)`);
+test('a saved question is not starred unless it says so', async () => {
+  const db = await migratedDb();
+  await db.run(`INSERT INTO saved_question (uuid, name, updated_at) VALUES ('plain', 'Plain', 1)`);
+  await db.run(`INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('starred', 'Starred', 1, 2)`);
   const rows = await db.query('SELECT uuid, starred FROM saved_question ORDER BY id');
   assert.deepEqual(rows.map((row) => ({ ...row })), [
-    { uuid: 'old', starred: 0 },
-    { uuid: 'new', starred: 1 }
+    { uuid: 'plain', starred: 0 },
+    { uuid: 'starred', starred: 1 }
   ]);
 });

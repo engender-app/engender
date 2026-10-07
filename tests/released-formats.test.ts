@@ -13,6 +13,7 @@ import {
 import { PREFERENCE_DEFAULTS } from '../src/lib/data/prefs/catalogue.ts';
 import { runMigrations } from '../src/lib/data/sqlite/migration-runner.ts';
 import { migrations } from '../src/lib/data/sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../src/lib/data/sqlite/schema-version.ts';
 import { noopFileOps } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../src/lib/data/sqlite/test-support/node-sqlite-driver.ts';
 
@@ -94,8 +95,8 @@ test('the released-format harness catches row loss and leaves fixture bytes unto
   const directory = mkdtempSync(join(tmpdir(), 'engender-fixture-test-'));
   const driver = makeNodeSqliteDb();
   try {
-    await runMigrations(driver, noopFileOps(), migrations.filter((migration) => migration.version <= 84));
-    assert.equal(await driver.getUserVersion(), 84);
+    await runMigrations(driver, noopFileOps(), migrations);
+    assert.equal(await driver.getUserVersion(), LATEST_SCHEMA_VERSION);
     copyFileSync(archivePath, join(directory, 'archive.ttbackup'));
     await driver.run("INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, updated_at) VALUES ('released-entry', 20000, 0, 3, '', 0)");
     await driver.exec(`VACUUM INTO '${join(directory, 'journal.sqlite').replaceAll("'", "''")}'`);
