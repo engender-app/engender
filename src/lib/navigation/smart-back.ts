@@ -43,11 +43,17 @@ let replacing = false;
  * return to.
  */
 export function recordNavigation(type: string, delta?: number | null): void {
-  const replaced = replacing;
+  depth = depthAfter(type, delta);
   replacing = false;
-  if (type === 'enter') depth = 0;
-  else if (type === 'popstate') depth = Math.max(0, depth + (delta ?? 0));
-  else if (!replaced) depth += 1;
+}
+
+/** The depth `recordNavigation` will record for a navigation still under
+    way, without recording it: the shell keys what a history entry borrowed
+    by it before the page changes (chrome-tab-origin.ts). */
+export function depthAfter(type: string, delta?: number | null): number {
+  if (type === 'enter') return 0;
+  if (type === 'popstate') return Math.max(0, depth + (delta ?? 0));
+  return replacing ? depth : depth + 1;
 }
 
 /** How deep the app is in its own history, for callers outside this module. */

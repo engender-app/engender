@@ -2806,8 +2806,10 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
   /* Centred in what the rail leaves, the strip the column and the sheets
-     centre in too. */
-  .toast { bottom: var(--space-6); left: calc(var(--rail-width) + var(--inset-left)); }
+     centre in too. A chromeless screen (/coming-back) has no rail to
+     leave room for, and its column centres in the whole width. */
+  .toast { bottom: var(--space-6); }
+  .app:not(.is-chromeless) .toast { left: calc(var(--rail-width) + var(--inset-left)); }
 }
 
 

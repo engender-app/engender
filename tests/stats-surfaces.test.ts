@@ -338,6 +338,9 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(tally).toContain("page.url.searchParams.get('to')");
     expect(tally).toContain("j.stats.tallyTrend('misgendered', from, to)");
     expect(tally).toContain("j.stats.tallyTrend('correctly_gendered', from, to)");
+    // A tap lands today, so a span ending earlier offers no log or undo.
+    expect(tally).toContain('let logsToday = $derived(to >= today);');
+    expect((tally.match(/\{#if logsToday\}\s*<div class="tally-actions">/g) ?? []).length).toBe(2);
   });
 
   it('has a tile only where the span holds data for it', () => {

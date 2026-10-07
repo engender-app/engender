@@ -49,6 +49,10 @@
   let to = $derived(hasSpan ? (queryTo as number) : today);
   let from = $derived(hasSpan ? (queryFrom as number) : today - range + 1);
   let days = $derived(to - from + 1);
+  /* A tap is logged today, so a span that ends before today could not show
+     it: the chart and the spoken count would both stay the same while a tap
+     landed out of sight. Such a span is read-only (after-release 17 review). */
+  let logsToday = $derived(to >= today);
 
   let misgenderedQuery = liveList((j) => j.stats.tallyTrend('misgendered', from, to));
   let misgendered = $derived(misgenderedQuery.rows);
@@ -229,24 +233,26 @@
          it moves. Undo is enabled exactly while that kind has an event
          logged today to remove - an earlier day's taps are not undo's to
          take, and a disabled button is how that is shown (.btn:disabled). -->
-    <div class="tally-actions">
-      <button
-        class="btn btn-soft"
-        data-tally-log="misgendered"
-        disabled={busy === 'misgendered'}
-        onclick={() => logTally('misgendered')}
-      >
-        {m.tally_log_misgendered()}
-      </button>
-      <button
-        class="btn btn-ghost"
-        data-tally-undo="misgendered"
-        disabled={busy === 'misgendered' || !misLatestQuery.value}
-        onclick={() => undoTally('misgendered')}
-      >
-        {m.tally_undo_misgendered()}
-      </button>
-    </div>
+    {#if logsToday}
+      <div class="tally-actions">
+        <button
+          class="btn btn-soft"
+          data-tally-log="misgendered"
+          disabled={busy === 'misgendered'}
+          onclick={() => logTally('misgendered')}
+        >
+          {m.tally_log_misgendered()}
+        </button>
+        <button
+          class="btn btn-ghost"
+          data-tally-undo="misgendered"
+          disabled={busy === 'misgendered' || !misLatestQuery.value}
+          onclick={() => undoTally('misgendered')}
+        >
+          {m.tally_undo_misgendered()}
+        </button>
+      </div>
+    {/if}
 
     <ChartCard level={2}
       heading={m.tally_correctly_gendered()}
@@ -267,24 +273,26 @@
       />
     </ChartCard>
 
-    <div class="tally-actions">
-      <button
-        class="btn btn-soft"
-        data-tally-log="correctly_gendered"
-        disabled={busy === 'correctly_gendered'}
-        onclick={() => logTally('correctly_gendered')}
-      >
-        {m.tally_log_correctly_gendered()}
-      </button>
-      <button
-        class="btn btn-ghost"
-        data-tally-undo="correctly_gendered"
-        disabled={busy === 'correctly_gendered' || !correctLatestQuery.value}
-        onclick={() => undoTally('correctly_gendered')}
-      >
-        {m.tally_undo_correctly_gendered()}
-      </button>
-    </div>
+    {#if logsToday}
+      <div class="tally-actions">
+        <button
+          class="btn btn-soft"
+          data-tally-log="correctly_gendered"
+          disabled={busy === 'correctly_gendered'}
+          onclick={() => logTally('correctly_gendered')}
+        >
+          {m.tally_log_correctly_gendered()}
+        </button>
+        <button
+          class="btn btn-ghost"
+          data-tally-undo="correctly_gendered"
+          disabled={busy === 'correctly_gendered' || !correctLatestQuery.value}
+          onclick={() => undoTally('correctly_gendered')}
+        >
+          {m.tally_undo_correctly_gendered()}
+        </button>
+      </div>
+    {/if}
   </ReadReserve>
 </div>
 

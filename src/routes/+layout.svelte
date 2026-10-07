@@ -54,7 +54,7 @@
      components rendering during boot treat their mount as part of screen
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
-  import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
+  import { depthAfter, navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
@@ -220,7 +220,10 @@
        first frame: a page reached through history gets back the tab it was
        opened from rather than the last one lit (chrome-tab-origin.ts). */
     const to = navigation.to?.url.pathname;
-    if (to && borrowsTab(to)) noteBorrowingArrival(to, navigation.type === 'popstate');
+    if (to && borrowsTab(to)) {
+      const entry = `${depthAfter(navigation.type, navigation.delta)}:${to}`;
+      noteBorrowingArrival(entry, navigation.type === 'popstate');
+    }
     return navigateWithTransition(navigation, replacesApp);
   });
 
