@@ -13,11 +13,11 @@
 
    Tier 2's material lives here: the withdrawal.
 
-   Applying it is deliberately not this ticket's job. Ticket 28 adds material
-   to the motion layer and the screen tickets spend it, so nothing in the app
-   carries .scrim-withdraw yet. It is a complete primitive rather than a
-   fragment: the class alone is the whole material, and putting it on a scrim
-   is the only thing left to do. */
+   Applying it was deliberately not ticket 28's job: it added the material
+   and the screen tickets spent it. Sheet and QuickAdd carry .scrim-withdraw
+   now. It is a complete primitive rather than a fragment: the class alone is
+   the whole material, and putting it on a scrim is the only thing left to
+   do. */
 
 /* Tier 2, the withdrawal: the screen behind a sheet stops being readable
    without stopping being there.

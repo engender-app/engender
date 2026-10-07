@@ -289,7 +289,7 @@ function inFlight(doc: Document): { edge: number | null; carried: Record<string,
   return edge === null && !Object.keys(carried).length ? null : { edge, carried };
 }
 
-/** The five a moving edge publishes. Exported so whoever publishes them can
+/** The six a moving edge publishes. Exported so whoever publishes them can
     also give them back: a navigation's carry does it in `release`, and
     setup's own action does it when the screen is destroyed. */
 export const VARIABLES = [
@@ -302,12 +302,12 @@ export const VARIABLES = [
 ];
 
 /**
- * What one edge moving from `from` to `to` is worth, as the five custom
+ * What one edge moving from `from` to `to` is worth, as the six custom
  * properties the stylesheet moves everything with.
  *
  * A navigation publishes them on the root, where a view transition's pseudo
  * elements are the only thing that can read them. Setup's step machine
- * publishes the same five on its own screen element instead (redesign
+ * publishes the same six on its own screen element instead (redesign
  * ticket 33): a step change is not a navigation, so it moves real elements
  * rather than photographs of them, and the arithmetic of how far and on
  * which curve is the same question either way. One owner, so the two can

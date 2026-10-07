@@ -327,9 +327,6 @@ export function steadinessAxis(referenceHz: number | null): PitchAxis | null {
   return { lowHz: referenceHz / edge, highHz: referenceHz * edge };
 }
 
-/** Where the gutter's numbers go on a steadiness axis: one per semitone,
-    as frequencies, so the figure's one Hz-to-y mapping still does the
-    placing. */
 /** Round hertz across an axis, for a figure that draws no bands.
 
     A scale mark, not a claim: these are the round numbers between the axis
@@ -350,6 +347,9 @@ export function plainHzTicks(axis: PitchAxis, everyHz = 50): number[] {
   return ticks;
 }
 
+/** Where the gutter's numbers go on a steadiness axis: one per semitone,
+    as frequencies, so the figure's one Hz-to-y mapping still does the
+    placing. */
 export function steadinessTicks(referenceHz: number): number[] {
   const ticks: number[] = [];
   for (let semitone = -STEADINESS_SEMITONES; semitone <= STEADINESS_SEMITONES; semitone++) {
