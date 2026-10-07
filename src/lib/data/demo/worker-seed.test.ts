@@ -177,6 +177,10 @@ test('failed cold preparation retains migrated schema and leaves the persona and
 });
 
 
+/* One step short of the v88 baseline (after-release ticket 42): fixed rather
+   than read off LATEST_SCHEMA_VERSION, which a later migration moves past it. */
+const BELOW_BASELINE = 87;
+
 test('an authored journal below the baseline is refused before preparation touches it', async () => {
   /* A development build's journal from partway up the retired chain
      (after-release ticket 42): it has a schema, rows and preferences, and the
@@ -188,13 +192,13 @@ test('an authored journal below the baseline is refused before preparation touch
     ['00000000-0000-4000-8000-000000000001', 20_730, 1_791_104_400_000, 2, 'Keep this authored note', 0]
   );
   await (await openPreferences(db)).set('name', 'Existing journal');
-  await db.setUserVersion(LATEST_SCHEMA_VERSION - 1);
+  await db.setUserVersion(BELOW_BASELINE);
   const copy = vi.fn();
   try {
     await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), {
       ...noopFileOps(), copyDatabaseFile: copy
     }, persona(20_730), photo), JournalBelowBaselineError);
-    assert.equal(await db.getUserVersion(), LATEST_SCHEMA_VERSION - 1);
+    assert.equal(await db.getUserVersion(), BELOW_BASELINE);
     assert.equal(copy.mock.calls.length, 0);
     assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
     assert.deepEqual((await db.query<{ note: string }>('SELECT note FROM entry')).map(({ note }) => note), ['Keep this authored note']);
@@ -207,10 +211,10 @@ test('an authored journal below the baseline is refused before preparation touch
 test('an empty file claiming a nonzero version keeps the ordinary refusal', async () => {
   const db = makeNodeSqliteDb();
   try {
-    await db.setUserVersion(LATEST_SCHEMA_VERSION - 1);
+    await db.setUserVersion(BELOW_BASELINE);
     await assert.rejects(() => preparePersonaJournal(db, fakeFileStore(), noopFileOps(), persona(20_730), photo),
       JournalBelowBaselineError);
-    assert.equal(await db.getUserVersion(), LATEST_SCHEMA_VERSION - 1);
+    assert.equal(await db.getUserVersion(), BELOW_BASELINE);
     assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
     assert.deepEqual(await db.query("SELECT name FROM sqlite_master WHERE type = 'table'"), []);
   } finally {

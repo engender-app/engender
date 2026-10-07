@@ -134,8 +134,11 @@ export class Fts5UnavailableError extends Error {
    review). */
 export async function assertFts5Available(db: MigrationDb): Promise<void> {
   try {
-    await db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS __fts5_probe USING fts5(x)");
-    await db.exec('DROP TABLE IF EXISTS __fts5_probe');
+    /* In the temp schema, so the probe never writes to the journal file: a
+       journal about to be refused (too new, or below the baseline) is left
+       exactly as it was, schema cookie included (after-release ticket 42). */
+    await db.exec('CREATE VIRTUAL TABLE IF NOT EXISTS temp.__fts5_probe USING fts5(x)');
+    await db.exec('DROP TABLE IF EXISTS temp.__fts5_probe');
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     const causeReason =
