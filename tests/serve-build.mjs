@@ -38,17 +38,14 @@ const ISOLATION = {
   'Cross-Origin-Embedder-Policy': 'require-corp'
 };
 
-/** Starts the server on `port` (0 picks a free one) and resolves once it
-    listens. The result has the two members callers of vite's preview server
-    used, `httpServer` and `close()`.
+/** The request handler serveBuild runs, on its own so vite preview can
+    serve the same files (vite.config.ts, after-release ticket 32).
     @param {string} root
-    @param {{ port?: number }} [options] */
-export async function serveBuild(root, { port = 0 } = {}) {
+    @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void} */
+export function buildRequestHandler(root) {
   const build = resolve(root, 'build');
   const documentPath = join(build, 'index.html');
-  if (!existsSync(documentPath)) throw new Error(`No ${documentPath}. Run npm run build first.`);
-
-  const httpServer = createServer((req, res) => {
+  return (req, res) => {
     let pathname;
     try {
       pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
@@ -73,7 +70,19 @@ export async function serveBuild(root, { port = 0 } = {}) {
       'Cache-Control': 'no-cache'
     });
     res.end(req.method === 'HEAD' ? undefined : body);
-  });
+  };
+}
+
+/** Starts the server on `port` (0 picks a free one) and resolves once it
+    listens. The result has the two members callers of vite's preview server
+    used, `httpServer` and `close()`.
+    @param {string} root
+    @param {{ port?: number }} [options] */
+export async function serveBuild(root, { port = 0 } = {}) {
+  const documentPath = join(resolve(root, 'build'), 'index.html');
+  if (!existsSync(documentPath)) throw new Error(`No ${documentPath}. Run npm run build first.`);
+
+  const httpServer = createServer(buildRequestHandler(root));
 
   await /** @type {Promise<void>} */ (
     new Promise((resolveListen, reject) => {
