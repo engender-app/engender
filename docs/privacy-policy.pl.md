@@ -213,11 +213,10 @@ klucza odzyskiwania.
 
 ## Dzieci
 
-engender jest dla osób, które mają co najmniej 16 lat. Autorka aplikacji
-nie dostaje danych z dziennika od nikogo, bez względu na wiek, więc w
-przypadku osoby młodszej nie ma czego usuwać. Poza wiadomościami, które
-ktoś sam wyśle mailem, do autorki trafiają tylko dane żądań opisane wyżej
-w części o aplikacji w przeglądarce.
+engender jest dla osób, które mają co najmniej 16 lat. Autorka aplikacji nie
+dostaje danych z dziennika od nikogo, bez względu na wiek, więc w przypadku
+osoby młodszej nie ma czego usuwać. Do autorki trafiają tylko dane żądań
+opisane wyżej w części o aplikacji w przeglądarce.
 
 ## Zmiany tej polityki
 
