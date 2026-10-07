@@ -15,7 +15,7 @@
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList, liveListIn } from '$lib/data/live/journal.svelte';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';

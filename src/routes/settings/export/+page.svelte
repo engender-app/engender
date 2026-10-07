@@ -19,7 +19,7 @@
     runVerify,
     type RestoreFailureKind
   } from '$lib/data/journal/restoreFlow';
-  import { DaylioCsvError, type DaylioPreview } from '$lib/data/archive/daylio';
+  import type { DaylioPreview } from '$lib/data/archive/daylio';
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
   import { recognizeSource } from '$lib/data/archive/sources';

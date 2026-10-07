@@ -25,7 +25,6 @@ import type {
   DoseSchedule,
   HairRemovalSession,
   JournalingPause,
-  Letter,
   Procedure,
   RegimenEpisode,
   Revisit,
