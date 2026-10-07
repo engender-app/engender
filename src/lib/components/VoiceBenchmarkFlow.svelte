@@ -356,7 +356,17 @@
     stopPolling();
     phase = 'analysing';
 
-    const take = await active.finish();
+    /* A finish that throws (the recorder, the decoder) used to leave the
+       flow on "Reading the take" for good (after-release 06, L05-06). */
+    let take: Awaited<ReturnType<typeof active.finish>>;
+    try {
+      take = await active.finish();
+    } catch (error) {
+      console.error('a benchmark take could not be finished', error);
+      toast(m.vb_take_failed(), { kind: 'failed' });
+      phase = 'idle';
+      return;
+    }
     if (!take) {
       phase = 'idle';
       return;
@@ -455,6 +465,10 @@
       takeSaved = true;
       toast(m.vb_saved());
       onSaved();
+    } catch (error) {
+      // The takes stay where they are, so Save can be tapped again.
+      console.error('a benchmark could not be saved', error);
+      toast(m.write_failed(), { kind: 'failed' });
     } finally {
       saving = false;
     }

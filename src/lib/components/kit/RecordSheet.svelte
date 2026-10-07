@@ -23,6 +23,7 @@
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { collapse } from '$lib/motion/reveal';
   import ConfirmDeleteSheet from './ConfirmDeleteSheet.svelte';
   import DiscardSheet from './DiscardSheet.svelte';
   import { leaveGuard } from './leaveGuard.svelte';
@@ -140,7 +141,7 @@
       <fieldset class:compact={!showHeading} disabled={record.saving} aria-busy={record.saving}>
         {@render fields(draft)}
         {#if record.saveFailed}
-          <p class="notice notice-danger" role="alert">{m.record_save_failed()}</p>
+          <p class="notice notice-danger" role="alert" data-save-failed transition:collapse>{m.record_save_failed()}</p>
         {/if}
         <div class="stack-3">
           {#if primary}
@@ -201,4 +202,6 @@
   confirmAttrs={{ [handles.confirm]: '' }}
   onConfirm={record.confirmDelete}
   onCancel={record.cancelDelete}
+  busy={record.deleting}
+  failed={record.deleteFailed}
 />

@@ -30,6 +30,7 @@
      anything (PRODUCT.md:109, and labTiming.ts and /care/curve as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
+  import { deleter } from '$lib/stores/attempt.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
@@ -232,11 +233,12 @@
     stockDeleteTarget = { id, drug: stock.find((row) => row.entry.id === id)?.entry.drug ?? stockEditor.drug };
   }
 
+  const stockRemoving = deleter();
   async function deleteStockEntry() {
     const target = stockDeleteTarget;
     if (!target) return;
+    if (!(await stockRemoving.run(() => journal.stock.deleteEntry(target.id)))) return;
     stockDeleteTarget = null;
-    await journal.stock.deleteEntry(target.id);
     /* The whole sheet goes, rather than swapping the editor for the list
        inside it: that swap resized the open sheet in one frame. The editor
        stays as it was while the sheet slides away; the next opening sets
@@ -1133,7 +1135,9 @@
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-confirm-delete-stock': '' }}
     onConfirm={deleteStockEntry}
-    onCancel={() => (stockDeleteTarget = null)}
+    onCancel={() => { stockDeleteTarget = null; stockRemoving.dismiss(); }}
+    busy={stockRemoving.busy}
+    failed={stockRemoving.failed}
   />
 </div>
 

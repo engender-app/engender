@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
   import type { OfferCopy } from '$lib/data/offers';
   import MoodPicker from './MoodPicker.svelte';
   import Field from './kit/Field.svelte';
@@ -46,13 +47,17 @@
     }
   });
 
+  /* One write per tap, and a failed one says so here rather than nowhere
+     (after-release 06): some callers close the sheet before they write. */
+  const saving = writer();
   async function save() {
     if (mood == null) return;
-    await onSave({ mood, note: note.trim() || null });
+    const input = { mood, note: note.trim() || null };
+    await saving.run(() => onSave(input), m.write_failed());
   }
 </script>
 
-<Sheet {open} title={copy.title()} onClose={onSkip}>
+<Sheet busy={saving.busy} {open} title={copy.title()} onClose={onSkip}>
   <h3>{copy.title()}</h3>
   {#if subject}<p class="muted" data-feeling-offer-subject>{subject}</p>{/if}
   <MoodPicker value={mood} onPick={(v) => (mood = v)} compact />
@@ -66,9 +71,9 @@
     </Field>
   </div>
   <div class="stack-3" style="margin-top:var(--space-3)">
-    <button class="btn btn-primary" disabled={mood == null} data-save-feeling-offer onclick={save}>
+    <button class="btn btn-primary" disabled={mood == null || saving.busy} data-save-feeling-offer onclick={save}>
       <span>{copy.confirm()}</span>
     </button>
-    <button class="btn btn-ghost" data-skip-feeling-offer onclick={onSkip}><span>{copy.decline()}</span></button>
+    <button class="btn btn-ghost" data-skip-feeling-offer disabled={saving.busy} onclick={onSkip}><span>{copy.decline()}</span></button>
   </div>
 </Sheet>

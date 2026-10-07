@@ -35,6 +35,8 @@
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
   import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
@@ -336,10 +338,14 @@
     dayEditorValue = dateInputValueFromEpochDay(photo.epochDay);
   }
 
+  const dayWrite = writer();
   async function saveDayEditor() {
-    if (!dayEditorId) return;
-    await journal.photos.setEpochDayOverride(dayEditorId, epochDayFromDateInputValueOrToday(dayEditorValue));
+    const id = dayEditorId;
+    if (!id) return;
+    const day = epochDayFromDateInputValueOrToday(dayEditorValue);
+    if (!(await dayWrite.run(() => journal.photos.setEpochDayOverride(id, day), m.write_failed()))) return;
     dayEditorId = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   const cellDate = (photo: LibraryPhoto) =>
@@ -530,7 +536,7 @@
     {/if}
   </Sheet>
 
-  <Sheet open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
+  <Sheet busy={dayWrite.busy} open={dayEditorId !== null} title={m.photo_day_edit_title()} onClose={() => (dayEditorId = null)}>
     {#if dayEditorId !== null}
       <h3>{m.photo_day_edit_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_edit_hint()}</p>
@@ -539,7 +545,7 @@
           <DatePicker name="photo-day-edit" bind:value={dayEditorValue} {id} />
         {/snippet}
       </Field>
-      <button class="btn btn-primary press" data-photo-day-edit-save onclick={saveDayEditor}>
+      <button class="btn btn-primary press" data-photo-day-edit-save disabled={dayWrite.busy} onclick={saveDayEditor}>
         <span>{m.photo_day_edit_save()}</span>
       </button>
     {/if}

@@ -22,6 +22,8 @@
      taken: the card around each group, the per-permission paragraph, and the
      pre-prompt screens that draw the OS dialog as an illustration. */
   import { m } from '$lib/paraglide/messages';
+  import { attempt } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { isAndroid } from '$lib/platform';
   import { roleAt } from '$lib/theme/roles';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -75,7 +77,8 @@
     if (!row || busy) return;
 
     if (row.action === 'settings') {
-      if (row.settingsTarget) await openSystemSettings(row.settingsTarget);
+      const target = row.settingsTarget;
+      if (target) await attempt(() => openSystemSettings(target), m.permission_request_failed());
       return;
     }
     if (row.action !== 'prompt' || key === 'exactAlarms') return;
@@ -86,6 +89,10 @@
       asked = new Set(asked).add(key);
       states = { ...states, [key]: answer };
       if (answer === 'granted') justChanged = key;
+    } catch (error) {
+      // A plugin that throws instead of answering (after-release 06, L05-06).
+      console.error('a permission request failed', error);
+      toast(m.permission_request_failed(), { kind: 'failed' });
     } finally {
       busy = null;
     }

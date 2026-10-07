@@ -223,6 +223,8 @@
       validationTouched = false;
       toast(m.dose_saved(), { kind: 'dose-saved' });
     },
+    // "Dose saved." above says it, with the handle the walkthrough grips.
+    saved: () => null,
     remove: (id) => journal.doses.deleteDose(id),
     findById: (id) => allDoses.find((dose) => dose.id === id)
   });

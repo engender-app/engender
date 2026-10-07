@@ -25,6 +25,9 @@
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import { procedureKindName } from '$lib/data/vocabulary/labels';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
+  import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import { collapse, disclose, resize } from '$lib/motion/reveal';
   import Icon from '$lib/components/Icon.svelte';
@@ -180,8 +183,13 @@
         dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn,
         archived: draft.archived
       });
-      selectedId = id;
-      notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
+      /* Editing the open procedure keeps notes typed beside it, and saving
+         another one leaves unsaved notes open where they are rather than
+         replacing them (after-release 06). */
+      if (selectedId !== id && !notesUnsaved()) {
+        selectedId = id;
+        notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
+      }
     },
     async remove(id) {
       if (selectedId === id) selectedId = null;
@@ -202,11 +210,19 @@
   let pickingKind = $state(false);
   let photoDate = $state('');
 
-  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
+  /* Every sheet below closes once its write lands and stays open with a
+     toast when it does not (after-release 06); they used to close first. */
+  const sheetWrite = writer();
+
+  /** False when the write failed, which keeps a reviewed shot under review. */
+  async function storePhoto(photo: NormalizedPhoto): Promise<boolean> {
     const epochDay = epochDayFromDateInputValue(photoDate);
-    if (!selectedId || epochDay === null) return;
+    const id = selectedId;
+    if (!id || epochDay === null) return true;
+    if (!(await sheetWrite.run(() => journal.procedures.addPhoto(id, epochDay, photo), m.write_failed()))) return false;
     photoSheet = false;
-    await journal.procedures.addPhoto(selectedId, epochDay, photo);
+    toast(m.saved(), { kind: 'record-saved' });
+    return true;
   }
 
   const recoveryPhotos = photoSection<ProcedurePhoto>({
@@ -219,10 +235,8 @@
   /* A consult date asks before it goes and says that it went
      (after-release 07); it used to vanish on one tap. */
   const consultRecord = recordEditor<ProcedureConsult>({
-    remove: async (id) => {
-      await journal.procedures.deleteConsult(id);
-      toast(m.surgery_consult_deleted());
-    },
+    remove: (id) => journal.procedures.deleteConsult(id),
+    deleted: () => m.surgery_consult_deleted(),
     findById: (id) => selected?.consults.find((consult) => consult.id === id)
   });
 
@@ -233,17 +247,31 @@
     findById: (id) => checklistItems.find((i) => i.id === id)
   });
 
-  async function openSourceProcedure() {
+  /* Notes typed and not saved are asked about before another procedure
+     replaces them, or before the screen goes (after-release 06, L07-09):
+     tapping a second card used to overwrite them without a word. */
+  const notesWrite = writer();
+  const notesUnsaved = () => !!selected && notesDraft !== selected.notes;
+  const notesGuard = leaveGuard({
+    holding: notesUnsaved,
+    busy: () => notesWrite.busy
+  });
+
+  function openSourceProcedure() {
     const procedure = sourceProcedure!;
-    selectedId = procedure.id;
-    notesDraft = procedure.notes;
-    await tick();
-    scrollToHash(`#procedure-log-${procedure.id}`);
+    notesGuard.request(async () => {
+      selectedId = procedure.id;
+      notesDraft = procedure.notes;
+      await tick();
+      scrollToHash(`#procedure-log-${procedure.id}`);
+    });
   }
 
   function select(procedure: Procedure) {
-    selectedId = selectedId === procedure.id ? null : procedure.id;
-    notesDraft = selectedId ? procedure.notes : '';
+    notesGuard.request(() => {
+      selectedId = selectedId === procedure.id ? null : procedure.id;
+      notesDraft = selectedId ? procedure.notes : '';
+    });
   }
 
   /* One entry in the offer registry (phase 8 features ticket 22,
@@ -263,13 +291,17 @@
     milestoneOffer = { procedureId: selectedId };
   }
 
-  /* Closed before the write, the order this screen already kept: the sheet
-     is gone by the time the insert runs, so a second tap cannot re-enter
-     with a live subject and toast twice. */
+  /* Closed once the write lands (after-release 06): the confirm button
+     holds while it runs, so a second tap writes nothing, and a failure
+     leaves the question up with a toast. */
+  const offerWrite = writer();
   async function answerMilestoneOffer(given: OfferAnswer) {
     const subject = milestoneOffer;
+    if (!subject) return;
+    let added = false;
+    if (!(await offerWrite.run(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed()))) return;
     milestoneOffer = null;
-    if (await answerOffer(MILESTONE_OFFER, subject, given, journal)) toast(m.surgery_milestone_added());
+    if (added) toast(m.surgery_milestone_added());
   }
 
   function openConsultSheet() {
@@ -279,14 +311,20 @@
 
   async function addConsult() {
     const epochDay = epochDayFromDateInputValue(consultDate);
-    if (!selectedId || epochDay === null) return;
+    const id = selectedId;
+    if (!id || epochDay === null) return;
+    if (!(await sheetWrite.run(() => journal.procedures.addConsult(id, epochDay), m.write_failed()))) return;
     consultSheet = false;
-    await journal.procedures.addConsult(selectedId, epochDay);
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   async function saveNotes() {
-    if (!selectedId) return;
-    await journal.procedures.setNotes(selectedId, notesDraft);
+    const id = selectedId;
+    const notes = notesDraft;
+    if (!id) return;
+    if (await notesWrite.run(() => journal.procedures.setNotes(id, notes), m.write_failed())) {
+      toast(m.surgery_notes_saved(), { kind: 'record-saved' });
+    }
   }
 
   function openPhotoSheet() {
@@ -301,9 +339,11 @@
 
   async function addItem() {
     const content = itemText.trim();
-    if (!selectedId || !content) return;
+    const id = selectedId;
+    if (!id || !content) return;
+    if (!(await sheetWrite.run(() => journal.procedures.addChecklistItem(id, content), m.write_failed()))) return;
     itemSheet = false;
-    await journal.procedures.addChecklistItem(selectedId, content);
+    toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
 
@@ -389,7 +429,7 @@
                     role="checkbox"
                     aria-checked={item.checked}
                     aria-label={item.checked ? m.surgery_checklist_uncheck_aria({ content: item.content }) : m.surgery_checklist_check_aria({ content: item.content })}
-                    onclick={async () => await journal.checklists.setItemChecked(item.id, !item.checked)}
+                    onclick={() => attempt(() => journal.checklists.setItemChecked(item.id, !item.checked), m.write_failed())}
                   >
                     <span class="sj-box" class:sj-ticked={item.checked}>
                       {#if item.checked}<Icon name="check" size={20} />{/if}
@@ -405,7 +445,7 @@
                       data-carry-forward={item.id}
                       aria-pressed={item.carriedForward}
                       aria-label={item.carriedForward ? m.surgery_checklist_uncarry_aria({ content: item.content }) : m.surgery_checklist_carry_aria({ content: item.content })}
-                      onclick={async () => await journal.checklists.setItemCarriedForward(item.id, !item.carriedForward)}
+                      onclick={() => attempt(() => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward), m.write_failed())}
                     >
                       <Icon name="flag" size={18} />
                     </button>
@@ -446,7 +486,7 @@
             ></textarea>
           {/snippet}
         </Field>
-        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" onclick={saveNotes}>
+        <button class="btn btn-soft press" data-save-notes style="margin-bottom:var(--space-4)" disabled={notesWrite.busy} onclick={saveNotes}>
           <span>{m.surgery_notes_save()}</span>
         </button>
       {/snippet}
@@ -793,17 +833,19 @@
     />
   {/if}
 
-  <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
+  <DiscardSheet guard={notesGuard} />
+
+  <Sheet busy={sheetWrite.busy} open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
     <Field label={m.surgery_consult_date_label()} id="surgery-consult-date">
       {#snippet children(id)}
         <DatePicker name="surgery-consult-date" bind:value={consultDate} {id} />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-save-consult onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
+    <button class="btn btn-primary" data-save-consult disabled={sheetWrite.busy} onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
   </Sheet>
 
-  <Sheet open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
     <h3>{m.surgery_photos_title()}</h3>
     <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
       {#snippet children(id)}
@@ -820,7 +862,7 @@
     </div>
   </Sheet>
 
-  <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
     <h3>{m.surgery_checklist_sheet()}</h3>
     <Field label={m.surgery_checklist_sheet()} id="surgery-item" hidden>
       {#snippet children(id)}
@@ -833,12 +875,13 @@
         />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-save-procedure-item onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
+    <button class="btn btn-primary" data-save-procedure-item disabled={sheetWrite.busy} onclick={addItem}><span>{m.surgery_checklist_add()}</span></button>
   </Sheet>
 
   <!-- Surgery Day Milestone Confirmation Sheet (ADR-0045 explicit confirmation) -->
   {#if selected}
     <Sheet
+      busy={offerWrite.busy}
       open={milestoneOffer !== null}
       title={MILESTONE_OFFER.copy.title()}
       onClose={() => void answerMilestoneOffer('decline')}
@@ -849,6 +892,7 @@
         <button
           class="btn btn-primary"
           data-confirm-record-milestone
+          disabled={offerWrite.busy}
           onclick={() => void answerMilestoneOffer('confirm')}
         >
           <span>{MILESTONE_OFFER.copy.confirm()}</span>

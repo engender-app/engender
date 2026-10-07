@@ -24,7 +24,6 @@
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { collapse, resize } from '$lib/motion/reveal';
-  import { toast } from '$lib/stores/toasts.svelte';
   import type { JournalingPause } from '$lib/data/types';
 
   const today = $derived(currentDay());
@@ -68,10 +67,8 @@
   }
 
   const pauseRecord = recordEditor<JournalingPause>({
-    remove: async (id) => {
-      await journal.journalingPauses.deletePause(id);
-      toast(m.journaling_pause_deleted());
-    },
+    remove: (id) => journal.journalingPauses.deletePause(id),
+    deleted: () => m.journaling_pause_deleted(),
     findById: (id) => pauses.find((pause) => pause.id === id)
   });
 

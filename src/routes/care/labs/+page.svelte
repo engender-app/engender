@@ -217,6 +217,7 @@
 
   const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
 
+  let unitStated = false;
   const record = recordEditor<LabResult, LabDraft>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
@@ -278,12 +279,15 @@
 
       /* Stated, not warned about: a new unit is a normal thing for a lab to
          report, and all that follows from it is a second line. */
-      if (otherUnits.size && !otherUnits.has(unit)) {
+      unitStated = otherUnits.size > 0 && !otherUnits.has(unit);
+      if (unitStated) {
         toast(unit ? m.labs_new_unit_toast({ unit, analyte: resultAnalyte }) : m.labs_no_unit_toast(), {
           kind: 'lab-new-unit'
         });
       }
     },
+    // The new-unit toast already says the result went in; one toast at a time.
+    saved: () => (unitStated ? null : m.saved()),
     remove: (id) => journal.labs.deleteResult(id),
     findById: (id) => results.find((result) => result.id === id)
   });

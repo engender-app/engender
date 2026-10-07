@@ -175,6 +175,8 @@
       });
       if (!draft.id) savedId = id;
     },
+    // A new session's notice below says more than a toast would.
+    saved: (draft) => (draft.id ? m.saved() : null),
     remove: (id) => journal.hairRemoval.deleteSession(id),
     findById: (id) => sessions.find((session) => session.id === id)
   });

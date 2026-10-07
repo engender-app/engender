@@ -61,6 +61,8 @@
      an inches one still draws a single continuous line instead of two
      that stop and start where the habit changed. */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { paddedSeries } from '$lib/charts/geometry';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -231,20 +233,23 @@
       write's own mirror refresh lands, so `key` is excluded explicitly
       rather than trusted to already read hidden. */
   async function setTypeHidden(key: string, hidden: boolean) {
-    await journal.measurements.setMeasurementTypeHidden(key, hidden);
+    if (!(await attempt(() => journal.measurements.setMeasurementTypeHidden(key, hidden), m.write_failed()))) return;
     if (hidden && type === key) {
       const fallback = vocabulary.measurementTypes.find((t) => t.key !== key && !t.hidden);
       if (fallback) pickedType = fallback.key;
     }
   }
 
+  const typeWrite = writer();
   async function addType() {
     const name = newTypeName.trim();
     if (!name) return;
-    const created = await journal.measurements.addCustomMeasurementType(name);
+    let created: { key: string } | undefined;
+    if (!(await typeWrite.run(async () => { created = await journal.measurements.addCustomMeasurementType(name); }, m.write_failed()))) return;
     newTypeName = '';
     manageOpen = false;
-    pickedType = created.key;
+    if (created) pickedType = created.key;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   function dismissProtocol() {
@@ -716,7 +721,7 @@
     {/snippet}
   </RecordSheet>
 
-  <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
+  <Sheet busy={typeWrite.busy} open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurement_manage_types_intro()}</p>
     <div class="managed-tags">
@@ -750,7 +755,7 @@
         />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-add-measurement-type onclick={addType}><span>{m.measurement_type_add()}</span></button>
+    <button class="btn btn-primary" data-add-measurement-type disabled={typeWrite.busy} onclick={addType}><span>{m.measurement_type_add()}</span></button>
   </Sheet>
 </div>
 

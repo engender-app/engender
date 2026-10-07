@@ -66,6 +66,7 @@
      `disclose`, so answering it collapses the space it held instead of
      dropping everything under it a frame. */
   import { m } from '$lib/paraglide/messages';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import {
@@ -180,26 +181,28 @@
     prefs.areaFinishOfferDeclined = [...prefs.areaFinishOfferDeclined, ...unrecorded];
   }
 
-  /* Closed before the write, the same order the roadmap's own offer keeps: a
-     second tap finds no open sheet rather than a second write in flight.
+  /* Closed once the write lands, with the button held while it runs so a
+     second tap writes nothing (after-release 06; it used to close first,
+     and a write that then failed went nowhere).
 
      Through `answerOffer` whichever moment opened the sheet, because the sheet
      *is* the confirmation either way and ADR-0045's rule is that the write
      happens on one path. A second call straight to `setAreasFinished` here
      would be the "trigger that wanted to write directly" offers.ts's own
      header exists to refuse. */
+  const sheetWrite = writer();
   async function confirmFinish() {
     const subject: FinishedArea = {
       areas: AREA_GROUPS[group],
       epochDay: epochDayFromDateInputValueOrToday(dateInput)
     };
+    if (!(await sheetWrite.run(() => answerOffer(OFFER, subject, 'confirm', journal), m.write_failed()))) return;
     sheetOpen = false;
-    await answerOffer(OFFER, subject, 'confirm', journal);
   }
 
   /** Un-finishing: the same call with null, and no date to pick. */
   function pickBackUp() {
-    void journal.areaStates.setAreasFinished(AREA_GROUPS[group], null);
+    void attempt(() => journal.areaStates.setAreasFinished(AREA_GROUPS[group], null), m.write_failed());
   }
 
   let suspendSheetOpen = $state(false);
@@ -211,8 +214,8 @@
     suspendSheetOpen = true;
   }
 
-  /* Closed before the write, `confirmFinish`'s own order and its own reason:
-     a second tap finds no open sheet, and the write goes through
+  /* Closed once the write lands, `confirmFinish`'s own order, and the write
+     goes through
      `answerOffer` so this is not a second path to `setAreasSuspended`
      alongside whatever a future automatic trigger might reach for. */
   async function confirmSuspend() {
@@ -221,15 +224,16 @@
       areas: suspendableAreas,
       epochDay: epochDayFromDateInputValueOrToday(suspendDateInput)
     };
+    if (!(await sheetWrite.run(() => answerOffer(SUSPEND_OFFER, subject, 'confirm', journal), m.write_failed()))) return;
     suspendSheetOpen = false;
-    await answerOffer(SUSPEND_OFFER, subject, 'confirm', journal);
   }
 
   /** Resuming: the same call with null, and no date to pick - `pickBackUp`'s
       own shape. */
   function resume() {
     if (!suspendableAreas) return;
-    void journal.areaStates.setAreasSuspended(suspendableAreas, null);
+    const areas = suspendableAreas;
+    void attempt(() => journal.areaStates.setAreasSuspended(areas, null), m.write_failed());
   }
 </script>
 
@@ -338,7 +342,7 @@
   </div>
 </div>
 
-<Sheet bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
+<Sheet busy={sheetWrite.busy} bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
   <h3>{m.area_finish_sheet_title({ area: areaGroupName(group) })}</h3>
   <p class="muted small area-finish-body">{m.area_finish_sheet_body()}</p>
   <Field label={m.area_finish_date_label()} id="area-finish-date">
@@ -347,17 +351,17 @@
     {/snippet}
   </Field>
   <div class="stack-3 area-finish-actions">
-    <button class="btn btn-primary" data-area-finish-confirm onclick={confirmFinish}>
+    <button class="btn btn-primary" data-area-finish-confirm disabled={sheetWrite.busy} onclick={confirmFinish}>
       <span>{OFFER.copy.confirm()}</span>
     </button>
-    <button class="btn btn-ghost" onclick={() => (sheetOpen = false)}>
+    <button class="btn btn-ghost" disabled={sheetWrite.busy} onclick={() => (sheetOpen = false)}>
       <span>{m.area_finish_cancel()}</span>
     </button>
   </div>
 </Sheet>
 
 {#if suspendableAreas}
-  <Sheet bind:open={suspendSheetOpen} title={m.area_suspend_sheet_title()}>
+  <Sheet busy={sheetWrite.busy} bind:open={suspendSheetOpen} title={m.area_suspend_sheet_title()}>
     <h3>{m.area_suspend_sheet_title()}</h3>
     <p class="muted small area-finish-body">{m.area_suspend_sheet_body()}</p>
     <Field label={m.area_suspend_date_label()} id="area-suspend-date">
@@ -371,10 +375,10 @@
       {/snippet}
     </Field>
     <div class="stack-3 area-finish-actions">
-      <button class="btn btn-primary" data-area-suspend-confirm onclick={confirmSuspend}>
+      <button class="btn btn-primary" data-area-suspend-confirm disabled={sheetWrite.busy} onclick={confirmSuspend}>
         <span>{SUSPEND_OFFER.copy.confirm()}</span>
       </button>
-      <button class="btn btn-ghost" onclick={() => (suspendSheetOpen = false)}>
+      <button class="btn btn-ghost" disabled={sheetWrite.busy} onclick={() => (suspendSheetOpen = false)}>
         <span>{m.area_suspend_cancel()}</span>
       </button>
     </div>
