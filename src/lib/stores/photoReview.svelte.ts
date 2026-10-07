@@ -5,7 +5,9 @@
    the caller supplies, never a shared registry this module or
    PhotoAlignmentReview.svelte knows anything about. */
 
+import { m } from '$lib/paraglide/messages';
 import { capturePhoto, type ReferencePhoto } from './photoPicking';
+import { toast } from './toasts.svelte';
 import type { NormalizedPhoto } from '../data/journal/photos';
 
 interface PhotoReview {
@@ -63,6 +65,11 @@ export function photoReview(
       accepting = true;
       try {
         if ((await onAccept(photo)) === false) return;
+      } catch (error) {
+        // The shot stays under review, so Use photo is the retry.
+        console.error('a reviewed photo could not be stored', error);
+        toast(m.photo_save_failed(), { kind: 'failed' });
+        return;
       } finally {
         accepting = false;
       }

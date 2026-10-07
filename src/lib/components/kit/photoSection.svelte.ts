@@ -15,6 +15,8 @@ import type { ReferencePhoto } from '$lib/stores/photoPicking';
 import { pickPhotos } from '$lib/stores/photoPicking';
 import { photoReview } from '$lib/stores/photoReview.svelte';
 import { addPickedPhoto, findPhotoById } from './photoSection';
+import { m } from '$lib/paraglide/messages';
+import { attempt } from '$lib/stores/attempt.svelte';
 import { recordEditor } from './recordEditor.svelte';
 
 interface PhotoSectionOptions<TPhoto extends { id: string }> {
@@ -25,6 +27,10 @@ interface PhotoSectionOptions<TPhoto extends { id: string }> {
   add(photo: NormalizedPhoto): void | boolean | Promise<void | boolean>;
   /** Delete a stored photo by id. */
   remove(id: string): void | Promise<void>;
+  /** What the toast says once `remove` lands; null where the removal is
+      only from a draft and nothing is deleted until its Save. Omitted,
+      "Deleted.". */
+  deleted?: () => string | null;
   /** The post-capture review's comparison photo (ADR-0033). What "the last
       photo of this context" means stays the caller's -
       photoSection.ts's `lastPhotoReference` is the usual answer. */
@@ -34,13 +40,15 @@ interface PhotoSectionOptions<TPhoto extends { id: string }> {
 export function photoSection<TPhoto extends { id: string }>(options: PhotoSectionOptions<TPhoto>) {
   const record = recordEditor<TPhoto>({
     remove: options.remove,
+    deleted: options.deleted,
     findById: (id) => findPhotoById(options.photos(), id)
   });
 
   const review = photoReview(options.reference, options.add);
 
   async function pick() {
-    await addPickedPhoto(await pickPhotos(1), options.add);
+    const picked = await pickPhotos(1);
+    await attempt(() => addPickedPhoto(picked, options.add), m.photo_save_failed());
   }
 
   return {
