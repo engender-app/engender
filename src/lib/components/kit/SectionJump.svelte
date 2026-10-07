@@ -107,9 +107,12 @@
     };
   });
 
-  /* Scrolling is also choosing: a half whose top crosses the upper band of
-     the screen is the one being read. The lower 60% is left out so the mark
-     moves when a half is read, not while it is still arriving. */
+  /* Scrolling is also choosing: the half being read is the last one whose
+     top has crossed into the upper 40% of the screen. The observer only
+     says when a top crosses that line, in either direction; which half is
+     current is then read off the tops themselves, so scrolling back up into
+     a long first half moves the mark as soon as the second half's top drops
+     below the line, not when the first half's heading comes back into view. */
   $effect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     const ids = sections.map((s) => s.target);
@@ -120,12 +123,14 @@
       const targets = ids.map((id) => document.getElementById(id));
       if (targets.some((t) => !t)) return false;
       spy = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (!entry.isIntersecting) continue;
-            const hit = sections.find((s) => s.target === entry.target.id);
-            if (hit) chosen = hit.value;
+        () => {
+          const line = window.innerHeight * 0.4;
+          let current = sections[0]?.value ?? '';
+          for (const [i, s] of sections.entries()) {
+            const top = targets[i]?.getBoundingClientRect().top;
+            if (top !== undefined && top <= line) current = s.value;
           }
+          chosen = current;
         },
         { rootMargin: '0px 0px -60% 0px' }
       );
