@@ -27,6 +27,7 @@ import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { thumbFileName } from '../photos/names.ts';
 import type { Journal } from './journal.ts';
 import { openJournal } from './journal.ts';
+import { observeWrites } from '../live/writes.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 import { restoreArchive } from './restore.ts';
@@ -609,6 +610,59 @@ export async function runJournalContract(
       await journal.doses.autoLogDueDoses(firstDay + 3, []), 1);
     r.equal('historical replay is idempotent',
       await journal.doses.autoLogDueDoses(firstDay + 3, []), 0);
+  });
+
+  await r.section('dose backfill ownership', async () => {
+    const { startOfDayTimestamp } = await import('../epochDay.ts');
+    for (const winner of ['manual', 'replace', 'backfill'] as const) {
+      await journal.discardEverything();
+      const empty = await journal.archive.snapshot();
+      let read!: () => void;
+      let resume!: () => void;
+      const started = new Promise<void>((resolve) => { read = resolve; });
+      const held = new Promise<void>((resolve) => { resume = resolve; });
+      const paused: SqliteDriver = {
+        ...driver,
+        async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+          const rows = await driver.query<Row>(sql, params);
+          if (sql.includes('windows.day AS slot_day')) { read(); await held; }
+          return rows;
+        }
+      };
+      const publicJournal = observeWrites(openJournal(paused, files), () => {});
+      const episodeId = await publicJournal.regimen.upsertEpisode({
+        drug: 'backfill contract drug', ester: null, dose: 2, doseUnit: 'mg',
+        route: 'oral', interval: 'daily', startEpochDay: 20000,
+        endEpochDay: null, endReason: null
+      });
+      await publicJournal.doses.upsertSchedule({
+        episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 1,
+        doseAmounts: [{ dose: 2, doseUnit: 'mg' }], autoLogFromEpochDay: 20000
+      });
+      await publicJournal.stock.upsertEntry({ drug: 'backfill contract drug', quantity: 10,
+        unit: 'tablets', recordedEpochDay: 20000 });
+      const first = publicJournal.doses.autoLogDueDoses(20001, []);
+      await started;
+      let second: Promise<number> | undefined;
+      if (winner === 'manual') await publicJournal.doses.upsertDose({
+        timestamp: startOfDayTimestamp(20000) + 12 * 3600000,
+        route: 'oral', dose: 2, doseUnit: 'mg', drug: 'backfill contract drug'
+      });
+      else if (winner === 'replace') await publicJournal.archive.replace({
+        journal: empty.journal, files: (async function* () {})()
+      });
+      else second = publicJournal.doses.autoLogDueDoses(20001, []);
+      resume();
+      const counts = await Promise.all(second ? [first, second] : [first]);
+      r.equal(`${winner} winner controls backfill count`, counts.reduce((a, b) => a + b, 0),
+        winner === 'backfill' ? 1 : 0);
+      const doses = await publicJournal.doses.getDoses(20000, 20001);
+      r.equal(`${winner} winner leaves expected dose history`, doses.map((dose) => dose.source),
+        winner === 'replace' ? [] : [winner === 'manual' ? 'person' : 'schedule']);
+      r.equal(`${winner} retry writes nothing`, await publicJournal.doses.autoLogDueDoses(20001, []), 0);
+      if (winner !== 'replace') r.equal(`${winner} stock is consumed once`,
+        (await publicJournal.stock.getProjections(20001))[0].projection.remaining, 9);
+    }
   });
 
   return r.checks;

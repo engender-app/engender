@@ -47,7 +47,7 @@ import {
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { activeEpisodesAt, attributeDose, sameDrug } from '../regimenEpisode';
 import { rangesFromCuts } from '../span';
-import type { RegimenArea } from './regimen';
+import { makeRegimenArea, type RegimenArea } from './regimen';
 import { assertChanged, mintUuid, now } from './support';
 
 interface DoseInputFields {
@@ -637,99 +637,17 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async autoLogDueDoses(todayEpochDay, routeWords) {
-      const schedules = (await area.getSchedules()).filter((schedule) => schedule.autoLogFromEpochDay !== null);
-      if (schedules.length === 0) return 0;
+      const candidates = await dueDoseCandidates(driver, regimen, area, todayEpochDay, routeWords);
+      if (candidates.length === 0) return 0;
 
-      const [episodes, pauses] = await Promise.all([regimen.getEpisodes(), area.getPauses()]);
-      let written = 0;
-
-      for (const schedule of schedules) {
-        const episode = episodes.find((candidate) => candidate.id === schedule.episodeId);
-        // The schedule hangs off the episode by foreign key, so this cannot
-        // miss - it is here to narrow, not to guard.
-        if (!episode) continue;
-
-        const from = Math.max(schedule.autoLogFromEpochDay as number, episode.startEpochDay);
-        /* Yesterday, or the day the episode ended, whichever came first. An
-           ended episode expects nothing after its last day, and expectedSlots
-           has no end to stop at - it is anchored on the start and runs
-           forward - so the clamp is here, where the episode is in hand. */
-        const until = Math.min(todayEpochDay - 1, episode.endEpochDay ?? todayEpochDay - 1);
-        if (until < from) continue;
-
-        /* What the dose log can record this episode's route as, read from
-           the episode's own free text. Null only where the switch should
-           never have been offered (canAutoLog gates on the same read), so
-           this is a guard rather than a fallback: nothing is written with a
-           guessed route. */
-        const route = matchDoseRoute(episode.route, routeWords);
-        if (!route) continue;
-
-        /* Only this episode's own doses, attributed the way getComparison
-           attributes them: a concurrent episode's dose must not fill this
-           one's slot, and a dose logged under an episode that has since been
-           backdated away is not this one's either. */
-        /* Read past both ends by the schedule's tolerance, so a dose logged
-           a few days late (today's included) still fills the slot it was for
-           rather than leaving it open for this pass to fill a second time. */
-        const tolerance = slotToleranceDays(schedule);
-        const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
-        const days = await missingAutoLogDays(driver, schedule, episode, episodes, ownPauses, from, until);
-        const slots = [];
-        for (let offset = 0; offset < days.length; offset += AUTO_LOG_BATCH_DAYS) {
-          const batch = days.slice(offset, offset + AUTO_LOG_BATCH_DAYS);
-          const logged = await driver.query<DoseRow & { slot_day: number }>(
-            `WITH windows AS (
-               SELECT json_extract(value, '$[0]') AS day, json_extract(value, '$[1]') AS from_ts,
-                      json_extract(value, '$[2]') AS until_ts FROM json_each(?))
-             SELECT windows.day AS slot_day, ${DOSE_COLUMNS} FROM windows JOIN dose_event
-               ON dose_event.timestamp >= windows.from_ts AND dose_event.timestamp < windows.until_ts
-             ORDER BY dose_event.timestamp, dose_event.id`,
-            [JSON.stringify(batch.map((day) => [day, startOfDayTimestamp(day - tolerance), startOfDayTimestamp(day + tolerance + 1)]))]
-          );
-          const byDay = new Map<number, DoseEvent[]>();
-          for (const row of logged) {
-            const dose = toDoseEvent(row);
-            if (attributeDose(episodes, dose).episode?.id !== episode.id) continue;
-            const onDay = byDay.get(row.slot_day) ?? [];
-            onDay.push(dose);
-            byDay.set(row.slot_day, onDay);
-          }
-          for (const day of batch) slots.push(...autoLogSlots(
-            { ...schedule, autoLogFromEpochDay: day }, episode.startEpochDay,
-            byDay.get(day) ?? [], ownPauses, day + 1
-          ));
-        }
-
-        for (const { slot, timestamp } of slots) {
-          /* The schedule's own amount for this slot, so an alternating cycle
-             is written in phase. The episode's figure only where the schedule
-             tracks none, which the switch's own gate (canAutoLog) already
-             refuses - kept as the fallback rather than a throw because an
-             amount removed after the switch went on would otherwise fail the
-             whole pass. */
-          const amount = slot.amount ?? { dose: episode.dose, doseUnit: episode.doseUnit };
-          await area.upsertDose({
-            timestamp,
-            route,
-            dose: amount.dose,
-            doseUnit: amount.doseUnit,
-            /* The episode's drug, written onto the row rather than left for
-               attribution to resolve. A dose logged by hand can leave it
-               null because the person was looking at one screen for one
-               drug; this one is written unattended, and on a journal with
-               two episodes running at once `attributeDose` has no way to
-               tell which schedule wrote it - the row would read "more than
-               one regimen was active: drug not recorded" for ever. Which is
-               exactly the tie `drug` exists to break (types.ts). */
-            drug: episode.drug,
-            source: 'schedule'
-          });
-          written++;
-        }
-      }
-
-      return written;
+      // Re-read current journal state under ownership before inserting.
+      return driver.transaction(async (scope) => {
+        const currentRegimen = makeRegimenArea(scope);
+        const currentDoses = makeDosesArea(scope, currentRegimen);
+        const current = await dueDoseCandidates(scope, currentRegimen, currentDoses, todayEpochDay, routeWords);
+        for (const input of current) await currentDoses.upsertDose(input);
+        return current.length;
+      });
     },
 
     async lastWriteEpochDay(todayEpochDay) {
@@ -921,4 +839,101 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
   };
 
   return area;
+}
+
+async function dueDoseCandidates(
+  driver: SqliteDriver, regimen: RegimenArea, area: DosesArea,
+  todayEpochDay: number, routeWords: readonly RouteOption[]
+): Promise<DoseEventInput[]> {
+  const schedules = (await area.getSchedules()).filter((schedule) => schedule.autoLogFromEpochDay !== null);
+  if (schedules.length === 0) return [];
+
+  const [episodes, pauses] = await Promise.all([regimen.getEpisodes(), area.getPauses()]);
+  const candidates: DoseEventInput[] = [];
+
+  for (const schedule of schedules) {
+    const episode = episodes.find((candidate) => candidate.id === schedule.episodeId);
+    // Preliminary reads may overlap a Replace that removes this episode.
+    if (!episode) continue;
+
+    const from = Math.max(schedule.autoLogFromEpochDay as number, episode.startEpochDay);
+    /* Yesterday, or the day the episode ended, whichever came first. An
+       ended episode expects nothing after its last day, and expectedSlots
+       has no end to stop at - it is anchored on the start and runs
+       forward - so the clamp is here, where the episode is in hand. */
+    const until = Math.min(todayEpochDay - 1, episode.endEpochDay ?? todayEpochDay - 1);
+    if (until < from) continue;
+
+    /* What the dose log can record this episode's route as, read from
+       the episode's own free text. Null only where the switch should
+       never have been offered (canAutoLog gates on the same read), so
+       this is a guard rather than a fallback: nothing is written with a
+       guessed route. */
+    const route = matchDoseRoute(episode.route, routeWords);
+    if (!route) continue;
+
+    /* Only this episode's own doses, attributed the way getComparison
+       attributes them: a concurrent episode's dose must not fill this
+       one's slot, and a dose logged under an episode that has since been
+       backdated away is not this one's either. */
+    /* Read past both ends by the schedule's tolerance, so a dose logged
+       a few days late (today's included) still fills the slot it was for
+       rather than leaving it open for this pass to fill a second time. */
+    const tolerance = slotToleranceDays(schedule);
+    const ownPauses = pauses.filter((pause) => pause.episodeId === episode.id);
+    const days = await missingAutoLogDays(driver, schedule, episode, episodes, ownPauses, from, until);
+    const slots = [];
+    for (let offset = 0; offset < days.length; offset += AUTO_LOG_BATCH_DAYS) {
+      const batch = days.slice(offset, offset + AUTO_LOG_BATCH_DAYS);
+      const logged = await driver.query<DoseRow & { slot_day: number }>(
+        `WITH windows AS (
+           SELECT json_extract(value, '$[0]') AS day, json_extract(value, '$[1]') AS from_ts,
+                  json_extract(value, '$[2]') AS until_ts FROM json_each(?))
+         SELECT windows.day AS slot_day, ${DOSE_COLUMNS} FROM windows JOIN dose_event
+           ON dose_event.timestamp >= windows.from_ts AND dose_event.timestamp < windows.until_ts
+         ORDER BY dose_event.timestamp, dose_event.id`,
+        [JSON.stringify(batch.map((day) => [day, startOfDayTimestamp(day - tolerance), startOfDayTimestamp(day + tolerance + 1)]))]
+      );
+      const byDay = new Map<number, DoseEvent[]>();
+      for (const row of logged) {
+        const dose = toDoseEvent(row);
+        if (attributeDose(episodes, dose).episode?.id !== episode.id) continue;
+        const onDay = byDay.get(row.slot_day) ?? [];
+        onDay.push(dose);
+        byDay.set(row.slot_day, onDay);
+      }
+      for (const day of batch) slots.push(...autoLogSlots(
+        { ...schedule, autoLogFromEpochDay: day }, episode.startEpochDay,
+        byDay.get(day) ?? [], ownPauses, day + 1
+      ));
+    }
+
+    for (const { slot, timestamp } of slots) {
+      /* The schedule's own amount for this slot, so an alternating cycle
+         is written in phase. The episode's figure only where the schedule
+         tracks none, which the switch's own gate (canAutoLog) already
+         refuses - kept as the fallback rather than a throw because an
+         amount removed after the switch went on would otherwise fail the
+         whole pass. */
+      const amount = slot.amount ?? { dose: episode.dose, doseUnit: episode.doseUnit };
+      candidates.push({
+        timestamp,
+        route,
+        dose: amount.dose,
+        doseUnit: amount.doseUnit,
+        /* The episode's drug, written onto the row rather than left for
+           attribution to resolve. A dose logged by hand can leave it
+           null because the person was looking at one screen for one
+           drug; this one is written unattended, and on a journal with
+           two episodes running at once `attributeDose` has no way to
+           tell which schedule wrote it - the row would read "more than
+           one regimen was active: drug not recorded" for ever. Which is
+           exactly the tie `drug` exists to break (types.ts). */
+        drug: episode.drug,
+        source: 'schedule'
+      });
+    }
+  }
+
+  return candidates;
 }
