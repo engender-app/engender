@@ -7,7 +7,7 @@ export interface Migration {
   version: number;
   sql: string;
   /** Builds the whole schema rather than stepping from the version before it
-      (the squash, ticket 34). Only an empty database can take it, so a
+      (the squash: ticket 34, then after-release ticket 42). Only an empty database can take it, so a
       journal that already has a schema below it is refused by name. */
   baseline?: boolean;
 }
@@ -66,8 +66,9 @@ export class SchemaTooNewError extends Error {
 }
 
 /** Thrown when the database is a journal from before the chain's first
-    migration, which since the squash (ticket 34) means a development build's
-    journal on a schema between 1 and the baseline. The steps that would carry
+    migration, which since the squash (ticket 34, redone at 88 by after-release
+    ticket 42) means a development build's journal on a schema between 1 and
+    the baseline. The steps that would carry
     it forward are gone, so it cannot be opened here, and running the baseline
     over its tables only fails with a SQLite message nobody can act on. Named
     so the failure screen can say where the journal came from and offer the
