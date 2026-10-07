@@ -304,6 +304,7 @@
   "boot_restore_running": "Putting it back…",
   "boot_retry_action": "Try opening again",
   "boot_schema_too_new_body": "This journal needs a newer version of the app. Nothing has been changed. Check for an update to open it.",
+  "boot_schema_too_new_check_failed": "Couldn’t check for an update. Check the connection and try again. Your journal is unchanged.",
   "boot_schema_too_new_looking": "Looking…",
   "boot_schema_too_new_reopen": "A newer version is ready. Close the app and open it again to use it.",
   "boot_schema_too_new_retry": "Check for an update",

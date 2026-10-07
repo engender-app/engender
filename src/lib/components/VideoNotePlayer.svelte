@@ -106,7 +106,7 @@
       else await player?.requestFullscreen();
     } catch (error) {
       console.error('full screen was refused', error);
-      toast(m.video_full_failed());
+      toast(m.video_full_failed(), { kind: 'failed' });
     }
   }
 </script>

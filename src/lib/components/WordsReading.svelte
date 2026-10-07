@@ -299,7 +299,7 @@
   {/if}
 </ChartCard>
 
-<Sheet open={picked !== null} title={picked?.word ?? ''} onClose={() => (picked = null)}>
+<Sheet busy={ignoring.busy} open={picked !== null} title={picked?.word ?? ''} onClose={() => (picked = null)}>
   {#if picked}
     <h3>{picked.word}</h3>
     <p class="words-sheet-count" data-word-sheet-count>

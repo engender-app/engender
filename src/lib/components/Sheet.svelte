@@ -45,6 +45,7 @@
     onClosed,
     children,
     globalTransitions = false,
+    busy = false,
   }: {
     open?: boolean;
     title?: string;
@@ -59,6 +60,10 @@
     onClosed?: () => void;
     children: Snippet;
     globalTransitions?: boolean;
+    /** A write the sheet is waiting on (after-release 06). The scrim, a drag,
+        Escape and Back leave it up until the write lands, so a sheet never
+        closes over a write that may yet fail and need what is in it. */
+    busy?: boolean;
   } = $props();
 
   let sheetEl: HTMLElement | null = null;
@@ -66,6 +71,10 @@
   function close() {
     // The outgoing sheet still owns Back until its transition removes it.
     if (!open) return;
+    if (busy) {
+      dragY = 0;
+      return;
+    }
     if (onRequestClose) {
       dragY = 0;
       onRequestClose();

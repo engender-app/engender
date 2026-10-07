@@ -23,27 +23,26 @@
   /* What the last look found, said in the line under the button. 'reopen'
      is a newer release that could not take over this page (applyUpdate
      answered false): the button used to stay on "Looking…" for good then
-     (after-release 06, L05-06). A look that throws reads as finding
-     nothing, which is what it found. */
-  let result = $state<'none' | 'reopen' | null>(null);
+     (after-release 06, L05-06). A look that throws says it could not
+     look; a hand-over that throws after a newer release was found is
+     still 'reopen', since the newer release is there. */
+  let result = $state<'none' | 'reopen' | 'failed' | null>(null);
 
   async function lookForNewer() {
     if (looking) return;
     looking = true;
     result = null;
+    let found = false;
     try {
-      if (await checkForNewerRelease()) {
-        // Reloads onto the new release, so this screen is replaced by a boot
-        // that can read the Journal. Nothing is in flight to interrupt: this
-        // one never opened it.
-        if (await applyUpdate()) return;
-        result = 'reopen';
-      } else {
-        result = 'none';
-      }
+      found = await checkForNewerRelease();
+      // Reloads onto the new release, so this screen is replaced by a boot
+      // that can read the Journal. Nothing is in flight to interrupt: this
+      // one never opened it.
+      if (found && (await applyUpdate())) return;
+      result = found ? 'reopen' : 'none';
     } catch (error) {
       console.error('could not look for a newer release', error);
-      result = 'none';
+      result = found ? 'reopen' : 'failed';
     }
     looking = false;
   }
@@ -60,6 +59,10 @@
            silent content swap for anyone not looking at the screen. -->
       <p class="gate-body" role="status" data-nothing-newer transition:collapse>
         {m.boot_schema_too_new_still_old()}
+      </p>
+    {:else if result === 'failed'}
+      <p class="gate-body" role="status" data-update-check-failed transition:collapse>
+        {m.boot_schema_too_new_check_failed()}
       </p>
     {:else if result === 'reopen'}
       <p class="gate-body" role="status" data-newer-waiting transition:collapse>

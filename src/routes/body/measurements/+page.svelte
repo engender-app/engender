@@ -721,7 +721,7 @@
     {/snippet}
   </RecordSheet>
 
-  <Sheet open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
+  <Sheet busy={typeWrite.busy} open={manageOpen} title={m.measurement_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.measurement_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.measurement_manage_types_intro()}</p>
     <div class="managed-tags">

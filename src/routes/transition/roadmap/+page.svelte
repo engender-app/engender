@@ -556,7 +556,7 @@
   </ReadReserve>
 </div>
 
-<Sheet open={addTrack !== null} title={m.roadmap_new_goal()} onClose={() => (addTrack = null)}>
+<Sheet busy={addGoalWrite.busy} open={addTrack !== null} title={m.roadmap_new_goal()} onClose={() => (addTrack = null)}>
   {#if addTrack}
     <h3>{m.roadmap_new_goal()}</h3>
     <Field label={m.roadmap_new_goal()} id="newgoal-input" hidden>
@@ -590,7 +590,7 @@
      milestone it minted - and nothing a person wrote, because a built-in
      goal has nowhere to write it and a custom one's own text editing is
      ticket 69's. -->
-<Sheet open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
+<Sheet busy={goalWrite.busy} open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
   {#if selectedGoal}
     <h3>{selectedTitle}</h3>
     <div class="kit-row is-static" data-goal-sheet-status={selectedGoal.key}>

@@ -824,7 +824,7 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
+  <Sheet busy={questionWrite.busy} bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
     <h3>{m.saved_question_save_sheet()}</h3>
     <Field label={m.saved_question_name_label()} id="saved-question-name">
       {#snippet children(id)}

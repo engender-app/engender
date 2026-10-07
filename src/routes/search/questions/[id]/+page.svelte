@@ -356,7 +356,7 @@
       {/key}
     </div>
 
-    <Sheet bind:open={renamingOpen} title={m.saved_question_edit_sheet()}>
+    <Sheet busy={renameWrite.busy} bind:open={renamingOpen} title={m.saved_question_edit_sheet()}>
       <h3>{m.saved_question_edit_sheet()}</h3>
       <Field label={m.saved_question_name_label()} id="saved-question-rename-name">
         {#snippet children(fieldId)}

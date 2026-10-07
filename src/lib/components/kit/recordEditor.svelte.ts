@@ -2,6 +2,7 @@
    Comparison and record lookup stay framework-free in recordEditor.ts. */
 import { m } from '$lib/paraglide/messages';
 import { toast } from '$lib/stores/toasts.svelte';
+import { oneAtATime } from '$lib/stores/writeOutcome';
 import { findDeleteTarget, nextEditor, sameDraft, snapshotDraft, trySave, type RecordEditorOptions } from './recordEditor.ts';
 
 export function recordEditor<TRecord extends { id: string }, TDraft extends { id?: string } = TRecord>(
@@ -57,19 +58,14 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
   /* The sheet stays up until the record is gone (after-release ticket 06):
      a delete that fails says so inside it and leaves the record where it
      was, and a second tap while one is running deletes nothing. */
+  const removeOnce = oneAtATime(() => {}, (value) => { deleting = value; });
   async function confirmDelete() {
     const target = deleteTarget;
     if (!target || deleting) return;
-    deleting = true;
     deleteFailed = false;
-    try {
-      await options.remove(target.id);
-    } catch (error) {
-      console.error(error);
+    if (!(await removeOnce(() => options.remove(target.id), ''))) {
       if (deleteTarget === target) deleteFailed = true;
       return;
-    } finally {
-      deleting = false;
     }
     if (deleteTarget === target) deleteTarget = null;
     const message = options.deleted ? options.deleted(target) : m.record_deleted();

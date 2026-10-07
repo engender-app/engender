@@ -112,7 +112,7 @@
   </button>
 {/if}
 
-<Sheet bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
+<Sheet busy={saving.busy} bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
   <h3>{editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}</h3>
   <textarea
     class="input"
