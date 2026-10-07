@@ -26,6 +26,7 @@ import type { ClinicianSummaryFinishedArea, ClinicianSummaryProcedure } from '..
 import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
 import { spanCoversDay } from '../span';
+import { sameDrug } from '../regimenEpisode';
 
 interface PatientDemographics {
   name: string;
@@ -126,7 +127,33 @@ interface AssembleClinicianDossierParams {
     device preference set once, not a per-print control, so a drug outside
     today's chosen range still gets a switch. */
 export function regimenDrugNames(episodes: readonly RegimenEpisode[]): string[] {
-  return [...new Set(episodes.map((episode) => episode.drug))].sort((a, b) => a.localeCompare(b));
+  const names: string[] = [];
+  for (const episode of episodes) {
+    if (!names.some((name) => sameDrug(name, episode.drug))) names.push(episode.drug);
+  }
+  return names.sort((a, b) => a.localeCompare(b));
+}
+
+/** Saved exclusions can use a spelling hidden by the deduplicated choices. */
+export function excludedClinicianDrugs(
+  drugNames: readonly string[],
+  preferences: Partial<Record<string, boolean>>
+): Set<string> {
+  const saved = Object.entries(preferences);
+  return new Set(drugNames.filter((drug) => saved.some(([name, excluded]) => excluded && sameDrug(name, drug))));
+}
+
+/** Update old spellings too, so an earlier exclusion cannot override this pick. */
+export function withClinicianDrugIncluded(
+  preferences: Partial<Record<string, boolean>>,
+  drug: string,
+  included: boolean
+): Partial<Record<string, boolean>> {
+  const next = { ...preferences, [drug]: !included };
+  for (const name of Object.keys(preferences)) {
+    if (sameDrug(name, drug)) next[name] = !included;
+  }
+  return next;
 }
 
 const spacedWords = (text: string) =>

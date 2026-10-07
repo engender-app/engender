@@ -1,7 +1,7 @@
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { compareDoseSchedule } from './journal/doses';
 import type { Journal } from './journal/journal';
-import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode, showAttributionLabel } from './regimenEpisode';
+import { activeEpisodesAt, attributeDose, attributeDrug, nearestActiveEpisode, sameDrug, showAttributionLabel } from './regimenEpisode';
 
 /** How far back the log and the comparison look at first. The screen widens
     it by this much per Earlier, or to reach a deep-linked dose (phase 11
@@ -71,9 +71,12 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
   );
   /* The drugs to choose between, for both the editor and the schedule view's
      picker: both ask "which of the concurrently active drugs". */
-  const activeDrugChoices = [...new Set(activeEpisodes.map((episode) => episode.drug))];
+  const activeDrugChoices = activeEpisodes.map((episode) => episode.drug)
+    .filter((drug, index, drugs) => drugs.findIndex((candidate) => sameDrug(candidate, drug)) === index);
+  const claimedDrug = regimenClaims.find((drug): drug is string =>
+    drug !== null && activeDrugChoices.some((choice) => sameDrug(choice, drug)));
   const selectedRegimenDrug =
-    regimenClaims.find((drug): drug is string => drug !== null && activeDrugChoices.includes(drug)) ??
+    activeDrugChoices.find((drug) => claimedDrug !== undefined && sameDrug(drug, claimedDrug)) ??
     activeEpisode?.drug ?? (activeDrugChoices.length > 0 ? activeDrugChoices[0] : null);
   /* `drug` only travels while more than one regimen is active - with at most
      one, the comparison's own default already answers the question. */

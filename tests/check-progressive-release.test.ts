@@ -86,7 +86,7 @@ function fullRecord() {
 }
 
 function progressiveTemplate() {
-  return JSON.parse(readFileSync('scripts/progressive-release-record.template.json', 'utf8'));
+  return JSON.parse(readFileSync('tests/fixtures/progressive-release-record.template.json', 'utf8'));
 }
 
 function pendingRecord() {

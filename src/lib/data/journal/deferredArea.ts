@@ -60,9 +60,11 @@ export function deferredArea<Area extends object>(load: () => Promise<Area>) {
        `import()` of one specifier already resolves from the module loader's
        own cache, but calling the factory twice would hand back a second area
        with empty caches, and hormoneCurve's two model memos (ticket 04) are
-       exactly that. Cleared when the load rejects so a chunk that failed to
-       arrive once - an old service worker, a dropped connection - is asked
-       for again rather than remembered as broken for the life of the tab. */
+       exactly that. Cleared when the load rejects so the next call runs `load()`
+       again rather than holding a rejected promise for the life of the tab.
+       Chromium caches a failed dynamic `import()`, so a retry through the
+       same specifier may not refetch the chunk; this only stops the failure
+       being remembered here. */
     let pending: Promise<Area> | undefined;
     const area = () =>
       (pending ??= load().catch((error: unknown) => {

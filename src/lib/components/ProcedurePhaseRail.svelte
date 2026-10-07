@@ -171,7 +171,7 @@
   }
 
   /* A day the rail could not reach, drawn at the end it was pulled in to
-     and hollowed so the line does not claim it happened there. */
+     and faded so the line does not claim it happened there. */
   .proc-mark.is-beyond {
     opacity: 0.55;
   }

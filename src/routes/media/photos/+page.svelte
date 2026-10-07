@@ -571,7 +571,7 @@
      104px cell, so the tap target and the visual circle are two
      differently-sized boxes - the outer button transparent and centred
      on the corner, the smaller ::before disc carrying the surface fill
-     and the shadow that lifts it off whatever the photo underneath
+     and the edge that separates it from whatever the photo underneath
      happens to be. */
   .photo-cell-controls { position: relative; }
   .photo-view-action { width: 100%; margin-top: var(--space-3); }

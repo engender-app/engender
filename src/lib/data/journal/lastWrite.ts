@@ -50,9 +50,8 @@
    below is that same reasoning, restated for this registry's own
    completeness check rather than copied from day.ts's.
 
-   No consumer reads this yet (tickets 04/05 here, and the UX spec's Home and
-   hub tickets); nothing about this module's shape is allowed to bend toward
-   whichever arrives first. */
+   Home, the More hub and AreaFinish read it, and nothing about this module's
+   shape bends toward whichever of them asks. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';

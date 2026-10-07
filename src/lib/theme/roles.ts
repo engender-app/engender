@@ -417,7 +417,7 @@ export const HOME_AREA_ROLE = {
 
     Hard stops rather than a gradient - it is a flag, not a wash - and built
     from the stripe list at render time, so bisexual's doubled stops keep its
-    2:1:2 proportion for free and a ninth palette needs nothing taught here.
+    2:1:2 proportion for free and another palette needs nothing taught here.
 
     **The colours are the flag's own, exactly.** Nothing here is nudged for a
     theme, unlike the roles above and unlike the sun on Home: those are the
@@ -440,7 +440,7 @@ export function flagFill(stripes: string[]): string {
 /** The roles for whatever palette and theme the document is currently in.
 
     Read off the DOM rather than from a parallel table in TypeScript, the
-    way FlagSun reads the same token: palettes.css is the one place the 8
+    way FlagSun reads the same token: palettes.css is the one place the 16
     flags are written down, and a second copy is a second thing to keep in
     step. Call it on mount and again when the palette or the theme changes;
     both of those already remount or restyle the screen around it. */

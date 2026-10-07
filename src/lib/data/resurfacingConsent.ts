@@ -13,16 +13,7 @@
    neither of those areas' own files does. */
 
 import type { EraSpan } from './eras';
-
-/** Whether `era`'s span overlaps [fromEpochDay, toEpochDay] at all - not
-    just whether one of the range's own endpoints falls inside it, which
-    would miss a muted era entirely contained inside a wider range (a week
-    muted in the middle of a year someone wrapped). */
-function eraOverlapsRange(era: EraSpan, fromEpochDay: number, toEpochDay: number): boolean {
-  const eraStartsAfterRange = era.startEpochDay !== null && era.startEpochDay > toEpochDay;
-  const eraEndsBeforeRange = era.endEpochDay !== null && era.endEpochDay < fromEpochDay;
-  return !eraStartsAfterRange && !eraEndsBeforeRange;
-}
+import { spanOverlapsRange } from './span';
 
 /** Whether any day in [fromEpochDay, toEpochDay] falls inside a muted era.
     A day in no era, or in an era nobody muted, never matches - the same
@@ -38,6 +29,6 @@ export function touchesMutedEra(
   toEpochDay: number
 ): boolean {
   return eras.some(
-    (era) => era.id !== undefined && mutedEraUuids.has(era.id) && eraOverlapsRange(era, fromEpochDay, toEpochDay)
+    (era) => era.id !== undefined && mutedEraUuids.has(era.id) && spanOverlapsRange(era, fromEpochDay, toEpochDay)
   );
 }

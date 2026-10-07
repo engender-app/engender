@@ -8,6 +8,7 @@
    review's one finding. Called inside a `$derived`, so a scale ticked or
    unticked in settings re-derives the list where it is read. */
 import { m } from '$lib/paraglide/messages';
+import { MOOD_RANGE } from './metricRange';
 import { vocabulary } from './vocabulary/vocabulary';
 
 export interface MetricChoice {
@@ -19,7 +20,7 @@ export interface MetricChoice {
 
 export function metricChoices(): MetricChoice[] {
   return [
-    { key: 'mood', name: m.mood(), min: 1, max: 5 },
+    { key: 'mood', name: m.mood(), min: MOOD_RANGE.min, max: MOOD_RANGE.max },
     ...vocabulary.activeDimensions.map((d) => ({ key: d.key, name: d.name, min: d.min, max: d.max }))
   ];
 }

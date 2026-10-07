@@ -535,10 +535,7 @@
   let showDebriefOffer = $derived(!!debriefStateQuery.value && debriefOfferVisible(debriefStateQuery.value));
 
   let stockProjectionsQuery = liveList((j) => j.stock.getProjections(today));
-  let isStockNoticeSnoozedState = $state(false);
-  $effect(() => {
-    isStockNoticeSnoozedState = isStockNoticeSnoozed();
-  });
+  let isStockNoticeSnoozedState = $state(isStockNoticeSnoozed());
   let urgentDepletingStock = $derived(depletingStocks(stockProjectionsQuery.rows, today)[0] ?? null);
   let showStockNotice = $derived(prefs.stockNoticeEnabled && !!urgentDepletingStock && !isStockNoticeSnoozedState);
   let stockNoticeCopy = $derived(
@@ -881,7 +878,7 @@
       </div>
     {/if}
 
-    <!-- The agenda (ticket 04, ADR-0074): the week ahead as a list, since it
+    <!-- The agenda (ticket 04, ADR-0074): the next thirty days as a list, since it
          is one (rule 6), each row carrying its day as a block because a date
          is a value (rule 3) and the kind in the day view's own words, going
          to the screen that owns the fact. The block is always one of the

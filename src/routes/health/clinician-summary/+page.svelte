@@ -27,7 +27,9 @@
     assembleClinicianDossier,
     CLINICIAN_DOSSIER_INCLUSION_KEYS,
     DEFAULT_CLINICIAN_DOSSIER_INCLUSION,
+    excludedClinicianDrugs,
     regimenDrugNames,
+    withClinicianDrugIncluded,
     type ClinicianDossierInclusion,
     type ClinicianDossierInclusionKey
   } from '$lib/data/export/clinicianSummaryData';
@@ -83,11 +85,11 @@
   const rowEstimate = readReserve('clinician-summary-row');
   const rememberRow = (px: number) => rememberReserve('clinician-summary-row', px);
   let excludedDrugs = $derived(
-    new Set(drugNames.filter((drug) => prefs.clinicianSummaryDrugExcluded[drug]))
+    excludedClinicianDrugs(drugNames, prefs.clinicianSummaryDrugExcluded)
   );
 
   function toggleDrug(drug: string, included: boolean) {
-    prefs.clinicianSummaryDrugExcluded = { ...prefs.clinicianSummaryDrugExcluded, [drug]: !included };
+    prefs.clinicianSummaryDrugExcluded = withClinicianDrugIncluded(prefs.clinicianSummaryDrugExcluded, drug, included);
   }
 
   /* A shortcut for the two fields below, nothing else: it fills the same
@@ -179,7 +181,7 @@
 </script>
 
 <div class="screen clinician-summary">
-  <ScreenHeader title={m.clinician_summary_title()} back="/more" class="no-print" />
+  <ScreenHeader title={m.clinician_summary_title()} back="/care" class="no-print" />
 
   <!-- The settings row shows the included items and opens their controls. -->
   <!-- Held until the regimen read answers: the row names the drugs, and

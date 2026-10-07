@@ -2,7 +2,7 @@
 
    Everything the flag is used for - the sun's rings, a section's colour, the
    bar under a tile's number - is read off `--motif-stripes` and the theme's
-   own ground tokens, because palettes.css is the one place the 8 flags are
+   own ground tokens, because palettes.css is the one place the 16 flags are
    written down and a parallel table in TypeScript would be a second thing to
    keep in step (ADR-0035's motif, and $lib/theme/roles.ts). That read is
    right; where to make it was not.

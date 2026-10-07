@@ -54,13 +54,13 @@ export function rangesFromCuts(
 
 /** Whether `span` overlaps `[fromEpochDay, toEpochDay]` at all - a stretch
     that starts on or before the window ends and ends on or after the window
-    starts. */
+    starts. A null window bound is unbounded, as it is on the span. */
 export function spanOverlapsRange(
   span: { startEpochDay: number | null; endEpochDay: number | null },
-  fromEpochDay: number,
-  toEpochDay: number
+  fromEpochDay: number | null,
+  toEpochDay: number | null
 ): boolean {
-  if (span.startEpochDay !== null && span.startEpochDay > toEpochDay) return false;
-  if (span.endEpochDay !== null && span.endEpochDay < fromEpochDay) return false;
+  if (span.startEpochDay !== null && toEpochDay !== null && span.startEpochDay > toEpochDay) return false;
+  if (span.endEpochDay !== null && fromEpochDay !== null && span.endEpochDay < fromEpochDay) return false;
   return true;
 }

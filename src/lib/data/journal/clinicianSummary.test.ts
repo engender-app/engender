@@ -288,7 +288,7 @@ test('excluding a drug drops the doses attributed to it through the episode hist
   await episode(journal, 19000, { drug: 'estradiol valerate' });
   await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
 
-  const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['estradiol valerate']));
+  const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, new Set([' ESTRADIOL VALERATE ']));
   const withDrug = await journal.clinicianSummary.getSummary(19000, 19020);
 
   assert.equal(withoutDrug.doses.length, 0);
@@ -314,7 +314,7 @@ test('excluding a drug drops its exposure dose totals and regimen days, keeps ro
   await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
 
   const withDrug = await journal.clinicianSummary.getSummary(19000, 19020);
-  const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, new Set(['estradiol valerate']));
+  const withoutDrug = await journal.clinicianSummary.getSummary(19000, 19020, new Set([' ESTRADIOL VALERATE ']));
 
   assert.equal(withDrug.exposure.doseTotals.length, 1);
   assert.deepEqual(withoutDrug.exposure.doseTotals, []);

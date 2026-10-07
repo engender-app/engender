@@ -56,7 +56,7 @@
    screen says so (words_pl_caveat, messages/*.json). */
 
 import type { EraSpan } from './eras';
-import { eraCoversDay } from './eras';
+import { eraForDay } from './eras';
 
 export interface WordFrequencySource {
   epochDay: number;
@@ -328,7 +328,7 @@ export function groupByEra<T extends { epochDay: number }>(
 ): Map<string | null, T[]> {
   const groups = new Map<string | null, T[]>();
   for (const entry of entries) {
-    const era = eras.find((e) => eraCoversDay(e, entry.epochDay));
+    const era = eraForDay(eras, entry.epochDay);
     const key = era?.id ?? null;
     const group = groups.get(key);
     if (group) group.push(entry);

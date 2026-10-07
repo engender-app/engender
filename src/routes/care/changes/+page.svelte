@@ -77,7 +77,7 @@
   import {
     EFFECT_DIRECTIONS,
     effectDirectionLabel,
-    type EffectDirection
+    type EffectDirectionGroup
   } from '$lib/data/effectDirections';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
@@ -114,7 +114,7 @@
     anchor == null ? null : new Map(visibleEffects.map((e) => [e.key, literatureWindowDays(e.key, anchor)] as const))
   );
 
-  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirection => e.direction ?? 'other';
+  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirectionGroup => e.direction ?? 'other';
 
   /* Category, then direction, is the coarse control (CONTEXT: "Effect
      category"); collapsed by default so a new journal's screen stays no
@@ -123,7 +123,7 @@
      together, since the same category groups separately under each
      direction. */
   let expandedGroups = $state(new Set<string>());
-  const groupKey = (direction: EffectDirection, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
+  const groupKey = (direction: EffectDirectionGroup, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
   function toggleGroup(key: string) {
     const next = new Set(expandedGroups);
     if (next.has(key)) next.delete(key);
@@ -338,6 +338,26 @@
   }
 </script>
 
+{#snippet groupBody(groupEffects: typeof visibleEffects)}
+                    {#if anchorEpochDay !== null}
+                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                    {/if}
+                    {#each groupEffects as e (e.key)}
+                      {@const marker = markerFor(e.key)}
+                      <ListRow
+                        key={e.key}
+                        title={e.name}
+                        subtitle={marker
+                          ? m.effect_first_noticed({
+                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                            })
+                          : m.effect_not_marked()}
+                        chevron={false}
+                        onclick={() => openEditor(e)}
+                      />
+                    {/each}
+{/snippet}
+
 <div class="screen">
   <!-- The intro stays in the body rather than becoming the header's
        subtitle. At 420 characters it is by some way the longest of these
@@ -441,23 +461,7 @@
                 </ListRow>
                 {#if expanded}
                   <div class="effect-group-body" transition:disclose>
-                    {#if anchorEpochDay !== null}
-                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
-                    {/if}
-                    {#each groupEffects as e (e.key)}
-                      {@const marker = markerFor(e.key)}
-                      <ListRow
-                        key={e.key}
-                        title={e.name}
-                        subtitle={marker
-                          ? m.effect_first_noticed({
-                              date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                            })
-                          : m.effect_not_marked()}
-                        chevron={false}
-                        onclick={() => openEditor(e)}
-                      />
-                    {/each}
+                    {@render groupBody(groupEffects)}
                   </div>
                 {/if}
               </ListCard>
@@ -483,23 +487,7 @@
               </ListRow>
               {#if expanded}
                 <div class="effect-group-body" transition:disclose>
-                  {#if anchorEpochDay !== null}
-                    <EffectsTimeline rows={timelineRowsFor(uncategorized)} {anchorEpochDay} todayEpochDay={today} />
-                  {/if}
-                  {#each uncategorized as e (e.key)}
-                    {@const marker = markerFor(e.key)}
-                    <ListRow
-                      key={e.key}
-                      title={e.name}
-                      subtitle={marker
-                        ? m.effect_first_noticed({
-                            date: fmtDay(marker.firstNoticedEpochDay, { day: 'numeric', month: 'long', year: 'numeric' })
-                          })
-                        : m.effect_not_marked()}
-                      chevron={false}
-                      onclick={() => openEditor(e)}
-                    />
-                  {/each}
+                  {@render groupBody(uncategorized)}
                 </div>
               {/if}
             </ListCard>
@@ -579,16 +567,9 @@
     {/if}
   </ReadReserve>
 
-  <!-- Hair progress, the one change that keeps its own screen (phase 9
-       carpet ticket 16): a published scale and a camera behind it, so it
-       stays hosted rather than folded in here.
-
-       Outside the `anchorEpochDay` branch above on purpose. That branch
-       replaces this whole screen with a "set up a regimen first" notice, and
-       hair progress is usable without one. Inside it, the row would be the
-       dead route the ticket forbids. cycle-events shares this host too
-       (ticket 13) but draws by hand above rather than through this
-       component - `HostedRows.svelte` excludes it by key. -->
+  <!-- Hair progress remains available outside the regimen-dependent bands.
+       It uses a published scale and photos, so no regimen is required.
+       Cycle events are hosted above; HostedRows excludes their key. -->
   <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>

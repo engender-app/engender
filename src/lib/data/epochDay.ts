@@ -39,10 +39,6 @@ export function epochDayFromTimestamp(ts: number): number {
   return epochDayFromLocalDate(new Date(ts));
 }
 
-/** The timestamp of local midnight at the start of an epoch day. Not
-    `epochDay * DAY`: that's a UTC instant and drifts from local midnight
-    by the zone's offset, and by an extra hour on either side of a DST
-    transition. */
 /** The earliest day anything in this journal can be dated to, and what
     "all history" means as a `from` bound.
 
@@ -61,6 +57,10 @@ export function epochDayFromTimestamp(ts: number): number {
     and cannot go NaN in either. */
 export const FIRST_EPOCH_DAY = 0;
 
+/** The timestamp of local midnight at the start of an epoch day. Not
+    `epochDay * DAY`: that's a UTC instant and drifts from local midnight
+    by the zone's offset, and by an extra hour on either side of a DST
+    transition. */
 export function startOfDayTimestamp(epochDay: number): number {
   return localDateFromEpochDay(epochDay).getTime();
 }

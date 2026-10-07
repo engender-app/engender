@@ -1263,13 +1263,15 @@
     <div class="contextual-row" data-contextual="dose-quick-log">
       {#each dueScheduledDoses as doseItem (doseItem.episodeId)}
         {@const stockRow = stockFor(doseItem.drug)}
+        {@const selectedDrug = entryDraft.doseLog?.drug}
+        {@const doseSelected = selectedDrug != null && sameDrug(selectedDrug, doseItem.drug)}
         <button
           type="button"
           class="contextual-chip dose-chip hit-floor press"
-          class:is-active={entryDraft.doseLog?.drug === doseItem.drug}
-          aria-pressed={entryDraft.doseLog?.drug === doseItem.drug}
+          class:is-active={doseSelected}
+          aria-pressed={doseSelected}
           onclick={() => {
-            if (entryDraft.doseLog?.drug === doseItem.drug) {
+            if (doseSelected) {
               entryDraft.setDoseLog(null);
             } else {
               entryDraft.setDoseLog({
@@ -1281,7 +1283,7 @@
             }
           }}
         >
-          <Icon name={entryDraft.doseLog?.drug === doseItem.drug ? 'check' : 'plus'} size={16} />
+          <Icon name={doseSelected ? 'check' : 'plus'} size={16} />
           <!-- Two lines rather than one run-on sentence: a fully-rounded
                pill's ends stop reading as a pill once its text wraps, so a
                chip carrying a second fact gets a plainer rounded rect

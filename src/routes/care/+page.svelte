@@ -603,7 +603,7 @@
           {/if}
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
-            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={lane.drug === sourceLane} {...laneAttrs(index, labelRows(lane.marks))}>
+            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={sourceLane !== null && sameDrug(lane.drug, sourceLane)} {...laneAttrs(index, labelRows(lane.marks))}>
               <!-- The name labels its own line from the left, above it
                    rather than beside it: a name column would take around a
                    hundred of the three hundred and thirty pixels a 390px

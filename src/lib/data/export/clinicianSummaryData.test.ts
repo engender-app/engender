@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support';
 import type { Journal } from '../journal/journal';
-import { assembleClinicianDossier, regimenDrugNames, regimenEsterNote } from './clinicianSummaryData';
+import { assembleClinicianDossier, excludedClinicianDrugs, regimenDrugNames, regimenEsterNote, withClinicianDrugIncluded } from './clinicianSummaryData';
 
 let journal: Journal;
 
@@ -166,7 +166,7 @@ describe('assembleClinicianDossier', () => {
     const dossier = await assembleClinicianDossier(journal, {
       fromEpochDay: 19000,
       toEpochDay: 19010,
-      excludedDrugs: new Set(['Estradiol Valerate'])
+      excludedDrugs: new Set([' ESTRADIOL VALERATE '])
     });
 
     expect(dossier.regimen!.history).toHaveLength(0);
@@ -209,6 +209,28 @@ describe('regimenDrugNames', () => {
     const episodes = await journal.regimen.getEpisodes();
 
     expect(regimenDrugNames(episodes)).toEqual(['Estradiol Valerate', 'Progesterone']);
+  });
+
+  it('lists case and whitespace variants once, preserving the first label', async () => {
+    const episodes = await journal.regimen.getEpisodes();
+    const first = episodes.find((episode) => episode.drug === 'Estradiol Valerate')!;
+
+    expect(regimenDrugNames([first, { ...first, drug: ' ESTRADIOL VALERATE ' }])).toEqual(['Estradiol Valerate']);
+  });
+
+  it('preserves saved exclusions under alternate spellings after deduplication', async () => {
+    const episodes = await journal.regimen.getEpisodes();
+    const first = episodes.find((episode) => episode.drug === 'Estradiol Valerate')!;
+    const names = regimenDrugNames([first, { ...first, drug: ' ESTRADIOL VALERATE ' }]);
+    const preferences = { ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': false, Progesterone: true };
+
+    expect([...excludedClinicianDrugs(names, preferences)]).toEqual(['Estradiol Valerate']);
+    const included = withClinicianDrugIncluded(preferences, names[0], true);
+    expect([...excludedClinicianDrugs(names, included)]).toEqual([]);
+    expect(included).toEqual({ ' ESTRADIOL VALERATE ': false, 'Estradiol Valerate': false, Progesterone: true });
+    const excluded = withClinicianDrugIncluded(included, 'estradiol valerate', false);
+    expect([...excludedClinicianDrugs(names, excluded)]).toEqual(['Estradiol Valerate']);
+    expect(excluded).toEqual({ ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': true, 'estradiol valerate': true, Progesterone: true });
   });
 
   it('comes back empty with no episodes', () => {

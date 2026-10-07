@@ -17,6 +17,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript';
+import { parse } from 'svelte/compiler';
 
 const ROOT = resolve(__dirname, '..');
 const EXTS = ['.ts', '.svelte', '.js', '.svelte.ts', '.svelte.js'];
@@ -54,11 +56,51 @@ function safeIsFile(p: string): boolean {
 /** Entry points the bundler reaches by path, not by import. */
 const ENTRY_POINTS = new Set(['src/lib/data/demo/prewarm.ts']); // vite.config.ts demo build input
 
-/** An import named only inside a comment is not an import. */
-const stripComments = (text: string) =>
-  text.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-
-const SPEC = /(?:from\s*|import\s*\(\s*|import\s+|new URL\(\s*)['"]([^'"]+)['"]/g;
+/** Read executable imports, including Svelte template expressions. */
+function importSpecifiers(text: string, file: string): string[] {
+  const specifiers: string[] = [];
+  if (file.endsWith('.svelte')) {
+    const literal = (value: unknown): string | null => {
+      if (!value || typeof value !== 'object') return null;
+      const node = value as Record<string, unknown>;
+      return typeof node.value === 'string' ? node.value : null;
+    };
+    const visit = (value: unknown) => {
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      if (!value || typeof value !== 'object') return;
+      const node = value as Record<string, unknown>;
+      let source: unknown;
+      if (['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration', 'ImportExpression'].includes(String(node.type))) {
+        source = node.source;
+      } else if (node.type === 'NewExpression') {
+        const callee = node.callee as { type?: string; name?: string };
+        if (callee.type === 'Identifier' && callee.name === 'URL') source = (node.arguments as unknown[])[0];
+      }
+      const specifier = literal(source);
+      if (specifier !== null) specifiers.push(specifier);
+      Object.values(node).forEach(visit);
+    };
+    visit(parse(text, { modern: true }));
+  } else {
+    const visit = (node: ts.Node) => {
+      let source: ts.Node | undefined;
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+        source = node.moduleSpecifier;
+      } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        source = node.arguments[0];
+      } else if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'URL') {
+        source = node.arguments?.[0];
+      }
+      if (source && ts.isStringLiteralLike(source)) specifiers.push(source.text);
+      ts.forEachChild(node, visit);
+    };
+    visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true));
+  }
+  return specifiers;
+}
 
 describe('module importers', () => {
   const all = [
@@ -70,9 +112,8 @@ describe('module importers', () => {
 
   const imported = new Set<string>();
   for (const file of all) {
-    const text = stripComments(readFileSync(file, 'utf8'));
-    for (const m of text.matchAll(SPEC)) {
-      const hit = resolveSpecifier(file, m[1]);
+    for (const specifier of importSpecifiers(readFileSync(file, 'utf8'), file)) {
+      const hit = resolveSpecifier(file, specifier);
       if (!hit || hit === file) continue;
       const own = hit.replace(/\.(svelte\.)?(ts|js|svelte)$/, '');
       if (file.startsWith(own + '.test.')) continue;
@@ -94,8 +135,26 @@ describe('module importers', () => {
   });
 
   it('does not count an import written inside a comment', () => {
-    const text = stripComments("/* import a from './a' */ // import b from './b'\n<!-- import c from './c' -->\nimport d from './d';");
-    expect([...text.matchAll(SPEC)].map((m) => m[1])).toEqual(['./d']);
+    const text = "<script>/* import a from './a' */ // import b from './b'\nimport d from './d';</script><!-- import c from './c' -->";
+    expect(importSpecifiers(text, 'fixture.svelte')).toEqual(['./d']);
+  });
+
+  it('does not count import-shaped ordinary strings', () => {
+    const text = [
+      `const example = "import '$lib/review-orphan'";`,
+      `const other = "new URL('./fake', import.meta.url)";`,
+      "const template = `export { thing } from './also-fake'`;",
+      "import real from './real';"
+    ].join('\n');
+    expect(importSpecifiers(text, 'fixture.ts')).toEqual(['./real']);
+    expect(importSpecifiers(`<script>${text}</script><p>import './fake'</p>`, 'fixture.svelte')).toEqual(['./real']);
+  });
+
+  it('keeps static, dynamic and URL imports in scripts and Svelte templates', () => {
+    const text = "import './side-effect'; export { value } from './export'; const lazy = import('./lazy'); const worker = new URL('./worker', import.meta.url);";
+    expect(importSpecifiers(text, 'fixture.ts')).toEqual(['./side-effect', './export', './lazy', './worker']);
+    expect(importSpecifiers(`<script>${text}</script><button onclick={() => import('./event')}>Open</button>{#await import('./awaited')}Loading{/await}`, 'fixture.svelte'))
+      .toEqual(['./event', './awaited', './side-effect', './export', './lazy', './worker']);
   });
 
   it('gives every module under src/lib an importer', () => {

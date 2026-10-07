@@ -23,8 +23,9 @@ import dev.engender.app.screencapture.ScreenCapturePlugin;
 /**
  * The whole Android application. Everything above the driver seam is the same
  * static bundle the web release serves, so the only Android-specific things
- * here are the platform bridges: SQLite, Keystore, and the Storage Access
- * Framework bridge for backup destinations.
+ * here are the platform bridges: the Capacitor plugins AndroidPluginRegistry
+ * lists (SQLite, Keystore, the Storage Access Framework bridge for backup
+ * destinations, photos, reminders, disguise and the rest).
  */
 public class MainActivity extends BridgeActivity {
     // Matches capacitor.config.ts's server.androidScheme/hostname, which is
