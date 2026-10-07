@@ -531,7 +531,7 @@
 /* The axis picker and the range control are one decision, so they are one
    block.
 
-   `.screen > *` gives 24px between blocks, deliberately, for blocks that
+   `.screen > *` gives 20px between blocks, deliberately, for blocks that
    are meant to read as separate (app.css, register finding 32.14). These
    two are not separate: picking an axis is what decides whether there is a
    range left to pick. Stacked as two screen blocks they sat 40px apart
@@ -1655,17 +1655,6 @@ button.kit-strip-day .kit-strip-cell {
   border: 1px solid var(--outline);
   display: block;
   background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
-  /* Paging the strip a week back (ticket 44) leaves all seven columns
-     where they are and changes only what is in them, so the change is a
-     fade between two paints rather than anything arriving: no cell is ever
-     painted at a state it did not travel to. `background` cannot be
-     transitioned between two color-mix() values without --level being a
-     registered property, so the property itself is what carries it.
-
-     Only where the strip can be paged, which is what the rule below
-     narrows it to. Left on `.kit-strip-cell` it would also reach every
-     other strip, whose cells would start fading from grey to their heat
-     as data lands rather than snapping. */
 }
 
 /* A bare custom property animates as a string - it swaps at 50% and the
@@ -1859,7 +1848,7 @@ button.kit-strip-day .kit-strip-cell {
    `primary` is for an empty state, where the action "is the whole of what
    a first-run Home has to say" - the screen's only call to action, not an
    aside on a remark. Stretching it to the text's own width and giving it
-   `--space-6`, the same gap `.screen > * + *` gives two blocks that do not
+   `--space-5`, the same gap `.screen > *` gives two blocks that do not
    touch (32.14 moved it from --space-4), is that distinction drawn in the
    surface instead of only in the comment. */
 .kit-notice-cta {
@@ -2051,11 +2040,10 @@ button.kit-strip-day .kit-strip-cell {
    surfaces, and every screen in the look-back group has one of them
    somewhere (Alicja, 2026-08-25, three separate notes about gaps).
 
-   --space-7 rather than --space-6, which is what two surfaces get (32.14): a
+   --space-7 rather than --space-5, which is what two surfaces get (32.14): a
    control and the thing it controls are further apart than two cards, or the
-   control reads as part of the card. Was --space-5 against the old
-   --space-4 two-surfaces gap; kept one step above it rather than left even
-   with it now that gap has grown. */
+   control reads as part of the card. Two surfaces get --space-5 (20px), this
+   gets --space-7 (32px). */
 /* The right-hand side is [data-kit-surface] rather than a list of surface
    classes, for the reason [data-kit-role] above is (ticket 41, ADR-0038):
    the list went stale silently. .kit-strip was in the two-surface rule below
@@ -2121,7 +2109,7 @@ button.kit-strip-day .kit-strip-cell {
    next surface and stamps the attribute itself: without it the figures and
    the mood chart met with no gap at all.
 
-   --space-6, matching the floor `.screen > * + *` gives elsewhere (32.14):
+   --space-5, matching the floor `.screen > *` gives elsewhere (32.14):
    this is the same gap by another route, where a heading isn't between
    the two blocks to already own the space. */
 [data-kit-surface] + [data-kit-surface] {
@@ -2341,10 +2329,6 @@ button.kit-strip-day .kit-strip-cell {
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
-  /* Wrapping, since phase 11 UI/UX ticket 49: a tick's own line is a
-     sentence the person wrote, and a sentence held to one line is a
-     sentence nobody can read. What still may not wrap - a number, a name,
-     a position - says so for itself below. */
 }
 
 /* The other three corners readoutCorner can choose. Each is one axis

@@ -1,8 +1,8 @@
 /* When the browser next has nothing better to do.
 
-   One caller so far: boot's two housekeeping passes, which no screen waits
-   for. requestIdleCallback is what the platform offers
-   for exactly this, and both platforms have it - Chromium since 47, and the
+   Two callers: boot's two housekeeping passes, which no screen waits for,
+   and the service-worker registration (pwa/register.ts).
+   requestIdleCallback is what the platform offers for exactly this, and both platforms have it - Chromium since 47, and the
    Android shell is a Chromium WebView (the app's floor is Chrome 87). The
    fallback is there for a browser that has withheld it, not for a platform
    that lacks it.

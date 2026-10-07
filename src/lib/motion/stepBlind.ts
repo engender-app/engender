@@ -109,16 +109,6 @@ export const blindEdge: Action<HTMLElement> = (node) => {
      Relative to the field, whose own top never moves. */
   const askTop = () => (node.querySelector<HTMLElement>(ASK)?.offsetTop ?? 0);
 
-  /* Where things are drawn right now, not where they were headed. A second
-     change that lands while the first is still travelling has to start from
-     what is on screen: the edge's registered property and the two riders'
-     `translate` are all mid-transition, and the computed style is the one
-     place that says how far. Written back as the "old geometry" of the
-     hold, they make the interrupting change a continuation. Written as the
-     previous change's target instead, they teleport whatever had not
-     arrived yet to where it was going - 7.7px, in one frame, on the
-     incoming question when the outgoing one left the grid at 150ms and
-     the field's height changed a second time (ticket 285). */
   /* Where the field's bottom edge would be with only this heading on it: its
      own words' bottom and the field's padding under it, not the box's height,
      which is the taller of the arriving and the leaving until the leaving
@@ -176,6 +166,16 @@ export const blindEdge: Action<HTMLElement> = (node) => {
   };
   node.addEventListener('introstart', resume, true);
 
+  /* Where things are drawn right now, not where they were headed. A second
+     change that lands while the first is still travelling has to start from
+     what is on screen: the edge's registered property and the two riders'
+     `translate` are all mid-transition, and the computed style is the one
+     place that says how far. Written back as the "old geometry" of the
+     hold, they make the interrupting change a continuation. Written as the
+     previous change's target instead, they teleport whatever had not
+     arrived yet to where it was going - 7.7px, in one frame, on the
+     incoming question when the outgoing one left the grid at 150ms and
+     the field's height changed a second time (ticket 285). */
   const shownEdge = () => {
     return edgeShown(getComputedStyle(host).getPropertyValue('--blind-edge'), edge);
   };

@@ -11,8 +11,9 @@
    treats it as one: labs/ocr-engine.ts dynamic-imports tesseract.js and points
    it at this directory only once a recognition actually starts, so a person who
    never opens the lab scanner never loads a byte of it. Precaching it anyway
-   put 49.7 MB of the shell's 54.1 MB behind a feature most first visits will
-   not touch.
+   put 49.7 MB of the shell's 54.1 MB (raw; the OCR engine is about 21 MB
+   over the wire, the figure the service worker's messages quote) behind a
+   feature most first visits will not touch.
 
    scripts/prepare-vendor-assets.mjs is what writes the directory, and
    ocr-engine.ts is what reads it. Both agree with the worker through the
