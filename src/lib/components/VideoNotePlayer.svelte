@@ -2,6 +2,9 @@
   import { readVideoNote } from '$lib/stores/voiceFiles';
   import { m } from '$lib/paraglide/messages';
   import { wipe } from '$lib/motion/reveal';
+  import { fade } from 'svelte/transition';
+  import { motionDuration } from '$lib/motion/tokens';
+  import { toast } from '$lib/stores/toasts.svelte';
   import Icon from './Icon.svelte';
   import MediaTransport from './MediaTransport.svelte';
 
@@ -49,23 +52,38 @@
   let playing = $state(false);
   let player = $state<HTMLDivElement>();
   let full = $state(false);
+  /* A file that cannot be read says so inside the frame, PhotoViewer's
+     `failed`; it used to leave the black frame up for good (after-release
+     06, L05-06). */
+  let failed = $state(false);
 
   $effect(() => {
     const given = bytes;
     const name = fileName;
     const handed = src;
     url = handed ?? null;
+    failed = false;
     if (handed || (!given && !name)) return;
 
     let objectUrl: string | null = null;
     let stale = false;
 
     const source = given ? Promise.resolve(given) : readVideoNote(name!);
-    source.then((loaded) => {
-      if (stale || !loaded) return;
-      objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'video/webm' }));
-      url = objectUrl;
-    });
+    source.then(
+      (loaded) => {
+        if (stale) return;
+        if (!loaded) {
+          failed = true;
+          return;
+        }
+        objectUrl = URL.createObjectURL(new Blob([loaded as BlobPart], { type: 'video/webm' }));
+        url = objectUrl;
+      },
+      (error) => {
+        console.error('a video note could not be read', error);
+        if (!stale) failed = true;
+      }
+    );
 
     return () => {
       stale = true;
@@ -83,8 +101,13 @@
   });
 
   async function toggleFull() {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await player?.requestFullscreen();
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await player?.requestFullscreen();
+    } catch (error) {
+      console.error('full screen was refused', error);
+      toast(m.video_full_failed());
+    }
   }
 </script>
 
@@ -95,7 +118,9 @@
      own definition of a yank. -->
 <div class="video-note" class:is-full={full} bind:this={player}>
   <div class="video-note-frame">
-    {#if url}
+    {#if failed}
+      <p class="video-note-failed" role="status" in:fade|global={{ duration: motionDuration('--dur-med') }}>{m.video_unreadable()}</p>
+    {:else if url}
       <!-- Uncovered from its own edge (DIRECTION rule 10), `|global` because
            the {#if} is the thing that flips. -->
       <div class="video-note-picture" in:wipe|global>
@@ -169,6 +194,14 @@
        positioned inside this box. */
     overflow: clip;
     background: #000;
+  }
+
+  .video-note-failed {
+    margin: auto;
+    padding: var(--space-4);
+    color: #fff;
+    text-align: center;
+    font-size: var(--text-sm);
   }
 
   .video-note-picture {

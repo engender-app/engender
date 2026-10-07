@@ -195,13 +195,13 @@
     if (current === 'unchecked' && next === 'checked') offerMilestone(goal.id, goal.text);
   };
 
-  /* Closed before the write, not after: the sheet is gone by the time the
-     insert runs, so a second tap finds no open offer to confirm. */
+  /* Closed once the write lands: the sheet holds its button while it runs
+     and turns a rejection into a toast, keeping what was typed
+     (after-release 06). */
   async function answerMilestoneOffer(given: OfferAnswer, data: RoadmapGoalMilestone | null) {
-    const subject = promptGoal === null ? null : data;
+    if (promptGoal === null) return;
+    const added = await answerOffer(MILESTONE_OFFER, data, given, journal);
     promptGoal = null;
-    let added = false;
-    await attempt(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed());
     if (added) toast(m.roadmap_milestone_added());
   }
 

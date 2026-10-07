@@ -21,6 +21,7 @@
      first (presentations.ts) - a mode used yesterday wants to be nearer the
      top of its own list here too, not just the entry editor's chip. */
   import { m } from '$lib/paraglide/messages';
+  import { attempt } from '$lib/stores/attempt.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { Presentation } from '$lib/data/types';
@@ -76,7 +77,7 @@
   });
 
   async function toggleHidden(p: Presentation) {
-    await journal.presentations.setPresentationHidden(p.id, !p.hidden);
+    await attempt(() => journal.presentations.setPresentationHidden(p.id, !p.hidden), m.write_failed());
   }
 </script>
 

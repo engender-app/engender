@@ -39,6 +39,8 @@
      file to it. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { analyseNotes, distinctiveWords, groupByEra, groupByPresentation, type WordWeight } from '$lib/data/wordFrequency';
   import { eraForDay } from '$lib/data/eras';
@@ -194,6 +196,7 @@
   });
 
   let picked = $state<WordWeight | null>(null);
+  const ignoring = writer();
 </script>
 
 {#if view === 'tile'}
@@ -305,9 +308,12 @@
     <button
       class="btn btn-ghost"
       data-ignore-word={picked.word}
-      onclick={() => {
-        journal.wordIgnore.setWordIgnored(picked!.word, true);
+      disabled={ignoring.busy}
+      onclick={async () => {
+        const word = picked!.word;
+        if (!(await ignoring.run(() => journal.wordIgnore.setWordIgnored(word, true), m.write_failed()))) return;
         picked = null;
+        toast(m.words_ignored_toast({ word }));
       }}
     >
       <span>{m.words_ignore_action()}</span>
