@@ -1911,6 +1911,8 @@
   "lookback_handle_start": "Start of selected period",
   "lookback_legend_eras": "Eras",
   "lookback_legend_group": "Timeline legend",
+  "lookback_legend_milestones": "Milestones",
+  "lookback_legend_milestones_and_surgery": "Milestones and surgeries",
   "lookback_legend_regimen": "Regimen",
   "lookback_legend_surgery": "Surgery",
   "lookback_legend_tryouts": "Tryouts",

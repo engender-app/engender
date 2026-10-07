@@ -1939,6 +1939,8 @@
   "lookback_handle_start": "Początek wybranego okresu",
   "lookback_legend_eras": "Ery",
   "lookback_legend_group": "Legenda osi czasu",
+  "lookback_legend_milestones": "Kamienie milowe",
+  "lookback_legend_milestones_and_surgery": "Kamienie milowe i operacje",
   "lookback_legend_regimen": "Kuracja",
   "lookback_legend_surgery": "Operacje",
   "lookback_legend_tryouts": "Próby",

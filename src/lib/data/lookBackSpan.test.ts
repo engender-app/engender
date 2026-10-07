@@ -243,14 +243,24 @@ describe('the rail draws every dated history, not only the eras', () => {
   });
 
   it('names in the legend only the kinds this journal has', () => {
-    expect(railLegendKinds(historyBands(annotations), surgeryMarks(annotations), true)).toEqual([
+    expect(railLegendKinds(historyBands(annotations), [], surgeryMarks(annotations), true)).toEqual([
       'era',
       'regimen',
       'tryout',
       'surgery'
     ]);
-    expect(railLegendKinds([], [], false)).toEqual([]);
-    expect(railLegendKinds([], surgeryMarks(annotations), false)).toEqual(['surgery']);
+    expect(railLegendKinds([], [], [], false)).toEqual([]);
+    expect(railLegendKinds([], [], surgeryMarks(annotations), false)).toEqual(['surgery']);
+  });
+
+  /* A milestone and a surgery day draw the same mark, so the legend gives
+     them one key and names what that key covers (after-release 27, audit
+     L05-12): it used to call every mark "Surgery" when both were there, and
+     name nothing when there were only milestones. */
+  it('names the marks by what they are: milestones, surgeries, or both under one key', () => {
+    const milestone = [{ id: 'm1', name: 'HRT start', epochDay: 20200 }];
+    expect(railLegendKinds([], milestone, [], false)).toEqual(['milestone']);
+    expect(railLegendKinds([], milestone, surgeryMarks(annotations), false)).toEqual(['milestone-and-surgery']);
   });
 
   it('sets the span to the thirty days ending on a mark', () => {
