@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
 
-/* BodyMapTile and CompareTile draw no chart and never call roleAt.
-   PlaneReading colours each presentation by its own roleIndex rather than a
-   single reading-wide role. None of the three declares a *_ROLE constant. */
-const EXEMPT = new Set(['BodyMapTile.svelte', 'CompareTile.svelte', 'PlaneReading.svelte']);
+/* BodyMapTile, CompareTile and TallyTile draw no chart and never call
+   roleAt. PlaneReading colours each presentation by its own roleIndex rather
+   than a single reading-wide role. None of the four declares a *_ROLE
+   constant. */
+const EXEMPT = new Set(['BodyMapTile.svelte', 'CompareTile.svelte', 'PlaneReading.svelte', 'TallyTile.svelte']);
 
 const readingFiles = readdirSync(dir)
   .filter((name) => name.endsWith('.svelte'))

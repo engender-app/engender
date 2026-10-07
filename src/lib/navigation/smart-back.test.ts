@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto }));
 
-const { smartBack, recordNavigation, replaceRoute, navigationDepth } = await import('./smart-back.ts');
+const { smartBack, recordNavigation, replaceRoute, navigationDepth, depthAfter, sameUrl } = await import('./smart-back.ts');
 
 let back: ReturnType<typeof vi.fn>;
 
@@ -167,5 +167,60 @@ describe('replaceRoute', () => {
     smartBack('/calendar');
 
     expect(back).toHaveBeenCalledOnce();
+  });
+});
+
+/* After-release 17 review: the tab a borrowing page lights is kept per
+   history entry, keyed by the depth that entry sits at, so the shell has to
+   know that depth before the navigation settles. */
+describe('depthAfter', () => {
+  it('answers what the settled navigation will record, without recording it', () => {
+    recordNavigation('link');
+    expect(depthAfter('link')).toBe(2);
+    expect(depthAfter('popstate', -1)).toBe(0);
+    expect(depthAfter('popstate', -5)).toBe(0);
+    expect(navigationDepth()).toBe(1);
+  });
+
+  it('counts a replacing navigation as the same entry', () => {
+    void replaceRoute('/wrapped/week');
+    expect(depthAfter('goto')).toBe(0);
+    recordNavigation('goto');
+    expect(navigationDepth()).toBe(0);
+  });
+});
+
+/* Fourth review: tapping the lit tab navigates to the address already
+   showing, which SvelteKit turns into a replaceState. Counted as a push,
+   every entry behind it was one deep too many, so Back from there looked up
+   the wrong entry's borrowed tab. */
+describe('a navigation to the same address', () => {
+  it('adds no depth, like a replace', () => {
+    recordNavigation('link');
+    expect(depthAfter('link', null, true)).toBe(1);
+    recordNavigation('link', null, true);
+    expect(navigationDepth()).toBe(1);
+  });
+
+  it('still counts a same-address popstate by its delta', () => {
+    recordNavigation('link');
+    recordNavigation('link');
+    expect(depthAfter('popstate', -1, true)).toBe(1);
+  });
+});
+
+/* Fifth review: a goto() to the address already showing still pushes (the
+   quick-add mood row reopening today's editor does it), so only a link or
+   form counts as a same-address replace. A navigation can arrive with a
+   null url, which must read as not-the-same rather than throw. */
+describe('sameUrl', () => {
+  const at = (href: string | null) => ({ url: href ? new URL(href) : null });
+  it('is a link or form to the same address and nothing else', () => {
+    expect(sameUrl({ type: 'link', from: at('http://x/calendar'), to: at('http://x/calendar') })).toBe(true);
+    expect(sameUrl({ type: 'form', from: at('http://x/a'), to: at('http://x/a') })).toBe(true);
+    expect(sameUrl({ type: 'goto', from: at('http://x/entry/1'), to: at('http://x/entry/1') })).toBe(false);
+    expect(sameUrl({ type: 'link', from: at('http://x/a'), to: at('http://x/b') })).toBe(false);
+    expect(sameUrl({ type: 'enter', from: null, to: at('http://x/a') })).toBe(false);
+    expect(sameUrl({ type: 'link', from: at(null), to: at(null) })).toBe(false);
   });
 });

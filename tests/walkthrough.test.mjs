@@ -942,12 +942,15 @@ try {
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-home-log]');
 
-  /* A tally is the fan's now, and it still resolves in place: the save
-     toast is what says the write came back, and Home is still Home. */
+  /* A tally is the fan's now, and it still resolves in place: the fan's
+     status line is what says the write came back, and Home is still Home.
+     This waited for a toast until after-release 17, and the toast it found
+     was the storage warning every cold load used to raise; the fan has
+     confirmed by its flight and its status line since. */
   await page.locator('[data-nav-fab]').click();
   await page.waitForSelector('[data-fan-target="mood-3"]');
   await page.locator('[data-choose="tally-misgendered"]').click();
-  await page.waitForSelector('[data-toast]');
+  await page.waitForFunction(() => (document.querySelector('[data-quick-add-status]')?.textContent ?? '').trim().length > 0);
   if (new URL(page.url()).pathname !== '/') throw new Error('a tally from the fan left Home: ' + page.url());
 
   /* The pinned rows: the default set resolves for a journal that never
@@ -2509,7 +2512,13 @@ try {
   // set this screen chose rather than the one it started with.
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
-  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // scales -> features
+  /* After-release 17 (UX-09): features are their own step before the pins.
+     Measurements arrives off on a new journal. */
+  if ((await page.locator('[data-list-row="feature-measurements"]').getAttribute('aria-checked')) !== 'false') {
+    throw new Error('measurements is switched on by default');
+  }
+  await page.locator('[data-next]').click(); // features -> areas
 
   /* Ticket 22: the hub's own groups and rows, met once here and once more on
      the hub - the same headings the More screen draws, in the same order. */
@@ -2529,11 +2538,12 @@ try {
     throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
   }
 
-  // The default three arrive ticked. Measurements stays off until chosen.
+  // The default three arrive ticked. Measurements, switched off on the
+  // step before, is not offered as a pin at all.
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  if ((await page.locator('[data-list-row="area-measurements"]').getAttribute('aria-checked')) !== 'false') {
-    throw new Error('measurements is selected by default');
+  if ((await page.locator('[data-list-row="area-measurements"]').count()) !== 0) {
+    throw new Error('measurements is offered as a pin while the feature is off');
   }
   for (const key of ['care', 'milestones', 'tryouts']) {
     if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
@@ -2556,9 +2566,11 @@ try {
   await page.locator('[data-next]').click(); // lock -> permissions
 
   /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
-     step that names everything the app can ask this device for. Four rows
-     it can ask about and a second group it never asks about, and on the web
-     the two Android-only rows say so rather than offering a dead button. */
+     step that names what the app can ask this device for. Since
+     after-release 17 (UX-07, UX-10) it draws only the asks that apply on
+     this platform: on the web that is the microphone and the camera, with
+     no "Android only" rows and none of the no-permission explanations,
+     which stay on /settings/permissions. */
   await page.waitForSelector('[data-permission-list]');
   const grantable = await page.locator('[data-grant]').evaluateAll((els) =>
     els.map((el) => el.dataset.grant)
@@ -2566,37 +2578,13 @@ try {
   if (grantable.join() !== 'microphone,camera') {
     throw new Error('the web build should offer only the two prompts it has: ' + grantable.join());
   }
-  for (const key of ['notifications', 'exactAlarms']) {
-    const row = page.locator(`[data-permission="${key}"]`);
-    if ((await row.count()) !== 1) throw new Error(`the ${key} row is missing from the list`);
-    if ((await row.getAttribute('data-permission-state')) !== 'unavailable') {
-      throw new Error(`${key} should read as unavailable on the web`);
-    }
-    const trailing = await row.textContent();
-    if (!trailing.includes('Android only')) {
-      throw new Error(`${key} offers no reason for having no button: ${JSON.stringify(trailing)}`);
-    }
-  }
-  for (const key of ['takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
-    if ((await page.locator(`[data-permission="${key}"]`).count()) !== 1) {
-      throw new Error(`the ${key} row is missing from the no-permission group`);
-    }
-  }
-  for (const key of ['backupFolder', 'batteryOptimisation']) {
+  for (const key of ['notifications', 'exactAlarms', 'takePhoto', 'pickFile', 'print', 'clipboard', 'biometric']) {
     if ((await page.locator(`[data-permission="${key}"]`).count()) !== 0) {
-      throw new Error(`the web build has no ${key} and should not list one`);
+      throw new Error(`setup on the web should not list ${key}`);
     }
   }
-  /* The closer is platform copy (UI/UX ticket 09): the web build must not
-     borrow Android's no-internet-permission promise. It says journal
-     content is processed on this device while exports and links can use
-     other services. */
-  const closer = await page.locator('[data-no-internet]').textContent();
-  if (!/processed on this device|przetwarzana na tym urządzeniu/.test(closer)) {
-    throw new Error('the web closer does not state where written data goes: ' + closer);
-  }
-  if (/internet permission|uprawnienia do internetu/.test(closer)) {
-    throw new Error('the web closer borrows the Android-only no-internet-permission claim: ' + closer);
+  if ((await page.locator('[data-no-internet]').count()) !== 0) {
+    throw new Error('setup on the web still carries the explanatory closer');
   }
   await expectNoHorizontalOverflow('[data-app-viewport]');
 
@@ -2652,12 +2640,12 @@ try {
   await page.selectOption('#demo-jump', 'first-run');
   await page.waitForSelector('[data-next]');
   for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
-  const choice = page.locator('[data-list-row="area-measurements"]');
+  const choice = page.locator('[data-list-row="feature-measurements"]');
   if ((await choice.getAttribute('aria-checked')) !== 'false') {
     throw new Error('measurements starts selected in setup');
   }
   await page.locator('[data-skip-step]').click();
-  for (let i = 0; i < 3; i++) await page.locator('[data-next]').click();
+  for (let i = 0; i < 4; i++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
 
@@ -2751,7 +2739,7 @@ try {
        the window rather than by opening a keyboard nothing here has. */
     { width: 390, height: 360 }
   ];
-  const STEP_TAPS = 8; // nine steps, eight Continues
+  const STEP_TAPS = 9; // ten steps, nine Continues (features joined in after-release 17)
   for (const size of STEP_SIZES) {
     await page.setViewportSize(size);
     await fresh('/');
@@ -3058,8 +3046,8 @@ try {
   /* A setup draft from the new-journal path must not override the archive.
      Changing another area gives the draft a value while measurements stays
      unchecked, opposite to the archived module state. */
-  for (let i = 0; i < 4; i++) {
-    restoreStage = `next to setup draft ${i + 1}/4`;
+  for (let i = 0; i < 5; i++) {
+    restoreStage = `next to setup draft ${i + 1}/5`;
     await page.locator('[data-next]').click();
   }
   /* Dispatched rather than clicked: with the demo bar's 240px above it, the
@@ -3067,8 +3055,8 @@ try {
      in view and the step's foot takes a real click. Without the bar the
      list has about 280px. */
   await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  for (let i = 0; i < 4; i++) {
-    restoreStage = `back from setup draft ${i + 1}/4`;
+  for (let i = 0; i < 5; i++) {
+    restoreStage = `back from setup draft ${i + 1}/5`;
     await page.locator('[data-back]').click();
   }
   await page.waitForSelector('[data-restore-start]');
@@ -3308,7 +3296,8 @@ try {
   await page.locator('#ob-name').fill('Kit');
   await page.locator('[data-next]').click(); // name -> flag
   await page.locator('[data-next]').click(); // flag -> scales
-  await page.locator('[data-next]').click(); // scales -> areas
+  await page.locator('[data-next]').click(); // scales -> features
+  await page.locator('[data-next]').click(); // features -> areas
   await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -3500,18 +3489,22 @@ try {
     throw new Error('the scales step made Continue wait for something');
   }
   // Untouched, then skipped: the stored default has to survive both.
-  await page.locator('[data-skip-step]').click(); // scales -> areas
+  await page.locator('[data-skip-step]').click(); // scales -> features
+
+  /* The feature choices are their own step since after-release 17: a
+     choice made and then skipped is not kept. */
+  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
+  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
+  await cycleChoice.focus();
+  await cycleChoice.press('Space');
+  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
+  await page.locator('[data-skip-step]').click(); // features -> areas
 
   /* Ticket 22's own version of the same proof: the default three arrive
      ticked, and skipping leaves `onboardingAreas` null rather than storing
      the default. */
   const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
   if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  const cycleChoice = page.getByRole('checkbox', { name: 'Cycle tracking' });
-  if (await cycleChoice.getAttribute('aria-checked') !== 'false') throw new Error('new journal offered cycle tracking by default');
-  await cycleChoice.focus();
-  await cycleChoice.press('Space');
-  if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
   await page.locator('[data-skip-step]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
@@ -3550,7 +3543,8 @@ try {
   await choice.focus();
   await choice.press('Space');
   if (await choice.getAttribute('aria-checked') !== 'true') throw new Error('Polish setup cycle choice ignored keyboard');
-  for (let step = 0; step < 4; step++) await page.locator('[data-next]').click();
+  // features -> areas -> lock -> permissions -> disguise -> finish
+  for (let step = 0; step < 5; step++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
@@ -5083,9 +5077,8 @@ try {
   const onScreen = await page.locator('[data-permission]').evaluateAll((els) =>
     els.map((el) => el.dataset.permission)
   );
+  /* Only what the web can do (after-release 17): no "Android only" rows. */
   const expected = [
-    'notifications',
-    'exactAlarms',
     'microphone',
     'camera',
     'takePhoto',

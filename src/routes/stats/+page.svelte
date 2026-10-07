@@ -90,6 +90,7 @@
   import ThemesReading from '$lib/components/readings/ThemesReading.svelte';
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
+  import TallyTile from '$lib/components/readings/TallyTile.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
@@ -120,7 +121,10 @@
      milestones (mirrored, ADR-0004, so no query), and the eras. */
   let erasQuery = liveList((j) => j.eras.getEras());
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
-  let railLoading = $derived(erasQuery.loading || boundsQuery.loading);
+  /* And the first tally tap (after-release 17 review): a journal of taps
+     alone had no rail, so no tiles, so no way to the counters' tile. */
+  let firstTallyQuery = liveQuery((j) => j.tally.firstEpochDay());
+  let railLoading = $derived(erasQuery.loading || boundsQuery.loading || firstTallyQuery.loading);
   /* A rail answering with less than its fade's length of an Android tab
      arrival left keeps its skeleton until the field stops, then fades in
      at full length (screenArrival.ts). Before anything has painted there
@@ -138,7 +142,12 @@
     railLoading
       ? null
       : historyStart(
-          { bounds: boundsQuery.value ?? null, milestones: vocabulary.milestones, eras: erasQuery.rows },
+          {
+            bounds: boundsQuery.value ?? null,
+            milestones: vocabulary.milestones,
+            eras: erasQuery.rows,
+            firstTallyDay: firstTallyQuery.value ?? null
+          },
           today
         )
   );
@@ -600,6 +609,7 @@
       <HighestReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
+      <TallyTile span={resolvedSpan} />
       <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>

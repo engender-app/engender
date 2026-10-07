@@ -265,6 +265,17 @@ test('a whole quiet window with nothing written reads as quiet', () => {
   assert.equal(rowLine(spec('wear'), reading({ lastWrites: { wearSessions: quiet } })).kind, 'quiet');
 });
 
+/* After-release 17 (UX-18): "Nothing logged for 2 years 1 month" on the
+   Documents row read as a nag about a paperwork vault. Quiet is the
+   observation the finish offer is made from, so a row with nothing to
+   finish never turns quiet: it keeps saying when it was last written. */
+test('a row with nothing to finish never reads as quiet', () => {
+  const long = TODAY - FINISH_SUGGESTION_QUIET_DAYS - 400;
+  assert.equal(rowLine(spec('documents'), reading({ lastWrites: { documents: long } })).kind, 'last');
+  assert.equal(rowLine(spec('milestones'), reading({ lastWrites: { milestones: long } })).kind, 'last');
+  assert.equal(rowLine(spec('wear'), reading({ lastWrites: { wearSessions: long } })).kind, 'quiet');
+});
+
 test('the quiet window is the one the finish offer already uses', () => {
   /* Not a second number. A row reading as quiet and the area's own screen
      offering the finish are the same observation, so they turn over on the

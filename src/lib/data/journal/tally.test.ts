@@ -93,3 +93,14 @@ test('a same-day tie resolves to one of the tied events, then to its sibling', a
   assert.notEqual(sibling.id, latest.id);
   assert.equal(sibling.epochDay, 100);
 });
+
+/* After-release 17 review: Look back's rail starts at the earliest dated
+   thing the person made, and a tally tap is one. Without it a journal of
+   taps alone had no rail, so no tiles, so no way to the counters. */
+test('the first tally day is the earliest of either kind, or null with none', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.equal(await journal.tally.firstEpochDay(), null);
+  await journal.tally.log({ epochDay: 105, kind: 'misgendered' });
+  await journal.tally.log({ epochDay: 101, kind: 'correctly_gendered' });
+  assert.equal(await journal.tally.firstEpochDay(), 101);
+});

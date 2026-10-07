@@ -54,9 +54,9 @@
      components rendering during boot treat their mount as part of screen
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
-  import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
-  import { activeTabKey } from '$lib/navigation/active-tab';
-  import { chromeTabOrigin, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
+  import { depthAfter, navigationDepth, recordNavigation, replaceRoute, sameUrl } from '$lib/navigation/smart-back';
+  import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
+  import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -168,12 +168,18 @@
      and stopped carrying an index. After the navigation rather than before,
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
-    recordNavigation(navigation.type, navigation.delta);
+    recordNavigation(navigation.type, navigation.delta, sameUrl(navigation));
     /* What the gear will borrow next time it opens settings chrome
        (ADR-0076, audit item 4) - noted from every settled navigation, not
        only ones into a tab, since a screen already inside settings can
        still carry the tab it borrowed forward (chrome-tab-origin.ts). */
-    if (navigation.to) noteTabVisit(activeTabKey(navigation.to.url.pathname, chromeTabOrigin()));
+    if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
+    /* A borrowing page opened cold has no onNavigate to key it, so it keeps
+       the tab it just resolved to here: back to it from Today, it lights
+       that tab again rather than Today (after-release 17 review). */
+    if (navigation.type === 'enter' && navigation.to && borrowsTab(navigation.to.url.pathname)) {
+      noteBorrowingArrival(`0:${navigation.to.url.pathname}`, false);
+    }
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
@@ -200,8 +206,32 @@
     markScreenArrival();
   });
 
+  /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:
+     stable`), published for the toast, which centres on the content
+     column and so has to leave that strip out too (after-release 17
+     review: 5px off centre at 1280). Measured, since a classic scrollbar
+     has a width only the browser knows and an overlay one has none. */
+  function publishScrollGutter(node: HTMLElement) {
+    const publish = () =>
+      document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    publish();
+    return { destroy: () => observer.disconnect() };
+  }
+
   /* Tier 2, one screen becoming another (navigationTransition.ts). */
-  onNavigate((navigation) => navigateWithTransition(navigation, replacesApp));
+  onNavigate((navigation) => {
+    /* Before the page changes, so the nav lights the borrowed tab from the
+       first frame: a page reached through history gets back the tab it was
+       opened from rather than the last one lit (chrome-tab-origin.ts). */
+    const to = navigation.to?.url.pathname;
+    if (to && borrowsTab(to)) {
+      const entry = `${depthAfter(navigation.type, navigation.delta, sameUrl(navigation))}:${to}`;
+      noteBorrowingArrival(entry, navigation.type === 'popstate');
+    }
+    return navigateWithTransition(navigation, replacesApp);
+  });
 
   /* Theme, palette, disguise → document. */
   const systemDark = new MediaQuery('(prefers-color-scheme: dark)');
@@ -518,7 +548,7 @@
          part of the screen, and left outside <main> it would be a group of
          controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
-      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter>
         {#if schemaTooNew}
           <SchemaTooNew />
         {:else if bootFailed}

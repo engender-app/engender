@@ -38,6 +38,14 @@
   } from '$lib/permissions/catalogue';
   import { openSystemSettings, readGrantStates, requestGrant } from '$lib/permissions/grant';
 
+  /* Setup draws the asks and nothing else (after-release 17, UX-10): the
+     rows explaining the print dialog, the file picker and the clipboard are
+     about how the app works, which a person setting it up has not asked,
+     and they stay on /settings/permissions. Android keeps its closer there
+     too, because "no internet permission" is the claim this step makes; the
+     web's closer is an explanation, and goes. */
+  let { asksOnly = false }: { asksOnly?: boolean } = $props();
+
   let platform = $derived(isAndroid() ? ('android' as const) : ('web' as const));
 
   let states = $state<GrantStates>({ ...NOTHING_GRANTED });
@@ -127,7 +135,7 @@
 </script>
 
 <div class="perms" data-permission-list>
-  <p class="perm-caption">{m.perms_group_ask()}</p>
+  {#if !asksOnly}<p class="perm-caption">{m.perms_group_ask()}</p>{/if}
   <ListCard role={roleAt(activeFlag.roles, 0)}>
     {#each grants as row (row.key)}
       <PermissionRow
@@ -141,6 +149,7 @@
     {/each}
   </ListCard>
 
+  {#if !asksOnly}
   <p class="perm-caption">{m.perms_group_no_ask()}</p>
   <ListCard role={roleAt(activeFlag.roles, 1)}>
     {#each ambient as row (row.key)}
@@ -155,15 +164,18 @@
       />
     {/each}
   </ListCard>
+  {/if}
 
   <!-- The closer is the claim the whole list exists to make concrete, and the
        claim is not the same on both platforms: Android holds no internet
        permission at all, while the web app is itself something the browser
        downloads. One key per platform, like the clipboard row above, because
        the protection differs (UI/UX ticket 09). -->
-  <p class="perm-closer" data-no-internet>
-    {isAndroid() ? m.perms_no_internet() : m.perms_no_internet_web()}
-  </p>
+  {#if isAndroid()}
+    <p class="perm-closer" data-no-internet>{m.perms_no_internet()}</p>
+  {:else if !asksOnly}
+    <p class="perm-closer" data-no-internet>{m.perms_no_internet_web()}</p>
+  {/if}
 </div>
 
 <style>

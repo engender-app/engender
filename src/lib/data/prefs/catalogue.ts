@@ -339,6 +339,9 @@ export interface PreferenceValues {
   /** Epoch milliseconds, not an epoch day. */
   lastBackupAt: number | null;
   backupNoticeDismissed: boolean;
+  /** Home's "this browser may clear your journal" notice, put away
+      (after-release 17). Device-local: it is about this browser. */
+  storageNoticeDismissed: boolean;
   /** When a dry-run restore drill last decrypted, parsed and validated a
       chosen archive without error (phase 4 features ticket 28). Epoch
       milliseconds, like `lastBackupAt`, and just as device-local: it
@@ -539,6 +542,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   autoExportSchedule: 'weekly',
   lastBackupAt: null,
   backupNoticeDismissed: false,
+  storageNoticeDismissed: false,
   lastVerifiedAt: null,
   roadmapMilestoneSyncEnabled: true,
   areaFinishOfferDeclined: [],
@@ -638,6 +642,7 @@ export const DEVICE_LOCAL_KEYS = [
   'autoExportSchedule',
   'lastBackupAt',
   'backupNoticeDismissed',
+  'storageNoticeDismissed',
   'lastVerifiedAt',
   'roadmapMilestoneSyncEnabled',
   'measurementProtocolDismissed',
