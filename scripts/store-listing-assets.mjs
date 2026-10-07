@@ -2,7 +2,7 @@
    node scripts/store-listing-assets.mjs [metadataDir]
    Fresh browser contexts hold only the full demo fixture. Port 5111 belongs
    to this capture; no existing journal or browser profile is opened. */
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
 import { launchChromium } from '../tests/browser-harness.mjs';
@@ -10,17 +10,42 @@ import { launchChromium } from '../tests/browser-harness.mjs';
 const output = resolve(process.argv[2] ?? 'fastlane/metadata/android');
 const fixedTime = new Date('2026-10-05T10:00:00Z');
 const locales = [
-  { code: 'en-US', language: 'en', claim: 'A transition journal that stays on your device.', note: 'A quiet afternoon. A walk, then coffee by the window.' },
-  { code: 'pl-PL', language: 'pl', claim: 'Dziennik tranzycji, który zostaje na twoim urządzeniu.', note: 'Spokojne popołudnie. Spacer, potem kawa przy oknie.' }
+  { code: 'en-US', language: 'en', claim: 'Track your transition. Your journal stays on your device.', note: 'The barista called out my new name today and it sounded right.' },
+  { code: 'pl-PL', language: 'pl', claim: 'Zapisuj tranzycję. Dziennik zostaje na urządzeniu.', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
 ];
+// Store order: the transition areas the listing describes, HRT first after Today.
 const screens = [
   ['01-home', '/', '[data-home-hello]'],
-  ['02-new-entry', '/entry/new/today?seedMood=4', '#ed-note'],
-  ['03-journal', '/calendar', '[data-cal-month-body]'],
-  ['04-care', '/care', '[data-care-regimen]'],
-  ['05-look-back', '/stats', '[data-lookback-readings]'],
-  ['06-settings-privacy', '/settings', '[data-list-row="security"]']
+  ['02-care', '/care', '[data-care-regimen]'],
+  ['03-new-entry', '/entry/new/today?seedMood=4', '#ed-note'],
+  ['04-roadmap', '/transition/roadmap', '[data-goal]'],
+  ['05-voice', '/voice?tab=compare', '[data-voice-cell]'],
+  ['06-look-back', '/stats', '[data-lookback-readings]'],
+  ['07-settings-privacy', '/settings', '[data-list-row="security"]']
 ];
+// Settles by condition: finite animations done, every box still for 600ms,
+// then two shots 500ms apart that match byte for byte.
+const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+const boxes = (page) => page.evaluate(() => [...document.querySelectorAll('body *')]
+  .map((node) => { const r = node.getBoundingClientRect(); return `${r.x},${r.y},${r.width},${r.height}`; }).join('|'));
+async function settledShot(page, path) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await page.waitForFunction(() => document.getAnimations()
+      .every((animation) => animation.effect?.getTiming().iterations === Infinity || animation.playState !== 'running'));
+    let last = await boxes(page);
+    let stillSince = Date.now();
+    while (Date.now() - stillSince < 600) {
+      await pause(100);
+      const now = await boxes(page);
+      if (now !== last) { last = now; stillSince = Date.now(); }
+    }
+    const first = await page.screenshot({ animations: 'disabled' });
+    await pause(500);
+    const second = await page.screenshot({ animations: 'disabled' });
+    if (first.equals(second)) return writeFile(path, second);
+  }
+  throw new Error(`Never settled: ${path}`);
+}
 const browser = await launchChromium();
 let server;
 try {
@@ -41,6 +66,8 @@ try {
   const extendedFont = (await readFile('static/fonts/outfit-latin-ext.woff2')).toString('base64');
   for (const locale of locales) {
     const dir = resolve(output, locale.code, 'images');
+    // A shot dropped from the list must not linger in the upload folder.
+    await rm(resolve(dir, 'phoneScreenshots'), { recursive: true, force: true });
     await mkdir(resolve(dir, 'phoneScreenshots'), { recursive: true });
     await copyFile('brand/mark/png/trans-tile-512.png', resolve(dir, 'icon.png'));
     await artwork.setViewportSize({ width: 1024, height: 500 });
@@ -61,6 +88,11 @@ try {
   for (const locale of locales) {
     const context = await browser.newContext({ viewport: { width: 432, height: 768 }, deviceScaleFactor: 2.5, locale: locale.code, timezoneId: 'Europe/Warsaw', colorScheme: 'light', reducedMotion: 'reduce' });
     const page = await context.newPage();
+    await context.addInitScript(() => {
+      // Headless Chromium denies persist(); the app would cover the shot with a storage notice.
+      navigator.storage.persist = async () => true;
+      navigator.storage.persisted = async () => true;
+    });
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.clock.setFixedTime(fixedTime);
@@ -79,19 +111,18 @@ try {
       await page.locator(ready).first().waitFor();
       await page.locator('[data-toast]').waitFor({ state: 'detached', timeout: 15000 });
       await page.waitForFunction(() => !document.querySelector('.skeleton-stack, .skeleton-block'));
-      if (name === '02-new-entry') {
+      if (name === '03-new-entry') {
         await page.locator('#ed-note').fill(locale.note);
         for (const slider of await page.locator('.dim-slider [role="slider"]').all()) {
           await slider.focus();
           await slider.press('ArrowRight');
         }
         await page.evaluate(() => document.activeElement?.blur());
-        await page.locator('.dim-slider').first().evaluate((node) => node.scrollIntoView({ block: 'center' }));
-      }
-      if (name === '03-journal') {
-        await page.locator('[data-cal-step="prev"]').click();
-        await page.locator('[data-cal-open]').click();
-        await page.locator('[data-cal-open][aria-expanded="true"]').waitFor();
+        // The note leads, with the first scale and the mood bar under it.
+        await page.locator('#ed-note').evaluate((node) => {
+          node.style.scrollMarginTop = '24px';
+          node.scrollIntoView({ block: 'start' });
+        });
       }
       await page.evaluate(async () => {
         document.documentElement.dataset.theme = 'light';
@@ -102,7 +133,7 @@ try {
         document.getAnimations().forEach((animation) => { if (animation.effect?.getTiming().iterations !== Infinity) animation.finish(); });
       });
       if (errors.length) throw new Error(errors.join('\n'));
-      await page.screenshot({ path: resolve(output, locale.code, 'images/phoneScreenshots', `${name}.png`), animations: 'disabled' });
+      await settledShot(page, resolve(output, locale.code, 'images/phoneScreenshots', `${name}.png`));
       console.log(`${locale.code}/${name}`);
     }
     await context.close();
