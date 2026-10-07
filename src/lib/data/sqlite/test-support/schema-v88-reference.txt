@@ -1,17 +1,25 @@
-# The schema the 78-step migration chain built, dumped through dumpSchema() in
-# this directory's schema-dump.ts. This is the ground truth the squashed
-# baseline is held to (features ticket 34, ADR-0006); schema.test.ts compares
-# against it.
+# The schema the v78 baseline plus migrations 79 through 88 built, dumped
+# through dumpSchema() in this directory's schema-dump.ts. This is the ground
+# truth the v88 baseline is held to (after-release ticket 42, ADR-0006), and
+# schema.test.ts compares against it. Its rows twin is
+# schema-v88-reference-rows.txt.
 #
-# The chain that produced it is at 4c38403a, the commit before the squash. To
-# reproduce: take that commit's migrations.ts, run every entry in version order
-# against an empty :memory: database, and dump it with the same function.
+# Source: the chain at c0656984116c4a331efac43f95372b063a56aaa6, the
+# integration tip this squash branched from. The commit that adds this file
+# still carries that chain unchanged, and its schema.test.ts builds a database
+# through every entry of it and compares the dump with this file. To reproduce:
 #
-#   git show 4c38403a:src/lib/data/sqlite/migrations.ts
+#   git checkout $(git log --diff-filter=A --format=%H -- <this file>)
+#   npx vitest run src/lib/data/sqlite/schema.test.ts -t 'chain'
 #
-# Regenerating this is not part of adding a migration. It records what the
-# chain built, once, and it does not move again - a migration added after the
-# baseline changes the live schema and leaves this file alone.
+# or, from any checkout of c0656984 with this commit's schema-dump.ts copied
+# in: run every entry of migrations.ts in version order against an empty
+# :memory: node:sqlite database through runMigrations, then write
+# dumpSchema(db.raw) followed by a newline.
+#
+# This file is frozen. It was not derived from the replacement baseline and is
+# never regenerated from it; a migration added after v88 changes the live
+# schema and leaves this file alone.
 index idx_affirmation_language on affirmation
   CREATE INDEX idx_affirmation_language ON affirmation(language)
 index idx_appointment_epoch_day on appointment
@@ -301,11 +309,11 @@ table cycle_event on cycle_event
 table document on document
   CREATE TABLE document(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,title TEXT NOT NULL,file_path TEXT NOT NULL,target_kind TEXT CHECK(target_kind IN('goal','milestone','procedure','episode')),target_id TEXT,updated_at INTEGER NOT NULL,CHECK((target_kind IS NULL)=(target_id IS NULL)))
 table dose_event on dose_event
-  CREATE TABLE dose_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,timestamp INTEGER NOT NULL,route TEXT NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,injection_site TEXT,vehicle TEXT,application_site TEXT,status TEXT NOT NULL,scheduled_dose REAL,scheduled_route TEXT,scheduled_timestamp INTEGER,updated_at INTEGER NOT NULL,drug TEXT)
+  CREATE TABLE dose_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,timestamp INTEGER NOT NULL,route TEXT NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,injection_site TEXT,vehicle TEXT,application_site TEXT,status TEXT NOT NULL,scheduled_dose REAL,scheduled_route TEXT,scheduled_timestamp INTEGER,updated_at INTEGER NOT NULL,drug TEXT,source TEXT NOT NULL DEFAULT 'person')
 table dose_pause on dose_pause
   CREATE TABLE dose_pause(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL REFERENCES regimen_episode(id)ON DELETE CASCADE,start_epoch_day INTEGER NOT NULL,end_epoch_day INTEGER,reason TEXT NOT NULL,updated_at INTEGER NOT NULL)
 table dose_schedule on dose_schedule
-  CREATE TABLE dose_schedule(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL UNIQUE REFERENCES regimen_episode(id)ON DELETE CASCADE,recurrence_kind TEXT NOT NULL DEFAULT 'everyNDays' CHECK(recurrence_kind IN('everyNDays','weekdays')),every_n_days INTEGER,doses_per_day INTEGER NOT NULL,updated_at INTEGER NOT NULL,CHECK((recurrence_kind = 'everyNDays')=(every_n_days IS NOT NULL)))
+  CREATE TABLE dose_schedule(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,episode_id INTEGER NOT NULL UNIQUE REFERENCES regimen_episode(id)ON DELETE CASCADE,recurrence_kind TEXT NOT NULL DEFAULT 'everyNDays' CHECK(recurrence_kind IN('everyNDays','weekdays')),every_n_days INTEGER,doses_per_day INTEGER NOT NULL,updated_at INTEGER NOT NULL,auto_log_from_epoch_day INTEGER,CHECK((recurrence_kind = 'everyNDays')=(every_n_days IS NOT NULL)))
 table dose_schedule_dose_amount on dose_schedule_dose_amount
   CREATE TABLE dose_schedule_dose_amount(schedule_id INTEGER NOT NULL REFERENCES dose_schedule(id)ON DELETE CASCADE,position INTEGER NOT NULL,dose REAL NOT NULL,dose_unit TEXT NOT NULL,PRIMARY KEY(schedule_id,position))
 table dose_schedule_weekday on dose_schedule_weekday
@@ -319,7 +327,7 @@ table effect_category on effect_category
 table entry on entry
   CREATE TABLE entry(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,timestamp INTEGER NOT NULL,mood INTEGER,note TEXT,updated_at INTEGER NOT NULL,trashed_at INTEGER,starred INTEGER NOT NULL DEFAULT 0,presentation_id TEXT REFERENCES presentation(uuid))
 table entry_body_region on entry_body_region
-  CREATE TABLE entry_body_region(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,region TEXT NOT NULL,dysphoria INTEGER,euphoria INTEGER,PRIMARY KEY(entry_id,region),CHECK(dysphoria IS NOT NULL OR euphoria IS NOT NULL))
+  CREATE TABLE entry_body_region(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,region TEXT NOT NULL,value INTEGER NOT NULL,PRIMARY KEY(entry_id,region),CHECK(value BETWEEN 0 AND 100 AND value <> 50))
 table entry_dimension_value on entry_dimension_value
   CREATE TABLE entry_dimension_value(entry_id INTEGER NOT NULL REFERENCES entry(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,value INTEGER NOT NULL,PRIMARY KEY(entry_id,dimension_id))
 table entry_fts on entry_fts
@@ -373,7 +381,7 @@ table measurement on measurement
 table measurement_type on measurement_type
   CREATE TABLE measurement_type(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT UNIQUE,key TEXT NOT NULL UNIQUE,name TEXT NOT NULL,is_built_in INTEGER NOT NULL DEFAULT 0,hidden INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
 table medication_stock on medication_stock
-  CREATE TABLE medication_stock(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,drug TEXT NOT NULL UNIQUE,quantity REAL NOT NULL,unit TEXT NOT NULL,recorded_epoch_day INTEGER NOT NULL,reminder_ever_created INTEGER NOT NULL DEFAULT 0,reminder_dismissed INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,opened_epoch_day INTEGER,in_use_window_days INTEGER,in_use_end_epoch_day INTEGER)
+  CREATE TABLE medication_stock(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,drug TEXT NOT NULL UNIQUE,quantity REAL NOT NULL,unit TEXT NOT NULL,recorded_epoch_day INTEGER NOT NULL,reminder_ever_created INTEGER NOT NULL DEFAULT 0,reminder_dismissed INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,opened_epoch_day INTEGER,in_use_window_days INTEGER,in_use_end_epoch_day INTEGER,lead_time_days INTEGER,doses_per_unit REAL)
 table milestone on milestone
   CREATE TABLE milestone(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,epoch_day INTEGER NOT NULL,template_key TEXT,updated_at INTEGER NOT NULL,roadmap_goal_key TEXT,procedure_id TEXT REFERENCES procedure(uuid),tryout_id TEXT REFERENCES tryout(uuid),description TEXT NOT NULL DEFAULT '')
 table personal_effect on personal_effect
@@ -389,7 +397,7 @@ table presentation on presentation
 table preset_dimension on preset_dimension
   CREATE TABLE preset_dimension(preset_id INTEGER NOT NULL REFERENCES gender_preset(id)ON DELETE CASCADE,dimension_id INTEGER NOT NULL REFERENCES gender_dimension(id)ON DELETE CASCADE,order_index INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(preset_id,dimension_id))
 table procedure on procedure
-  CREATE TABLE procedure(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,surgery_epoch_day INTEGER,notes TEXT NOT NULL,updated_at INTEGER NOT NULL)
+  CREATE TABLE procedure(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,surgery_epoch_day INTEGER,notes TEXT NOT NULL,updated_at INTEGER NOT NULL,kind TEXT NOT NULL DEFAULT 'custom',dilation_opt_in INTEGER NOT NULL DEFAULT 0,archived INTEGER NOT NULL DEFAULT 0)
 table procedure_photo on procedure_photo
   CREATE TABLE procedure_photo(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER NOT NULL REFERENCES procedure(id)ON DELETE CASCADE,epoch_day INTEGER NOT NULL,file_path TEXT NOT NULL,updated_at INTEGER NOT NULL)
 table regimen_episode on regimen_episode
@@ -405,7 +413,7 @@ table roadmap_goal on roadmap_goal
 table roadmap_track on roadmap_track
   CREATE TABLE roadmap_track(track TEXT PRIMARY KEY,updated_at INTEGER NOT NULL)
 table saved_question on saved_question
-  CREATE TABLE saved_question(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,query_text TEXT NOT NULL DEFAULT '',tag_ids TEXT NOT NULL DEFAULT '',moods TEXT NOT NULL DEFAULT '',start_epoch_day INTEGER,end_epoch_day INTEGER,has_note INTEGER NOT NULL DEFAULT 0,has_photo INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)
+  CREATE TABLE saved_question(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,query_text TEXT NOT NULL DEFAULT '',tag_ids TEXT NOT NULL DEFAULT '',moods TEXT NOT NULL DEFAULT '',start_epoch_day INTEGER,end_epoch_day INTEGER,has_note INTEGER NOT NULL DEFAULT 0,has_photo INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,starred INTEGER NOT NULL DEFAULT 0)
 table side_effect on side_effect
   CREATE TABLE side_effect(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,name TEXT NOT NULL,severity INTEGER CHECK(severity IS NULL OR severity BETWEEN 1 AND 5),epoch_day INTEGER NOT NULL,updated_at INTEGER NOT NULL)
 table size_record on size_record
@@ -419,7 +427,7 @@ table tag_group on tag_group
 table tally_event on tally_event
   CREATE TABLE tally_event(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,kind TEXT NOT NULL CHECK(kind IN('misgendered','correctly_gendered')),context TEXT,updated_at INTEGER NOT NULL)
 table taper on taper
-  CREATE TABLE taper(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,surgery_epoch_day INTEGER NOT NULL,start_epoch_day INTEGER NOT NULL,stages TEXT NOT NULL,updated_at INTEGER NOT NULL)
+  CREATE TABLE taper(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,procedure_id INTEGER NOT NULL REFERENCES procedure(id)ON DELETE CASCADE,start_epoch_day INTEGER NOT NULL,stages TEXT NOT NULL,updated_at INTEGER NOT NULL)
 table taper_session on taper_session
   CREATE TABLE taper_session(id INTEGER PRIMARY KEY AUTOINCREMENT,uuid TEXT NOT NULL UNIQUE,epoch_day INTEGER NOT NULL,note TEXT NOT NULL DEFAULT '',updated_at INTEGER NOT NULL)
 table tryout on tryout
@@ -440,3 +448,5 @@ table word_frequency_ignore on word_frequency_ignore
   CREATE TABLE word_frequency_ignore(id INTEGER PRIMARY KEY AUTOINCREMENT,word TEXT NOT NULL UNIQUE,updated_at INTEGER NOT NULL)
 trigger entry_fts_after_delete on entry
   CREATE TRIGGER entry_fts_after_delete AFTER DELETE ON entry BEGIN DELETE FROM entry_fts WHERE rowid = old.id; END
+trigger reminder_anchor_legacy_weekly on reminder
+  CREATE TRIGGER reminder_anchor_legacy_weekly AFTER INSERT ON reminder WHEN NEW.recurrence = 'WEEKLY' BEGIN UPDATE reminder SET recurrence = 'EVERY_N_DAYS',interval = 7,anchor_epoch_day = CAST(strftime('%s',date(updated_at / 1000,'unixepoch','localtime'))AS INTEGER)/ 86400 WHERE id = NEW.id; END

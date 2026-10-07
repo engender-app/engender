@@ -1,0 +1,95 @@
+# Every row the v78 baseline plus migrations 79 through 88 left in an empty
+# database, dumped through dumpRows() in this directory's schema-dump.ts. The
+# seed-data half of the v88 baseline's parity proof (after-release ticket 42);
+# the schema half is schema-v88-reference.txt, which also says where this came
+# from and how to reproduce it. Same source commit, c0656984, same procedure,
+# with dumpRows(db.raw) in place of dumpSchema(db.raw).
+#
+# The chain writes no seed rows of its own. What is here is what SQLite writes
+# for the DDL: FTS5's config and structure records for entry_fts, and one
+# sqlite_sequence row, taper's counter at 0, which v83's INSERT ... SELECT
+# left behind even though it copied no rows. The baseline creates taper
+# directly and has no such row; schema.test.ts names that one difference and
+# shows it assigns the same first id.
+rows affirmation
+rows appointment
+rows area_state
+rows body_region
+rows checklist
+rows checklist_item
+rows comfort_item
+rows cycle_event
+rows document
+rows dose_event
+rows dose_pause
+rows dose_schedule
+rows dose_schedule_dose_amount
+rows dose_schedule_weekday
+rows doubt_snapshot
+rows doubt_snapshot_entry
+rows effect_category
+rows entry
+rows entry_body_region
+rows entry_dimension_value
+rows entry_fts
+rows entry_fts_config
+  {"k":"version","v":4}
+rows entry_fts_data
+  {"id":1,"block":"x''"}
+  {"id":10,"block":"x'00000000ff000001000000'"}
+rows entry_fts_docsize
+rows entry_fts_idx
+rows entry_tag
+rows entry_template
+rows entry_template_dimension_value
+rows entry_template_tag
+rows era
+rows era_mute
+rows felt_sense
+rows gender_dimension
+rows gender_preset
+rows hair_photo
+rows hair_removal_photo
+rows hair_removal_session
+rows hair_stage
+rows import_log
+rows journaling_pause
+rows lab_result
+rows letter
+rows margin_note
+rows measurement
+rows measurement_type
+rows medication_stock
+rows milestone
+rows personal_effect
+rows personal_effect_type
+rows photo
+rows pref
+rows presentation
+rows preset_dimension
+rows procedure
+rows procedure_photo
+rows regimen_episode
+rows reminder
+rows revisit
+rows roadmap_check
+rows roadmap_goal
+rows roadmap_track
+rows saved_question
+rows side_effect
+rows size_record
+rows sqlite_sequence
+  {"name":"taper","seq":0}
+rows tag
+rows tag_group
+rows tally_event
+rows taper
+rows taper_session
+rows tryout
+rows tryout_photo
+rows video_note
+rows voice_benchmark
+rows voice_practice_take
+rows voice_recording
+rows wear_session
+rows word_frequency_ignore
