@@ -14,7 +14,8 @@
   import { liveList } from '$lib/data/live/journal.svelte';
   import { spanRangeQuery, type Span } from '$lib/data/lookBackSpan';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
-  import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
+  import { heldByReadGroup, joinReadGroup, readGroup } from '$lib/components/kit/readGroup.svelte';
+  import { countUp } from '$lib/motion/countUp';
 
   let { span }: { span: Span } = $props();
 
@@ -27,6 +28,30 @@
   const total = (rows: { value: number }[]) => rows.reduce((sum, row) => sum + row.value, 0);
   let misgendered = $derived(total(misgenderedQuery.rows));
   let correct = $derived(total(correctQuery.rows));
+
+  /* Each figure counts to its new value when the span moves (ADR-0078).
+     ReadingTile does that for a headline that is one number; this one is
+     two, so it would otherwise swap in a frame. Counted here the way
+     ReadingTile counts: from 0 on arrival, held while a ReadGroup holds. */
+  const group = readGroup();
+  let shownMisgendered = $state(0);
+  let shownCorrect = $state(0);
+  let landedMisgendered: number | null = null;
+  let landedCorrect: number | null = null;
+  $effect(() => {
+    const target = misgendered;
+    if (heldByReadGroup(group)) return;
+    const from = landedMisgendered ?? 0;
+    landedMisgendered = target;
+    return countUp(from, target, (n) => (shownMisgendered = n));
+  });
+  $effect(() => {
+    const target = correct;
+    if (heldByReadGroup(group)) return;
+    const from = landedCorrect ?? 0;
+    landedCorrect = target;
+    return countUp(from, target, (n) => (shownCorrect = n));
+  });
 </script>
 
 {#if !misgenderedQuery.loading && !correctQuery.loading && misgendered + correct > 0}
@@ -34,7 +59,7 @@
     key="tally"
     name={m.tally_trend_title()}
     href={`/tally${spanRangeQuery(span)}`}
-    headline={m.tally_tile_figures({ misgendered: fmtNumber(misgendered), correct: fmtNumber(correct) })}
+    headline={m.tally_tile_figures({ misgendered: fmtNumber(shownMisgendered), correct: fmtNumber(shownCorrect) })}
     note={m.tally_tile_note()}
   />
 {/if}

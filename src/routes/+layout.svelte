@@ -174,6 +174,12 @@
        only ones into a tab, since a screen already inside settings can
        still carry the tab it borrowed forward (chrome-tab-origin.ts). */
     if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
+    /* A borrowing page opened cold has no onNavigate to key it, so it keeps
+       the tab it just resolved to here: back to it from Today, it lights
+       that tab again rather than Today (after-release 17 review). */
+    if (navigation.type === 'enter' && navigation.to && borrowsTab(navigation.to.url.pathname)) {
+      noteBorrowingArrival(`0:${navigation.to.url.pathname}`, false);
+    }
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
