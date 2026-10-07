@@ -134,3 +134,29 @@ export function dumpSchema(raw: DatabaseSync): string {
     )
     .join('\n');
 }
+
+/** Every row every table holds, as text, for proving that two ways of building
+    a schema also leave the same data behind (after-release ticket 42). A fresh
+    schema has no authored rows, so what this compares is what the DDL itself
+    writes: FTS5's config and structure records, and the AUTOINCREMENT
+    counters in `sqlite_sequence`. Rows are sorted by their own text rather
+    than by rowid, since a WITHOUT ROWID table has none, and a blob is written
+    as hex so it compares byte for byte. */
+export function dumpRows(raw: DatabaseSync): string {
+  const tables = raw
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+    .all() as { name: string }[];
+
+  return tables
+    .map(({ name }) => {
+      const rows = (raw.prepare(`SELECT * FROM "${name.replace(/"/g, '""')}"`).all() as Record<string, unknown>[])
+        .map((row) =>
+          JSON.stringify(row, (_key, value: unknown) =>
+            value instanceof Uint8Array ? `x'${Buffer.from(value).toString('hex')}'` : value
+          )
+        )
+        .sort();
+      return [`rows ${name}`, ...rows.map((row) => `  ${row}`)].join('\n');
+    })
+    .join('\n');
+}
