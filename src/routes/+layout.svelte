@@ -32,6 +32,7 @@
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
+  import { speech } from '$lib/stores/announcer.svelte';
   import { bootState, closeJournalForLock, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -600,6 +601,25 @@
     {/if}
 
     <Toasts />
+  </div>
+  <!-- The app's voice (announcer.ts): a toast is drawn in Toasts.svelte and
+       said here, because a region inserted already holding its words is often
+       not read at all. These two never leave the page.
+
+       Outside [data-app-root] on purpose. A sheet makes every child of the
+       root inert while it is open (overlayLock.ts), and an inert region is
+       not read, which is exactly when a failure has to be heard. Out here
+       they are not part of the background at all, so the lock needs no
+       exception for them.
+
+       The urgent one is aria-live="assertive" rather than role="alert". It
+       speaks the same way (an alert is an assertive, atomic live region), but
+       an alert is also something a screen reader lists and a test finds by
+       role, and a permanent empty one is an alert that is not there: it sat
+       beside every real error notice as a second, blank "alert". -->
+  <div data-live-regions style="display: contents">
+    <p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
+    <p class="visually-hidden" aria-live="assertive" aria-atomic="true" data-announce-urgent>{speech.assertive}</p>
   </div>
 </div>
 
