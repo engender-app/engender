@@ -459,7 +459,9 @@ try {
   }
 
   /* Replace demo rows with a one-day history. Public repository methods
-     keep this isolated browser fixture inside normal journal invariants. */
+     keep this isolated browser fixture inside normal journal invariants.
+     The demo's tally taps go too: since after-release 17 the first tap is
+     history as well and starts the rail, and the demo's are weeks old. */
   const oneDay = await page.evaluate(async () => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     const today = (await import('/src/lib/data/epochDay.ts')).todayEpochDay();
@@ -467,6 +469,8 @@ try {
     for (const entry of entries) await j.entries.deleteEntry(entry.id);
     for (const era of await j.eras.getEras()) await j.eras.deleteEra(era.id);
     for (const milestone of await j.milestones.getMilestones()) await j.milestones.deleteMilestone(milestone.id);
+    for (const kind of ['misgendered', 'correctly_gendered'])
+      for (const event of await j.tally.getEvents(kind)) await j.tally.deleteEvent(event.id);
     await j.entries.upsertEntry({ epochDay: today, mood: 4, note: 'One day' });
     const eraId = await j.eras.upsertEra({ name: 'One day era', startEpochDay: today, endEpochDay: today });
     return { today, eraId };
