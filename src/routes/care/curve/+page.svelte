@@ -287,6 +287,21 @@
      logged" already explained the marks; it opens below the legend rather
      than inside it, since a list in a wrapping legend line would push the
      other two keys around. -->
+<!-- A legend key whose line has a note under the legend: the band and the
+     qualitative line. Drawn as markerToggle is, chevron and all. -->
+{#snippet notesToggle(chart: string, swatch: string, label: string)}
+  <button
+    type="button"
+    class="legend-item curve-markers-toggle"
+    aria-expanded={notesOpen[chart] === true}
+    aria-controls="curve-notes-{chart}"
+    data-curve-notes-toggle={chart}
+    onclick={toggleNotes(chart)}
+  >
+    <span class={swatch}></span>{label}
+    <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
+  </button>
+{/snippet}
 {#snippet markerToggle(chart: string, shown: number)}
   {#if shown > 0}
     <button
@@ -439,17 +454,7 @@
             />
 
             <div class="curve-legend">
-              <button
-                type="button"
-                class="legend-item curve-markers-toggle"
-                aria-expanded={notesOpen[curve.ester] === true}
-                aria-controls="curve-notes-{curve.ester}"
-                data-curve-notes-toggle={curve.ester}
-                onclick={toggleNotes(curve.ester)}
-              >
-                <span class="legend-band"></span>{m.curve_legend_band()}
-                <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
-              </button>
+              {@render notesToggle(curve.ester, 'legend-band', m.curve_legend_band())}
               <button
                 type="button"
                 class="legend-item curve-markers-toggle"
@@ -575,17 +580,7 @@
               />
 
               <div class="curve-legend">
-                <button
-                  type="button"
-                  class="legend-item curve-markers-toggle"
-                  aria-expanded={notesOpen[curve.key] === true}
-                  aria-controls="curve-notes-{curve.key}"
-                  data-curve-notes-toggle={curve.key}
-                  onclick={toggleNotes(curve.key)}
-                >
-                  <span class="legend-qual-line"></span>{m.curve_qual_legend_line()}
-                  <span class="curve-markers-chev"><Icon name="chevronDown" size={16} /></span>
-                </button>
+                {@render notesToggle(curve.key, 'legend-qual-line', m.curve_qual_legend_line())}
                 {@render markerToggle(curve.key, markersFor(curve.key).length)}
               </div>
               <div id="curve-notes-{curve.key}">

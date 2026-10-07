@@ -14,8 +14,8 @@
    - the tick glyph's opacity and scale each pass through at least two
      intermediate values, the same `.ap-tick` shape appointment-prep
      already uses;
-   - the strike drawn through a done title (its background width since
-     after-release 28) also passes through at least two intermediate
+   - the strike drawn through a done title (a clipped copy of the title
+     since after-release 28) also opens through at least two intermediate
      values, rather than snapping from 0 to 1.
 
    Run against a dev server (no build needed):
@@ -107,9 +107,9 @@ try {
     `() => { const s = getComputedStyle(document.querySelector('${rowSel} .roadmap-box')); const m = s.borderColor.match(/[\\d.]+/g) || [0,0,0]; return (+m[0]) + (+m[1]) + (+m[2]); }`,
     `() => +getComputedStyle(document.querySelector('${rowSel} .roadmap-tick')).opacity`,
     `() => { const m = getComputedStyle(document.querySelector('${rowSel} .roadmap-tick')).transform.match(/[\\d.-]+/g) || [1]; return +m[0]; }`, // scale, matrix(a,...)
-    // The strike is the span's own background since after-release 28 (one
-    // copy per wrapped line): its width share, 0 to 1.
-    `() => parseFloat(getComputedStyle(document.querySelector('${rowSel} .roadmap-strike-text')).backgroundSize) / 100`
+    // Since after-release 28 the strike is a clipped copy of the title (one
+    // line per wrapped line): how far its clip has opened, 0 to 1.
+    `() => { const n = getComputedStyle(document.querySelector('${rowSel} .roadmap-strike-lines')).clipPath.match(/[\\d.]+/g) || []; return 1 - (+n[1] || 0) / 100; }`
   ];
 
   const clickAndSample = async () => {
@@ -135,7 +135,7 @@ try {
   console.log('border-color channel sum, first 10 frames:', borderSeries.slice(0, 10));
   console.log('tick opacity, first 10 frames:', opacitySeries.slice(0, 10));
   console.log('tick scale, first 10 frames:', scaleSeries.slice(0, 10));
-  console.log('strike width share, first 10 frames:', strikeSeries.slice(0, 10));
+  console.log('strike clip opened, first 10 frames:', strikeSeries.slice(0, 10));
 
   const borderMid = intermediateCount(borderSeries);
   const opacityMid = intermediateCount(opacitySeries);
@@ -147,7 +147,7 @@ try {
   assert(borderMid >= 2, `the box's border-color should pass through at least two intermediate frames, got ${borderMid}`);
   assert(opacityMid >= 2, `the tick's opacity should pass through at least two intermediate frames, got ${opacityMid}`);
   assert(scaleMid >= 2, `the tick's scale should pass through at least two intermediate frames, got ${scaleMid}`);
-  assert(strikeMid >= 2, `the strike's width should pass through at least two intermediate frames, got ${strikeMid}`);
+  assert(strikeMid >= 2, `the strike's clip should pass through at least two intermediate frames, got ${strikeMid}`);
 
   // checked -> not-my-path: the same box, crossing to its second glyph (the
   // x, [1] of the two always-mounted `.roadmap-tick` spans - safe here since
@@ -180,7 +180,7 @@ try {
   // the painted pixels: at each line's strike height, the strike covers
   // the whole run of the line, where letters alone cover far less.
   const wrappedGoal = await page.evaluate(() => {
-    for (const span of document.querySelectorAll('[data-goal] .roadmap-strike-text')) {
+    for (const span of document.querySelectorAll('[data-goal] .roadmap-strike-lines > span')) {
       if (span.getClientRects().length >= 2) return span.closest('[data-goal]').getAttribute('data-goal');
     }
     return null;
@@ -194,10 +194,10 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 0);
   }
-  await page.waitForFunction((sel) => getComputedStyle(document.querySelector(`${sel} .roadmap-strike-text`)).backgroundSize.startsWith('100%'), wrapSel);
+  await page.waitForFunction((sel) => ((getComputedStyle(document.querySelector(`${sel} .roadmap-strike-lines`)).clipPath.match(/[\d.]+/g) || [])[1] ?? '0') === '0', wrapSel);
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
   const geometry = await page.evaluate((sel) => {
-    const span = document.querySelector(`${sel} .roadmap-strike-text`);
+    const span = document.querySelector(`${sel} .roadmap-strike-lines > span`);
     const row = document.querySelector(sel).getBoundingClientRect();
     return {
       lines: [...span.getClientRects()].map((r) => ({ left: r.left, right: r.right, top: r.top, height: r.height })),

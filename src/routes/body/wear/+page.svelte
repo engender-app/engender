@@ -547,8 +547,7 @@
            one fading in, so neither is painted at full strength in a frame
            the other still owns, and the wrapper travels the difference in
            height (a running card with its cue line is taller than Today). -->
-      {#if running || earliest !== null}
-      <div use:resize>
+      <div class="wear-now" use:resize>
       {#if running}
         <div in:cardIn out:crossfade>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
@@ -598,7 +597,6 @@
         </div>
       {/if}
       </div>
-      {/if}
 
       {#if earliest === null && !running}
         <Notice
@@ -928,5 +926,11 @@
     padding-left: var(--space-4);
     display: grid;
     gap: var(--space-1);
+  }
+  /* Always mounted, so a first session growing it from nothing and a last
+     one taking it away both travel; with neither card in it, it keeps no
+     block margin of its own. */
+  .wear-now:empty {
+    margin-bottom: 0;
   }
 </style>
