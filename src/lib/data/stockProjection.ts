@@ -35,7 +35,7 @@
    one is gone. */
 
 import { epochDayFromTimestamp } from './epochDay';
-import { attributeDrug, drugSpans, sameDrug } from './regimenEpisode';
+import { attributeDrug, drugSpans, drugNameKey, sameDrug } from './regimenEpisode';
 import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -218,7 +218,7 @@ export async function projectEveryStock(
     return span;
   });
 
-  /* Doses that named a drug are keyed by that name, trimmed the way a drug
+  /* Doses that named a drug are keyed by that name, normalized the way a drug
      is matched everywhere else; doses that named none are kept apart,
      because which drug they count against is the span's answer rather than
      their own. A falsy `drug` is what attributeDrug treats as naming
@@ -231,13 +231,13 @@ export async function projectEveryStock(
         unnamedByRange[index] += n;
         return;
       }
-      const key = row.drug.trim();
+      const key = drugNameKey(row.drug);
       namedByRange[index].set(key, (namedByRange[index].get(key) ?? 0) + n);
     });
   }
 
   return entries.map((entry) => {
-    const drug = entry.drug.trim();
+    const drug = drugNameKey(entry.drug);
     const windowStart = trailingWindowStart(entry, asOfEpochDay);
     const counts: StockDoseCounts = { consumed: 0, consumedInTrailingWindow: 0, excluded: 0 };
 

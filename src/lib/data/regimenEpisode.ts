@@ -27,20 +27,16 @@ function isActiveOn(episode: RegimenEpisode, day: number): boolean {
   return spanCoversDay(episode, day);
 }
 
-/** Every episode in effect at `timestamp` - zero, one, or several when more
-    than one drug's episode overlaps that day. `episodes` need not be
-    sorted for this question; the order only matters where downstream code
-    still keys off a "next" episode (timeOnEachRegimen and friends, which
-    read `startEpochDay`/`endEpochDay` directly and no longer infer one
-    from the other). Hidden episodes still resolve: hiding takes an episode
-    out of pickers, not out of history. */
-/** Whether two drug names are the same drug: the one rule every caller uses,
-    trimmed and otherwise exact. Drug names are free text and an import can
-    leave a space on either end, so a bare `===` quietly splits one drug into
-    two. Care pairs lanes, dose totals and stock through it, and so does the
-    stock projection, so two comparisons written apart could not disagree. */
-export const sameDrug = (a: string, b: string): boolean => a.trim() === b.trim();
+/** A stable key for grouping free-text drug names. Identity comparisons use
+    sameDrug; counters use this key so their groups follow the same rule. */
+export const drugNameKey = (drug: string): string => drug.trim().toLowerCase();
 
+/** Whether two stored drug names name the same drug, ignoring surrounding
+    whitespace and case. Attribution, stock, Care and quick log share it. */
+export const sameDrug = (a: string, b: string): boolean => drugNameKey(a) === drugNameKey(b);
+
+/** Every episode covering the timestamp's calendar day, including hidden
+    episodes and concurrent regimens. */
 export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp: number): RegimenEpisode[] {
   const day = epochDayFromTimestamp(timestamp);
   return episodes.filter((episode) => isActiveOn(episode, day));
@@ -68,7 +64,7 @@ export type DoseAttribution =
 export const showAttributionLabel = (
   attribution: DoseAttribution,
   drug: string | null
-): boolean => attribution.episode ? attribution.episode.drug !== drug : drug === null;
+): boolean => attribution.episode ? drug === null || !sameDrug(attribution.episode.drug, drug) : drug === null;
 
 /** Which episode `dose` belongs to, for reading its drug, ester and route
     parameters against - not only its drug's name (attributeDrug below is
@@ -85,7 +81,7 @@ export function attributeDose(
   const active = activeEpisodesAt(episodes, dose.timestamp);
 
   if (dose.drug) {
-    const named = dose.drug.trim();
+    const named = dose.drug;
     const matching = active.filter((episode) => sameDrug(episode.drug, named));
     return matching.length === 1 ? { episode: matching[0], ambiguous: false } : { episode: null, ambiguous: true };
   }
@@ -118,8 +114,7 @@ export function attributeDrug(
   if (dose.drug) return { drug: dose.drug, ambiguous: false };
   const active = activeEpisodesAt(episodes, dose.timestamp);
   if (active.length === 0) return { drug: null, ambiguous: false };
-  const drugs = new Set(active.map((episode) => episode.drug.trim()));
-  return drugs.size === 1 ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
+  return active.every((episode) => sameDrug(episode.drug, active[0].drug)) ? { drug: active[0].drug, ambiguous: false } : { drug: null, ambiguous: true };
 }
 
 /** The last day of `from`..`to` on which `episode` can expect a dose: `to`
