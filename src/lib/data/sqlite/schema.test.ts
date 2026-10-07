@@ -29,6 +29,14 @@ const fixture = (name: string) =>
    AUTOINCREMENT counter at 0 even when it copied nothing. */
 const CHAIN_ONLY_SEQUENCE_ROW = '  {"name":"taper","seq":0}\n';
 
+/* The frozen comparisons hold the baseline alone to the reference, so a
+   forward migration appended later moves the live schema and not them. */
+const upToBaseline = migrations.filter((m) => m.version <= SQUASH_BASELINE_VERSION);
+
+/** SQLite's schema cookie, which any DDL bumps even when it undoes itself. */
+const schemaCookie = (db: { raw: { prepare(sql: string): { get(): unknown } } }) =>
+  (db.raw.prepare('PRAGMA schema_version').get() as { schema_version: number }).schema_version;
+
 test('the v88 baseline builds the schema the chain up to 88 built', async () => {
   /* The ground truth is a dump taken from a database the real chain (the v78
      baseline plus 79 through 88) built, frozen before this squash touched it.
@@ -43,7 +51,7 @@ test('the v88 baseline builds the schema the chain up to 88 built', async () => 
      CHECK, foreign key, index, trigger, and the FTS5 table with its shadow
      tables - has to match. */
   const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), upToBaseline);
 
   assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
   assert.equal(dumpSchema(db.raw) + '\n', fixture('schema-v88-reference.txt'));
@@ -54,7 +62,7 @@ test('the v88 baseline leaves the rows the chain left, but for one equivalent co
      what both leave is FTS5's config and structure records, which must match
      byte for byte. */
   const db = makeNodeSqliteDb();
-  await runMigrations(db, noopFileOps(), migrations);
+  await runMigrations(db, noopFileOps(), upToBaseline);
 
   const reference = fixture('schema-v88-reference-rows.txt');
   assert.ok(reference.includes(CHAIN_ONLY_SEQUENCE_ROW));
@@ -63,7 +71,7 @@ test('the v88 baseline leaves the rows the chain left, but for one equivalent co
   /* A counter at 0 and no counter hand out the same first id, so the missing
      row changes nothing a journal can observe. */
   const withCounter = makeNodeSqliteDb();
-  await runMigrations(withCounter, noopFileOps(), migrations);
+  await runMigrations(withCounter, noopFileOps(), upToBaseline);
   withCounter.raw.exec("INSERT INTO sqlite_sequence (name, seq) VALUES ('taper', 0)");
   for (const journal of [db, withCounter]) {
     journal.raw.exec(`INSERT INTO procedure (uuid, name, notes, kind, updated_at) VALUES ('p', 'v', '', 'vaginoplasty', 1)`);
@@ -116,6 +124,7 @@ test.each([1, 78, SQUASH_BASELINE_VERSION - 1])(
     const db = await journalNumbered(version);
     const before = dumpRows(db.raw);
     const schemaBefore = dumpSchema(db.raw);
+    const cookieBefore = schemaCookie(db);
     // A copy from an earlier failed boot is beside it, which must survive too.
     const { calls, fileOps } = copySpy(true);
 
@@ -134,32 +143,36 @@ test.each([1, 78, SQUASH_BASELINE_VERSION - 1])(
     assert.equal(db.getUserVersion(), version);
     assert.equal(dumpRows(db.raw), before);
     assert.equal(dumpSchema(db.raw), schemaBefore);
+    // Not even a table created and dropped again on the way to the refusal.
+    assert.equal(schemaCookie(db), cookieBefore);
   }
 );
 
 test('a journal newer than this build is refused with its rows and its copy left alone', async () => {
-  const db = await journalNumbered(SQUASH_BASELINE_VERSION + 1);
+  const db = await journalNumbered(LATEST_SCHEMA_VERSION + 1);
   const before = dumpRows(db.raw);
+  const cookieBefore = schemaCookie(db);
   const { calls, fileOps } = copySpy(true);
 
   await assert.rejects(
     () => runMigrations(db, fileOps, migrations),
     (error: unknown) =>
       error instanceof SchemaTooNewError &&
-      error.foundVersion === SQUASH_BASELINE_VERSION + 1 &&
-      error.knownVersion === SQUASH_BASELINE_VERSION
+      error.foundVersion === LATEST_SCHEMA_VERSION + 1 &&
+      error.knownVersion === LATEST_SCHEMA_VERSION
   );
 
   assert.deepEqual(calls, { copies: 0, cleanups: 0, restores: 0 });
-  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION + 1);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION + 1);
   assert.equal(dumpRows(db.raw), before);
+  assert.equal(schemaCookie(db), cookieBefore);
 });
 
-test('a populated journal already at the baseline reopens unchanged, without the baseline running again', async () => {
+test('a populated journal already on the latest schema reopens unchanged, without the baseline running again', async () => {
   /* What every journal on the current schema does at boot. The lazy source is
      what boot hands over, and a load here would mean the runner meant to
      apply something. */
-  const db = await journalNumbered(SQUASH_BASELINE_VERSION);
+  const db = await journalNumbered(LATEST_SCHEMA_VERSION);
   const before = dumpRows(db.raw);
   const schemaBefore = dumpSchema(db.raw);
   const { calls, fileOps } = copySpy();
@@ -173,16 +186,16 @@ test('a populated journal already at the baseline reopens unchanged, without the
   // And the plain array, which a test or a probe hands over.
   await runMigrations(db, fileOps, migrations);
 
-  assert.equal(db.getUserVersion(), SQUASH_BASELINE_VERSION);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
   assert.equal(dumpRows(db.raw), before);
   assert.equal(dumpSchema(db.raw), schemaBefore);
   // Two clean boots, so whatever copy was left is retired, and none is taken.
   assert.deepEqual(calls, { copies: 0, cleanups: 2, restores: 0 });
 });
 
-test('the squash left one migration standing, the baseline itself', async () => {
+test('the squash left one migration standing up to 88, the baseline itself', async () => {
   assert.deepEqual(
-    migrations.map((m) => ({ version: m.version, baseline: m.baseline })),
+    upToBaseline.map((m) => ({ version: m.version, baseline: m.baseline })),
     [{ version: SQUASH_BASELINE_VERSION, baseline: true }]
   );
 });
