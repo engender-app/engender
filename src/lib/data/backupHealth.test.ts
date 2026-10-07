@@ -24,13 +24,20 @@ test('a backup made today is nought days old, not one', () => {
 /* After-release 17 (U2): the browser's refusal to keep storage used to be a
    toast over the Welcome screen on every cold load. It is a Home notice
    now, and only while it asks for something the person has not done. */
-test('the storage notice shows only where the browser refused and no recent backup exists', () => {
+test('the storage notice shows only where the browser refused and no backup was ever made', () => {
+  const recent = startOfDayTimestamp(20676 - 3);
+  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: null }), true);
+  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: recent }), false);
+  assert.equal(storageNoticeShows({ persistDenied: false, dismissed: false, lastBackupAt: null }), false);
+  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: true, lastBackupAt: null }), false);
+});
+
+/* Review finding: it used to come back once the backup that answered it
+   turned thirty days old, which made a one-time explanation a recurring
+   reminder beside the stale-backup notice that already is one. */
+test('the storage notice does not come back when the backup that answered it goes stale', () => {
   const today = 20676;
-  const recent = startOfDayTimestamp(today - 3);
   const old = startOfDayTimestamp(today - BACKUP_STALE_DAYS - 1);
-  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: null }, today), true);
-  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: old }, today), true);
-  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: recent }, today), false);
-  assert.equal(storageNoticeShows({ persistDenied: false, dismissed: false, lastBackupAt: null }, today), false);
-  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: true, lastBackupAt: null }, today), false);
+  assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: old }), false);
+  assert.equal(backupIsStale(old, today), true);
 });
