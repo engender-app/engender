@@ -17,23 +17,48 @@ import type { SqliteDriver } from '../sqlite/driver';
     insights list already caps itself at. */
 const CARD_LIMIT = 6;
 
-/** Every metric's day averages and tag insights over the range, in two
-    statements however many dimensions there are (after-release ticket 30).
-    Here rather than on the stats area because the cards are its only
-    reader: stats is composed into the journal at boot, and this area is
-    deferred, so the query loads with the screen that shows the cards. */
-export async function metricInsights(
+/** Day averages and tag insights for every metric the cards rank - mood and
+    each dimension that is not hidden - in two statements however many
+    dimensions there are (after-release ticket 30), and without being told
+    the dimensions first. `getCards` sends these with its other two reads:
+    the worker answers one query at a time, and waiting for the dimensions
+    put these two at the back of Look back's queue, the last read its tile
+    grid waited on. Here rather than on the stats area because the cards are
+    its only reader: stats is composed into the journal at boot, and this
+    area is deferred, so the query loads with the screen that shows the
+    cards. */
+export async function visibleMetricInsights(
   driver: SqliteDriver,
-  metrics: readonly string[],
   fromEpochDay: number,
   toEpochDay: number
-): Promise<Map<string, { dayAverages: DayAverage[]; tagInsights: TagInsight[] }>> {
-  metrics = [...new Set(metrics)];
-  const result = new Map(metrics.map((metric) => [metric, { dayAverages: [] as DayAverage[], tagInsights: [] as TagInsight[] }]));
-  if (metrics.length === 0) return result;
-  const values = metrics.map((metric) => ({ metric, ...metricValues(metric) }));
-  const sql = values.map((value) => `SELECT ? AS metric, v.* FROM (${value.sql}) v`).join(' UNION ALL ');
-  const params = values.flatMap((value) => [value.metric, ...value.params]);
+): Promise<Map<string, MetricInputs>> {
+  const mood = metricValues('mood');
+  const sql = `SELECT ? AS metric, v.* FROM (${mood.sql}) v
+    UNION ALL
+    SELECT gd.key AS metric, e.id AS entry_id, e.epoch_day AS epoch_day, edv.value AS value, e.timestamp AS ordinal
+    FROM entry e
+    JOIN entry_dimension_value edv ON edv.entry_id = e.id
+    JOIN gender_dimension gd ON gd.id = edv.dimension_id
+    WHERE gd.hidden = 0 AND e.trashed_at IS NULL`;
+  return insightsOver(driver, sql, ['mood', ...mood.params], fromEpochDay, toEpochDay, new Map());
+}
+
+type MetricInputs = { dayAverages: DayAverage[]; tagInsights: TagInsight[] };
+
+function inputsFor(result: Map<string, MetricInputs>, metric: string): MetricInputs {
+  let inputs = result.get(metric);
+  if (!inputs) result.set(metric, (inputs = { dayAverages: [], tagInsights: [] }));
+  return inputs;
+}
+
+async function insightsOver(
+  driver: SqliteDriver,
+  sql: string,
+  params: (string | number)[],
+  fromEpochDay: number,
+  toEpochDay: number,
+  result: Map<string, MetricInputs>
+): Promise<Map<string, MetricInputs>> {
   const [averages, tags] = await Promise.all([
     driver.query<{ metric: string; day: number; value: number; entries: number }>(
       `WITH metric_value AS (${sql})
@@ -62,8 +87,8 @@ export async function metricInsights(
       [...params, fromEpochDay, toEpochDay]
     )
   ]);
-  for (const row of averages) result.get(row.metric)!.dayAverages.push({ day: row.day, value: row.value, count: row.entries });
-  for (const row of tags) result.get(row.metric)!.tagInsights.push({ id: row.id, count: row.with_count, withAvg: row.with_avg, withoutAvg: row.without_avg });
+  for (const row of averages) inputsFor(result, row.metric).dayAverages.push({ day: row.day, value: row.value, count: row.entries });
+  for (const row of tags) inputsFor(result, row.metric).tagInsights.push({ id: row.id, count: row.with_count, withAvg: row.with_avg, withoutAvg: row.without_avg });
   return result;
 }
 
@@ -78,7 +103,11 @@ export interface CorrelationCardsArea {
 export function makeCorrelationCardsArea(driver: SqliteDriver, doses: DosesArea, dimensions: DimensionsArea): CorrelationCardsArea {
   return {
     async getCards(fromEpochDay, toEpochDay) {
-      const [dims, doseEvents] = await Promise.all([dimensions.getDimensions(), doses.getDoses(fromEpochDay, toEpochDay)]);
+      const [dims, doseEvents, inputs] = await Promise.all([
+        dimensions.getDimensions(),
+        doses.getDoses(fromEpochDay, toEpochDay),
+        visibleMetricInsights(driver, fromEpochDay, toEpochDay)
+      ]);
       const doseDays = doseDaysFromEvents(doseEvents);
 
       const metricRanges = [
@@ -86,9 +115,8 @@ export function makeCorrelationCardsArea(driver: SqliteDriver, doses: DosesArea,
         ...dims.filter((d) => !d.hidden).map((d) => ({ key: d.key, range: { min: d.min, max: d.max } }))
       ];
 
-      const inputs = await metricInsights(driver, metricRanges.map((metric) => metric.key), fromEpochDay, toEpochDay);
       const metrics: MetricInsights[] = metricRanges.map(({ key, range }) => {
-        const { tagInsights, dayAverages } = inputs.get(key)!;
+        const { tagInsights, dayAverages } = inputs.get(key) ?? { tagInsights: [], dayAverages: [] };
         return { metric: key, range, tagInsights, doseDay: doseDayInsight(dayAverages, doseDays) };
       });
 
