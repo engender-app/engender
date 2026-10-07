@@ -87,7 +87,7 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, disclose, resize, slideMonit } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, resize, slideMonit } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -614,8 +614,12 @@
           <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
         {:else}
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+            <!-- A session joins the list when it is stopped, now in place from
+                 the running row rather than under a sheet, so it opens its own
+                 height instead of pushing the rows under it in one frame. -->
             {#each weekSessions as session (session.id)}
               {@const parts = hoursMinutesOf(session.durationMs ?? 0)}
+              <div class="rows-divide" transition:collapse>
               <ListRow
                 key={session.id}
                 data-wear-session={session.id}
@@ -627,6 +631,7 @@
                 chevron={false}
                 onclick={() => record.openEditor(session)}
               />
+              </div>
             {/each}
           </ListCard>
         {/if}
