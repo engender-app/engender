@@ -15,12 +15,21 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
+  import { collapse } from '$lib/motion/reveal';
 
-  let ready = $state(updateReady());
+  /* False on the first render even when an update is already waiting, and
+     set by the effect below: the status element is then on the page empty
+     before the notice arrives inside it, which is what gets it read. This
+     component is loaded after boot, so a waiting update is the common case
+     (after-release 21). */
+  let ready = $state(false);
   let dismissed = $state(false);
   let applying = $state(false);
 
-  $effect(() => onUpdateReadyChange((next) => (ready = next)));
+  $effect(() => {
+    ready = updateReady();
+    return onUpdateReadyChange((next) => (ready = next));
+  });
 
   async function apply() {
     if (applying) return;
@@ -38,7 +47,7 @@
      out as before. -->
 <div role="status" style="display: contents">
   {#if ready && !dismissed}
-    <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
+    <div class="notice notice-info" data-update-notice style="margin:var(--space-3)" transition:collapse>
       <Icon name="download" size={20} />
       <div class="notice-body">
         <span class="notice-title">{m.update_ready_title()}</span>

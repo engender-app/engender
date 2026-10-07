@@ -19,7 +19,7 @@
      fading in, in the same cell, so the tile never stands empty. */
   import { tick } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import { m } from '$lib/paraglide/messages';
   import PhotoThumb from './PhotoThumb.svelte';
   import Icon from './Icon.svelte';
@@ -47,7 +47,7 @@
 
 <span class="resurfaced-photo">
   {#if revealed}
-    <span class="resurfaced-photo-shown" tabindex="-1" bind:this={shown} data-resurfaced-photo in:fade={{ duration: motionDuration('--dur-med') }}>
+    <span class="resurfaced-photo-shown" tabindex="-1" bind:this={shown} data-resurfaced-photo in:fade={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}>
       <PhotoThumb {photo} {size} {label} />
     </span>
   {:else}
@@ -59,7 +59,7 @@
       data-resurfaced-photo-cover
       aria-label={m.resurfacing_photo_reveal()}
       onclick={reveal}
-      out:fade={{ duration: motionDuration('--dur-med') }}
+      out:fade={{ duration: motionDuration('--dur-med'), easing: EASE_OUT }}
     >
       <Icon name="eyeOff" size={Math.min(24, size / 3)} />
     </button>

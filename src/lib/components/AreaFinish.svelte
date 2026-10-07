@@ -67,6 +67,7 @@
      dropping everything under it a frame. */
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { announce } from '$lib/stores/announcer.svelte';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import {
@@ -139,7 +140,9 @@
   /* What the card says the area is, kept in a line that never leaves the
      page. The rows below swap in and out of {#if} branches, and a row
      inserted with aria-live already on it is not read (after-release 21,
-     audit L04-14); this line changing is. */
+     audit L04-14); this line changing is. Going back to active empties
+     it, which says nothing, so picking an area back up is said through
+     the announcer instead. */
   let stateLine = $derived(
     finishedOn !== null
       ? m.area_finish_done_title({ date: dayLong(finishedOn) })
@@ -213,8 +216,10 @@
   }
 
   /** Un-finishing: the same call with null, and no date to pick. */
-  function pickBackUp() {
-    void attempt(() => journal.areaStates.setAreasFinished(AREA_GROUPS[group], null), m.write_failed());
+  async function pickBackUp() {
+    if (await attempt(() => journal.areaStates.setAreasFinished(AREA_GROUPS[group], null), m.write_failed())) {
+      announce(m.area_picked_back_up());
+    }
   }
 
   let suspendSheetOpen = $state(false);
@@ -245,7 +250,9 @@
   function resume() {
     if (!suspendableAreas) return;
     const areas = suspendableAreas;
-    void attempt(() => journal.areaStates.setAreasSuspended(areas, null), m.write_failed());
+    void attempt(() => journal.areaStates.setAreasSuspended(areas, null), m.write_failed()).then((done) => {
+      if (done) announce(m.area_picked_back_up());
+    });
   }
 </script>
 

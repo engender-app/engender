@@ -775,7 +775,7 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Text fields** are edged in `--input-edge`, `--text` at 53%, which clears 3:1 on every ground in every palette and theme. It edges `.input` and `.rule-input` only; every other line keeps `--outline` and `--hairline`.
 - **Speech.** A live region only speaks a change inside a region that was already there. Toasts.svelte draws two that never leave the page, and `announce(text, urgent?)` from [stores/announcer.svelte.ts](../src/lib/stores/announcer.svelte.ts) is the way to speak into them. It empties the region and writes the words 100ms later, so the same sentence twice is heard twice. Toasts, the progress bar, the PIN wait and keyboard reordering speak through it. A notice that comes and goes sits inside a status element that stays.
 - **Headings** take their level from the placing screen: ChartCard, DayCard (and EntryDays) and EmptyState accept a `level`.
-- **Form errors.** A control is marked `aria-invalid` only once focus has left it; `Field` hands its control that as a third snippet argument. An error names the field it is about through `aria-describedby`.
+- **Form errors.** A control is marked `aria-invalid` only once focus has left it or a submit has been refused; `Field` hands its control the first as a third snippet argument. An error names the field it is about through `aria-describedby`.
 - **Reduced motion** is described in section 8.5.
 - **Visible text first.** `aria-label` doesn't replace a card's visible reading.
 - **Audit records.** `docs/accessibility-audit-2026-09-30*` holds the latest audit.

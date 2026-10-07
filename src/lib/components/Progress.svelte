@@ -24,6 +24,7 @@
      which a screen reader often does not read (after-release 21). */
   import { m } from '$lib/paraglide/messages';
   import { announce } from '$lib/stores/announcer.svelte';
+  import { collapse } from '$lib/motion/reveal';
   import { progressPercent } from './progress';
   import type { ProgressRun } from './progress.svelte';
 
@@ -50,7 +51,10 @@
 </script>
 
 {#if run.visible}
-  <div class="progress" data-progress={handle}>
+  <!-- Opens and closes by its own height, so the content under it moves
+       rather than jumps when the bar arrives after its show delay and when
+       it leaves after the hold (after-release 21). -->
+  <div class="progress" data-progress={handle} transition:collapse>
     <div class="progress-head">
       <span class="progress-label">{label}</span>
       {#if percent !== null}
