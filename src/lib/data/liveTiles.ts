@@ -109,12 +109,7 @@ export function shouldShowPatchScheduleTile(params: {
     const schedule = params.schedules.find((s) => s.episodeId === episode.id);
     if (!schedule) continue;
 
-    const isNonDaily =
-      schedule.recurrence.kind === 'everyNDays'
-        ? schedule.recurrence.everyNDays > 1
-        : schedule.recurrence.weekdays.length < 7;
-
-    if (!isNonDaily) continue;
+    if (isDailySchedule(schedule)) continue;
 
     const slotsToday = expectedSlots(
       schedule,

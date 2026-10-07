@@ -52,18 +52,14 @@ const HOME_SLOTS: readonly string[] = ['above', 'below', 'pinned'];
    that used to swap in from a page-level skeleton (ticket 205) or cut in
    with no placeholder at all (ticket 211), and the hosted-rows card a screen draws for the More hub
    (`hosted-<host>`). */
-function keyFor(slot: ReserveSlot): string {
+/* Exported for its own test, which holds it to the prefix reset clears. */
+export function reserveKey(slot: ReserveSlot): string {
   return HOME_SLOTS.includes(slot) ? `engender-home-reserve-${slot}` : `engender-reserve-${slot}`;
 }
 
 /* No Home block is taller than a few phone screens; anything past this is a
    bad write, and reserving it would be a worse jump than reserving nothing. */
 const MAX_RESERVE_PX = 4000;
-
-/* Exported for its own test, which holds it to the prefix reset clears. */
-export function reserveKey(slot: ReserveSlot): string {
-  return keyFor(slot);
-}
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;

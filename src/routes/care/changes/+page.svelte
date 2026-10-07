@@ -77,7 +77,7 @@
   import {
     EFFECT_DIRECTIONS,
     effectDirectionLabel,
-    type EffectDirection
+    type EffectDirectionGroup
   } from '$lib/data/effectDirections';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
 
@@ -114,7 +114,7 @@
     anchor == null ? null : new Map(visibleEffects.map((e) => [e.key, literatureWindowDays(e.key, anchor)] as const))
   );
 
-  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirection => e.direction ?? 'other';
+  const directionOf = (e: PersonalEffectCatalogEntry): EffectDirectionGroup => e.direction ?? 'other';
 
   /* Category, then direction, is the coarse control (CONTEXT: "Effect
      category"); collapsed by default so a new journal's screen stays no
@@ -123,7 +123,7 @@
      together, since the same category groups separately under each
      direction. */
   let expandedGroups = $state(new Set<string>());
-  const groupKey = (direction: EffectDirection, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
+  const groupKey = (direction: EffectDirectionGroup, categoryKey: string | null) => `${direction}::${categoryKey ?? 'none'}`;
   function toggleGroup(key: string) {
     const next = new Set(expandedGroups);
     if (next.has(key)) next.delete(key);
