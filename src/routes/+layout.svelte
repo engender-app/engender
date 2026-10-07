@@ -213,8 +213,10 @@
      has a width only the browser knows and an overlay one has none. */
   /** A navigation to the address already showing, which SvelteKit makes a
       replaceState rather than a new history entry (smart-back.ts). */
-  const sameUrl = (navigation: { from: { url: URL } | null; to: { url: URL } | null }) =>
-    navigation.from !== null && navigation.to !== null && navigation.from.url.href === navigation.to.url.href;
+  const sameUrl = (navigation: { from: { url: URL | null } | null; to: { url: URL | null } | null }) => {
+    const from = navigation.from?.url?.href;
+    return from !== undefined && from === navigation.to?.url?.href;
+  };
 
   function publishScrollGutter(node: HTMLElement) {
     const publish = () =>
