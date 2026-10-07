@@ -2341,8 +2341,9 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      and a -50% translate (after-release 17, U2/UI-19). The translate was
      the transform the arrival composes with, and at desktop width it
      centred the toast on the window, 105px off the column it belongs to;
-     an inset can take the rail's width instead. */
-  position: absolute; left: 0; right: 0; margin-inline: auto; bottom: var(--nav-clearance);
+     an inset can take the rail's width instead, and the right one the
+     scroll region's scrollbar gutter (+layout.svelte measures it). */
+  position: absolute; left: 0; right: var(--scroll-gutter, 0px); margin-inline: auto; bottom: var(--nav-clearance);
   transform: translateY(10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--r-block);

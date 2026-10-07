@@ -924,6 +924,12 @@
      longest overhangs at most 6px into the 12px gap after its column. */
   .palette-grid .swatch-name,
   .palette-grid .palette-swatch.is-active .swatch-name { overflow-wrap: normal; }
+  /* With the text-size boost a name is 12.5% wider and the longest would
+     run past that gap into the next name, so the grid goes back to the
+     four across it has below this width. */
+  html[data-a11y-text-size='boost'] .palette-grid {
+    grid-template-columns: repeat(auto-fill, minmax(max(64px, calc((100% - 3 * var(--space-3)) / 4)), 1fr));
+  }
 
   /* Home's outline frame on the web (phase 5 ticket 32.11) is gone with
      redesign ticket 23: the field is the column's top edge now, a

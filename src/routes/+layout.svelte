@@ -200,6 +200,20 @@
     markScreenArrival();
   });
 
+  /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:
+     stable`), published for the toast, which centres on the content
+     column and so has to leave that strip out too (after-release 17
+     review: 5px off centre at 1280). Measured, since a classic scrollbar
+     has a width only the browser knows and an overlay one has none. */
+  function publishScrollGutter(node: HTMLElement) {
+    const publish = () =>
+      document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    publish();
+    return { destroy: () => observer.disconnect() };
+  }
+
   /* Tier 2, one screen becoming another (navigationTransition.ts). */
   onNavigate((navigation) => {
     /* Before the page changes, so the nav lights the borrowed tab from the
@@ -525,7 +539,7 @@
          part of the screen, and left outside <main> it would be a group of
          controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
-      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1">
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter>
         {#if schemaTooNew}
           <SchemaTooNew />
         {:else if bootFailed}
