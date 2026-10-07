@@ -178,11 +178,6 @@ export function lockBackground(
     const withdrawn = [...root.children, ...root.querySelectorAll('[data-app-savebar]')] as HTMLElement[];
     for (const child of withdrawn) {
       if (child.contains(node) || keep.some((kept) => child.contains(kept))) continue;
-      /* The app's two live regions (Toasts.svelte) stay live: an inert
-         region is not read, and a failure said while a sheet stays open is
-         exactly when one has to be (after-release 21). They hold no
-         control, so nothing behind the overlay becomes reachable. */
-      if (child.hasAttribute('data-live-regions')) continue;
       const holds = inertHolds.get(child);
       if (holds) inertHolds.set(child, holds + 1);
       else if (child.hasAttribute('inert')) continue;
