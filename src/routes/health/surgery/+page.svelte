@@ -871,7 +871,7 @@
           {id}
           name="surgery-item"
           placeholder={m.surgery_checklist_placeholder()}
-          bind:value={itemText}
+          readonly={sheetWrite.busy} bind:value={itemText}
         />
       {/snippet}
     </Field>

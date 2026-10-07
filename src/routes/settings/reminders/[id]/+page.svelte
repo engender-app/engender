@@ -86,7 +86,6 @@
      screen. */
   const saving = writer();
   async function saveReminder() {
-    const sent = JSON.stringify(draft);
     const saved = await saving.run(
       () =>
         journal.reminders.upsertReminder({
@@ -99,12 +98,9 @@
       m.write_failed()
     );
     if (!saved) return;
-    toast(m.saved(), { kind: 'record-saved' });
-    /* Typed into while the save ran: what was sent is stored, the newer
-       edit is not, so the screen stays and still counts as changed. */
-    if (JSON.stringify(draft) !== sent) return;
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
+    toast(m.saved(), { kind: 'record-saved' });
     goto('/settings/reminders');
   }
 </script>
@@ -130,7 +126,10 @@
       />
     </div>
   {:else}
-  <div class="screen-part" in:crossfade>
+  <!-- Inert while the save runs (after-release 06): what is sent is what
+       is stored, so nothing can be typed in the meantime and lost when the
+       screen leaves. -->
+  <div class="screen-part" in:crossfade inert={saving.busy}>
   {#if origin}
     <!-- Editing and saving clears autoSource (reminders.ts), so this notice
          is itself the warning that Save takes the reminder over - shown

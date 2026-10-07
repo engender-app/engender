@@ -751,7 +751,7 @@
           {id}
           name="new-measurement-type"
           placeholder={m.measurement_type_new_placeholder()}
-          bind:value={newTypeName}
+          readonly={typeWrite.busy} bind:value={newTypeName}
         />
       {/snippet}
     </Field>

@@ -566,7 +566,7 @@
           {id}
           name="newgoal-input"
           placeholder={m.roadmap_goal_placeholder()}
-          bind:value={newGoalText}
+          readonly={addGoalWrite.busy} bind:value={newGoalText}
         />
       {/snippet}
     </Field>
