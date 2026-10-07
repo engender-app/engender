@@ -2394,6 +2394,7 @@
   "photo_library_view": "Zobacz zdjęcie",
   "photo_not_an_image": "Tego pliku aplikacja nie odczyta jako obrazu. Spróbuj z JPEG albo PNG.",
   "photo_open_owner": "Otwórz zapis",
+  "photo_pick_save_failed": "Nie udało się zapisać zdjęcia. Wybierz je jeszcze raz.",
   "photo_picker_failed": "Nie udało się otworzyć okna wyboru zdjęć.",
   "photo_placeholder": "Miejsce na zdjęcie",
   "photo_placeholder_labelled": "Miejsce na zdjęcie: {label}",
