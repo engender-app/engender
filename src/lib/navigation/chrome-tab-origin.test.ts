@@ -42,6 +42,18 @@ describe('noteBorrowingArrival', () => {
     expect(chromeTabOrigin()).toBe('home');
   });
 
+  /* Second review: keyed by path alone, Today, editor, Journal, the same
+     editor again, then Back twice lit Journal on the first visit, which the
+     second had overwritten. The shell keys by history depth and path. */
+  it('keeps two visits to one page apart when they are different history entries', () => {
+    noteTabVisit('home');
+    noteBorrowingArrival('1:/entry/41', false);
+    noteTabVisit('calendar');
+    noteBorrowingArrival('3:/entry/41', false);
+    noteBorrowingArrival('1:/entry/41', true);
+    expect(chromeTabOrigin()).toBe('home');
+  });
+
   it('lets a forward visit overwrite what an earlier one kept', () => {
     noteTabVisit('stats');
     noteBorrowingArrival('/entry/41', false);

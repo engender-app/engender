@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto }));
 
-const { smartBack, recordNavigation, replaceRoute, navigationDepth } = await import('./smart-back.ts');
+const { smartBack, recordNavigation, replaceRoute, navigationDepth, depthAfter } = await import('./smart-back.ts');
 
 let back: ReturnType<typeof vi.fn>;
 
@@ -167,5 +167,25 @@ describe('replaceRoute', () => {
     smartBack('/calendar');
 
     expect(back).toHaveBeenCalledOnce();
+  });
+});
+
+/* After-release 17 review: the tab a borrowing page lights is kept per
+   history entry, keyed by the depth that entry sits at, so the shell has to
+   know that depth before the navigation settles. */
+describe('depthAfter', () => {
+  it('answers what the settled navigation will record, without recording it', () => {
+    recordNavigation('link');
+    expect(depthAfter('link')).toBe(2);
+    expect(depthAfter('popstate', -1)).toBe(0);
+    expect(depthAfter('popstate', -5)).toBe(0);
+    expect(navigationDepth()).toBe(1);
+  });
+
+  it('counts a replacing navigation as the same entry', () => {
+    void replaceRoute('/wrapped/week');
+    expect(depthAfter('goto')).toBe(0);
+    recordNavigation('goto');
+    expect(navigationDepth()).toBe(0);
   });
 });
