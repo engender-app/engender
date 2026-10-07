@@ -5,10 +5,10 @@ import { androidVersionCode } from '../scripts/android-version.mjs';
 const root = new URL('../fastlane/metadata/android/', import.meta.url);
 
 describe('store listing metadata', () => {
-  it('ships six phone screens and store artwork at the required pixel sizes', () => {
+  it('ships seven phone screens and store artwork at the required pixel sizes', () => {
     for (const locale of ['en-US', 'pl-PL']) {
       const screenshots = readdirSync(new URL(`${locale}/images/phoneScreenshots/`, root)).sort();
-      expect(screenshots).toEqual(['01-home.png', '02-new-entry.png', '03-journal.png', '04-care.png', '05-look-back.png', '06-settings-privacy.png']);
+      expect(screenshots).toEqual(['01-home.png', '02-care.png', '03-new-entry.png', '04-roadmap.png', '05-voice.png', '06-look-back.png', '07-settings-privacy.png']);
       for (const [file, width, height] of [
         ['icon.png', 512, 512], ['featureGraphic.png', 1024, 500],
         ...screenshots.map((file) => [`phoneScreenshots/${file}`, 1080, 1920] as const)
