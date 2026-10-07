@@ -54,15 +54,30 @@ public class PhotosPlugin extends Plugin {
         CameraCapture.cancel(getContext());
     }
 
+    /**
+     * One image, or several in one trip when the call asks for
+     * {@code multiple}, the way the web's file input picks them
+     * (after-release 27, audit L10-10). The photo picker takes at most
+     * {@link MediaStore#getPickImagesMaxLimit()} and refuses a larger
+     * {@code EXTRA_PICK_IMAGES_MAX}; the document picker on older Android
+     * takes {@code EXTRA_ALLOW_MULTIPLE}. pickedImages already reads
+     * either shape of result.
+     */
     @PluginMethod
     public void pickImages(PluginCall call) {
+        boolean multiple = Boolean.TRUE.equals(call.getBoolean("multiple", false));
         Intent intent;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent = new Intent(MediaStore.ACTION_PICK_IMAGES);
+            if (multiple) {
+                int max = MediaStore.getPickImagesMaxLimit();
+                if (max > 1) intent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, max);
+            }
         } else {
             intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("image/*");
+            if (multiple) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         }
         startActivityForResult(call, intent, "pickedImages");
     }
