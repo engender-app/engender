@@ -15,7 +15,6 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
-  import { collapse } from '$lib/motion/reveal';
 
   /* False on the first render even when an update is already waiting, and
      set by the effect below: the status element is then on the page empty
@@ -47,7 +46,7 @@
      out as before. -->
 <div role="status" style="display: contents">
   {#if ready && !dismissed}
-    <div class="notice notice-info" data-update-notice style="margin:var(--space-3)" transition:collapse>
+    <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
       <Icon name="download" size={20} />
       <div class="notice-body">
         <span class="notice-title">{m.update_ready_title()}</span>
