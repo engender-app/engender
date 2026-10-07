@@ -9,10 +9,14 @@
    never offered the restore at all; before 215 it waited forever.
 
    The failure is forced in the real journal worker, wrapped on its way in:
-   its first user_version answer is one lower than the truth, so the runner
-   takes its pre-migration copy for real (VACUUM INTO) and then the first
-   migration statement after the copy is refused. That is a migration failing
-   after the copy exists, which is the case the restore exists for. The
+   its first user_version answer is 0, so the runner takes the populated
+   journal for a first run, takes its pre-migration copy for real (VACUUM
+   INTO) and then the first migration statement after the copy is refused.
+   That is a migration failing after the copy exists, which is the case the
+   restore exists for. It used to answer one lower than the truth, but since
+   the v88 squash (after-release ticket 42) there is no step between the
+   baseline and the latest version, and a journal one short of the baseline
+   is refused before any copy is taken. The
    wrapper is dropped before Restore is pressed, so the recovery and the boot
    after it run on the stock worker.
 
@@ -71,7 +75,7 @@ const failAMigration = (stamp) => `
     }
     if (understated.has(message.id) && message.ok && Array.isArray(message.result)) {
       understated.delete(message.id);
-      message = { ...message, result: message.result.map((row) => ({ ...row, user_version: row.user_version - 1 })) };
+      message = { ...message, result: message.result.map((row) => ({ ...row, user_version: 0 })) };
     }
     answer(message, transfer);
   };

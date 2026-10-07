@@ -1,23 +1,31 @@
-/* The whole schema in one statement (ticket 34).
+/* The whole schema in one statement, registered as version 88.
 
-   This used to be 78 forward-only migrations, `SCHEMA_V1` through
-   `SCHEMA_V78`, applied in order against `PRAGMA user_version` (ADR-0006).
-   They were squashed before the 1.0.0 cutoff, while every supported journal
-   had migrated from empty. From 1.0.0 on, released schemas stay immutable and
-   every change needs a forward migration.
+   It has been squashed twice, both times before the 1.0.0 cutoff. Ticket 34
+   folded the first 78 forward-only migrations (ADR-0006) into a baseline
+   numbered 78. After-release ticket 42 folded that baseline and the ten steps
+   after it, 79 through 88, into this one, numbered 88. Each squash kept the
+   number the chain had reached, so a journal already on it opens with nothing
+   run against it. A development journal anywhere below 88 cannot be opened by
+   this build and is refused by name (migrations.ts says how).
 
-   The 78 steps are in git history at the commit that retired them, which is
-   where to look for how a column came to be there. What each one still means
-   is below, next to the column. The dump the chain produced is frozen in
-   `test-support/pre-squash-schema.txt`, and schema.test.ts holds this file to
-   it: the two must build the same tables, columns, types, indexes, triggers
-   and defaults, and nothing about that is allowed to drift.
+   Both retired chains are in git history: v1 to v78 at 4c38403a, and the v78
+   baseline with 79 to 88 at c0656984. That is where to look for how a column
+   came to be there. What each step still means is below, next to the column.
+   v85 and v86's UPDATE were repairs to rows that already existed, so nothing
+   of them is left here except the Weekly trigger on reminder. The dump the
+   second chain built is frozen in `test-support/schema-v88-reference.txt`
+   (with its rows in `schema-v88-reference-rows.txt`), and schema.test.ts
+   holds this file to it: the two must build the same tables, columns, types,
+   defaults, constraints, indexes, triggers and FTS objects, and nothing about
+   that is allowed to drift.
 
-   Adding a migration from here on is the ordinary ADR-0006 thing again: a new
-   entry in migrations.ts numbered above this baseline, never an edit to the
-   SQL below. Editing this string changes what a fresh install gets and what
-   an existing one already has, which are then two different schemas wearing
-   the same version number. */
+   This is the last squash. From 1.0.0 on, every released migration stays in
+   the chain and cannot be edited or squashed, because a released journal can
+   sit at any version a release shipped. Adding a migration from here on is the
+   ordinary ADR-0006 thing: a new entry in migrations.ts numbered above 88,
+   never an edit to the SQL below. Editing this string changes what a fresh
+   install gets and not what an existing one already has, which are then two
+   different schemas wearing the same version number. */
 
 export const BASELINE_SCHEMA = `
 -- ENTRY AND ITS CONTENT ------------------------------------------------------
@@ -173,23 +181,22 @@ CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
 -- A region key is plain TEXT validated against \`body_region\` below, not a
 -- CHECK and not a rowid join.
 --
--- Two independent intensities, both nullable. One unsigned \`intensity\` meant
--- the strongest thing a person could say about a part of their body they are
--- at peace with was 0, which reads the same as never having logged it. Now
--- "this hurt", "this felt good" and "both at once" are each sayable and none
--- of them is the absence of another. The CHECK keeps the row meaningful: a
--- region present with neither says nothing its absence does not already say.
+-- One value on the shared 0-100 scale (ticket 39, ADR-0081), the shape
+-- entry_dimension_value.value has: below 50 leans dysphoric, above it
+-- euphoric. It replaced two independent nullable intensities. The CHECK
+-- excludes 50, unlike entry_dimension_value's: for a region the midpoint means
+-- "nothing said" (phase 5 ticket 31), so a row at 50 would be a picked but
+-- unanswered region, and that case is an absent row rather than a stored one.
 --
 -- Whole-set replace on write, like entry_tag rather than
 -- entry_dimension_value: the picker shows every region every time, so a region
 -- missing from a save is the user deselecting it.
 CREATE TABLE entry_body_region (
-  entry_id  INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
-  region    TEXT NOT NULL,
-  dysphoria INTEGER,
-  euphoria  INTEGER,
+  entry_id INTEGER NOT NULL REFERENCES entry(id) ON DELETE CASCADE,
+  region   TEXT NOT NULL,
+  value    INTEGER NOT NULL,
   PRIMARY KEY (entry_id, region),
-  CHECK (dysphoria IS NOT NULL OR euphoria IS NOT NULL)
+  CHECK (value BETWEEN 0 AND 100 AND value <> 50)
 );
 CREATE INDEX idx_ebr_region ON entry_body_region(region);
 
@@ -340,8 +347,15 @@ CREATE TABLE presentation (
 -- REMINDERS, PREFERENCES AND THE FLAT LOGS ------------------------------------
 
 -- Stores the rule, not the next-fire instant (ADR-0010): a wall-clock time
--- plus either a recurrence (DAILY/WEEKLY need nothing else; EVERY_N_DAYS needs
+-- plus either a recurrence (DAILY needs nothing else; EVERY_N_DAYS needs
 -- interval + anchor_epoch_day) or a concrete one-off epoch_day.
+--
+-- Weekly is the seven-day progression, EVERY_N_DAYS with an interval of 7.
+-- The CHECK still admits 'WEEKLY' because older archives carry it, and the
+-- trigger below translates such a row the moment it is inserted. A reminder
+-- row has no creation timestamp, so \`updated_at\` is the only recorded day
+-- there is to anchor on, read as the local calendar day; for a row edited
+-- since, the original weekday cannot be recovered.
 --
 -- \`auto_source\` marks a reminder this app manages on someone's behalf - a
 -- stock run-out prompt, a wear-session nudge. Nullable, and left alone by every
@@ -371,6 +385,14 @@ CREATE TABLE reminder (
     OR ((recurrence IS 'DAILY' OR recurrence IS 'WEEKLY') AND interval IS NULL AND anchor_epoch_day IS NULL AND epoch_day IS NULL)
   )
 );
+CREATE TRIGGER reminder_anchor_legacy_weekly AFTER INSERT ON reminder
+WHEN NEW.recurrence = 'WEEKLY'
+BEGIN
+  UPDATE reminder
+  SET recurrence = 'EVERY_N_DAYS', interval = 7,
+      anchor_epoch_day = CAST(strftime('%s', date(updated_at / 1000, 'unixepoch', 'localtime')) AS INTEGER) / 86400
+  WHERE id = NEW.id;
+END;
 
 CREATE TABLE pref (
   key   TEXT PRIMARY KEY,
@@ -501,6 +523,9 @@ CREATE TABLE word_frequency_ignore (
   updated_at INTEGER NOT NULL
 );
 
+-- \`starred\` keeps the Starred filter with the question (after-release ticket
+-- 16, audit L08-01): without it a question saved with Starred on came back
+-- answering with unstarred entries too. 0 is off.
 CREATE TABLE saved_question (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid            TEXT NOT NULL UNIQUE,
@@ -512,7 +537,8 @@ CREATE TABLE saved_question (
   end_epoch_day   INTEGER,
   has_note        INTEGER NOT NULL DEFAULT 0,
   has_photo       INTEGER NOT NULL DEFAULT 0,
-  updated_at      INTEGER NOT NULL
+  updated_at      INTEGER NOT NULL,
+  starred         INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE import_log (
@@ -567,11 +593,15 @@ CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day);
 -- \`drug\` is nullable and starts null: a dose needs its own drug only once
 -- more than one episode can be active on the day it was logged.
 --
--- \`source\` (added by v82) says who wrote the row - 'person' for a dose
--- logged by hand, 'schedule' for one an auto-logging schedule wrote on the
--- person's behalf (ADR-0086). It is a column of its own rather than a fourth
--- \`status\` because it answers a different question, and a schedule-written
--- dose the person then marks skipped has to say both things at once.
+-- \`source\` says who wrote the row - 'person' for a dose logged by hand,
+-- 'schedule' for one an auto-logging schedule wrote on the person's behalf
+-- (phase 11 ticket 11, ADR-0086). It is a column of its own rather than a
+-- fourth \`status\` because it answers a different question, and a
+-- schedule-written dose the person then marks skipped has to say both things
+-- at once. Defaulted rather than nullable, so nothing reads a null source as
+-- a third state. No CHECK: doses.ts is the one writer, and a CHECK would
+-- refuse to read back an archive a newer build wrote with a source this one
+-- has not heard of.
 CREATE TABLE dose_event (
   id                  INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid                TEXT NOT NULL UNIQUE,
@@ -587,7 +617,8 @@ CREATE TABLE dose_event (
   scheduled_route     TEXT,
   scheduled_timestamp INTEGER,
   updated_at          INTEGER NOT NULL,
-  drug                TEXT
+  drug                TEXT,
+  source              TEXT NOT NULL DEFAULT 'person'
 );
 CREATE INDEX idx_dose_event_timestamp ON dose_event(timestamp);
 
@@ -610,10 +641,12 @@ CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id);
 -- discriminated union DoseScheduleRecurrence gives in code, enforced again here
 -- so a row cannot claim one shape while carrying the other's data.
 --
--- \`auto_log_from_epoch_day\` (added by v82) is the standing instruction
--- "assume I took it unless I say otherwise" (ADR-0086): the day the person
+-- \`auto_log_from_epoch_day\` is the standing instruction "assume I took it
+-- unless I say otherwise" (phase 11 ticket 11, ADR-0086): the day the person
 -- switched it on, or null for off. One column rather than a flag beside a
--- day, because a flag set with no day has nothing to walk from.
+-- day, because a flag set with no day has nothing to walk from, and the walk
+-- never writes before it, so a schedule switched on today reaches back over
+-- nothing.
 --
 -- Weekdays and dose amounts are child tables, not columns: a schedule has zero
 -- or more of each, and both are empty for a schedule that does not use the
@@ -628,6 +661,7 @@ CREATE TABLE dose_schedule (
   every_n_days    INTEGER,
   doses_per_day   INTEGER NOT NULL,
   updated_at      INTEGER NOT NULL,
+  auto_log_from_epoch_day INTEGER,
   CHECK ((recurrence_kind = 'everyNDays') = (every_n_days IS NOT NULL))
 );
 
@@ -665,6 +699,18 @@ CREATE TABLE dose_schedule_dose_amount (
 -- explicit end date, whichever a person types - stored as typed rather than one
 -- derived from the other, because they are two different things a label can
 -- say.
+--
+-- \`lead_time_days\` is how many days ahead of running out a person wants to
+-- reorder (redesign phase 10 ticket 01). Nullable, and null means none typed:
+-- the app assumes no figure rather than guessing one. It lives here because
+-- this is already one row per drug (ADR-0046), and it feeds
+-- reorderByEpochDay (stockProjection.ts) beside the run-out day the projection
+-- computes anyway.
+--
+-- \`doses_per_unit\` is how many doses one unit of stock holds (after-release
+-- ticket 01): two vials of injectable estradiol are not two doses. Null keeps
+-- the one-dose-per-unit reading, which is right for stock counted in pills or
+-- doses. REAL because a quantity is REAL already.
 CREATE TABLE medication_stock (
   id                    INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid                  TEXT NOT NULL UNIQUE,
@@ -677,7 +723,9 @@ CREATE TABLE medication_stock (
   updated_at            INTEGER NOT NULL,
   opened_epoch_day      INTEGER,
   in_use_window_days    INTEGER,
-  in_use_end_epoch_day  INTEGER
+  in_use_end_epoch_day  INTEGER,
+  lead_time_days        INTEGER,
+  doses_per_unit        REAL
 );
 
 -- \`provider\` is free text with no list behind it, exactly as free as an
@@ -1052,13 +1100,33 @@ CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
 -- life at the consult with no date set, and the day counter over it is derived,
 -- never stored (ADR-0010). Its recovery checklist is an ordinary \`checklist\`
 -- owned by the (kind, uuid) pair, which is why no checklist column is here.
+--
+-- \`kind\` says what surgery it is (phase 9 carpet ticket 17), so Dilation's
+-- gate can read it. It defaults to 'custom', what the editor shows for an
+-- unset kind, so nothing reads a null kind as a fourth state. No CHECK, for
+-- the reason dose_event.source has none: procedures.ts is the one writer, and
+-- a CHECK would refuse an archive a newer build wrote with a kind this one does
+-- not know yet.
+--
+-- \`dilation_opt_in\` only means anything for a 'custom' kind - of the
+-- compiled-in kinds only vaginoplasty includes dilation, and the gate checks
+-- that by kind directly - but it is a plain column on every row rather than a
+-- nullable one scoped to 'custom', the "one flag, most rows leave it at the
+-- default" shape wear_session's booleans use.
+--
+-- \`archived\` is the person's own organising choice (phase 11 ticket 37), not
+-- a conclusion drawn from an old surgery date: a procedure stays ongoing until
+-- its owner moves it.
 CREATE TABLE procedure (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid              TEXT NOT NULL UNIQUE,
   name              TEXT NOT NULL,
   surgery_epoch_day INTEGER,
   notes             TEXT NOT NULL,
-  updated_at        INTEGER NOT NULL
+  updated_at        INTEGER NOT NULL,
+  kind              TEXT NOT NULL DEFAULT 'custom',
+  dilation_opt_in   INTEGER NOT NULL DEFAULT 0,
+  archived          INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_procedure_surgery_epoch_day ON procedure(surgery_epoch_day);
 
@@ -1180,13 +1248,20 @@ CREATE TABLE document (
 );
 CREATE INDEX idx_document_epoch_day ON document(epoch_day);
 
+-- The dilation schedule names the procedure it follows and reads that
+-- record's surgery day, rather than keeping a second copy of the date that
+-- can drift (audit item 7: the taper said 27 February 2026 while the procedure
+-- hosting it said 11 August 2025). At most one row (getTaper's own
+-- "ORDER BY id LIMIT 1"). \`procedure_id\` is NOT NULL because a schedule is
+-- typed in against a procedure, and one whose surgery day belongs to nothing
+-- says nothing on its own.
 CREATE TABLE taper (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  uuid              TEXT NOT NULL UNIQUE,
-  surgery_epoch_day INTEGER NOT NULL,
-  start_epoch_day   INTEGER NOT NULL,
-  stages            TEXT NOT NULL,
-  updated_at        INTEGER NOT NULL
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid            TEXT NOT NULL UNIQUE,
+  procedure_id    INTEGER NOT NULL REFERENCES procedure(id) ON DELETE CASCADE,
+  start_epoch_day INTEGER NOT NULL,
+  stages          TEXT NOT NULL,
+  updated_at      INTEGER NOT NULL
 );
 
 CREATE TABLE taper_session (
