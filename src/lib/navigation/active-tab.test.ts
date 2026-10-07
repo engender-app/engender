@@ -3,7 +3,7 @@
    seven routes that lit no tab at all. */
 import { describe, expect, it } from 'vitest';
 
-import { activeTabKey, litTabKey, RAIL_SETTINGS, railTabKey } from './active-tab.ts';
+import { activeTabKey, borrowsTab, litTabKey, RAIL_SETTINGS, railTabKey } from './active-tab.ts';
 
 describe('activeTabKey', () => {
   it('lights home for the root path', () => {
@@ -172,5 +172,14 @@ describe('railTabKey', () => {
   it('lights the same door as the bar off settings', () => {
     expect(railTabKey('/entry/41', 'home')).toBe('home');
     expect(railTabKey('/more', 'home')).toBe('settings');
+  });
+});
+
+describe('borrowsTab', () => {
+  it('names settings chrome and the editor, and nothing else', () => {
+    expect(borrowsTab('/settings')).toBe(true);
+    expect(borrowsTab('/settings/permissions')).toBe(true);
+    expect(borrowsTab('/entry/41')).toBe(true);
+    for (const path of ['/', '/calendar', '/stats', '/tally', '/more']) expect(borrowsTab(path), path).toBe(false);
   });
 });

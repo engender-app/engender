@@ -118,6 +118,11 @@ export function litTabKey(path: string, origin = ''): string {
   return activeTabKey(path, origin);
 }
 
+/** Whether a path lights a tab it borrows rather than one of its own. */
+export function borrowsTab(path: string): boolean {
+  return path.startsWith(CHROME_PREFIX) || BORROWING_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
 /** The rail's own key for its Settings row. */
 export const RAIL_SETTINGS = 'rail-settings';
 
