@@ -97,7 +97,7 @@
   import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, shownMetric } from '$lib/data/metricChoices';
+  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
@@ -485,7 +485,7 @@
             </ListRow>
             {#if closingFacts.activeAverage}
               <div class="rows-divide" transition:collapse>
-                <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name })}>
+                <ListRow static data-lookback-fact title={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}>
                   {#snippet trailing()}<b class="wrapped-figure-value">{closingFacts.activeAverage}</b>{/snippet}
                 </ListRow>
               </div>
