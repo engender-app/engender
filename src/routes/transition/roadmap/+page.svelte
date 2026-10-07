@@ -331,6 +331,15 @@
   const roadmapRemember = (px: number) => rememberReserve('roadmap', px);
 </script>
 
+<!-- A goal's title with its strike: a copy of the words laid over them,
+     transparent, whose inline background draws one 2px line per wrapped
+     line (box-decoration-break: clone). The copy is clipped from the left
+     and the clip opens when the goal is done, so the strike travels by
+     clip-path alone (after-release 28, audit V08). -->
+{#snippet struck(text: string)}
+  <span class="roadmap-strike-text">{text}<span class="roadmap-strike-lines" aria-hidden="true"><span>{text}</span></span></span>
+{/snippet}
+
 <div class="screen">
   <ScreenHeader title={m.roadmap_title()} back="/more" />
   <SourceRecordHandoff id={sourceId} ready={!!sourceBuiltin || (!customQuery.loading && !customQuery.failed)} found={!!sourceBuiltin || !!sourceCustom} onOpen={() => sourceBuiltin ? openBuiltInGoal(sourceBuiltin.key) : openCustomGoal(sourceCustom!)} />
@@ -473,7 +482,7 @@
                   class:roadmap-done={status === 'checked'}
                   class:roadmap-skip-text={status === 'not-my-path'}
                 >
-                  <span class="roadmap-strike-text">{roadmapGoalTitle(goal.key)}</span>
+                  {@render struck(roadmapGoalTitle(goal.key))}
                 </span>
                 {#if roadmapGoalNote(goal.key)}
                   <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
@@ -516,7 +525,7 @@
                   class:roadmap-done={goal.status === 'checked'}
                   class:roadmap-skip-text={goal.status === 'not-my-path'}
                 >
-                  <span class="roadmap-strike-text">{goal.text}</span>
+                  {@render struck(goal.text)}
                 </span>
               </span>
             </button>
@@ -765,37 +774,49 @@
      text-decoration has no "from" state a transition can start from, so it
      cut into place with the box's own fill.
 
-     Drawn as the inline span's own background, not a pseudo-element over
-     a block: `box-decoration-break: clone` gives every line of a wrapped
-     title its own copy of the background, so each line is struck through
-     its own middle. The old ::after was one line across the whole
-     inline-block, and on a stock title that wraps at 390px ("How you are
-     addressed at work or school") it sat in the gap between the two lines
-     and read as an underline (after-release 28, audit V08). It grows from
-     each line's left edge over the same --dur-fast the box's fill uses.
+     Drawn as an inline background, not a pseudo-element over a block:
+     `box-decoration-break: clone` gives every line of a wrapped title its
+     own copy of the background, so each line is struck through its own
+     middle. The old ::after was one line across the whole inline-block,
+     and on a stock title that wraps at 390px ("How you are addressed at
+     work or school") it sat in the gap between the two lines and read as
+     an underline (after-release 28, audit V08).
 
-     background-size is not one of the motion system's transform, opacity
-     and clip, and this is the stated exception ADR-0078 allows: the ticket
-     prescribes the technique ("an inline span with a gradient background
-     and box-decoration-break: clone, still animatable"), and no transform
-     or clip can address the separate line fragments of one inline box. It
-     is a paint, never a layout, and lasts --dur-fast. */
+     The background sits on a transparent copy of the words laid over them
+     (the `struck` snippet), and the copy is clipped from the left: the
+     strike draws in by clip-path over the same --dur-fast the box's fill
+     uses, and the motion stays within transform, opacity and clip. The
+     line is --text-2, the done title's own ink; currentColor would be the
+     copy's transparent. */
   .roadmap-done {
     color: var(--text-2);
   }
 
   .roadmap-strike-text {
-    background-image: linear-gradient(currentColor, currentColor);
-    background-repeat: no-repeat;
-    background-position: 0 55%;
-    background-size: 0% 2px;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-    transition: background-size var(--dur-fast) var(--ease-out);
+    position: relative;
+    display: block;
   }
 
-  .roadmap-done .roadmap-strike-text {
+  .roadmap-strike-lines {
+    position: absolute;
+    inset: 0;
+    color: transparent;
+    pointer-events: none;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path var(--dur-fast) var(--ease-out);
+  }
+
+  .roadmap-strike-lines > span {
+    background-image: linear-gradient(var(--text-2), var(--text-2));
+    background-repeat: no-repeat;
+    background-position: 0 55%;
     background-size: 100% 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .roadmap-done .roadmap-strike-lines {
+    clip-path: inset(0 0% 0 0);
   }
 
   /* Muted, not struck through: unlike a done step, a not-my-path one was
