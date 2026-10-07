@@ -29,10 +29,16 @@
 
 <!-- The app's voice (announcer.ts): a toast is drawn above and said here,
      because a region inserted already holding its words is often not read
-     at all. These two never leave the page. -->
+     at all. These two never leave the page.
+
+     The urgent one is aria-live="assertive" rather than role="alert". It
+     speaks the same way (an alert is an assertive, atomic live region), but
+     an alert is also something a screen reader lists and a test finds by
+     role, and a permanent empty one is an alert that is not there: it sat
+     beside every real error notice as a second, blank "alert". -->
 <div data-live-regions>
   <p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
-  <p class="visually-hidden" role="alert" data-announce-urgent>{speech.assertive}</p>
+  <p class="visually-hidden" aria-live="assertive" aria-atomic="true" data-announce-urgent>{speech.assertive}</p>
 </div>
 
 <style>
