@@ -401,11 +401,6 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     return rows.map((r) => ({ day: r.day, value: r.value, count: r.entries }));
   };
 
-  /* Deliberately the same fragment, the same window and the same grouping
-     as averageByDay above: the calendar draws both on one cell, so a day
-     one of them counts and the other does not is a cell contradicting
-     itself. MIN and MAX over the same rows AVG runs over is what makes
-     that true by construction rather than by two statements agreeing. */
   const spreadByDay = async (
     values: { sql: string; params: (string | number)[] },
     fromEpochDay: number,
