@@ -18,6 +18,7 @@
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
+  import { tablesReadBy } from '$lib/data/live/writes';
   import { onThisDayCandidates, onThisDayQualifies } from '$lib/data/on-this-day';
   import { onThisDayLetters, LETTER_RETROSPECTIVE_LIMIT } from '$lib/data/letterRetrospective';
   import { resurfacing } from '$lib/unprompted/resurfacing';
@@ -42,7 +43,12 @@
 
   /* Invalidated on entry or tag writes (the good-day rule's own two
      dependencies), and on either half of the mute layer (phase 6 ticket
-     05): eras and era mutes. */
+     05): eras and era mutes.
+
+     Seeded with the good-day read's tables. It is called after the first
+     await, so without the seed the first run discovered them late and the
+     query started again from the top before it answered: one more round
+     trip, and the last read Look back's tile group was waiting on. */
   let goodDaysQuery = liveList(async (j) => {
     // Read before the first await, so the query re-runs when the day changes.
     const asOf = today;
@@ -56,7 +62,7 @@
     /* The block this card opens also shows a day that only has a letter, so
        the card must not say there is nothing to see on such a day. */
     return allowed.filter((c, i) => onThisDayQualifies(goodDays[i], onThisDayLetters(letters, c.epochDay, asOf)));
-  });
+  }, tablesReadBy('stats', 'isGoodDay'));
   /* Whether there is a card is settled once this answers (ReadGroup). */
   joinReadGroup(() => !goodDaysQuery.loading);
   let qualifying = $derived(goodDaysQuery.rows);
