@@ -192,10 +192,7 @@ kogo prosić o ich usunięcie. Wszystko na urządzeniu możesz usunąć samodzie
   Jeśli w przeglądarce używasz odblokowania biometrycznego, utworzony dla
   niego klucz dostępu zostaje na liście kluczy w przeglądarce albo na
   urządzeniu, dopóki go stamtąd nie usuniesz. Po usunięciu dziennika niczego
-  już nie otwiera. [OPEN: na Androidzie zdjęcie, którego robienie się nie
-  zakończyło, może zostać niezaszyfrowane w pamięci podręcznej aplikacji,
-  dopóki nie wejdzie poprawka z zadania after-release 11 (audyt SEC-03).
-  Wprowadzić ją przed wydaniem albo zostawić to zdanie z zastrzeżeniem.]
+  już nie otwiera.
 - **Na Androidzie.** Odinstalowanie aplikacji albo wyczyszczenie jej danych
   w ustawieniach systemu usuwa wszystko, co aplikacja zapisała w telefonie.
 - **W przeglądarce.** Wyczyszczenie danych strony

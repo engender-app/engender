@@ -185,10 +185,7 @@ anyone else to delete. You can delete everything on your device yourself:
   reminders and the keys that open the journal, and cannot be undone. If you
   used biometric unlock on the web, the passkey it created stays in your
   browser's or device's passkey list until you remove it there. It opens
-  nothing once the journal is gone. [OPEN: on Android, a photo whose capture
-  never finished can stay unencrypted in the app's cache after this, until
-  after-release ticket 11 (audit SEC-03) lands. Land that fix before
-  release, or keep this sentence qualified.]
+  nothing once the journal is gone.
 - **On Android.** Uninstalling the app, or clearing its storage in the
   system settings, removes everything the app stored on the phone.
 - **On the web.** Clearing the site data for `app.engender.barankiewicz.dev`
