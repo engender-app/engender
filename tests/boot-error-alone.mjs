@@ -50,7 +50,7 @@ const UNREADABLE_WORKER = "onmessage = (e) => postMessage({ id: e.data.id, ok: f
 const BELOW_BASELINE_WORKER = `onmessage = (e) => postMessage({
   id: e.data.id,
   ok: true,
-  result: e.data.op === 'seedDemoPersona' ? { belowBaseline: 50, baselineVersion: 78 } : e.data.op === 'query' ? [] : undefined
+  result: e.data.op === 'seedDemoPersona' ? { belowBaseline: 50, baselineVersion: 88 } : e.data.op === 'query' ? [] : undefined
 });`;
 
 async function open(workerBody) {
