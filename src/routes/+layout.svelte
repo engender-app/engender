@@ -29,7 +29,6 @@
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { bootState, closeJournalForLock, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
   import {
@@ -405,7 +404,10 @@
       import('$lib/disguise/android-bridge'),
       import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
-      import('$lib/reminders/affirmations')
+      import('$lib/reminders/affirmations'),
+      // Loaded here rather than at the top: the shell itself draws no
+      // catalogue wording, and this callback is its only reader.
+      import('$lib/data/vocabulary/vocabulary')
     ]).then(
       ([
         { startAndroidPlatformSync },
@@ -414,7 +416,8 @@
         { androidDisguise },
         { androidLockTiming },
         { androidScreenCapture },
-        { affirmationLines }
+        { affirmationLines },
+        { vocabulary }
       ]) => {
         if (unmounted) return;
         cleanup = startAndroidPlatformSync({

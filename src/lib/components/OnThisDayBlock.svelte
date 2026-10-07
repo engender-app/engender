@@ -25,6 +25,7 @@
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
+  import { tablesReadBy } from '$lib/data/live/writes';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
@@ -70,6 +71,9 @@
     letters: RetrospectiveLetter[];
   }
 
+  /* Seeded with the two reads made after an await (the good-day check and
+     the day's entries), so the first run does not discover them late and
+     start again from the top, the same round trip OnThisDayHomeCard saves. */
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
     // Read before the first await, so the query re-runs when the day changes.
@@ -93,7 +97,7 @@
       })
     );
     return results.filter((d): d is QualifyingDay => d !== null);
-  });
+  }, [...tablesReadBy('stats', 'isGoodDay'), ...tablesReadBy('entries', 'entriesForDay')]);
 
   let days = $derived(
     daysQuery.rows.map((d) => ({
