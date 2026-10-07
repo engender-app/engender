@@ -21,3 +21,22 @@ export function noteTabVisit(key: string): void {
 export function chromeTabOrigin(): string {
   return lastTabKey;
 }
+
+/* The tab each borrowing page (settings chrome, the entry editor) was
+   opened from, by path (after-release 17 review). Without it, history
+   lied: Today, then the editor, then Journal, then browser Back lit
+   Journal over an editor opened from Today, since all that was remembered
+   was the last tab lit. */
+const keptOrigins = new Map<string, string>();
+
+/** Called before a borrowing page arrives. A forward visit keeps the tab
+    lit now; a return through history puts back the one it kept. */
+export function noteBorrowingArrival(path: string, returning: boolean): void {
+  if (!returning) {
+    if (lastTabKey) keptOrigins.set(path, lastTabKey);
+    else keptOrigins.delete(path);
+    return;
+  }
+  const kept = keptOrigins.get(path);
+  if (kept) lastTabKey = kept;
+}

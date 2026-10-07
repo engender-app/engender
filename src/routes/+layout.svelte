@@ -55,8 +55,8 @@
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
   import { navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
-  import { litTabKey } from '$lib/navigation/active-tab';
-  import { chromeTabOrigin, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
+  import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
+  import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -201,7 +201,14 @@
   });
 
   /* Tier 2, one screen becoming another (navigationTransition.ts). */
-  onNavigate((navigation) => navigateWithTransition(navigation, replacesApp));
+  onNavigate((navigation) => {
+    /* Before the page changes, so the nav lights the borrowed tab from the
+       first frame: a page reached through history gets back the tab it was
+       opened from rather than the last one lit (chrome-tab-origin.ts). */
+    const to = navigation.to?.url.pathname;
+    if (to && borrowsTab(to)) noteBorrowingArrival(to, navigation.type === 'popstate');
+    return navigateWithTransition(navigation, replacesApp);
+  });
 
   /* Theme, palette, disguise → document. */
   const systemDark = new MediaQuery('(prefers-color-scheme: dark)');
