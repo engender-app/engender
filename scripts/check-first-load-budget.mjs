@@ -29,7 +29,8 @@
    build`, which is what `npm run check:first-load-budget` does. With
    --record it prints the budget block in the shape
    scripts/first-load-budget.json wants and fails on nothing. */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,8 +100,24 @@ function filesUnder(dir) {
     .filter((path) => statSync(path).isFile());
 }
 
-function measureFirstLoad() {
-  const html = readFileSync(join(BUILD_DIR, 'index.html'), 'utf8');
+/** @typedef {{graph: Record<string, string[]>; selectorGzipBytes: number; shellHash: string; demo: boolean}} LocaleGraphs */
+
+/** @param {string} html @param {LocaleGraphs | undefined} metadata */
+export function localeGraphsForShell(html, metadata) {
+  if (!html.includes('const engenderLocaleGraphs = ')) return undefined;
+  if (!metadata || metadata.shellHash !== createHash('sha256').update(html).digest('hex')) {
+    throw new Error('Locale shell measurement metadata is missing or stale. Run npm run build.');
+  }
+  return metadata;
+}
+
+/** @param {string} html @param {LocaleGraphs | undefined} metadata @param {string} [locale] */
+function measureFirstLoad(html, metadata, locale) {
+  if (metadata) {
+    const { graph, selectorGzipBytes } = metadata;
+    const urls = graph[locale ?? 'en'];
+    return { files: urls.length, gzipBytes: gzipTotal(urls.map((url) => readFileSync(join(BUILD_DIR, url)))) + selectorGzipBytes };
+  }
   const urls = firstLoadUrls(html);
   const buffers = urls.map((url) => readFileSync(join(BUILD_DIR, url)));
   return { files: urls.length, gzipBytes: gzipTotal(buffers) };
@@ -123,7 +140,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const recording = process.argv.includes('--record');
   const budget = JSON.parse(readFileSync(BUDGET_FILE, 'utf8'));
 
-  const firstLoad = measureFirstLoad();
+  const html = readFileSync(join(BUILD_DIR, 'index.html'), 'utf8');
+  const metadata = localeGraphsForShell(html, existsSync(join('.svelte-kit', 'locale-graphs.json'))
+    ? JSON.parse(readFileSync(join('.svelte-kit', 'locale-graphs.json'), 'utf8')) : undefined);
+  const measurements = metadata
+    ? ['en', 'pl'].map((locale) => ({ locale, ...measureFirstLoad(html, metadata, locale) }))
+    : [{ locale: 'all', ...measureFirstLoad(html, metadata) }];
+  const firstLoad = { files: Math.max(...measurements.map((value) => value.files)), gzipBytes: Math.max(...measurements.map((value) => value.gzipBytes)) };
+  for (const measured of measurements) console.log(`locale ${measured.locale}: ${measured.files} files, ${measured.gzipBytes}B gzip (selector included)`);
   const onDemand = measureOnDemand();
 
   console.log(
@@ -158,6 +182,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         2
       )
     );
+    process.exit(0);
+  }
+
+  const demo = metadata?.demo;
+  if (demo && budget.demoBuild?.exempt) {
+    console.log(`NOT GATED demo build: ${budget.demoBuild.reason}`);
     process.exit(0);
   }
 

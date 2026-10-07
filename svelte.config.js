@@ -38,7 +38,9 @@ const config = {
   kit: {
     // SPA: one static bundle, no SSR, no server — Capacitor wraps it unchanged.
     adapter: adapter({ fallback: 'index.html' }),
-    version: isReleaseVersion(version) ? { name: version } : undefined,
+    version: process.env.ENGENDER_BUILD_ID
+      ? { name: process.env.ENGENDER_BUILD_ID }
+      : isReleaseVersion(version) ? { name: version } : undefined,
     /* The production CSP, written into the document as a meta policy.
 
        Why it is here rather than only in nginx: the document holds two inline

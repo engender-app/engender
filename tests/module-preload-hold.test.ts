@@ -25,7 +25,7 @@ function built(): string {
 test('the built document has no live modulepreload link, and names its modules as held ones', () => {
   const html = built();
   expect(html.match(/rel="modulepreload"/g) ?? []).toHaveLength(0);
-  expect((html.match(/rel="x-modulepreload"/g) ?? []).length).toBeGreaterThan(50);
+  expect(runRelease('h2').count).toBeGreaterThan(50);
 });
 
 test('the stylesheets a paint waits for are still ordinary links', () => {
@@ -43,7 +43,8 @@ function runRelease(protocol: string) {
     .find((body) => body.includes('x-modulepreload'));
   if (!script) throw new Error('no inline script in the built document mentions x-modulepreload');
 
-  const count = [...html.matchAll(/<link[^>]*rel="x-modulepreload"[^>]*>/g)].length;
+  const staticCount = [...html.matchAll(/<link[^>]*rel="x-modulepreload"[^>]*>/g)].length;
+  let count = staticCount;
   const held: Array<{ rel: string }> = [];
   const heard: Record<string, Array<() => void>> = {};
   const observers: Array<() => void> = [];
@@ -65,7 +66,12 @@ function runRelease(protocol: string) {
       }
     },
     document: {
-      documentElement: { dataset: {} },
+      documentElement: { dataset: {}, lang: 'en' },
+      write: (markup: string) => {
+        const links = [...markup.matchAll(/<link[^>]*rel="x-modulepreload"[^>]*>/g)];
+        held.push(...links.map(() => ({ rel: 'x-modulepreload' })));
+        count += links.length;
+      },
       querySelector: () => ({ href: '' }),
       querySelectorAll: (selector: string) =>
         selector === 'link[rel="x-modulepreload"]' ? held.filter((link) => link.rel === 'x-modulepreload') : []
@@ -77,7 +83,7 @@ function runRelease(protocol: string) {
 
   const live = () => held.filter((link) => link.rel === 'modulepreload').length;
   // The parser reaches the links in <head>, after the script has run.
-  for (let k = 0; k < count; k++) held.push({ rel: 'x-modulepreload' });
+  for (let k = 0; k < staticCount; k++) held.push({ rel: 'x-modulepreload' });
   for (const notify of [...observers]) notify();
   const parsed = live();
   for (const listener of heard.DOMContentLoaded ?? []) listener();
