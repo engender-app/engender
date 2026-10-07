@@ -31,4 +31,15 @@ describe('store listing metadata', () => {
       }
     }
   });
+
+  it('keeps the shared short description within F-Droid summary rules', () => {
+    // F-Droid reads the same fastlane files: short_description.txt becomes its
+    // Summary, and fdroidserver lint rejects these patterns there.
+    for (const locale of ['en-US', 'pl-PL']) {
+      const summary = readFileSync(new URL(`${locale}/short_description.txt`, root), 'utf8').trim();
+      expect(summary, locale).not.toMatch(/[a-z0-9ąćęłńóśźż][.!?]( |$)/i);
+      expect(summary, locale).not.toMatch(/\b(free software|open source)\b/i);
+      expect(summary, locale).not.toMatch(/(your|for).*android|android.*(app|device|client|port|version)/i);
+    }
+  });
 });
