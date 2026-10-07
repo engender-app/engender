@@ -1,45 +1,35 @@
-engender to dziennik tranzycji. Wpis to nastrój, notatka, twoje skale, tagi i zdjęcia, a żeby się liczył, wystarczy jedno z nich. Możesz dodać kilka wpisów jednego dnia, a pominięty dzień uzupełnić później, z jego datą.
+engender to aplikacja do śledzenia tranzycji, którą jedna osoba trans zrobiła dla innych osób trans. Dziennik, dawki HTZ, zdjęcia, ćwiczenia głosu i plany masz w jednym miejscu. Korzystaj z tego, co pasuje do twojego życia, niezależnie od tego, czy dopiero zastanawiasz się nad swoją płcią, planujesz zmiany, czy masz za sobą lata tranzycji.
 
-Aplikacje do śledzenia nastroju dobrze pasują do codziennego nawyku, tylko nie mają miejsca na płeć. engender działa tak samo i dokłada skale, które nazywasz po swojemu. Zapisuje to, co wpiszesz, i niczego nie interpretuje.
+Dzień po twojemu
 
-Twój dziennik, twoje urządzenie
+Zapisz myśl, zaznacz nastrój albo dodaj zdjęcie. Do wpisu wystarczy jedna z tych rzeczy, a jednego dnia możesz dodać kilka wpisów. Zapisuj dysforię, euforię i inne odczucia na skalach, które nazywasz po swojemu. Dołącz tagi, nagranie głosu albo to, jak czujesz poszczególne części ciała.
 
-Dziennik jest zapisany na twoim urządzeniu. Nie ma konta engender, nie ma serwera z jego kopią i nic nie synchronizuje się w tle.
+Opieka i zmiany
 
-Dziennik jest zaszyfrowany tam, gdzie jest zapisany: wpisy, zdjęcia i miniatury razem z plikami roboczymi. Klucz jest losowy, a przechowuje go dla ciebie magazyn kluczy Androida. Poza szyfrowaniem zostaje tylko to, bez czego aplikacja nie uruchomi się i nie da się odblokować: zaszyfrowany klucz i ustawienia potrzebne do jego odtworzenia, motyw, paleta i język, informacja, czy włączona jest blokada po wyjściu i kamuflaż, oraz znaczniki czasu, które spowalniają kolejne błędne próby PIN-u. Nic z tego nie jest tym, co piszesz.
+Harmonogram leków i przyjęte dawki trzymasz razem, z przypomnieniami o wybranej porze. Notuj wyniki badań i pomiary ciała, śledź zmiany włosów i zdarzenia cyklu, a operację zaplanuj z listą rzeczy do spakowania i listą na czas rekonwalescencji. Zapisuj pytania na następną wizytę, a gdy chcesz pokazać komuś swoje dane, wyeksportuj podsumowanie dla lekarza.
 
-Zapisywanie
+engender zapisuje to, co wpiszesz. Nie stawia diagnoz, nie dobiera dawek i nie zastępuje porady medycznej. O leczeniu rozmawiaj z osobą, która ma odpowiednie kwalifikacje medyczne.
 
-Nastrój w pięciu stopniach, notatka, tagi, zdjęcia i twoje skale. Sześć skal jest wbudowanych, w tym Poczucie płci, od dysforii na jednym końcu do euforii na drugim. Własne skale tworzysz od zera, z dowolnymi opisami końców i zakresem, i łączysz w zestaw, żeby ekran wpisu pytał tylko o to, co naprawdę śledzisz.
+Reszta tranzycji
 
-Zdjęcia są trzymane w pamięci aplikacji. Nie trafiają do galerii telefonu, więc nie wyskoczą komuś, kto przegląda twoje zdjęcia.
+Wypróbuj imię, zaimki albo nowy wygląd i zanotuj, jak się z nimi czujesz. Zapisuj kamienie milowe i układaj mapę tranzycji z kolejnymi krokami. Ćwicz głos i porównuj próbki z wcześniejszymi nagraniami. Mierz czas noszenia bindera, tuckingu albo ucisku i notuj zabiegi depilacji. Napisz list, który otworzy się w wybranym dniu.
 
-Wracanie do wpisów
+Wracanie do zapisów
 
-Miesiąc to kalendarz w jednym kolorze o różnej sile, zależnej od nastroju albo wybranej skali. Dni bez wpisu zostają neutralne, bo luka to nie zły dzień, i kolor nigdy tego nie sugeruje.
+Przeglądaj kalendarz, szukaj w notatkach i tagach, a swoje skale oglądaj na wykresach. Porównuj zdjęcia z różnych miesięcy albo otwórz bilans minionego tygodnia, miesiąca lub roku. Dzień bez wpisu zostaje pusty. W Bezpiecznej przestrzeni masz pod ręką to, co pomaga, i chwile, do których chcesz wracać.
 
-Wyszukiwarka przeszukuje notatki i tagi już w trakcie pisania i nie zwraca uwagi na polskie znaki. Wykresy pokazują, jak twoje skale zmieniają się w czasie. Kamienie milowe odliczają dni do dat przed tobą i co roku wracają do tych, które minęły. Wyniki badań dostają wykres i nic więcej: bez norm i bez oceniania, czy wynik jest dobry.
+Na twoim urządzeniu
 
-Archiwa i eksport
+Aplikacja na Androida działa offline. Nie ma uprawnienia do internetu, więc nie może nigdzie wysłać twojego dziennika. Nie ma konta engender ani reklam. Dziennik opuszcza telefon tylko wtedy, gdy go eksportujesz albo udostępniasz.
 
-Eksport pakuje dziennik do jednego archiwum i szyfruje je hasłem, które wybierzesz, zanim plik opuści aplikację. Import wczytuje je z powrotem. Import z Daylio przyjmuje plik CSV: zanim cokolwiek zapisze, pokazuje liczby i to, jak przełoży nastroje, i zawsze tylko dokłada. Jest też zwykły eksport do CSV i JSON, ale najpierw trzeba potwierdzić ostrzeżenie: te pliki nie są zaszyfrowane.
+Baza dziennika i zdjęcia są na urządzeniu zaszyfrowane. Poza szyfrowaniem zostają ustawienia potrzebne przy starcie, takie jak motyw i język, oraz to, czego aplikacja potrzebuje do odblokowania klucza. Nic z tego nie jest tym, co piszesz.
 
-Zaplanowana kopia sama zapisuje zaszyfrowane archiwum w wybranym folderze, co tydzień albo co miesiąc, więc nie trzeba o niej pamiętać.
+Dziennik otwierasz hasłem, PIN-em albo odciskiem palca, twarzą lub blokadą ekranu telefonu. Kamuflaż, jeśli go włączysz, nadaje aplikacji zwyczajną nazwę i ikonę.
 
-Przypomnienia
+Kopie i eksport
 
-Leki, zastrzyki, wizyty. Jednorazowe albo cykliczne. Codzienne pytanie przychodzi raz dziennie o wybranej porze i nie pojawia się w dni, w które już coś zapisano.
+Zapisz kopię zaszyfrowaną wybranym hasłem albo ustaw kopie według harmonogramu w wybranym folderze. Import kopii przenosi dziennik między Androidem a wersją webową. Możesz też zaimportować wpisy z pliku CSV z Daylio. Pliki CSV, JSON, dziennik do druku i inne eksporty przeznaczone do czytania nie są zaszyfrowane, więc zastanów się, gdzie je zapisujesz i komu wysyłasz.
 
-Jeśli musisz uważać
+Po swojemu
 
-Wszystko z tej sekcji jest wyłączone, dopóki tego nie włączysz. Blokada aplikacji stawia PIN przed wejściem: zatrzyma kogoś, kto weźmie do ręki twój odblokowany telefon, ale nie szyfruje zapisanych danych. Kamuflaż nadaje aplikacji zwyczajną nazwę i ikonę. Czas blokady decyduje, jak szybko aplikacja zablokuje się po wyjściu: od razu, po minucie lub pięciu albo dopiero po ponownym uruchomieniu.
-
-Wygląd
-
-Szesnaście palet opartych na flagach. Każda przemalowuje całą aplikację, razem z wykresami i kalendarzem, w jasnym i ciemnym motywie. Kolor niczego nie ocenia: nie ma czerwieni na zły dzień, a pusty dzień zostaje pusty.
-
-engender działa po polsku i po angielsku.
-
-Wolne oprogramowanie
-
-engender jest wolnym oprogramowaniem na licencji GPLv3. Kod jest publiczny. Jeśli projekt kiedyś stanie, ktoś inny może przejąć kod i pracować dalej.
+Wybierz jedną z 16 palet w barwach flag, jasny lub ciemny motyw, ustaw własne skale i przypnij używane obszary do ekranu Dziś. engender działa po polsku i po angielsku. Aplikacja jest bezpłatna, bez subskrypcji, a jej kod jest publiczny na licencji GPLv3.

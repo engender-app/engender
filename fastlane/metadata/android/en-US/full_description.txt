@@ -1,45 +1,35 @@
-engender is a journal for tracking gender transition. An entry holds a mood, a note, your scales, tags and photos, and it only needs one of those to count. Write several in one day, or backdate one to a day you missed.
+engender is a transition tracker, made by one trans person for other trans people. It keeps your journal next to your HRT doses, photos, voice practice and the steps you are planning. Use the parts that fit your life, whether you are questioning, planning a change or looking back on years of transition.
 
-Mood trackers are the right shape for a daily habit, and they have nowhere to put gender. engender keeps the shape and adds scales you name yourself. It records what you tell it and does not interpret any of it.
+Your day, in your words
 
-Your journal, your device
+Write a note, pick a mood or add a photo. Any one of those is enough for an entry, and you can add several a day. Track dysphoria, euphoria and anything else on scales you name yourself. Add tags, a voice recording or how parts of your body feel.
 
-Your journal is stored on your device. There is no engender account, no server with a copy of it, and nothing syncing in the background.
+Care and changes
 
-Your journal is encrypted where it is stored: entries, photos and thumbnails, and the working files beside them, under a random key held for you by Android's Keystore. A few settings stay outside so the app can start and let you unlock it: the wrapped key and the settings that derive it, your theme, palette and language, the on-off state of lock on leave and disguise, and the timestamps that slow wrong PIN attempts. None of it is anything you wrote.
+Keep medication schedules and the doses you take in one place, with reminders at times you choose. Record lab results and body measurements, follow hair changes and cycle events, and plan surgeries with packing and recovery checklists. Note questions for your next appointment, and export a clinician visit summary when you want to share your records.
 
-Writing it down
+engender records what you enter. It does not diagnose, recommend doses or replace medical advice. Talk to a qualified healthcare professional about treatment decisions.
 
-A mood on five levels, a note, tags, photos, and your scales. Six scales come built in, among them Gender feeling, which runs from dysphoria at one end to euphoria at the other. Make your own, with whatever end labels and range you want, and group them into a preset so the entry screen only asks about what you actually track.
+The rest of your transition
 
-Photos are kept in the app's own storage. They never go into your phone's gallery, so they do not turn up in a camera roll someone else is scrolling.
+Try out a name, pronouns or a new look and note how each one feels. Keep milestones and a roadmap of the steps you want to take. Practise your voice and compare benchmarks with your earlier takes. Time binding, tucking or compression, and log hair removal sessions. Write a letter that opens on a date you choose.
 
-Reading it back
+Looking back
 
-The month is a heat map in one colour, driven by mood or by a scale you pick. Days you did not log stay neutral, because a gap is not a bad day and the colour never says it was.
+Browse the calendar, search your notes and tags, and follow your scales on charts. Compare photos over time, or open a Wrapped recap of the last week, month or year. A day with no entry stays blank. Safe space keeps the things that help and the moments you want to come back to in one place.
 
-Search matches your notes and tags as you type, ignoring diacritics. Charts show how your scales change over time. Milestones count down to dates ahead and come back each year for the ones behind. Lab results get a chart and nothing else: no reference ranges, and nothing telling you a number is good or bad.
+On your device
 
-Keeping it
+The Android app works offline. It does not have the internet permission, so it cannot send your journal anywhere. There is no engender account and no advertising. Your journal leaves the phone only when you export or share it.
 
-Export packs your journal into one Archive, encrypted with a password you choose, before it leaves the app. Import puts it back. Coming from Daylio, import its CSV: it shows the counts and the mood mapping before writing anything, and it only ever merges. Plain CSV and JSON export exist too, behind a warning: those files are not encrypted.
+The journal database and your photos are encrypted on the device. Startup settings such as theme and language, and what the app needs to unlock your key, stay outside that encryption. None of it is anything you wrote.
 
-Scheduled backup writes an encrypted Archive to a folder you pick, weekly or monthly, without you remembering to.
+Open your journal with a passphrase, a PIN, or your phone's fingerprint, face or screen lock. Disguise, if you turn it on, gives the app a plain name and icon.
 
-Reminders
+Backups and exports
 
-Medication, injections, appointments. One-off or repeating. The daily check-in is one prompt a day, at a time you choose, skipped on days you have already written something.
+Save a backup encrypted with a password you choose, or schedule backups to a folder you pick. Import a backup to move your journal between Android and the web app. You can also import entries from a Daylio CSV file. CSV, JSON, printable journal books and the other exports meant for reading are not encrypted, so think about where you save or send them.
 
-If you need to be careful
+Make it yours
 
-Everything in this section is off until you turn it on. App lock puts a PIN in front of the app: it stops someone picking up your unlocked phone and reading it, and it is not encryption of what is stored. Disguise gives the app a plain name and icon. Lock timing decides how soon the app locks again after you leave it: at once, after a minute or five, or only on a restart.
-
-How it looks
-
-Sixteen flag palettes. Each recolours the whole app, charts and calendar included, in light and dark. Colour never judges: no red for a bad day, and an empty day stays empty.
-
-engender is in English and Polish.
-
-Free software
-
-engender is free software under the GPLv3. The source is public. If this project ever stops, someone else can pick the code up.
+Pick one of 16 flag palettes in light or dark, set up your own scales and pin the areas you use to Today. engender is in English and Polish. It is free, with no subscription, and its source code is public under the GPLv3.
