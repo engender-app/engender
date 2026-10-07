@@ -30,8 +30,10 @@
 <!-- The app's voice (announcer.ts): a toast is drawn above and said here,
      because a region inserted already holding its words is often not read
      at all. These two never leave the page. -->
-<p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
-<p class="visually-hidden" role="alert" data-announce-urgent>{speech.assertive}</p>
+<div data-live-regions>
+  <p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
+  <p class="visually-hidden" role="alert" data-announce-urgent>{speech.assertive}</p>
+</div>
 
 <style>
   /* A failure said while a sheet stays open (after-release 06): at the top,
