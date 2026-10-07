@@ -8079,17 +8079,18 @@ try {
   await page.waitForSelector('[data-list-row]');
   await page.waitForFunction(() => {
     const row = [...document.querySelectorAll('[data-list-row]')].find((node) => node.textContent.includes('1994'));
-    const image = row?.querySelector('.doc-thumb img');
+    const image = row?.querySelector('img');
     return image?.complete && image.naturalWidth > 0;
   });
   const invalidPreview = await page.locator('[data-list-row] img, [data-list-row] canvas').evaluateAll((previews) =>
     previews.some((preview) => {
       const bounds = preview.getBoundingClientRect();
-      const container = preview.closest('.doc-thumb')?.getBoundingClientRect();
-      return !(preview instanceof HTMLImageElement) || !container ||
+      const parent = preview.parentElement;
+      const container = parent?.getBoundingClientRect();
+      return !(preview instanceof HTMLImageElement) || !parent || !container ||
         container.width <= 0 || container.height <= 0 || container.width > 48 || container.height > 48 ||
         bounds.width <= 0 || bounds.height <= 0 || bounds.width > 48 || bounds.height > 48 ||
-        getComputedStyle(preview).objectFit !== 'cover';
+        getComputedStyle(parent).overflow !== 'hidden' || getComputedStyle(preview).objectFit !== 'cover';
     })
   );
   if (invalidPreview) {
