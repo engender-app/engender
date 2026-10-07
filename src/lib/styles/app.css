@@ -1713,24 +1713,6 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   }
 }
 
-/* An icon button that reads as a control rather than as a glyph on the page
-   (Alicja, 2026-08-25: the calendar's search "should have a border around it -
-   just like the mood icons in the home screen"). The mood chips carry a ring
-   outside their own body - `outline` with an offset rather than a border, so
-   the circle's size is untouched and nothing reflows when it lights up - and
-   this is that ring at rest. A modifier rather than a change to `.icon-btn`,
-   because most header actions in the app are still bare and which of them earn
-   an outline is each screen's ticket to decide.
-
-   It is the outline and not a border for the same reason the chips use one:
-   `.icon-btn` is exactly --touch-target square, and a border would eat 2px of
-   that on every side. */
-.icon-btn.is-outlined {
-  outline: 1.5px solid var(--outline);
-  outline-offset: -1.5px;
-  border-radius: var(--r-block);
-}
-.icon-btn.is-outlined:hover { outline-color: var(--outline); }
 /* A Settings appearance pick changes every token at once. Reveal the new
    document on a diagonal, while a palette pick moves its swatch outline. */
 html[data-palette-transition] .palette-selection-ring {
