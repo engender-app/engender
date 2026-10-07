@@ -164,13 +164,13 @@ const waitFor = (selector, path = null, timeout = 40000) => {
  *  out on the node side - the whole point of the window. Nothing is
  *  stamped on the page either: the theme is already in the preferences
  *  boot stamps, and the cold window is meant to be untouched. */
-async function recordCold(href, profile, theme) {
+async function recordCold(href, profile, theme, outcome) {
   return screencast(async (cast) => {
     await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
     await page.goto(`${base}${href}`, { waitUntil: 'commit', timeout: 40000 });
     await waitFor('[data-app-root][data-boot="ready"]');
     const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    const coverageProof = await page.evaluate(coldLoadProofExpression(href, profile, theme));
+    const coverageProof = await page.evaluate(coldLoadProofExpression(href, profile, theme, outcome));
     return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
   });
 }
@@ -227,7 +227,7 @@ async function runScene(scene, profile, theme, tokens) {
   }
   const href = fillTokens(scene.at, tokens);
   try {
-    const result = scene.act ? await recordSheet(scene, theme) : await recordCold(href, profile, theme);
+    const result = scene.act ? await recordSheet(scene, theme) : await recordCold(href, profile, theme, scene.coldOutcome);
     await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
   } catch (err) {
     report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });

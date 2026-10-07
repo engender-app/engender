@@ -290,7 +290,7 @@ const SCENES = [
   { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
   { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', after: {"selector": "[data-sheet]"}, is: 'the about sheet opening' },
-  { name: 'presentations-add', at: '/settings?raise=modes', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add presentation sheet opening' },
+  { name: 'presentations-add', at: '/settings', prepare: ['[data-list-row="presentations"]'], act: '[data-sheet] [data-add]', after: { selector: '[name="presentation-name"]' }, is: 'the add presentation sheet opening' },
   { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', prepare: ['[data-tag-group] [data-disclosure-toggle]'], when: 'persona', after: {"selector": "[data-tag-hide]", "attribute": "aria-label"}, is: 'hiding a tag in settings' },
   { name: 'reminders-open', at: '/settings/reminders', act: 'a[href^="/settings/reminders/"]', androidOnly: true, requiresFixture: 'reminder', when: 'persona', after: {"route": "chosen-href"}, is: 'opening a reminder for editing' },
   { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'opening regimen template picker sheet' },
@@ -518,13 +518,20 @@ export const profileProofExpression = (profile) => `(() => {
   return proof;
 })()`;
 
-export const coldLoadProofExpression = (href, profile, theme) => `(() => {
+export const coldLoadProofExpression = (href, profile, theme, outcome = null) => `(() => {
   const expected = new URL(${JSON.stringify(href)}, location.origin);
-  const proof = { requested: expected.pathname + expected.search, route: location.pathname + location.search,
+  const outcome = ${JSON.stringify(outcome)};
+  const requested = expected.pathname + expected.search;
+  if (outcome?.consumedQuery) expected.searchParams.delete(outcome.consumedQuery);
+  const surface = outcome?.selector ? document.querySelector(outcome.selector) : null;
+  const proof = { requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
+    surface: outcome?.selector ? !!surface?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : undefined,
+    surfaceSelector: outcome?.selector,
     profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
     boot: document.querySelector('[data-app-root]')?.dataset.boot, theme: document.documentElement.dataset.theme,
     loading: !!document.querySelector('[data-gate-skeleton]'), unavailable: !!document.querySelector('[data-unavailable], [data-notice$="-unavailable"]') };
-  if (proof.route !== proof.requested) throw new Error('cold-load wrong route: ' + JSON.stringify(proof));
+  if (proof.route !== proof.expected) throw new Error('cold-load wrong route: ' + JSON.stringify(proof));
+  if (outcome?.selector && !proof.surface) throw new Error('cold-load missing raised surface: ' + JSON.stringify(proof));
   if (proof.profile !== ${JSON.stringify(profile)}) throw new Error('cold-load wrong profile: ' + JSON.stringify(proof));
   if (proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('cold-load journal profile mismatch: ' + JSON.stringify(proof));
   if (proof.boot !== 'ready' || proof.unavailable || proof.loading) throw new Error('cold-load unfinished screen: ' + JSON.stringify(proof));
@@ -1781,8 +1788,8 @@ const HYDRATION_SCENES = [
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
-  { name: 'entry-templates', at: '/settings?raise=templates', is: 'editable entry templates' },
-  { name: 'presentations', at: '/settings?raise=modes', is: 'the presentation catalogue' },
+  { name: 'entry-templates', at: '/settings?raise=templates', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-entry-template])' }, is: 'editable entry templates' },
+  { name: 'presentations', at: '/settings?raise=modes', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-presentation], [data-notice="presentations-empty"])' }, is: 'the presentation catalogue' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
@@ -1803,7 +1810,7 @@ const HYDRATION_SCENES = [
      are right to ignore. The quick-log dims sheet is a query param, so it
      opens over Home's own cold mount - the after-save state a real quick
      log lands in. */
-  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
+  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', coldOutcome: { consumedQuery: 'quickLogDims', selector: '[data-sheet] [data-quick-log-dims]' }, needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
   { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },
