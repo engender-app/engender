@@ -20,7 +20,8 @@
     reference,
     onAccept,
     onRetake,
-    onCancel
+    onCancel,
+    busy = false
   }: {
     /** The shot just captured, waiting for a decision. Null keeps the sheet
         closed. */
@@ -32,6 +33,8 @@
     onAccept: (photo: NormalizedPhoto) => void;
     onRetake: () => void;
     onCancel: () => void;
+    /** The accepted shot is being stored: the sheet and its buttons wait. */
+    busy?: boolean;
   } = $props();
 
   const DEFAULT_OPACITY = 50;
@@ -92,7 +95,7 @@
   });
 </script>
 
-<Sheet open={photo !== null} title={m.photo_review_title()} onClose={onCancel}>
+<Sheet open={photo !== null} title={m.photo_review_title()} onClose={onCancel} {busy}>
   {#if photo}
     <h3>{m.photo_review_title()}</h3>
     <div class="onion-frame">
@@ -125,10 +128,10 @@
       </div>
     {/if}
     <div class="stack-3">
-      <button class="btn btn-primary" data-use-photo onclick={() => onAccept(photo)}>
+      <button class="btn btn-primary" data-use-photo disabled={busy} onclick={() => onAccept(photo)}>
         <Icon name="check" size={18} /><span>{m.photo_review_use()}</span>
       </button>
-      <button class="btn btn-soft" data-retake-photo onclick={onRetake}>
+      <button class="btn btn-soft" data-retake-photo disabled={busy} onclick={onRetake}>
         <Icon name="camera" size={18} /><span>{m.photo_review_retake()}</span>
       </button>
     </div>

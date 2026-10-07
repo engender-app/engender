@@ -354,7 +354,7 @@
     <button class="btn btn-primary" data-area-finish-confirm disabled={sheetWrite.busy} onclick={confirmFinish}>
       <span>{OFFER.copy.confirm()}</span>
     </button>
-    <button class="btn btn-ghost" onclick={() => (sheetOpen = false)}>
+    <button class="btn btn-ghost" disabled={sheetWrite.busy} onclick={() => (sheetOpen = false)}>
       <span>{m.area_finish_cancel()}</span>
     </button>
   </div>
@@ -378,7 +378,7 @@
       <button class="btn btn-primary" data-area-suspend-confirm disabled={sheetWrite.busy} onclick={confirmSuspend}>
         <span>{SUSPEND_OFFER.copy.confirm()}</span>
       </button>
-      <button class="btn btn-ghost" onclick={() => (suspendSheetOpen = false)}>
+      <button class="btn btn-ghost" disabled={sheetWrite.busy} onclick={() => (suspendSheetOpen = false)}>
         <span>{m.area_suspend_cancel()}</span>
       </button>
     </div>
