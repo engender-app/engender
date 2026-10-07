@@ -8072,12 +8072,26 @@ try {
   await paperRows.nth(filed).click();
   await page.waitForSelector('[data-document-page]', { timeout: 15000 });
 
-  /* The page is drawn here and nowhere else (ADR-0065), so the list it came
-     from must not have had one on it. */
+  /* Audit item 9 allows a 48px thumbnail in each row. Wait for the uploaded
+     scan to decode so this check cannot pass before its preview arrives.
+     Full pages still belong behind the row's deliberate tap. */
   await page.goBack({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-list-row]');
-  if (await page.locator('[data-list-row] img').count()) {
-    throw new Error('the documents list is drawing a page image');
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll('[data-list-row]')].find((node) => node.textContent.includes('1994'));
+    const image = row?.querySelector('.doc-thumb img');
+    return image?.complete && image.naturalWidth > 0;
+  });
+  const invalidPreview = await page.locator('[data-list-row] img, [data-list-row] canvas').evaluateAll((previews) =>
+    previews.some((preview) => {
+      const bounds = preview.getBoundingClientRect();
+      return !(preview instanceof HTMLImageElement) || !preview.closest('.doc-thumb') ||
+        bounds.width <= 0 || bounds.height <= 0 || bounds.width > 48 || bounds.height > 48 ||
+        getComputedStyle(preview).objectFit !== 'cover';
+    })
+  );
+  if (invalidPreview) {
+    throw new Error('document rows must keep page previews inside 48px thumbnails');
   }
 
   const stillThere = (await page.locator('[data-list-row]').allTextContents()).findIndex((text) => text.includes('1994'));
