@@ -8674,9 +8674,12 @@ await flow('licence notices', async () => {
 try {
   await fresh('/settings');
   await page.locator('[data-list-row="about"]').click();
-  for (const link of ['privacy', 'source']) {
+  for (const [link, expected] of [
+    ['privacy', 'https://engender.barankiewicz.dev/en/privacy/'],
+    ['source', 'https://github.com/engender-app/engender']
+  ]) {
     const href = await page.locator(`[data-about-link="${link}"]`).getAttribute('href');
-    if (!href?.startsWith('https://github.com/engender-app/engender')) {
+    if (href !== expected) {
       throw new Error(`About's ${link} link goes to ${href}`);
     }
   }
