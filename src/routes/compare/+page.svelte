@@ -363,34 +363,39 @@
     {@const b = queryB.value}
     <!-- A table, because that is what two columns of the same readings is.
          No third column: the difference between the two is the reader's to
-         draw, and a delta would be the app naming a winner. -->
-    <div class="compare-metrics" data-compare-table>
-      <div class="rows-divide compare-metrics-row compare-metrics-header">
-        <span></span>
-        <span class="compare-period-label" data-compare-period-label>{periodA.label}</span>
-        <span class="compare-period-label" data-compare-period-label>{periodB.label}</span>
+         draw, and a delta would be the app naming a winner.
+
+         The table roles over the drawn grid rather than a <table>: a
+         screen reader then says which period and which reading each number
+         is, instead of a flat run of numbers (after-release 21, audit
+         L08-15), and the layout stays the one already drawn. -->
+    <div class="compare-metrics" role="table" aria-label={m.compare_title()} data-compare-table>
+      <div class="rows-divide compare-metrics-row compare-metrics-header" role="row">
+        <span role="cell"></span>
+        <span class="compare-period-label" role="columnheader" data-compare-period-label>{periodA.label}</span>
+        <span class="compare-period-label" role="columnheader" data-compare-period-label>{periodB.label}</span>
       </div>
-      <div class="rows-divide compare-metrics-row" data-compare-metric="entries">
-        <span class="compare-metric-name">{m.compare_entries_label()}</span>
-        <span>{a.entryCount}</span>
-        <span>{b.entryCount}</span>
+      <div class="rows-divide compare-metrics-row" role="row" data-compare-metric="entries">
+        <span class="compare-metric-name" role="rowheader">{m.compare_entries_label()}</span>
+        <span role="cell">{a.entryCount}</span>
+        <span role="cell">{b.entryCount}</span>
       </div>
-      <div class="rows-divide compare-metrics-row" data-compare-metric="mood">
-        <span class="compare-metric-name">{m.mood()}</span>
-        <span>{fmtMood(a.averageMood)}</span>
-        <span>{fmtMood(b.averageMood)}</span>
+      <div class="rows-divide compare-metrics-row" role="row" data-compare-metric="mood">
+        <span class="compare-metric-name" role="rowheader">{m.mood()}</span>
+        <span role="cell">{fmtMood(a.averageMood)}</span>
+        <span role="cell">{fmtMood(b.averageMood)}</span>
       </div>
       {#each vocabulary.activeDimensions as d, i (d.key)}
-        <div class="rows-divide compare-metrics-row" data-compare-metric={d.key}>
-          <span class="compare-metric-name">{d.name}</span>
-          <span>{fmtDimension(a.dimensionAverages[i]?.average ?? null)}</span>
-          <span>{fmtDimension(b.dimensionAverages[i]?.average ?? null)}</span>
+        <div class="rows-divide compare-metrics-row" role="row" data-compare-metric={d.key}>
+          <span class="compare-metric-name" role="rowheader">{d.name}</span>
+          <span role="cell">{fmtDimension(a.dimensionAverages[i]?.average ?? null)}</span>
+          <span role="cell">{fmtDimension(b.dimensionAverages[i]?.average ?? null)}</span>
         </div>
       {/each}
-      <div class="rows-divide compare-metrics-row compare-metrics-tags" data-compare-metric="tags">
-        <span class="compare-metric-name">{m.recap_tags_title()}</span>
-        <span class="compare-metric-text">{a.topTagLabel}</span>
-        <span class="compare-metric-text">{b.topTagLabel}</span>
+      <div class="rows-divide compare-metrics-row compare-metrics-tags" role="row" data-compare-metric="tags">
+        <span class="compare-metric-name" role="rowheader">{m.recap_tags_title()}</span>
+        <span class="compare-metric-text" role="cell">{a.topTagLabel}</span>
+        <span class="compare-metric-text" role="cell">{b.topTagLabel}</span>
       </div>
     </div>
   {/if}

@@ -1514,6 +1514,7 @@
   "home_edit_heading": "Arrange Today",
   "home_edit_hint": "Drag a row by its handle, or move it with the arrow keys.",
   "home_edit_move": "Move {row}",
+  "home_edit_moved": "Moved to position {position} of {total}.",
   "home_edit_none": "No rows pinned. Choose one below.",
   "home_edit_reset": "Back to the default set",
   "home_edit_reset_hint": "Restores the default pinned rows and turns on all live tiles and agenda items. Your journal data stays unchanged.",
@@ -3244,6 +3245,51 @@
   "surgery_compare_open_hint": "Counts through today, since recovery is still going.",
   "surgery_compare_title": "Compare this stretch",
   "surgery_compare_too_short": "No journal entries before surgery to compare with.",
+  "surgery_badge_checklist": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} checklist item",
+        "nPlural=other": "{n} checklist items"
+      }
+    }
+  ],
+  "surgery_badge_consults": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} consult",
+        "nPlural=other": "{n} consults"
+      }
+    }
+  ],
+  "surgery_badge_photos": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} photo",
+        "nPlural=other": "{n} photos"
+      }
+    }
+  ],
   "surgery_consult_add": "Add a consult",
   "surgery_consult_date_label": "Consult date",
   "surgery_consult_delete_aria": "Remove the consult on {date}",

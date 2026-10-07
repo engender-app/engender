@@ -703,9 +703,11 @@
     <span class="span-tl-today" aria-label={m.tl_you_are_here()} role="img"></span>
 
     {#each ['start', 'end'] as const as handle (handle)}
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-      <button
-        type="button"
+      <!-- A div with the slider role rather than a button: slider is not a
+           role a button may take, and a button's own role wins in some
+           readers (after-release 21, audit L05-08). -->
+      <div
+        tabindex="0"
         class="span-tl-handle"
         class:is-start={handle === 'start'}
         class:is-end={handle === 'end'}
@@ -726,7 +728,7 @@
         onkeydown={(e) => onHandleKey(e, handle)}
       >
         <span class="span-tl-grip" aria-hidden="true"></span>
-      </button>
+      </div>
     {/each}
   </div>
 
