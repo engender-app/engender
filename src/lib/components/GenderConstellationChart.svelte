@@ -160,6 +160,12 @@
       dataset-arrives sweep it shares its one mechanism with. */
   let replay = $state(0);
 
+  /** True while the sweep below draws the head across, which rewrites the
+      readout every frame. The readout is an <output>, a live region, and
+      would be read out at every reading it passes (after-release 21, audit
+      L04-13); it is muted until the head comes to rest. */
+  let sweeping = $state(false);
+
   $effect(() => {
     void replay;
     if (signature === '') {
@@ -178,10 +184,15 @@
       const t = Math.min(1, (now - began) / duration);
       head = Math.round(EASE_OUT(t) * last);
       if (t < 1) frame = requestAnimationFrame(step);
+      else sweeping = false;
     };
     head = 0;
+    sweeping = true;
     frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      sweeping = false;
+    };
   });
 
   /* Held to the dataset on the way out rather than corrected on the way in,
@@ -344,7 +355,7 @@
       </svg>
 
       {#if at}
-        <output class="cn-readout" data-constellation-readout>
+        <output class="cn-readout" data-constellation-readout aria-live={sweeping ? 'off' : 'polite'}>
           <span class="visually-hidden">{readingLabel(at)}</span>
           <span aria-hidden="true">{dayLabel(at.day)}</span>
           {#if headMode}

@@ -690,7 +690,7 @@
             {#if photosShown}
               <div transition:disclose={whileStaying}><SectionHeading text={m.search_entries_heading()} /></div>
             {/if}
-            <EntryDays {groups} {role} {marginNotesByEntry} />
+            <EntryDays {groups} {role} {marginNotesByEntry} level={photosShown ? 3 : 2} />
             {#if remaining > 0}
               <button class="btn btn-soft search-more" data-search-more transition:disclose={whileStaying} onclick={() => (pages += 1)}>
                 <span>{m.list_more({ count: Math.min(PAGE, remaining) })}</span>

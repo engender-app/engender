@@ -64,18 +64,26 @@
     /** The `.field.spread` row layout - a label to the left, a
         self-labelling control to the right (Switch). */
     spread?: boolean;
-    /** The control, handed the one id it should carry and - where there is
-        a hint - the id of the paragraph it should point `aria-describedby`
-        at. */
-    children: Snippet<[string, string | undefined]>;
+    /** The control, handed the one id it should carry, the id of the hint
+        paragraph it should point `aria-describedby` at where there is one,
+        and whether the person has been in the field and left it. */
+    children: Snippet<[string, string | undefined, boolean]>;
   } = $props();
+
+  /* Set the first time focus leaves the field. A control marks itself
+     `aria-invalid` only once this is true: an empty field nobody has
+     reached yet is not a mistake, and a screen reader that says "invalid"
+     on every field of a fresh form is crying wolf (after-release 21, audit
+     A11Y-14). Lives as long as the field does, so a sheet opened again
+     starts clean. */
+  let touched = $state(false);
 
   const mintedId = $props.id();
   const fieldId = $derived(id ?? mintedId);
   const hintId = $derived(`${fieldId}-hint`);
 </script>
 
-<div class="field" class:spread>
+<div class="field" class:spread onfocusout={() => (touched = true)}>
   {#if legend}
     <span class="field-label" id={fieldId}>{label}</span>
   {:else}
@@ -84,7 +92,7 @@
   {#if hint}
     <p class="field-hint" class:visually-hidden={hidden} id={hintId}>{hint}</p>
   {/if}
-  {@render children(fieldId, hint ? hintId : undefined)}
+  {@render children(fieldId, hint ? hintId : undefined, touched)}
 </div>
 
 <style>

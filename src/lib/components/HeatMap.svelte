@@ -606,13 +606,17 @@
 
        Disclosed rather than inserted, because it is the one thing a metric
        switch adds to or takes from the height of the screen: mounted in one
-       frame, the key and the chips under it jumped a row. -->
+       frame, the key and the chips under it jumped a row.
+
+       An image to a screen reader, named by the sentence: an aria-label on
+       a plain div is not read (after-release 21, audit L04-14). -->
   {#if !view.isMood}
     <div
       class="cal-legend"
       data-cal-legend
       data-cal-sits-out
       transition:disclose
+      role="img"
       aria-label={m.heat_legend_aria({ metric: metricName, low: legend.low, high: legend.high })}
     >
       <span class="cal-legend-end">{legend.low}</span>

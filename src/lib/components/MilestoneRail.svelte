@@ -295,15 +295,12 @@
       {@const label = gapLabel(item.fromEpochDay, item.toEpochDay)}
       <!-- The axis runs behind this rather than being interrupted by it,
            so the label is the only thing here: two dashed rules either
-           side of it were what broke the line into pieces. -->
-      <div
-        class="tl-gap"
-        data-tl-gap
-        bind:this={itemEls[index]}
-        aria-label={m.tl_gap_aria({ duration: label })}
-        transition:collapse|global
-      >
-        <span class="tl-gap-label">{m.tl_gap_label({ duration: label })}</span>
+           side of it were what broke the line into pieces. The fuller
+           sentence is hidden text rather than an aria-label, which a plain
+           div does not have read (after-release 21, audit L04-14). -->
+      <div class="tl-gap" data-tl-gap bind:this={itemEls[index]} transition:collapse|global>
+        <span class="tl-gap-label" aria-hidden="true">{m.tl_gap_label({ duration: label })}</span>
+        <span class="visually-hidden">{m.tl_gap_aria({ duration: label })}</span>
       </div>
     {:else}
       {@const origin = resolveMilestoneOrigin(item.milestone)}

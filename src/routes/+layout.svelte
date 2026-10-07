@@ -70,9 +70,7 @@
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
   import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
-  import SchemaTooNew from '$lib/components/SchemaTooNew.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
-  import UpdateNotice from '$lib/components/UpdateNotice.svelte';
 
   let { children } = $props();
 
@@ -529,7 +527,14 @@
          urgent enough to sit above a passphrase gate or a lock screen, and
          those two screens have one job each. -->
     {#if isReadyState(bootState) && !locked}
-      <UpdateNotice />
+      <!-- Loaded after boot rather than with it, like the schema gate below:
+           neither is drawn on a first visit, and the first-load budget had
+           no room left for the live regions after-release 21 added. The
+           service worker precaches every chunk of a release, so both still
+           load offline. -->
+      {#await import('$lib/components/UpdateNotice.svelte') then { default: UpdateNotice }}
+        <UpdateNotice />
+      {/await}
     {/if}
     <!-- Before <main>, which is what puts the rail to the left of the
          content at desktop width without an `order` (order moves boxes and
@@ -557,7 +562,9 @@
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter>
         {#if schemaTooNew}
-          <SchemaTooNew />
+          {#await import('$lib/components/SchemaTooNew.svelte') then { default: SchemaTooNew }}
+            <SchemaTooNew />
+          {/await}
         {:else if bootFailed}
           <!-- Instead of the route, like the gates: the notice is above. -->
         {:else if needsPassphrase}

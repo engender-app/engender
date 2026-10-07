@@ -835,10 +835,13 @@
 
   <SectionHeading text={m.exp_encrypted_section()} />
   <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
+  <!-- autocomplete off here and on import: an archive's password is not
+       this site's login, and a password manager should not offer to save
+       it as one (after-release 21, audit A11Y-16). -->
   <Field label={m.exp_password_label()} id="exp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
-        autocomplete="new-password" bind:value={expPass} />
+        autocomplete="off" bind:value={expPass} />
     {/snippet}
   </Field>
   <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
@@ -927,7 +930,7 @@
   </Field>
   <Field label={m.exp_password_label()} id="imp-pass">
     {#snippet children(id)}
-      <input class="input" type="password" {id} name="imp-pass"
+      <input class="input" type="password" {id} name="imp-pass" autocomplete="off"
         placeholder={m.imp_password_placeholder()} bind:value={impPass} />
     {/snippet}
   </Field>

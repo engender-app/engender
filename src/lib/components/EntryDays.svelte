@@ -44,7 +44,8 @@
     role,
     clampNotes = true,
     marginNotesByEntry,
-    arrive = false
+    arrive = false,
+    level
   }: {
     groups: EntryDayGroup[];
     role?: Role;
@@ -65,6 +66,9 @@
         way every block in the app arrives (rule 10, ADR-0078). Without
         it a run mounts as it stands, and only a day added later opens. */
     arrive?: boolean;
+    /** Each day's heading level, handed to DayCard: the placing screen's
+        to say. */
+    level?: 2 | 3;
   } = $props();
 
   /* A day heads its card the way the day screen heads itself: weekday,
@@ -82,6 +86,7 @@
       key={String(group.epochDay)}
       {role}
       tight
+      {level}
       heading={fmtDay(group.epochDay, {
         weekday: 'long',
         day: 'numeric',
