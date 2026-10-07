@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium, settlePage } from './browser-harness.mjs';
+import { fillDate, launchChromium, settlePage, dateValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -110,7 +110,7 @@ try {
   await fieldOrder();
   assert.equal(await page.locator('[data-kind]').count(), 0, 'No suggestions before naming a kind');
   const today = await page.evaluate(() => new Date().toLocaleDateString('sv-SE'));
-  assert.equal(await page.locator('#appointment-date').inputValue(), today);
+  assert.equal(await dateValue(page.locator('#appointment-date')), today);
   assert.equal(await page.locator('[data-save-appointment]').isEnabled(), true, 'Kind, place and note remain optional');
   console.log('PASS appointment content and context precede day in reading and keyboard order');
   assert.equal(await page.locator('[data-add-to-calendar]').count(), 0, 'Calendar action needs a committed appointment');
@@ -137,7 +137,7 @@ try {
   assert.ok(!ics.includes('Clinic') && !ics.includes('Ask about bloods'), 'Handoff keeps journal context private');
   await page.locator('#calendar-handoff-title').waitFor({ state: 'detached' });
   console.log('PASS calendar handoff uses committed appointment while draft day differs');
-  assert.equal(await page.locator('#appointment-date').inputValue(), '2024-03-14', 'Handoff retains draft');
+  assert.equal(await dateValue(page.locator('#appointment-date')), '2024-03-14', 'Handoff retains draft');
   await page.locator('#appointment-note').fill('Unsaved questions');
   await page.keyboard.press('Escape');
   await page.locator('[data-keep-editing]').click();
@@ -167,7 +167,7 @@ try {
   assert.ok((await linkedPast.innerText()).includes('Fixture journey'), 'Procedure link survives editing');
   await linkedPast.click();
   assert.equal(await page.locator('#appointment-kind').inputValue(), 'Consultation updated');
-  assert.equal(await page.locator('#appointment-date').inputValue(), '2024-03-13');
+  assert.equal(await dateValue(page.locator('#appointment-date')), '2024-03-13');
   await close();
   await navigate('/health/surgery');
   await page.getByRole('button', { name: /Fixture journey/ }).first().click();

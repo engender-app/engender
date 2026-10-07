@@ -29,7 +29,7 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import { drawRandomEntry } from '$lib/data/randomDraw';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import { dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { fmtDateValue } from '$lib/data/dates';
   import { disclose } from '$lib/motion/reveal';
   import { whileStaying } from '$lib/motion/whileStaying';
   import { answerTotal, entrySearchFiltersOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
@@ -271,10 +271,10 @@
             <li>{m.search_filter_mood_chip({ mood: moodName(mood) })}</li>
           {/each}
           {#if question.startEpochDay != null}
-            <li>{m.search_filter_start_chip({ date: dateInputValueFromEpochDay(question.startEpochDay) })}</li>
+            <li>{m.search_filter_start_chip({ date: fmtDateValue(question.startEpochDay) })}</li>
           {/if}
           {#if question.endEpochDay != null}
-            <li>{m.search_filter_end_chip({ date: dateInputValueFromEpochDay(question.endEpochDay) })}</li>
+            <li>{m.search_filter_end_chip({ date: fmtDateValue(question.endEpochDay) })}</li>
           {/if}
           {#if question.hasNote}<li>{m.search_filter_has_note()}</li>{/if}
           {#if question.hasPhoto}<li>{m.search_filter_has_photo()}</li>{/if}

@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { launchChromium, dateValue } from './browser-harness.mjs';
 
 const outDir = '.claude/measurements-jump-shots';
 await mkdir(outDir, { recursive: true });
@@ -122,7 +122,7 @@ try {
   await page.waitForSelector('[data-sheet] input[name="measurement-value"]');
   await page.locator('[data-sheet] input[name="measurement-value"]').fill('55.5');
   // The date field carries the draft's date, which is what preservation is about
-  const dateBefore = await page.locator('[data-sheet] input[name="measurement-date"]').inputValue();
+  const dateBefore = await dateValue(page.locator('[data-sheet] input[name="measurement-date"]'));
   assert(dateBefore, 'The new editor should arrive with a date');
 
   // While the editor is open it owns the screen: the jump control sits
@@ -138,7 +138,7 @@ try {
   });
   assert(blocked, 'An open editor must block the jump control');
   assert.equal(await page.locator('[data-sheet] input[name="measurement-value"]').inputValue(), '55.5');
-  assert.equal(await page.locator('[data-sheet] input[name="measurement-date"]').inputValue(), dateBefore);
+  assert.equal(await dateValue(page.locator('[data-sheet] input[name="measurement-date"]')), dateBefore);
 
   // Closing a changed draft offers the discard choice, and only then is
   // the jump reachable - switching preserves the selected dimension

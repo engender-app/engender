@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, dateValue } from './browser-harness.mjs';
 import { PALETTES } from './palettes.mjs';
 
 const gallery = process.argv.includes('--gallery');
@@ -234,7 +234,7 @@ try {
   assert.equal((await stored('shbg')).length, before.length + 1);
   await page.locator('[data-segment="estradiol"]').click();
   await page.locator(`[data-lab-result="${imported.id}"]`).click();
-  assert.equal(await page.locator('#lab-date').inputValue(), '2024-03-12');
+  assert.equal(await dateValue(page.locator('#lab-date')), '2024-03-12');
   assert.equal(await page.locator('#lab-time').inputValue(), '');
   await close();
   console.log('PASS fixed OCR retries recognition, marks duplicate, corrects selected row, saves exact fields without skipped rows');
