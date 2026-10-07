@@ -1708,12 +1708,12 @@
     align-items: center;
     justify-content: space-between;
   }
+  /* The field label's type, sentence case (after-release 28): "Tryout:
+     she/her" read as TRYOUT: SHE/HER and changed the name it quotes. */
   .contextual-title {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
     color: var(--text-2);
-    text-transform: uppercase;
   }
   .contextual-chips {
     display: flex;

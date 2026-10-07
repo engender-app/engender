@@ -201,8 +201,6 @@
     display: block;
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
     /* `--role-ink`, not `--role-mark`: this is small text somebody reads,
        not a chart line or an icon, and only the ink variant is held to
        4.5:1 (kit.css's own [data-kit-role] comment) - the mark variant

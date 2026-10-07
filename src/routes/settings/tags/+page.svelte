@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -73,13 +74,14 @@
   <ScreenHeader title={m.manage_tags()} back="/settings" subtitle={m.tags_intro()} />
 
   {#snippet groupSection(g: TagGroup)}
-    <details
+    <Disclosure
       class="managed-group"
       data-tag-group={g.key}
-      open={openGroups[g.key] ?? !g.builtIn}
-      ontoggle={(e) => (openGroups[g.key] = e.currentTarget.open)}
+      label={g.builtIn ? g.name : `${g.name} · ${m.custom_suffix()}`}
+      id={`tag-group-${g.key}`}
+      strong
+      bind:open={() => openGroups[g.key] ?? !g.builtIn, (next) => (openGroups[g.key] = next)}
     >
-      <summary>{g.name}{#if !g.builtIn} · {m.custom_suffix()}{/if}</summary>
       <div class="tag-group-action">
         <button class="btn btn-soft" data-add-tag aria-label={m.tags_add_to_group({ group: g.name })} onclick={() => { addTarget = g.key; newLabel = ''; }}>
           <Icon name="plus" size={20} /><span>{m.tags_new_tag()}</span>
@@ -114,7 +116,7 @@
           </div>
         {/each}
       </div>
-    </details>
+    </Disclosure>
   {/snippet}
 
   <!-- Your own groups and the way to make one come before the built-in

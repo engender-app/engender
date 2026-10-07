@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -108,8 +109,7 @@
       {/each}
     </div>
 
-    <details class="managed-group">
-      <summary>{m.body_regions_builtin_heading()}</summary>
+    <Disclosure class="managed-group" label={m.body_regions_builtin_heading()} id="body-regions-builtin" strong>
       <div class="managed-tags">
         {#each builtIns as r (r.id)}
           <div class="rows-divide managed-tag" class:is-hidden={r.hidden}>
@@ -128,7 +128,7 @@
           </div>
         {/each}
       </div>
-    </details>
+    </Disclosure>
   </ReadReserve>
 
   <Sheet busy={adding.busy} bind:open={addOpen} title={m.body_regions_new_sheet()}>
