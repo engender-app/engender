@@ -1,5 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { ReferencePhoto } from '$lib/stores/photoPicking';
   import { readPhoto } from '$lib/stores/photoFiles';
@@ -70,11 +71,20 @@
 
     let objectUrl: string | null = null;
     let stale = false;
-    readPhoto(reference.fileName).then((bytes) => {
-      if (stale || !bytes) return;
-      objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
-      referenceUrl = objectUrl;
-    });
+    readPhoto(reference.fileName).then(
+      (bytes) => {
+        if (stale || !bytes) return;
+        objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
+        referenceUrl = objectUrl;
+      },
+      (error) => {
+        /* A tampered or missing reference throws (PhotoThumb says so too).
+           The review still works without the overlay; it says why the
+           overlay is not there (after-release 06, L05-06). */
+        console.error('the alignment reference could not be read', error);
+        if (!stale) toast(m.photo_unreadable());
+      }
+    );
     return () => {
       stale = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);

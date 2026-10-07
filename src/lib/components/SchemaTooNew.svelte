@@ -17,22 +17,34 @@
   import { m } from '$lib/paraglide/messages';
   import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
   import GateScreen from './GateScreen.svelte';
+  import { collapse } from '$lib/motion/reveal';
 
   let looking = $state(false);
-  let nothingNewer = $state(false);
+  /* What the last look found, said in the line under the button. 'reopen'
+     is a newer release that could not take over this page (applyUpdate
+     answered false): the button used to stay on "Looking…" for good then
+     (after-release 06, L05-06). A look that throws reads as finding
+     nothing, which is what it found. */
+  let result = $state<'none' | 'reopen' | null>(null);
 
   async function lookForNewer() {
     if (looking) return;
     looking = true;
-    nothingNewer = false;
-    if (await checkForNewerRelease()) {
-      // Reloads onto the new release, so this screen is replaced by a boot
-      // that can read the Journal. Nothing is in flight to interrupt: this
-      // one never opened it.
-      await applyUpdate();
-      return;
+    result = null;
+    try {
+      if (await checkForNewerRelease()) {
+        // Reloads onto the new release, so this screen is replaced by a boot
+        // that can read the Journal. Nothing is in flight to interrupt: this
+        // one never opened it.
+        if (await applyUpdate()) return;
+        result = 'reopen';
+      } else {
+        result = 'none';
+      }
+    } catch (error) {
+      console.error('could not look for a newer release', error);
+      result = 'none';
     }
-    nothingNewer = true;
     looking = false;
   }
 </script>
@@ -43,11 +55,15 @@
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
     </button>
-    {#if nothingNewer}
+    {#if result === 'none'}
       <!-- SF-004: this result used to appear with no announcement - a
            silent content swap for anyone not looking at the screen. -->
-      <p class="gate-body" role="status" data-nothing-newer>
+      <p class="gate-body" role="status" data-nothing-newer transition:collapse>
         {m.boot_schema_too_new_still_old()}
+      </p>
+    {:else if result === 'reopen'}
+      <p class="gate-body" role="status" data-newer-waiting transition:collapse>
+        {m.boot_schema_too_new_reopen()}
       </p>
     {/if}
   </div>
