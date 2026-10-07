@@ -137,7 +137,7 @@
     </details>
   </ReadReserve>
 
-  <Sheet bind:open={addOpen} title={addLabel}>
+  <Sheet busy={adding.busy} bind:open={addOpen} title={addLabel}>
     <h3>{addLabel}</h3>
     <Field label={addLabel} hidden>
       {#snippet children(id)}
@@ -156,7 +156,7 @@
     >
   </Sheet>
 
-  <Sheet open={editTarget !== null} title={m.affirmations_edit_sheet()} onClose={() => (editTarget = null)}>
+  <Sheet busy={editing.busy} open={editTarget !== null} title={m.affirmations_edit_sheet()} onClose={() => (editTarget = null)}>
     {#if editTarget}
       <h3>{m.affirmations_edit_sheet()}</h3>
       <Field label={m.affirmations_edit_sheet()} hidden>

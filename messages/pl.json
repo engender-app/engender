@@ -306,6 +306,7 @@
   "boot_restore_running": "Przywracanie…",
   "boot_retry_action": "Spróbuj otworzyć ponownie",
   "boot_schema_too_new_body": "Ten dziennik wymaga nowszej wersji aplikacji. Nic w nim nie zmieniono. Sprawdź, czy jest aktualizacja, żeby go otworzyć.",
+  "boot_schema_too_new_check_failed": "Nie udało się sprawdzić aktualizacji. Sprawdź połączenie i spróbuj ponownie. Dziennik się nie zmienił.",
   "boot_schema_too_new_looking": "Szukanie…",
   "boot_schema_too_new_reopen": "Nowsza wersja jest gotowa. Zamknij aplikację i otwórz ją ponownie.",
   "boot_schema_too_new_retry": "Sprawdź aktualizacje",

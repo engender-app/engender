@@ -49,6 +49,7 @@
   import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
+  import { latestMood } from '$lib/data/latestMood';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { upcomingMilestones } from '$lib/data/milestoneStatus';
@@ -624,14 +625,7 @@
      written. A face still opens a new entry, the ringed one included, so
      the strip stays the way to add another. */
   let todayEntriesQuery = liveQuery((j) => j.entries.entriesForDay(today));
-  let latestToday = $derived.by(() => {
-    let latest: { mood: number; timestamp: number } | null = null;
-    for (const entry of todayEntriesQuery.value ?? []) {
-      if (entry.mood == null) continue;
-      if (!latest || entry.timestamp > latest.timestamp) latest = { mood: entry.mood, timestamp: entry.timestamp };
-    }
-    return latest;
-  });
+  let latestToday = $derived(latestMood(todayEntriesQuery.value ?? []));
   const loggedFade = (_node: Element) =>
     stillArriving() ? { duration: 0 } : fadeOnly(crossfadeDuration());
 
@@ -1294,7 +1288,7 @@
     </div>
   {/if}
 
-  <Sheet
+  <Sheet busy={dimsWrite.busy}
     open={dimsPromptEntryId !== null}
     title={m.quick_log_dims_title()}
     onClose={() => (dimsPromptEntryId = null)}

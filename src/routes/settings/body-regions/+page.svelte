@@ -131,7 +131,7 @@
     </details>
   </ReadReserve>
 
-  <Sheet bind:open={addOpen} title={m.body_regions_new_sheet()}>
+  <Sheet busy={adding.busy} bind:open={addOpen} title={m.body_regions_new_sheet()}>
     <h3>{m.body_regions_new_sheet()}</h3>
     <Field label={m.body_regions_new_sheet()} id="new-region-input" hidden>
       {#snippet children(id)}
@@ -141,7 +141,7 @@
     <button class="btn btn-primary" disabled={adding.busy} onclick={add}><span>{m.body_regions_save()}</span></button>
   </Sheet>
 
-  <Sheet open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
+  <Sheet busy={renaming.busy} open={renameTarget !== null} title={m.body_regions_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
       <h3>{m.body_regions_rename_sheet()}</h3>
       <Field label={m.body_regions_rename_sheet()} id="rename-region-input" hidden>

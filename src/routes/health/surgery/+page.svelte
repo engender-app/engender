@@ -183,8 +183,10 @@
         dilationOptIn: draft.kind === 'custom' && draft.dilationOptIn,
         archived: draft.archived
       });
-      // Editing the open procedure keeps notes typed beside it.
-      if (selectedId !== id) {
+      /* Editing the open procedure keeps notes typed beside it, and saving
+         another one leaves unsaved notes open where they are rather than
+         replacing them (after-release 06). */
+      if (selectedId !== id && !notesUnsaved()) {
         selectedId = id;
         notesDraft = procedures.find((p) => p.id === id)?.notes ?? '';
       }
@@ -212,13 +214,15 @@
      toast when it does not (after-release 06); they used to close first. */
   const sheetWrite = writer();
 
-  async function storePhoto(photo: NormalizedPhoto): Promise<void> {
+  /** False when the write failed, which keeps a reviewed shot under review. */
+  async function storePhoto(photo: NormalizedPhoto): Promise<boolean> {
     const epochDay = epochDayFromDateInputValue(photoDate);
     const id = selectedId;
-    if (!id || epochDay === null) return;
-    if (!(await sheetWrite.run(() => journal.procedures.addPhoto(id, epochDay, photo), m.write_failed()))) return;
+    if (!id || epochDay === null) return true;
+    if (!(await sheetWrite.run(() => journal.procedures.addPhoto(id, epochDay, photo), m.write_failed()))) return false;
     photoSheet = false;
     toast(m.saved(), { kind: 'record-saved' });
+    return true;
   }
 
   const recoveryPhotos = photoSection<ProcedurePhoto>({
@@ -247,8 +251,9 @@
      replaces them, or before the screen goes (after-release 06, L07-09):
      tapping a second card used to overwrite them without a word. */
   const notesWrite = writer();
+  const notesUnsaved = () => !!selected && notesDraft !== selected.notes;
   const notesGuard = leaveGuard({
-    holding: () => !!selected && notesDraft !== selected.notes,
+    holding: notesUnsaved,
     busy: () => notesWrite.busy
   });
 
@@ -286,14 +291,16 @@
     milestoneOffer = { procedureId: selectedId };
   }
 
-  /* Closed before the write, the order this screen already kept: the sheet
-     is gone by the time the insert runs, so a second tap cannot re-enter
-     with a live subject and toast twice. */
+  /* Closed once the write lands (after-release 06): the confirm button
+     holds while it runs, so a second tap writes nothing, and a failure
+     leaves the question up with a toast. */
+  const offerWrite = writer();
   async function answerMilestoneOffer(given: OfferAnswer) {
     const subject = milestoneOffer;
-    milestoneOffer = null;
+    if (!subject) return;
     let added = false;
-    await attempt(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed());
+    if (!(await offerWrite.run(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed()))) return;
+    milestoneOffer = null;
     if (added) toast(m.surgery_milestone_added());
   }
 
@@ -828,7 +835,7 @@
 
   <DiscardSheet guard={notesGuard} />
 
-  <Sheet open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={consultSheet} title={m.surgery_consult_sheet()} onClose={() => (consultSheet = false)}>
     <h3>{m.surgery_consult_sheet()}</h3>
     <Field label={m.surgery_consult_date_label()} id="surgery-consult-date">
       {#snippet children(id)}
@@ -838,7 +845,7 @@
     <button class="btn btn-primary" data-save-consult disabled={sheetWrite.busy} onclick={addConsult}><span>{m.surgery_consult_add()}</span></button>
   </Sheet>
 
-  <Sheet open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={photoSheet} title={m.surgery_photos_title()} onClose={() => (photoSheet = false)}>
     <h3>{m.surgery_photos_title()}</h3>
     <Field label={m.surgery_photo_date_label()} id="surgery-photo-date">
       {#snippet children(id)}
@@ -855,7 +862,7 @@
     </div>
   </Sheet>
 
-  <Sheet open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
+  <Sheet busy={sheetWrite.busy} open={itemSheet} title={m.surgery_checklist_sheet()} onClose={() => (itemSheet = false)}>
     <h3>{m.surgery_checklist_sheet()}</h3>
     <Field label={m.surgery_checklist_sheet()} id="surgery-item" hidden>
       {#snippet children(id)}
@@ -874,6 +881,7 @@
   <!-- Surgery Day Milestone Confirmation Sheet (ADR-0045 explicit confirmation) -->
   {#if selected}
     <Sheet
+      busy={offerWrite.busy}
       open={milestoneOffer !== null}
       title={MILESTONE_OFFER.copy.title()}
       onClose={() => void answerMilestoneOffer('decline')}
@@ -884,6 +892,7 @@
         <button
           class="btn btn-primary"
           data-confirm-record-milestone
+          disabled={offerWrite.busy}
           onclick={() => void answerMilestoneOffer('confirm')}
         >
           <span>{MILESTONE_OFFER.copy.confirm()}</span>

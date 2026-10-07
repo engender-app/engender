@@ -159,13 +159,18 @@
      immediately, the same as it always has. */
   let starred = $derived(session.starred);
 
+  /* One star write at a time, so a failed one can go back to what was
+     stored: two taps racing two failures used to leave the star showing
+     the opposite of the journal. */
+  const starWrite = writer();
   async function toggleStarred() {
+    if (starWrite.busy) return;
     const next = !starred;
     session.starred = next;
     if (!existing) return;
     const id = existing.id;
     // The star goes back if the write does not land, with a toast saying so.
-    if (!(await attempt(() => journal.entries.setEntryStarred(id, next), m.write_failed()))) session.starred = !next;
+    if (!(await starWrite.run(() => journal.entries.setEntryStarred(id, next), m.write_failed()))) session.starred = !next;
   }
 
   /* A day chosen to see this entry again (phase 8 features ticket 08,
@@ -1438,7 +1443,7 @@
 
   <DiscardSheet {guard} />
 
-  <Sheet bind:open={revisitOpen} title={m.revisit_sheet_title()}>
+  <Sheet busy={revisitWrite.busy} bind:open={revisitOpen} title={m.revisit_sheet_title()}>
     <SectionHeading text={m.revisit_sheet_title()} />
     {#if revisit}
       <p class="editor-hint">

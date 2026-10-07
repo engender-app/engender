@@ -535,7 +535,7 @@
   </div>
 {/snippet}
 
-<Sheet bind:open={() => doseDraft !== null, (open) => !open && (doseDraft = null)} title={DOSE_OFFER.copy.title()}>
+<Sheet busy={offerWrite.busy} bind:open={() => doseDraft !== null, (open) => !open && (doseDraft = null)} title={DOSE_OFFER.copy.title()}>
   {#if doseDraft}
     <h3>{DOSE_OFFER.copy.title()}</h3>
     <p class="muted small coming-back-sheet-body">
@@ -659,7 +659,7 @@
   {/if}
 </Sheet>
 
-<Sheet bind:open={() => wearDraft !== null, (open) => !open && (wearDraft = null)} title={WEAR_OFFER.copy.title()}>
+<Sheet busy={offerWrite.busy} bind:open={() => wearDraft !== null, (open) => !open && (wearDraft = null)} title={WEAR_OFFER.copy.title()}>
   {#if wearDraft}
     <h3>{WEAR_OFFER.copy.title()}</h3>
     <p class="muted small coming-back-sheet-body">{m.coming_back_wear_sheet_body()}</p>

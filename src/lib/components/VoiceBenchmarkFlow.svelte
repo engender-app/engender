@@ -363,7 +363,7 @@
       take = await active.finish();
     } catch (error) {
       console.error('a benchmark take could not be finished', error);
-      toast(m.vb_take_failed());
+      toast(m.vb_take_failed(), { kind: 'failed' });
       phase = 'idle';
       return;
     }
@@ -468,7 +468,7 @@
     } catch (error) {
       // The takes stay where they are, so Save can be tapped again.
       console.error('a benchmark could not be saved', error);
-      toast(m.write_failed());
+      toast(m.write_failed(), { kind: 'failed' });
     } finally {
       saving = false;
     }

@@ -57,7 +57,7 @@
   }
 </script>
 
-<Sheet {open} title={copy.title()} onClose={onSkip}>
+<Sheet busy={saving.busy} {open} title={copy.title()} onClose={onSkip}>
   <h3>{copy.title()}</h3>
   {#if subject}<p class="muted" data-feeling-offer-subject>{subject}</p>{/if}
   <MoodPicker value={mood} onPick={(v) => (mood = v)} compact />

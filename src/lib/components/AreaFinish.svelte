@@ -342,7 +342,7 @@
   </div>
 </div>
 
-<Sheet bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
+<Sheet busy={sheetWrite.busy} bind:open={sheetOpen} title={m.area_finish_sheet_title({ area: areaGroupName(group) })}>
   <h3>{m.area_finish_sheet_title({ area: areaGroupName(group) })}</h3>
   <p class="muted small area-finish-body">{m.area_finish_sheet_body()}</p>
   <Field label={m.area_finish_date_label()} id="area-finish-date">
@@ -361,7 +361,7 @@
 </Sheet>
 
 {#if suspendableAreas}
-  <Sheet bind:open={suspendSheetOpen} title={m.area_suspend_sheet_title()}>
+  <Sheet busy={sheetWrite.busy} bind:open={suspendSheetOpen} title={m.area_suspend_sheet_title()}>
     <h3>{m.area_suspend_sheet_title()}</h3>
     <p class="muted small area-finish-body">{m.area_suspend_sheet_body()}</p>
     <Field label={m.area_suspend_date_label()} id="area-suspend-date">

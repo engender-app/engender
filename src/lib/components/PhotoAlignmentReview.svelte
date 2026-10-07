@@ -82,7 +82,7 @@
            The review still works without the overlay; it says why the
            overlay is not there (after-release 06, L05-06). */
         console.error('the alignment reference could not be read', error);
-        if (!stale) toast(m.photo_unreadable());
+        if (!stale) toast(m.photo_unreadable(), { kind: 'failed' });
       }
     );
     return () => {

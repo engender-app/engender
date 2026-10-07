@@ -141,7 +141,7 @@
     </ReadReserve>
   </div>
 
-  <Sheet open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
+  <Sheet busy={sheetWrite.busy} open={renameTarget !== null} title={m.tags_rename_sheet()} onClose={() => (renameTarget = null)}>
     {#if renameTarget}
       <h3>{m.tags_rename_sheet()}</h3>
       <Field label={m.tags_rename_sheet()} id="rename-input" hidden>
@@ -172,7 +172,7 @@
     }}
   />
 
-  <Sheet open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>
+  <Sheet busy={sheetWrite.busy} open={addTarget !== null} title={m.tags_new_tag()} onClose={() => (addTarget = null)}>
     {#if addTarget}
       <h3>{m.tags_new_tag()}</h3>
       <Field label={m.tags_new_tag()} id="newtag-input" hidden>
@@ -193,7 +193,7 @@
     {/if}
   </Sheet>
 
-  <Sheet bind:open={groupSheet} title={m.tags_new_group()}>
+  <Sheet busy={sheetWrite.busy} bind:open={groupSheet} title={m.tags_new_group()}>
     <h3>{m.tags_new_group()}</h3>
     <Field label={m.tags_new_group()} id="newgroup-input" hidden>
       {#snippet children(id)}

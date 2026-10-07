@@ -92,7 +92,7 @@
     } catch (error) {
       // A plugin that throws instead of answering (after-release 06, L05-06).
       console.error('a permission request failed', error);
-      toast(m.permission_request_failed());
+      toast(m.permission_request_failed(), { kind: 'failed' });
     } finally {
       busy = null;
     }

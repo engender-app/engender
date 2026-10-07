@@ -68,7 +68,7 @@
   }
 </script>
 
-<Sheet {open} title={copy.title()} onClose={onDismiss}>
+<Sheet busy={confirming.busy} {open} title={copy.title()} onClose={onDismiss}>
   <h3>{m.roadmap_milestone_prompt_title({ goal: goalTitle })}</h3>
   <Field label={m.ms_name_label()} id="roadmap-milestone-name">
     {#snippet children(id)}

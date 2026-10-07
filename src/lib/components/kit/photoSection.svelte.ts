@@ -21,7 +21,8 @@ interface PhotoSectionOptions<TPhoto extends { id: string }> {
   /** The owner's current photos, already reactive. */
   photos(): TPhoto[];
   /** Store a newly picked or captured photo against this owner. */
-  add(photo: NormalizedPhoto): void | Promise<void>;
+  /** `false` keeps a reviewed shot open after a write that failed. */
+  add(photo: NormalizedPhoto): void | boolean | Promise<void | boolean>;
   /** Delete a stored photo by id. */
   remove(id: string): void | Promise<void>;
   /** The post-capture review's comparison photo (ADR-0033). What "the last

@@ -221,7 +221,7 @@
       } catch (error) {
         // The switch goes back off rather than claiming a schedule with no password behind it.
         console.error('could not store the auto-export password', error);
-        toast(m.exp_auto_config_failed());
+        toast(m.exp_auto_config_failed(), { kind: 'failed' });
         prefs.autoExportEnabled = false;
         return;
       }
