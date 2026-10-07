@@ -4,11 +4,16 @@ The gesture table in `yank-sweep-core.mjs` is shared by the desktop and
 Android runners. Each entry names its route, preparation, control and
 route or state postcondition. A missing, hidden, disabled or inert control
 is an error. Preparation centers the selected control, and keyboard actions
-focus it before capture. Dispatch hit-tests the recorded control center and
-rejects a fixed overlay or an offscreen target. Bounds, hit point and hit
+focus it before capture. Dispatch hit-tests the control center, then viewport-inset points when
+part of the target is covered. A scrim can remain usable outside its fan.
+A fully covered or offscreen target still fails. Bounds, hit point and hit
 identity stay in the action record. Cold-load and injected-proof actions
 remain explicit programmatic cases. An unchanged destination or state is also an error. The
 report records the requested selector, chosen control and actual outcome.
+
+Theme and palette preparation wait for their actual reset transition and
+boot preference mirror before another control is tested. Measurement still
+starts after preparation with its existing window.
 
 Preparation closes existing overlays and restores inline edit modes before
 opening the state a scene requires. It does not change the recorded motion

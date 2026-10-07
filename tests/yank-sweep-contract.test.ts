@@ -200,6 +200,7 @@ it('restores the requested real theme after palette preparation resets appearanc
     const selected = [];
     const env = environment();
     env.document.documentElement = { dataset: { theme } };
+    env.localStorage = { getItem: () => JSON.stringify({ theme: env.document.documentElement.dataset.theme }) };
     env.document.querySelector = () => null;
     const cache = new Map();
     env.document.querySelectorAll = (selector) => {
@@ -244,4 +245,50 @@ it('keeps cold-load and injected proof actions explicitly programmatic', () => {
   expect(dispatchSceneAction({ act: 'none' }, env)).toMatchObject({ programmatic: 'cold-load', dispatched: true });
   expect(dispatchSceneAction({ act: 'inject' }, env)).toMatchObject({ programmatic: 'injected proof', dispatched: true });
   expect(env.__yankProof).toHaveBeenCalledOnce();
+});
+
+it('finds an exposed scrim inset when its center is covered, but rejects full coverage', () => {
+  const hit = control({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 844 }) });
+  const fan = control();
+  const env = environment([hit]);
+  env.innerWidth = 390;
+  env.innerHeight = 844;
+  env.document.elementFromPoint = (x, y) => x < 50 && y < 50 ? hit : fan;
+  expect(dispatchSceneAction({ act: '.fan-scrim' }, env)).toMatchObject({
+    point: { x: 8, y: 8 }, hit: { target: true }, dispatched: true
+  });
+  env.document.elementFromPoint = () => fan;
+  expect(() => dispatchSceneAction({ act: '.fan-scrim' }, env)).toThrow('covered');
+  hit.getBoundingClientRect = () => ({ left: 400, top: 0, width: 48, height: 48 });
+  env.document.elementFromPoint = () => hit;
+  expect(() => dispatchSceneAction({ act: '.fan-scrim' }, env)).toThrow('outside viewport');
+});
+
+it('waits for actual theme reset transition and boot mirror before preparing its opposite', async () => {
+  const { prepareSceneExpression, sceneForTheme, scenesFor } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  let persisted = 'dark';
+  const root = { dataset: { theme: 'light' } };
+  const env = environment();
+  const light = control({ scrollIntoView: () => {}, click: () => { root.dataset.appearanceTransition = ''; } });
+  const dark = control({ scrollIntoView: () => {} });
+  env.document.documentElement = root;
+  env.document.querySelector = () => null;
+  env.document.querySelectorAll = (selector) => selector.includes('data-segment="light"') ? [light]
+    : selector.includes('data-segment="dark"') ? [dark] : [];
+  env.document.elementFromPoint = () => root.dataset.appearanceTransition !== undefined ? control()
+    : persisted === 'dark' ? light : dark;
+  env.localStorage = { getItem: () => JSON.stringify({ theme: persisted }) };
+  let waits = 0;
+  env.setTimeout = (callback) => {
+    waits++;
+    if (waits === 2) persisted = 'light';
+    delete root.dataset.appearanceTransition;
+    callback();
+  };
+  const scene = sceneForTheme(scenesFor().find((item) => item.name === 'settings-theme-switcher'), 'light');
+  await runInNewContext(prepareSceneExpression(scene), env);
+  expect(persisted).toBe('light');
+  expect(waits).toBe(2);
+  expect(dark.click).not.toHaveBeenCalled();
 });
