@@ -20,7 +20,7 @@ Browse the calendar, search your notes and tags, and follow your scales on chart
 
 On your device
 
-The Android app works offline. It does not have the internet permission, so it cannot send your journal anywhere. There is no engender account and no advertising. Your journal leaves the phone only when you export or share it.
+The Android app works offline. It does not have the internet permission, so it cannot send your journal anywhere. There is no engender account and no advertising. Your journal stays on your device unless you export or share it.
 
 Your journal and photos are encrypted on the device. Startup settings such as theme and language, and what the app needs to unlock your key, stay outside that encryption. None of it is anything you wrote.
 
