@@ -966,6 +966,7 @@ if (hydration) {
             await settle(scene.at, theme);
             if (scene.firstRun) {
               await ev(firstRunExpression(scene.firstRun));
+              await ev(DEMO_THEME_EXPRESSION(theme));
               if (scene.name === 'setup-flag-pick') await ev(`document.querySelector('[data-palette-pick="trans"]')?.click(); true;`);
               await ev(actionPreparationExpression(scene));
             }

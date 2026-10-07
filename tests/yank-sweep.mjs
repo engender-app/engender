@@ -119,6 +119,7 @@ import {
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   finishFirstRun,
+  DEMO_THEME_EXPRESSION,
   prepareSceneExpression,
   actionPreparationExpression,
   actionPostconditionExpression,
@@ -195,6 +196,7 @@ const settle = async (path, theme) => {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
+    await page.waitForSelector('[data-home-hello]', { timeout: 30000 });
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   }
@@ -254,6 +256,7 @@ for (const profile of profiles) {
           await settle(scene.at, theme);
           if (scene.firstRun) {
             await firstRunTo(page, scene.firstRun);
+            await page.evaluate(DEMO_THEME_EXPRESSION(theme));
             if (scene.name === 'setup-flag-pick') await page.evaluate(() => document.querySelector('[data-palette-pick="trans"]')?.click());
               await page.evaluate(actionPreparationExpression(scene));
           }
