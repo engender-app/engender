@@ -1532,6 +1532,7 @@
   "home_edit_heading": "Ułóż ekran Dzisiaj",
   "home_edit_hint": "Przeciągnij pozycję za uchwyt albo przenieś ją strzałkami.",
   "home_edit_move": "Przenieś: {row}",
+  "home_edit_moved": "Przeniesiono na miejsce {position} z {total}.",
   "home_edit_none": "Nie ma przypiętych pozycji. Wybierz jedną poniżej.",
   "home_edit_reset": "Wróć do domyślnego zestawu",
   "home_edit_reset_hint": "Przywraca domyślne przypięte pozycje oraz włącza wszystkie kafelki i wydarzenia w sekcji „Nadchodzi”. Dane w dzienniku pozostają bez zmian.",
@@ -3296,6 +3297,57 @@
   "surgery_compare_open_hint": "Liczone do dzisiaj, bo gojenie jeszcze trwa.",
   "surgery_compare_title": "Porównaj ten okres",
   "surgery_compare_too_short": "Brak wpisów sprzed operacji do porównania.",
+  "surgery_badge_checklist": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} punkt listy",
+        "nPlural=few": "{n} punkty listy",
+        "nPlural=many": "{n} punktów listy",
+        "nPlural=other": "{n} punktu listy"
+      }
+    }
+  ],
+  "surgery_badge_consults": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} konsultacja",
+        "nPlural=few": "{n} konsultacje",
+        "nPlural=many": "{n} konsultacji",
+        "nPlural=other": "{n} konsultacji"
+      }
+    }
+  ],
+  "surgery_badge_photos": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} zdjęcie",
+        "nPlural=few": "{n} zdjęcia",
+        "nPlural=many": "{n} zdjęć",
+        "nPlural=other": "{n} zdjęcia"
+      }
+    }
+  ],
   "surgery_consult_add": "Dodaj konsultację",
   "surgery_consult_date_label": "Data konsultacji",
   "surgery_consult_delete_aria": "Usuń konsultację z {date}",

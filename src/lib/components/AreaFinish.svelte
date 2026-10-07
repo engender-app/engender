@@ -136,6 +136,18 @@
   let finishedOn = $derived(groupFinishedOn(group, states));
   let suspendedOn = $derived(groupSuspendedOn(group, states));
 
+  /* What the card says the area is, kept in a line that never leaves the
+     page. The rows below swap in and out of {#if} branches, and a row
+     inserted with aria-live already on it is not read (after-release 21,
+     audit L04-14); this line changing is. */
+  let stateLine = $derived(
+    finishedOn !== null
+      ? m.area_finish_done_title({ date: dayLong(finishedOn) })
+      : suspendedOn !== null
+        ? m.area_suspend_done_title({ date: dayLong(suspendedOn) })
+        : ''
+  );
+
   /* Asked unconditionally rather than behind a gate of its own. A gate would
      have had to restate two of `shouldOfferFinish`'s four conditions here,
      which is one predicate in two places and a drift waiting to happen; the
@@ -265,6 +277,11 @@
        labelled action and an unmarked x, which is the same glyph that means
        "hide this, I have read it" on every other notice in the app and would
        be spending a decision the app never asks about again. -->
+  <!-- Put in once the states have been read, holding what they say then,
+       so arriving on the screen is not announced as a change. -->
+  {#if statesQuery.value !== undefined}
+    <p class="visually-hidden" role="status" data-area-state-line>{stateLine}</p>
+  {/if}
   <div use:resize>
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       {#if finishedOn !== null}
@@ -274,7 +291,6 @@
           icon="flag"
           title={m.area_finish_done_title({ date: dayLong(finishedOn) })}
           subtitle={m.area_finish_done_sub()}
-          aria-live="polite"
           static
           chevron={false}
         />
@@ -293,7 +309,6 @@
           icon="pause"
           title={m.area_suspend_done_title({ date: dayLong(suspendedOn) })}
           subtitle={m.area_suspend_done_sub()}
-          aria-live="polite"
           static
           chevron={false}
         />
@@ -322,7 +337,6 @@
           icon="flag"
           title={m.area_finish_row_title()}
           subtitle={m.area_finish_row_sub()}
-          aria-live="polite"
           chevron={false}
           onclick={openFinish}
         />

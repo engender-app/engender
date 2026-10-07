@@ -70,6 +70,7 @@
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
   import { maskHeight } from '$lib/motion/reveal';
+  import { announce } from '$lib/stores/announcer.svelte';
   import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Role } from '$lib/theme/roles';
   import { dayAheadMarkLabel } from './dayAheadRows';
@@ -272,6 +273,9 @@
     const handle = listEl?.querySelector<HTMLElement>(`[data-edit-grip="${key}"]`);
     handle?.focus();
     travelFrom(rowElements(), rowKey, before);
+    /* The row travels where it can be seen; this says where it went to
+       somebody who cannot see it (after-release 21, audit L05-08). */
+    announce(m.home_edit_moved({ position: String(at + delta + 1), total: String(pinned.length) }));
   }
 
   function onGripKeydown(event: KeyboardEvent, key: string) {
