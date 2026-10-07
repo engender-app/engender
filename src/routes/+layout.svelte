@@ -29,7 +29,7 @@
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { reference } from '$lib/data/live/reference.svelte';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { bootState, closeJournalForLock, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
   import {
@@ -453,10 +453,14 @@
           // Hidden built-ins and this language's custom lines are read fresh on
           // every call (phase 5 ticket 15) rather than captured once here, so a
           // change lands on the next sync without needing this effect to restart.
+          // Straight off the mirror: ids and the person's own lines need no
+          // catalogue wording, and the shell then carries none of it.
           affirmationLines: () =>
             affirmationLines(
-              new Set(vocabulary.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
-              vocabulary.customAffirmations(getLocale()).map((a) => a.text)
+              new Set(reference.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
+              reference.affirmations
+                .filter((a) => !a.builtIn && a.language === getLocale())
+                .map((a) => a.text)
             ),
           reminderTexts: () => ({
             channelReminders: m.reminders(),
