@@ -646,8 +646,8 @@
       </Field>
       <div class="cd-endpoints measurement-pair">
         <Field label={m.measurement_value_label()} id="measurement-value" hint={!validValue(editor.value) ? m.measurement_invalid_value() : undefined}>
-          {#snippet children(id, hintId)}
-            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+          {#snippet children(id, hintId, touched)}
+            <input class="input" type="number" step="any" {id} required aria-invalid={touched && !validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
           {/snippet}
         </Field>
         <Field label={m.measurement_unit_label()} legend>
@@ -699,8 +699,8 @@
         {/snippet}
       </Field>
       <Field label={m.size_log_size_label()} id="size-log-size" hint={!editor.size.trim() ? m.size_log_required_size() : undefined}>
-        {#snippet children(id, hintId)}
-          <input class="input" {id} required aria-invalid={!editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
+        {#snippet children(id, hintId, touched)}
+          <input class="input" {id} required aria-invalid={touched && !editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
         {/snippet}
       </Field>
       <Field label={m.size_log_brand_label()} id="size-log-brand">

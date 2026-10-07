@@ -205,6 +205,7 @@
   "area_finish_table_area": "Nazwa",
   "area_finish_table_ended": "Zakończono",
   "area_finish_undo": "Wróć do tego",
+  "area_picked_back_up": "Wznowiono.",
   "area_suspend_cancel": "Jeszcze nie",
   "area_suspend_confirm": "Wstrzymaj",
   "area_suspend_date_label": "Dzień wstrzymania",
@@ -1532,6 +1533,7 @@
   "home_edit_heading": "Ułóż ekran Dzisiaj",
   "home_edit_hint": "Przeciągnij pozycję za uchwyt albo przenieś ją strzałkami.",
   "home_edit_move": "Przenieś: {row}",
+  "home_edit_moved": "Przeniesiono na miejsce {position} z {total}.",
   "home_edit_none": "Nie ma przypiętych pozycji. Wybierz jedną poniżej.",
   "home_edit_reset": "Wróć do domyślnego zestawu",
   "home_edit_reset_hint": "Przywraca domyślne przypięte pozycje oraz włącza wszystkie kafelki i wydarzenia w sekcji „Nadchodzi”. Dane w dzienniku pozostają bez zmian.",
@@ -2431,6 +2433,7 @@
   "pin_mismatch": "Te dwa PIN-y się różnią. Zacznij od nowa.",
   "pin_progress": "Wpisano {typed} z {total} cyfr PIN-u",
   "pin_throttled": "Za dużo nieudanych prób. Spróbuj ponownie za {seconds} s.",
+  "pin_wait_over": "Możesz znowu wpisać PIN.",
   "pin_wrong": "To nie ten PIN.",
   "pj_again": "Zrób następny",
   "pj_collage_hint": "Jeden obraz, wszystkie zdjęcia w siatce, od najstarszego.",
@@ -3276,6 +3279,57 @@
   "surgery_archive_toggle_label": "Zachowaj w archiwum",
   "surgery_archived_summary": "Dzień {days} po operacji",
   "surgery_archived_title": "Zarchiwizowana operacja",
+  "surgery_badge_checklist": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} punkt listy",
+        "nPlural=few": "{n} punkty listy",
+        "nPlural=many": "{n} punktów listy",
+        "nPlural=other": "{n} punktu listy"
+      }
+    }
+  ],
+  "surgery_badge_consults": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} konsultacja",
+        "nPlural=few": "{n} konsultacje",
+        "nPlural=many": "{n} konsultacji",
+        "nPlural=other": "{n} konsultacji"
+      }
+    }
+  ],
+  "surgery_badge_photos": [
+    {
+      "declarations": [
+        "input n",
+        "local nPlural = n: plural"
+      ],
+      "selectors": [
+        "nPlural"
+      ],
+      "match": {
+        "nPlural=one": "{n} zdjęcie",
+        "nPlural=few": "{n} zdjęcia",
+        "nPlural=many": "{n} zdjęć",
+        "nPlural=other": "{n} zdjęcia"
+      }
+    }
+  ],
   "surgery_checklist_add": "Dodaj punkt",
   "surgery_checklist_add_aria": "Dodaj punkt do listy",
   "surgery_checklist_carry_aria": "Oznacz punkt „{content}” jako wciąż otwarty",
