@@ -129,6 +129,15 @@ const demoSeedModules = __DEMO__ ? Promise.all([
 ]) : null;
 void demoSeedModules?.catch(() => {});
 
+/* The worker has nothing else to do while the database module downloads, so
+   the persona's photos are drawn in that wait. A first visit spends the
+   result; a returning one throws it away, a few dozen milliseconds of a
+   thread nothing is waiting on. Photos depend on their seed alone, so a
+   persona the page sends for another day just misses the warm set. */
+const demoWarmPhotos = __DEMO__ ? demoSeedModules!.then(async ([{ warmDemoPhotos }]) =>
+  warmDemoPhotos((await import('../demo/persona')).persona())) : null;
+void demoWarmPhotos?.catch(() => {});
+
 const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
   /* The module, the pool and the shim, ahead of the key (ux-carpet ticket
      209): no database is opened and no key is taken. `open` below calls
@@ -205,7 +214,7 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
         copyDatabaseFile: () => handlers.copyDatabaseFile(undefined as never) as Promise<void>,
         restorePreMigrationCopy: () => handlers.restorePreMigrationCopy(undefined as never) as Promise<void>,
         cleanupPreMigrationCopy: () => handlers.cleanupPreMigrationCopy(undefined as never) as Promise<void>
-      }, args.source);
+      }, args.source, await demoWarmPhotos!.catch(() => undefined));
     } catch (error) {
       if (error instanceof SchemaTooNewError) {
         return { foundVersion: error.foundVersion, knownVersion: error.knownVersion };
