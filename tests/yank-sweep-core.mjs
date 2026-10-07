@@ -2143,6 +2143,13 @@ export function findHydrationYanks(frames) {
   };
 }
 
+/** CDP can deliver older frames late. Keep capture order on its own clock. */
+export function insertScreencastFrame(frames, frame) {
+  const before = frames.findIndex((existing) => existing.at > frame.at);
+  if (before === -1) frames.push(frame);
+  else frames.splice(before, 0, frame);
+}
+
 export async function saveSceneCast(cast, outDir, name, label) {
   const directory = `${outDir}/${name}-${label}-cast`;
   await mkdir(directory, { recursive: true });

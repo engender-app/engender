@@ -292,3 +292,20 @@ it('waits for actual theme reset transition and boot mirror before preparing its
   expect(waits).toBe(2);
   expect(dark.click).not.toHaveBeenCalled();
 });
+
+it('orders reversed compositor arrivals before the detector can invent an A-B-A flash', async () => {
+  const { insertScreencastFrame, findPixelYanks } = await import('./yank-sweep-core.mjs');
+  const gray = new Uint8Array(400).fill(100);
+  const changed = gray.slice();
+  for (let y = 4; y < 10; y++) for (let x = 4; x < 10; x++) changed[y * 20 + x] = 220;
+  const arrivals = [{ at: 2417403, gray }, { at: 2429363, gray: changed }, { at: 2424320, gray }];
+  expect(findPixelYanks(arrivals.map((frame) => frame.gray), 20, 20, arrivals.map((frame) => frame.at)).findings.length).toBeGreaterThan(0);
+  const captured = [];
+  for (const frame of arrivals) insertScreencastFrame(captured, frame);
+  expect(captured.map((frame) => frame.at)).toEqual([2417403, 2424320, 2429363]);
+  expect(captured).toHaveLength(arrivals.length);
+  expect(findPixelYanks(captured.map((frame) => frame.gray), 20, 20, captured.map((frame) => frame.at)).findings).toEqual([]);
+  const sameClock = { at: 2424320, gray: changed };
+  insertScreencastFrame(captured, sameClock);
+  expect(captured[2]).toBe(sameClock);
+});
