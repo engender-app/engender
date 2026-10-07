@@ -2358,6 +2358,7 @@
   "photo_review_retake": "Retake",
   "photo_review_title": "Review photo",
   "photo_review_use": "Use this photo",
+  "photo_save_failed": "Could not save the photo. It is still here. Try again.",
   "photo_too_large": "That photo is too large. Choose a photo up to 32 MB.",
   "photo_unreadable": "That photo couldn’t be read.",
   "photo_view_label": "View photo",

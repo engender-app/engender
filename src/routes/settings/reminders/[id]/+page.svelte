@@ -53,7 +53,9 @@
   const detail = detailDraft<Reminder, { title: string; type: Reminder['type']; time: string; choice: RecurrenceChoice }>({
     read: async (j, id) => (await j.reminders.getReminders()).find((r) => r.id === id),
     blank: () => ({ title: '', type: 'med', time: '20:00', choice: 'DAILY' }),
-    fromRecord: (found) => ({ title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) })
+    fromRecord: (found) => ({ title: found.title, type: found.type, time: found.time, choice: choiceFromRule(found) }),
+    // Leaving waits while a save runs, so a late success never lands on another screen.
+    saving: () => saving.busy
   });
   let draft = $derived(detail.draft);
   let origin = $derived(detail.record ? resolveReminderOrigin(detail.record) : null);
@@ -84,6 +86,7 @@
      screen. */
   const saving = writer();
   async function saveReminder() {
+    const sent = JSON.stringify(draft);
     const saved = await saving.run(
       () =>
         journal.reminders.upsertReminder({
@@ -96,9 +99,12 @@
       m.write_failed()
     );
     if (!saved) return;
+    toast(m.saved(), { kind: 'record-saved' });
+    /* Typed into while the save ran: what was sent is stored, the newer
+       edit is not, so the screen stays and still counts as changed. */
+    if (JSON.stringify(draft) !== sent) return;
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
-    toast(m.saved(), { kind: 'record-saved' });
     goto('/settings/reminders');
   }
 </script>

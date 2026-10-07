@@ -118,13 +118,10 @@ export async function readGrantStates(): Promise<GrantStates> {
     from the start rather than a prompt that would not appear. */
 export async function requestGrant(key: Exclude<GrantKey, 'exactAlarms'>): Promise<GrantState> {
   if (key === 'notifications') {
-    try {
-      const status = await androidReminders.requestNotificationPermission();
-      return status.notifications === 'denied' ? 'denied' : 'granted';
-    } catch (error) {
-      console.error('could not ask for the notification permission', error);
-      return 'denied';
-    }
+    /* A bridge that throws is not a refusal; PermissionList says it failed
+       and leaves the row askable (after-release 06). */
+    const status = await androidReminders.requestNotificationPermission();
+    return status.notifications === 'denied' ? 'denied' : 'granted';
   }
   return askForMedia(key);
 }

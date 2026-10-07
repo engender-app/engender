@@ -254,6 +254,8 @@
     remove: () => {
       if (record.editor) record.editor.photo = null;
     },
+    // Only the draft loses it; the milestone keeps its photo until Save.
+    deleted: () => null,
     reference: () => {
       const fileName = record.editor?.originalPhoto?.fileName;
       return fileName ? { fileName } : null;
