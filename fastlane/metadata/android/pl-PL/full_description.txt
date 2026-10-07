@@ -1,35 +1,35 @@
-engender to aplikacja do śledzenia tranzycji, którą jedna osoba trans zrobiła dla innych osób trans. Dziennik, dawki HRT, zdjęcia, ćwiczenia głosu i plany masz w jednym miejscu. Korzystaj z tego, co pasuje do twojego życia, niezależnie od tego, czy dopiero zastanawiasz się nad swoją płcią, planujesz zmiany, czy masz za sobą lata tranzycji.
+engender to aplikacja do śledzenia tranzycji, stworzona przez osobę trans dla innych osób trans. Dziennik, dawki HRT, zdjęcia, ćwiczenia głosu i plany masz w jednym miejscu. Wybierz to, co pasuje do twojego życia. Możesz dopiero zastanawiać się nad swoją płcią, planować zmiany albo wracać do kilku lat tranzycji.
 
 Dzień po twojemu
 
-Zapisz myśl, zaznacz nastrój albo dodaj zdjęcie. Do wpisu wystarczy jedna z tych rzeczy, a jednego dnia możesz dodać kilka wpisów. Zapisuj dysforię, euforię i inne odczucia na skalach, które nazywasz po swojemu. Dołącz tagi, nagranie głosu albo to, jak czujesz poszczególne części ciała.
+Zapisz myśl, zaznacz nastrój albo dodaj zdjęcie. Do wpisu wystarczy jedna rzecz, a jednego dnia możesz dodać ich kilka. Zapisuj dysforię, euforię i inne odczucia na skalach, które nazywasz po swojemu. Dołącz tagi, nagranie głosu lub odczucia związane z poszczególnymi częściami ciała.
 
-Opieka i zmiany
+Zdrowie i zmiany
 
-Harmonogram leków i przyjęte dawki trzymasz razem, z przypomnieniami o wybranej porze. Notuj wyniki badań i pomiary ciała, śledź zmiany włosów i zdarzenia cyklu, a operację zaplanuj z listą rzeczy do spakowania i listą na czas gojenia. Zapisuj pytania na następną wizytę, a gdy chcesz pokazać komuś swoje dane, wyeksportuj podsumowanie dla lekarza.
+Trzymaj harmonogram leków razem z zapisanymi dawkami i ustaw przypomnienia na wybraną porę. Notuj wyniki badań, wymiary ciała, zmiany włosów i wydarzenia cyklu. Zbieraj plany operacji oraz notatki z rekonwalescencji. Przygotuj się do wizyty, a gdy chcesz udostępnić swoje dane, wyeksportuj podsumowanie dla lekarza.
 
-engender zapisuje to, co wpiszesz. Nie jest wyrobem medycznym: nie stawia diagnoz, nie leczy, nie zapobiega chorobom, nie dobiera dawek i nie zastępuje porady medycznej. O leczeniu rozmawiaj z osobą, która ma odpowiednie kwalifikacje medyczne.
+engender zapisuje to, co podajesz. Nie stawia diagnoz, nie dobiera dawek i nie zastępuje porady medycznej. Decyzje dotyczące leczenia konsultuj z osobą z odpowiednimi kwalifikacjami medycznymi.
 
-Reszta tranzycji
+Pozostałe sprawy
 
-Wypróbuj imię, zaimki albo nowy wygląd i zanotuj, jak się z nimi czujesz. Zapisuj kamienie milowe i układaj mapę tranzycji z kolejnymi krokami. Ćwicz głos i porównuj próbki z wcześniejszymi nagraniami. Mierz czas noszenia bindera, tuckingu albo ucisku i notuj zabiegi depilacji. Napisz list, który otworzy się w wybranym dniu.
+Wypróbuj imię, zaimki albo nowy wygląd i zanotuj, jak się z nimi czujesz. Zapisuj kamienie milowe i układaj plan kolejnych kroków. Nagrywaj ćwiczenia głosu i porównuj wzorce głosu z wcześniejszymi nagraniami. Notuj depilację oraz czas noszenia bindera lub tuckingu. Napisz list do otwarcia w wybranym dniu.
 
 Wracanie do zapisów
 
-Przeglądaj kalendarz, szukaj w notatkach i tagach, a swoje skale oglądaj na wykresach. Porównuj zdjęcia z różnych miesięcy albo otwórz bilans minionego tygodnia, miesiąca lub roku. Dzień bez wpisu zostaje pusty. W Bezpiecznej przestrzeni masz pod ręką to, co pomaga, i chwile, do których chcesz wracać.
+Przeglądaj kalendarz, szukaj w notatkach i tagach albo oglądaj swoje skale na wykresach. Porównuj zdjęcia i wracaj do wpisów w podsumowaniach tygodnia, miesiąca lub roku. Dni bez wpisów zostają puste. W Bezpiecznej przestrzeni masz pod ręką listę rzeczy, które pomagają, i wpisy, do których chcesz wracać.
 
 Na twoim urządzeniu
 
-Aplikacja na Androida działa offline. Nie ma uprawnienia do internetu, więc nie może nigdzie wysłać twojego dziennika. Nie ma konta engender ani reklam. Dziennik zostaje na urządzeniu, dopóki go nie wyeksportujesz albo nie udostępnisz.
+Aplikacja na Androida działa offline i nie ma uprawnienia do korzystania z internetu. Nie zakładasz konta engender. Nie ma reklam ani telemetrii. Dziennik zostaje na urządzeniu, chyba że zdecydujesz się go wyeksportować lub udostępnić.
 
-Dziennik i zdjęcia są na urządzeniu zaszyfrowane. Poza szyfrowaniem zostają ustawienia potrzebne przy starcie, takie jak motyw i język, oraz to, czego aplikacja potrzebuje do odblokowania klucza. Nic z tego nie jest tym, co piszesz.
+Baza dziennika i zapisane media są zaszyfrowane. Poza szyfrowaniem zostają ustawienia potrzebne przy uruchamianiu, takie jak motyw i język, oraz metadane kluczy. Podczas robienia zdjęcia aparat może utworzyć tymczasowy niezaszyfrowany plik przed importem. Szczegóły opisuje polityka prywatności.
 
-Dziennik otwierasz hasłem, PIN-em albo odciskiem palca, twarzą lub blokadą ekranu telefonu. Kamuflaż, jeśli go włączysz, nadaje aplikacji zwyczajną nazwę i ikonę.
+Dziennik możesz otwierać hasłem, PIN-em, biometrią lub blokadą ekranu telefonu. Opcjonalny kamuflaż zmienia nazwę i ikonę aplikacji na neutralne.
 
 Kopie i eksport
 
-Zapisz kopię zaszyfrowaną wybranym hasłem albo ustaw kopie według harmonogramu w wybranym folderze. Import kopii przenosi dziennik między Androidem a wersją webową. Możesz też zaimportować wpisy z pliku CSV z Daylio. Pliki CSV, JSON, dziennik do druku i inne eksporty przeznaczone do czytania nie są zaszyfrowane, więc zastanów się, gdzie je zapisujesz i komu wysyłasz.
+Zapisz archiwum zaszyfrowane hasłem albo ustaw automatyczne kopie w wybranym folderze. Przenoś dziennik między Androidem a wersją webową przez import archiwum. Możesz też zaimportować wpisy z pliku CSV z Daylio. Eksporty CSV, JSON, książka z dziennika do druku i inne pliki przeznaczone do odczytu nie są zaszyfrowane. Wybierz, gdzie je zapisujesz i komu je udostępniasz.
 
 Po swojemu
 
-Wybierz jedną z 16 palet w barwach flag, jasny lub ciemny motyw, ustaw własne skale i przypnij używane obszary do ekranu Dziś. engender działa po polsku i po angielsku. Aplikacja jest bezpłatna, bez subskrypcji, a jej kod jest publiczny na licencji GPLv3.
+Wybierz paletę w barwach flagi, jasny lub ciemny motyw i własne skale. Przypnij używane obszary do ekranu Dziś. engender działa po polsku i po angielsku. Aplikacja jest bezpłatna, bez subskrypcji, a jej kod jest publiczny na licencji GPLv3.
