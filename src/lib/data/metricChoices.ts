@@ -29,3 +29,15 @@ export function metricChoices(): MetricChoice[] {
 export function shownMetric(metrics: readonly MetricChoice[]): MetricChoice {
   return metrics.find((mt) => mt.key === vocabulary.activeMetric) ?? metrics[0];
 }
+
+/** A scale's name as it reads inside a sentence rather than at the start of
+    a label: "Average mood", not "Average Mood". Only the first letter goes
+    down, and not when the second is a capital too, so a name that opens
+    with an abbreviation ("HRT energy") keeps it. A label that starts with
+    the name passes the name itself, which is why the Look back average
+    takes both: English puts the name mid-sentence, Polish leads with it. */
+export function nameInSentence(name: string): string {
+  const [first, second] = Array.from(name);
+  if (!first || (second && second !== second.toLocaleLowerCase() && second === second.toLocaleUpperCase())) return name;
+  return first.toLocaleLowerCase() + name.slice(first.length);
+}

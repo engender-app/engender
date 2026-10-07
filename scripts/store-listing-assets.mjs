@@ -124,6 +124,14 @@ try {
       await page.locator(ready).first().waitFor();
       await page.locator('[data-toast]').waitFor({ state: 'detached', timeout: 15000 });
       await page.waitForFunction(() => !document.querySelector('.skeleton-stack, .skeleton-block'));
+      if (name === '01-home') {
+        // The demo persona has a binder session running for nine hours, and
+        // Today then leads with its over-eight-hours caution. End it here, in
+        // this throwaway context, so Today opens on Coming up.
+        await page.locator('[data-wear-stop]').click();
+        await page.locator('[data-wear-running-tile]').waitFor({ state: 'detached' });
+        await page.locator('[data-toast]').waitFor({ state: 'detached', timeout: 15000 });
+      }
       if (name === '03-new-entry') {
         await page.locator('#ed-note').fill(locale.note);
         for (const slider of await page.locator('.dim-slider [role="slider"]').all()) {
