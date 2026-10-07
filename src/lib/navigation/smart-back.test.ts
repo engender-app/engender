@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto }));
 
-const { smartBack, recordNavigation, replaceRoute, navigationDepth, depthAfter } = await import('./smart-back.ts');
+const { smartBack, recordNavigation, replaceRoute, navigationDepth, depthAfter, sameUrl } = await import('./smart-back.ts');
 
 let back: ReturnType<typeof vi.fn>;
 
@@ -206,5 +206,21 @@ describe('a navigation to the same address', () => {
     recordNavigation('link');
     recordNavigation('link');
     expect(depthAfter('popstate', -1, true)).toBe(1);
+  });
+});
+
+/* Fifth review: a goto() to the address already showing still pushes (the
+   quick-add mood row reopening today's editor does it), so only a link or
+   form counts as a same-address replace. A navigation can arrive with a
+   null url, which must read as not-the-same rather than throw. */
+describe('sameUrl', () => {
+  const at = (href: string | null) => ({ url: href ? new URL(href) : null });
+  it('is a link or form to the same address and nothing else', () => {
+    expect(sameUrl({ type: 'link', from: at('http://x/calendar'), to: at('http://x/calendar') })).toBe(true);
+    expect(sameUrl({ type: 'form', from: at('http://x/a'), to: at('http://x/a') })).toBe(true);
+    expect(sameUrl({ type: 'goto', from: at('http://x/entry/1'), to: at('http://x/entry/1') })).toBe(false);
+    expect(sameUrl({ type: 'link', from: at('http://x/a'), to: at('http://x/b') })).toBe(false);
+    expect(sameUrl({ type: 'enter', from: null, to: at('http://x/a') })).toBe(false);
+    expect(sameUrl({ type: 'link', from: at(null), to: at(null) })).toBe(false);
   });
 });
