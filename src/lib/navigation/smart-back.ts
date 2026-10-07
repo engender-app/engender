@@ -42,18 +42,23 @@ let replacing = false;
  * without having pushed anything and the app would think it had somewhere to
  * return to.
  */
-export function recordNavigation(type: string, delta?: number | null): void {
-  depth = depthAfter(type, delta);
+export function recordNavigation(type: string, delta?: number | null, sameUrl = false): void {
+  depth = depthAfter(type, delta, sameUrl);
   replacing = false;
 }
 
 /** The depth `recordNavigation` will record for a navigation still under
     way, without recording it: the shell keys what a history entry borrowed
-    by it before the page changes (chrome-tab-origin.ts). */
-export function depthAfter(type: string, delta?: number | null): number {
+    by it before the page changes (chrome-tab-origin.ts).
+
+    `sameUrl` is a link to the address already showing - tapping the lit
+    tab - which SvelteKit turns into a replaceState of its own accord, so it
+    adds no entry either (after-release 17 review: counted, it put every
+    entry behind it one deep too many). */
+export function depthAfter(type: string, delta?: number | null, sameUrl = false): number {
   if (type === 'enter') return 0;
   if (type === 'popstate') return Math.max(0, depth + (delta ?? 0));
-  return replacing ? depth : depth + 1;
+  return replacing || sameUrl ? depth : depth + 1;
 }
 
 /** How deep the app is in its own history, for callers outside this module. */

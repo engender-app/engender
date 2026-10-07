@@ -189,3 +189,22 @@ describe('depthAfter', () => {
     expect(navigationDepth()).toBe(0);
   });
 });
+
+/* Fourth review: tapping the lit tab navigates to the address already
+   showing, which SvelteKit turns into a replaceState. Counted as a push,
+   every entry behind it was one deep too many, so Back from there looked up
+   the wrong entry's borrowed tab. */
+describe('a navigation to the same address', () => {
+  it('adds no depth, like a replace', () => {
+    recordNavigation('link');
+    expect(depthAfter('link', null, true)).toBe(1);
+    recordNavigation('link', null, true);
+    expect(navigationDepth()).toBe(1);
+  });
+
+  it('still counts a same-address popstate by its delta', () => {
+    recordNavigation('link');
+    recordNavigation('link');
+    expect(depthAfter('popstate', -1, true)).toBe(1);
+  });
+});

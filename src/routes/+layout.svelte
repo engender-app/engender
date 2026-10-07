@@ -168,7 +168,7 @@
      and stopped carrying an index. After the navigation rather than before,
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
-    recordNavigation(navigation.type, navigation.delta);
+    recordNavigation(navigation.type, navigation.delta, sameUrl(navigation));
     /* What the gear will borrow next time it opens settings chrome
        (ADR-0076, audit item 4) - noted from every settled navigation, not
        only ones into a tab, since a screen already inside settings can
@@ -211,6 +211,11 @@
      column and so has to leave that strip out too (after-release 17
      review: 5px off centre at 1280). Measured, since a classic scrollbar
      has a width only the browser knows and an overlay one has none. */
+  /** A navigation to the address already showing, which SvelteKit makes a
+      replaceState rather than a new history entry (smart-back.ts). */
+  const sameUrl = (navigation: { from: { url: URL } | null; to: { url: URL } | null }) =>
+    navigation.from !== null && navigation.to !== null && navigation.from.url.href === navigation.to.url.href;
+
   function publishScrollGutter(node: HTMLElement) {
     const publish = () =>
       document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
@@ -227,7 +232,7 @@
        opened from rather than the last one lit (chrome-tab-origin.ts). */
     const to = navigation.to?.url.pathname;
     if (to && borrowsTab(to)) {
-      const entry = `${depthAfter(navigation.type, navigation.delta)}:${to}`;
+      const entry = `${depthAfter(navigation.type, navigation.delta, sameUrl(navigation))}:${to}`;
       noteBorrowingArrival(entry, navigation.type === 'popstate');
     }
     return navigateWithTransition(navigation, replacesApp);
