@@ -24,3 +24,32 @@ export function writer() {
     run
   };
 }
+
+/** A delete behind ConfirmDeleteSheet, for a screen that holds its own
+    target rather than a recordEditor: `run` refuses a second tap while the
+    first is in flight, and a failure is kept in `failed` for the sheet to
+    say, instead of a toast under it. Pass `busy` and `failed` to the sheet,
+    and call `dismiss` when it is cancelled. */
+export function deleter() {
+  let busy = $state(false);
+  let failed = $state(false);
+  const run = oneAtATime(
+    () => { failed = true; },
+    (value) => {
+      busy = value;
+      if (value) failed = false;
+    }
+  );
+  return {
+    get busy() {
+      return busy;
+    },
+    get failed() {
+      return failed;
+    },
+    run: (remove: () => unknown) => run(remove, ''),
+    dismiss() {
+      failed = false;
+    }
+  };
+}

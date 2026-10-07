@@ -38,6 +38,7 @@
      hands a file to anything outside its own encryption. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
+  import { deleter } from '$lib/stores/attempt.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import DocumentTargetPicker from '$lib/components/DocumentTargetPicker.svelte';
   import { documentTargets } from '$lib/components/documentTargets.svelte';
@@ -425,10 +426,13 @@
     }
   }
 
+  const removing = deleter();
   async function deleteDocument() {
-    if (!stored) return;
+    const id = stored?.id;
+    if (!id) return;
+    if (!(await removing.run(() => journal.documents.deleteDocument(id)))) return;
     confirming = false;
-    await journal.documents.deleteDocument(stored.id);
+    toast(m.record_deleted(), { kind: 'record-deleted' });
     // Deleting answered the question a rename would have asked.
     detail.discard();
     await goto(DOCUMENTS);
@@ -676,7 +680,9 @@
     cancelLabel={m.keep_it()}
     confirmAttrs={{ 'data-confirm-delete-document': '' }}
     onConfirm={deleteDocument}
-    onCancel={() => (confirming = false)}
+    onCancel={() => { confirming = false; removing.dismiss(); }}
+    busy={removing.busy}
+    failed={removing.failed}
   />
 
   <DocumentTargetPicker

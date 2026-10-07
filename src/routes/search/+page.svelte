@@ -99,6 +99,8 @@
      `recentSearches.ts` for what "recent" means, since a search's own
      history is a device's memory of its own typing, not the journal's. */
   import { m } from '$lib/paraglide/messages';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
   import { page } from '$app/state';
@@ -174,12 +176,15 @@
   let savingOpen = $state(false);
   let savingName = $state('');
 
+  const questionWrite = writer();
   async function saveQuestion() {
     const name = savingName.trim();
     if (!name) return;
-    await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf(name, query.trim(), filters));
+    const input = savedQuestionInputOf(name, query.trim(), filters);
+    if (!(await questionWrite.run(() => journal.savedQuestions.upsertSavedQuestion(input), m.write_failed()))) return;
     savingOpen = false;
     savingName = '';
+    toast(m.saved(), { kind: 'record-saved' });
   }
   /* How many pages have been asked for, one counter per read. Reset by
      anything that changes what is being searched for, because page four of
@@ -837,7 +842,7 @@
       <button
         class="btn btn-primary"
         data-saved-question-save-confirm
-        disabled={!savingName.trim()}
+        disabled={!savingName.trim() || questionWrite.busy}
         onclick={saveQuestion}
       >
         <span>{m.saved_question_save_confirm()}</span>

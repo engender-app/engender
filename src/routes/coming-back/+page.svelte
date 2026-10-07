@@ -133,6 +133,7 @@
   import { wearReturningRowTitle } from '$lib/data/vocabulary/wearLabels';
   import { readReturnGap, readWhatIsWaiting, WAITING_TABLES } from '$lib/data/comingBackReads';
   import { waitingItemKey, type WaitingItem } from '$lib/data/comingBack';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { OFFERS, answerOffer, type ReturningDose, type ReturningWearSession } from '$lib/data/offers';
   import { fmtDay } from '$lib/data/dates';
   import {
@@ -319,14 +320,19 @@
     return { ...shared, route: draft.route };
   }
 
-  /* Closed before the write, the order every other offer's sheet keeps: a
-     second tap finds no open sheet rather than a second dose in flight. */
+  /* Closed once the write lands, with the button held while it runs so a
+     second tap writes nothing (after-release 06). It used to close first,
+     and a write that then threw took the entered dose with it. */
+  const offerWrite = writer();
   async function confirmDose() {
-    if (!doseDraft) return;
-    const subject = doseSubject(doseDraft);
-    const day = doseDraft.item.slotEpochDay;
-    doseDraft = null;
-    if (await answerOffer(DOSE_OFFER, subject, 'confirm', journal)) {
+    const draft = doseDraft;
+    if (!draft) return;
+    const subject = doseSubject(draft);
+    const day = draft.item.slotEpochDay;
+    let saved = false;
+    if (!(await offerWrite.run(async () => { saved = await answerOffer(DOSE_OFFER, subject, 'confirm', journal); }, m.write_failed()))) return;
+    if (doseDraft === draft) doseDraft = null;
+    if (saved) {
       /* Said out loud, because the only other signal is the row
          disappearing. `answerOffer`'s return value is what makes this
          honest: it is false on a stale confirm, and a screen that toasted
@@ -357,8 +363,11 @@
       startTimestamp: wearDraft.item.startTimestamp,
       endEpochDay: epochDayFromDateInputValueOrToday(wearDraft.end)
     };
-    wearDraft = null;
-    if (await answerOffer(WEAR_OFFER, subject, 'confirm', journal)) {
+    const draft = wearDraft;
+    let saved = false;
+    if (!(await offerWrite.run(async () => { saved = await answerOffer(WEAR_OFFER, subject, 'confirm', journal); }, m.write_failed()))) return;
+    if (wearDraft === draft) wearDraft = null;
+    if (saved) {
       toast(m.coming_back_wear_saved({ date: dayLong(subject.endEpochDay) }));
     }
   }
@@ -636,7 +645,7 @@
       </div>
     {/if}
     <div class="stack-3 coming-back-sheet-actions">
-      <button class="btn btn-primary" data-coming-back-dose-confirm disabled={!doseCanSave} onclick={confirmDose}>
+      <button class="btn btn-primary" data-coming-back-dose-confirm disabled={!doseCanSave || offerWrite.busy} onclick={confirmDose}>
         <span>{DOSE_OFFER.copy.confirm()}</span>
       </button>
       <!-- Cancel, not the offer's own decline. The row behind this sheet now
@@ -679,7 +688,7 @@
          131 call sites, and the mechanism is unconfirmed. -->
     <p class="muted small coming-back-field-hint">{m.coming_back_wear_end_hint()}</p>
     <div class="stack-3 coming-back-sheet-actions">
-      <button class="btn btn-primary" data-coming-back-wear-confirm disabled={!wearCanSave} onclick={confirmWear}>
+      <button class="btn btn-primary" data-coming-back-wear-confirm disabled={!wearCanSave || offerWrite.busy} onclick={confirmWear}>
         <span>{WEAR_OFFER.copy.confirm()}</span>
       </button>
       <!-- Cancel rather than the offer's decline, for the reason the dose

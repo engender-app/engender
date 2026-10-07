@@ -44,6 +44,8 @@
      the reviewed-on date carry no such warning and move to the foot. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { attempt, deleter, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
@@ -182,14 +184,14 @@
   const toggleBuiltIn = (goalKey: RoadmapGoalKey) => {
     const current = statuses[goalKey] ?? 'unchecked';
     const next = nextStatus(current);
-    journal.roadmap.setGoalStatus(pack.key, goalKey, next);
+    attempt(() => journal.roadmap.setGoalStatus(pack.key, goalKey, next), m.write_failed());
     if (current === 'unchecked' && next === 'checked') offerMilestone(goalKey, roadmapGoalTitle(goalKey));
   };
 
   const toggleCustom = (goal: { id: string; status: RoadmapGoalStatus; text: string }) => {
     const current = goal.status;
     const next = nextStatus(current);
-    journal.roadmap.setCustomGoalStatus(goal.id, next);
+    attempt(() => journal.roadmap.setCustomGoalStatus(goal.id, next), m.write_failed());
     if (current === 'unchecked' && next === 'checked') offerMilestone(goal.id, goal.text);
   };
 
@@ -198,7 +200,9 @@
   async function answerMilestoneOffer(given: OfferAnswer, data: RoadmapGoalMilestone | null) {
     const subject = promptGoal === null ? null : data;
     promptGoal = null;
-    await answerOffer(MILESTONE_OFFER, subject, given, journal);
+    let added = false;
+    await attempt(async () => { added = await answerOffer(MILESTONE_OFFER, subject, given, journal); }, m.write_failed());
+    if (added) toast(m.roadmap_milestone_added());
   }
 
   function stateLabel(status: RoadmapGoalStatus): string {
@@ -276,22 +280,38 @@
      without gripping the plural copy that carries it (ADR-0029). */
   let unfiledByDelete = $derived(goalDocuments.rows.length);
 
-  const saveGoalText = () => {
+  const goalWrite = writer();
+  const saveGoalText = async () => {
     if (!canSaveGoal) return;
-    journal.roadmap.updateCustomGoalText(selectedGoal!.key, goalRewording);
+    const key = selectedGoal!.key;
+    const text = goalRewording;
+    if (await goalWrite.run(() => journal.roadmap.updateCustomGoalText(key, text), m.write_failed())) {
+      toast(m.saved(), { kind: 'record-saved' });
+    }
   };
 
-  /* The sheet closes before the write, the same order `answerMilestoneOffer`
-     above uses: the row is gone from the list underneath a moment later, and
-     a sheet still open over a goal that no longer exists has nothing to read
-     its tick from. */
-  const deleteGoal = () => {
+  /* Both sheets wait for the delete and then close together (after-release
+     06): a failed one keeps the question up with the goal still there,
+     rather than closing over a goal that never went. */
+  const removing = deleter();
+  const deleteGoal = async () => {
     if (!selectedGoal) return;
     const id = selectedGoal.key;
+    if (!(await removing.run(() => journal.roadmap.deleteCustomGoal(id)))) return;
     confirmingDelete = false;
     closeGoalSheet();
-    journal.roadmap.deleteCustomGoal(id);
+    toast(m.record_deleted(), { kind: 'record-deleted' });
   };
+
+  const addGoalWrite = writer();
+  async function addGoal() {
+    const track = addTrack;
+    const text = newGoalText.trim();
+    if (!track || !text) return;
+    if (!(await addGoalWrite.run(() => journal.roadmap.addCustomGoal(track, text), m.write_failed()))) return;
+    addTrack = null;
+    toast(m.saved(), { kind: 'record-saved' });
+  }
 
   let sourceId = $derived(page.url.searchParams.get('goal'));
   let sourceBuiltin = $derived(pack.goals.find((goal) => goal.key === sourceId));
@@ -392,7 +412,7 @@
               class="roadmap-track-btn"
               data-track-toggle={track}
               data-dismissed={section.dismissed}
-              onclick={() => journal.roadmap.setTrackDismissed(track, !section.dismissed)}
+              onclick={() => attempt(() => journal.roadmap.setTrackDismissed(track, !section.dismissed), m.write_failed())}
             >
               <!-- Both labels are always laid out in one grid cell, so the
                    button keeps the wider one's width and the row beside it
@@ -550,13 +570,9 @@
         />
       {/snippet}
     </Field>
-    <button
-      class="btn btn-primary"
-      onclick={() => {
-        if (newGoalText.trim()) journal.roadmap.addCustomGoal(addTrack!, newGoalText.trim());
-        addTrack = null;
-      }}><span>{m.roadmap_add_goal()}</span></button
-    >
+    <button class="btn btn-primary" disabled={!newGoalText.trim() || addGoalWrite.busy} onclick={addGoal}>
+      <span>{m.roadmap_add_goal()}</span>
+    </button>
   {/if}
 </Sheet>
 
@@ -618,7 +634,7 @@
             <input class="input" {id} name="goal-text" bind:value={goalDraft} />
           {/snippet}
         </Field>
-        <button class="btn btn-primary press" data-save-goal disabled={!canSaveGoal} onclick={saveGoalText}>
+        <button class="btn btn-primary press" data-save-goal disabled={!canSaveGoal || goalWrite.busy} onclick={saveGoalText}>
           <span>{m.roadmap_goal_save()}</span>
         </button>
         <!-- Disabled until the documents read lands: a confirmation that
@@ -653,7 +669,9 @@
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-confirm-delete-goal': '', 'data-unfiles': String(unfiledByDelete) }}
   onConfirm={deleteGoal}
-  onCancel={() => (confirmingDelete = false)}
+  onCancel={() => { confirmingDelete = false; removing.dismiss(); }}
+  busy={removing.busy}
+  failed={removing.failed}
 />
 
 <style>
