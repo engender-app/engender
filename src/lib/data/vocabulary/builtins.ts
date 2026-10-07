@@ -13,7 +13,7 @@
    labels.ts has to cover exhaustively - a built-in added here without a
    message fails the typecheck rather than showing a raw key to someone. */
 
-import type { GenderDimension, Tag, TagGroup } from '../types.ts';
+import type { GenderDimension, GenderPreset, Tag, TagGroup } from '../types.ts';
 import { BUILT_IN_DIMENSIONS } from './builtinTemplates.ts';
 
 /* Frozen. These eight stopped being a picker in ticket 35 and survive only
@@ -294,6 +294,15 @@ export {
   type RegimenTemplateKey,
   type EntryTemplateKey
 } from './builtinTemplates.ts';
+
+/* Presets and milestone templates are not stored rows in Phase 1 - the
+   journal holds only what the user added - so these hand back the built-in
+   ones in the shape the rest of the code already expects, names left for
+   vocabulary.ts to fill in. */
+
+function builtInPresetRows(): GenderPreset[] {
+  return BUILT_IN_PRESETS.map((p) => ({ id: p.key, name: '', builtIn: true, dims: [...p.dims] }));
+}
 
 /* Reconciling, not seeding-if-empty. Both functions add what is missing by
    key and touch nothing else, so they are safe to run on every boot and
