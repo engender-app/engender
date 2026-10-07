@@ -1,8 +1,8 @@
 /var/log/nginx/engender/*.log {
     daily
     missingok
-    rotate 6
-    maxage 6
+    rotate 5
+    maxage 5
     compress
     create 0640 www-data adm
     sharedscripts

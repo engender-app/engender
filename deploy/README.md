@@ -138,9 +138,9 @@ Install `nginx/engender-logrotate` as `/etc/logrotate.d/engender`, create
 `/var/log/nginx/engender` owned by `www-data:adm`, and ensure logrotate and
 its daily timer are installed and enabled. The production app server blocks
 disable access logs and use this separate error directory. Apply the same
-logging directives to the retained legacy app hostname. Six daily archives
-plus the active file keep live errors for at most seven days when the timer
-runs. Rotation includes empty files so older errors still expire on quiet
+logging directives to the retained legacy app hostname. Five daily archives
+plus the active file leave room for the timer’s randomized delay within the
+seven-day limit when the daily timer runs. Rotation includes empty files so older errors still expire on quiet
 days. The counter locations write neither access nor error logs.
 
 Check both existing and new dashboard logins, private visibility, fixed
