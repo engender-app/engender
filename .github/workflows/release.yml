@@ -147,7 +147,11 @@ jobs:
             cat dist/release/SHA256SUMS
             printf '```\n'
           } > dist/release-body.md
-          gh release create "$RELEASE_TAG" \
+          publication_flags=()
+          if [[ "$ENGENDER_VERSION" == *-* ]]; then
+            publication_flags+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" "${publication_flags[@]}" \
             --title "engender $ENGENDER_VERSION" \
             --notes-file dist/release-body.md \
             dist/release/*
