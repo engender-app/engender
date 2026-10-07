@@ -79,4 +79,20 @@ describe('the compressed gaps', () => {
     );
     expect(shape(items)).toEqual(['a', 'b', 'gap-c', 'c', 'today']);
   });
+
+  /* Today inside a long quiet stretch sits at its real place in it, not
+     before it (after-release 27, audit L03-15): the stretch splits at today,
+     and each side compresses only if it is long on its own. */
+  it('splits a gap at today when today falls inside it', () => {
+    const items = timelineItems([milestone('before', TODAY - 600), milestone('after', TODAY + 500)], TODAY);
+    expect(shape(items)).toEqual(['before', 'gap-before-today', 'today', 'gap-after', 'after']);
+    expect(items[1]).toMatchObject({ kind: 'gap', fromEpochDay: TODAY - 600, toEpochDay: TODAY });
+    expect(items[3]).toMatchObject({ kind: 'gap', fromEpochDay: TODAY, toEpochDay: TODAY + 500 });
+  });
+
+  it('keeps only the long side of a gap that today splits', () => {
+    const items = timelineItems([milestone('before', TODAY - 30), milestone('after', TODAY + 900)], TODAY);
+    expect(shape(items)).toEqual(['before', 'today', 'gap-after', 'after']);
+    expect(items[2]).toMatchObject({ kind: 'gap', fromEpochDay: TODAY, toEpochDay: TODAY + 900 });
+  });
 });

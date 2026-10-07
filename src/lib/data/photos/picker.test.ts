@@ -132,6 +132,18 @@ describe('filePhotoPicker', () => {
     expect(vi.mocked(chooseFiles)).not.toHaveBeenCalled();
   });
 
+  /* The web picks several photos in one trip, and Android now does too
+     (after-release 27, audit L10-10): the system picker is asked for more
+     than one. */
+  test('asks the Android picker for several photos, as the web does', async () => {
+    vi.mocked(isAndroid).mockReturnValue(true);
+    vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: [] });
+
+    await filePhotoPicker().pick();
+
+    expect(vi.mocked(androidPhotos.pickImages)).toHaveBeenCalledWith({ multiple: true });
+  });
+
   /* Several photos at the ceiling is the shape this guards: fetched one at
      a time, so the heap holds one file rather than the whole multi-pick. */
   test('fetches a multi-pick one file at a time', async () => {

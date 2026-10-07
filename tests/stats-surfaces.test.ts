@@ -158,7 +158,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   /* Colour on the rail means an era and nothing else: the history rows are
      ink, one solid and one hollow. */
   it('names only the kinds present, and asks the flag for nothing but the eras', () => {
-    expect(timeline).toContain('railLegendKinds(history, surgeries, bands.length > 0)');
+    expect(timeline).toContain('railLegendKinds(history, marks, surgeries, bands.length > 0)');
     expect(timeline).toMatch(/\.span-tl-hband\[data-span-band='regimen'\] \{[^}]*background: var\(--text-2\);/);
     expect(timeline).toMatch(
       /\.span-tl-hband\[data-span-band='tryout'\] \{[^}]*background: var\(--bg\);\s*border-color: var\(--text-2\);/
@@ -409,6 +409,13 @@ describe('the merged tag card draws as paired dots', () => {
 
   it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
     expect(readings.tags).toMatch(/const pickCorrelationRow = \(key: string\) => \{[\s\S]{0,200}occurrence\.kind === 'tag'/);
+  });
+  /* After-release 27 (audit L06-06): the ranking spans every scale and
+     never read a picked metric, so the picker that sat on it changed
+     nothing on the card. */
+  it('carries no metric picker, since the ranking spans every scale', () => {
+    expect(readings.tags).not.toContain('<ChartPicker');
+    expect(readings.tags).not.toContain('selectMetric');
   });
 });
 

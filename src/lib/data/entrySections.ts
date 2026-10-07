@@ -16,6 +16,10 @@ import type { EntryDraft } from './entryDraft';
 export const ENTRY_SECTIONS = ['tags', 'body', 'photos', 'voice', 'video'] as const;
 export type EntrySection = (typeof ENTRY_SECTIONS)[number];
 
+/** Today's new entry with Photos already open: where a first photo goes,
+    since the photo library browses photos and owns none (ADR-0085). */
+export const TODAY_PHOTO_HREF = '/entry/new/today?open=photos';
+
 export function isEntrySection(value: unknown): value is EntrySection {
   return typeof value === 'string' && (ENTRY_SECTIONS as readonly string[]).includes(value);
 }

@@ -182,3 +182,30 @@ test('a category outside the catalogue still draws its line, after the ones in i
 test('nothing logged is no lines', () => {
   assert.deepEqual(sizeChanges([]), []);
 });
+
+/* Free text typed on a phone keyboard: "M" one day and "m" the next is one
+   size, and "H&M" and "h&m" are one label (after-release 27, audit L03-14).
+   The words shown stay the ones typed, the latest spelling for the label. */
+test('a size typed in another case is the same size, not a change', () => {
+  const changes = sizeChanges([rec('skirts', 'Uniqlo', 'M', 20400), rec('skirts', 'Uniqlo', 'm', 20640)]);
+
+  assert.deepEqual(changes, []);
+});
+
+test('a brand typed in another case is the same label, reported as last typed', () => {
+  const changes = sizeChanges([rec('tops', 'H&M', 'L', 20400), rec('tops', 'h&m', 'M', 20640)]);
+
+  assert.deepEqual(changes, [
+    { category: 'tops', brand: 'h&m', from: { size: 'L', epochDay: 20400 }, to: { size: 'M', epochDay: 20640 } }
+  ]);
+});
+
+test('the change line keeps the sizes as typed when only the case differs inside a run', () => {
+  const changes = sizeChanges([
+    rec('tops', 'Zara', 'xl', 20300),
+    rec('tops', 'Zara', 'XL', 20400),
+    rec('tops', 'Zara', 'L', 20640)
+  ]);
+
+  assert.deepEqual(changes[0].from, { size: 'XL', epochDay: 20400 });
+});
