@@ -410,6 +410,13 @@ describe('the merged tag card draws as paired dots', () => {
   it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
     expect(readings.tags).toMatch(/const pickCorrelationRow = \(key: string\) => \{[\s\S]{0,200}occurrence\.kind === 'tag'/);
   });
+  /* After-release 27 (audit L06-06): the ranking spans every scale and
+     never read a picked metric, so the picker that sat on it changed
+     nothing on the card. */
+  it('carries no metric picker, since the ranking spans every scale', () => {
+    expect(readings.tags).not.toContain('<ChartPicker');
+    expect(readings.tags).not.toContain('selectMetric');
+  });
 });
 
 /* Phase 11 ticket 07: the on-this-day tile opens in place, and the route it
