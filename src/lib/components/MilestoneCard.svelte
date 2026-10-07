@@ -15,6 +15,7 @@
      already has a shape for it, complete with the hairline that separates
      them (CONTEXT: "Felt-sense entry" - offered, never required). */
   import { m } from '$lib/paraglide/messages';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
@@ -50,12 +51,14 @@
   const OFFER = OFFERS['milestone-anniversary-felt-sense'];
   let offering = $state(false);
 
-  /* Closed before the write: the sheet is gone by the time the insert
-     runs, so a second tap has no open offer to confirm. */
+  /* Closed once the write lands (after-release 06): the sheet holds its
+     button while it runs, so a second tap writes nothing, and a write that
+     fails leaves the answer in the sheet with a toast saying so. */
   async function answer(given: OfferAnswer, subject: OfferedFeltSense | null) {
-    const open = offering;
+    if (!offering) return;
+    const saved = await answerOffer(OFFER, subject, given, journal);
     offering = false;
-    await answerOffer(OFFER, open ? subject : null, given, journal);
+    if (saved) toast(m.saved(), { kind: 'record-saved' });
   }
 
   const saveOffer = (input: { mood: number; note: string | null }) =>

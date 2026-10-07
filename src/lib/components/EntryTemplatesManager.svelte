@@ -21,6 +21,7 @@
      like the never-happens empty state without `vocabulary.ready` below
      telling the two apart. */
   import { m } from '$lib/paraglide/messages';
+  import { attempt } from '$lib/stores/attempt.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { templateSummaryKeys } from '$lib/data/vocabulary/entryTemplates';
@@ -130,7 +131,7 @@
   });
 
   async function toggleHidden(t: EntryTemplate) {
-    await journal.entryTemplates.setEntryTemplateHidden(t.id, !t.hidden);
+    await attempt(() => journal.entryTemplates.setEntryTemplateHidden(t.id, !t.hidden), m.write_failed());
   }
 
   /** What a row states under its name (audit item 5): its dimensions and

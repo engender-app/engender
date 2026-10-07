@@ -274,9 +274,13 @@
       feelingOfferId && input
         ? { owner: { milestoneId: feelingOfferId }, epochDay: todayEpochDay(), ...input }
         : null;
-    /* Closed before the write, so a second tap finds no open offer. */
-    feelingOfferId = null;
+    /* Closed once the write lands; the sheet holds its button meanwhile.
+       Either answer confirms the milestone itself, which this offer stands
+       in for (its own save opts out of the toast). */
+    if (feelingOfferId === null) return;
     await answerOffer(FEELING_OFFER, subject, given, journal);
+    feelingOfferId = null;
+    toast(m.saved(), { kind: 'record-saved' });
   }
 
   /* The anniversary showing (phase 5 ticket 24, CONTEXT: "Felt-sense
@@ -326,12 +330,13 @@
 
   async function answerAnnivOffer(given: OfferAnswer, input: { mood: number; note: string | null } | null) {
     const open = annivOffer;
-    /* Closed before the write, so a second tap finds no open offer. */
-    annivOffer = null;
     if (!open) return;
     if (given === 'decline') skippedAnniv = [...skippedAnniv, open.id];
     const subject = input ? { owner: { milestoneId: open.id }, epochDay: todayEpochDay(), ...input } : null;
-    if (await answerOffer(ANNIV_OFFER, subject, given, journal)) toast(m.ms_feeling_anniv_saved({ name: open.name }));
+    /* Closed once the write lands; the sheet holds its button meanwhile. */
+    const saved = await answerOffer(ANNIV_OFFER, subject, given, journal);
+    annivOffer = null;
+    if (saved) toast(m.ms_feeling_anniv_saved({ name: open.name }));
   }
 
   /* The editor's own draft carries no origin - it's a name, a date, a
