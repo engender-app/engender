@@ -1,6 +1,7 @@
-/* The two regions announcer.ts writes to, held where Toasts.svelte can draw
-   them. Toasts is mounted for the life of the app, over every gate, so the
-   regions are on the page before anything has to be said into them. */
+/* The two regions announcer.ts writes to, held where the root layout can
+   draw them. It draws them for the life of the app, over every gate and
+   outside the part a sheet makes inert, so the regions are on the page and
+   audible before anything has to be said into them. */
 import { createAnnouncer } from './announcer';
 
 export const speech = $state({ polite: '', assertive: '' });

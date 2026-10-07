@@ -38,6 +38,11 @@ try {
     await page.locator('[data-add]').click();
     await page.locator('[data-own]').click();
     assert.equal(await page.locator('[data-save-regimen]').isDisabled(), true);
+    // Left empty, the way the requirements are met in use (after-release 21).
+    for (const field of ['#regimen-drug', '#regimen-dose']) {
+      await page.locator(field).focus();
+      await page.locator(field).blur();
+    }
     assert.equal(await page.locator('#regimen-drug').getAttribute('aria-invalid'), 'true');
     assert.equal(await page.locator('#regimen-dose').getAttribute('aria-invalid'), 'true');
     await capture(page, `${locale}-requirements`);
