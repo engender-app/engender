@@ -111,6 +111,11 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
+  // A mood-only quick log offers the dimension follow-up instead of Home.
+  function offersDims(moodOnly: boolean) {
+    return seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
+  }
+
   // Route keys mount a new session for each entry or day.
   // svelte-ignore state_referenced_locally
   const session = entrySession({
@@ -121,7 +126,7 @@
     creation: () => ({ debriefForAppointment }),
     destination: (moodOnly) => {
       const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
-      const offerDims = seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
+      const offerDims = offersDims(moodOnly);
       return (id) => target ?? (offerDims ? `/?quickLogDims=${id}` : '/');
     },
     navigate: async (destination) => {
@@ -716,7 +721,7 @@
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    const offerDims = seedMood != null && entryDraft.hasMoodOnlyContent && vocabulary.activeDimensions.length > 0;
+    const offerDims = offersDims(entryDraft.hasMoodOnlyContent);
     let result;
     try { result = await session.save(); }
     catch (error) {
