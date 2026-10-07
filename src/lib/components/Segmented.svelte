@@ -55,7 +55,7 @@
         hand-written copy of this control with no pill on it, so the same
         gesture looked like two different controls one tab apart (Alicja,
         2026-08-25). */
-    options: { value: string; label: string; href?: string }[];
+    options: { value: string; label: string; href?: string; aria?: string }[];
     value: string;
     onChange?: (v: string) => void;
     /** For a set of short labels - a range in days, a number of steps. The
@@ -402,6 +402,7 @@
           class:is-active={o.value === value}
           role="radio"
           aria-checked={o.value === value}
+          aria-label={o.aria}
           data-segment={o.value}
           data-no-press
           onclick={() => onChange?.(o.value)}>{o.label}</button
