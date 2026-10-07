@@ -212,7 +212,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
      scale's, that card is the day-by-day reading's now. */
   it('shows the active scale\'s average, not always mood, off one series', () => {
     expect(stats).toContain('j.stats.dayAverages(shown.key, from, to)');
-    expect(stats).toContain('m.lookback_facts_average({ name: shown.name })');
+    expect(stats).toContain('m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })');
     expect(stats).not.toContain('metrics.map((mt) => mt.key)');
   });
 
