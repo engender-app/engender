@@ -288,10 +288,6 @@ export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
    test-only review). */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
 
-/** Every section's key, in the order they print - what the screen walks to
-    lay a summary out, so it never names a section itself. */
-const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
-
 import { CLINICIAN_SUMMARY_TABLES } from '../live/writes';
 export { CLINICIAN_SUMMARY_TABLES };
 
