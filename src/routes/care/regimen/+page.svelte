@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SvelteSet } from 'svelte/reactivity';
   import { page } from '$app/state';
   import { sameDraft, snapshotDraft } from '$lib/components/kit/recordEditor';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -162,6 +163,12 @@
     autoLogFromEpochDay: number | null;
   } | null>(null);
   let newPause = $state<{ start: string; end: string; reason: PauseReason } | null>(null);
+  /* The dose amounts a person has been in and left, by amount, so an
+     amount row added empty is not announced as invalid before anybody has
+     typed in it (after-release 21, audit A11Y-14). Field.svelte does this
+     for every other field; these two inputs are hand-rolled (see below). */
+  const leftDose = new SvelteSet<object>();
+  const leftUnit = new SvelteSet<object>();
   /** The reason chip picked before pressing "End episode" (ticket 43) - not
       part of `editor` itself, since it names what is *about* to happen
       rather than what the loaded episode already carries. Optional: no
@@ -591,8 +598,8 @@
           <FieldGroupHeading legend={m.regimen_episode_legend()} />
           <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
           <Field label={m.regimen_drug_label()} id="regimen-drug">
-            {#snippet children(id)}
-              <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={!editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
+            {#snippet children(id, _hint, touched)}
+              <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
             {/snippet}
           </Field>
           <Field label={m.regimen_ester_label()} id="regimen-ester">
@@ -602,8 +609,8 @@
           </Field>
           <div class="cd-endpoints">
             <Field label={m.regimen_dose_label()} id="regimen-dose">
-              {#snippet children(id)}
-                <input class="input" type="number" {id} name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" aria-invalid={!Number.isFinite(parseFloat(String(editor!.dose)))} aria-describedby="regimen-episode-requirements" bind:value={editor!.dose} />
+              {#snippet children(id, _hint, touched)}
+                <input class="input" type="number" {id} name="regimen-dose" placeholder={m.regimen_dose_placeholder()} inputmode="decimal" aria-invalid={touched && !Number.isFinite(parseFloat(String(editor!.dose)))} aria-describedby="regimen-episode-requirements" bind:value={editor!.dose} />
               {/snippet}
             </Field>
             <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
@@ -671,14 +678,14 @@
 
                 {#if schedule.recurrenceKind === 'everyNDays'}
                   <Field label={m.regimen_schedule_every_label()} id="regimen-every">
-                    {#snippet children(id)}
+                    {#snippet children(id, _hint, touched)}
                       <input
                         class="input"
                         type="number"
                         min="1"
                         {id}
                         name="regimen-every"
-                        aria-invalid={!Number.isSafeInteger(Number(schedule!.everyNDays)) || Number(schedule!.everyNDays) < 1}
+                        aria-invalid={touched && (!Number.isSafeInteger(Number(schedule!.everyNDays)) || Number(schedule!.everyNDays) < 1)}
                         aria-describedby="regimen-schedule-requirements"
                         inputmode="numeric"
                         bind:value={schedule!.everyNDays}
@@ -707,14 +714,14 @@
                 {/if}
 
                 <Field label={m.regimen_schedule_per_day_label()} id="regimen-per-day">
-                  {#snippet children(id)}
+                  {#snippet children(id, _hint, touched)}
                     <input
                       class="input"
                       type="number"
                       min="1"
                       {id}
                       name="regimen-per-day"
-                      aria-invalid={!Number.isSafeInteger(Number(schedule!.dosesPerDay)) || Number(schedule!.dosesPerDay) < 1}
+                      aria-invalid={touched && (!Number.isSafeInteger(Number(schedule!.dosesPerDay)) || Number(schedule!.dosesPerDay) < 1)}
                       aria-describedby="regimen-schedule-requirements"
                       inputmode="numeric"
                       bind:value={schedule!.dosesPerDay}
@@ -745,7 +752,8 @@
                               inputmode="decimal"
                               data-amount-dose={index}
                               aria-label={m.dose_amount_label()}
-                              aria-invalid={!Number.isFinite(parseFloat(String(amount.dose)))}
+                              onblur={() => leftDose.add(amount)}
+                              aria-invalid={leftDose.has(amount) && !Number.isFinite(parseFloat(String(amount.dose)))}
                               aria-describedby="regimen-schedule-requirements"
                               bind:value={amount.dose}
                             />
@@ -755,7 +763,8 @@
                               class="input"
                               data-amount-unit={index}
                               aria-label={m.dose_unit_label()}
-                              aria-invalid={!amount.doseUnit.trim()}
+                              onblur={() => leftUnit.add(amount)}
+                              aria-invalid={leftUnit.has(amount) && !amount.doseUnit.trim()}
                               aria-describedby="regimen-schedule-requirements"
                               bind:value={amount.doseUnit}
                             />

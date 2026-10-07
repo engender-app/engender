@@ -328,26 +328,26 @@
   />
   {#snippet fields(draft: Composition)}
     <Field label={m.letters_text_label()} id="letter-text">
-      {#snippet children(id)}
+      {#snippet children(id, _hint, touched)}
         <textarea
           class="input"
           {id}
           rows="6"
           placeholder={m.letters_compose_placeholder()}
           bind:value={draft.text}
-          aria-invalid={!draft.text.trim()}
-          aria-describedby={!draft.text.trim() ? 'letter-requirements' : undefined}
+          aria-invalid={touched && !draft.text.trim()}
+          aria-describedby="letter-requirements"
         ></textarea>
       {/snippet}
     </Field>
 
     <Field label={m.letters_unlock_label()} id="letter-unlock">
-      {#snippet children(id)}
+      {#snippet children(id, _hint, touched)}
         <DatePicker
           name="letter-unlock"
           bind:value={draft.unlockDate}
           {id}
-          aria-invalid={!draft.unlockDate || !Number.isFinite(epochDayFromDateInputValue(draft.unlockDate))}
+          aria-invalid={touched && (!draft.unlockDate || !Number.isFinite(epochDayFromDateInputValue(draft.unlockDate)))}
           describedBy="letter-requirements"
         />
       {/snippet}

@@ -871,6 +871,7 @@
                     type="password"
                     id="ob-restore-pass"
                     name="ob-restore-pass"
+                    autocomplete="off"
                     placeholder={m.imp_password_placeholder()}
                     bind:value={archivePass}
                     oninput={unproveArchive}
