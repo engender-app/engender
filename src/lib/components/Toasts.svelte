@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
   import { toasts, dismissToast } from '$lib/stores/toasts.svelte';
+  import { speech } from '$lib/stores/announcer.svelte';
   import { motionDistance, motionDuration } from '$lib/motion/tokens';
 </script>
 
@@ -8,7 +9,6 @@
   <div
     class="toast is-open"
     class:is-raised={t.raised}
-    role={t.kind === 'failed' ? 'alert' : 'status'}
     data-toast
     data-toast-kind={t.kind}
     transition:fly={{ y: (t.raised ? -1 : 1) * motionDistance('--motion-distance-sm'), duration: motionDuration('--dur-med') }}
@@ -26,6 +26,12 @@
     {/if}
   </div>
 {/each}
+
+<!-- The app's voice (announcer.ts): a toast is drawn above and said here,
+     because a region inserted already holding its words is often not read
+     at all. These two never leave the page. -->
+<p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
+<p class="visually-hidden" role="alert" data-announce-urgent>{speech.assertive}</p>
 
 <style>
   /* A failure said while a sheet stays open (after-release 06): at the top,

@@ -2387,6 +2387,7 @@
   "pin_mismatch": "Those two did not match. Start again.",
   "pin_progress": "PIN progress: {typed} of {total} digits",
   "pin_throttled": "Too many wrong tries. Try again in {seconds}s.",
+  "pin_wait_over": "You can try your PIN again.",
   "pin_wrong": "That PIN is not right.",
   "pj_again": "Make another",
   "pj_collage_hint": "One image, every photo in a grid, oldest first.",
