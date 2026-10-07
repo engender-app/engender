@@ -13,6 +13,8 @@
   import { discloseWidth } from '$lib/motion/reveal';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { TagGroup } from '$lib/data/types';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   let renameTarget = $state<{ id: string; label: string } | null>(null);
 
@@ -29,7 +31,16 @@
   function moveUp(g: TagGroup, index: number) {
     const ids = g.tags.map((t) => t.id);
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-    journal.tags.reorder(g.key, ids);
+    attempt(() => journal.tags.reorder(g.key, ids), m.write_failed());
+  }
+
+  /* Each sheet closes once its write lands, and stays open with a toast
+     when it does not (after-release 06). */
+  const sheetWrite = writer();
+  async function saveFromSheet(write: (() => unknown) | null, close: () => void) {
+    if (write && !(await sheetWrite.run(write, m.write_failed()))) return;
+    close();
+    if (write) toast(m.saved(), { kind: 'record-saved' });
   }
   let customGroups = $derived(vocabulary.tagGroups.filter((g) => !g.builtIn));
   let builtInGroups = $derived(vocabulary.tagGroups.filter((g) => g.builtIn));
@@ -90,7 +101,7 @@
               </button>
               {#if tg.builtIn}
                 <button class="icon-btn" data-tag-hide={tg.id} aria-label={tg.hidden ? m.tags_show_aria({ label: tg.label }) : m.tags_hide_aria({ label: tg.label })}
-                  onclick={() => journal.tags.setTagHidden(tg.id, !tg.hidden)}>
+                  onclick={() => attempt(() => journal.tags.setTagHidden(tg.id, !tg.hidden), m.write_failed())}>
                   <Icon name={tg.hidden ? 'eye' : 'eyeOff'} size={16} />
                 </button>
               {:else}
@@ -140,9 +151,10 @@
       </Field>
       <button
         class="btn btn-primary"
+        disabled={sheetWrite.busy}
         onclick={() => {
-          if (renameTarget!.label.trim()) journal.tags.renameTag(renameTarget!.id, renameTarget!.label.trim());
-          renameTarget = null;
+          const { id, label } = renameTarget!;
+          saveFromSheet(label.trim() ? () => journal.tags.renameTag(id, label.trim()) : null, () => (renameTarget = null));
         }}><span>{m.tags_save()}</span></button
       >
     {/if}
@@ -171,9 +183,11 @@
       <button
         class="btn btn-primary"
         data-save-new-tag
+        disabled={sheetWrite.busy}
         onclick={() => {
-          if (newLabel.trim()) journal.tags.addTag(addTarget!, newLabel.trim());
-          addTarget = null;
+          const group = addTarget!;
+          const label = newLabel.trim();
+          saveFromSheet(label ? () => journal.tags.addTag(group, label) : null, () => (addTarget = null));
         }}><span>{m.tags_add_tag()}</span></button
       >
     {/if}
@@ -189,9 +203,10 @@
     <button
       class="btn btn-primary"
       data-save-new-tag-group
+      disabled={sheetWrite.busy}
       onclick={() => {
-        if (newGroupName.trim()) journal.tags.addGroup(newGroupName.trim());
-        groupSheet = false;
+        const name = newGroupName.trim();
+        saveFromSheet(name ? () => journal.tags.addGroup(name) : null, () => (groupSheet = false));
       }}><span>{m.tags_add_group()}</span></button
     >
   </Sheet>

@@ -14,6 +14,8 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import type { Affirmation } from '$lib/data/types';
+  import { attempt, writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   let language = $state<'en' | 'pl'>(getLocale() === 'pl' ? 'pl' : 'en');
 
@@ -38,6 +40,8 @@
     remove: (id) => journal.affirmations.deleteLine(id),
     findById: (id) => vocabulary.affirmations.find((a) => a.id === id)
   });
+  const adding = writer();
+  const editing = writer();
 </script>
 
 <div class="screen">
@@ -122,7 +126,7 @@
                 class="icon-btn"
                 data-affirmation-hide={a.id}
                 aria-label={a.hidden ? m.affirmations_show_aria({ line: a.text }) : m.affirmations_hide_aria({ line: a.text })}
-                onclick={() => journal.affirmations.setHidden(a.id, !a.hidden)}
+                onclick={() => attempt(() => journal.affirmations.setHidden(a.id, !a.hidden), m.write_failed())}
               >
                 <Icon name={a.hidden ? 'eye' : 'eyeOff'} size={16} />
               </button>
@@ -142,9 +146,12 @@
     </Field>
     <button
       class="btn btn-primary"
-      onclick={() => {
-        if (newText.trim()) journal.affirmations.addLine(language, newText.trim());
+      disabled={adding.busy}
+      onclick={async () => {
+        const text = newText.trim();
+        if (text && !(await adding.run(() => journal.affirmations.addLine(language, text), m.write_failed()))) return;
         addOpen = false;
+        if (text) toast(m.saved(), { kind: 'record-saved' });
       }}><span>{m.affirmations_save()}</span></button
     >
   </Sheet>
@@ -159,9 +166,13 @@
       </Field>
       <button
         class="btn btn-primary"
-        onclick={() => {
-          if (editText.trim()) journal.affirmations.editLine(editTarget!.id, editText.trim());
+        disabled={editing.busy}
+        onclick={async () => {
+          const text = editText.trim();
+          const id = editTarget!.id;
+          if (text && !(await editing.run(() => journal.affirmations.editLine(id, text), m.write_failed()))) return;
           editTarget = null;
+          if (text) toast(m.saved(), { kind: 'record-saved' });
         }}><span>{m.affirmations_save()}</span></button
       >
     {/if}

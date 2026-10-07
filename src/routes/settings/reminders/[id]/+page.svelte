@@ -26,6 +26,8 @@
   import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { isAndroid } from '$lib/platform';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
 
   const TYPES = [
     { value: 'med', label: m.rem_type_med() },
@@ -77,16 +79,26 @@
     }).format(nextOccurrence(ruleFromDraft(), new Date())!);
   });
 
-  function saveReminder() {
-    journal.reminders.upsertReminder({
-      id: detail.record?.id,
-      title: draft.title || m.rem_default_name(),
-      type: draft.type,
-      enabled: detail.record?.enabled ?? true,
-      ...ruleFromDraft(),
-    });
+  /* Leaves only once the reminder is stored (after-release 06): it used to
+     navigate before the write settled, so a failed one vanished with the
+     screen. */
+  const saving = writer();
+  async function saveReminder() {
+    const saved = await saving.run(
+      () =>
+        journal.reminders.upsertReminder({
+          id: detail.record?.id,
+          title: draft.title || m.rem_default_name(),
+          type: draft.type,
+          enabled: detail.record?.enabled ?? true,
+          ...ruleFromDraft(),
+        }),
+      m.write_failed()
+    );
+    if (!saved) return;
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
+    toast(m.saved(), { kind: 'record-saved' });
     goto('/settings/reminders');
   }
 </script>
@@ -173,7 +185,7 @@
   {/if}
 
   <SaveBar>
-    <button class="btn btn-primary" data-save onclick={saveReminder}>
+    <button class="btn btn-primary" data-save disabled={saving.busy} onclick={saveReminder}>
       <Icon name="check" size={20} /><span>{m.rem_save()}</span>
     </button>
   </SaveBar>
