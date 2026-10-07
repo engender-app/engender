@@ -12,7 +12,7 @@
   import { m } from '$lib/paraglide/messages';
   import { DOCUMENT_TARGET_ICON } from '$lib/data/vocabulary/documentTargetLabels';
   import type { DocumentTarget } from '$lib/data/types';
-  import { documentTargets } from './documentTargets.svelte';
+  import type { documentTargets } from './documentTargets.svelte';
   import Sheet from './Sheet.svelte';
   import Notice from './kit/Notice.svelte';
   import ListCard from './kit/ListCard.svelte';
@@ -21,17 +21,18 @@
 
   let {
     open,
+    targets,
     current,
     onPick,
     onClose
   }: {
     open: boolean;
+    targets: ReturnType<typeof documentTargets>;
     current: DocumentTarget | null;
     onPick: (target: DocumentTarget | null) => void;
     onClose: () => void;
   } = $props();
 
-  const targets = documentTargets();
   let sections = $derived(targets.sections(current));
 
   /* Every row carries a box rather than a chevron: it picks, it does not go
