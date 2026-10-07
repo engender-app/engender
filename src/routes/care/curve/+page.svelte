@@ -257,14 +257,6 @@
   const curveRemember = (px: number) => rememberReserve('curve', px);
 </script>
 
-<!-- The invitation to the dose log, passed only when logging could actually
-     produce a curve. Someone whose doses are all on an ester this screen draws
-     nothing for has already done the thing it would be asking for, and saying
-     so again would put the limit on them rather than on this screen. -->
-{#snippet doseLogAction()}
-  <a class="btn btn-soft" href="/care/doses"><span>{m.curve_empty_action()}</span></a>
-{/snippet}
-
 <!-- What one mark stands for, and the way out to it (phase 8 features ticket
      15). The link and not the tick is where the tap-through lives: a tick is
      1.5px of ink on a plot that can hold two dozen of them, so a target big

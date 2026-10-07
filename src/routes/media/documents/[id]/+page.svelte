@@ -686,6 +686,7 @@
   />
 
   <DocumentTargetPicker
+    {targets}
     open={pickingTarget}
     current={target}
     onPick={(next) => pickTarget(next)}

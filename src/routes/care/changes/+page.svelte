@@ -567,16 +567,9 @@
     {/if}
   </ReadReserve>
 
-  <!-- Hair progress, the one change that keeps its own screen (phase 9
-       carpet ticket 16): a published scale and a camera behind it, so it
-       stays hosted rather than folded in here.
-
-       Outside the `anchorEpochDay` branch above on purpose. That branch
-       replaces this whole screen with a "set up a regimen first" notice, and
-       hair progress is usable without one. Inside it, the row would be the
-       dead route the ticket forbids. cycle-events shares this host too
-       (ticket 13) but draws by hand above rather than through this
-       component - `HostedRows.svelte` excludes it by key. -->
+  <!-- Hair progress remains available outside the regimen-dependent bands.
+       It uses a published scale and photos, so no regimen is required.
+       Cycle events are hosted above; HostedRows excludes their key. -->
   <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>

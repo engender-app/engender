@@ -231,13 +231,13 @@
     if (!(await removing.run(() => journal.savedQuestions.deleteSavedQuestion(deletedId)))) return;
     deleteOpen = false;
     toast(m.record_deleted(), { kind: 'record-deleted' });
-    void goto('/search/questions');
+    void goto('/search');
   }
 </script>
 
 <div class="screen" data-screen>
   {#if question}
-    <ScreenHeader title={question.name} back="/search/questions">
+    <ScreenHeader title={question.name} back="/search">
       {#snippet actions()}
         <!-- Random sits with the question's other actions rather than over
              its results, as on /search (ticket 16). -->
@@ -389,7 +389,7 @@
       failed={removing.failed}
     />
   {:else if !questionsQuery.loading}
-    <ScreenHeader title={m.saved_questions_title()} back="/search/questions" />
+    <ScreenHeader title={m.saved_questions_title()} back="/search" />
     <Notice icon="bookmark" key="saved-question-gone" title={m.saved_question_gone_title()} text={m.saved_question_gone_body()} action={{ label: m.search(), href: '/search' }} />
   {/if}
 </div>
