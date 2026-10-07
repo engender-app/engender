@@ -2317,6 +2317,7 @@
     }
   ],
   "ph_edit_day": "Edit day",
+  "ph_empty_action": "Add a photo to today's entry",
   "ph_empty_body": "Photos from entries, milestones, hair tracking, tryouts and surgery journeys appear here.",
   "ph_empty_title": "No photos yet",
   "ph_measurements_title": "Measurements",
