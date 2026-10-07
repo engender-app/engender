@@ -120,7 +120,7 @@
     style="margin-top:var(--space-3)"
     placeholder={m.margin_note_placeholder()}
     data-margin-note-input
-    bind:value={composeText}
+    readonly={saving.busy} bind:value={composeText}
   ></textarea>
   <div class="stack-3" style="margin-top:var(--space-3)">
     <button

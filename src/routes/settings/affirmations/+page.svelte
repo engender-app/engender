@@ -141,7 +141,7 @@
     <h3>{addLabel}</h3>
     <Field label={addLabel} hidden>
       {#snippet children(id)}
-        <textarea class="input" {id} rows="3" placeholder={m.affirmations_placeholder()} bind:value={newText}></textarea>
+        <textarea class="input" {id} rows="3" placeholder={m.affirmations_placeholder()} readonly={adding.busy} bind:value={newText}></textarea>
       {/snippet}
     </Field>
     <button
@@ -161,7 +161,7 @@
       <h3>{m.affirmations_edit_sheet()}</h3>
       <Field label={m.affirmations_edit_sheet()} hidden>
         {#snippet children(id)}
-          <textarea class="input" {id} rows="3" bind:value={editText}></textarea>
+          <textarea class="input" {id} rows="3" readonly={editing.busy} bind:value={editText}></textarea>
         {/snippet}
       </Field>
       <button
