@@ -1,5 +1,7 @@
 /* Owns the open draft, its in-memory baseline and the pending save.
    Comparison and record lookup stay framework-free in recordEditor.ts. */
+import { m } from '$lib/paraglide/messages';
+import { toast } from '$lib/stores/toasts.svelte';
 import { findDeleteTarget, nextEditor, sameDraft, snapshotDraft, trySave, type RecordEditorOptions } from './recordEditor.ts';
 
 export function recordEditor<TRecord extends { id: string }, TDraft extends { id?: string } = TRecord>(
@@ -10,6 +12,8 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
   let baseline: TDraft | null = null;
   let saving = $state(false);
   let saveFailed = $state(false);
+  let deleting = $state(false);
+  let deleteFailed = $state(false);
 
   function setEditor(value: TDraft | null) {
     baseline = snapshotDraft(value);
@@ -27,8 +31,13 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
     saving = true;
     saveFailed = false;
     try {
-      if (await trySave(draft, options.upsert) && editor === draft) setEditor(null);
-    } catch {
+      if (await trySave(draft, options.upsert)) {
+        if (editor === draft) setEditor(null);
+        const message = options.saved ? options.saved(draft) : m.saved();
+        if (message) toast(message, { kind: 'record-saved' });
+      }
+    } catch (error) {
+      console.error(error);
       if (editor === draft) saveFailed = true;
     } finally {
       saving = false;
@@ -39,20 +48,38 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
     const found = findDeleteTarget(options.findById, editor, target);
     if (found) {
       deleteTarget = found;
+      deleteFailed = false;
       setEditor(null);
     }
     return found;
   }
 
+  /* The sheet stays up until the record is gone (after-release ticket 06):
+     a delete that fails says so inside it and leaves the record where it
+     was, and a second tap while one is running deletes nothing. */
   async function confirmDelete() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    deleteTarget = null;
-    await options.remove(id);
+    const target = deleteTarget;
+    if (!target || deleting) return;
+    deleting = true;
+    deleteFailed = false;
+    try {
+      await options.remove(target.id);
+    } catch (error) {
+      console.error(error);
+      if (deleteTarget === target) deleteFailed = true;
+      return;
+    } finally {
+      deleting = false;
+    }
+    if (deleteTarget === target) deleteTarget = null;
+    const message = options.deleted ? options.deleted(target) : m.record_deleted();
+    if (message) toast(message, { kind: 'record-deleted' });
   }
 
   function cancelDelete() {
+    if (deleting) return;
     deleteTarget = null;
+    deleteFailed = false;
   }
 
   return {
@@ -74,6 +101,12 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
     },
     get deleteTarget() {
       return deleteTarget;
+    },
+    get deleting() {
+      return deleting;
+    },
+    get deleteFailed() {
+      return deleteFailed;
     },
     openEditor,
     save,

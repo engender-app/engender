@@ -219,10 +219,8 @@
   /* A consult date asks before it goes and says that it went
      (after-release 07); it used to vanish on one tap. */
   const consultRecord = recordEditor<ProcedureConsult>({
-    remove: async (id) => {
-      await journal.procedures.deleteConsult(id);
-      toast(m.surgery_consult_deleted());
-    },
+    remove: (id) => journal.procedures.deleteConsult(id),
+    deleted: () => m.surgery_consult_deleted(),
     findById: (id) => selected?.consults.find((consult) => consult.id === id)
   });
 

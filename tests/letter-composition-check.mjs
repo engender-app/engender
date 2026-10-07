@@ -150,7 +150,7 @@ try {
   await page.evaluate(() => window.letterFault.resolve());
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   await page.locator('[data-letter-state="sealed"]').waitFor();
-  assert.match(await page.locator('[data-letter-outcome]').innerText(), /Letter sealed/);
+  assert.match(await page.locator('[data-toast-kind="record-saved"]').last().innerText(), /Letter sealed/);
   assert.equal(await page.evaluate(() => window.letterFault.calls), 2);
   const letters = await stored();
   assert.equal(letters.length, 1);
@@ -170,7 +170,7 @@ try {
   const readyId = await page.evaluate(() => window.letterFault.id);
   await page.locator(`[data-letter-open="${readyId}"]`).click();
   assert.equal(await page.locator('[data-letter-text]').innerText(), 'Readable past letter');
-  assert.match(await page.locator('[data-letter-outcome]').innerText(), /ready to read/);
+  assert.match(await page.locator('[data-toast-kind="record-saved"]').last().innerText(), /ready to read/);
   await page.locator('[data-letter-close]').click();
   console.log('PASS past date remains permissible; saved text reopens through reading flow');
 

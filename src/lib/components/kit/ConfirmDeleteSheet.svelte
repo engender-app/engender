@@ -4,7 +4,9 @@
      (phase 5 UX ticket 39a). The component takes every string as a prop -
      it does not own copy, since a screen's own wording (and whether it has
      a hint at all) is its business. */
+  import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';
+  import { collapse } from '$lib/motion/reveal';
 
   let {
     open,
@@ -15,7 +17,9 @@
     cancelLabel,
     onConfirm,
     onCancel,
-    confirmAttrs = {}
+    confirmAttrs = {},
+    busy = false,
+    failed = false
   }: {
     open: boolean;
     title: string;
@@ -27,10 +31,8 @@
         async handler to the old `() => void` either way; what that type
         forbade was this component seeing the promise at all, so a
         rejection could only reach the window as a page error - which is
-        part of how six throwing deletes went unnoticed (ADR-0053). Nothing
-        here reports a failure to the person yet, and under that ADR no
-        delete rejects; the type is what makes one representable when
-        something does. */
+        part of how six throwing deletes went unnoticed (ADR-0053). The
+        caller catches it and says so through `failed`. */
     onConfirm: () => void | Promise<void>;
     onCancel: () => void;
     /** e.g. `{ 'data-confirm-delete-side-effect': '' }` - the walkthrough
@@ -38,13 +40,24 @@
         existed, which has to survive unchanged. Empty string rather than
         `true` so it serializes as the bare attribute the screens wrote. */
     confirmAttrs?: Record<string, string>;
+    /** The delete is running: both buttons wait, so a second tap deletes
+        nothing and the sheet cannot close on a delete still in flight. */
+    busy?: boolean;
+    /** The last delete failed; the record is still there. */
+    failed?: boolean;
   } = $props();
 </script>
 
-<Sheet {open} {title} onClose={onCancel}>
+<!-- While a delete runs, the scrim, Back and a drag ask to close and are
+     told no: handing Sheet a request handler is what stops it closing
+     itself (Sheet.svelte's close()). -->
+<Sheet {open} {title} onClose={onCancel} onRequestClose={busy ? () => {} : undefined}>
   <h3>{question}</h3>
   {#if hint}
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
+  {/if}
+  {#if failed}
+    <p class="notice notice-danger" role="alert" data-delete-failed transition:collapse>{m.record_delete_failed()}</p>
   {/if}
   <div class="stack-3">
     <!-- The kit's own handle, beside whatever the screen already named its
@@ -56,9 +69,9 @@
          Spelled `=""` rather than left bare: an element carrying a spread
          serializes a bare attribute as "true", and the screens this replaces
          wrote theirs bare, which is "". -->
-    <button class="btn btn-danger" data-confirm-delete="" {...confirmAttrs} onclick={onConfirm}>
+    <button class="btn btn-danger" data-confirm-delete="" {...confirmAttrs} disabled={busy} aria-busy={busy} onclick={onConfirm}>
       <span>{confirmLabel}</span>
     </button>
-    <button class="btn btn-ghost" onclick={onCancel}><span>{cancelLabel}</span></button>
+    <button class="btn btn-ghost" disabled={busy} onclick={onCancel}><span>{cancelLabel}</span></button>
   </div>
 </Sheet>
