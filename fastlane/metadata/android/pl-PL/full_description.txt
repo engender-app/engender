@@ -8,7 +8,7 @@ Opieka i zmiany
 
 Harmonogram leków i przyjęte dawki trzymasz razem, z przypomnieniami o wybranej porze. Notuj wyniki badań i pomiary ciała, śledź zmiany włosów i zdarzenia cyklu, a operację zaplanuj z listą rzeczy do spakowania i listą na czas gojenia. Zapisuj pytania na następną wizytę, a gdy chcesz pokazać komuś swoje dane, wyeksportuj podsumowanie dla lekarza.
 
-engender zapisuje to, co wpiszesz. Nie stawia diagnoz, nie dobiera dawek i nie zastępuje porady medycznej. O leczeniu rozmawiaj z osobą, która ma odpowiednie kwalifikacje medyczne.
+engender zapisuje to, co wpiszesz. Nie jest wyrobem medycznym: nie stawia diagnoz, nie leczy, nie zapobiega chorobom, nie dobiera dawek i nie zastępuje porady medycznej. O leczeniu rozmawiaj z osobą, która ma odpowiednie kwalifikacje medyczne.
 
 Reszta tranzycji
 
@@ -22,7 +22,7 @@ Na twoim urządzeniu
 
 Aplikacja na Androida działa offline. Nie ma uprawnienia do internetu, więc nie może nigdzie wysłać twojego dziennika. Nie ma konta engender ani reklam. Dziennik opuszcza telefon tylko wtedy, gdy go eksportujesz albo udostępniasz.
 
-Baza dziennika i zdjęcia są na urządzeniu zaszyfrowane. Poza szyfrowaniem zostają ustawienia potrzebne przy starcie, takie jak motyw i język, oraz to, czego aplikacja potrzebuje do odblokowania klucza. Nic z tego nie jest tym, co piszesz.
+Dziennik i zdjęcia są na urządzeniu zaszyfrowane. Poza szyfrowaniem zostają ustawienia potrzebne przy starcie, takie jak motyw i język, oraz to, czego aplikacja potrzebuje do odblokowania klucza. Nic z tego nie jest tym, co piszesz.
 
 Dziennik otwierasz hasłem, PIN-em albo odciskiem palca, twarzą lub blokadą ekranu telefonu. Kamuflaż, jeśli go włączysz, nadaje aplikacji zwyczajną nazwę i ikonę.
 
