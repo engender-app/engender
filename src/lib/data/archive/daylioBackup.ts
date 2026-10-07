@@ -53,7 +53,7 @@ import { contentUuid } from '../journal/support';
 import { photoFileName } from '../photos/names';
 import { audioMimeOf } from '../voiceRecordings/mime';
 import { htmlToText } from './html';
-import type { DaylioNaming } from './daylio';
+import { tagMatches, type DaylioNaming } from './daylio';
 import type {
   ArchiveDimension,
   ArchiveEntry,
@@ -824,18 +824,3 @@ const recordingExtensionOf = (name: string): string | null => {
   const extension = extensionOf(name);
   return extension && audioMimeOf(extension) ? extension : null;
 };
-
-/** Every label a tag in this journal answers to, folded, so an imported
-    activity resolves to a tag that is already here rather than a second
-    one beside it. daylio.ts does the same for the CSV path. */
-function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
-  const matches = new Map<string, string>();
-  for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {
-    const labels = tag.builtIn ? [...naming.tagLabels(tag.id), tag.label] : [tag.label];
-    for (const label of labels.filter((one) => one.trim().length > 0)) {
-      const folded = foldText(label);
-      if (!matches.has(folded)) matches.set(folded, tag.id);
-    }
-  }
-  return matches;
-}

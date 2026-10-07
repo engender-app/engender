@@ -2,9 +2,7 @@
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* The fluidity engine's presentations, managed (phase 5 deepening ticket
      17, ADR-0048): list, add, rename, recolour and hide - there is no
-     delete (CONTEXT: "Hidden"), so the shared record editor's `remove`
-     handle is wired to throw rather than ever being reachable from this
-     screen. Under Settings, not the Transition door (redesign ticket 51,
+     delete (CONTEXT: "Hidden"), so no delete handler is supplied. Under Settings, not the Transition door (redesign ticket 51,
      ADR-0084): a mode is a reference area, spent on the entry editor's
      chips and never read here for its own sake - the same reason body
      regions and affirmations already sit on this screen.
@@ -30,10 +28,9 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import Skeleton from '$lib/components/Skeleton.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { crossfade, resize } from '$lib/motion/reveal';
+  import { resize } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -68,11 +65,6 @@
         await journal.presentations.addPresentation(name, draft.roleIndex);
       }
     },
-    // Unreachable: RecordSheet only offers a delete button when `deleteLabel`
-    // is passed below, and it is not - a presentation hides, never deletes.
-    remove() {
-      throw new Error('presentations hide, not delete');
-    },
     findById: (id) => presentations.find((p) => p.id === id)
   });
 
@@ -90,13 +82,7 @@
 <p class="ob-text">{m.presentations_intro()}</p>
 
 <div use:resize>
-  {#if !vocabulary.ready}
-    <!-- Not the same state as the true empty list below: on a cold
-         navigation straight to this sheet, `presentations` reads empty for
-         a few frames before the mirror behind it hydrates, which otherwise
-         showed "No modes yet" for a person who has modes (ticket 152/162). -->
-    <div out:crossfade><Skeleton variant="line" count={2} /></div>
-  {:else if presentations.length > 0}
+  {#if presentations.length > 0}
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       {#each presentations as p (p.id)}
         {@const role = roleAt(activeFlag.roles, p.roleIndex)}
@@ -140,17 +126,6 @@
   editTitle={m.presentation_edit_sheet()}
   saveLabel={m.presentation_save()}
   canSave={(draft) => draft.name.trim().length > 0}
-  confirm={{
-    // Unreachable: RecordSheet's own delete-confirm sheet only opens
-    // through askToDelete, and nothing on this screen ever calls it -
-    // there is no deleteLabel, so no button on the editor can reach it
-    // either. Required by the shared component regardless of whether a
-    // screen offers deletion at all.
-    title: '',
-    question: () => '',
-    confirmLabel: '',
-    cancelLabel: ''
-  }}
 >
   {#snippet fields(editor)}
     <Field label={m.presentation_name_label()} id="presentation-name">

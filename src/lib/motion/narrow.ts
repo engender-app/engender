@@ -120,8 +120,8 @@ export function pinnedOut(node: Element): TransitionConfig {
     after that, which it knows from whether its own grid has been painted
     yet.
 
-    The duration token is clamped to 1ms under reduced motion by the theme,
-    which is the instant cut this owes that setting. */
+    `motionDuration` returns 0 under reduced motion, which is the instant cut
+    this owes that setting. */
 export function tileIn(_node: Element, params: { when: boolean }): TransitionConfig {
   if (!params.when) return { duration: 0 };
   return {

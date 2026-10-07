@@ -4,7 +4,7 @@
    rather than in regimenEpisode.ts and stockProjection.ts, which are both in
    the first-load graph; here they load with the editor. */
 
-import { attributeDrug } from './regimenEpisode';
+import { attributeDrug, sameDrug } from './regimenEpisode';
 import { dosesInOneUnit, type StockEntry } from './stockProjection';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -17,19 +17,18 @@ import type { DoseEvent, RegimenEpisode } from './types';
     the chip up after a dose logged from the dose sheet, and one tap then
     logged a second. A drug-less dose while two different drugs run is
     ambiguous and takes neither off. Names compare trimmed and case
-    ignored, as the chip always compared them. */
+    ignored through the shared sameDrug rule. */
 export function episodesWithNoDoseLogged(
   episodes: readonly RegimenEpisode[],
   candidates: readonly RegimenEpisode[],
   dayDoses: readonly Pick<DoseEvent, 'drug' | 'timestamp'>[]
 ): RegimenEpisode[] {
-  const fold = (drug: string) => drug.toLowerCase().trim();
-  const logged = new Set<string>();
+  const logged: string[] = [];
   for (const dose of dayDoses) {
     const { drug } = attributeDrug(episodes, dose);
-    if (drug) logged.add(fold(drug));
+    if (drug) logged.push(drug);
   }
-  return candidates.filter((episode) => !logged.has(fold(episode.drug)));
+  return candidates.filter((episode) => !logged.some((drug) => sameDrug(episode.drug, drug)));
 }
 
 /** What one more dose would leave, in the entry's own unit: the entry

@@ -58,7 +58,7 @@
   import {
     EFFECT_DIRECTIONS,
     effectDirectionLabel,
-    type EffectDirection
+    type EffectDirectionGroup
   } from '$lib/data/effectDirections';
   import { noticedAxis, type NoticedChange, type NoticedChangeKind } from '$lib/data/noticedAxis';
   import { crossfade, wipe } from '$lib/motion/reveal';
@@ -122,8 +122,8 @@
      way a change goes, not a judgement about it, so ADR-0012 has nothing to
      say here - the same reading MilestoneRail makes of a milestone drawn
      hollow because it has not happened yet. */
-  const DIRECTION_ROLE: Record<EffectDirection, number> = { feminizing: 0, masculinizing: 1, other: 2 };
-  const roleFor = (direction: EffectDirection) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
+  const DIRECTION_ROLE: Record<EffectDirectionGroup, number> = { feminizing: 0, masculinizing: 1, other: 2 };
+  const roleFor = (direction: EffectDirectionGroup) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
 
   /* The legend names what the marks show: a filled dot per direction a
      personal effect carries, and one hollow ring for side effects, which

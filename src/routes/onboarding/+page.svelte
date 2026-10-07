@@ -97,28 +97,7 @@
   import type { LockAfter } from '$lib/data/prefs/catalogue';
   import PermissionList from '$lib/components/PermissionList.svelte';
 
-  /* Keyed, not worded, so the flag names translate with the rest of the
-     catalogue. The same eight, in the same order, as Settings' own picker -
-     one list would be better still, and moving it is ticket 25's screen,
-     not this one's. */
-  const PALETTES: [string, () => string][] = [
-    ['trans', m.palette_trans],
-    ['nonbinary', m.palette_nonbinary],
-    ['genderfluid', m.palette_genderfluid],
-    ['bisexual', m.palette_bisexual],
-    ['lesbian', m.palette_lesbian],
-    ['pansexual', m.palette_pansexual],
-    ['rainbow', m.palette_rainbow],
-    ['agender', m.palette_agender],
-    ['gaymen', m.palette_gaymen],
-    ['genderqueer', m.palette_genderqueer],
-    ['intersex', m.palette_intersex],
-    ['asexual', m.palette_asexual],
-    ['demiboy', m.palette_demiboy],
-    ['demigirl', m.palette_demigirl],
-    ['trigender', m.palette_trigender],
-    ['polish', m.palette_polish]
-  ];
+  import { PALETTES } from '$lib/theme/paletteChoices';
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
   /* Settings' "Delete everything" lands here (phase 14 ticket 15). The

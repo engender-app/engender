@@ -95,8 +95,8 @@
      from the screen this absorbed. `starredPhotos()` reads oldest first
      (CONTEXT: "Starred", the shelf's own order) and somebody reaching for
      what they kept wants the newest of it. Six, so a large starred
-     collection stays a glance; the shelf itself (/search/starred) is
-     unbounded and one tap further. */
+     collection stays a glance. The full photo library remains available
+     from the Media group. */
   const PHOTO_LIMIT = 6;
   let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
   let starredPhotos = $derived([...starredPhotosQuery.rows].reverse().slice(0, PHOTO_LIMIT));

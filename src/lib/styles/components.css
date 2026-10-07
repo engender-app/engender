@@ -1,6 +1,8 @@
 /* ============================================================
-   Component styles. Everything reads tokens only — no raw colour
-   values in this file (rule: colour lives in tokens/palettes.css).
+   Component styles. Everything reads tokens (colour lives in
+   theme/palettes.css) except three values that must not follow the theme:
+   the white label and black scrim on a photo thumbnail, and the black seam
+   on the sun's rings (each is explained where it appears).
    ============================================================ */
 
 /* ---------- text & primitives ---------- */
@@ -1904,12 +1906,9 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
      with enough in it.
 
      It has to be the sheet's own padding rather than the scrim's. The scrim
-     is absolutely positioned inside `.app-main`, which scrolls, so it is
-     sized to the scrolled content rather than to the app frame - padding it
-     grows the scroll area and moves nothing. That mismatch is also why
-     `max-height: 85%` is 85% of the content height rather than of the frame
-     the comment below believes it is measuring; worth a shell ticket, and
-     too wide to take here.
+     is `position: fixed` and bottom-aligns the sheet, so padding on it would
+     lift the sheet off the floor rather than give the sheet's own rows room
+     to scroll clear of the bar.
 
      `--nav-clearance` is the token the scroll region and the editor's save
      bar already agree on, so the three cannot drift, and it drops to the
@@ -1980,7 +1979,7 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
    used; the toast goes under the scrim with everything else. */
 .fan-scrim {
   position: absolute; inset: 0; z-index: 54;
-  /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+  /* Keep CSS transitions disabled so Svelte's
      transition controls opacity without CSS transition interference (ticket 105, 116). */
   transition: none;
 }
@@ -2103,34 +2102,6 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
 .fan-mood:hover,
 .fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
 
-/* The magnifier (phase 5 ticket 31). --mood-mag is written per face by
-   QuickAdd.svelte from the pointer's distance to that face, so this rule is
-   only the shape of the response: bigger, and lifted by enough that the
-   growth goes upward into the row above rather than down through the label.
-   At the 1.24 peak on a 34px face that is 8px of growth against 5px of lift,
-   so the bottom of the face stays where it is and the top rises.
-
-   Tier 1, so --dur-fast, and the transition is doing a second job here: the
-   scale is re-aimed on every pointermove, so the easing reads as a filter on
-   a moving finger rather than as a delay behind it.
-
-   The `scale` and `translate` properties rather than one `transform`, because
-   the picker's own states use `transform` on this same element and a
-   shorthand here would be a second author of the same property on a
-   different surface.
-
-   Nothing is declared for reduced motion, and nothing needs to be: QuickAdd
-   leaves --mood-mag at 1 there rather than not writing it, so there is no
-   scale to undo, and the armed colour above is the whole answer. That is the
-   substitution rather than a deletion - what goes is the movement, not the
-   cue.
-
-   The scale and the lift are both the base .mood-face rule's now - every
-   mood row reads --mood-mag and rises with it, the fan included (Alicja,
-   phase 5 ticket 99: the fan was how the hover was supposed to look). The
-   selector stays only as a marker; the day a surface needs its own lift
-   apart from the rows' is the day it gets a declaration again. */
-
 /* The mark travelling from the row you chose into the add control (phase 5
    ticket 18, tier 3). Transform and opacity only, over the same
    --dur-med/--ease-out every other tier-2 and tier-3 move in the app uses,
@@ -2213,9 +2184,6 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
   100% { transform: translateX(0); }
 }
 
-/* Substitute, never delete: nothing travels and nothing pulses, and the
-   tick still appears on the button for exactly as long. What goes is the
-   movement, not the news. */
 /* Substitute, never delete, and symmetrically: the tick and the alert both
    still appear on the control for exactly as long. What goes is the
    travelling, the pulse and the shake - the movement, never the news. */

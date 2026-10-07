@@ -81,6 +81,23 @@ try {
   assert.equal(await dateValue(page.locator('#document-day')), '2024-10-04');
   assert.equal(await page.locator('[data-list-row="document-owner"]').count(), 0, 'one link row');
   assert.equal(await page.locator('[data-document-link]').count(), 1, 'one link row');
+  await page.locator('[data-pick-document-target]').click();
+  const pickedMilestone = page.locator(`[data-pick-target="milestone:${fixture.milestone}"]`);
+  await pickedMilestone.getByText('Original referral', { exact: true }).waitFor();
+  await page.evaluate(async (id) => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    const milestone = (await j.milestones.getMilestones()).find((row) => row.id === id);
+    await j.milestones.upsertMilestone({ ...milestone, name: 'Updated referral' });
+  }, fixture.milestone);
+  await pickedMilestone.getByText('Updated referral', { exact: true }).waitFor();
+  await pickedMilestone.click();
+  await page.locator('[data-document-link]').getByText('Updated referral', { exact: true }).waitFor();
+  await page.evaluate(async (id) => {
+    const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
+    const milestone = (await j.milestones.getMilestones()).find((row) => row.id === id);
+    await j.milestones.upsertMilestone({ ...milestone, name: 'Original referral' });
+  }, fixture.milestone);
+  await page.locator('[data-document-link]').getByText('Original referral', { exact: true }).waitFor();
   const headingBox = await heading.boundingBox();
   assert.ok(headingBox.y + headingBox.height <= (await page.locator('.doc-page').boundingBox()).y);
   assert.ok(headingBox.x + headingBox.width <= 390, 'long title stays inside the column');
@@ -235,7 +252,7 @@ try {
   assert.equal(await page.locator('[data-export-document]').count(), 0, 'image does not acquire PDF export');
   assert.equal(await page.locator('[data-page-count]').count(), 0, 'image does not acquire PDF pages');
   assert.deepEqual(errors, []);
-  console.log('PASS document identity, dense reader, owner return/deletion, explicit export, both languages, 200% magnification and responsive controls');
+  console.log('PASS document identity, live target picker, dense reader, owner return/deletion, explicit export, both languages, 200% magnification and responsive controls');
 } finally {
   await browser.close();
   await server.close();

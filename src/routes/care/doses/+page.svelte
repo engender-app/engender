@@ -36,7 +36,7 @@
   import { DOSE_LOG_WINDOW_DAYS, NO_DOSE_LOG, readDoseLog } from '$lib/data/doseLogReads';
   import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft, type DoseDraft } from '$lib/data/doseDraft';
   import { prefs } from '$lib/data/prefs/store.svelte';
-  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { activeEpisodesAt, sameDrug } from '$lib/data/regimenEpisode';
   import {
     expectedAmountOn,
     isInjectionDose,
@@ -282,15 +282,8 @@
      all once the log batches (ticket 67) - this only has to wait for the
      layout scrollToHash's own settle loop already handles. */
   $effect(() => {
-    if (!loading && view === 'log' && !deepLinkedDoseUnavailable) {
-      if (deepLinkedDoseId) {
-        if (deepLinkedDoseIndex >= 0) scrollToHash();
-      } else {
-        scrollToHash();
-      }
-    } else {
-      scrollToHash();
-    }
+    if (!loading && view === 'log' && !deepLinkedDoseUnavailable && deepLinkedDoseId && deepLinkedDoseIndex < 0) return;
+    scrollToHash();
   });
 
   function openEditor(dose: DoseEvent | null, seedDrug: string | null = null) {
@@ -345,7 +338,7 @@
     const draft = editor;
     if (!draft) return null;
     const at = activeEpisodesAt(episodes, draftTimestamp(draft.day, draft.time));
-    if (draft.drug) return at.find((e) => e.drug === draft.drug) ?? null;
+    if (draft.drug) return at.find((e) => sameDrug(e.drug, draft.drug)) ?? null;
     return at.length === 1 ? at[0] : null;
   });
 
@@ -785,8 +778,8 @@
                     <button
                       type="button"
                       class="tag-chip press"
-                      class:is-selected={editor!.drug === drug}
-                      aria-pressed={editor!.drug === drug}
+                      class:is-selected={sameDrug(editor!.drug, drug)}
+                      aria-pressed={sameDrug(editor!.drug, drug)}
                       data-dose-drug={drug}
                       onblur={() => { validationTouched = true; }}
                       onclick={() => pickDrug(drug)}

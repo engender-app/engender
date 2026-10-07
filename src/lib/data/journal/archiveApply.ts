@@ -508,8 +508,9 @@ export async function applyEntries({ driver, journal, ts }: Restoring): Promise<
       videoRows.push([video.id, entryId, video.fileName, orderIndex, ts]);
     }
 
-    // Unlike dims and tags, a region key is not resolved against a stored
-    // row - there is none (bodyMap.ts) - so it travels straight through,
+    // Unlike dims and tags, a region key is not resolved against a
+    // body_region row - entry_body_region.region is plain text (bodyMap.ts
+    // owns the list of regions) - so it travels straight through,
     // the same forward-compatible treatment lab_result.analyte gets: an
     // archive from a build that knows a region this one does not still
     // restores rather than failing the whole import.
@@ -1191,12 +1192,6 @@ export function aliasLegacyConsults(journal: ArchiveJournal): ArchiveJournal {
   return { ...journal, appointments };
 }
 
-
-/** The import log (phase 7 ticket 03): ordinary insert-if-absent by uuid,
-    the same as every other user-owned row. Every record already carries its
-    own minted uuid and timestamp (journal/archive.ts writes it once, on
-    commit), so `ts` here only stamps `updated_at` - the bookkeeping column
-    every insert carries, not the moment the import itself happened. */
 /** The column list import_log's insert shares with `recordImport` below -
     that one writes always and one row at a time (a record is a new fact
     every commit, never insert-if-absent), this one is insert-if-absent,
@@ -1234,6 +1229,11 @@ export function importLogRow(
   return [record.id, record.source, JSON.stringify(record.counts), record.importedAt, ts];
 }
 
+/** The import log (phase 7 ticket 03): ordinary insert-if-absent by uuid,
+    the same as every other user-owned row. Every record already carries its
+    own minted uuid and timestamp (journal/archive.ts writes it once, on
+    commit), so `ts` here only stamps `updated_at` - the bookkeeping column
+    every insert carries, not the moment the import itself happened. */
 export async function applyImportLog({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM import_log');
   const inserting = journal.importLog.filter((record) => !present.has(record.id));

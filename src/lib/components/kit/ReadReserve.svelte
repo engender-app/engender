@@ -276,11 +276,6 @@
     margin-bottom: 0;
   }
 
-  /* The blocks inside keep the screen's own floor: app.css spaces them
-     beside `.screen > *`, at the same specificity, so a block's own margin
-     wins or loses exactly as it would as the screen's child (ux-carpet
-     ticket 211: a section title's own 12 had been losing to a scoped 20). */
-
   /* An inline-level last block keeps nothing under it: its margin cannot
      collapse out through this one (app.css, ticket 195's exception). */
   .read-reserve-body > :global(:is(.segmented-wrap, .btn):last-child) {

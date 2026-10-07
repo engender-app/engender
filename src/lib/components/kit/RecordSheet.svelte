@@ -78,7 +78,7 @@
         action is not always a save (a wear session can be started or
         stopped). Rendered in the save button's place, handle and all. */
     primary?: Snippet<[TDraft]>;
-    confirm: {
+    confirm?: {
       /** All three are handed the record being deleted, so the screen never
           derives the delete target to name it. A screen whose records are
           not one thing - a wear session has a kind - reads the target for
@@ -120,7 +120,7 @@
      the one whose records are not all the same thing. Empty while there is
      no target, which is only ever while the sheet is closed. */
   const confirmTitle = $derived(
-    typeof confirm.title === 'string' ? confirm.title : deleteTarget ? confirm.title(deleteTarget) : ''
+    !confirm ? '' : typeof confirm.title === 'string' ? confirm.title : deleteTarget ? confirm.title(deleteTarget) : ''
   );
 
   /** A label a screen either states outright or reads off something: the
@@ -158,7 +158,7 @@
           {/if}
           {#if draft.id}
             {#if extraActions}{@render extraActions(draft)}{/if}
-            {#if deleteLabel}
+            {#if deleteLabel && confirm}
               <button class="btn btn-ghost" {...{ [handles.delete]: '' }} onclick={requestDelete}>
                 <span>{deleteLabel}</span>
               </button>
@@ -192,6 +192,7 @@
   }
 </style>
 
+{#if confirm}
 <ConfirmDeleteSheet
   open={deleteTarget !== null}
   title={confirmTitle}
@@ -205,3 +206,4 @@
   busy={record.deleting}
   failed={record.deleteFailed}
 />
+{/if}

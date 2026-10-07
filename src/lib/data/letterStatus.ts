@@ -16,13 +16,12 @@
    outside SQLite (ADR-0039). */
 
 import { isSealedUntil } from './sealedUntil';
+import { isTileSnoozed, snoozeTile, clearSnooze } from './liveTilesSnooze';
 import type { LetterSeal } from './journal/letters';
 import type { Letter } from './types';
 
-const LETTER_TILE_SNOOZE_STORAGE_KEY = 'letter_tile_snooze_until';
 const READ_LETTERS_STORAGE_KEY = 'engender-read-letter-ids';
 const GREETED_LETTERS_STORAGE_KEY = 'engender-greeted-letter-ids';
-const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;
@@ -108,38 +107,15 @@ export function letterToGreet<T extends LetterSeal>(
 }
 
 export function isLetterSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {
-  const s = resolveStorage(storage);
-  if (!s) return false;
-  try {
-    const raw = s.getItem(LETTER_TILE_SNOOZE_STORAGE_KEY);
-    if (!raw) return false;
-    const until = Number(raw);
-    return !Number.isNaN(until) && nowMs < until;
-  } catch {
-    return false;
-  }
+  return isTileSnoozed('ready-letter', nowMs, storage);
 }
 
 export function snoozeLetterTile(nowMs: number = Date.now(), storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  try {
-    s.setItem(LETTER_TILE_SNOOZE_STORAGE_KEY, String(nowMs + SNOOZE_DURATION_MS));
-  } catch {
-    // Ignore storage issues gracefully.
-  }
+  snoozeTile('ready-letter', undefined, nowMs, storage);
 }
 
-/* clearLetterSnooze stays exported for its own test, and cross-checked in
-   ready-letter-tile.test.ts (AU-09 test-only review). */
 export function clearLetterSnooze(storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  try {
-    s.removeItem(LETTER_TILE_SNOOZE_STORAGE_KEY);
-  } catch {
-    // Ignore storage issues gracefully.
-  }
+  clearSnooze('ready-letter', storage);
 }
 
 /** Generic over the letter shape rather than taking `Letter`: the two days

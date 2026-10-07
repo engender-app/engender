@@ -178,25 +178,3 @@
     <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
   </ChartCard>
 {/if}
-
-<style>
-  .reading-axes {
-    display: grid;
-    gap: var(--space-1);
-    margin-top: var(--space-3);
-  }
-
-  .reading-axis {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--text-2);
-  }
-
-  .reading-axis :global(.kit-chart-pick) {
-    max-width: 74%;
-  }
-</style>

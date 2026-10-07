@@ -58,7 +58,16 @@ import {
   videosByEntry,
   type StagedVideo
 } from './videoNotes';
-import { assertChanged, bool, domainIdOf, mintUuid, now, rowidByUuid } from './support';
+import {
+  assertChanged,
+  bool,
+  domainIdOf,
+  mintUuid,
+  now,
+  resolveDimensionIds,
+  resolveTagIds,
+  rowidByUuid
+} from './support';
 import { watchJournalWrites } from '../journal-busy';
 import { startOfDayTimestamp } from '../epochDay';
 import type { CycleEventKind, DoseRoute, DoseStatus, InjectionVehicle, PersonalEffectType } from '../types';
@@ -217,7 +226,7 @@ export interface EntriesArea {
     span?: { from: number; to: number }
   ): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
-      body-region dysphoria intensity >= 50, or euphoria_dysphoria <= 20), newest first
+      or body-region dysphoria intensity >= 50), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
   /** The same entry's id alone, `undefined` when there is none. Its own read
@@ -321,43 +330,6 @@ export function makeEntriesArea(
   dosesFor: (driver: SqliteDriver) => Pick<DosesArea, 'upsertDose'>,
   checklistsFor?: (driver: SqliteDriver) => Pick<ChecklistsArea, 'recordDebriefEntry'>
 ): EntriesArea {
-  const resolveDimensionIds = async (dims: Record<string, number>): Promise<readonly (readonly [number, number])[]> => {
-    const entries = Object.entries(dims);
-    if (entries.length === 0) return [];
-
-    const keys = [...new Set(entries.map(([key]) => key))];
-    const placeholders = keys.map(() => '?').join(', ');
-    const rows = await driver.query<{ id: number; key: string }>(
-      `SELECT id, key FROM gender_dimension WHERE key IN (${placeholders})`,
-      keys
-    );
-
-    const byKey = new Map(rows.map((row) => [row.key, row.id]));
-    for (const key of keys) {
-      if (!byKey.has(key)) throw new Error(`unknown dimension: ${key}`);
-    }
-
-    return entries.map(([key, value]) => [byKey.get(key)!, value] as const);
-  };
-
-  const resolveTagIds = async (tagDomainIds: string[]): Promise<number[]> => {
-    if (tagDomainIds.length === 0) return [];
-
-    const unique = [...new Set(tagDomainIds)];
-    const placeholders = unique.map(() => '?').join(', ');
-    const rows = await driver.query<{ id: number; key: string | null; uuid: string | null }>(
-      `SELECT id, key, uuid FROM tag WHERE key IN (${placeholders}) OR uuid IN (${placeholders})`,
-      [...unique, ...unique]
-    );
-
-    const byDomainId = new Map<string, number>();
-    for (const row of rows) byDomainId.set(domainIdOf(row, 'tag'), row.id);
-    for (const tagId of unique) {
-      if (!byDomainId.has(tagId)) throw new Error(`unknown tag: ${tagId}`);
-    }
-
-    return tagDomainIds.map((tagId) => byDomainId.get(tagId)!);
-  };
 
   const upsertDimensionValues = async (
     driver: SqliteDriver,
@@ -1085,8 +1057,8 @@ export function makeEntriesArea(
         });
 
         // Resolved before the transaction so an unknown key aborts cleanly.
-        const dimIds = await resolveDimensionIds(input.dims ?? {});
-        const tagIds = input.tags && (await resolveTagIds(input.tags));
+        const dimIds = await resolveDimensionIds(driver, input.dims ?? {});
+        const tagIds = input.tags && (await resolveTagIds(driver, input.tags));
         if (input.bodyRegions) await assertKnownBodyRegions(input.bodyRegions);
         // undefined leaves the entry's current presentation alone; an
         // explicit null clears it, and only a non-null value is checked
@@ -1185,8 +1157,8 @@ export function makeEntriesArea(
         videoCount: attachingVideosNew.length,
         bodyRegionCount: countLoggedRegions(bodyRegions)
       });
-      const dimIds = await resolveDimensionIds(dims);
-      const tagIds = await resolveTagIds(tags);
+      const dimIds = await resolveDimensionIds(driver, dims);
+      const tagIds = await resolveTagIds(driver, tags);
       await assertKnownBodyRegions(bodyRegions);
       const presentationId = input.presentationId ?? null;
       if (presentationId !== null) await assertKnownPresentation(presentationId);

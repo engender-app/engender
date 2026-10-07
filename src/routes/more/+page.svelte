@@ -400,16 +400,9 @@
               </ListRow>
             </div>
           {/each}
-          <!-- Where a query like this is actually finished (audit item 11).
-               The door used to page its own hits twenty at a time with no
-               filters and no date range, which is a second, weaker search -
-               this screen's own comment said a query answering with a
-               screenful of records is better finished on the search screen,
-               and then never linked there. The last row does, carrying the
-               query with it - the debounced one, not what is in the box this
-               instant, so the row never quotes a word the rows above it have
-               not answered yet (the same discipline `settled` keeps for the
-               count and the notice). -->
+          <!-- Search continues with the current typed query. The row label
+               describes the settled results above; handOffSearch reads the
+               input when tapped. -->
           <div class="rows-divide" transition:disclose={{ skip: leaving }}>
             <ListRow
               key="hub-search-handoff"

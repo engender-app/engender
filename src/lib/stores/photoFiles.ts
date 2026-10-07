@@ -123,11 +123,9 @@ export async function readThumbnailFile(name: string): Promise<Uint8Array | null
   return enqueue(name);
 }
 
-/** A stored photo's full bytes, on the same terms. Only the journey export
-    (ticket 27) reads these: a screen drawing a photo wants the thumbnail,
-    and a composed collage at 360px a cell would show the difference. Not
-    batched - one deliberate pass over one photo at a time is what that is,
-    and a queue would only hold its bytes in memory for longer. */
+/** A stored file's full bytes, on the same terms. The journey export reads
+    full photos; voiceFiles.ts exposes this read for recordings and videos.
+    These deliberate reads are not batched with the thumbnail queue. */
 export async function readPhoto(fileName: string): Promise<Uint8Array | null> {
   return store ? store.read(fileName) : null;
 }

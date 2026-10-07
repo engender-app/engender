@@ -124,6 +124,12 @@ try {
     await page.locator('[data-search-idle]').waitFor();
     await page.getByRole('link', { name: title, exact: true }).click();
     await counts(0, 1);
+    const savedPath = new URL(page.url()).pathname;
+    assert.equal(await page.locator('[data-screen-back]').getAttribute('href'), '/search');
+    await page.locator('[data-screen-back]').click();
+    await page.waitForURL((url) => url.pathname === '/search');
+    await visit(savedPath);
+    await counts(0, 1);
     const summary = page.locator('[data-saved-question-criteria]');
     await summary.focus();
     await page.keyboard.press('Enter');
@@ -200,7 +206,14 @@ try {
       for (const photo of await journal.photos.inJournal()) await journal.photos.setStarred(photo.id, true);
     });
     await counts(0, 1, 1);
-    await visit('/search');
+    await page.locator('[data-saved-question-delete]').click();
+    await page.locator('[data-confirm-delete]').click();
+    await page.waitForURL((url) => url.pathname === '/search');
+    await visit(savedPath);
+    await page.locator('[data-screen-back]').waitFor();
+    assert.equal(await page.locator('[data-screen-back]').getAttribute('href'), '/search');
+    await page.locator('[data-screen-back]').click();
+    await page.waitForURL((url) => url.pathname === '/search');
     await page.locator('#q').fill('nothingmatchesu23');
     await page.locator('[data-notice="search-none"]').waitFor();
     // Nothing matched, so there is no question worth saving (ticket 16).
@@ -210,7 +223,7 @@ try {
     await page.locator('[data-search-idle]').waitFor();
   }
   assert.deepEqual(errors, []);
-  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, no save for nothing, save/reopen criteria, EN/PL and narrow layouts');
+  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, no save for nothing, save/reopen criteria, saved-question Back/delete, EN/PL and narrow layouts');
 } catch (error) {
   console.error('FAILED AT', page.url(), (await page.locator('body').innerText()).slice(0, 2500));
   throw error;

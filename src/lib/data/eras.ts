@@ -17,7 +17,7 @@
    ticket 11) - a domain name reads better than spanCoversDay(era, day) at
    this file's call sites, but the arithmetic lives once. */
 
-import { spanCoversDay } from './span';
+import { spanCoversDay, spanOverlapsRange } from './span';
 
 /** An era, or the draft of one. `id` is absent while it is being created,
     which is also what tells `eraConflict` there is nothing to exclude. */
@@ -87,7 +87,7 @@ export function eraConflict(existing: readonly EraSpan[], candidate: EraSpan): E
     if (other) return { kind: 'openEnd', with: other };
   }
 
-  const other = others.find((era) => spansOverlap(era, candidate));
+  const other = others.find((era) => spanOverlapsRange(era, candidate.startEpochDay, candidate.endEpochDay));
   return other ? { kind: 'overlap', with: other } : null;
 }
 
@@ -104,12 +104,6 @@ export function assertEraFits(existing: readonly EraSpan[], candidate: EraSpan):
   if (conflict.kind === 'openStart') throw new Error(`${era} has no start, and neither does ${other}`);
   if (conflict.kind === 'openEnd') throw new Error(`${era} has no end, and neither does ${other}`);
   throw new Error(`${era} overlaps ${other}`);
-}
-
-function spansOverlap(a: EraSpan, b: EraSpan): boolean {
-  const aStartsAfterBEnds = a.startEpochDay !== null && b.endEpochDay !== null && a.startEpochDay > b.endEpochDay;
-  const bStartsAfterAEnds = b.startEpochDay !== null && a.endEpochDay !== null && b.startEpochDay > a.endEpochDay;
-  return !aStartsAfterBEnds && !bStartsAfterAEnds;
 }
 
 /** The journal's own edges, which is what an open bound resolves against. */

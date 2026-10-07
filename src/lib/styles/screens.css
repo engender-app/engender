@@ -228,8 +228,6 @@
 .day-add { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
 .day-add .btn { width: 100%; }
 
-/* ---------- The Transition door ----------
-
 /* ---------- Search ---------- */
 .search-box {
   display: flex; align-items: center; gap: var(--space-2);
@@ -894,11 +892,6 @@
   html[data-a11y-text-size='boost'] .palette-grid {
     grid-template-columns: repeat(auto-fill, minmax(max(64px, calc((100% - 3 * var(--space-3)) / 4)), 1fr));
   }
-
-  /* Home's outline frame on the web (phase 5 ticket 32.11) is gone with
-     redesign ticket 23: the field is the column's top edge now, a
-     6px-cornered banner the sun is clipped by (+page.svelte), so there is
-     nothing left for a frame to mark. */
 }
 
 /* ---------- Stats hub (phase 5 UX ticket 23) ---------- */

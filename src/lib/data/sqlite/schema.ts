@@ -91,12 +91,12 @@ END;
 -- \`kind\` in particular goes stale the day its date passes.
 --
 -- The three link columns each name where a milestone came from, all nullable,
--- all holding a uuid rather than a rowid, and none carrying a foreign key:
--- \`roadmap_goal_key\` can name a bundled goal from a country pack or a custom
--- goal's uuid, and \`procedure_id\`/\`tryout_id\` are cleared by their own
--- deletes before the parent row goes (ADR-0045), so a milestone never carries
--- a dangling reference and a deleted milestone leaves its roadmap tick
--- checked.
+-- all holding a uuid rather than a rowid. \`roadmap_goal_key\` carries no
+-- foreign key: it can name a bundled goal from a country pack or a custom
+-- goal's uuid, and a deleted milestone leaves its roadmap tick checked.
+-- \`procedure_id\` and \`tryout_id\` REFERENCE their parents with no cascade,
+-- so their own deletes clear them first (ADR-0045) and a milestone never
+-- carries a dangling reference.
 CREATE TABLE milestone (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid             TEXT NOT NULL UNIQUE,

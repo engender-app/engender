@@ -190,8 +190,8 @@ export function archiveAnswers(step: OnboardingStep): boolean {
     above all, since an archive password is not an access mode (ADR-0041) and
     the key has to be made here. The permissions step joined it when ticket
     31 landed, on this same test and with no edit needed: it stores no
-    preference, so it can never qualify as carried. Disguise will join it the
-    same way when ticket 32 lands - device state is not journal state. */
+    preference, so it can never qualify as carried. Disguise joined it the
+    same way when ticket 32 landed - device state is not journal state. */
 export function restoreSteps(): readonly OnboardingStep[] {
   const rest = ALL_STEPS.filter((step) => step !== 'welcome' && !archiveAnswers(step));
   return ['welcome', 'restore', ...rest];

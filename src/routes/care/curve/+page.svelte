@@ -257,14 +257,6 @@
   const curveRemember = (px: number) => rememberReserve('curve', px);
 </script>
 
-<!-- The invitation to the dose log, passed only when logging could actually
-     produce a curve. Someone whose doses are all on an ester this screen draws
-     nothing for has already done the thing it would be asking for, and saying
-     so again would put the limit on them rather than on this screen. -->
-{#snippet doseLogAction()}
-  <a class="btn btn-soft" href="/care/doses"><span>{m.curve_empty_action()}</span></a>
-{/snippet}
-
 <!-- What one mark stands for, and the way out to it (phase 8 features ticket
      15). The link and not the tick is where the tap-through lives: a tick is
      1.5px of ink on a plot that can hold two dozen of them, so a target big
@@ -360,7 +352,7 @@
 {/snippet}
 
 <div class="screen">
-  <ScreenHeader title={m.curve_title()} back="/more" />
+  <ScreenHeader title={m.curve_title()} back="/care" />
 
   <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={curveRevealed} estimate={curveEstimate} onrest={curveRemember}>
@@ -479,7 +471,6 @@
             <div id="curve-results-{curve.ester}">
               {#if resultsOpen[curve.ester]}
                 <div class="disclosed" transition:disclose data-curve-results-list={curve.ester}>
-                  <p class="muted small curve-markers-note">{m.curve_intro()}</p>
                   <ul class="marker-list" aria-label={m.curve_legend_results()}>
                     {#each points as point, index (point.result.id)}
                       <li>

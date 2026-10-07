@@ -227,7 +227,7 @@
       eight pixels. */
   let edges = $derived.by(() => {
     const hzs =
-      language === null ? [...(ticks ?? [])].sort((a, b) => b - a).reverse() : bandEdges(language);
+      language === null ? [...(ticks ?? [])].sort((a, b) => a - b) : bandEdges(language);
     const exact = hzs.map((hz) => y(hz));
     const nudged = spreadLabels(exact, LABEL_GAP, HEIGHT);
     return hzs.map((hz, index) => ({ hz, y: nudged[index] }));

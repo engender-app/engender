@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './journal/test-support';
 import { startOfDayTimestamp } from './epochDay';
 import { CARE_DOSE_TOTAL_WINDOW_DAYS, readCare } from './careReads';
+import { episodesWithNoDoseLogged } from './quickLogChip';
 import { countingDriver } from './journal/test-support';
 import { openJournal } from './journal/journal';
 import { migratedDb } from './sqlite/test-support/migrated-db';
@@ -119,17 +120,24 @@ test('a lane with nothing ever logged has no last dose, through the fallback (ti
   assert.equal(care.lanes[0].nextDoseEpochDay, TODAY);
 });
 
-test('an untrimmed regimen drug name keeps its dose totals and run-out', async () => {
+test('Care and quick log agree on drug case and whitespace while totals and stock count both doses', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.regimen.upsertEpisode({
-    drug: ' estradiol ', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    drug: ' EsTrAdIoL ', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily',
     startEpochDay: TODAY - 10, endEpochDay: null, endReason: null
   });
-  await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY - 3),
+  await journal.doses.upsertDose({ drug: ' ESTRADIOL ', timestamp: startOfDayTimestamp(TODAY - 3),
+    route: 'oral', dose: 2, doseUnit: 'mg' });
+  await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY - 3) + 3600000,
     route: 'oral', dose: 2, doseUnit: 'mg' });
   await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 10, unit: 'pills', recordedEpochDay: TODAY - 5 });
   const care = await readCare(journal, TODAY);
   assert.equal(care.lanes.length, 1);
-  assert.equal(care.lanes[0].doseTotals[0]?.total, 2);
-  assert.notEqual(care.lanes[0].runOut, null);
+  assert.equal(care.lanes[0].doseTotals.length, 1);
+  assert.equal(care.lanes[0].doseTotals[0]?.total, 4);
+  assert.equal(care.lanes[0].lastDoseEpochDay, TODAY - 3);
+  assert.equal(care.lanes[0].runOut?.projection.remaining, 8);
+  const episodes = await journal.regimen.getEpisodes();
+  const doses = await journal.doses.getDoses(TODAY - 3, TODAY - 3);
+  assert.deepEqual(episodesWithNoDoseLogged(episodes, episodes, doses), []);
 });
