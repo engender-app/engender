@@ -309,23 +309,25 @@ for (const profile of profiles) {
   }
 }
 
-/* The lock-gate epilogue: a PIN wrapped around the journal, one cold load
-   into the gate, and the wrap taken back off. Last, because a locked
-   journal gates every cold load after it; under the run's first theme,
-   written into the preferences first so the cold load actually boots
-   with it. */
+/* Wrap the journal once, then capture each theme's cold gate. Unlock after
+   each capture so theme preparation runs in the live journal, rather than
+   reloading the PIN gate and waiting for a ready screen it cannot show. */
 const lockScene = SCENES.find((s) => s.setup === 'pin');
 if (lockScene && profiles.includes('persona')) {
   await settle('/', themes[0]);
   await page.evaluate(RESET_PERSONA_EXPRESSION);
   await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
   await page.evaluate(markProfileExpression('persona'));
+  let pinPrepared = false;
   for (const theme of themes) {
   try {
-    await settle('/', theme);
+    if (!pinPrepared) {
+      await settle('/settings/access-mode', theme);
+      if (await page.locator('[data-list-row="pin"]').count()) await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
+      pinPrepared = true;
+    }
     await page.evaluate(DEMO_THEME_EXPRESSION(theme));
-    await settle('/settings/access-mode', theme);
-    if (await page.locator('[data-list-row="pin"]').count()) await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
+    await page.waitForFunction((theme) => JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === theme, theme, { timeout: 10000 });
     const result = await screencast(async (cast) => {
       await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
       await page.goto(`${base}/`, { waitUntil: 'commit', timeout: 40000 });
@@ -342,7 +344,7 @@ if (lockScene && profiles.includes('persona')) {
       result,
       dump
     });
-    await page.evaluate(UNLOCK_PIN_EXPRESSION(PIN));
+    if (!(await page.evaluate(UNLOCK_PIN_EXPRESSION(PIN)))) throw new Error('PIN fixture did not unlock after gate capture');
   } catch (err) {
     report.push({ scene: 'lock-gate', profile: 'persona', theme: theme, error: String(err).slice(0, 300) });
     console.log(`[persona-${theme}] lock-gate: ERROR ${String(err).slice(0, 200)}`);
