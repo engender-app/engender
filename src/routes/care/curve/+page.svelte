@@ -76,12 +76,6 @@
   import QualitativeCurveChart from '$lib/components/QualitativeCurveChart.svelte';
 
   const WINDOWS = [30, 90, 180] as const;
-  const WINDOW_LABELS = {
-    30: m.curve_window_30,
-    90: m.curve_window_90,
-    180: m.curve_window_180
-  };
-
   let windowDays = $state<(typeof WINDOWS)[number]>(90);
   const today = $derived(currentDay());
   let fromEpochDay = $derived(today - windowDays + 1);
@@ -390,7 +384,7 @@
 
       <Segmented
         name={m.curve_window_label()}
-        options={WINDOWS.map((days) => ({ value: String(days), label: WINDOW_LABELS[days]() }))}
+        options={WINDOWS.map((days) => ({ value: String(days), label: m.range_days({ days: String(days) }) }))}
         value={String(windowDays)}
         onChange={(value) => changeWindow(Number(value) as (typeof WINDOWS)[number])}
         compact

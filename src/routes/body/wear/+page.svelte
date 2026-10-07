@@ -31,6 +31,8 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
   import {
     dateInputValueFromEpochDay,
@@ -85,6 +87,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { crossfade, disclose, resize, slideMonit } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { isAndroid } from '$lib/platform';
@@ -357,6 +360,29 @@
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
 
+  /* Stop on the running row itself, worded as Home's wear tile words it
+     (after-release 28, audit UI-08: a bare square here, a labelled Stop
+     there). The same write the tile makes, then the same confirmation the
+     sheet's Stop gives. */
+  const cardIn = (_node: Element) => fadeOnly(crossfadeDuration());
+  const stopper = writer();
+  async function stopRunning() {
+    const session = running;
+    if (!session) return;
+    const stopped = await stopper.run(
+      () =>
+        journal.wearSessions.upsertSession({
+          id: session.id,
+          kind: session.kind,
+          startTimestamp: session.startTimestamp,
+          durationMs: Date.now() - session.startTimestamp,
+          note: session.note
+        }),
+      m.write_failed()
+    );
+    if (stopped) toast(m.wear_session_stopped(), { kind: 'record-saved' });
+  }
+
   let kindOptions = $derived(WEAR_KINDS.map((kind) => ({ value: kind, label: wearKindLabel(kind) })));
 
   let modeOptions = $derived(
@@ -515,7 +541,12 @@
         />
       {/if}
 
+      <!-- Stopping from the row (or starting from the sheet) swaps one card
+           for the other in place: the old one fades out of flow over the new
+           one fading in, so neither is painted at full strength in a frame
+           the other still owns. -->
       {#if running}
+        <div in:cardIn out:crossfade>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
             key="running"
@@ -527,11 +558,13 @@
               : m.wear_session_running_since({ time: fmtTime(running.startTimestamp) })}
             chevron={false}
             onclick={() => record.openEditor(running)}
-          >
-            {#snippet trailing()}
-              <Icon name="stop" size={20} />
-            {/snippet}
-          </ListRow>
+            action={{
+              text: m.wear_session_stop_action(),
+              label: m.wear_session_stop_action(),
+              onclick: () => stopRunning(),
+              attrs: { 'data-wear-stop': '' }
+            }}
+          />
           <!-- The cue (ADR-0064). A line inside the card the running row
                already sits in, rather than anything that interrupts: the
                row keeps its stop control, and nothing about Stop or Save
@@ -540,8 +573,10 @@
             <p class="muted small wear-cue" data-wear-duration-cue transition:disclose>{m.wear_session_cue()}</p>
           {/if}
         </ListCard>
+        </div>
       {:else if earliest !== null}
         <!-- Nothing running, so what is true now is what today came to. -->
+        <div in:cardIn out:crossfade>
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
           <ListRow
             key="wear-today"
@@ -556,6 +591,7 @@
             {/snippet}
           </ListRow>
         </ListCard>
+        </div>
       {/if}
 
       {#if earliest === null && !running}

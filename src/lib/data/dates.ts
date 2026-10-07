@@ -44,6 +44,19 @@ export function fmtDateValue(epochDay: number): string {
   return fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** A day card's bar: "Monday 5 October", with the year only when the day
+    is not in this one ("Saturday 5 September 2025"). The calendar, the
+    entry lists (search, Good moments, a tryout) and On this day each wrote
+    it their own way (after-release 28, audit UI-08); this is the one way. */
+export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
+  return fmtDay(epochDay, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...(crossesCalendarYear(epochDay, todayEpochDay) ? { year: 'numeric' } : {})
+  });
+}
+
 /** The two ends of a chart's range, written so they cannot read backwards.
 
     A gutter says what the ends of the scale are and nothing else

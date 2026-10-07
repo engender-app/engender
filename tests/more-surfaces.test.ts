@@ -276,7 +276,7 @@ describe('every row the hub carries', () => {
     ['effects', 'eye', '/care/changes', 'care', 'read'],
     ['hair-progress', 'comb', '/body/hair-progress', 'effects', 'read'],
     ['cycle-events', 'calendar', '/health/cycle-events', 'effects', 'read'],
-    ['dilation', 'flask', '/health/dilation', 'surgery', 'read']
+    ['dilation', 'repeat', '/health/dilation', 'surgery', 'read']
   ];
 
   it('is exactly this list, in this order', () => {

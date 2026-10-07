@@ -241,7 +241,7 @@
       key="disguise"
       icon="eyeOff"
       title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.off()}
+      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
       chevron={false}
       onclick={() => (disguiseSheet = true)}
     >
@@ -346,7 +346,7 @@
     <ListRow key="language" icon="globe" title={m.language()} subtitle={languageName} chevron={false} onclick={() => (languageSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="accessibility" icon="eye" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.off()} chevron={false} onclick={() => (a11ySheet = true)}>
+    <ListRow key="accessibility" icon="eye" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
   </ListCard>
@@ -379,7 +379,7 @@
       >
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
+      <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.settings_row_off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>

@@ -410,7 +410,7 @@
   };
   const GETTING_STARTED: StartOffer[] = [
     { key: 'milestones', area: 'milestones', icon: 'flag', href: '/transition/milestones', title: m.home_start_milestones_title, sub: m.home_start_milestones_sub },
-    { key: 'regimen', area: 'care', icon: 'flask', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
+    { key: 'regimen', area: 'care', icon: 'pill', href: '/care/regimen', title: m.home_start_regimen_title, sub: m.home_start_regimen_sub },
     { key: 'letters', area: 'letters', icon: 'clock', href: '/transition/letters', title: m.home_start_letters_title, sub: m.home_start_letters_sub },
     { key: 'photos', area: 'photos', icon: 'camera', href: TODAY_PHOTO_HREF, title: m.home_start_photos_title, sub: m.home_start_photos_sub },
     { key: 'more', area: null, icon: 'grid', href: '/more', title: m.home_start_more_title, sub: m.home_start_more_sub }
