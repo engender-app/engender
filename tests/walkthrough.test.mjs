@@ -8085,7 +8085,9 @@ try {
   const invalidPreview = await page.locator('[data-list-row] img, [data-list-row] canvas').evaluateAll((previews) =>
     previews.some((preview) => {
       const bounds = preview.getBoundingClientRect();
-      return !(preview instanceof HTMLImageElement) || !preview.closest('.doc-thumb') ||
+      const container = preview.closest('.doc-thumb')?.getBoundingClientRect();
+      return !(preview instanceof HTMLImageElement) || !container ||
+        container.width <= 0 || container.height <= 0 || container.width > 48 || container.height > 48 ||
         bounds.width <= 0 || bounds.height <= 0 || bounds.width > 48 || bounds.height > 48 ||
         getComputedStyle(preview).objectFit !== 'cover';
     })
