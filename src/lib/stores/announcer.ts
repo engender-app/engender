@@ -3,7 +3,7 @@
    A live region only speaks a change of text inside a region that was
    already there. A toast, a progress bar or a notice inserted already
    holding its words is often missed, so the app keeps two regions that
-   never leave (Toasts.svelte draws them) and everything that has to be
+   never leave (the root layout draws them) and everything that has to be
    heard goes through here.
 
    Emptied first and written a moment later, so the same sentence said
