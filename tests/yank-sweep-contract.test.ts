@@ -108,3 +108,16 @@ it('measures opposite theme directions under the requested starting theme', asyn
   expect(sceneForTheme(scene, 'light')).toMatchObject({ startTheme: 'light', after: { value: 'dark' } });
   expect(sceneForTheme(scene, 'dark')).toMatchObject({ startTheme: 'dark', after: { value: 'light' } });
 });
+
+it('rejects measured actions under the wrong starting theme', () => {
+  expect(() => verifySceneAction({ act: '#open', startTheme: 'dark', after: { route: '/settings' } },
+    { dispatched: true, beforeRoute: '/', beforeTheme: 'light' }, environment())).toThrow('starting theme');
+});
+
+it('rejects a PIN gate whose prepared journal or theme does not match', async () => {
+  const { verifyGateProof } = await import('./yank-sweep-core.mjs');
+  const proof = { route: '/', profile: 'empty', hasEntries: '0', theme: 'light', boot: 'needs-unlock', pin: true, home: false };
+  expect(() => verifyGateProof(proof, 'persona', 'light')).toThrow('profile');
+  expect(() => verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'dark')).toThrow('theme');
+  expect(verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'light')).toMatchObject({ gate: 'pin' });
+});

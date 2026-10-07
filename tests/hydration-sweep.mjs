@@ -80,6 +80,7 @@ import {
   coldLoadProofExpression,
   markProfileExpression,
   profileProofExpression,
+  gateProofExpression,
   dropLeadingBlankFrames,
   fillTokens,
   hydrationScreensFor,
@@ -330,7 +331,8 @@ if (lockScene && profiles.includes('persona')) {
       await page.goto(`${base}/`, { waitUntil: 'commit', timeout: 40000 });
       await waitFor('[data-pin-pad]', '/', 40000);
       const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-      return { cast: dropLeadingBlankFrames([...cast]), frames };
+      const coverageProof = await page.evaluate(gateProofExpression('persona', theme));
+      return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
     });
     await pushHydrationRun(report, outDir, {
       name: 'lock-gate',

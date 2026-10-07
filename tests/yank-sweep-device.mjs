@@ -101,6 +101,7 @@ import {
   coldLoadProofExpression,
   markProfileExpression,
   profileProofExpression,
+  gateProofExpression,
   dropLeadingBlankFrames,
   fillTokens,
   findPixelYanks,
@@ -891,7 +892,8 @@ async function hydrationScenes() {
         await ev(`location.assign('/'); true;`);
         await ev(waitForExpression('[data-pin-pad]', 40000, '/'));
         const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-        return { cast: dropLeadingBlankFrames([...cast]), frames };
+        const coverageProof = await ev(gateProofExpression('persona', theme));
+        return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
       });
       await pushHydrationRun(report, outDir, {
         name: 'lock-gate',
@@ -946,10 +948,8 @@ if (hydration) {
     for (const theme of themes) {
       await settle('/', theme);
       const profileProof = await ev(profileProofExpression(profile));
-      try {
-        await ev(DEMO_THEME_EXPRESSION(theme));
-        await sleep(300);
-      } catch {}
+      await ev(DEMO_THEME_EXPRESSION(theme));
+      await sleep(300);
       for (const listedScene of SCENES) {
         const scene = sceneForTheme(listedScene, theme);
         if (scene.when && scene.when !== profile) continue;
