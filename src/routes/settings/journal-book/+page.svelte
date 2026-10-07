@@ -51,7 +51,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import WrappedCard from '$lib/components/WrappedCard.svelte';
@@ -303,7 +303,7 @@
   </div>
 
   <div class="no-print">
-    <SectionTitle text={m.journal_book_include_title()} />
+    <SectionHeading text={m.journal_book_include_title()} />
     <div data-book-inclusion style="margin-bottom:var(--space-4)">
       <ListCard>
         {#each JOURNAL_BOOK_INCLUSION_KEYS as key (key)}
@@ -415,7 +415,7 @@
       {/if}
 
       {#if book.entries.length}
-        <SectionTitle text={journalBookPartName('entries')} />
+        <SectionHeading text={journalBookPartName('entries')} />
         <div class="section-block">
           {#each visibleEntries as entry (entry.id)}
             <article class="book-entry" data-book-entry transition:entryFade>
@@ -434,7 +434,7 @@
       {/if}
 
       {#if book.milestones.length}
-        <SectionTitle text={journalBookPartName('milestones')} />
+        <SectionHeading text={journalBookPartName('milestones')} />
         <div class="section-block">
           <ListCard>
             {#each book.milestones as milestone (milestone.id)}
@@ -445,7 +445,7 @@
       {/if}
 
       {#if book.sideEffects.length}
-        <SectionTitle text={journalBookPartName('sideEffects')} />
+        <SectionHeading text={journalBookPartName('sideEffects')} />
         <div class="section-block">
           <ListCard>
             {#each book.sideEffects as effect (effect.id)}

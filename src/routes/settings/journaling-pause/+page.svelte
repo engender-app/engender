@@ -17,7 +17,7 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { pauseCoversDay } from '$lib/data/journalingPause';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import SectionTitle from '$lib/components/SectionTitle.svelte';
+  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
@@ -139,7 +139,7 @@
          the last one takes the heading and the card with it. -->
     {#if history.length}
       <div transition:collapse>
-        <SectionTitle text={m.journaling_pause_history_title()} />
+        <SectionHeading text={m.journaling_pause_history_title()} />
         <ListCard>
           {#each history as pause (pause.id)}
             <div class="rows-divide" transition:collapse>

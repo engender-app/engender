@@ -109,9 +109,6 @@ const SHEETS = [
          .muted`/`.icon.muted`/`.icon.is-starred` read a class every icon
          carries via a template literal, not a .svelte class= attribute. */
       'icon',
-      /* SectionTitle renders caller-owned aside snippets. Their links need
-         this global selector because scoped component CSS cannot reach them. */
-      'section-aside',
       /* Prototype light-sweep trigger on .btn-primary, exercised in controls gallery */
       'is-swiping',
       /* Skeleton.svelte:26 builds `class="skeleton-{variant} stagger-in"` -

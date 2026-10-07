@@ -12,7 +12,7 @@
    coloured text, never as a gradient, a glow or a veil.
 
    The classes are prefixed `kit-` while the old world is still standing.
-   `.card`, `.list-row` and `.section-title` in components.css are the
+   `.card` and `.list-row` in components.css are the
    screens' current vocabulary and the screen tickets replace them one
    screen at a time; the prefix is what lets both exist in the same
    stylesheet until the last of them goes. */
