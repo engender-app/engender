@@ -4,9 +4,9 @@
    also why it moved out of migrations.ts: reading the number cost every boot
    the SQL text the array carries, and the version is the only part of it a
    journal already on the current schema needs. Nothing in this module may
-   import migrations.ts, or the saving is gone - and the squash (features
-   ticket 34) made that saving bigger rather than smaller, since the baseline
-   is one 61KB statement where the chain was 78 smaller ones.
+   import migrations.ts, or the saving is gone - and the squashes (features
+   ticket 34, after-release ticket 42) made that saving bigger rather than
+   smaller, since the baseline is one 67KB statement.
 
    Two things refuse a database numbered higher than this rather than guessing
    at it (ADR-0006): the migration runner, and ticket 10's conversion, which

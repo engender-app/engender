@@ -265,29 +265,22 @@ Media capture guards the microphone-opening request as well as the live session.
 
 ### 6.1 Schema and migrations
 
-The whole schema is one statement, `BASELINE_SCHEMA` in [src/lib/data/sqlite/schema.ts](../src/lib/data/sqlite/schema.ts), registered as version 78. Before 1.0.0, the 78 forward-only migrations that used to build it were squashed into this baseline. [schema.test.ts](../src/lib/data/sqlite/schema.test.ts) holds the baseline byte-for-byte to the dump the old chain produced (`test-support/pre-squash-schema.txt`). Later versions are ordinary forward migrations in [migrations.ts](../src/lib/data/sqlite/migrations.ts) (ADR-0006), and `LATEST_SCHEMA_VERSION` in [schema-version.ts](../src/lib/data/sqlite/schema-version.ts) names the newest one. A test fails if the two disagree.
+The whole schema is one statement, `BASELINE_SCHEMA` in [src/lib/data/sqlite/schema.ts](../src/lib/data/sqlite/schema.ts), registered as version 88. It has been squashed twice before 1.0.0: ticket 34 folded the first 78 forward-only migrations into a v78 baseline, and after-release ticket 42 folded that baseline and migrations 79 through 88 into this one. [schema.test.ts](../src/lib/data/sqlite/schema.test.ts) holds the baseline to a dump the retired chain produced at c0656984 (`test-support/schema-v88-reference.txt`, and its rows in `schema-v88-reference-rows.txt`): every table, column, type, default, constraint, index and trigger, the FTS5 table and its shadow tables. The one row the chain left that the baseline does not write, taper's `sqlite_sequence` counter at 0, is named in the test and hands out the same first id. Later versions are ordinary forward migrations in [migrations.ts](../src/lib/data/sqlite/migrations.ts) (ADR-0006), and `LATEST_SCHEMA_VERSION` in [schema-version.ts](../src/lib/data/sqlite/schema-version.ts) names the newest one. A test fails if the two disagree.
 
 ```mermaid
 timeline
   title Schema versions
-  v78 : squashed baseline, 72 tables + entry_fts
-  v79 : stock lead time per drug
-  v80 : procedure kind, dilation opt-in
-  v81 : body region, one value on one scale (ADR-0081)
-  v82 : dose source, schedule auto-log (ADR-0086)
-  v83 : taper rebuilt without its own surgery day
-  v84 : procedure archived flag
-  v85 : clear orphans, foreign keys enforced
-  v87 : stock doses per unit
-  v88 : saved question keeps Starred
+  v88 : squashed baseline, 72 tables + entry_fts
 ```
+
+The retired steps are in git history: v1 to v78 at 4c38403a, and the v78 baseline with 79 to 88 at c0656984. What each one still means sits beside its column in `schema.ts`.
 
 The rules:
 
-- **Append only.** Never edit a shipped migration or the baseline. A journal whose `user_version` is above `LATEST_SCHEMA_VERSION` is refused with `SchemaTooNewError`, and the app shows [SchemaTooNew.svelte](../src/lib/components/SchemaTooNew.svelte) instead of guessing.
-- **Nothing below the baseline.** A journal with a schema between 1 and the baseline comes from a development build from before the squash. The runner refuses it with `JournalBelowBaselineError` before copying or writing anything, and the boot-failure notice ([BootFailureNotice.svelte](../src/lib/components/BootFailureNotice.svelte)) says where it came from and offers the start-over way out instead of a retry. The notice speaks one sentence per failure kind (`BootFailure` in [boot-state.ts](../src/lib/stores/boot-state.ts)) and keeps the driver's text behind "Copy details for a bug report".
+- **Append only.** Never edit a shipped migration or the baseline. From 1.0.0 on, a released migration is never squashed either: a released journal can sit at any version a release shipped, and every step from there to the newest has to stay in the list. A journal whose `user_version` is above `LATEST_SCHEMA_VERSION` is refused with `SchemaTooNewError`, and the app shows [SchemaTooNew.svelte](../src/lib/components/SchemaTooNew.svelte) instead of guessing.
+- **Nothing below the baseline.** A journal with a schema between 1 and 87 comes from a development build from before the squash; no release ever wrote one. The runner refuses it with `JournalBelowBaselineError` before copying or writing anything, and the boot-failure notice ([BootFailureNotice.svelte](../src/lib/components/BootFailureNotice.svelte)) says where it came from and offers the start-over way out instead of a retry. The notice speaks one sentence per failure kind (`BootFailure` in [boot-state.ts](../src/lib/stores/boot-state.ts)) and keeps the driver's text behind "Copy details for a bug report". The journal itself is left as it was. To keep its content, open it in the build that wrote it, export an archive from Settings, then restore that archive in this build; the archive format is versioned separately from the schema (ADR-0007).
 - **Copy before migrating.** Before migrating, the runner makes an encrypted pre-migration copy. A failed step rolls back and leaves that copy in place (ADR-0006).
-- **Foreign keys are on.** Both drivers set `PRAGMA foreign_keys = ON` (the web worker and [SqliteConnection.java](../android/app/src/main/java/dev/engender/app/sqlite/SqliteConnection.java)). The migration runner turns them off only while it migrates. v85 cleared rows that had been orphaned while enforcement was off.
+- **Foreign keys are on.** Both drivers set `PRAGMA foreign_keys = ON` (the web worker and [SqliteConnection.java](../android/app/src/main/java/dev/engender/app/sqlite/SqliteConnection.java)). The migration runner turns them off only while it migrates, and checks for violations before it finishes.
 - **Two identities per row.** Each row has a local `INTEGER` rowid and a travelling identity: a minted `uuid` for the person's own rows, a seeded `key` for built-ins (ADR-0002). Archives and merges match on the travelling identity.
 - **No derived state.** The schema stores rules and facts, not derived numbers (ADR-0010). Stock is a projection, not a count (ADR-0046). A reminder stores its rule, not its next fire time. The exceptions carry a comment in capitals at the table.
 - **Dates are epoch days.** A date is an integer epoch day, meaning the local calendar day counted from 1970-01-01, never derived from UTC clock time (ADR-0001). The arithmetic lives in [data/epochDay.ts](../src/lib/data/epochDay.ts), which imports nothing. Timestamps are integer milliseconds. Day URL parameters are validated by [data/dayParam.ts](../src/lib/data/dayParam.ts): a nonnegative epoch-day integer, `today`, or a valid `YYYY-MM-DD` date. Invalid addresses keep the unavailable notice and Back control; `/entry/new/[day]` also refuses future days. A screen that needs today reads `currentDay()` from [stores/today.svelte.ts](../src/lib/stores/today.svelte.ts) inside a `$derived`, an effect or a live read, and so follows the day across midnight and when the page becomes visible again; a write reads `todayEpochDay()` when it runs. `tests/today-capture.test.ts` fails on a top-level `todayEpochDay()` binding or a `$derived` that calls it.

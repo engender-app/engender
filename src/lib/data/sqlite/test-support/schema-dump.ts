@@ -1,6 +1,7 @@
 /* A database's shape, as text, for comparing two databases that were built
-   different ways (ticket 34's squash: one baseline statement against the
-   78-step chain it replaced).
+   different ways (the squashes: one baseline statement against the chain
+   it replaced, the 78 steps in ticket 34 and the v78 baseline plus 79 to 88
+   in after-release ticket 42).
 
    Everything compared here comes out of `sqlite_master`, which is the only
    place some of it is written down - a CHECK constraint appears in no pragma,
