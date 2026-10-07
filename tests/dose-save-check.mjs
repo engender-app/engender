@@ -71,8 +71,11 @@ try {
     await page.locator('[data-save-dose]').click();
     await page.locator('[data-sheet]').waitFor({ state: 'detached', timeout: 2000 });
     const status = page.locator('[data-toast-kind="dose-saved"]');
-    assert.equal(await status.getAttribute('role'), 'status');
     assert.equal(await status.innerText(), 'Dose saved.'); // text-under-test: save confirmation
+    // Said through the app's standing polite region, not by the toast itself:
+    // a region inserted already holding its words is often not read
+    // (after-release 21).
+    await page.waitForFunction(() => document.querySelector('[data-announce][role="status"]')?.textContent === 'Dose saved.', null, { timeout: 2000 });
     await page.waitForFunction((count) => document.querySelectorAll('[data-dose]').length === count, before + 1);
     await page.waitForTimeout(350);
     assert.equal(await page.locator('[data-sheet]').count(), 0, 'Sheet stays closed after live reads settle');
