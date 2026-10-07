@@ -166,6 +166,7 @@
     {#each visibleRows as row (row.key)}
       <RegistryRow
         key={row.key}
+        notifyColumn={!isWeb}
         title={row.title()}
         subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
         surface={row.surface

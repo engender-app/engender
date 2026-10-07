@@ -27,7 +27,7 @@
    `VITE_DEMO=1 npm run build` first. */
 import assert from 'node:assert/strict';
 import { preview } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, dateValue } from './browser-harness.mjs';
 
 const VIEWPORT = { width: 390, height: 844 };
 /* Three years back from the end the screen opens on, which is the "a longer
@@ -78,7 +78,7 @@ const measure = () =>
 /** Sets the start date `days` before the end the screen opened on, typed
     into the picker's foot (browser-harness.mjs's fillDate). */
 const setStartDaysBack = async (days) => {
-  const end = await page.inputValue('#journal-book-end');
+  const end = await dateValue(page.locator('#journal-book-end'));
   const start = new Date(new Date(`${end}T12:00:00`).getTime() - days * 86_400_000);
   await fillDate(page, '#journal-book-start', start.toLocaleDateString('sv-SE'));
   await page.waitForTimeout(4000);

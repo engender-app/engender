@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { fillDate, launchChromium, dateValue } from './browser-harness.mjs';
 import { makePdf } from './pdf-fixture.mjs';
 import { PALETTES } from './palettes.mjs';
 
@@ -85,7 +85,7 @@ try {
   assert.deepEqual(await stored(), baseline);
   console.log('PASS picker cancellation opens no editor and creates no document');
   await pick();
-  const originalDay = await page.locator('#document-day').inputValue();
+  const originalDay = await dateValue(page.locator('#document-day'));
   await page.keyboard.press('Escape');
   await keep();
   assert.equal(await page.locator('#document-title').inputValue(), '');
@@ -95,7 +95,7 @@ try {
   await page.keyboard.press('Escape');
   await keep();
   assert.equal(await page.locator('#document-title').inputValue(), 'Retained document');
-  assert.equal(await page.locator('#document-day').inputValue(), '2024-03-11');
+  assert.equal(await dateValue(page.locator('#document-day')), '2024-03-11');
   for (const path of ['scrim', 'drag', 'close', 'back', 'navigation']) {
     if (path === 'scrim') await page.locator('[data-sheet-scrim]').click({ position: { x: 2, y: 2 } });
     if (path === 'drag') {
@@ -111,7 +111,7 @@ try {
     if (path === 'navigation') await navigate('/more');
     await keep();
     assert.equal(await page.locator('#document-title').inputValue(), 'Retained document');
-    assert.equal(await page.locator('#document-day').inputValue(), '2024-03-11');
+    assert.equal(await dateValue(page.locator('#document-day')), '2024-03-11');
     assert.equal(new URL(page.url()).pathname, '/media/documents');
     assert.equal(await page.locator('[data-sheet-drag]').evaluate((el) => el.style.transform), '');
   }
@@ -126,7 +126,7 @@ try {
   assert.deepEqual(await stored(), baseline);
   await pick();
   assert.equal(await page.locator('#document-title').inputValue(), '');
-  assert.equal(await page.locator('#document-day').inputValue(), originalDay);
+  assert.equal(await dateValue(page.locator('#document-day')), originalDay);
   assert.equal(await page.locator('[data-save-document]').isDisabled(), true);
   assert.equal(await page.locator('#document-title').getAttribute('required'), '');
   assert.equal(await page.locator('#document-title').getAttribute('aria-invalid'), 'true');
@@ -147,7 +147,7 @@ try {
   await page.locator('[data-save-document]').click();
   await page.getByRole('alert').filter({ hasText: 'Could not save' }).waitFor();
   assert.equal(await page.locator('#document-title').inputValue(), 'Retained document');
-  assert.equal(await page.locator('#document-day').inputValue(), '2024-03-11');
+  assert.equal(await dateValue(page.locator('#document-day')), '2024-03-11');
   assert.deepEqual(await stored(), baseline);
   await capture('save-failed');
   if (gallery) {
@@ -233,7 +233,7 @@ try {
   assert.equal((await stored()).length, baseline.length + 1);
   await page.getByRole('link', { name: /Retained document/ }).click();
   await page.locator('[data-screen-title]', { hasText: 'Retained document' }).waitFor();
-  assert.equal(await page.locator('#document-day').inputValue(), '2024-03-11');
+  assert.equal(await dateValue(page.locator('#document-day')), '2024-03-11');
   const download = page.waitForEvent('download');
   await page.locator('[data-export-document]').click();
   assert.deepEqual(await readFile(await (await download).path()), bytes);

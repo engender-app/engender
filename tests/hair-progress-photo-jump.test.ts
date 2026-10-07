@@ -28,10 +28,10 @@ describe('hair progress photo jump contract (pre-production UI/UX 27)', () => {
     expect(hairProgress).toContain('m.hair_stage_section_title()');
   });
 
-  it('renders an in-page section choice with Segmented', () => {
-    expect(hairProgress).toContain("from '$lib/components/Segmented.svelte'");
+  it('renders the in-page jump with the kit SectionJump, not a Segmented (after-release 28)', () => {
+    expect(hairProgress).toContain("from '$lib/components/kit/SectionJump.svelte'");
     expect(hairProgress).toContain('data-hair-jump');
-    expect(hairProgress).toMatch(/<Segmented[\s\S]*?compact/);
+    expect(hairProgress).not.toContain('<Segmented');
   });
 
   it('anchors the staging and photo sections with identifiers', () => {

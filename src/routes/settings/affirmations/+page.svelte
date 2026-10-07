@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -114,8 +115,7 @@
       {/each}
     </div>
 
-    <details class="managed-group">
-      <summary>{m.affirmations_builtin_heading()}</summary>
+    <Disclosure class="managed-group" label={m.affirmations_builtin_heading()} id="affirmations-builtin" strong>
       <div class="managed-tags">
         {#each builtIns as a (a.id)}
           <div class="rows-divide managed-tag" class:is-hidden={a.hidden}>
@@ -134,7 +134,7 @@
           </div>
         {/each}
       </div>
-    </details>
+    </Disclosure>
   </ReadReserve>
 
   <Sheet busy={adding.busy} bind:open={addOpen} title={addLabel}>

@@ -331,6 +331,15 @@
   const roadmapRemember = (px: number) => rememberReserve('roadmap', px);
 </script>
 
+<!-- A goal's title with its strike: a copy of the words laid over them,
+     transparent, whose inline background draws one 2px line per wrapped
+     line (box-decoration-break: clone). The copy is clipped from the left
+     and the clip opens when the goal is done, so the strike travels by
+     clip-path alone (after-release 28, audit V08). -->
+{#snippet struck(text: string)}
+  <span class="roadmap-strike-text">{text}<span class="roadmap-strike-lines" aria-hidden="true"><span>{text}</span></span></span>
+{/snippet}
+
 <div class="screen">
   <ScreenHeader title={m.roadmap_title()} back="/more" />
   <SourceRecordHandoff id={sourceId} ready={!!sourceBuiltin || (!customQuery.loading && !customQuery.failed)} found={!!sourceBuiltin || !!sourceCustom} onOpen={() => sourceBuiltin ? openBuiltInGoal(sourceBuiltin.key) : openCustomGoal(sourceCustom!)} />
@@ -473,7 +482,7 @@
                   class:roadmap-done={status === 'checked'}
                   class:roadmap-skip-text={status === 'not-my-path'}
                 >
-                  <span class="roadmap-strike-text">{roadmapGoalTitle(goal.key)}</span>
+                  {@render struck(roadmapGoalTitle(goal.key))}
                 </span>
                 {#if roadmapGoalNote(goal.key)}
                   <span class="kit-row-sub">{roadmapGoalNote(goal.key)}</span>
@@ -516,7 +525,7 @@
                   class:roadmap-done={goal.status === 'checked'}
                   class:roadmap-skip-text={goal.status === 'not-my-path'}
                 >
-                  <span class="roadmap-strike-text">{goal.text}</span>
+                  {@render struck(goal.text)}
                 </span>
               </span>
             </button>
@@ -763,37 +772,51 @@
      and a done step still says what the next one follows from. The line
      itself is drawn rather than declared (ux-carpet ticket 236): a native
      text-decoration has no "from" state a transition can start from, so it
-     cut into place with the box's own fill. `.roadmap-strike-text` gives
-     the line something sized to the words rather than the row's own
-     column to travel across, `scaleX` from its left edge over the same
-     --dur-fast the box's fill uses. Left undone for a title that wraps to
-     a second line - rare (a custom goal's own words) and a straight line
-     through the middle of two lines still reads as struck, just not per
-     line the way the native property would. */
+     cut into place with the box's own fill.
+
+     Drawn as an inline background, not a pseudo-element over a block:
+     `box-decoration-break: clone` gives every line of a wrapped title its
+     own copy of the background, so each line is struck through its own
+     middle. The old ::after was one line across the whole inline-block,
+     and on a stock title that wraps at 390px ("How you are addressed at
+     work or school") it sat in the gap between the two lines and read as
+     an underline (after-release 28, audit V08).
+
+     The background sits on a transparent copy of the words laid over them
+     (the `struck` snippet), and the copy is clipped from the left: the
+     strike draws in by clip-path over the same --dur-fast the box's fill
+     uses, and the motion stays within transform, opacity and clip. The
+     line is --text-2, the done title's own ink; currentColor would be the
+     copy's transparent. */
   .roadmap-done {
     color: var(--text-2);
   }
 
   .roadmap-strike-text {
     position: relative;
-    display: inline-block;
+    display: block;
   }
 
-  .roadmap-strike-text::after {
-    content: '';
+  .roadmap-strike-lines {
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 2px;
-    background: currentColor;
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--dur-fast) var(--ease-out);
+    inset: 0;
+    color: transparent;
+    pointer-events: none;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path var(--dur-fast) var(--ease-out);
   }
 
-  .roadmap-done .roadmap-strike-text::after {
-    transform: scaleX(1);
+  .roadmap-strike-lines > span {
+    background-image: linear-gradient(var(--text-2), var(--text-2));
+    background-repeat: no-repeat;
+    background-position: 0 55%;
+    background-size: 100% 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .roadmap-done .roadmap-strike-lines {
+    clip-path: inset(0 0% 0 0);
   }
 
   /* Muted, not struck through: unlike a done step, a not-my-path one was

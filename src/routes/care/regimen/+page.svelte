@@ -22,10 +22,10 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { fmtNumber, fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { episodeEndReasonLabel, pauseReasonLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
+  import { episodeEndReasonLabel, pauseReasonLabel, routeLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { DosePause, DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
+  import type { DosePause, DoseRoute, DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -477,9 +477,9 @@
                 key={episode.id}
                 data-episode={episode.id}
                 id={episode.id}
-                icon="flask"
+                icon="pill"
                 title={episode.drug}
-                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: episode.route, interval: episode.interval, period: rangeLabel(episode) })}
+                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: episode.interval, period: rangeLabel(episode) })}
                 chevron={false}
                 onclick={() => openEditor(episode)}
               >
@@ -500,7 +500,7 @@
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="flask"
+        icon="pill"
         key="regimen-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}
         title={m.regimen_empty_title()}
@@ -552,7 +552,7 @@
               static
               key={episode.id}
               data-hidden-episode={episode.id}
-              icon="flask"
+              icon="pill"
               title={episode.drug}
               subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
               action={{
@@ -583,7 +583,7 @@
         onclick={() => openEditor(null, null)}
       />
       {#each vocabulary.regimenTemplates as tp (tp.key)}
-        <ListRow key={tp.key} data-template={tp.key} icon="flask" title={tp.name} onclick={() => openEditor(null, tp)} />
+        <ListRow key={tp.key} data-template={tp.key} icon="pill" title={tp.name} onclick={() => openEditor(null, tp)} />
       {/each}
     </ListCard>
   </Sheet>
