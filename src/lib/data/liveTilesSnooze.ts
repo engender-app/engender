@@ -10,7 +10,8 @@ export const DEFAULT_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
 /* snoozeKey stays exported only for its own test (AU-09 test-only review). */
 export function snoozeKey(tileKey: string): string {
-  return `engender-tile-snooze-${tileKey}`;
+  // Keep the ready letter's existing snooze across upgrades.
+  return tileKey === 'ready-letter' ? 'letter_tile_snooze_until' : `engender-tile-snooze-${tileKey}`;
 }
 
 function resolveStorage(storage?: Storage): Storage | null {

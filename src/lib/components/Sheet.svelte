@@ -378,7 +378,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    /* .scrim-withdraw declares CSS transition: opacity; override to none so Svelte's
+    /* Keep CSS transitions disabled so Svelte's
        scrimFade WAAPI animation controls opacity without CSS transition interference. */
     transition: none;
   }

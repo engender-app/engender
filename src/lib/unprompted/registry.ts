@@ -56,7 +56,7 @@
    Quiet hours is the one cross-class rule (quietHours.ts), not a field per
    row: a notification due inside the window is held until the window ends,
    never dropped. Disguise is the other - `hideNotificationTitles` covers
-   every row whose `notify.disguised` is true, which is every one of them. */
+   every row that has a `notify`, which `disguised: true` makes a type rule. */
 /* Relative rather than $lib: registry.test.ts imports this file on the node
    tier, where no $lib alias exists - the one svelte-kit-ism the tests can't
    follow (see vitest.config.ts). */
@@ -158,7 +158,9 @@ export interface UnpromptedRow {
   /** Present when this kind may become a notification, and what firing
       means: the preference the notifications view's switch writes, the
       subtitle saying *when* it fires, which channel it fires on, and
-      whether `hideNotificationTitles` disguises it. Absent is "never
+      `disguised: true`, the literal type being the enforcement: every
+      notification is covered by `hideNotificationTitles`, so a row cannot
+      declare otherwise. Absent is "never
       fires"; no live tile carries this. Every row that carries one has to
       answer the admission rule above. A `notify` with no `channel` does not
       compile - see `UNPROMPTED_ROWS` below. */
@@ -166,7 +168,7 @@ export interface UnpromptedRow {
     subtitle: () => string;
     prefKey: BooleanPrefKey;
     channel: NotificationChannel;
-    disguised: boolean;
+    disguised: true;
   };
 }
 
