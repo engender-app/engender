@@ -99,6 +99,7 @@ import {
   coverageSummary,
   createReportRecorder,
   saveSceneCast,
+  insertScreencastFrame,
   coldLoadProofExpression,
   markProfileExpression,
   profileProofExpression,
@@ -520,7 +521,7 @@ async function recordScreencast(fn) {
   const handler = (msg) => {
     if (msg.method !== 'Page.screencastFrame') return;
     const { data, metadata, sessionId } = msg.params;
-    frames.push({ data, at: metadata.timestamp * 1000 });
+    insertScreencastFrame(frames, { data, at: metadata.timestamp * 1000 });
     c.send('Page.screencastFrameAck', { sessionId }, 5000).catch(() => {});
   };
   c.onEvent(handler);
