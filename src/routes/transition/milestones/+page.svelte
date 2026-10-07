@@ -172,6 +172,8 @@
       });
       if (isNew) feelingOfferId = id;
     },
+    // A new milestone is answered by the felt-sense offer instead.
+    saved: (draft) => (draft.id ? m.saved() : null),
     remove: (id) => journal.milestones.deleteMilestone(id),
     findById: (id) => sorted.find((mi) => mi.id === id)
   });

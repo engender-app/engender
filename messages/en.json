@@ -2549,6 +2549,8 @@
   "recap_tags_none_range": "No tags in this range.",
   "recap_tags_title": "Top tags",
   "recent_entries": "Recent entries",
+  "record_delete_failed": "Could not delete it. It is still here. Try again.",
+  "record_deleted": "Deleted.",
   "record_discard_title": "Discard unsaved changes?",
   "record_keep_editing": "Keep editing",
   "record_save_failed": "Could not save. Your changes are still here. Try again.",
@@ -4120,5 +4122,6 @@
   "wrapped_year_figures": "The year in figures",
   "wrapped_year_intro": "Twelve months, as you logged them.",
   "wrapped_year_months": "Month by month",
-  "wrapped_year_title": "Your {year}"
+  "wrapped_year_title": "Your {year}",
+  "write_failed": "Could not save that. Try again."
 }

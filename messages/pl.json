@@ -2595,6 +2595,8 @@
   "recap_tags_none_range": "Brak tagów w tym okresie.",
   "recap_tags_title": "Najczęstsze tagi",
   "recent_entries": "Ostatnie wpisy",
+  "record_delete_failed": "Nie udało się usunąć. Nic nie zniknęło. Spróbuj ponownie.",
+  "record_deleted": "Usunięto.",
   "record_discard_title": "Odrzucić niezapisane zmiany?",
   "record_keep_editing": "Edytuj dalej",
   "record_save_failed": "Nie udało się zapisać. Zmiany nie przepadły. Spróbuj ponownie.",
@@ -4212,5 +4214,6 @@
   "wrapped_year_figures": "Rok w liczbach",
   "wrapped_year_intro": "Dwanaście miesięcy genderu!",
   "wrapped_year_months": "Miesiąc po miesiącu",
-  "wrapped_year_title": "Twój {year}"
+  "wrapped_year_title": "Twój {year}",
+  "write_failed": "Nie udało się zapisać. Spróbuj ponownie."
 }
