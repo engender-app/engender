@@ -2805,11 +2805,9 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
-  /* Centred in what the rail leaves, the strip the column and the sheets
-     centre in too. A chromeless screen (/coming-back) has no rail to
-     leave room for, and its column centres in the whole width. */
+  /* Its left inset, the rail's width, is set by +layout.svelte, the one
+     file that knows whether a rail is drawn. */
   .toast { bottom: var(--space-6); }
-  .app:not(.is-chromeless) .toast { left: calc(var(--rail-width) + var(--inset-left)); }
 }
 
 
