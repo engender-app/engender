@@ -260,10 +260,9 @@
   const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* Two epoch days to the journal, which never reads the clock for a
-     domain answer: the span's own, and wrapped's default until the rail
-     has answered, so the readings have something honest to read while it
-     does. Inclusive of both ends. */
-  let from = $derived(span?.start ?? defaultSpan(today, today).start);
+     domain answer: the span's own, and before the effect above has set it,
+     the default span that effect is about to set. Inclusive of both ends. */
+  let from = $derived(span?.start ?? defaultSpan(railStart ?? today, today).start);
   let to = $derived(span?.end ?? today);
   let resolvedSpan = $derived<Span>({ start: from, end: to });
   let liveLabel = $derived(live ? spanLabel(live, today) : '');
@@ -296,6 +295,12 @@
      change together and the card's own close is the one motion left. */
   let factsQuery = liveQuery(async (j) => {
     const readSpan = { start: from, end: to };
+    /* No span yet and the rail still loading: the span is not known, so
+       wait for it rather than read a stand-in. The stand-in was a one-day
+       read whose answer the real span replaced a hop later, and on a warm
+       switch from Today its seven queries sat at the front of the worker's
+       queue ahead of every tile's own reads. Re-runs when the rail answers. */
+    if (span === null && railLoading) return new Promise<never>(() => {});
     const [recap, series] = await Promise.all([j.stats.recap(from, to), j.stats.dayAverages(shown.key, from, to)]);
     return { recap, series, readSpan };
   });
