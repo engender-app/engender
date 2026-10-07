@@ -34,6 +34,13 @@ function isActiveOn(episode: RegimenEpisode, day: number): boolean {
     read `startEpochDay`/`endEpochDay` directly and no longer infer one
     from the other). Hidden episodes still resolve: hiding takes an episode
     out of pickers, not out of history. */
+/** Whether two drug names are the same drug: the one rule every caller uses,
+    trimmed and otherwise exact. Drug names are free text and an import can
+    leave a space on either end, so a bare `===` quietly splits one drug into
+    two. Care pairs lanes, dose totals and stock through it, and so does the
+    stock projection, so two comparisons written apart could not disagree. */
+export const sameDrug = (a: string, b: string): boolean => a.trim() === b.trim();
+
 export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp: number): RegimenEpisode[] {
   const day = epochDayFromTimestamp(timestamp);
   return episodes.filter((episode) => isActiveOn(episode, day));
@@ -79,7 +86,7 @@ export function attributeDose(
 
   if (dose.drug) {
     const named = dose.drug.trim();
-    const matching = active.filter((episode) => episode.drug.trim() === named);
+    const matching = active.filter((episode) => sameDrug(episode.drug, named));
     return matching.length === 1 ? { episode: matching[0], ambiguous: false } : { episode: null, ambiguous: true };
   }
 

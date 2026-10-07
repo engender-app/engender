@@ -18,7 +18,6 @@ import { deriveKey, randomSalt } from '../../crypto/argon2id';
 import { resolveCredentialProfile } from '../../crypto/credential-consumers';
 import type { Argon2Params } from '../../crypto/params';
 import {
-  ARCHIVE_FORMAT_VERSION,
   CHUNK_SIZE,
   byteReader,
   chunkCountFor,

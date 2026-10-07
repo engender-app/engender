@@ -43,6 +43,16 @@ async function redirectFrom(routeId: string, event: { params?: Record<string, st
 	}
 }
 
+describe('every moved address is one redirect away', () => {
+	const fixed = Object.entries(MOVED_ADDRESSES).filter(
+		(row): row is [string, string] => typeof row[1] === 'string'
+	);
+
+	it.each(fixed)('%s lands on a screen, not on another moved address', (_from, target) => {
+		expect(tableRouteIds).not.toContain(target.split('?')[0]);
+	});
+});
+
 describe('every moved route keeps a 307 redirect at its old address', () => {
 	const fixedRows = tableRouteIds.filter((routeId) => typeof MOVED_ADDRESSES[routeId] === 'string');
 

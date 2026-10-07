@@ -62,7 +62,7 @@
      is drawn. */
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { fmtDay, fmtDayBar, fmtMonthYear, fmtTime } from '$lib/data/dates';
+  import { fmtDayBar, fmtMonthYear, fmtTime } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import HeatMap from '$lib/components/HeatMap.svelte';

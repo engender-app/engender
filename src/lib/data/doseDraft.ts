@@ -20,6 +20,7 @@ import {
   timestampAtLocalTime
 } from './epochDay';
 import type { DoseEventInput } from './journal/doses';
+import { sameDrug } from './regimenEpisode';
 import type {
   DoseEvent,
   DoseRoute,
@@ -147,7 +148,7 @@ export function draftWithDrug(
   drug: string,
   routeWords: readonly RouteOption[]
 ): DoseDraft {
-  const match = activeEpisodes.find((episode) => episode.drug === drug);
+  const match = activeEpisodes.find((episode) => sameDrug(episode.drug, drug));
   if (!match) return { ...draft, drug };
   return {
     ...draft,

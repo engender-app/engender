@@ -273,11 +273,3 @@ export function makeTryoutsArea(
     }
   };
 }
-
-export async function adoptTryout(
-  journal: { tryouts: TryoutsArea },
-  tryoutId: string,
-  options?: AdoptTryoutOptions
-): Promise<AdoptTryoutResult> {
-  return journal.tryouts.adoptTryout(tryoutId, options);
-}

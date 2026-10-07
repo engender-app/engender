@@ -19,7 +19,7 @@
    carries two counts; it computes no ratio and names no direction. Neither
    does the caller, and ADR-0012 and docs/ui-copy.md are why. */
 
-import type { DayAverage, Recap, TagInsight } from './journal/stats';
+import type { DayAverage, TagInsight } from './journal/stats';
 
 /** How many tags a wrapped's insight section names.
 

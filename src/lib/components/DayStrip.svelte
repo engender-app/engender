@@ -4,8 +4,7 @@
      `expectedSessionDays` puts a session on nearly every day of a taper
      that runs months, and wear.
 
-     This is the journal-connected caller `BareStrip.svelte` names, the
-     second one beside `WeekStrip.svelte` - and unlike that one it is not
+     This is the journal-connected caller `BareStrip.svelte` names. It is not
      reading a metric, so it brings no heat ramp with it. What a day is
      comes back from `markOf` as one of `dayStrip.ts`'s three marks and
      turns into paint in exactly one place (`stripCellOf`), which is how

@@ -154,7 +154,7 @@ describe('every row on Care states a current value', () => {
 
   it('keeps the stock row for what no lane already names', () => {
     expect(care).toContain('let unlanedStock = $derived(');
-    expect(care).toContain('drugsMatch(lane.episode.drug, row.entry.drug)');
+    expect(care).toContain('sameDrug(lane.episode.drug, row.entry.drug)');
   });
 });
 

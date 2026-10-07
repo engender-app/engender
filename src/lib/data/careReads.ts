@@ -1,8 +1,8 @@
 import { railEpisodes, scheduleDoseFacts, SPINE_FORWARD_DAYS } from './careSpine';
 import { startOfDayTimestamp } from './epochDay';
 import type { Journal } from './journal/journal';
-import { activeEpisodesAt } from './regimenEpisode';
-import { depletingStocks, drugsMatch } from './stockProjection';
+import { activeEpisodesAt, sameDrug } from './regimenEpisode';
+import { depletingStocks } from './stockProjection';
 import type { DoseEvent } from './types';
 
 export const CARE_DOSE_TOTAL_WINDOW_DAYS = 90;
@@ -56,8 +56,8 @@ export async function readCare(
   const lanes = running.map((episode, i) => ({
     episode,
     ...facts[i],
-    runOut: depleting.find((row) => drugsMatch(row.entry.drug, episode.drug)) ?? null,
-    doseTotals: counters.doseTotals.filter((total) => total.drug === episode.drug)
+    runOut: depleting.find((row) => sameDrug(row.entry.drug, episode.drug)) ?? null,
+    doseTotals: counters.doseTotals.filter((total) => sameDrug(total.drug, episode.drug))
   }));
   return {
     lanes,

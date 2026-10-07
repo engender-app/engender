@@ -27,7 +27,7 @@
   import { disclose, resize } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
-  import { changeJournalPassphrase, MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
+  import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { BiometricUnavailableError } from '$lib/data/webauthn-prf';

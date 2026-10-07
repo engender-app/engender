@@ -48,8 +48,7 @@
   import { fmtNumber, fmtDay, fmtTime } from '$lib/data/dates';
   import {
     epochDayFromDateInputValueOrToday,
-    epochDayFromTimestamp,
-    todayEpochDay
+    epochDayFromTimestamp
   } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import {
