@@ -627,6 +627,7 @@
     photo={milestonePhoto.review.photo}
     reference={milestonePhoto.review.reference}
     onAccept={milestonePhoto.review.accept}
+    busy={milestonePhoto.review.busy}
     onRetake={milestonePhoto.review.capture}
     onCancel={milestonePhoto.review.cancel}
   />

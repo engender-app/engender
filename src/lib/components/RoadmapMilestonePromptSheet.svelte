@@ -132,6 +132,7 @@
       type="button"
       class="btn btn-ghost"
       data-dismiss-milestone
+      disabled={confirming.busy}
       onclick={onDismiss}
     >
       <span>{copy.decline()}</span>

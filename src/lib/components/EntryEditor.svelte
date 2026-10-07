@@ -1507,6 +1507,7 @@
     photo={entryPhotoReview.photo}
     reference={entryPhotoReview.reference}
     onAccept={entryPhotoReview.accept}
+    busy={entryPhotoReview.busy}
     onRetake={() => prepareDraft(entryPhotoReview.capture)}
     onCancel={entryPhotoReview.cancel}
   />

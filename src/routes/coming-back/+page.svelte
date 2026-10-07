@@ -652,7 +652,7 @@
            shows "Leave it" as a labelled control of its own, and it answers
            the offer: it takes the row away and the app stops asking. Closing
            the sheet does neither, so it may not wear the same words. -->
-      <button class="btn btn-ghost" onclick={() => (doseDraft = null)}>
+      <button class="btn btn-ghost" disabled={offerWrite.busy} onclick={() => (doseDraft = null)}>
         <span>{m.cancel()}</span>
       </button>
     </div>
@@ -694,7 +694,7 @@
       <!-- Cancel rather than the offer's decline, for the reason the dose
            sheet gives: the row behind this one carries "Leave it running" as
            the answer, and closing a sheet is not answering. -->
-      <button class="btn btn-ghost" onclick={() => (wearDraft = null)}>
+      <button class="btn btn-ghost" disabled={offerWrite.busy} onclick={() => (wearDraft = null)}>
         <span>{m.cancel()}</span>
       </button>
     </div>

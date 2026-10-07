@@ -16,6 +16,9 @@ interface PhotoReview {
       compares against the same "last photo" the first shot did, not
       whatever the caller's data happens to say by the time it resolves. */
   readonly reference: ReferencePhoto | null;
+  /** An accept is being stored: the review holds, and a second accept
+      stores nothing. */
+  readonly busy: boolean;
   /** Opens the native camera; sets `photo` (and freezes `reference`) if it
       returns a shot. Also what a retake re-invokes. */
   capture(): Promise<void>;
@@ -34,6 +37,7 @@ export function photoReview(
 ): PhotoReview {
   let reviewingPhoto = $state<NormalizedPhoto | null>(null);
   let reviewingReference = $state<ReferencePhoto | null>(null);
+  let accepting = $state(false);
 
   async function capture() {
     const photo = await capturePhoto();
@@ -50,9 +54,18 @@ export function photoReview(
     get reference() {
       return reviewingReference;
     },
+    get busy() {
+      return accepting;
+    },
     capture,
     async accept(photo) {
-      if ((await onAccept(photo)) === false) return;
+      if (accepting) return;
+      accepting = true;
+      try {
+        if ((await onAccept(photo)) === false) return;
+      } finally {
+        accepting = false;
+      }
       if (reviewingPhoto === photo) reviewingPhoto = null;
     },
     cancel() {

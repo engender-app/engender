@@ -1323,7 +1323,7 @@
         {/each}
         <div class="stack-3">
           <button class="btn btn-primary" data-qld-add disabled={dimsWrite.busy} onclick={saveQuickLogDims}><span>{m.quick_log_dims_add()}</span></button>
-          <button class="btn btn-ghost" data-qld-skip onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
+          <button class="btn btn-ghost" data-qld-skip disabled={dimsWrite.busy} onclick={() => (dimsPromptEntryId = null)}><span>{m.not_now()}</span></button>
         </div>
       </div>
     {/if}

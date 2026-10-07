@@ -74,6 +74,6 @@
     <button class="btn btn-primary" disabled={mood == null || saving.busy} data-save-feeling-offer onclick={save}>
       <span>{copy.confirm()}</span>
     </button>
-    <button class="btn btn-ghost" data-skip-feeling-offer onclick={onSkip}><span>{copy.decline()}</span></button>
+    <button class="btn btn-ghost" data-skip-feeling-offer disabled={saving.busy} onclick={onSkip}><span>{copy.decline()}</span></button>
   </div>
 </Sheet>

@@ -77,14 +77,14 @@
       onClose();
     } catch (error) {
       console.error('a calendar file could not be shared', error);
-      toast(m.pj_failed());
+      toast(m.pj_failed(), { kind: 'failed' });
     } finally {
       sharing = false;
     }
   }
 </script>
 
-<Sheet {open} title={m.calendar_handoff_button()} {onClose}>
+<Sheet {open} title={m.calendar_handoff_button()} {onClose} busy={sharing}>
   <h3>{m.calendar_handoff_button()}</h3>
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.calendar_handoff_disclosure()}</p>
 
