@@ -51,14 +51,28 @@ export function recordNavigation(type: string, delta?: number | null, sameUrl = 
     way, without recording it: the shell keys what a history entry borrowed
     by it before the page changes (chrome-tab-origin.ts).
 
-    `sameUrl` is a link to the address already showing - tapping the lit
-    tab - which SvelteKit turns into a replaceState of its own accord, so it
-    adds no entry either (after-release 17 review: counted, it put every
+    `sameUrl` is a link or form to the address already showing - tapping
+    the lit tab - which SvelteKit turns into a replaceState of its own
+    accord, so it adds no entry either (a goto() to the same address still
+    pushes, and the caller does not pass it) (after-release 17 review: counted, it put every
     entry behind it one deep too many). */
 export function depthAfter(type: string, delta?: number | null, sameUrl = false): number {
   if (type === 'enter') return 0;
   if (type === 'popstate') return Math.max(0, depth + (delta ?? 0));
   return replacing || sameUrl ? depth : depth + 1;
+}
+
+/** A link or form to the address already showing, which SvelteKit makes
+    a replaceState rather than a new history entry. A goto() to the same
+    address still pushes, so it is not one. */
+export function sameUrl(navigation: {
+  type: string;
+  from: { url: URL | null } | null;
+  to: { url: URL | null } | null;
+}): boolean {
+  if (navigation.type !== 'link' && navigation.type !== 'form') return false;
+  const from = navigation.from?.url?.href;
+  return from !== undefined && from === navigation.to?.url?.href;
 }
 
 /** How deep the app is in its own history, for callers outside this module. */

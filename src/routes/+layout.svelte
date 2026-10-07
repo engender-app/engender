@@ -54,7 +54,7 @@
      components rendering during boot treat their mount as part of screen
      arrival rather than as a panel change on a settled screen (ticket 111). */
   markScreenArrival();
-  import { depthAfter, navigationDepth, recordNavigation, replaceRoute } from '$lib/navigation/smart-back';
+  import { depthAfter, navigationDepth, recordNavigation, replaceRoute, sameUrl } from '$lib/navigation/smart-back';
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
@@ -211,13 +211,6 @@
      column and so has to leave that strip out too (after-release 17
      review: 5px off centre at 1280). Measured, since a classic scrollbar
      has a width only the browser knows and an overlay one has none. */
-  /** A navigation to the address already showing, which SvelteKit makes a
-      replaceState rather than a new history entry (smart-back.ts). */
-  const sameUrl = (navigation: { from: { url: URL | null } | null; to: { url: URL | null } | null }) => {
-    const from = navigation.from?.url?.href;
-    return from !== undefined && from === navigation.to?.url?.href;
-  };
-
   function publishScrollGutter(node: HTMLElement) {
     const publish = () =>
       document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
