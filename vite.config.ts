@@ -154,6 +154,29 @@ function sharedWasmAssets() {
   };
 }
 
+/* Paraglide's per-locale build puts this guard in every message function:
+   it warns when a call passes options.locale, which a one-language bundle
+   cannot honour. Nothing in the app passes options.locale, so the warning
+   can never fire, but its 140-character string shipped 462 times in first
+   load and cost about 2.5KB gzip, most of it in the small chunks that hold
+   one or two messages each, where gzip has nothing to share it with.
+   Dropping the statement before minification lets the whole condition go.
+   If Paraglide changes the line this stops matching and the first-load
+   budget says so. */
+const PARAGLIDE_OVERRIDE_WARNING =
+  'if (/** @type {any} */ (globalThis).__PARAGLIDE_STATIC_LOCALE__ !== undefined && options.locale !== undefined && options.locale !== /** @type {any} */ (globalThis).__PARAGLIDE_STATIC_LOCALE__) console.warn("Paraglide: options.locale cannot override a locale-specialized client bundle; use a full document navigation to switch locales.")';
+
+function dropParaglideOverrideWarning(): Plugin {
+  return {
+    name: 'engender:drop-paraglide-override-warning',
+    apply: 'build',
+    transform(code, id) {
+      if (!id.includes('/src/lib/paraglide/messages/') || !code.includes(PARAGLIDE_OVERRIDE_WARNING)) return;
+      return { code: code.replaceAll(PARAGLIDE_OVERRIDE_WARNING, ''), map: null };
+    }
+  };
+}
+
 /* The licence notices screen's data (phase 15 release-blockers ticket 10),
    generated from what this build actually bundled.
 
@@ -321,6 +344,7 @@ export default defineConfig(({ command }) => ({
       ...(locale ? { experimentalStaticLocale: '/** @type {any} */ (globalThis).__PARAGLIDE_STATIC_LOCALE__' } : {}),
       strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
     }),
+    dropParaglideOverrideWarning(),
     // Before sveltekit(), so its document handler runs first. Returning the
     // hook makes it run after Vite's own host check, not before it.
     {

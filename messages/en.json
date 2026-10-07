@@ -13,7 +13,7 @@
   "about_license": "Free software under GPLv3.",
   "about_no_network_body": "No account, no cloud, no telemetry, no analytics. Your journal exists only on this device and in backups you export yourself.",
   "about_no_network_title": "This app makes no network requests.",
-  "about_no_network_web_body": "No account, cloud, telemetry, or analytics. The browser downloads the app and its updates. The first time you scan a lab photo, it also downloads the 21 MB OCR engine and its language files. After that, scans work offline. Your journal stays on this device unless you export it.",
+  "about_no_network_web_body": "No account or cloud journal. The browser downloads the app, updates and, on first use, the lab-scanning files. An online app opening sends one empty page-count request. Private hourly totals contain no journal data or visitor profiles. Your journal stays on this device unless you export it.",
   "about_no_network_web_title": "Nothing you write is sent anywhere.",
   "about_privacy_link": "Privacy policy",
   "about_site_link": "Website",
