@@ -82,8 +82,10 @@
      already carried it, "reached from search"), so it is a toggle in the
      sheet below rather than a screen elsewhere, and the starred photo grid
      that page also drew moves in beside it, shown whenever the toggle is on.
-     The two old routes redirect here with the filter already applied
-     (`?starred=1`, `?questions=1`) so a bookmark still lands somewhere real.
+     The old starred route redirects here with the filter applied
+     (`?starred=1`) and the old questions route to the bare screen, whose
+     opening state carries the saved questions, so a bookmark still lands
+     somewhere real.
 
      Saved questions keep their own run (`/search/questions/[id]`, unmoved -
      rename and delete live there, on the one question being looked at) but
