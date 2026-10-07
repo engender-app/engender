@@ -67,6 +67,8 @@ try {
 
   await page.locator('#regimen-every').fill('0');
   assert.equal(await page.locator('[data-save-schedule]').isDisabled(), true);
+  // Marked once the field is left (after-release 21), not while typing.
+  await page.locator('#regimen-every').blur();
   assert.equal(await page.locator('#regimen-every').getAttribute('aria-invalid'), 'true');
   assert.match(await page.locator('#regimen-schedule-requirements').innerText(), /at least 1/);
   await page.locator('#regimen-every').fill('5');

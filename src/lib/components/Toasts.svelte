@@ -1,7 +1,6 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
   import { toasts, dismissToast } from '$lib/stores/toasts.svelte';
-  import { speech } from '$lib/stores/announcer.svelte';
   import { motionDistance, motionDuration } from '$lib/motion/tokens';
 </script>
 
@@ -27,13 +26,6 @@
   </div>
 {/each}
 
-<!-- The app's voice (announcer.ts): a toast is drawn above and said here,
-     because a region inserted already holding its words is often not read
-     at all. These two never leave the page. -->
-<div data-live-regions>
-  <p class="visually-hidden" role="status" data-announce>{speech.polite}</p>
-  <p class="visually-hidden" role="alert" data-announce-urgent>{speech.assertive}</p>
-</div>
 
 <style>
   /* A failure said while a sheet stays open (after-release 06): at the top,
