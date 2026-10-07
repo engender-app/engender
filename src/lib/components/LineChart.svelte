@@ -146,3 +146,14 @@
 {:else}
   <div class="chart-too-little">{m.not_enough_data()}</div>
 {/if}
+
+<style>
+  /* Its one consumer since the wear chart stopped printing a fallback of its
+     own (after-release 27), so it lives here (check:screens-classes). */
+  .chart-too-little {
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    padding: var(--space-5);
+    text-align: center;
+  }
+</style>

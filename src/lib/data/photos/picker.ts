@@ -131,7 +131,7 @@ export function filePhotoPicker(): PhotoPicker {
     async pick() {
       if (isAndroid()) {
         return pickOnAndroid(async () => {
-          const { tokens } = await androidPhotos.pickImages();
+          const { tokens } = await androidPhotos.pickImages({ multiple: true });
           // One at a time rather than all at once: a multi-pick can be
           // several files at the ceiling, and fetching them concurrently
           // would hold every one of them in the heap together. The fallback

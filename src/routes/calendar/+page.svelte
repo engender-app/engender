@@ -756,7 +756,19 @@
     margin-bottom: var(--space-5);
   }
   .cal-month-body.is-folded {
+    position: relative;
     cursor: pointer;
+  }
+  /* The folded strip is 30px tall, and its 31 days cannot be wider than a
+     column of it. What the layout does allow is height: the strip's target
+     reaches 9px up into the gap under the controls and 9px down into the
+     margin under it, so a thumb landing anywhere on a day is at least 48px
+     of target (after-release 27, audit UX-19). Drawn as nothing, and only
+     while folded: open, the grid's own days are the targets. */
+  .cal-month-body.is-folded::before {
+    content: '';
+    position: absolute;
+    inset: calc((var(--touch-target) - 30px) / -2) 0;
   }
 
   /* ---------- The days ---------- */
