@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Predictive back. Opting in is what lets the
          system draw the back gesture itself: as the finger drags from the
          edge, Android shows where the gesture is going and lets it be
@@ -48,12 +54,6 @@
          file is what stops device-to-device transfer. The flag still covers
          the Android 11 and older half of the range, which starts at the
          app's floor of API 26. -->
-    <queries>
-        <intent>
-            <action android:name="android.media.action.IMAGE_CAPTURE" />
-        </intent>
-    </queries>
-
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
