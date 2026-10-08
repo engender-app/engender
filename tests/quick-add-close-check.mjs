@@ -41,6 +41,7 @@ try {
         await page.locator('.fan-scrim').waitFor({ state: 'detached' });
         await page.waitForFunction(() => window.__closeLayers.some(sample => !sample.scrim));
         const samples = await page.evaluate(() => window.__closeLayers);
+        assert(samples.some(sample => sample.scrim), `${theme}/${action}: no live scrim sampled`);
         assert(samples.filter(sample => sample.scrim).every(sample => sample.navZ > sample.scrimZ),
           `${theme}/${action}: navigation drops under a live scrim`);
         assert.equal(await fab.evaluate(element => getComputedStyle(element.closest('nav')).zIndex), '30');
