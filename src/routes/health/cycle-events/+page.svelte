@@ -121,6 +121,11 @@
     return fadeOnly(duration);
   }
 
+  function changeWeek(node: HTMLElement) {
+    return ({ direction }: { direction: 'in' | 'out' }) =>
+      direction === 'in' ? revealWeek(node) : crossfade(node);
+  }
+
   let weeksBack = $state(0);
   let shownWeek = $derived(stripWindow(today, weeksBack));
   let weekEvents = $derived(
@@ -218,9 +223,9 @@
         </ListCard>
       </div>
 
-      <div class="screen-part cycle-week" use:resize={shownWeek.first}>
+      <div class="screen-part cycle-week" use:resize>
         {#key shownWeek.first}
-          <div class="cycle-week-content" in:revealWeek out:crossfade>
+          <div class="cycle-week-content" transition:changeWeek>
             {#if weekEvents.length === 0}
               <!-- Its own words rather than a day's answer stretched over seven,
                    the same line dilation's and wear's empty week carry. -->
