@@ -183,6 +183,7 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 
 | Probe | Why not |
 | --- | --- |
+| `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |
 | `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |
 | `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
