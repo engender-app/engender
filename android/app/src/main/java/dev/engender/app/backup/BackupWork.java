@@ -16,6 +16,7 @@ public final class BackupWork extends Worker {
     static final long DAY = 86400000L;
     static final Object OWNER = new Object();
     static boolean foregroundPacking;
+    static String foregroundTransferId;
     static long resetEpoch;
 
     public BackupWork(@NonNull Context context, @NonNull WorkerParameters parameters) {

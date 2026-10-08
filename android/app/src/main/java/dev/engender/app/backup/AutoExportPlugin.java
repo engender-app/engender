@@ -328,14 +328,14 @@ public class AutoExportPlugin extends Plugin {
                 call.reject("beginBackup requires fileName");
                 return;
             }
-            if (pendingBackup != null) {
+            if (pendingBackup != null || BackupWork.foregroundPacking) {
                 call.reject("backup-in-progress");
                 return;
             }
             try {
-                // A new run truncates any staging file left by process death.
-                pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export.pending"));
                 pendingTransferId = UUID.randomUUID().toString();
+                pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export-" + pendingTransferId + ".pending"));
+                BackupWork.foregroundTransferId = pendingTransferId;
                 BackupWork.foregroundPacking = true;
                 pendingFileName = fileName;
                 pendingGeneration = preferences().getLong("backupGeneration", 0);
@@ -525,10 +525,13 @@ public class AutoExportPlugin extends Plugin {
         try {
             if (pendingBackup != null) pendingBackup.close();
         } finally {
+            if (pendingTransferId != null && pendingTransferId.equals(BackupWork.foregroundTransferId)) {
+                BackupWork.foregroundTransferId = null;
+                BackupWork.foregroundPacking = false;
+            }
             pendingBackup = null;
             pendingTransferId = null;
             pendingFileName = null;
-            BackupWork.foregroundPacking = false;
         }
     }
 
@@ -608,8 +611,11 @@ public class AutoExportPlugin extends Plugin {
             BackupWork.resetEpoch++;
             BackupWork.await(androidx.work.WorkManager.getInstance(context).cancelUniqueWork(BackupWork.NAME));
             PersistentBackup.clear(context);
-            File pending = new File(context.getCacheDir(), "auto-export.pending");
-            if (pending.exists() && !pending.delete()) throw new IOException("staging-cleanup-unavailable");
+            File[] pendingFiles = context.getCacheDir().listFiles((directory, name) ->
+                name.equals("auto-export.pending") || name.matches("auto-export-[a-f0-9-]{36}\\.pending"));
+            if (pendingFiles != null) for (File pending : pendingFiles) {
+                if (!pending.delete()) throw new IOException("staging-cleanup-unavailable");
+            }
             releaseDestinationGrants(context);
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
             PasswordStore.deleteKey();

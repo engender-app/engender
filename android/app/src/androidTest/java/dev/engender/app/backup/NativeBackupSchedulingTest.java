@@ -23,6 +23,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         SharedPreferences preferences = BackupWork.preferences(app);
         File bundle = new File(app.getFilesDir(), "auto-export-probe");
         if ("cleanup".equals(phase)) {
+            grantDestination();
             InstrumentationRegistry.getInstrumentation().getContext().getContentResolver()
                 .call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
             AutoExportPlugin.wipe(app);
@@ -205,6 +206,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 assertTrue(preferences.getAll().isEmpty());
             }
         } finally {
+            grantDestination();
             InstrumentationRegistry.getInstrumentation().getContext().getContentResolver()
                 .call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
             AutoExportPlugin.wipe(app);
@@ -247,10 +249,43 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         }
     }
 
-    private void grantDestination() {
-        InstrumentationRegistry.getInstrumentation().getContext().grantUriPermission(app.getPackageName(), tree,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+    @Test public void nativeFailuresStopAfterThreeAttemptsUntilNextDay() throws Exception {
+        prepareNativeStage(false);
+        SharedPreferences preferences = BackupWork.preferences(app);
+        synchronized (BackupWork.OWNER) {
+            JSONObject stage = new JSONObject(preferences.getString("encryptedStage", "{}"));
+            preferences.edit().putLong("lastSuccessAt", 17).commit();
+            preferences.edit().putString("encryptedStage", stage.put("due", BackupWork.due(preferences)).toString()).commit();
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "full", null);
+            BackupWork.schedule(app);
+        }
+        try {
+            long started = System.currentTimeMillis();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(160);
+            while (!preferences.contains("retryNotBeforeAt") && System.nanoTime() < deadline) Thread.sleep(100);
+            assertTrue("native retries never reached their daily pause", preferences.contains("retryNotBeforeAt"));
+            assertTrue(preferences.getLong("retryNotBeforeAt", 0) >= started + BackupWork.DAY);
+            assertEquals(17, preferences.getLong("lastSuccessAt", 0));
+            assertTrue(preferences.contains("encryptedStage"));
+            java.util.List<androidx.work.WorkInfo> jobs = WorkManager.getInstance(app)
+                .getWorkInfosForUniqueWork(BackupWork.NAME).get(10, TimeUnit.SECONDS);
+            assertTrue("three real attempts were not observed", jobs.stream().anyMatch(info -> info.getRunAttemptCount() >= 2));
+            assertTrue("daily successor missing", jobs.stream().anyMatch(info -> !info.getState().isFinished() && info.getRunAttemptCount() == 0));
+            long failedAt = preferences.getLong("lastFailureAt", 0);
+            Thread.sleep(2000);
+            assertEquals("delivery retried during the daily pause", failedAt, preferences.getLong("lastFailureAt", 0));
+            System.out.println("Native retry evidence: completed attempts=3, next delivery at=" + preferences.getLong("retryNotBeforeAt", 0));
+        } finally { resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null); }
+    }
+
+    private void grantDestination() throws Exception {
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(1);
+        app.sendOrderedBroadcast(new Intent().setComponent(new android.content.ComponentName(
+            InstrumentationRegistry.getInstrumentation().getContext().getPackageName(), BackupDocumentsProvider.Bootstrap.class.getName()))
+            .putExtra("targetPackage", app.getPackageName()), null, new android.content.BroadcastReceiver() {
+                @Override public void onReceive(Context context, Intent intent) { ready.countDown(); }
+            }, null, 0, null, null);
+        assertTrue(ready.await(10, TimeUnit.SECONDS));
         resolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
     }
 
@@ -275,14 +310,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         SharedPreferences preferences = BackupWork.preferences(app);
         File bundle = new File(app.getFilesDir(), "auto-export-probe");
 
-            java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(1);
-            app.sendOrderedBroadcast(new Intent().setComponent(new android.content.ComponentName(
-                InstrumentationRegistry.getInstrumentation().getContext().getPackageName(), BackupDocumentsProvider.Bootstrap.class.getName()))
-                .putExtra("targetPackage", app.getPackageName()), null, new android.content.BroadcastReceiver() {
-                    @Override public void onReceive(Context context, Intent intent) { ready.countDown(); }
-                }, null, 0, null, null);
-            assertTrue(ready.await(10, TimeUnit.SECONDS));
-            resolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            grantDestination();
             synchronized (BackupWork.OWNER) {
                 PersistentBackup.clear(app);
                 preferences.edit().clear().putBoolean("enabled", true).putString("schedule", "weekly")
