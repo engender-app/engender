@@ -109,7 +109,7 @@
 
   let weekShown = false;
   function revealWeek(_node: Element) {
-    const duration = weekShown ? motionDuration('--dur-fast') : 0;
+    const duration = weekShown || weeksBack > 0 ? motionDuration('--dur-fast') : 0;
     weekShown = true;
     return fadeOnly(duration);
   }
