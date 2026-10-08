@@ -150,11 +150,14 @@
         </div>
       {/if}
 
-      {#if expanded}
-        <div data-evidence-rest>
+      <!-- Keep the neighbour mounted before See all measures its outro.
+           Otherwise its disappearing last-child margin borrows the screen
+           part's bottom gap and the entries jump when it is removed. -->
+      <div data-evidence-rest>
+        {#if expanded}
           <EntryDays groups={held} arrive level={2} />
-        </div>
-      {/if}
+        {/if}
+      </div>
     {/snippet}
     {#snippet empty()}
       <Notice
