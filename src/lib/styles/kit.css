@@ -1640,10 +1640,12 @@ button.kit-strip-day {
    This only works because BareStrip keys its each-block by the column
    rather than by the day: keyed by day, a page replaces all seven nodes
    and a new node paints its final colour on arrival with nothing to
-   travel from. */
+   travel from. Transition the resolved colour, not --level: a blank day
+   replaces the colour mix with a transparent dot background, so its fill
+   must also fade when the mark changes. */
 button.kit-strip-day .kit-strip-cell {
   transition:
-    --level var(--dur-med) var(--ease-out),
+    background-color var(--dur-med) var(--ease-out),
     border-color var(--dur-med) var(--ease-out);
 }
 
@@ -1657,9 +1659,8 @@ button.kit-strip-day .kit-strip-cell {
   background: color-mix(in oklab, var(--role-c) calc(var(--level) * 1%), var(--surface-2));
 }
 
-/* A bare custom property animates as a string - it swaps at 50% and the
-   cell cuts from one paint to the other. Registered, it is a number the
-   browser can walk. */
+/* Keep the heat-ramp input numeric; paging interpolates the resolved
+   background colour so blank days participate in the same transition. */
 @property --level {
   syntax: '<number>';
   inherits: false;
