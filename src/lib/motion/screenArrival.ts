@@ -52,13 +52,18 @@ function fitBefore(animations: Animation[], deadline: number): void {
   for (const animation of animations) {
     const timing = animation.effect?.getComputedTiming();
     if (!timing || timing.iterations === Infinity || animation.playState === 'finished') continue;
-    const left = Number(timing.endTime) - Number(animation.currentTime ?? 0);
+    const current = Number(animation.currentTime ?? 0);
+    const left = Number(timing.endTime) - current;
     /* The floor is on what the eye sees: a staggered entrance's own
        movement, not its delay plus movement, plays no shorter than
-       --dur-fast. Such an entrance may end a frame or so after the
-       deadline, which sits two frames before the field stops. */
+       --dur-fast. Consume stagger that cannot fit at that speed. */
     const ceiling = Math.max(1, Number(timing.duration) / revealFloor());
     animation.playbackRate = Math.max(animation.playbackRate, Math.min(left / remaining, ceiling));
+    const delayLeft = Math.max(0, Number(timing.delay ?? 0) - current);
+    const excess = left - remaining * animation.playbackRate;
+    if (delayLeft > 0 && excess > 0) {
+      animation.currentTime = current + Math.min(delayLeft, excess);
+    }
   }
 }
 
