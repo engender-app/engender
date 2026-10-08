@@ -137,3 +137,41 @@ reduced-path assertion passes. No product source changed for this correction.
 `check-app-motion.log`, `node-app-motion.log` and `copy-app-motion.log` record
 the affected verification rerun. The existing successful build and navigation
 casts still represent the unchanged product source.
+
+## Delivery refresh
+
+Merged delivery `606b2b1f812e1879e6fe8850d488e9737ddbccf8` into the ticket
+branch at `cecb70bf4c59646f4d455b34eb638df75f85a91f`. Merge was clean.
+The reviewed ListRow, focused probe, fixture, mount and HTML blobs remain
+identical to candidate `12ccc05e`; `refresh-source-identity.json` records
+both Git blob identities. Incoming shared CSS changes concern DayStrip fill
+transitions, not row text. No ticket 111 product source changed.
+
+Fresh Luna Standards and Spec reviews both passed `12ccc05e` before this
+refresh. Their reports are copied beside this document. Reviewed source
+identity is preserved through the merge and the evidence-only follow-up.
+
+Refreshed verification:
+
+- `refresh-build.log`: successful demo-enabled locale build.
+- `refresh-check.log`: zero errors and warnings.
+- `refresh-node.log`: 565 files, 7,314 tests pass.
+- `refresh-matrix/`: 24 painted cases pass, including actual app reduced
+  motion and zero active height animations in reduced samples.
+- `refresh-original/`: four original natural cases pass in light/dark and
+  both app motion settings. Prior paired red/green captures remain retained.
+- `refresh-copy.log` and `refresh-screens.log`: pass.
+- `refresh-sweep-idle/`: original persona Look back to Transition sweep,
+  three passes per theme, six measured passes, zero skipped/failed/missing
+  scenes, zero style or render yanks.
+
+Raw finding retained in `refresh-sweep/`: the first sweep ran alongside Node
+compilation and reported one field-band opacity arrival, `new(fp-b-0)` from
+0 at 470ms to 0.718 at 490ms. It reported no render yanks. Painted frames
+`009-476ms` and `010-488ms` still show the blank field; `012-517ms` shows the
+search box appearing. The same captures show Care's loaded forward summary
+contained above Surgery throughout. This is field arrival during navigation,
+not summary text escaping its row. CPU contention coincided with the run;
+causation was not established. The idle six-pass rerun found no arrival.
+The original raw report and all captures remain intact for field-motion
+triage rather than being discarded or treated as a measured Care jump.
