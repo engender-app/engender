@@ -1983,7 +1983,10 @@ html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar
      transition controls opacity without CSS transition interference (ticket 105, 116). */
   transition: none;
 }
-.app-nav.is-fan-open { z-index: 56; }
+/* The scrim remains during its outro after chooserOpen becomes false.
+   Keep the bar above that painted backdrop until the scrim is removed. */
+.app-nav.is-fan-open,
+[data-app-root]:has(> .fan-scrim) > .app-nav { z-index: 56; }
 
 .fan {
   position: absolute;

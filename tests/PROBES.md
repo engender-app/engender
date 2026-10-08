@@ -287,6 +287,8 @@ available for the surface or device it measures.
 | Probe | Purpose |
 | --- | --- |
 | `quick-add-mood-withdrawal` | check scrim withdrawal before mood navigation, chosen mood and heading focus for tap, keyboard and slide in both themes and motion preferences; requires a demo build, run with `node tests/quick-add-mood-withdrawal.mjs` |
+| `quick-add-close-check` | keep the bottom bar above the scrim until its outro ends; check cancellation focus and navigation in both themes and motion preferences against a demo build |
+| `quick-add-close-motion` | measure navigation edge detail in full physical compositor captures from three dedicated Quick add closes per theme; record source frame numbers and milliseconds, and fail on blurred intermediate frames |
 | `device-bound-writes` | verify wrapping-key reuse and failed metadata writes on real OPFS and IndexedDB; run with `node tests/device-bound-writes.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
