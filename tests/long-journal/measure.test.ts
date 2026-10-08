@@ -31,6 +31,35 @@ async function measureSmallJournal(): Promise<Measurement[]> {
   return measureLongJournal(journal, files, { today: summary.lastEpochDay, summary, recorder });
 }
 
+test('whole-journal stats execute SQL even when the year series used the same range', async () => {
+  const db = await migratedDb();
+  try {
+    const files = fakeFileStore();
+    const recorder = recordingDriver(db);
+    const journal = openJournal(recorder.driver, files);
+    await journal.reconcileBuiltIns();
+    const summary = await generateLongJournal(journal, { seed: 11, days: 365, makePhoto: bytePatternPhoto });
+    const prepare = db.raw.prepare.bind(db.raw);
+    let executions = 0;
+    db.raw.prepare = ((sql: string) => {
+      if (sql.includes('e.mood AS value') && sql.includes('GROUP BY epoch_day ORDER BY epoch_day')) executions++;
+      return prepare(sql);
+    }) as typeof db.raw.prepare;
+    const dayAverages = journal.stats.dayAverages;
+    const reads: number[] = [];
+    journal.stats.dayAverages = async (key, from, to) => {
+      const before = executions;
+      const answer = await dayAverages(key, from, to);
+      if (key === 'mood' && from === summary.firstEpochDay && to === summary.lastEpochDay) reads.push(executions - before);
+      return answer;
+    };
+    await measureLongJournal(journal, files, { today: summary.lastEpochDay, summary, recorder });
+    expect(reads.slice(0, 2)).toEqual([1, 1]);
+  } finally {
+    await db.close();
+  }
+});
+
 test('every measurement carries a name, a description, a time and a detail line', async () => {
   const measurements = await measureSmallJournal();
 

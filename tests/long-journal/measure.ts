@@ -302,6 +302,9 @@ export async function measureLongJournal(
 
   // The decade in one range, which is what a recap over "everything" would
   // cost and the widest question the stats area can be asked.
+  // In the one-year fixture this repeats year-series' range. Start a fresh
+  // read generation so both sizes measure SQL, rather than one cached answer.
+  await recorder.driver.readSnapshot(async () => {});
   await measure('stats-decade', 'stats, the whole decade in one range', async () => {
     const averages = await journal.stats.dayAverages('mood', summary.firstEpochDay, summary.lastEpochDay);
     return { result: averages, detail: `${averages.length} day averages` };
