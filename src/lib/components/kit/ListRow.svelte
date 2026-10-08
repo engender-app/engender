@@ -131,7 +131,15 @@
 
   /* Read at the moment a line leaves, so a row that never opts in (or one
      whose words tick) pays nothing but the function call. */
-  const lineOut = (node: Element) => (fadeSwap ? crossfade(node) : { duration: 0 });
+  const lineOut = (node: Element) => {
+    if (!fadeSwap) return { duration: 0 };
+    const transition = crossfade(node);
+    // Keep the outgoing words at the start of their own line slot.
+    const style = (node as HTMLElement).style;
+    style.top = '0';
+    style.left = '0';
+    return transition;
+  };
 
   /* And a row whose words cross also travels its height: the old line leaves
      out of flow, so a new line shorter or longer than it resized the row in
@@ -153,13 +161,17 @@
       {/if}
     </span>
   {/if}
-  <span class="kit-row-text" use:textTravel>
+  <span class="kit-row-text" class:fade-swap={fadeSwap} use:textTravel>
     {#if title}
       <span class="kit-row-title" data-row-title>
         {#key title}<span out:lineOut>{title}</span>{/key}
       </span>
     {/if}
-    {#each subtitles as line, i (i + ':' + line)}<span class="kit-row-sub" out:lineOut>{line}</span>{/each}
+    {#each subtitles as line, i (i)}
+      <span class="kit-row-sub">
+        {#key line}<span out:lineOut>{line}</span>{/key}
+      </span>
+    {/each}
   </span>
   <!-- A static row with nothing at its trailing edge gets no trailing edge:
        an empty flex item would still spend the row's gap and take that width
@@ -240,6 +252,18 @@
 {/if}
 
 <style>
+  /* Positioned line slots contain fading words; resize clips them while
+     the text column travels to its replacement height. */
+  .kit-row-text,
+  .kit-row-title,
+  .kit-row-sub {
+    position: relative;
+  }
+
+  .kit-row-text.fade-swap {
+    overflow: clip;
+  }
+
   .kit-row-icon-mask {
     width: 22px;
     height: 22px;
