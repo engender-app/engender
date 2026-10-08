@@ -89,6 +89,19 @@ it('fits a staggered entrance into the arrival, its movement no shorter than --d
   expect(animation.finish).not.toHaveBeenCalled();
 });
 
+it('spends excess stagger delay while keeping the entrance at full length', () => {
+  const now = vi.spyOn(performance, 'now').mockReturnValue(0);
+  const animation = {
+    playState: 'paused', currentTime: 0, playbackRate: 1,
+    effect: { getComputedTiming: () => ({ iterations: 1, delay: 50, duration: 380, endTime: 430 }) }
+  };
+  beginTabArrival();
+  now.mockReturnValue(230);
+  fitReadArrival([animation as unknown as Animation]);
+  expect((430 - animation.currentTime) / animation.playbackRate).toBeLessThanOrEqual(150);
+  expect(380 / animation.playbackRate).toBeGreaterThanOrEqual(150);
+});
+
 it('keeps field motion at its authored speed while paint is prepared', () => {
   const frames: FrameRequestCallback[] = [];
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
