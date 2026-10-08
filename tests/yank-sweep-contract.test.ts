@@ -552,3 +552,23 @@ it('restores unit feature on failed scenes and preserves cleanup failure separat
   expect(await cleanupSceneFailure({ name: 'other' }, unused)).toBeNull();
   expect(unused).not.toHaveBeenCalled();
 });
+
+
+it('requires profile, route and aligned theme proof before accepting any hydration row', async () => {
+  const { requireHydrationCoverage } = await import('./yank-sweep-core.mjs');
+  expect(() => requireHydrationCoverage({}, 'empty', 'dark')).toThrow('missing hydration coverage proof');
+  const coverageProof = { profile: 'empty', hasEntries: '0', route: '/onboarding',
+    themeProof: { requested: 'dark', selected: true, persisted: 'dark', painted: 'dark', transitioning: false } };
+  expect(() => requireHydrationCoverage({ coverageProof }, 'empty', 'dark')).not.toThrow();
+  expect(() => requireHydrationCoverage({ coverageProof: { ...coverageProof, profile: 'persona' } }, 'empty', 'dark')).toThrow('profile');
+  expect(() => requireHydrationCoverage({ coverageProof: { ...coverageProof, themeProof: { ...coverageProof.themeProof, persisted: 'light' } } }, 'empty', 'dark')).toThrow('theme');
+});
+
+
+it('retains the original coverage error for reporting alongside recorded evidence', async () => {
+  const { captureHydrationCoverage, requireHydrationCoverage } = await import('./yank-sweep-core.mjs');
+  const coverage = await captureHydrationCoverage(async () => { throw new Error('cold-load wrong profile'); });
+  expect(coverage).toEqual({ coverageError: 'Error: cold-load wrong profile' });
+  expect(() => requireHydrationCoverage({ ...coverage, cast: [], frames: [] }, 'empty', 'light'))
+    .toThrow('cold-load wrong profile');
+});
