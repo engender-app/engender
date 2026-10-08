@@ -15,7 +15,9 @@ import { runJournalContract } from './contract-suite.ts';
 test('every driver contract check passes over node:sqlite', async () => {
   const db = await migratedDb();
 
+  await db.run("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('driver-probe-marker', 1, 1000, 1000)");
   const checks = await runJournalContract(db, fakeFileStore());
+  assert.equal((await db.query<{ n: number }>("SELECT COUNT(*) AS n FROM entry WHERE uuid = 'driver-probe-marker'"))[0].n, 1);
 
   const failed = checks.filter((c) => !c.ok);
   assert.deepEqual(
