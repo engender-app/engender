@@ -6,11 +6,8 @@ import { openPreferences } from '../prefs/preferences';
 import { clearJournal, demoPhoto, personaPhotoSeeds, writePersonaJournal } from './journal-seed';
 import type { NormalizedPhoto } from '../journal/photos';
 
-/** Draws the persona's photos now and serves them to the seed later. The worker
-    sits idle while the database module downloads, and drawing the 22 photos
-    is a third of what the seed costs once it arrives. One draw per photo the
-    persona attaches, handed out once each; a seed asked for beyond that, or
-    not named by the persona, is drawn on demand as before. */
+/** Prepares photos together once the journal needs a persona. Each draw is
+    handed out once; any other photo is drawn on demand. */
 export function warmDemoPhotos(
   source: Parameters<typeof personaPhotoSeeds>[0],
   makePhoto: typeof demoPhoto = demoPhoto
@@ -61,6 +58,6 @@ export async function preparePersonaJournal(
   // That schema has no authored rows. An interrupted seed already has a
   // schema, so that retry still clears before writing.
   if (!startedWithoutTables) await clearJournal(journal);
-  await seedPersonaInTransaction(driver, files, source, makePhoto);
+  await seedPersonaInTransaction(driver, files, source, warmDemoPhotos(source, makePhoto));
   return true;
 }

@@ -41,6 +41,18 @@ type RawSqliteDriver = Omit<SqliteDriver, 'readSnapshot' | 'transaction'> & {
   transaction<T>(work: () => T | Promise<T>): Promise<T>;
 };
 
+function readOnlyQuery(sql: string): boolean {
+  if (/^\s*SELECT\b/i.test(sql)) return true;
+  // WITH can prefix a read or a write. Ignore quoted text and comments
+  // before checking for writes; reject multiple statements conservatively.
+  const unquoted = sql.replace(
+    /'[^']*(?:''[^']*)*'|"[^"]*(?:""[^"]*)*"|`[^`]*(?:``[^`]*)*`|\[[^\]]*\]|--[^\n]*|\/\*[\s\S]*?\*\//g,
+    ' '
+  ).trim().replace(/;$/, '');
+  return /^WITH\b/i.test(unquoted) && /\bSELECT\b/i.test(unquoted) &&
+    !/\b(?:INSERT|UPDATE|DELETE|REPLACE)\b|;/i.test(unquoted);
+}
+
 /** Reserves the connection for transaction and snapshot callbacks.
     Ordinary calls stay pipelined while no reservation is pending. */
 export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
@@ -56,7 +68,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   function query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]> {
     if (blocked) return blocked.then(() => query<Row>(sql, params));
     // SQLite bindings outside scalar values keep their own identity.
-    const readOnly = /^\s*SELECT\b/i.test(sql);
+    const readOnly = readOnlyQuery(sql);
     if (!readOnly) invalidate();
     const cacheable = readOnly && (params ?? []).every((value) =>
       value === null || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))
