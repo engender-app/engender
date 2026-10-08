@@ -75,7 +75,7 @@ import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
-import { markUnlocked } from './lock.svelte';
+import { isLocked, markUnlocked } from './lock.svelte';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
@@ -284,6 +284,55 @@ export function closeJournalForLock(): Promise<void> {
      next key as an unlock from the moment the gate is drawn. */
   dispatch({ type: 'journal-closed' });
   return session.lock();
+}
+
+/** A restored document must not render its old journal during recovery. */
+export const browserSession = $state({ recovering: false });
+
+/** Registered after the leave-lock watcher, so pageshow applies its policy
+    before deciding whether the retained key may reopen the journal. */
+export function watchBrowserSession(): () => void {
+  if (isAndroid()) return () => {};
+  let generation = 0;
+  let suspended: Promise<void> | null = null;
+  let incompleteBoot = false;
+  const hide = (event: PageTransitionEvent) => {
+    if (!event.persisted) return;
+    generation++;
+    browserSession.recovering = true;
+    incompleteBoot = !isReadyState(bootState);
+    if (!incompleteBoot) suspended = session.suspendForNavigation(!isLocked(bootState.accessMode));
+  };
+  const show = (event: PageTransitionEvent) => {
+    if (!event.persisted || !browserSession.recovering) return;
+    // An unfinished cold boot cannot reuse workers retired by pagehide.
+    if (incompleteBoot) { location.reload(); return; }
+    if (isLocked(bootState.accessMode)) { browserSession.recovering = false; return; }
+    const mine = generation;
+    const current = () => {
+      if (mine !== generation || isLocked(bootState.accessMode)) {
+        throw new Error('the retained journal recovery was superseded');
+      }
+    };
+    void (async () => {
+      await suspended;
+      if (isLocked(bootState.accessMode)) return;
+      current();
+      await session.resumeAfterNavigation(current);
+    })().catch((error) => {
+      if (mine === generation && !isLocked(bootState.accessMode)) {
+        dispatch({ type: 'boot-failed', message: describeError(error) });
+      }
+    }).finally(() => {
+      if (mine === generation) browserSession.recovering = false;
+    });
+  };
+  window.addEventListener('pagehide', hide);
+  window.addEventListener('pageshow', show);
+  return () => {
+    window.removeEventListener('pagehide', hide);
+    window.removeEventListener('pageshow', show);
+  };
 }
 
 /** The three readers' one file store, built over the key, or null while a

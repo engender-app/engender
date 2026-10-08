@@ -439,3 +439,73 @@ test('a failed preparation uses bounded session disposal before a fresh reopen',
   await session.unlock(keyOf(1));
   assert.equal(session.driver, fresh);
 });
+
+
+test('retained navigation closes gates synchronously and replaces its worker under the retained key', async () => {
+  const { session, boot, first, opened } = setup();
+  const key = keyOf(9);
+  boot(key);
+  const suspended = session.suspendForNavigation(true);
+  assert.equal(session.connection.current, null);
+  assert.equal(session.key.current, null);
+  await suspended;
+  assert.equal(first.closed, true);
+  const read = session.connection.run((driver) => driver.query());
+  assert.equal(await settled(read), false);
+  await session.resumeAfterNavigation(() => {});
+  assert.equal(await read, 'driver 2');
+  assert.deepEqual(opened, [key]);
+});
+
+test('a lock after retained navigation discards automatic reopening authority', async () => {
+  const { session, boot, opened } = setup();
+  boot(keyOf(9));
+  await session.suspendForNavigation(true);
+  await session.lock();
+  await session.resumeAfterNavigation(() => {});
+  assert.deepEqual(opened, []);
+  assert.equal(session.key.current, null);
+  await session.unlock(keyOf(9));
+  assert.equal(session.driver?.name, 'driver 2');
+});
+
+test('a document already locked cannot retain a key for automatic reopening', async () => {
+  const { session, boot, opened, log } = setup();
+  boot(keyOf(9));
+  const locking = session.lock();
+  const suspended = session.suspendForNavigation(false);
+  await Promise.all([locking, suspended]);
+  assert.equal(log.includes('prewarmed'), false, 'hidden cleanup cannot acquire another pool worker');
+  await session.resumeAfterNavigation(() => {});
+  assert.deepEqual(opened, []);
+  assert.equal(session.key.current, null);
+});
+
+test('a newer lock cancels retained recovery before it publishes its private driver', async () => {
+  const log: string[] = [];
+  let finish!: () => void;
+  let reached!: () => void;
+  const preparing = new Promise<void>((resolve) => { reached = resolve; });
+  const privateDriver = fakeDriver('private', log);
+  const session = journalSession<Key, FakeDriver>({
+    async suspend() {},
+    async open(_key, current, dispose) {
+      reached();
+      await new Promise<void>((resolve) => { finish = resolve; });
+      try { current(); } catch (error) { await dispose(privateDriver); throw error; }
+      return privateDriver;
+    },
+    release() {}, prewarm() {}
+  });
+  session.adopt(keyOf(1), fakeDriver('first', log));
+  await session.suspendForNavigation(true);
+  const recovery = session.resumeAfterNavigation(() => {});
+  await preparing;
+  const locking = session.lock();
+  finish();
+  await assert.rejects(recovery, /cancelled/);
+  await locking;
+  assert.equal(privateDriver.closed, true);
+  assert.equal(session.connection.current, null);
+  assert.equal(session.key.current, null);
+});

@@ -33,7 +33,7 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { speech } from '$lib/stores/announcer.svelte';
-  import { bootState, closeJournalForLock, recoveryUnlock, startBoot } from '$lib/stores/boot.svelte';
+  import { bootState, browserSession, closeJournalForLock, recoveryUnlock, startBoot, watchBrowserSession } from '$lib/stores/boot.svelte';
   import {
     bootGate,
     isErrorState,
@@ -94,7 +94,11 @@
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
-  $effect(() => watchLock(closeJournalForLock));
+  $effect(() => {
+    const stopLock = watchLock(closeJournalForLock);
+    const stopSession = watchBrowserSession();
+    return () => { stopSession(); stopLock(); };
+  });
 
   /* A side effect with nothing above it to order against, unlike startBoot():
      the registration is not awaited and the worker precaches the shell in the
@@ -150,6 +154,7 @@
      paint, and whether a navigation happened at all
      (navigation/chromeless.ts says why). */
   let replacesApp = $derived(
+    browserSession.recovering ||
     locked ||
       needsAccessModeAfterRecovery ||
       needsPassphrase ||
@@ -527,7 +532,7 @@
     <!-- Only over a Journal that is open and unlocked. The notice is not
          urgent enough to sit above a passphrase gate or a lock screen, and
          those two screens have one job each. -->
-    {#if isReadyState(bootState) && !locked}
+    {#if isReadyState(bootState) && !locked && !browserSession.recovering}
       <!-- Loaded after boot rather than with it, like the schema gate below:
            neither is drawn on a first visit, and the first-load budget had
            no room left for the live regions after-release 21 added. The
@@ -562,7 +567,9 @@
          controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter>
-        {#if schemaTooNew}
+        {#if browserSession.recovering}
+          <!-- The old route stays unmounted until its session can answer. -->
+        {:else if schemaTooNew}
           {#await import('$lib/components/SchemaTooNew.svelte') then { default: SchemaTooNew }}
             <SchemaTooNew />
           {/await}
@@ -593,8 +600,10 @@
       </div>
     </main>
 
-    <QuickAdd />
-    {#if ui.raisedManager}
+    {#if !browserSession.recovering}
+      <QuickAdd />
+    {/if}
+    {#if ui.raisedManager && !browserSession.recovering}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />
       {/await}
