@@ -307,3 +307,5 @@ available for the surface or device it measures.
 `guard-recovery-proof` runs disposable synthetic guards through the production runner
 and checks recovery, revision identity and retained evidence. The separate Guard
 recovery proof workflow uploads both attempts for seven days, including on success.
+
+`voice-tab-panel-motion` (`tests/voice-tab-panel-motion.mjs`) captures the Voice tab panel in both themes and checks withdrawal before replacement, keyboard focus, rapid switches, reduced motion and microphone cancellation. Run after a demo build: `node tests/voice-tab-panel-motion.mjs [output-directory]`.

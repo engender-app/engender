@@ -36,7 +36,8 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
-  import { scrollBehavior } from '$lib/motion/tokens';
+  import { onDestroy, tick } from 'svelte';
+  import { EASE_OUT_CSS, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -117,7 +118,18 @@
   let leaving = $derived(navigating.to !== null);
 
   let requested = page.url.searchParams.get('tab');
-  let tab = $state<Tab>(TABS.includes(requested as Tab) ? (requested as Tab) : 'record');
+  const initialTab: Tab = TABS.includes(requested as Tab) ? (requested as Tab) : 'record';
+  let tab = $state<Tab>(initialTab);
+  let displayedTab = $state<Tab>(initialTab);
+  let panel = $state<HTMLDivElement>();
+  let panelMotion: Animation | undefined;
+  let switching = false;
+  let destroyed = false;
+
+  onDestroy(() => {
+    destroyed = true;
+    panelMotion?.cancel();
+  });
 
   /* The metric reference, as a sheet over whichever tab is open rather than
      a screen of its own (phase 11 ticket 17, ADR-0060).
@@ -290,12 +302,40 @@
   let benchmarkFlow = $state<ReturnType<typeof VoiceBenchmarkFlow> | undefined>();
 
   function changeTab(next: string) {
-    if (tab === 'record' && next !== 'record' && benchmarkFlow) benchmarkFlow.leave(() => showTab(next));
+    if (displayedTab === 'record' && next !== 'record' && benchmarkFlow) benchmarkFlow.leave(() => showTab(next));
     else showTab(next);
   }
 
-  function showTab(next: string) {
+  async function showTab(next: string) {
+    if (next === tab) return;
     tab = next as Tab;
+    if (switching) return;
+    switching = true;
+    while (!destroyed && displayedTab !== tab) {
+      if (panel && !isReducedMotion()) {
+        panel.inert = true;
+        panelMotion = panel.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: motionDuration('--dur-fast'), easing: EASE_OUT_CSS, fill: 'forwards'
+        });
+        await panelMotion.finished.catch(() => {});
+      }
+      if (destroyed) return;
+      displayedTab = tab;
+      await tick();
+      if (destroyed) return;
+      panelMotion?.cancel();
+      if (panel) {
+        panel.inert = false;
+        if (!isReducedMotion()) {
+          panelMotion = panel.animate([{ opacity: 0 }, { opacity: 1 }], {
+            duration: motionDuration('--dur-med'), easing: EASE_OUT_CSS, fill: 'backwards'
+          });
+          await panelMotion.finished.catch(() => {});
+          panelMotion.cancel();
+        }
+      }
+    }
+    switching = false;
     // A pick belongs to the compare tab, and a half-made pick left behind a
     // tab switch is a state nobody can see to undo.
     if (tab !== 'compare') {
@@ -479,8 +519,9 @@
       {/if}
     </div>
 
-    {#if tab === 'record'}
-      <VoiceBenchmarkFlow bind:this={benchmarkFlow} onSaved={() => (tab = 'compare')} />
+    <div class="voice-panel" bind:this={panel}>
+    {#if displayedTab === 'record'}
+      <VoiceBenchmarkFlow bind:this={benchmarkFlow} onSaved={() => showTab('compare')} />
       <!-- Saying you are done with this area (phase 8 features ticket 04),
            at the Record tab's own foot now rather than at screen level
            (phase 11 ticket 17): the passage and the Record control open the
@@ -488,7 +529,7 @@
            last thing on it - a decision about the whole practice belongs
            after the thing the tab is for, not ahead of it. -->
       <AreaFinish group="voice" />
-    {:else if tab === 'practise'}
+    {:else if displayedTab === 'practise'}
       <VoicePractice />
       <div class="screen-part">
         <!-- The comfort band lives on the practise tab: it is the band
@@ -502,7 +543,7 @@
            the comfort band is what a live figure is read against, and a
            past take's own record is what happened once already. -->
       <VoicePracticeTakes role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
-    {:else if tab === 'recordings'}
+    {:else if displayedTab === 'recordings'}
       <VoiceRecordings />
     {:else}
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
@@ -607,11 +648,12 @@
             role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
             title={m.vc_benchmarks_empty_title()}
             text={m.vc_benchmarks_empty_body()}
-            action={{ label: m.vb_record(), onclick: () => (tab = 'record') }}
+            action={{ label: m.vb_record(), onclick: () => showTab('record') }}
           />
         {/snippet}
       </ReadGate>
     {/if}
+    </div>
   {/if}
 
   <!-- The metric reference (phase 8 features ticket 27, ADR-0060; a sheet
