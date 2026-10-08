@@ -127,6 +127,15 @@ try {
   const note = `BFCache saved note ${Date.now()}`;
   await clientRoute('/entry/new/2026-10-05?seedMood=4');
   await page.locator('#ed-note').fill(note);
+  await page.evaluate(() => { window.holdReopen = true; window.reopenHeld = false; });
+  await restore();
+  await page.waitForFunction(() => window.reopenHeld === true);
+  assert.equal(await page.locator('#ed-note').count(), 1, 'retained editor remains mounted');
+  assert.equal(await page.locator('#ed-note').isVisible(), false, 'retained editor is hidden during recovery');
+  await page.evaluate(() => window.releaseReopen());
+  await ready();
+  assert.equal(await page.locator('#ed-note').inputValue(), note, 'unsaved note survives actual BFCache restoration');
+  console.log('PASS unsaved editor note survives actual restoration');
   await page.locator('[data-save]').click();
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
   await clientRoute('/day/2026-10-05');

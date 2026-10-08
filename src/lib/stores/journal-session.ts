@@ -28,7 +28,7 @@
        the database has answered;
      - `release` lets go of everything else built over the key - the photo
        stores, the driver's file operations - and the journal content held
-       in memory outside the database;
+       in memory outside the database unless retained navigation keeps it;
      - `prewarm` starts a keyless worker for the next unlock, so the reopen
        costs one `open` rather than a worker start as well.
 
@@ -46,7 +46,7 @@ export interface JournalSessionPorts<Key, Driver extends Closable> {
   suspend(): Promise<void>;
   /** Check ownership after waits, before publishing journal access. */
   open(key: Key, current: () => void, dispose: (driver: Driver) => Promise<void>): Promise<Driver>;
-  release(): void;
+  release(retainContent: boolean): void;
   prewarm(): void;
 }
 
@@ -60,9 +60,9 @@ export interface JournalSession<Key, Driver extends Closable> {
       waiting for it - waits for the reopened database instead of reaching
       the worker the lock terminated. The lock drains it before closing. */
   readonly connection: SessionGate<Driver>;
-  /** The open database, or null while locked. */
+  /** The open database, or null while locked or suspended for navigation. */
   readonly driver: Driver | null;
-  /** Closed by a lock and not reopened yet. */
+  /** Closed by a lock or retained navigation and not reopened yet. */
   readonly locked: boolean;
   /** The first open, which boot does itself. Opens `connection` too, which
       boot has already done as soon as the driver existed, because the
@@ -151,7 +151,7 @@ export function journalSession<Key, Driver extends Closable>(
     driver = null;
     locked = true;
     await key.close();
-    ports.release();
+    ports.release(navigationKey !== null);
     if (!suspended && !navigationSuspended) ports.prewarm();
   }
 
@@ -197,11 +197,14 @@ export function journalSession<Key, Driver extends Closable>(
     async resumeAfterNavigation(current) {
       const held = navigationKey;
       if (held === null) return;
-      await this.unlock(held, () => {
-        current();
-        if (navigationKey !== held) throw new Error('the retained journal session was locked');
-      });
-      if (navigationKey === held) navigationKey = null;
+      try {
+        await this.unlock(held, () => {
+          current();
+          if (navigationKey !== held) throw new Error('the retained journal session was locked');
+        });
+      } finally {
+        if (navigationKey === held) navigationKey = null;
+      }
     },
     unlock(derived, current = () => {}) {
       const owned = attempts.begin();
