@@ -312,3 +312,43 @@ test('an unlock that arrives while the lock waits on a slow save stops the wait'
   assert.equal(session.driver?.name, 'driver 2');
   assert.equal(session.locked, false);
 });
+
+test('a later lock cancels an unlock queued behind the closing journal', async () => {
+  const { session, boot } = setup();
+  boot(keyOf(1));
+  const closing = session.lock();
+  const unlocking = session.unlock(keyOf(1));
+  const later = session.lock();
+  await assert.rejects(unlocking, /cancelled by a newer lock/);
+  await Promise.all([closing, later]);
+  assert.equal(session.key.current, null);
+  assert.equal(session.driver, null);
+  await session.unlock(keyOf(1));
+  assert.equal(session.locked, false);
+});
+
+test('a later lock closes a driver whose reopen was already running', async () => {
+  let release!: () => void;
+  let reached!: () => void;
+  const entered = new Promise<void>((resolve) => { reached = resolve; });
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const log: string[] = [];
+  const first = fakeDriver('first', log);
+  const reopened = fakeDriver('reopened', log);
+  const session = journalSession<Key, FakeDriver>({
+    suspend: async () => {}, release() {}, prewarm() {},
+    async open() { reached(); await held; return reopened; }
+  });
+  session.adopt(keyOf(1), first);
+  await session.lock();
+  const unlocking = session.unlock(keyOf(1));
+  await entered;
+  const later = session.lock();
+  release();
+  await assert.rejects(unlocking, /cancelled by a newer lock/);
+  await later;
+  assert.equal(reopened.closed, true);
+  assert.equal(session.key.current, null);
+  assert.equal(session.connection.current, null);
+  assert.equal(session.driver, null);
+});

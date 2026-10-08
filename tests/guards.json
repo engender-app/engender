@@ -1,5 +1,10 @@
 [
   {
+    "name": "pending-unlock-lock-check",
+    "tier": "dev",
+    "holds": "a newer lock cancels pending authentication and its opening transition"
+  },
+  {
     "name": "blind-edge-padding-check",
     "tier": "dev",
     "holds": "a padding-only change to a field still moves `--blind-edge`"
