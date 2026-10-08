@@ -566,10 +566,9 @@
          part of the screen, and left outside <main> it would be a group of
          controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
-      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter>
-        {#if browserSession.recovering}
-          <!-- The old route stays unmounted until its session can answer. -->
-        {:else if schemaTooNew}
+      <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter
+        inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : undefined}>
+        {#if schemaTooNew}
           {#await import('$lib/components/SchemaTooNew.svelte') then { default: SchemaTooNew }}
             <SchemaTooNew />
           {/await}
@@ -600,14 +599,14 @@
       </div>
     </main>
 
-    {#if !browserSession.recovering}
-      <QuickAdd />
-    {/if}
-    {#if ui.raisedManager && !browserSession.recovering}
+    <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
+    <QuickAdd />
+    {#if ui.raisedManager}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />
       {/await}
     {/if}
+    </div>
 
     <Toasts />
   </div>

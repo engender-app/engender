@@ -227,7 +227,7 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     if (detached.status === 'rejected') throw detached.reason;
   },
   open: reopenJournal,
-  release() {
+  release(retainContent) {
     openDriver = null;
     openFileOps = null;
     setActiveDriver(null);
@@ -235,7 +235,7 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     forgetReference();
     /* Again, after the drain: a read that was still answering when the lock
        began may have put an answer back. */
-    forgetJournalContent();
+    if (!retainContent) forgetJournalContent();
   },
   prewarm() {
     prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
@@ -301,7 +301,11 @@ export function watchBrowserSession(): () => void {
     generation++;
     browserSession.recovering = true;
     incompleteBoot = !isReadyState(bootState);
-    if (!incompleteBoot) suspended = session.suspendForNavigation(!isLocked(bootState.accessMode));
+    if (!incompleteBoot) {
+      suspended = session.suspendForNavigation(!isLocked(bootState.accessMode));
+      // An authenticated return observes failure below; a locked return stays closed.
+      void suspended.catch(() => {});
+    }
   };
   const show = (event: PageTransitionEvent) => {
     if (!event.persisted || !browserSession.recovering) return;

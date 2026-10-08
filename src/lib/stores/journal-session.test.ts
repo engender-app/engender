@@ -36,6 +36,7 @@ function setup() {
   const log: string[] = [];
   const journals = sessionGate<string>();
   const opened: Key[] = [];
+  const releases: boolean[] = [];
   let failOpen: Error | null = null;
   const session = journalSession<Key, FakeDriver>({
     async suspend() {
@@ -49,7 +50,8 @@ function setup() {
       journals.open(driver.name);
       return driver;
     },
-    release() {
+    release(retainContent) {
+      releases.push(retainContent);
       log.push('released');
     },
     prewarm() {
@@ -61,6 +63,7 @@ function setup() {
     log,
     journals,
     opened,
+    releases,
     session,
     first,
     failNextOpen(error: Error) {
@@ -442,7 +445,7 @@ test('a failed preparation uses bounded session disposal before a fresh reopen',
 
 
 test('retained navigation closes gates synchronously and replaces its worker under the retained key', async () => {
-  const { session, boot, first, opened } = setup();
+  const { session, boot, first, opened, releases } = setup();
   const key = keyOf(9);
   boot(key);
   const suspended = session.suspendForNavigation(true);
@@ -450,11 +453,24 @@ test('retained navigation closes gates synchronously and replaces its worker und
   assert.equal(session.key.current, null);
   await suspended;
   assert.equal(first.closed, true);
+  assert.deepEqual(releases, [true], 'unlocked retained navigation keeps draft/content holders');
   const read = session.connection.run((driver) => driver.query());
   assert.equal(await settled(read), false);
   await session.resumeAfterNavigation(() => {});
   assert.equal(await read, 'driver 2');
   assert.deepEqual(opened, [key]);
+});
+
+test('failed retained recovery discards automatic reopening authority', async () => {
+  const { session, boot, failNextOpen } = setup();
+  boot(keyOf(9));
+  await session.suspendForNavigation(true);
+  failNextOpen(new Error('reopen failed'));
+  await assert.rejects(session.resumeAfterNavigation(() => {}), /reopen failed/);
+  await session.resumeAfterNavigation(() => {});
+  assert.equal(session.driver, null);
+  assert.equal(session.connection.current, null);
+  assert.equal(session.key.current, null);
 });
 
 test('a lock after retained navigation discards automatic reopening authority', async () => {
@@ -470,12 +486,13 @@ test('a lock after retained navigation discards automatic reopening authority', 
 });
 
 test('a document already locked cannot retain a key for automatic reopening', async () => {
-  const { session, boot, opened, log } = setup();
+  const { session, boot, opened, log, releases } = setup();
   boot(keyOf(9));
   const locking = session.lock();
   const suspended = session.suspendForNavigation(false);
   await Promise.all([locking, suspended]);
   assert.equal(log.includes('prewarmed'), false, 'hidden cleanup cannot acquire another pool worker');
+  assert.deepEqual(releases, [false], 'authentication lock still releases copied journal content');
   await session.resumeAfterNavigation(() => {});
   assert.deepEqual(opened, []);
   assert.equal(session.key.current, null);
