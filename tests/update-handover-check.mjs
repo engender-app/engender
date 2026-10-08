@@ -9,37 +9,103 @@ const browser = await launchChromium();
 const { block, ok, finish } = createReporter();
 
 try {
-  await block('cold schema refusal discovers a waiting release', 3, async () => {
+  for (const mode of ['waiting', 'installing', 'offline-waiting']) {
+    await block(`cold schema refusal: ${mode}`, mode === 'installing' ? 5 : 4, async () => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      page.setDefaultTimeout(10000);
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      try {
+        await page.goto(`${base}/recovery.html?seed`);
+        await page.waitForSelector('body[data-ready="true"]', { state: 'attached' });
+        if (mode === 'installing') await page.request.get(`${base}/recovery-bump-held`);
+        else await page.evaluate(() => window.recoverySeed.offer());
+        await page.goto(`${base}/recovery.html`);
+        await page.waitForSelector('[data-schema-too-new]');
+        const before = await page.evaluate(() => window.recovery.state());
+        assert.equal(before.status, 'schema-too-new');
+        assert.equal(before.statuses.includes('ready'), false);
+        assert.equal(before.statuses.includes('needs-setup'), false);
+        assert.equal(before.registerCalls, 0);
+        assert.equal(before.updateReady, false);
+        assert.equal(before.waiting, mode !== 'installing');
+        assert.equal(before.journalReads, 0);
+        ok(`${mode}: cold refusal leaves registration unwatched and journal unread`);
+        if (mode === 'offline-waiting') await context.setOffline(true);
+        const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame(), timeout: 10000 });
+        await page.locator('[data-look-for-newer]').click();
+        if (mode === 'installing') {
+          await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.installing?.state === 'installing');
+          assert.equal(await page.locator('[data-look-for-newer]').isDisabled(), true);
+          assert.equal(await page.locator('[data-nothing-newer]').count(), 0);
+          ok('installing: recovery waits for the real worker install');
+          await page.request.get(`${base}/recovery-install-release`);
+        }
+        await reloaded;
+        if (mode === 'offline-waiting') {
+          await context.setOffline(false);
+          await page.goto(`${base}/recovery.html`);
+        }
+        await page.waitForSelector('body[data-ready="true"]');
+        const checkpoint = await page.evaluate(() => window.recovery.checkpoint());
+        assert.equal(checkpoint.registerCalls, 1);
+        assert.equal(checkpoint.takeovers, 1);
+        ok(`${mode}: explicit recovery acquires registration and real worker takes over`);
+        assert.equal(checkpoint.status, 'schema-too-new');
+        assert.equal(checkpoint.journalReads, 0);
+        ok(`${mode}: handover reloads without reading incompatible journal`);
+        const fixture = await page.evaluate(() => window.recovery.inspectFixture());
+        assert.equal(fixture.version, fixture.latest + 1);
+        assert.deepEqual(fixture.rows, [{ note: 'Future journal content' }]);
+        assert.deepEqual(errors, []);
+        ok(`${mode}: future schema and encrypted fixture content remain unchanged`);
+      } finally {
+        await context.setOffline(false);
+        await page.request.get(`${base}/recovery-install-release`).catch(() => {});
+        await context.close();
+      }
+    });
+  }
+  await block('cold schema recovery remains usable after offline and unavailable release', 4, async () => {
     const context = await browser.newContext();
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     try {
       await page.goto(`${base}/recovery.html?seed`);
       await page.waitForSelector('body[data-ready="true"]', { state: 'attached' });
-      await page.evaluate(() => window.recoverySeed.offer());
       await page.goto(`${base}/recovery.html`);
       await page.waitForSelector('[data-schema-too-new]');
-      const before = await page.evaluate(() => window.recovery.state());
-      assert.equal(before.status, 'schema-too-new');
-      assert.equal(before.statuses.includes('ready'), false);
-      assert.equal(before.statuses.includes('needs-setup'), false);
-      assert.equal(before.registerCalls, 0);
-      assert.equal(before.updateReady, false);
-      assert.equal(before.waiting, true);
-      assert.equal(before.journalReads, 0);
-      ok('cold refusal leaves registration unwatched and journal unread');
-      const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame(), timeout: 10000 });
+      await context.setOffline(true);
+      await page.locator('[data-look-for-newer]').click();
+      await page.waitForSelector('[data-update-check-failed]', { state: 'attached' }).catch(async error => {
+        console.error('Offline gate evidence:', await page.locator('#recovery').textContent(),
+          await page.evaluate(() => window.recovery.state()));
+        throw error;
+      });
+      assert.equal(await page.locator('[data-look-for-newer]').isEnabled(), true);
+      assert.equal((await page.evaluate(() => window.recovery.state())).journalReads, 0);
+      ok('offline check reports failure and releases the recovery action');
+      await context.setOffline(false);
+      await page.locator('[data-look-for-newer]').click();
+      await page.waitForSelector('[data-nothing-newer]');
+      assert.equal(await page.locator('[data-look-for-newer]').isEnabled(), true);
+      ok('online check with no release reports nothing newer and remains usable');
+      await page.request.get(`${base}/recovery-bump`);
+      const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() });
       await page.locator('[data-look-for-newer]').click();
       await reloaded;
       await page.waitForSelector('body[data-ready="true"]');
       const checkpoint = await page.evaluate(() => window.recovery.checkpoint());
-      assert.equal(checkpoint.registerCalls, 1);
       assert.equal(checkpoint.takeovers, 1);
-      ok('explicit recovery acquires registration and real worker takes over');
-      assert.equal(checkpoint.status, 'schema-too-new');
       assert.equal(checkpoint.journalReads, 0);
-      ok('handover reloads without reading incompatible journal');
+      ok('later recovery retry installs and takes over without opening the journal');
+      const fixture = await page.evaluate(() => window.recovery.inspectFixture());
+      assert.equal(fixture.version, fixture.latest + 1);
+      assert.deepEqual(fixture.rows, [{ note: 'Future journal content' }]);
+      ok('failed and successful checks preserve future journal content');
     } finally {
+      await context.setOffline(false);
       await context.close();
     }
   });

@@ -58,7 +58,7 @@ describe('explicit recovery registration', () => {
 
   function browser() {
     const registration = {
-      active: {}, waiting: { postMessage: vi.fn() }, installing: null,
+      active: {}, waiting: { postMessage: vi.fn() } as { postMessage(message: unknown): void } | null, installing: null,
       update: vi.fn(async () => {}), addEventListener: vi.fn()
     };
     const register = vi.fn(async () => registration);
@@ -109,6 +109,18 @@ describe('explicit recovery registration', () => {
     expect(await checkForNewerRelease()).toBe(true);
     expect(register).toHaveBeenCalledTimes(2);
     expect(registration.addEventListener).toHaveBeenCalledTimes(1);
+  });
+
+  test('an offline check with no waiting release reports failure even if update resolves', async () => {
+    const { registration, register } = browser();
+    register.mockResolvedValue({ ...registration, waiting: null });
+    const serviceWorker = { register, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    vi.stubGlobal('navigator', { serviceWorker, onLine: false });
+    const { checkForNewerRelease } = await import('./register');
+    await expect(checkForNewerRelease()).rejects.toThrow('while offline');
+    vi.stubGlobal('navigator', { serviceWorker, onLine: true });
+    expect(await checkForNewerRelease()).toBe(false);
+    expect(register).toHaveBeenCalledTimes(1);
   });
 
   test.each(['development', 'unavailable', 'android'])('%s never acquires a web update', async (mode) => {

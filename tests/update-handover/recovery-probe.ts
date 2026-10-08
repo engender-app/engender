@@ -11,6 +11,8 @@ const key = new Uint8Array(32).fill(9);
 const { driver, fileOps } = createEncryptedWebSqlite('schema-recovery.sqlite3', key);
 const seed = new URLSearchParams(location.search).has('seed');
 if (seed) {
+  await driver.run('CREATE TABLE recovery_canary (note TEXT NOT NULL)');
+  await driver.run('INSERT INTO recovery_canary VALUES (?)', ['Future journal content']);
   await driver.setUserVersion(LATEST_SCHEMA_VERSION + 1);
   await driver.close();
   const registration = await navigator.serviceWorker.register('/service-worker.js', { updateViaCache: 'none' });
@@ -50,8 +52,14 @@ if (seed) {
   });
   const registration = await navigator.serviceWorker.getRegistration();
   Object.assign(window, { recovery: {
-    state: () => ({ status: machine.boot.status, statuses, journalReads, registerCalls, updateReady: updateReady(), waiting: registration?.waiting !== null }),
-    checkpoint: () => JSON.parse(sessionStorage.getItem('schema-recovery-handover') ?? 'null')
+    state: () => ({ status: machine.boot.status, statuses, journalReads, registerCalls, updateReady: updateReady(), waiting: registration?.waiting != null }),
+    checkpoint: () => JSON.parse(sessionStorage.getItem('schema-recovery-handover') ?? 'null'),
+    async inspectFixture() {
+      const { driver: inspector } = createEncryptedWebSqlite('schema-recovery.sqlite3', key);
+      try {
+        return { version: await inspector.getUserVersion(), latest: LATEST_SCHEMA_VERSION, rows: await inspector.query('SELECT note FROM recovery_canary') };
+      } finally { await inspector.close(); }
+    }
   } });
   mount(SchemaTooNew, { target: document.querySelector('#recovery')! });
 }

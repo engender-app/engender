@@ -57,7 +57,10 @@ export function registerServiceWorker(): void {
     It shares registration with normal boot to install only one watcher. */
 export async function checkForNewerRelease(): Promise<boolean> {
   if (!(await ensureServiceWorkerRegistration())) return false;
-  return checkWatchedRelease();
+  const found = await checkWatchedRelease();
+  // Chromium can resolve update() offline without finding a release.
+  if (!found && navigator.onLine === false) throw new Error('Cannot check for a newer release while offline');
+  return found;
 }
 
 async function ensureServiceWorkerRegistration(): Promise<boolean> {
