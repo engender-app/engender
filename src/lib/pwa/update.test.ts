@@ -96,13 +96,16 @@ function fakeEnvironment() {
   let reloads = 0;
   return {
     environment: {
-      onControllerChange: (listener: () => void) => changed.push(listener),
+      onControllerChange: (listener: () => void) => {
+        changed.push(listener);
+        return () => { changed.splice(changed.indexOf(listener), 1); };
+      },
       reload: () => {
         reloads++;
       }
     },
     /** What the browser does once the new worker has taken over the page. */
-    takesControl: () => changed.forEach((listener) => listener()),
+    takesControl: () => [...changed].forEach((listener) => listener()),
     reloads: () => reloads
   };
 }
@@ -298,3 +301,123 @@ test('an install that never finishes stops waiting after 30 seconds', async () =
     assert.equal(await looking, false);
   } finally { vi.useRealTimers(); }
 });
+
+
+test('takeover waits for a write started after the update request', async () => {
+  const worker = fakeRegistration();
+  const env = fakeEnvironment();
+  watchForUpdates(worker.registration, env.environment);
+  worker.releaseArrives();
+  const applied = applyUpdate();
+  const saving = markJournalBusy();
+  try {
+    env.takesControl();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(env.reloads(), 0, 'reload must wait for the later write');
+  } finally {
+    saving();
+    await applied;
+  }
+});
+
+
+test('activation timeout also waits for later overlapping writes', async () => {
+  vi.useFakeTimers();
+  const worker = fakeRegistration();
+  const env = fakeEnvironment();
+  watchForUpdates(worker.registration, env.environment);
+  worker.releaseArrives();
+  const applied = applyUpdate();
+  const first = markJournalBusy();
+  const second = markJournalBusy();
+  try {
+    await vi.advanceTimersByTimeAsync(5001);
+    assert.equal(env.reloads(), 0);
+    first();
+    await vi.advanceTimersByTimeAsync(1);
+    assert.equal(env.reloads(), 0);
+    second();
+    await vi.advanceTimersByTimeAsync(1);
+    assert.equal(await applied, true);
+    assert.equal(env.reloads(), 1);
+  } finally { first(); second(); vi.useRealTimers(); }
+});
+
+for (const activation of ['takeover', 'timeout'] as const) {
+  test(`${activation} preserves failed-write recovery and permits an explicit retry`, async () => {
+    vi.useFakeTimers();
+    const worker = fakeRegistration();
+    const env = fakeEnvironment();
+    watchForUpdates(worker.registration, env.environment);
+    worker.releaseArrives();
+    const applied = applyUpdate();
+    const saving = markJournalBusy();
+    try {
+      if (activation === 'takeover') {
+        (worker.registration as { waiting: unknown }).waiting = null;
+        env.takesControl();
+      }
+      await vi.advanceTimersByTimeAsync(5001);
+      assert.equal(env.reloads(), 0);
+      saving(false);
+      await vi.advanceTimersByTimeAsync(1);
+      assert.equal(await applied, false);
+      assert.equal(env.reloads(), 0);
+      assert.equal(updateReady(), true, 'retry survives a worker that already took control');
+      const retried = applyUpdate();
+      await vi.advanceTimersByTimeAsync(1);
+      assert.equal(await retried, true);
+      assert.equal(env.reloads(), 1);
+      assert.deepEqual(worker.posted, [SKIP_WAITING]);
+    } finally { saving(); vi.useRealTimers(); }
+  });
+}
+
+test('a worker that refuses the activation message leaves writes and updates usable', async () => {
+  const worker = fakeRegistration();
+  const env = fakeEnvironment();
+  watchForUpdates(worker.registration, env.environment);
+  worker.releaseArrives();
+  worker.registration.waiting!.postMessage = () => { throw new Error('worker went redundant'); };
+  assert.equal(await applyUpdate(), false);
+  assert.equal(env.reloads(), 0);
+  assert.equal(updateReady(), true);
+  const saving = markJournalBusy();
+  saving();
+  worker.releaseArrives();
+  const applied = applyUpdate();
+  env.takesControl();
+  assert.equal(await applied, true);
+});
+
+test('duplicate apply requests send one activation message and reload once', async () => {
+  const worker = fakeRegistration();
+  const env = fakeEnvironment();
+  watchForUpdates(worker.registration, env.environment);
+  worker.releaseArrives();
+  const applied = applyUpdate();
+  assert.equal(await applyUpdate(), false);
+  env.takesControl();
+  assert.equal(await applied, true);
+  assert.equal(env.reloads(), 1);
+  assert.deepEqual(worker.posted, [SKIP_WAITING]);
+});
+
+
+for (const activation of ['takeover', 'timeout'] as const) {
+  test(`an already running write stays protected after refused update and ${activation}`, async () => {
+    vi.useFakeTimers();
+    const worker = fakeRegistration();
+    const env = fakeEnvironment();
+    watchForUpdates(worker.registration, env.environment);
+    worker.releaseArrives();
+    const saving = markJournalBusy();
+    try {
+      assert.equal(await applyUpdate(), false);
+      if (activation === 'takeover') env.takesControl();
+      await vi.advanceTimersByTimeAsync(5001);
+      assert.equal(env.reloads(), 0);
+      assert.deepEqual(worker.posted, []);
+    } finally { saving(); vi.useRealTimers(); }
+  });
+}

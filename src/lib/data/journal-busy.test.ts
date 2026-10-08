@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites } from './journal-busy.ts';
+import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites, prepareJournalHandover } from './journal-busy.ts';
 
 test('nothing in flight until something enters', () => {
   assert.equal(journalIsBusy(), false);
@@ -85,4 +85,28 @@ test('the write watch answers yes for a write already in flight, and for one tha
   afterStopping.stop();
   markJournalBusy()();
   assert.equal(afterStopping.sawWrite(), false, 'and a stopped watch stops listening');
+});
+
+
+test('idle handover rechecks a write started by the save caller', async () => {
+  const handover = prepareJournalHandover();
+  const first = markJournalBusy();
+  let ran = false;
+  const result = handover(() => { ran = true; });
+  first();
+  const second = await Promise.resolve().then(() => markJournalBusy());
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(ran, false);
+  second();
+  assert.equal(await result, true);
+  assert.equal(ran, true);
+});
+
+test('handover remembers a failed write even if it finished before activation', async () => {
+  const handover = prepareJournalHandover();
+  markJournalBusy()(false);
+  let ran = false;
+  assert.equal(await handover(() => { ran = true; }), false);
+  assert.equal(ran, false);
+  assert.equal(await prepareJournalHandover()(() => { ran = true; }), true);
 });

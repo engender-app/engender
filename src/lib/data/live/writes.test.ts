@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { expect, test } from 'vitest';
 import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
-import { journalIsBusy } from '../journal-busy.ts';
+import { journalIsBusy, prepareJournalHandover } from '../journal-busy.ts';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { JOURNAL_WIDE, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 import { COMPOSING_READS } from './test-support/composing-reads.ts';
@@ -514,4 +514,19 @@ test('every read the journal actually has declares at least one table', async ()
       assert.ok(tables.length > 0, `journal.${areaName}.${operation} declares no table, so nothing re-runs it`);
     }
   }
+});
+
+
+test('a rejected public journal write cancels handover without changing its error', async () => {
+  const { journal } = await observed();
+  const handover = prepareJournalHandover();
+  await assert.rejects(journal.entries.upsertEntry({ epochDay: 100, note: '   ' }), /needs a mood/);
+  let reloaded = false;
+  assert.equal(await handover(() => { reloaded = true; }), false);
+  assert.equal(reloaded, false);
+  assert.equal(journalIsBusy(), false);
+  const retry = prepareJournalHandover();
+  const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'Recovered draft' });
+  assert.equal((await journal.entries.getEntry(id))?.note, 'Recovered draft');
+  assert.equal(await retry(() => { reloaded = true; }), true);
 });
