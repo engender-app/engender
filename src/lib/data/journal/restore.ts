@@ -401,5 +401,6 @@ function assertRestorable(journal: ArchiveJournal): void {
     registry's own oracle checks every table in the schema against the
     statements (archiveSections.test.ts). */
 export async function discardJournalRows(driver: SqliteDriver): Promise<void> {
-  for (const statement of discardStatements()) await driver.run(statement);
+  // Keep registry order while sending the complete discard through the driver once.
+  await driver.exec(discardStatements().join(';\n'));
 }
