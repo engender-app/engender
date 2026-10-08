@@ -261,6 +261,7 @@ on this page ran green on 2026-09-23.
 | `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
 | `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
 | `probe:field-text` | (ticket 285) nothing on a field paints past its painted edge or teleports against it, on every frame of every change that moves a field: doors both ways from top, middle and bottom, interrupted and reversed, deep push and back, gear, Polish, reduced motion, resize, setup's steps and handover, and the door field's height on a cold load, at 390 and 1440; `--only`, `--runs`, `--report`, `--frames`, `--json`, and `--device <serial>` to drive the Pixel WebView over its own forwarded port (`--port`, default 9341, `--package`, default the separate probe build and never the real app, `--rate` to slow the animations for reading the edge on pixels (`field-text-edge-series.mjs` reads the frames); the PIN gate opening is a scene there). Timing-dependent: run it several times |
+| `day-strip-week-motion` (demo build, `--out <dir>`) | Outgoing week labels stay anchored on Cycle, dilation, wear and hair removal in light and dark; paging, date selection, focus transfer and reduced motion retain their behavior. Saves full painted casts and frame geometry. |
 | `tab-bar-withdraw-crossfade` | the floating bar's withdrawal crossfade across three sheet scenes, per frame, for blur snaps and dropouts (ticket 232) |
 
 ## Helpers
