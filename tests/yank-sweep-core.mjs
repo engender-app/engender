@@ -411,6 +411,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
   if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
   if (env.__sweepDocumentProof) evidence.documentProof = env.__sweepDocumentProof;
+  if (env.__sweepNavigationProof) evidence.navigationProof = env.__sweepNavigationProof;
   if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
   if (requested === 'inject') {
     if (typeof env.__yankProof !== 'function') throw new Error('missing injected proof action');
@@ -709,6 +710,56 @@ export const documentProofExpression = (previousTimeOrigin) => `(() => {
   if (timeOrigin === previousTimeOrigin) throw new Error('native settle retained its previous document');
   return globalThis.__sweepDocumentProof = { previousTimeOrigin, timeOrigin };
 })()`;
+
+export const gestureNavigationExpression = (path, predecessor = null) => `(${async function (path, predecessor) {
+  const started = Date.now();
+  const wait = async (ready, stage) => {
+    while (!ready()) {
+      if (Date.now() - started >= 40000) throw new Error('gesture preparation timed out: ' + stage);
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  };
+  for (const [selector, absent] of [['[data-quick-add]', '[data-fan]'], ['[data-sheet-scrim]', '[data-sheet-scrim]'], ['[data-leave-setup]', '[data-leave-setup]']]) {
+    const control = document.querySelector(selector);
+    if (control) { control.click(); await wait(() => !document.querySelector(absent), 'overlay cleanup ' + absent); }
+  }
+  const origin = performance.timeOrigin;
+  if (!Number.isFinite(origin)) throw new Error('invalid gesture document time origin');
+  const previousRoute = location.pathname + location.search;
+  const roots = [...(document.querySelector('#app-main')?.children ?? [])];
+  if (!roots.length) throw new Error('gesture preparation has no mounted source screen');
+  const jump = async (href) => {
+    const select = document.querySelector('#demo-jump');
+    if (!select || select.disabled) throw new Error('gesture demo navigation control unavailable');
+    const option = document.createElement('option');
+    option.value = href;
+    select.append(option);
+    try { select.value = href; select.dispatchEvent(new Event('change', { bubbles: true })); }
+    finally { option.remove(); }
+    await wait(() => location.pathname + location.search === href, 'route ' + href);
+    await wait(() => document.querySelector('[data-app-root][data-boot="ready"]')
+      && document.querySelector('#app-main')?.children.length > 0, 'mounted route ' + href);
+  };
+  const intermediate = predecessor ?? (path === '/settings/licences' ? '/calendar' : '/settings/licences');
+  if (previousRoute === intermediate) await jump(intermediate === '/calendar' ? '/settings/licences' : '/calendar');
+  await jump(intermediate);
+  await wait(() => roots.every(node => !node.isConnected), 'old screen remained mounted');
+  const intermediateRoots = [...document.querySelector('#app-main').children];
+  await jump(path);
+  await wait(() => intermediateRoots.every(node => !node.isConnected), 'target screen did not remount');
+  await wait(() => !document.documentElement.dataset.appearanceTransition, 'appearance transition');
+  if (performance.timeOrigin !== origin) throw new Error('gesture SPA navigation replaced its document');
+  const proof = { kind: 'spa-mount', requested: path, previousRoute, intermediate,
+    actualRoute: location.pathname + location.search, previousTimeOrigin: origin, timeOrigin: performance.timeOrigin,
+    oldRootDetached: roots.every(node => !node.isConnected), targetMounted: document.querySelector('#app-main').children.length > 0 };
+  globalThis.__sweepDocumentProof = null;
+  return globalThis.__sweepNavigationProof = proof;
+}})(${JSON.stringify(path)}, ${JSON.stringify(predecessor)})`;
+
+export async function preparePinGate(theme, prepare, applyTheme) {
+  await prepare();
+  return applyTheme(theme);
+}
 
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};
@@ -1107,7 +1158,7 @@ export function samplerExpression(act, ms, names) {
         if (live) {
           const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
           const ancestorClips = new WeakMap();
-          for (const el of live.querySelectorAll('*')) {
+          for (const el of live.querySelectorAll(act === 'inject' ? '[class^="yank-proof-"]' : '*')) {
             const cs = getComputedStyle(el);
             if (cs.display === 'none') continue;
             const box = el.getBoundingClientRect();

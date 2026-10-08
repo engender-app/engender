@@ -53,6 +53,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChromium, screencast as captureScreencast, settlePage, previewBuild } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
+  preparePinGate,
   DIFF_EPS,
   FILL_EVERY_FEATURE_EXPRESSION,
   HYDRATION_MS,
@@ -319,12 +320,12 @@ if (lockScene && profiles.includes('persona')) {
   let pinPrepared = false;
   for (const theme of themes) {
   try {
-    if (!pinPrepared) {
+    await preparePinGate(theme, async () => {
+      if (pinPrepared) return;
       await settle('/settings/access-mode', theme);
       if (await page.locator('[data-list-row="pin"]').count()) await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
       pinPrepared = true;
-    }
-    await page.evaluate(DEMO_THEME_EXPRESSION(theme));
+    }, (theme) => page.evaluate(DEMO_THEME_EXPRESSION(theme)));
     await page.waitForFunction((theme) => JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === theme, theme, { timeout: 10000 });
     const result = await screencast(async (cast) => {
       await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));

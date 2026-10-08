@@ -69,6 +69,8 @@ import { fileURLToPath } from 'node:url';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import {
   DEMO_THEME_EXPRESSION,
+  gestureNavigationExpression,
+  preparePinGate,
   DIFF_EPS,
   EVIDENCE_CAP,
   EXEMPT,
@@ -454,7 +456,13 @@ const firstRunExpression = (target) => `(async () => {
   throw new Error('never reached the \${target} step');
 })()`;
 
-async function settle(path, theme) {
+async function settle(path, theme, predecessor = null) {
+  if (!hydration) {
+    await sleep(400);
+    await ev(gestureNavigationExpression(path, predecessor));
+    await ev(SETTLE_PAGE_EXPRESSION(theme));
+    return;
+  }
   await sleep(400);
   /* A sheet can survive the preceding pass. Its scrim intercepts the next
      tap, so close it before positioning another scene. */
@@ -880,12 +888,15 @@ async function hydrationScenes() {
     await settle('/', themes[0]);
     await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
     await markProfile('persona');
+    let pinPrepared = false;
     for (const theme of themes) {
     try {
-      await settle('/', theme);
-      await ev(DEMO_THEME_EXPRESSION(theme));
-      await settle('/settings/access-mode', theme);
-      if ((await accessMode()) !== 'pin') await ev(LOCK_SETUP_EXPRESSION(PIN));
+      await preparePinGate(theme, async () => {
+        if (pinPrepared) return;
+        await settle('/settings/access-mode', theme);
+        if ((await accessMode()) !== 'pin') await ev(LOCK_SETUP_EXPRESSION(PIN));
+        pinPrepared = true;
+      }, (theme) => ev(DEMO_THEME_EXPRESSION(theme)));
       const result = await screencast(async (cast) => {
         await paintBlankSentinel(ev, sleep);
         const documentProof = await navigateFreshSweepPage('/', (expression) => ev(expression));
@@ -962,7 +973,7 @@ if (hydration) {
               await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
               await markProfile(profile);
             }
-            await settle(scene.at, theme);
+            await settle(scene.at, theme, scene.act === 'back' ? scene.after.route : null);
             if (scene.firstRun) {
               await ev(firstRunExpression(scene.firstRun));
               await ev(DEMO_THEME_EXPRESSION(theme));

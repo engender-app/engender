@@ -15,12 +15,14 @@ Theme and palette preparation wait for their actual reset transition and
 boot preference mirror before another control is tested. Measurement still
 starts after preparation with its existing window.
 
-Both gesture transports reload the requested route before each preparation.
-Repeated scenes start with fresh mounted state; journal data stays intact.
-Native settle waits for performance.timeOrigin to change before route/boot
-readiness, then waits for the mounted demo control before theme preparation.
-Native actions and cold coverage proofs retain finite previous and current
-document identities. Cold recording keeps its camera-before-navigation order
+Both gesture transports use the demo navigation control to mount an
+intermediate route, then the requested route. Preparation proves that the
+previous screen and intermediate screen detached, the target mounted, and
+performance.timeOrigin stayed unchanged. Deep-back scenes use their expected
+predecessor as the intermediate route. This resets screen state without
+creating a document for every gesture. Journal data stays intact.
+Cold recording still reloads the document, retains finite previous and
+current document identities, and keeps its camera-before-navigation order
 and existing ready-to-sampler window.
 The unit-switcher scene enables Measurements through its visible switch when
 needed, proves that state, and restores its original visibility after capture.
@@ -50,6 +52,8 @@ parameters still have to match. The profile check also reads the journal's
 entry-presence cache; persona preparation checks Alice's greeting. Both
 themes record onboarding and the PIN gate. The PIN epilogue restores the
 persona before capturing it, even when the preceding profile was empty.
+PIN setup runs once; each requested theme is applied after setup and route
+preparation so those steps cannot reset the preference before capture.
 
 Fresh Android preparation has a ten-minute bound. The observed demo seed
 took about five minutes; the former 30-second wait expired during that seed.
@@ -63,6 +67,10 @@ incomplete and is replaced atomically after each scene. An error or missing
 run makes the process fail even without `--gate`. Product yanks remain
 findings; only `--gate` treats them as an exit failure. Proof requires every
 injected style defect and painted evidence in each proof run.
+The synthetic proof samples only its six injected marks so unrelated screen
+nodes cannot consume the frame budget. Ordinary scenes still sample the full
+tree. Both paths use the same detector, thresholds and measurement window,
+and retain their complete compositor cast.
 
 Style findings keep their DOM samples and complete compositor cast. Frame
 files carry frame numbers and milliseconds; the metadata keeps absolute
