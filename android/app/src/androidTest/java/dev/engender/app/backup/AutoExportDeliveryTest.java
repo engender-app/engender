@@ -144,19 +144,24 @@ public class AutoExportDeliveryTest {
                 assertEquals(1, afterCleanup.size());
                 copyDocument(afterCleanup.get(0), delivered);
                 assertEquals(1, command(probe, "recover(1)").getInt("recovered"));
-                assertTrue("the fixture must leave staging behind", new File(app.getCacheDir(), "auto-export.pending").exists());
+                assertTrue("the fixture must leave staging behind", pendingFiles().length > 0);
             } finally {
                 Os.chmod(cachePath, cacheMode);
                 resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
-                Files.deleteIfExists(new File(app.getCacheDir(), "auto-export.pending").toPath());
+                for (File pending : pendingFiles()) Files.deleteIfExists(pending.toPath());
             }
 
-            assertFalse(new File(app.getCacheDir(), "auto-export.pending").exists());
+            assertFalse(pendingFiles().length > 0);
         } finally {
             resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
             Files.deleteIfExists(delivered.toPath());
             AutoExportPlugin.wipe(app);
         }
+    }
+
+    private File[] pendingFiles() {
+        File[] files = app.getCacheDir().listFiles((directory, name) -> name.startsWith("auto-export-") && name.endsWith(".pending"));
+        return files == null ? new File[0] : files;
     }
 
     protected JSONObject command(WebViewProbe probe, String expression) throws Exception {
