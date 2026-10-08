@@ -83,7 +83,6 @@ import {
   LOCK_SETUP_EXPRESSION,
   OUTLIER_MIN,
   PROOF,
-  RESET_PERSONA_EXPRESSION,
   SCENE_MS,
   SETTLE_PAGE_EXPRESSION,
   STUB_PERSIST_SCRIPT,
@@ -801,9 +800,6 @@ async function hydrationScenes() {
         await requirePersona();
         await markProfile('persona');
         console.log('[persona] skip-seed: using previously seeded persona');
-      } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
-        console.error('the persona reset never reached Home; stopping this profile');
-        continue;
       } else {
         await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
         await markProfile('persona');
@@ -880,7 +876,6 @@ async function hydrationScenes() {
   const lockScene = SCENES.find((s) => s.setup === 'pin');
   if (lockScene && profiles.includes('persona')) {
     await settle('/', themes[0]);
-    await ev(RESET_PERSONA_EXPRESSION, 2_700_000);
     await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
     await markProfile('persona');
     for (const theme of themes) {
@@ -928,9 +923,6 @@ if (hydration) {
         await requirePersona();
         await markProfile('persona');
         console.log('[persona] skip-seed: using previously seeded persona');
-      } else if (!(await ev(RESET_PERSONA_EXPRESSION, 2_700_000))) {
-        console.error('the persona reset never reached Home; stopping this profile');
-        continue;
       } else {
         await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
         await markProfile('persona');
@@ -960,7 +952,6 @@ if (hydration) {
           try {
             if (scene.reseed) {
               await settle('/', theme);
-              await ev(RESET_PERSONA_EXPRESSION, 2_700_000);
               await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
               await markProfile(profile);
             }

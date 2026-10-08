@@ -110,7 +110,6 @@ import {
   INJECT_PROOF_EXPRESSION,
   JUMP_FIRST_RUN_EXPRESSION,
   PROOF,
-  RESET_PERSONA_EXPRESSION,
   SCENE_MS,
   SETTLE_PAGE_EXPRESSION,
   TELEPORT_PX,
@@ -216,11 +215,6 @@ for (const profile of profiles) {
   }
 
   if (profile === 'persona') {
-    const reset = await page.evaluate(RESET_PERSONA_EXPRESSION);
-    if (!reset) {
-      console.error('the persona reset never reached Home; stopping this profile');
-      continue;
-    }
     await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
     await page.waitForTimeout(1500);
   } else {
@@ -249,7 +243,6 @@ for (const profile of profiles) {
         try {
           if (scene.reseed) {
             await settle('/', theme);
-            await page.evaluate(RESET_PERSONA_EXPRESSION);
             await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
             await page.evaluate(markProfileExpression(profile));
           }

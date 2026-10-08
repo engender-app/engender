@@ -65,7 +65,6 @@ import {
   LOCK_SETUP_EXPRESSION,
   OUTLIER_MIN,
   PROOF,
-  RESET_PERSONA_EXPRESSION,
   STUB_PERSIST_SCRIPT,
   TRANSIENT_MIN,
   GAP_RATIO,
@@ -244,10 +243,6 @@ for (const profile of profiles) {
      its two halves, which is the only moment that screen exists. */
   await settle('/', themes[0]);
   if (profile === 'persona') {
-    if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) {
-      console.error('the persona reset never reached Home; stopping this profile');
-      continue;
-    }
     await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
     await page.waitForTimeout(1500);
   } else {
@@ -315,7 +310,6 @@ for (const profile of profiles) {
 const lockScene = SCENES.find((s) => s.setup === 'pin');
 if (lockScene && profiles.includes('persona')) {
   await settle('/', themes[0]);
-  await page.evaluate(RESET_PERSONA_EXPRESSION);
   await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
   await page.evaluate(markProfileExpression('persona'));
   let pinPrepared = false;
