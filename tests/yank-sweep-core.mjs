@@ -2383,6 +2383,22 @@ export function describeHydrationRun(name, dom, render) {
  *  report entry, one console line. `result` is whatever the transport's
  *  recorder gathered - `{ cast, frames }` on both ends, by construction
  *  rather than by type. */
+export async function captureHydrationCoverage(read) {
+  try { return { coverageProof: await read() }; }
+  catch (error) { return { coverageError: String(error) }; }
+}
+
+export function requireHydrationCoverage(result, profile, theme) {
+  if (result.coverageError) throw new Error(result.coverageError);
+  const proof = result.coverageProof;
+  if (!proof) throw new Error('missing hydration coverage proof');
+  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('hydration coverage wrong profile');
+  if (typeof proof.route !== 'string' || !proof.route.startsWith('/')) throw new Error('hydration coverage missing route');
+  const alignment = proof.themeProof;
+  if (!alignment?.selected || alignment.requested !== theme || alignment.persisted !== theme || alignment.painted !== theme || alignment.transitioning) throw new Error('hydration coverage wrong theme');
+  return proof;
+}
+
 export async function pushHydrationRun(report, outDir, { name, is, profile, theme, result, href = null, dump = false }) {
   const dom = findHydrationYanks(result.frames);
   const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`, EVIDENCE_CAP, { readyFrame: result.readyFrame });
@@ -2404,8 +2420,10 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
     pixelFindings: render.findings
   };
   if (href) entry.href = href;
+  try { requireHydrationCoverage(result, profile, theme); }
+  catch (error) { entry.error = String(error); }
   report.push(entry);
-  console.log(`[${profile}-${theme}] ${describeHydrationRun(name, dom, render)}`);
+  console.log(`[${profile}-${theme}] ${entry.error ? name + ": ERROR " + entry.error : describeHydrationRun(name, dom, render)}`);
   return entry;
 }
 

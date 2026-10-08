@@ -77,6 +77,7 @@ import {
   coverageSummary,
   createReportRecorder,
   coldLoadProofExpression,
+  captureHydrationCoverage,
   markProfileExpression,
   profileProofExpression,
   gateProofExpression,
@@ -169,21 +170,22 @@ async function recordCold(href, profile, theme, outcome) {
     await page.goto(`${base}${href}`, { waitUntil: 'commit', timeout: 40000 });
     await waitFor('[data-app-root][data-boot="ready"]');
     const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    const coverageProof = await page.evaluate(coldLoadProofExpression(href, profile, theme, outcome));
-    return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
+    const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression(href, profile, theme, outcome)));
+    return { cast: dropLeadingBlankFrames([...cast]), frames, ...coverage };
   });
 }
 
 /** One sheet scene: the screen settles first, then the camera and the
  *  sampler record the opening and its hydration together. */
-async function recordSheet(scene, theme) {
+async function recordSheet(scene, profile, theme) {
   await settle(scene.at, theme);
   await page.evaluate(prepareSceneExpression(scene));
   await page.waitForTimeout(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
     const frames = await page.evaluate(samplerExpression(scene, HYDRATION_MS, VT_NAMES));
     const action = await page.evaluate(actionPostconditionExpression(scene, frames[0]?.action));
-    return { cast: [...cast], frames, action };
+    const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression(scene.at, profile, theme)));
+    return { cast: [...cast], frames, action, ...coverage };
   });
 }
 
@@ -226,7 +228,7 @@ async function runScene(scene, profile, theme, tokens) {
   }
   const href = fillTokens(scene.at, tokens);
   try {
-    const result = scene.act ? await recordSheet(scene, theme) : await recordCold(href, profile, theme, scene.coldOutcome);
+    const result = scene.act ? await recordSheet(scene, profile, theme) : await recordCold(href, profile, theme, scene.coldOutcome);
     await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
   } catch (err) {
     report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });
@@ -264,7 +266,8 @@ for (const profile of profiles) {
           await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
           await waitFor('[data-next]', '/onboarding', 30000);
           const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-          return { cast: [...cast], frames };
+          const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression('/onboarding', profile, theme, { selector: '[data-next]' })));
+          return { cast: [...cast], frames, ...coverage };
         });
         await pushHydrationRun(report, outDir, { name: 'onboarding-mount', is: 'the first run opening over an empty journal', profile, theme, result, dump });
       } catch (error) {
@@ -290,7 +293,8 @@ for (const profile of profiles) {
           const result = await screencast(async (cast) => {
             await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
             const frames = await page.evaluate(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
-            return { cast: [...cast], frames };
+            const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression('/', profile, theme)));
+            return { cast: [...cast], frames, ...coverage };
           });
           await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, dump });
         } catch (err) {

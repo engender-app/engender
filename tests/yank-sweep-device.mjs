@@ -103,6 +103,7 @@ import {
   saveSceneCast,
   insertScreencastFrame,
   coldLoadProofExpression,
+  captureHydrationCoverage,
   markProfileExpression,
   profileProofExpression,
   gateProofExpression,
@@ -720,21 +721,22 @@ async function hydrationCold(href, profile, theme, outcome) {
       await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
     }
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    const coverageProof = await ev(coldLoadProofExpression(href, profile, theme, outcome));
-    return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
+    const coverage = await captureHydrationCoverage(() => ev(coldLoadProofExpression(href, profile, theme, outcome)));
+    return { cast: dropLeadingBlankFrames([...cast]), frames, ...coverage };
   });
 }
 
 /** One sheet scene: settled screen, then the opening and its hydration
  *  recorded together. */
-async function hydrationSheet(scene, theme) {
+async function hydrationSheet(scene, profile, theme) {
   await settle(scene.at, theme);
   await ev(prepareSceneExpression(scene));
   await sleep(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
     const frames = await evFrames(samplerExpression(scene, HYDRATION_MS, VT_NAMES));
     const action = await ev(actionPostconditionExpression(scene, frames[0]?.action));
-    return { cast: [...cast], frames, action };
+    const coverage = await captureHydrationCoverage(() => ev(coldLoadProofExpression(scene.at, profile, theme)));
+    return { cast: [...cast], frames, action, ...coverage };
   });
 }
 
@@ -773,7 +775,7 @@ async function hydrationRunScene(scene, profile, theme, tokens) {
   }
   const href = fillTokens(scene.at, tokens);
   try {
-    const result = scene.act ? await hydrationSheet(scene, theme) : await hydrationCold(href, profile, theme, scene.coldOutcome);
+    const result = scene.act ? await hydrationSheet(scene, profile, theme) : await hydrationCold(href, profile, theme, scene.coldOutcome);
     await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
   } catch (err) {
     report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });
@@ -812,7 +814,8 @@ async function hydrationScenes() {
             await ev(JUMP_FIRST_RUN_EXPRESSION);
             await ev(waitForExpression('[data-next]', 30000, '/onboarding'));
             const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-            return { cast: [...cast], frames };
+            const coverage = await captureHydrationCoverage(() => ev(coldLoadProofExpression('/onboarding', profile, theme, { selector: '[data-next]' })));
+            return { cast: [...cast], frames, ...coverage };
           });
           await pushHydrationRun(report, outDir, { name: 'onboarding-mount', is: 'the first run opening over an empty journal', profile, theme, result, dump });
         } catch (error) {
@@ -849,7 +852,8 @@ async function hydrationScenes() {
           const result = await screencast(async (cast) => {
             await ev(`(${INJECT_PROOF_EXPRESSION})()`);
             const frames = await evFrames(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
-            return { cast: [...cast], frames };
+            const coverage = await captureHydrationCoverage(() => ev(coldLoadProofExpression('/', profile, theme)));
+            return { cast: [...cast], frames, ...coverage };
           });
           await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, dump });
           continue;
