@@ -26,13 +26,14 @@ async function state() {
   return page.evaluate(async () => {
     const { lockState } = await import('/src/lib/stores/lock.svelte.ts');
     const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+    const { reference } = await import('/src/lib/data/live/reference.svelte.ts');
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     const accessible = await Promise.race([
       journal.tags.getTagGroups().then(() => true),
       new Promise((resolve) => setTimeout(() => resolve(false), 100))
     ]);
     return { unlocked: lockState.unlocked, journal: !!bootState.journal,
-      accessible, gate: !!document.querySelector('[data-applock]') };
+      accessible, referenceReady: reference.ready, gate: !!document.querySelector('[data-applock]') };
   });
 }
 let mode = 'passphrase';
@@ -78,7 +79,11 @@ try {
       await page.waitForSelector('[data-applock]', { state: 'detached' });
       console.log(`PASS ${mode}: wrong secret stays locked`);
     }
-    for (const stage of ['derivation', 'reopen', 'transition']) {
+    for (const stage of ['derivation', 'reopen', 'hydration', 'transition']) {
+      await page.evaluate(async () => {
+        const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+        window.beforeLockJournal = bootState.journal;
+      });
       await visibility('hidden');
       await page.waitForSelector('[data-applock]');
       await visibility('visible');
@@ -93,10 +98,11 @@ try {
             await new Promise((resolve) => { window.releaseUnlock = resolve; });
             return result;
           };
-        } else if (stage === 'reopen') {
+        } else if (stage === 'reopen' || stage === 'hydration') {
+        // Hold genuine preferences loading or hydration, on either side of the old publication point.
           const post = Worker.prototype.postMessage;
           Worker.prototype.postMessage = function (message, ...args) {
-            if (message.op === 'query') {
+            if (message.op === 'query' && (stage === 'reopen' ? message.args.sql === 'SELECT key, value FROM pref' : message.args.sql.includes('FROM gender_dimension ORDER'))) {
               Worker.prototype.postMessage = post;
               const receive = this.onmessage;
               this.onmessage = (event) => {
@@ -124,15 +130,22 @@ try {
       await page.waitForFunction(() => window.unlockReached);
       const attemptsBefore = await page.evaluate(() => localStorage.getItem('engender-pin-attempts'));
       await visibility('hidden');
+      if (stage === 'hydration') {
+        const capturedReadable = await page.evaluate(() => Promise.race([
+          window.beforeLockJournal.tags.getTagGroups().then(() => true),
+          new Promise((resolve) => setTimeout(() => resolve(false), 100))
+        ]));
+        assert.equal(capturedReadable, false, `${mode}: a newer lock revokes the connection while hydration is held`);
+      }
       await page.evaluate(() => window.releaseUnlock());
       await page.waitForFunction(() => document.querySelector('[data-session-submit], [data-session-biometric], [data-key="1"]')?.disabled === false);
-      assert.deepEqual(await state(), { unlocked: false, journal: false, accessible: false, gate: true }, stage);
+      assert.deepEqual(await state(), { unlocked: false, journal: false, accessible: false, referenceReady: false, gate: true }, stage);
       assert.equal(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), attemptsBefore, `${mode}: cancellation is not a wrong PIN`);
       await visibility('visible');
       assert.equal((await state()).gate, true, `${stage}: returning still requires authentication`);
       await submit();
       await page.waitForSelector('[data-applock]', { state: 'detached' });
-      assert.deepEqual(await state(), { unlocked: true, journal: true, accessible: true, gate: false }, `${stage}: fresh authentication`);
+      assert.deepEqual(await state(), { unlocked: true, journal: true, accessible: true, referenceReady: true, gate: false }, `${stage}: fresh authentication`);
       console.log(`PASS ${mode} ${stage}: later lock remains authoritative; fresh authentication succeeds`);
     }
     await visibility('hidden');
@@ -156,7 +169,7 @@ try {
     });
     await submit();
     await page.waitForSelector('[data-pin-status="wrong"]');
-    assert.deepEqual(await state(), { unlocked: false, journal: false, accessible: false, gate: true }, `${mode}: failed reopen`);
+    assert.deepEqual(await state(), { unlocked: false, journal: false, accessible: false, referenceReady: false, gate: true }, `${mode}: failed reopen`);
     assert.equal(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), attemptsBeforeFailure, `${mode}: failed reopen is not a wrong PIN`);
     await submit();
     await page.waitForSelector('[data-applock]', { state: 'detached' });
