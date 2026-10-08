@@ -466,6 +466,13 @@
 </div>
 
 <style>
+  /* The pinned section owns the space above this editor. A first heading's
+     margin collapses through both wrappers at rest, but the opening
+     transition's negative margin holds it inside until cleanup. */
+  .today-editor > :global(.kit-heading:first-child) {
+    margin-top: 0;
+  }
+
   /* One line under the heading, at the hint size the rest of the app uses
      for the sentence that explains a control rather than labels it. */
   .today-editor-hint,
