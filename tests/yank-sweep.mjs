@@ -110,7 +110,6 @@ import {
   INJECT_PROOF_EXPRESSION,
   JUMP_FIRST_RUN_EXPRESSION,
   PROOF,
-  RESET_PERSONA_EXPRESSION,
   SCENE_MS,
   SETTLE_PAGE_EXPRESSION,
   TELEPORT_PX,
@@ -118,10 +117,26 @@ import {
   VISIBLE,
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
+  finishFirstRun,
+  DEMO_THEME_EXPRESSION,
+  gestureNavigationExpression,
+  prepareSceneExpression,
+  actionPreparationExpression,
+  cleanupSceneExpression,
+  cleanupSceneFailure,
+  actionPostconditionExpression,
+  coverageSummary,
+  createReportRecorder,
+  saveSceneCast,
+  coldLoadProofExpression,
+  markProfileExpression,
+  profileProofExpression,
   findYanks,
   missingProofYanks,
+  missingPaintedProof,
   readRenderYanks,
   scenesFor,
+  sceneForTheme,
   samplerExpression
 } from './yank-sweep-core.mjs';
 
@@ -171,20 +186,15 @@ const browser = await launchChromium();
 const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
-const report = [];
+const recorder = createReportRecorder(outDir, { target: 'desktop' }, SCENES, profiles, themes, passes, errors);
+const report = recorder.report;
 
 let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-page.on('pageerror', (err) => errors.push(String(err)));
+page.on('pageerror', (err) => { errors.push(String(err)); recorder.persist(); });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 
-const settle = async (path, theme) => {
-  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
-  if (await page.locator('[data-leave-setup]').count()) {
-    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
-    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
-  }
+const settle = async (path, theme, predecessor = null) => {
+  await page.evaluate(gestureNavigationExpression(path, predecessor));
   /* The demo bar is hidden rather than removed since redesign ticket 33:
      setup's own scenes reach the flow through the demo's first-run control,
      and a removed bar takes the control with it. Nothing measures the bar
@@ -201,17 +211,12 @@ for (const profile of profiles) {
   }
 
   if (profile === 'persona') {
-    const reset = await page.evaluate(RESET_PERSONA_EXPRESSION);
-    if (!reset) {
-      console.error('the persona reset never reached Home; stopping this profile');
-      continue;
-    }
     await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
     await page.waitForTimeout(1500);
   } else {
     await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
     await page.waitForSelector('[data-next]');
-    const finished = await page.evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION);
+    const finished = await finishFirstRun((expression) => page.evaluate(expression), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) });
     if (!finished) {
       console.error('the first run never finished; stopping this profile');
       continue;
@@ -219,19 +224,44 @@ for (const profile of profiles) {
     await page.waitForTimeout(1500);
   }
 
+  await page.evaluate(markProfileExpression(profile));
   for (const theme of themes) {
-    for (const scene of SCENES) {
+    await settle('/', theme);
+    const profileProof = await page.evaluate(profileProofExpression(profile));
+    for (const listedScene of SCENES) {
+        const scene = sceneForTheme(listedScene, theme);
       if (scene.when && scene.when !== profile) continue;
       for (let pass = 1; pass <= passes; pass++) {
+        if (scene.androidOnly) {
+          report.push({ scene: scene.name, profile, theme, pass, skipped: 'Android-only reminder list; web renders install prompt' });
+          continue;
+        }
+        let captureEvidence;
         try {
-          await settle(scene.at, theme);
-          if (scene.firstRun) await firstRunTo(page, scene.firstRun);
+          await page.evaluate(`globalThis.__sweepAction = null; globalThis.__sweepPreparation = null; true;`);
+          if (scene.reseed) {
+            await settle('/', theme);
+            await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
+            await page.evaluate(markProfileExpression(profile));
+          }
+          await settle(scene.at, theme, scene.act === 'back' ? scene.after.route : null);
+          if (scene.firstRun) {
+            await firstRunTo(page, scene.firstRun);
+            await page.evaluate(DEMO_THEME_EXPRESSION(theme));
+            if (scene.name === 'setup-flag-pick') await page.evaluate(() => document.querySelector('[data-palette-pick="trans"]')?.click());
+              await page.evaluate(actionPreparationExpression(scene));
+          }
+          else await page.evaluate(prepareSceneExpression(scene));
           await page.waitForTimeout(1400);
           if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
           const { cast, all_frames } = await screencast(page, async (cast) => {
-            const all_frames = await page.evaluate(samplerExpression(scene.act, SCENE_MS, VT_NAMES));
+            const all_frames = await page.evaluate(samplerExpression(scene, SCENE_MS, VT_NAMES));
             return { cast, all_frames };
           });
+          captureEvidence = await saveSceneCast(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`);
+          await writeFile(`${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`, JSON.stringify(all_frames, null, 1));
+          const action = await page.evaluate(actionPostconditionExpression(scene, all_frames[0]?.action));
+          const cleanup = await page.evaluate(cleanupSceneExpression(scene));
           /* A transition ran, so the pseudos are what the person saw, and only the
              frames it was running on are the gesture. */
           const transitioned = all_frames.some((f) => f.active);
@@ -241,17 +271,17 @@ for (const profile of profiles) {
           const all = findYanks(frames, instrument, frames.length - 1);
           const yanks = all.filter((y) => !EXEMPT.test(y.mark));
           const render = await readRenderYanks(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`, undefined, { allowThin: true });
-          if (args.includes('--dump'))
-            await writeFile(
-              `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
-              JSON.stringify(all_frames, null, 1)
-            );
+          const evidence = captureEvidence;
           report.push({
             scene: scene.name,
             profile,
             theme,
             pass,
             is: scene.is,
+            action,
+            cleanup,
+            profileProof,
+            ...(evidence ? { evidence } : {}),
             instrument,
             frames: frames.length,
             sampled: all_frames.length,
@@ -274,7 +304,9 @@ for (const profile of profiles) {
                 : '')
           );
         } catch (err) {
-          report.push({ scene: scene.name, profile, theme, pass, error: String(err).slice(0, 300) });
+          const failureCleanup = await cleanupSceneFailure(scene, (expression) => page.evaluate(expression));
+          const failedState = await page.evaluate(`({ action: globalThis.__sweepAction, preparation: globalThis.__sweepPreparation, themeProof: globalThis.__sweepThemeProof })`).catch((failure) => ({ evidenceError: String(failure) }));
+            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, ...(failureCleanup ? { failureCleanup } : {}), action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
           console.log(`[${profile}-${theme}] ${scene.name} p${pass}: ERROR ${String(err).slice(0, 160)}`);
         }
       }
@@ -282,14 +314,17 @@ for (const profile of profiles) {
   }
 }
 
+await recorder.flush();
 await writeFile(
   `${outDir}/report.json`,
   JSON.stringify(
     {
       target: 'desktop',
+      complete: true,
       themes,
       passes,
       thresholds: { TELEPORT_PX, TELEPORT_RATIO, VISIBLE, GONE, BLOAT_PX, BLOAT_RATIO },
+      coverage: coverageSummary(SCENES, profiles, themes, passes, report),
       report,
       errors
     },
@@ -307,9 +342,7 @@ console.log(`\n${report.length} run(s), ${total} style / ${renderTotal} render y
 if (prove) {
   const proofRuns = report.filter((r) => r.scene === PROOF.scene);
   const missing = missingProofYanks(report);
-  const cameraSaw = proofRuns.some((r) =>
-    (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05)
-  );
+  const cameraSaw = missingPaintedProof(report).length === 0;
   if (missing.length || !cameraSaw) {
     console.error(
       `proof FAILED: ${missing.length ? `the style arithmetic did not report ${missing.join(' or ')}` : ''}` +
@@ -329,3 +362,7 @@ if (errors.length) {
   console.error(`${errors.length} page error(s):`);
   for (const e of errors) console.error(`  ${e}`);
 }
+
+const coverage = coverageSummary(SCENES, profiles, themes, passes, report);
+console.log('coverage:', JSON.stringify(coverage.groups));
+if (coverage.failed || coverage.missing) process.exitCode = 1;

@@ -53,6 +53,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChromium, screencast as captureScreencast, settlePage, previewBuild } from './browser-harness.mjs';
 import {
   DEMO_THEME_EXPRESSION,
+  preparePinGate,
   DIFF_EPS,
   FILL_EVERY_FEATURE_EXPRESSION,
   HYDRATION_MS,
@@ -65,17 +66,27 @@ import {
   LOCK_SETUP_EXPRESSION,
   OUTLIER_MIN,
   PROOF,
-  RESET_PERSONA_EXPRESSION,
   STUB_PERSIST_SCRIPT,
   TRANSIENT_MIN,
   GAP_RATIO,
   UNLOCK_PIN_EXPRESSION,
   VT_NAMES,
   WALK_FIRST_RUN_FINISH_EXPRESSION,
+  finishFirstRun,
+  prepareSceneExpression,
+  actionPostconditionExpression,
+  coverageSummary,
+  createReportRecorder,
+  coldLoadProofExpression,
+  captureHydrationCoverage,
+  markProfileExpression,
+  profileProofExpression,
+  gateProofExpression,
   dropLeadingBlankFrames,
   fillTokens,
   hydrationScreensFor,
   missingProofYanks,
+  missingPaintedProof,
   paintBlankSentinel,
   pushHydrationRun,
   samplerExpression,
@@ -111,10 +122,11 @@ const browser = await launchChromium();
 const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
-const report = [];
+const recorder = createReportRecorder(outDir, { target: 'desktop' }, SCENES, profiles, themes, 1, errors);
+const report = recorder.report;
 
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-page.on('pageerror', (err) => errors.push(String(err)));
+page.on('pageerror', (err) => { errors.push(String(err)); recorder.persist(); });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 await page.addInitScript(STUB_PERSIST_SCRIPT);
 
@@ -153,24 +165,28 @@ const waitFor = (selector, path = null, timeout = 40000) => {
  *  out on the node side - the whole point of the window. Nothing is
  *  stamped on the page either: the theme is already in the preferences
  *  boot stamps, and the cold window is meant to be untouched. */
-async function recordCold(href) {
+async function recordCold(href, profile, theme, outcome) {
   return screencast(async (cast) => {
     await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
     await page.goto(`${base}${href}`, { waitUntil: 'commit', timeout: 40000 });
     await waitFor('[data-app-root][data-boot="ready"]');
     const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    return { cast: dropLeadingBlankFrames([...cast]), frames };
+    const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression(href, profile, theme, outcome)));
+    return { cast: dropLeadingBlankFrames([...cast]), frames, ...coverage };
   });
 }
 
 /** One sheet scene: the screen settles first, then the camera and the
  *  sampler record the opening and its hydration together. */
-async function recordSheet(scene, theme) {
+async function recordSheet(scene, profile, theme) {
   await settle(scene.at, theme);
+  await page.evaluate(prepareSceneExpression(scene));
   await page.waitForTimeout(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
-    const frames = await page.evaluate(samplerExpression(scene.act, HYDRATION_MS, VT_NAMES));
-    return { cast: [...cast], frames };
+    const frames = await page.evaluate(samplerExpression(scene, HYDRATION_MS, VT_NAMES));
+    const action = await page.evaluate(actionPostconditionExpression(scene, frames[0]?.action));
+    const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression(scene.at, profile, theme)));
+    return { cast: [...cast], frames, action, ...coverage };
   });
 }
 
@@ -213,7 +229,7 @@ async function runScene(scene, profile, theme, tokens) {
   }
   const href = fillTokens(scene.at, tokens);
   try {
-    const result = scene.act ? await recordSheet(scene, theme) : await recordCold(href);
+    const result = scene.act ? await recordSheet(scene, profile, theme) : await recordCold(href, profile, theme, scene.coldOutcome);
     await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, href, dump });
   } catch (err) {
     report.push({ scene: scene.name, profile, theme, href, error: String(err).slice(0, 300) });
@@ -230,46 +246,37 @@ for (const profile of profiles) {
      its two halves, which is the only moment that screen exists. */
   await settle('/', themes[0]);
   if (profile === 'persona') {
-    if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) {
-      console.error('the persona reset never reached Home; stopping this profile');
-      continue;
-    }
     await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
     await page.waitForTimeout(1500);
   } else {
-    const mounted = await screencast(async (cast) => {
-      await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
-      await waitFor('[data-next]', '/onboarding', 30000);
-      const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-      return { cast: [...cast], frames };
-    });
-    if (SCENES.some((s) => s.name === 'onboarding-mount')) {
-      try {
-        await pushHydrationRun(report, outDir, {
-          name: 'onboarding-mount',
-          is: 'the first run opening over an empty journal',
-          profile,
-          theme: themes[0],
-          result: mounted
-        });
-      } catch (err) {
-        report.push({ scene: 'onboarding-mount', profile, theme: themes[0], error: String(err).slice(0, 300) });
-        console.log(`[${profile}-${themes[0]}] onboarding-mount: ERROR ${String(err).slice(0, 200)}`);
-      }
-    }
-    if (!(await page.evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION))) {
-      console.error('the first run never finished; stopping this profile');
-      continue;
-    }
-    await page.waitForTimeout(1500);
+    await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
+    await finishFirstRun((expression) => page.evaluate(expression), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) });
   }
 
+  await page.evaluate(markProfileExpression(profile));
   for (const theme of themes) {
     /* A cold load reads its theme out of the preferences boot stamps, so
        the run's theme is written through the demo bar once per profile,
        not patched onto <html> after the fact. */
     await settle('/', theme);
     await page.evaluate(DEMO_THEME_EXPRESSION(theme));
+    await page.evaluate(profileProofExpression(profile));
+    if (profile === 'empty' && SCENES.some((scene) => scene.name === 'onboarding-mount')) {
+      try {
+        const result = await screencast(async (cast) => {
+          await page.evaluate(JUMP_FIRST_RUN_EXPRESSION);
+          await waitFor('[data-next]', '/onboarding', 30000);
+          const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
+          const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression('/onboarding', profile, theme, { selector: '[data-next]' })));
+          return { cast: [...cast], frames, ...coverage };
+        });
+        await pushHydrationRun(report, outDir, { name: 'onboarding-mount', is: 'the first run opening over an empty journal', profile, theme, result, dump });
+      } catch (error) {
+        report.push({ scene: 'onboarding-mount', profile, theme, error: String(error) });
+      }
+      await finishFirstRun((expression) => page.evaluate(expression), { onProgress: (state) => console.log('boot readiness:', JSON.stringify(state)) });
+      await page.evaluate(markProfileExpression(profile));
+    }
     const { tokens, skipped, unreadable } = await resolveTokens(profile, theme);
     for (const note of skipped)
       console.log(`[${profile}] no ${note} to resolve in this journal; its detail scenes will skip`);
@@ -287,9 +294,10 @@ for (const profile of profiles) {
           const result = await screencast(async (cast) => {
             await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
             const frames = await page.evaluate(samplerExpression('inject', HYDRATION_MS, VT_NAMES));
-            return { cast: [...cast], frames };
+            const coverage = await captureHydrationCoverage(() => page.evaluate(coldLoadProofExpression('/', profile, theme)));
+            return { cast: [...cast], frames, ...coverage };
           });
-          await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result });
+          await pushHydrationRun(report, outDir, { name: scene.name, is: scene.is, profile, theme, result, dump });
         } catch (err) {
           report.push({ scene: scene.name, profile, theme, error: String(err).slice(0, 300) });
           console.log(`[${profile}-${theme}] ${scene.name}: ERROR ${String(err).slice(0, 200)}`);
@@ -301,48 +309,61 @@ for (const profile of profiles) {
   }
 }
 
-/* The lock-gate epilogue: a PIN wrapped around the journal, one cold load
-   into the gate, and the wrap taken back off. Last, because a locked
-   journal gates every cold load after it; under the run's first theme,
-   written into the preferences first so the cold load actually boots
-   with it. */
+/* Wrap the journal once, then capture each theme's cold gate. Unlock after
+   each capture so theme preparation runs in the live journal, rather than
+   reloading the PIN gate and waiting for a ready screen it cannot show. */
 const lockScene = SCENES.find((s) => s.setup === 'pin');
 if (lockScene && profiles.includes('persona')) {
+  await settle('/', themes[0]);
+  await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
+  await page.evaluate(markProfileExpression('persona'));
+  let pinPrepared = false;
+  for (const theme of themes) {
   try {
-    await settle('/', themes[0]);
-    await page.evaluate(DEMO_THEME_EXPRESSION(themes[0]));
-    await settle('/settings/access-mode', themes[0]);
-    await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
+    await preparePinGate(theme, async () => {
+      if (pinPrepared) return;
+      await settle('/settings/access-mode', theme);
+      if (await page.locator('[data-list-row="pin"]').count()) await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
+      pinPrepared = true;
+    }, (theme) => page.evaluate(DEMO_THEME_EXPRESSION(theme)));
+    await page.waitForFunction((theme) => JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === theme, theme, { timeout: 10000 });
     const result = await screencast(async (cast) => {
       await paintBlankSentinel((e) => page.evaluate(e), (ms) => page.waitForTimeout(ms));
       await page.goto(`${base}/`, { waitUntil: 'commit', timeout: 40000 });
       await waitFor('[data-pin-pad]', '/', 40000);
       const frames = await page.evaluate(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-      return { cast: dropLeadingBlankFrames([...cast]), frames };
+      const coverageProof = await page.evaluate(gateProofExpression('persona', theme));
+      return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
     });
     await pushHydrationRun(report, outDir, {
       name: 'lock-gate',
       is: lockScene.is,
       profile: 'persona',
-      theme: themes[0],
-      result
+      theme: theme,
+      result,
+      dump
     });
-    await page.evaluate(UNLOCK_PIN_EXPRESSION(PIN));
+    if (!(await page.evaluate(UNLOCK_PIN_EXPRESSION(PIN)))) throw new Error('PIN fixture did not unlock after gate capture');
   } catch (err) {
-    report.push({ scene: 'lock-gate', profile: 'persona', theme: themes[0], error: String(err).slice(0, 300) });
-    console.log(`[persona-${themes[0]}] lock-gate: ERROR ${String(err).slice(0, 200)}`);
+    report.push({ scene: 'lock-gate', profile: 'persona', theme: theme, error: String(err).slice(0, 300) });
+    console.log(`[persona-${theme}] lock-gate: ERROR ${String(err).slice(0, 200)}`);
   }
 }
 
+}
+
+await recorder.flush();
 await writeFile(
   `${outDir}/report.json`,
   JSON.stringify(
     {
       target: 'desktop',
+      complete: true,
       mode: 'hydration',
       themes,
       profiles,
       thresholds: { HYDRATION_MS, HYDRATION_PX, DIFF_EPS, TRANSIENT_MIN, OUTLIER_MIN, GAP_RATIO },
+      coverage: coverageSummary(SCENES, profiles, themes, 1, report),
       report,
       errors
     },
@@ -366,9 +387,7 @@ console.log(
 
 if (prove) {
   const missing = missingProofYanks(report, { checkArrival: false });
-  const cameraSaw = report
-    .filter((r) => r.scene === PROOF.scene)
-    .some((r) => (r.pixelFindings ?? []).some((f) => f.areaPct >= 0.05));
+  const cameraSaw = missingPaintedProof(report).length === 0;
   if (missing.length || !cameraSaw) {
     console.error(
       `proof FAILED: ${missing.length ? `the sweep did not report ${missing.join(' or ')}` : ''}` +
@@ -384,3 +403,7 @@ if (errors.length) {
   console.error(`${errors.length} page error(s):`);
   for (const e of errors) console.error(`  ${e}`);
 }
+
+const coverage = coverageSummary(SCENES, profiles, themes, 1, report);
+console.log('coverage:', JSON.stringify(coverage.groups));
+if (coverage.failed || coverage.missing) process.exitCode = 1;
