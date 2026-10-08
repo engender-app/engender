@@ -35,9 +35,9 @@
   async function apply() {
     if (applying) return;
     applying = true;
-    /* A refusal means a write started between the tap and here, so the offer
-       was withdrawn under it. Nothing to report: the notice goes back to
-       waiting for the journal, and reappears when it is idle. */
+    /* Refusal or a failed write leaves recovery on screen. The notice
+       returns when the journal is idle, with another tap available even
+       if the worker already took control. */
     if (!(await applyUpdate())) applying = false;
   }
 </script>

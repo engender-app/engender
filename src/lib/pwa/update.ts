@@ -24,7 +24,7 @@
    half, over onUpdateReadyChange. */
 
 import { SKIP_WAITING } from './sw-messages';
-import { onJournalBusyChange, journalIsBusy } from '../data/journal-busy';
+import { onJournalBusyChange, journalIsBusy, prepareJournalHandover } from '../data/journal-busy';
 
 /** Just enough of ServiceWorkerRegistration for this. `waiting` is read
     afresh every time rather than remembered, so the browser stays the single
@@ -52,7 +52,7 @@ interface InstallingWorker {
     for it. */
 interface UpdateEnvironment {
   /** Calls back when a worker has taken control of this page. */
-  onControllerChange(listener: () => void): void;
+  onControllerChange(listener: () => void): (() => void) | void;
   /** Starts the release that just took control. */
   reload(): void;
 }
@@ -67,6 +67,8 @@ const INSTALL_LIMIT_MS = 30_000;
 let watched: WatchedRegistration | null = null;
 let environment: UpdateEnvironment | null = null;
 let offered = false;
+let applying = false;
+let pendingReload = false;
 const listeners = new Set<(ready: boolean) => void>();
 let stopWatchingWrites: (() => void) | null = null;
 
@@ -78,7 +80,7 @@ let stopWatchingWrites: (() => void) | null = null;
     it, because nothing is running for it to wait behind. Offered at that
     moment, the notice stayed for the whole visit with nothing to apply. */
 export function updateReady(): boolean {
-  return watched?.waiting != null && watched.active != null && !journalIsBusy();
+  return (pendingReload || (watched?.waiting != null && watched.active != null)) && !applying && !journalIsBusy();
 }
 
 /** Called on the edges of that answer. Returns the way to stop listening. */
@@ -101,6 +103,7 @@ export function watchForUpdates(registration: WatchedRegistration, updateEnviron
   stopWatchingWrites?.();
   watched = registration;
   environment = updateEnvironment;
+  pendingReload = false;
   offered = false;
 
   /* A release that installed before this page existed is already sitting in
@@ -165,8 +168,8 @@ export async function checkForNewerRelease(): Promise<boolean> {
 }
 
 /** Hands the app over to the waiting release: asks it to stop waiting, then
-    reloads once it has taken control. Resolves false, having done nothing, if
-    there is nothing waiting or the journal turned out to be busy after all -
+    reloads once it has taken control and journal writes have finished.
+    Refuses activation if nothing is waiting or the journal is busy -
     a quick log saved in the same moment as the tap is enough for that, and
     the save is the thing that must not be interrupted.
 
@@ -177,16 +180,40 @@ export async function checkForNewerRelease(): Promise<boolean> {
     It is waited for with a limit, though, because it is not this page's to
     guarantee - an install that goes redundant, or a worker that never gets to
     activate, would otherwise leave the button disabled for the rest of the
-    session with nothing on screen to say why. Reloading anyway is the better
-    end: either the new release is in charge, or the notice is back. */
+    session with nothing on screen to say why. After either outcome the
+    journal owner waits for writes to finish before reloading. A failed write
+    cancels that attempt so its recovery remains available; a later tap can
+    finish the reload, even after worker takeover. */
 export async function applyUpdate(): Promise<boolean> {
   const waiting = watched?.waiting;
-  if (!waiting || !environment || journalIsBusy()) return false;
+  if ((!waiting && !pendingReload) || !environment || applying || journalIsBusy()) return false;
 
   const env = environment;
-  const controlChanged = new Promise<void>((resolve) => env.onControllerChange(() => resolve()));
-  waiting.postMessage(SKIP_WAITING);
-  await Promise.race([controlChanged, new Promise((resolve) => setTimeout(resolve, TAKEOVER_LIMIT_MS))]);
-  env.reload();
-  return true;
+  const handover = prepareJournalHandover();
+  applying = true;
+  reconsider();
+  try {
+    if (!pendingReload) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let stopControllerChange: (() => void) | void;
+      const controlChanged = new Promise<void>((resolve) => { stopControllerChange = env.onControllerChange(resolve); });
+      try {
+        waiting!.postMessage(SKIP_WAITING);
+        await Promise.race([
+          controlChanged,
+          new Promise<void>((resolve) => { timer = setTimeout(resolve, TAKEOVER_LIMIT_MS); })
+        ]);
+        pendingReload = true;
+      } finally {
+        clearTimeout(timer);
+        stopControllerChange?.();
+      }
+    }
+    return await handover(() => env.reload());
+  } catch {
+    return false;
+  } finally {
+    applying = false;
+    reconsider();
+  }
 }
