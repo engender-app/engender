@@ -375,6 +375,9 @@ try {
         const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
         prefs.disguise = true;
       }, zoom);
+      await page.evaluate(() => new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      ));
       const moods = page.locator('.mood-picker');
       await moods.scrollIntoViewIfNeeded();
       assert.equal(await moods.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true,
