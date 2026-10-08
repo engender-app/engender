@@ -3,6 +3,6 @@ First-load budget: passed, en 245862B, pl 247488B gzip; ceiling 251272B, 103 fil
 Svelte check: passed, zero errors and warnings (check.log).
 Node tier: 7314/7314 passed (node.log).
 Copy, licences, screens classes: passed (individual logs).
-Focused demo matrix: pending canonical 16-palette rerun.
+Focused demo matrix: 768/768 layout cases passed across 16 palettes, keyboard selection and reload persistence passed (matrix.log).
 Broad browser tier: inconclusive, concurrent build regeneration and sheet-scrim timeout; preserved in browser-tier-inconclusive.log. No failure attributed to main.
 Native runtime: not run; CSS acceptance measured in shared web bundle.
