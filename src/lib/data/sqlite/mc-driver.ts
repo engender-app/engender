@@ -37,6 +37,7 @@ const toHex = (bytes: Uint8Array): string =>
    a new connection holds its messages until that worker has closed. Settled
    either way: a recovery that failed has still let the pool go. */
 let recovering: Promise<void> | null = null;
+let releasing: Promise<void> | null = null;
 
 /* Every connection this tab has open, so `releaseOnPageHide` below can reach
    all of them without each caller (prewarm, the live driver,
@@ -55,7 +56,8 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
   // Hold every message so attach still precedes open, even while fetching.
   let suppliedWasm: ArrayBuffer | undefined;
   const binaryReady = wasmBinary?.then((bytes) => { suppliedWasm = bytes; });
-  const poolFree = binaryReady ? Promise.all([recovering, binaryReady]) : recovering;
+  const waits = [recovering, releasing, binaryReady].filter(Boolean);
+  const poolFree = waits.length ? Promise.all(waits) : null;
 
   let nextId = 0;
   const pending = new Map<number, { resolve: (value: never) => void; reject: (reason: Error) => void }>();
@@ -159,17 +161,30 @@ type Connection = ReturnType<typeof connectWorker>;
    close otherwise) tolerates a second `close` later - the worker's own
    handler is idempotent, `db` and `poolUtil` already null.
 
-   Exported only for its own test: nothing above this file calls it by
-   name, `window`'s own `pagehide` is what fires it, and the Node tier has
-   no `window` to dispatch one on. */
-export function releaseOnPageHide(): void {
-  for (const connection of liveConnections) {
-    if (!connection.gone()) connection.post('close').catch(() => {});
-  }
+   A retained document must retire these workers too. Once every close has
+   answered, a new worker can reacquire the pool; connections created during
+   that release wait for it. The prewarm slot cannot retain a closed worker. */
+export function releaseOnPageHide(): Promise<void> {
+  prewarmed = null;
+  const closing = [...liveConnections];
+  const done = Promise.all(closing.map(async (connection) => {
+    try {
+      if (!connection.gone()) await connection.post('close');
+    } catch {
+      // A failed worker still needs to be retired.
+    } finally {
+      connection.terminate();
+    }
+  })).then(() => {});
+  releasing = done;
+  void done.then(() => {
+    if (releasing === done) releasing = null;
+  });
+  return done;
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', releaseOnPageHide);
+  window.addEventListener('pagehide', () => { void releaseOnPageHide(); });
 }
 
 /* A worker started at boot start, before any key exists (ux-carpet ticket

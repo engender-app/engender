@@ -141,6 +141,7 @@ To run one on its own, use
 
 | Probe | Holds |
 | --- | --- |
+| `bfcache-journal-check` | real BFCache Back and Forward restore journal reads and writes without bypassing lock policy or retaining obsolete workers |
 | `date-picker-check` | the date picker's day targets are 48px and own their edges; arrows, PageUp/PageDown, Shift and Enter work; typed entry refuses a day the calendar lacks; the arrows and the month drum turn months; Escape closes the drum before the picker and the picker before its sheet, at 320-430px, 200% text and 200% pinch |
 | `date-picker-motion` (`--themes light --gate`) (pickers ticket 01) | the date picker opens, closes, turns a month by arrow, finger and trackpad, springs back, stretches at a bound, jumps to Today and through the month drum without a yank in any sampled frame, and a swipe past the threshold turns the month while a short one and one past a bound do not; `--out <dir>` keeps the frames for a flipbook |
 | `time-picker-check` (`--themes light --gate`) (pickers ticket 02) | the time picker opens on the stored time, steps by arrow, brings a tapped row to the band, rests a flick on a whole row, turns both drums to a typed time, refuses a time that is not one, commits on Use time, leaves the value on Escape and gives focus back, offers Clear only on an optional field, and a downward swipe on a drum at 00 does not move the sheet; no drum moves its whole five-row window in one frame and the surface never arrives or leaves in one; `--out <dir>` keeps the frames for a flipbook |
