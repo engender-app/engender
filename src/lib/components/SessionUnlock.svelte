@@ -31,8 +31,9 @@
   import { unlockJournalPassphrase } from '$lib/data/journal-passphrase';
   import { unlockJournalPin } from '$lib/data/journal-pin';
   import { unlockJournalBiometric } from '$lib/data/journal-biometric';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
-  import { markUnlocked } from '$lib/stores/lock.svelte';
+  import { markUnlocked, beginSessionUnlock } from '$lib/stores/lock.svelte';
   import { reopenJournalAfterUnlock, resetApp } from '$lib/stores/boot.svelte';
   import { confirmWithBiometrics } from '$lib/lock/android-key';
   import { lockAfterNote } from '$lib/lock/lock-after-words';
@@ -59,9 +60,18 @@
      already inside a transition by the time the effect runs, and starting a
      second one from under the first skips it - the app would appear in a
      single frame, which is exactly what this exists to stop. */
-  const opened = () => {
+  const opened = async (current: () => void) => {
+    current();
     ui.appOpening = true;
-    void openApp(markUnlocked).finally(() => (ui.appOpening = false));
+    await openApp(() => {
+      try {
+        current();
+        markUnlocked();
+      } catch (e) {
+        if (!(e instanceof UnlockCancelledError)) throw e;
+      }
+    }).finally(() => (ui.appOpening = false));
+    current();
   };
 
   let passphrase = $state('');
@@ -80,11 +90,14 @@
   /* The derived key opens the journal the lock closed. False when the
      database would not open, which is not a wrong secret and is not
      counted as one: most likely another tab has the journal open now. */
-  async function reopened(dataKey: Uint8Array<ArrayBuffer>): Promise<boolean> {
+  async function reopened(dataKey: Uint8Array<ArrayBuffer>, current: () => void): Promise<boolean> {
     try {
-      await reopenJournalAfterUnlock(dataKey);
+      current();
+      await reopenJournalAfterUnlock(dataKey, current);
+      current();
       return true;
     } catch (e) {
+      if (e instanceof UnlockCancelledError) throw e;
       console.error('the journal did not open again after the unlock', e);
       return false;
     }
@@ -93,14 +106,20 @@
   /* PIN mode's attempts go through PinEntry, which owns the pad and the
      growing delay for both this screen and the cold-start gate. */
   async function submitPin(entered: string): Promise<PinAttempt> {
+    const current = beginSessionUnlock();
     let dataKey;
     try {
       dataKey = await unlockJournalPin(entered);
     } catch (e) {
       return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
     }
-    if (!(await reopened(dataKey))) return 'unopened';
-    opened();
+    try {
+      if (!(await reopened(dataKey, current))) return 'unopened';
+      await opened(current);
+    } catch (e) {
+      if (e instanceof UnlockCancelledError) return 'cancelled';
+      throw e;
+    }
     return 'ok';
   }
 
@@ -121,14 +140,16 @@
     if (busy) return;
     busy = true;
     error = '';
+    const current = beginSessionUnlock();
     try {
       const dataKey = await unlockJournalPassphrase(passphrase);
-      if (!(await reopened(dataKey))) {
+      if (!(await reopened(dataKey, current))) {
         error = m.su_reopen_failed();
         return;
       }
-      opened();
+      await opened(current);
     } catch (e) {
+      if (e instanceof UnlockCancelledError) return;
       const deviceGone = isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone();
       error = e instanceof DeviceBindingUnavailableError ? deviceGone : m.pp_wrong();
     } finally {
@@ -142,14 +163,16 @@
     if (busy) return;
     busy = true;
     error = '';
+    const current = beginSessionUnlock();
     try {
       const dataKey = await unlockJournalBiometric();
-      if (!(await reopened(dataKey))) {
+      if (!(await reopened(dataKey, current))) {
         error = m.su_reopen_failed();
         return;
       }
-      opened();
+      await opened(current);
     } catch (e) {
+      if (e instanceof UnlockCancelledError) return;
       console.error('the biometric unlock failed', e);
       error = m.bm_unlock_failed();
     } finally {
@@ -164,6 +187,7 @@
     if (busy) return;
     busy = true;
     error = '';
+    const current = beginSessionUnlock();
     try {
       const result = await confirmWithBiometrics(androidKeystore, {
         title: m.ak_prompt_title(),
@@ -172,7 +196,7 @@
         deviceCredential: false
       });
       if (result.unlocksJournal) {
-        opened();
+        await opened(current);
         return;
       }
       error =
@@ -182,6 +206,7 @@
         : result.outcome === 'cancelled' ? m.ak_cancelled()
         : m.ak_failed();
     } catch (e) {
+      if (e instanceof UnlockCancelledError) return;
       console.error('the device-lock prompt failed', e);
       error = m.ak_failed();
     } finally {

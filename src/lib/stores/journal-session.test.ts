@@ -312,3 +312,130 @@ test('an unlock that arrives while the lock waits on a slow save stops the wait'
   assert.equal(session.driver?.name, 'driver 2');
   assert.equal(session.locked, false);
 });
+
+test('a later lock cancels an unlock queued behind the closing journal', async () => {
+  const { session, boot } = setup();
+  boot(keyOf(1));
+  const closing = session.lock();
+  const unlocking = session.unlock(keyOf(1));
+  const later = session.lock();
+  await assert.rejects(unlocking, /cancelled by a newer lock/);
+  await Promise.all([closing, later]);
+  assert.equal(session.key.current, null);
+  assert.equal(session.driver, null);
+  await session.unlock(keyOf(1));
+  assert.equal(session.locked, false);
+});
+
+test('a later lock closes a driver whose reopen was already running', async () => {
+  let release!: () => void;
+  let reached!: () => void;
+  const entered = new Promise<void>((resolve) => { reached = resolve; });
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const log: string[] = [];
+  const first = fakeDriver('first', log);
+  const reopened = fakeDriver('reopened', log);
+  const session = journalSession<Key, FakeDriver>({
+    suspend: async () => {}, release() {}, prewarm() {},
+    async open() { reached(); await held; return reopened; }
+  });
+  session.adopt(keyOf(1), first);
+  await session.lock();
+  const unlocking = session.unlock(keyOf(1));
+  await entered;
+  const later = session.lock();
+  release();
+  await assert.rejects(unlocking, /cancelled by a newer lock/);
+  await later;
+  assert.equal(reopened.closed, true);
+  assert.equal(session.key.current, null);
+  assert.equal(session.connection.current, null);
+  assert.equal(session.driver, null);
+});
+
+for (const stalled of ['suspend', 'connection', 'rejected suspend']) {
+  test(`cancelled reopen closes within the bound despite ${stalled}`, async () => {
+    let release!: () => void;
+    let reached!: () => void;
+    const entered = new Promise<void>((resolve) => { reached = resolve; });
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const never = new Promise<void>(() => {});
+    const log: string[] = [];
+    const first = fakeDriver('first', log);
+    const reopened = fakeDriver('cancelled', log);
+    const fresh = fakeDriver('fresh', log);
+    let cancelling = false;
+    let opens = 0;
+    const session = journalSession<Key, FakeDriver>({
+      suspend() {
+        if (!cancelling || stalled === 'connection') return Promise.resolve();
+        return stalled === 'suspend' ? never : Promise.reject(new Error('suspend refused'));
+      },
+      release() { log.push('released'); }, prewarm() {},
+      async open() {
+        if (opens++) return fresh;
+        session.connection.open(reopened);
+        if (stalled === 'connection') void session.connection.run(() => never);
+        reached();
+        await held;
+        return reopened;
+      }
+    }, { suspendLimitMs: 20 });
+    session.adopt(keyOf(1), first);
+    await session.lock();
+    const unlocking = session.unlock(keyOf(1));
+    await entered;
+    cancelling = true;
+    const later = session.lock();
+    release();
+    assert.equal(await settledWithin(unlocking, 200), true, 'cancelled reopen must not hold the queue forever');
+    await assert.rejects(unlocking, /cancelled by a newer lock/);
+    await later;
+    assert.equal(reopened.closed, true);
+    assert.equal(session.key.current, null);
+    assert.equal(session.connection.current, null);
+    assert.equal(session.driver, null);
+    assert.equal(log.at(-1), 'released');
+    cancelling = false;
+    await session.unlock(keyOf(1));
+    assert.equal(session.driver, fresh);
+    assert.equal(session.key.current?.[0], 1);
+  });
+}
+
+function settledWithin<T>(promise: Promise<T>, ms: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(() => true, () => true),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms))
+  ]);
+}
+
+test('a failed preparation uses bounded session disposal before a fresh reopen', async () => {
+  const log: string[] = [];
+  const first = fakeDriver('first', log);
+  const preparing = fakeDriver('preparing', log);
+  const fresh = fakeDriver('fresh', log);
+  let failed = false;
+  let opens = 0;
+  const session = journalSession<Key, FakeDriver>({
+    suspend: () => failed ? new Promise<void>(() => {}) : Promise.resolve(),
+    release() { log.push('released'); }, prewarm() {},
+    async open(_key, _current, dispose) {
+      if (opens++) return fresh;
+      failed = true;
+      await dispose(preparing);
+      throw new Error('preparation failed');
+    }
+  }, { suspendLimitMs: 20 });
+  session.adopt(keyOf(1), first);
+  await session.lock();
+  const reopening = session.unlock(keyOf(1));
+  assert.equal(await settledWithin(reopening, 200), true);
+  await assert.rejects(reopening, /preparation failed/);
+  assert.equal(preparing.closed, true);
+  assert.equal(session.driver, null);
+  assert.equal(log.at(-1), 'released');
+  failed = false;
+  await session.unlock(keyOf(1));
+  assert.equal(session.driver, fresh);
+});
