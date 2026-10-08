@@ -421,3 +421,22 @@ for (const activation of ['takeover', 'timeout'] as const) {
     } finally { saving(); vi.useRealTimers(); }
   });
 }
+
+
+test('a failed network check reports failure when no release is waiting and permits retry', async () => {
+  const worker = fakeRegistration();
+  watchForUpdates(worker.registration, fakeEnvironment().environment);
+  const update = vi.spyOn(worker.registration, 'update');
+  update.mockRejectedValueOnce(new Error('offline'));
+  await assert.rejects(checkForNewerRelease(), /offline/);
+  assert.equal(await checkForNewerRelease(), false);
+});
+
+test('a waiting release remains usable when the network check fails', async () => {
+  const worker = fakeRegistration();
+  watchForUpdates(worker.registration, fakeEnvironment().environment);
+  worker.releaseArrives();
+  vi.spyOn(worker.registration, 'update').mockRejectedValueOnce(new Error('offline'));
+  assert.equal(await checkForNewerRelease(), true);
+  assert.equal(updateReady(), true);
+});

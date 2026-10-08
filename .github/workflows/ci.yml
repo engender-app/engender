@@ -157,6 +157,8 @@ jobs:
         include:
           - name: browser-tier
             entry: tests/browser-tier/run.mjs
+          - name: update-handover
+            entry: tests/update-handover-check.mjs
           - name: walkthrough-journal
             entry: tests/walkthrough.test.mjs
             args: --group journal
