@@ -16,7 +16,9 @@ parent directory. XML results are cleared before each invocation. Missing,
 malformed or incomplete results fail. A nonzero exit, signal, startup error or
 timeout still fails when partial passing XML exists. Optional skips print SKIP.
 
-The required PIN-wait exercise runs on each emulator: seed, force-stop, confirm
+Gradle removes the packages after the bulk run, so the runner reinstalls both
+built APKs before the PIN-wait exercise. The exercise runs on each emulator:
+seed, force-stop, confirm
 that the app process is absent, restore, then cleanup. No reinstall or state
 reset occurs between seed and restore. Restore requires a different process
 ID and process token, the same boot, and the exact persisted elapsed deadline.

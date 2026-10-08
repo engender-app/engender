@@ -117,10 +117,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let ownedEmulator;
 let disposableName;
-const queryDevice = (args) => run(adb, ['-s', serial, ...args]);
+const queryDevice = (args) => run(adb, ['-s', serial, ...args], { timeout: 10_000 });
 function device(args, options = {}) {
   assertOwnedEmulator(ownedEmulator, disposableName, queryDevice);
-  return run(adb, ['-s', serial, ...args], options);
+  return run(adb, ['-s', serial, ...args], { timeout: 10_000, ...options });
 }
 
 async function startEmulator(avd, port) {
@@ -256,6 +256,19 @@ for (const avd of AVDS) {
     });
     if (existsSync(RESULTS_DIR)) cpSync(RESULTS_DIR, join(evidenceDir, `${avd}-results`), { recursive: true });
     {
+      // connectedDebugAndroidTest removes both packages when its invocation ends.
+      for (const [name, apk] of [
+        ['app', 'debug/app-debug.apk'],
+        ['test', 'androidTest/debug/app-debug-androidTest.apk']
+      ]) {
+        const installed = device(['install', '-r', join(androidDir, 'app/build/outputs/apk', apk)], { timeout: 120_000 });
+        writeFileSync(join(evidenceDir, `${avd}-pin-wait-install-${name}.log`),
+          `${installed.stdout ?? ''}${installed.stderr ?? ''}\nexit=${installed.status} signal=${installed.signal} error=${installed.error ?? ''}\n`);
+        if (installed.status !== 0 || installed.signal || installed.error) {
+          throw new Error(`could not install ${name} APK for required PIN wait stages: ${installed.error?.message ?? installed.stderr}`);
+        }
+        ok(`${avd}: install ${name} APK for PIN wait stages`);
+      }
       const stage = (name, method = 'deadlineSurvivesActualProcessDeath') => {
         const result = device(['shell', 'am', 'instrument', '-w', '-r',
           '-e', 'class', `${PIN_WAIT_TEST}#${method}`, '-e', 'pinWaitStage', name,
