@@ -109,22 +109,39 @@ async function* encodeV1Body(contents: ArchiveContents, json: Uint8Array): Async
   }
 
   const BATCH_SIZE = 16;
+  // Two ordinary batches share 8 MiB. Larger files travel alone.
+  const PREFETCH_BYTES = 8 * 1024 * 1024;
+  const BATCH_BYTES = PREFETCH_BYTES / 2;
+  const batches: (typeof contents.files)[] = [];
+  for (let i = 0; i < contents.files.length;) {
+    const batch: typeof contents.files = [];
+    let length = 0;
+    do {
+      const file = contents.files[i];
+      if (batch.length && length + file.length > BATCH_BYTES) break;
+      batch.push(file);
+      length += file.length;
+      i++;
+    } while (i < contents.files.length && batch.length < BATCH_SIZE && length < BATCH_BYTES);
+    batches.push(batch);
+  }
   const readBatch = (batch: typeof contents.files) =>
     contents.readFiles!(batch.map((file) => file.name));
 
-  let i = 0;
-  let batch = contents.files.slice(i, i + BATCH_SIZE);
-  let pending = readBatch(batch);
-
-  for (; i < contents.files.length; i += BATCH_SIZE) {
-    const read = await pending;
+  let pending: ReturnType<typeof readBatch> | undefined;
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    const read = await (pending ?? readBatch(batch));
+    pending = undefined;
     if (read.length !== batch.length) {
       throw new Error(`batched archive read returned ${read.length} files for ${batch.length} requested`);
     }
-
-    const nextStart = i + BATCH_SIZE;
-    const nextBatch = contents.files.slice(nextStart, nextStart + BATCH_SIZE);
-    if (nextBatch.length > 0) pending = readBatch(nextBatch);
+    const nextBatch = batches[i + 1];
+    if (nextBatch && batch[0].length <= BATCH_BYTES && nextBatch[0].length <= BATCH_BYTES) {
+      pending = readBatch(nextBatch);
+      // A prefetched failure is rethrown on consumption, even if it settles during a yield.
+      void pending.catch(() => {});
+    }
 
     for (let j = 0; j < batch.length; j++) {
       const file = batch[j];
@@ -136,9 +153,8 @@ async function* encodeV1Body(contents: ArchiveContents, json: Uint8Array): Async
         throw new Error(`${file.name} changed length while exporting: ${file.length} to ${bytes.length}`);
       }
       yield bytes;
+      read[j] = null;
     }
-
-    batch = nextBatch;
   }
 }
 
