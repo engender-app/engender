@@ -100,10 +100,10 @@ long-journal workloads before making performance changes.
 - Use two independent test installations for recovery. Do not copy a browser
   profile, journal data key, Keystore material, or recovery-key wrap to make a
   fresh destination work. Respect existing Merge and Replace semantics.
-- Browser scope is Chromium, Firefox and desktop Safari, plus mobile Safari
-  PWA evidence where Apple hardware is available. Mobile Safari is browser
-  verification, not a native iOS port. WebKit automation is preliminary engine
-  evidence and must not be labelled a completed Safari/device test.
+- Browser scope is Chromium, Firefox and available WebKit automation. Apple
+  hardware is unavailable and is not a prerequisite. Actual Safari and iOS
+  PWA verification are outside this delivery requirement and remain explicitly
+  unverified. WebKit automation must not be labelled a Safari/device test.
 - Produce a capability matrix with pass, unsupported, fail and not-run states.
   Record versions and reasons. Do not expand supported-platform claims without
   evidence or silently reduce existing supported behavior.

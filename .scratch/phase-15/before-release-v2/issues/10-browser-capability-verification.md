@@ -31,10 +31,11 @@ Source anchors: [built-app verification](../../../../tests/browser-tier/verify-b
 ## What to build
 
 Extend existing built-app browser flows with a capability matrix for current
-Chromium, Firefox and desktop Safari. Include mobile Safari PWA checks when
-Apple hardware is available. Record exact versions and pass, unsupported,
-fail or not-run outcomes per capability. Distinguish automated WebKit engine
-checks from actual Safari and installed-PWA observations.
+Chromium, Firefox and available automated WebKit. Apple hardware is unavailable
+and is not a prerequisite. Actual desktop Safari and mobile Safari PWA checks
+are outside this delivery requirement. Record exact versions and pass,
+unsupported, fail or not-run outcomes per capability. Label automated WebKit
+as engine evidence; it does not verify Safari or an installed iOS PWA.
 
 Cover storage creation/reopen, persistence denial, cold offline startup,
 updates, browser Back, multi-tab ownership, locking and unlock, manual Archive
@@ -55,7 +56,7 @@ dropping a test or claiming support.
 - [ ] Biometric controls reflect actual PRF support and failed capability negotiation; unsupported devices retain the existing available access modes.
 - [ ] Manual Archive export/restore and representative photo, audio, video and document flows are checked for usable output where those capabilities are claimed.
 - [ ] Firefox evidence uses Firefox. Safari/device claims require actual Safari/device execution; automated WebKit results are labelled separately.
-- [ ] Missing Apple hardware produces a concrete remaining-check record and unverified support status. If an in-scope runtime remains unverified, ticket completion reports that limitation rather than declaring all platforms verified.
+- [ ] Actual Safari and iOS PWA remain explicitly unverified. Missing Apple hardware does not block this ticket or branch readiness; automated WebKit results do not expand Safari support claims.
 - [ ] Maintained runners execute new automated cases with meaningful failure reporting; support notes state tested capabilities and limitations without expanding claims beyond evidence.
 
 ## Testing Decisions
@@ -70,8 +71,8 @@ support from source inspection or a mocked navigator API.
 
 Tickets 01-04 own lifecycle behavior that this matrix must verify. Inventory,
 runtime setup and read-only capability checks can precede those fixes. Apple
-hardware is an execution prerequisite, not an assumed available resource;
-use existing human/platform verification conventions when unavailable.
+hardware is not an execution prerequisite. Preserve existing human release
+checks without adding an Apple-device requirement to this delivery.
 Record compatibility defects separately from environment failures, and
 check actual main CI before attributing a failure to pre-existing code.
 
