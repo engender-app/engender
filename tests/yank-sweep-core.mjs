@@ -408,7 +408,7 @@ export function sceneForTheme(scene, theme) {
 export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false) {
   const { document, location } = env;
   const requested = scene.act;
-  const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme };
+  const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
   if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
   if (requested === 'inject') {
     if (typeof env.__yankProof !== 'function') throw new Error('missing injected proof action');
@@ -786,11 +786,10 @@ export const STUB_PERSIST_SCRIPT = `(() => {
 
 /** The page-side half of settling a scene: toasts gone, demo bar hidden
     (kept in the tree for the setup scenes' first-run control, but out of
-    the frame and out of the flow), and the theme stamped on <html> the way
-    +layout.svelte stamps it. An expression string for the same reason as
+    the frame and out of the flow), and the requested theme restored through runtime preferences. An expression string for the same reason as
     above. */
 export const SETTLE_PAGE_EXPRESSION = (theme) =>
-  `(() => {
+  `(async () => {
     let hide = document.getElementById('yank-sweep-hide-demo');
     if (!hide) {
       hide = document.createElement('style');
@@ -801,8 +800,21 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
     for (const bar of document.querySelectorAll('.demo-bar')) bar.style.display = 'none';
     document.body.classList.remove('has-demo-bar');
-    document.documentElement.dataset.theme = ${JSON.stringify(theme)};
-    return true;
+    const requested = ${JSON.stringify(theme)};
+    const button = [...document.querySelectorAll('.demo-bar button')].find((node) =>
+      (node.textContent ?? '').trim() === (requested === 'dark' ? 'Dark' : 'Light'));
+    if (!button) throw new Error('no requested theme control on the demo bar');
+    const proof = () => ({ requested, selected: button.classList.contains('is-active'),
+      persisted: JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme,
+      painted: document.documentElement.dataset.theme,
+      transitioning: document.documentElement.dataset.appearanceTransition !== undefined });
+    const aligned = () => { const state = proof(); return state.selected
+      && state.persisted === requested && state.painted === requested && !state.transitioning; };
+    if (!aligned()) button.click();
+    for (let i = 0; i < 200 && !aligned(); i++) await new Promise((resolve) => setTimeout(resolve, 50));
+    globalThis.__sweepThemeProof = proof();
+    if (!aligned()) throw new Error('requested theme did not align: ' + JSON.stringify(proof()));
+    return proof();
   })()`;
 
 /** The sampler. One rAF loop, reading both instruments into a keyed row per

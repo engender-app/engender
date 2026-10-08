@@ -338,3 +338,28 @@ describe('full persona fixture readiness', () => {
     await expect(run()).resolves.toBe(true);
   });
 });
+
+
+describe('requested theme fixture alignment', () => {
+  const run = async (stuck = false) => {
+    const { runInNewContext } = await import('node:vm');
+    const { SETTLE_PAGE_EXPRESSION } = await import('./yank-sweep-core.mjs');
+    let persisted = 'dark';
+    let selected = 'dark';
+    const dataset = { theme: 'light' };
+    const button = { textContent: 'Light', classList: { contains: () => selected === 'light' },
+      click: () => { if (!stuck) { persisted = 'light'; selected = 'light'; dataset.theme = 'light'; } } };
+    return runInNewContext(SETTLE_PAGE_EXPRESSION('light'), {
+      document: { getElementById: () => ({}), querySelectorAll: (selector) => selector === '.demo-bar button' ? [button] : [],
+        body: { classList: { remove: () => {} } }, documentElement: { dataset } },
+      localStorage: { getItem: () => JSON.stringify({ theme: persisted }) },
+      setTimeout: (resolve) => resolve()
+    });
+  };
+  it('restores runtime and persisted preference even when DOM already matches', async () => {
+    await expect(run()).resolves.toMatchObject({ selected: true, persisted: 'light', painted: 'light', transitioning: false });
+  });
+  it('rejects stamped DOM when runtime preference cannot align', async () => {
+    await expect(run(true)).rejects.toThrow('requested theme did not align');
+  });
+});
