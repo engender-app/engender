@@ -300,10 +300,12 @@ function useJournalFiles(files: PhotoFileStore | null): void {
     Through the boot machine's `key-obtained`, like every other key, so the
     guard ticket 29 put there sees this one too: a second key while a reopen
     is under way starts nothing and waits on the first. */
-export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   /* The unlock screen only draws over a ready journal, but its derivation
      can outlast that; a key arriving anywhere else would start a boot. */
   if (machine.boot.status !== 'ready') return Promise.resolve();
+  current();
+  reopeningCurrent = current;
   dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
   /* A key the machine refused because the journal is open has nothing to
      wait on; one refused as a second submit waits on the first. */
@@ -313,6 +315,8 @@ export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>): Prom
 /* The reopen the machine last asked for, for the unlock screen to wait on.
    Set by the effect synchronously, inside the dispatch above. */
 let reopening: Promise<void> = Promise.resolve();
+/* Captured by the synchronous reopen effect, before its first wait. */
+let reopeningCurrent: () => void = () => {};
 
 /* A lock's reopen: the boot's own construction without the boot. The
    journal was open and migrated minutes ago in this same page, so there is
@@ -320,12 +324,13 @@ let reopening: Promise<void> = Promise.resolve();
    key, the preferences and the vocabulary read back, and the facade opened
    on the new handle. The prewarmed worker the lock started is what the
    driver takes over, so the wait is an `open` and a few reads. */
-async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDriver> {
+async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void): Promise<SqliteDriver> {
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   try {
     const journal = attachJournal(openJournal(journalDriver, photoFiles));
     const preferences = await openPreferences(sqlite.driver, bootCache);
+    current();
     /* The database has answered, so the journal's calls can go to it: the
        hydrate below, and any write held across the lock, which starts now
        on this driver rather than on the closed one it was made against.
@@ -334,11 +339,13 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
        waiting for the next unlock would have kept it. */
     session.connection.open(sqlite.driver);
     await hydrateReference(journal);
+    current();
     openDriver = sqlite.driver;
     openFileOps = sqlite.fileOps;
     setActiveDriver(sqlite.driver);
     useJournalFiles(photoFiles);
     await attachPreferences(preferences);
+    current();
     journalIsOpen();
     dispatch({ type: 'journal-reopened', journal });
     return sqlite.driver;
@@ -346,6 +353,7 @@ async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<SqliteDr
     /* Still locked, so nothing read on the way stays: the vocabulary a
        hydrate may already have filled, and the stores if they were set. */
     forgetReference();
+    await detachPreferences();
     /* Calls already handed this driver fail with it; the ones that come
        after wait for the next unlock. */
     if (session.connection.current === sqlite.driver) void session.connection.close();
@@ -783,11 +791,14 @@ async function perform(effect: BootEffect): Promise<void> {
     /* Not thrown into run()'s net: a reopen that fails is the unlock
        screen's sentence to say, with the journal still locked, not a boot
        failure. */
-    case 'reopen-journal':
-      reopening = session.unlock(effect.dataKey);
+    case 'reopen-journal': {
+      const current = reopeningCurrent;
+      reopeningCurrent = () => {};
+      reopening = session.unlock(effect.dataKey, current);
       await reopening.catch(() => {});
       dispatch({ type: 'journal-reopen-ended' });
       return;
+    }
 
     case 'open-journal':
       await openAndBoot(effect.dataKey);

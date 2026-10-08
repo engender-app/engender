@@ -35,6 +35,7 @@
    Android's lock is out of scope and does not come through here: its
    database lives behind a native plugin with a lock path of its own. */
 
+import { unlockAttempts } from '../lock/unlock-attempt.ts';
 import { sessionGate, type SessionGate } from '../data/live/sessionGate.ts';
 
 interface Closable {
@@ -43,7 +44,8 @@ interface Closable {
 
 export interface JournalSessionPorts<Key, Driver extends Closable> {
   suspend(): Promise<void>;
-  open(key: Key): Promise<Driver>;
+  /** Check ownership after waits, before publishing journal access. */
+  open(key: Key, current: () => void): Promise<Driver>;
   release(): void;
   prewarm(): void;
 }
@@ -69,7 +71,7 @@ export interface JournalSession<Key, Driver extends Closable> {
   lock(): Promise<void>;
   /** Reopens a journal a lock closed, under the key just derived. Does
       nothing if no lock closed it. Rejects, still locked, if it cannot. */
-  unlock(key: Key): Promise<void>;
+  unlock(key: Key, current?: () => void): Promise<void>;
 }
 
 /** How long a lock waits for the calls already running before it closes the
@@ -83,6 +85,7 @@ export function journalSession<Key, Driver extends Closable>(
   ports: JournalSessionPorts<Key, Driver>,
   { suspendLimitMs = SUSPEND_LIMIT_MS }: { suspendLimitMs?: number } = {}
 ): JournalSession<Key, Driver> {
+  const attempts = unlockAttempts();
   const key = sessionGate<Key>();
   const connection = sessionGate<Driver>();
   let driver: Driver | null = null;
@@ -98,7 +101,8 @@ export function journalSession<Key, Driver extends Closable>(
   /* One at a time, in the order asked. Someone who comes straight back
      unlocks while the lock is still waiting for a save, and someone who
      leaves again under `immediately` locks while the unlock is reopening;
-     either way the second waits for the first to finish. */
+     either way the second waits for the first to finish. A newer lock
+     cancels the pending unlock before it can publish access. */
   let turn: Promise<void> = Promise.resolve();
   const inTurn = (step: () => Promise<void>): Promise<void> => {
     const mine = turn.then(step);
@@ -121,8 +125,9 @@ export function journalSession<Key, Driver extends Closable>(
       driver = openDriver;
       locked = false;
     },
-    lock: () =>
-      inTurn(async () => {
+    lock: () => {
+      attempts.lock();
+      return inTurn(async () => {
         const closing = driver;
         if (closing === null) return;
         /* Fails closed: whatever suspending did or did not finish, the
@@ -161,14 +166,31 @@ export function journalSession<Key, Driver extends Closable>(
         await key.close();
         ports.release();
         ports.prewarm();
-      }),
-    unlock(derived) {
+      });
+    },
+    unlock(derived, current = () => {}) {
+      const owned = attempts.begin();
+      const check = () => {
+        owned();
+        current();
+      };
       unlockWaiting = true;
       stopWaiting?.();
       return inTurn(async () => {
         unlockWaiting = false;
+        check();
         if (!locked) return;
-        driver = await ports.open(derived);
+        const opened = await ports.open(derived, check);
+        try {
+          check();
+        } catch (error) {
+          await ports.suspend();
+          await connection.close();
+          await opened.close();
+          ports.release();
+          throw error;
+        }
+        driver = opened;
         connection.open(driver);
         locked = false;
         key.open(derived);
