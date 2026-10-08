@@ -168,7 +168,27 @@ const probe = {
         if(image.width!==64||image.height!==64)throw new Error('protected photo not usable');image.close();attachments++;
       }
       if(attachments!==2)throw new Error('protected attachment count differs');
-      probe.result = { currentRows: true, attachments, decodedImage: true };
+      const reopened = await openArchive((async function*(){yield bytes;})(), password);
+      const { createAndroidSqlite } = await import('../../../src/lib/data/sqlite/android-driver');
+      const { boot } = await import('../../../src/lib/data/sqlite/boot');
+      const { openJournal } = await import('../../../src/lib/data/journal/journal');
+      const { appPrivatePhotoFiles } = await import('../../../src/lib/data/photos/android-file-store');
+      const { encryptedFileStore } = await import('../../../src/lib/data/photos/encrypted-file-store');
+      const key = crypto.getRandomValues(new Uint8Array(32));
+      const sqlite = createAndroidSqlite('native-backup-restored.sqlite3', key);
+      const opened = await boot({ createDriver: () => sqlite.driver, fileOps: sqlite.fileOps, requestPersistentStorage: sqlite.requestPersistentStorage });
+      if (opened.phase === 'error') throw opened.error;
+      const restored = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('native-backup-restored-photos'), key));
+      await restored.archive.replace({ journal: reopened.payload.journal, files: reopened.files });
+      const actual = await restored.archive.snapshot();
+      if (JSON.stringify(actual.journal.entries) !== JSON.stringify(reopened.payload.journal.entries)) throw new Error('restored journal rows differ');
+      if (actual.files.length !== 2) throw new Error('restored journal attachments absent');
+      for (const file of actual.files) {
+        const image = await createImageBitmap(new Blob([await actual.readFile(file.name)], {type:'image/jpeg'}));
+        if(image.width!==64||image.height!==64)throw new Error('restored journal photo not usable');image.close();
+      }
+      await sqlite.driver.close();key.fill(0);
+      probe.result = { currentRows: true, attachments, decodedImage: true, publicRestore: true };
     } catch (error) { probe.result = { error: String(error) }; }
     probe.ready = true;
   },

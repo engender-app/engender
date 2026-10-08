@@ -77,6 +77,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 assertTrue(restored.toString(), restored.getBoolean("currentRows"));
                 assertEquals(2, restored.getInt("attachments"));
                 assertTrue(restored.getBoolean("decodedImage"));
+                assertTrue(restored.getBoolean("publicRestore"));
                 System.out.println("Protected catch-up evidence: " + result);
             }
             return;
