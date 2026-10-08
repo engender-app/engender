@@ -93,7 +93,8 @@ import {
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   finishFirstRun,
   prepareSceneExpression,
-  navigateSweepPage,
+  navigateFreshSweepPage,
+  documentProofExpression,
   actionPreparationExpression,
   cleanupSceneExpression,
   cleanupSceneFailure,
@@ -471,7 +472,7 @@ async function settle(path, theme) {
     await ev(waitForExpression('[data-home-hello]', 30000, '/'));
     await sleep(800);
   }
-  await ev(`(${navigateSweepPage})(${JSON.stringify(path)});`);
+  const documentProof = await navigateFreshSweepPage(path, (expression) => ev(expression));
   // A consumed query may disappear on mount; readiness follows its pathname.
   await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path.split('?')[0].split('#')[0]));
   if (await ev(`!!document.querySelector('[data-pin-pad]')`)) {
@@ -485,7 +486,9 @@ async function settle(path, theme) {
     await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000));
     await sleep(400);
   }
+  await ev(waitForExpression('#demo-jump', 40000, path.split('?')[0].split('#')[0]));
   await ev(SETTLE_PAGE_EXPRESSION(theme));
+  await ev(documentProofExpression(documentProof.previousTimeOrigin));
 }
 
 /* ---------- the camera ---------- */
@@ -588,7 +591,8 @@ const preBoot = await ev(`(async () => {
   return 'still-booting';
 })()`);
 if (preBoot !== 'open') console.log('boot: the app was still starting; reloading anyway');
-await ev(`if (!${skipSeed}) { try { localStorage.clear(); } catch {} } location.assign('/'); true;`);
+await ev(`if (!${skipSeed}) { try { localStorage.clear(); } catch {} } true;`);
+await navigateFreshSweepPage('/', (expression) => ev(expression));
 await sleep(1500);
 /* No pathname pin here: after the clear the first-run gate can send the
    fresh load straight to /onboarding, and boot's business is only that
@@ -693,8 +697,10 @@ async function restoreAccessMode(mode) {
     }
     throw new Error('access mode change did not finish');
   })()`);
-  if (await ev(`!!document.querySelector('[data-recovery-offer]')`))
-    await ev(`location.assign('/settings/security'); true;`);
+  if (await ev(`!!document.querySelector('[data-recovery-offer]')`)) {
+    await navigateFreshSweepPage('/settings/security', (expression) => ev(expression));
+    await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, '/settings/security'));
+  }
   await settle('/settings/access-mode', themes[0]);
   if ((await accessMode()) !== mode) throw new Error(`failed to restore ${mode} access mode`);
 }
@@ -714,14 +720,17 @@ async function hydrationCold(href, profile, theme, outcome) {
   const pathname = href.split('?')[0].split('#')[0];
   return screencast(async (cast) => {
     await paintBlankSentinel(ev, sleep);
-    await ev(`location.assign(${JSON.stringify(href)}); true;`);
+    const documentProof = await navigateFreshSweepPage(href, (expression) => ev(expression));
     await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, pathname));
     if (await ev(`!!document.querySelector('[data-pin-pad]')`)) {
       await ev(UNLOCK_PIN_EXPRESSION(PIN));
       await ev(waitForExpression('[data-app-root][data-boot="ready"]', 40000, pathname));
     }
     const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-    const coverage = await captureHydrationCoverage(() => ev(coldLoadProofExpression(href, profile, theme, outcome)));
+    const coverage = await captureHydrationCoverage(async () => {
+      await ev(documentProofExpression(documentProof.previousTimeOrigin));
+      return ev(coldLoadProofExpression(href, profile, theme, outcome));
+    });
     return { cast: dropLeadingBlankFrames([...cast]), frames, ...coverage };
   });
 }
@@ -879,11 +888,14 @@ async function hydrationScenes() {
       if ((await accessMode()) !== 'pin') await ev(LOCK_SETUP_EXPRESSION(PIN));
       const result = await screencast(async (cast) => {
         await paintBlankSentinel(ev, sleep);
-        await ev(`location.assign('/'); true;`);
+        const documentProof = await navigateFreshSweepPage('/', (expression) => ev(expression));
         await ev(waitForExpression('[data-pin-pad]', 40000, '/'));
         const frames = await evFrames(samplerExpression('none', HYDRATION_MS, VT_NAMES));
-        const coverageProof = await ev(gateProofExpression('persona', theme));
-        return { cast: dropLeadingBlankFrames([...cast]), frames, coverageProof };
+        const coverage = await captureHydrationCoverage(async () => {
+          await ev(documentProofExpression(documentProof.previousTimeOrigin));
+          return ev(gateProofExpression('persona', theme));
+        });
+        return { cast: dropLeadingBlankFrames([...cast]), frames, ...coverage };
       });
       await pushHydrationRun(report, outDir, {
         name: 'lock-gate',

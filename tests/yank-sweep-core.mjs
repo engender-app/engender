@@ -410,6 +410,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
   if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
+  if (env.__sweepDocumentProof) evidence.documentProof = env.__sweepDocumentProof;
   if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
   if (requested === 'inject') {
     if (typeof env.__yankProof !== 'function') throw new Error('missing injected proof action');
@@ -601,7 +602,7 @@ export const coldLoadProofExpression = (href, profile, theme, outcome = null) =>
   const requested = expected.pathname + expected.search;
   if (outcome?.consumedQuery) expected.searchParams.delete(outcome.consumedQuery);
   const surface = outcome?.selector ? document.querySelector(outcome.selector) : null;
-  const proof = { themeProof, requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
+  const proof = { ...(globalThis.__sweepDocumentProof ? { documentProof: globalThis.__sweepDocumentProof } : {}), themeProof, requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
     surface: outcome?.selector ? !!surface?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : undefined,
     surfaceSelector: outcome?.selector,
     profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
@@ -625,6 +626,7 @@ export function verifyGateProof(proof, profile, theme) {
 }
 
 export const gateProofExpression = (profile, theme) => `(${verifyGateProof})({
+  ...(globalThis.__sweepDocumentProof ? { documentProof: globalThis.__sweepDocumentProof } : {}),
   themeProof: (${readThemeProof})(${JSON.stringify(theme)}),
   route: location.pathname + location.search,
   profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
@@ -683,6 +685,30 @@ export function navigateSweepPage(path, env = globalThis) {
   env.location.assign(path);
   return true;
 }
+
+export async function navigateFreshSweepPage(path, evaluate, options = {}) {
+  const previousTimeOrigin = await evaluate('performance.timeOrigin');
+  if (!Number.isFinite(previousTimeOrigin)) throw new Error('invalid previous document time origin');
+  await evaluate(`(${navigateSweepPage})(${JSON.stringify(path)});`);
+  return waitForReadiness(async () => {
+    try {
+      const timeOrigin = await evaluate('performance.timeOrigin');
+      if (!Number.isFinite(timeOrigin)) throw new Error('invalid current document time origin');
+      return { ready: timeOrigin !== previousTimeOrigin, previousTimeOrigin, timeOrigin, stage: 'document navigation' };
+    } catch (error) {
+      if (!/Execution context was destroyed|Cannot find default execution context/.test(String(error))) throw error;
+      return { ready: false, previousTimeOrigin, stage: 'document navigation', contextError: String(error) };
+    }
+  }, { timeoutMs: 40000, pollMs: 100, ...options });
+}
+
+export const documentProofExpression = (previousTimeOrigin) => `(() => {
+  const previousTimeOrigin = ${JSON.stringify(previousTimeOrigin)};
+  const timeOrigin = performance.timeOrigin;
+  if (!Number.isFinite(previousTimeOrigin) || !Number.isFinite(timeOrigin)) throw new Error('invalid document time origin');
+  if (timeOrigin === previousTimeOrigin) throw new Error('native settle retained its previous document');
+  return globalThis.__sweepDocumentProof = { previousTimeOrigin, timeOrigin };
+})()`;
 
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};

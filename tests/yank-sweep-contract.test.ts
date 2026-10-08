@@ -572,3 +572,97 @@ it('retains the original coverage error for reporting alongside recorded evidenc
   expect(() => requireHydrationCoverage({ ...coverage, cast: [], frames: [] }, 'empty', 'light'))
     .toThrow('cold-load wrong profile');
 });
+
+
+it('waits for a new document before accepting same-route readiness', async () => {
+  const { navigateFreshSweepPage } = await import('./yank-sweep-core.mjs');
+  let time = 0;
+  const evaluate = vi.fn(async (expression) => expression === 'performance.timeOrigin' ? (time < 200 ? 100 : 200) : true);
+  const proof = await navigateFreshSweepPage('/transition/roadmap', evaluate, {
+    timeoutMs: 500, pollMs: 100, now: () => time, sleep: async (ms) => { time += ms; }
+  });
+  expect(time).toBe(200);
+  expect(proof).toMatchObject({ previousTimeOrigin: 100, timeOrigin: 200, ready: true });
+});
+
+
+it('rejects a navigation that never leaves its original document', async () => {
+  const { navigateFreshSweepPage } = await import('./yank-sweep-core.mjs');
+  let time = 0;
+  await expect(navigateFreshSweepPage('/transition/roadmap', async () => 100, {
+    timeoutMs: 300, pollMs: 100, now: () => time, sleep: async (ms) => { time += ms; }
+  })).rejects.toThrow('document navigation');
+  expect(time).toBe(300);
+});
+
+it('retries navigation context destruction and preserves unrelated failures', async () => {
+  const { navigateFreshSweepPage } = await import('./yank-sweep-core.mjs');
+  let time = 0;
+  let reads = 0;
+  const evaluate = async (expression) => {
+    if (expression !== 'performance.timeOrigin') return true;
+    reads++;
+    if (reads === 2) throw new Error('Execution context was destroyed');
+    return reads === 1 ? 100 : 200;
+  };
+  await expect(navigateFreshSweepPage('/', evaluate, {
+    timeoutMs: 300, pollMs: 100, now: () => time, sleep: async (ms) => { time += ms; }
+  })).resolves.toMatchObject({ previousTimeOrigin: 100, timeOrigin: 200 });
+  reads = 0;
+  await expect(navigateFreshSweepPage('/', async (expression) => {
+    if (expression !== 'performance.timeOrigin') return true;
+    if (++reads > 1) throw new Error('protocol rejected');
+    return 100;
+  })).rejects.toThrow('protocol rejected');
+});
+
+it('retains standard document identity alongside native action evidence', () => {
+  const env = environment([control()]);
+  env.__sweepDocumentProof = { previousTimeOrigin: 100, timeOrigin: 200 };
+  expect(dispatchSceneAction({ act: '#open' }, env).documentProof).toEqual(env.__sweepDocumentProof);
+});
+
+
+it('rejects missing or invalid document identities rather than treating them as navigation', async () => {
+  const { navigateFreshSweepPage } = await import('./yank-sweep-core.mjs');
+  for (const invalid of [undefined, null, NaN]) {
+    await expect(navigateFreshSweepPage('/', async () => invalid)).rejects.toThrow('invalid previous document time origin');
+    let reads = 0;
+    await expect(navigateFreshSweepPage('/', async (expression) => {
+      if (expression !== 'performance.timeOrigin') return true;
+      return ++reads === 1 ? 100 : invalid;
+    })).rejects.toThrow('invalid current document time origin');
+  }
+});
+
+it('records only finite, changed standard document identity', async () => {
+  const { documentProofExpression } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  const env = { performance: { timeOrigin: 200 } };
+  expect(runInNewContext(documentProofExpression(100), env)).toMatchObject({ previousTimeOrigin: 100, timeOrigin: 200 });
+  expect(env.__sweepDocumentProof).toMatchObject({ previousTimeOrigin: 100, timeOrigin: 200 });
+  expect(() => runInNewContext(documentProofExpression(200), env)).toThrow('previous document');
+  env.performance.timeOrigin = undefined;
+  expect(() => runInNewContext(documentProofExpression(100), env)).toThrow('invalid document time origin');
+});
+
+it('retains native document identity in ordinary and PIN cold proofs', async () => {
+  const { coldLoadProofExpression, gateProofExpression } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  const identity = { previousTimeOrigin: 100, timeOrigin: 200 };
+  let gate = false;
+  const env = {
+    __sweepDocumentProof: identity, URL,
+    location: { origin: 'https://journal.test', pathname: '/', search: '' },
+    localStorage: { getItem: (key) => key === 'engender-has-entries' ? '1' : key === 'engender-boot-prefs' ? JSON.stringify({ theme: 'light' }) : 'persona' },
+    document: {
+      documentElement: { dataset: { theme: 'light' } },
+      querySelectorAll: () => [{ textContent: 'Light', classList: { contains: () => true } }],
+      querySelector: (selector) => selector === '[data-app-root]' ? { dataset: { boot: gate ? 'needs-unlock' : 'ready' } }
+        : selector === '[data-pin-pad]' && gate ? {} : null
+    }
+  };
+  expect(runInNewContext(coldLoadProofExpression('/', 'persona', 'light'), env).documentProof).toEqual(identity);
+  gate = true;
+  expect(runInNewContext(gateProofExpression('persona', 'light'), env).documentProof).toEqual(identity);
+});
