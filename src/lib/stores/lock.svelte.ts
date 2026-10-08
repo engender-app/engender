@@ -96,6 +96,7 @@ function lockNow(closeJournal: () => Promise<void>) {
 export function watchLock(closeJournal: () => Promise<void>): () => void {
   return watchLeave({
     page: document,
+    lifecycle: window,
     native: isAndroid() ? (window as unknown as NativeLeaveHooks) : undefined,
     lockAfter: () => prefs.lockAfter,
     lock: () => lockNow(closeJournal)

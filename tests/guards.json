@@ -214,6 +214,11 @@
     "holds": "leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open"
   },
   {
+    "name": "bfcache-journal-check",
+    "tier": "built",
+    "holds": "real BFCache Back and Forward restore journal reads and writes without bypassing lock policy or retaining obsolete workers"
+  },
+  {
     "name": "date-picker-check",
     "tier": "built",
     "holds": "the date picker's day targets are 48px and own their edges; arrows, PageUp/PageDown, Shift and Enter work; typed entry refuses a day the calendar lacks; the arrows and the month drum turn months; Escape closes the drum before the picker and the picker before its sheet, at 320-430px, 200% text and 200% pinch"

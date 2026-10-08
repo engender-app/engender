@@ -12,10 +12,12 @@ function harness(lockAfter: LockAfter, { android = false } = {}) {
   let clock = 1_000_000;
   let locks = 0;
   const page = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
+  const lifecycle = new EventTarget();
   const timing = { value: lockAfter };
   const native: { __lockOnLeaveFromNative?: (ownScreen?: boolean) => void; __lockOnReturnFromNative?: () => void } = {};
   const stop = watchLeave({
     page,
+    lifecycle,
     native: android ? native : undefined,
     lockAfter: () => timing.value,
     lock: () => void locks++,
@@ -27,6 +29,7 @@ function harness(lockAfter: LockAfter, { android = false } = {}) {
   };
   return {
     timing,
+    history: (type: string, persisted = true) => lifecycle.dispatchEvent(Object.assign(new Event(type), { persisted })),
     stop,
     locks: () => locks,
     hide: () => show('hidden'),
@@ -227,4 +230,29 @@ test('focus leaving a still-visible window is not a leave: watchLock has no blur
   const source = readFileSync(fileURLToPath(new URL('../stores/lock.svelte.ts', import.meta.url)), 'utf8');
   expect(source).not.toMatch(/['"]blur['"]/);
   expect(source).not.toMatch(/['"]focusout['"]/);
+});
+
+
+test('persisted history restoration checks elapsed leave policy before visibility returns', () => {
+  const app = harness('one-minute');
+  app.history('pagehide');
+  app.wait(61_000);
+  app.history('pageshow');
+  expect(app.locks()).toBe(1);
+  app.reveal();
+  expect(app.locks()).toBe(1);
+});
+
+test('persisted history follows immediate and restart policies without changing native ownership', () => {
+  const immediate = harness('immediately');
+  immediate.history('pagehide');
+  expect(immediate.locks()).toBe(1);
+  const restart = harness('restart');
+  restart.history('pagehide'); restart.wait(600_000); restart.history('pageshow');
+  expect(restart.locks()).toBe(0);
+  const native = harness('immediately', { android: true });
+  native.history('pagehide'); native.history('pageshow');
+  expect(native.locks()).toBe(0);
+  immediate.stop(); immediate.history('pagehide');
+  expect(immediate.locks()).toBe(1);
 });
