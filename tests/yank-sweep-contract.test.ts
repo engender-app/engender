@@ -363,3 +363,35 @@ describe('requested theme fixture alignment', () => {
     await expect(run(true)).rejects.toThrow('requested theme did not align');
   });
 });
+
+it('waits for prerequisite and main controls before dispatch preparation', async () => {
+  const { prepareSceneExpression } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  let polls = 0;
+  let opened = false;
+  const prerequisite = control({ scrollIntoView: () => {}, click: vi.fn(() => { opened = true; }) });
+  const main = control({ scrollIntoView: () => {} });
+  const env = environment();
+  env.document.documentElement = { dataset: { theme: 'light' } };
+  env.document.querySelector = () => null;
+  env.document.querySelectorAll = (selector) => selector === '#open' ? [prerequisite]
+    : selector === '#main' && opened ? [main] : [];
+  env.document.elementFromPoint = () => opened ? main : prerequisite;
+  env.getComputedStyle = () => ({ display: 'block', visibility: 'visible', opacity: polls < 2 ? '0' : '1' });
+  env.setTimeout = (resolve) => { polls++; resolve(); };
+  await runInNewContext(prepareSceneExpression({ name: 'late-controls', prepare: ['#open'], act: '#main' }), env);
+  expect(prerequisite.click).toHaveBeenCalledOnce();
+  expect(main.click).not.toHaveBeenCalled();
+  expect(env.__sweepPreparation.steps).toHaveLength(2);
+  expect(env.__sweepPreparation.steps[0].attempts).toBe(3);
+});
+
+it('retains preparation failure after bounded missing-control wait', async () => {
+  const { prepareSceneExpression } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  const env = environment();
+  env.document.querySelector = () => null;
+  env.setTimeout = (resolve) => resolve();
+  await expect(runInNewContext(prepareSceneExpression({ name: 'missing', act: '#gone' }), env)).rejects.toThrow('preparation did not become ready');
+  expect(env.__sweepPreparation.error).toContain('missing target: #gone');
+});

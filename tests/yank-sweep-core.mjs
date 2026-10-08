@@ -634,7 +634,24 @@ export function coverageSummary(scenes, profiles, themes, passes, report) {
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};
   const control = ${dispatchSceneAction};
-  const dispatch = (step) => { control(step, globalThis, true); return control(step); };
+  globalThis.__sweepPreparation = { scene: scene.name, steps: [] };
+  const prepare = async (step) => {
+    let error;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      try {
+        const proof = control(step, globalThis, true);
+        globalThis.__sweepPreparation.steps.push({ ...proof, attempts: attempt + 1 });
+        return proof;
+      } catch (caught) {
+        error = String(caught);
+        if (!/missing target|target not visible|no enabled target|target remains covered/.test(error)) break;
+        await sleep(50);
+      }
+    }
+    globalThis.__sweepPreparation.error = error;
+    throw new Error('target preparation did not become ready: ' + error);
+  };
+  const dispatch = async (step) => { await prepare(step); return control(step); };
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const appearanceReady = () => document.documentElement.dataset.appearanceTransition === undefined
     && JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === scene.startTheme;
@@ -646,12 +663,12 @@ export const prepareSceneExpression = (scene) => `(async () => {
   for (let i = 0; i < 60 && document.querySelector('.fan-scrim, [data-sheet-scrim]'); i++) await sleep(50);
   if (document.querySelector('.fan-scrim, [data-sheet-scrim]')) throw new Error('previous overlay did not close');
   if (scene.name === 'settings-theme-switcher') {
-    dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+    await dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
     await waitAppearance();
   }
   if (scene.name === 'settings-palette') {
     for (const act of ['[data-palette-pick="trans"]', '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]']) {
-      dispatch({ act });
+      await dispatch({ act });
       if (act.includes('data-segmented')) await waitAppearance();
       else {
         for (let i = 0; i < 60 && document.documentElement.dataset.appearanceTransition !== undefined; i++) await sleep(50);
@@ -659,16 +676,16 @@ export const prepareSceneExpression = (scene) => `(async () => {
       }
     }
   }
-  if (scene.name === 'settings-unit-switcher') dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
-  if (document.querySelector('[data-edit-done]')) { dispatch({ act: '[data-edit-done]' }); await sleep(500); }
-  if (document.querySelector('[data-comfort-grip]')) { dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
+  if (scene.name === 'settings-unit-switcher') await dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
+  if (document.querySelector('[data-edit-done]')) { await dispatch({ act: '[data-edit-done]' }); await sleep(500); }
+  if (document.querySelector('[data-comfort-grip]')) { await dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
   const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
   if (attribution) { attribution.click(); await sleep(500); }
   for (const act of scene.prepare ?? []) {
-    dispatch({ act });
+    await dispatch({ act });
     await sleep(500);
   }
-  if (scene.act !== 'inject' && scene.act !== 'none') control(scene, globalThis, true);
+  if (scene.act !== 'inject' && scene.act !== 'none') await prepare(scene);
   return true;
 })()`;
 
