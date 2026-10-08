@@ -108,22 +108,10 @@
   };
 
   let weekShown = false;
-  function revealWeek(node: HTMLElement) {
-    if (node.dataset.leaving !== undefined) {
-      node.style.position = '';
-      node.style.width = '';
-      node.style.zIndex = '';
-      node.style.pointerEvents = '';
-      delete node.dataset.leaving;
-    }
+  function revealWeek(_node: Element) {
     const duration = weekShown || weeksBack > 0 ? motionDuration('--dur-fast') : 0;
     weekShown = true;
     return fadeOnly(duration);
-  }
-
-  function changeWeek(node: HTMLElement) {
-    return ({ direction }: { direction: 'in' | 'out' }) =>
-      direction === 'in' ? revealWeek(node) : crossfade(node);
   }
 
   let weeksBack = $state(0);
@@ -223,9 +211,10 @@
         </ListCard>
       </div>
 
-      <div class="screen-part cycle-week" use:resize>
-        {#key shownWeek.first}
-          <div class="cycle-week-content" transition:changeWeek>
+      <div class="screen-part cycle-week" use:resize={shownWeek.first}>
+        <!-- Each selection gets a fresh block, so a return cannot revive an outgoing week. -->
+        {#key shownWeek}
+          <div class="cycle-week-content" in:revealWeek out:crossfade>
             {#if weekEvents.length === 0}
               <!-- Its own words rather than a day's answer stretched over seven,
                    the same line dilation's and wear's empty week carry. -->
