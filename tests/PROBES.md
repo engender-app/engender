@@ -313,4 +313,6 @@ recovery proof workflow uploads both attempts for seven days, including on succe
 
 `voice-tab-panel-motion` (`tests/voice-tab-panel-motion.mjs`) captures the Voice tab panel in both themes and checks withdrawal before replacement, keyboard focus, rapid switches, reduced motion and microphone cancellation. Run after a demo build: `node tests/voice-tab-panel-motion.mjs [output-directory]`.
 
+`today-editor-opening-motion` captures Arrange Today opening in both themes with timestamped painted frames, heading styles and ancestor scroll positions. It checks final continuity, keyboard reorder and focus, tile and agenda switches, reset confirmation, and entry from an empty arrangement. Run after a demo build: `node tests/today-editor-opening-motion.mjs [output-directory] [built-root]`.
+
 `settings-cycle-motion` (`tests/settings-cycle-motion.mjs`) checks the automatic Cycle tracking explanation against a demo build. Fresh preferences in each theme expose cuts and downstream jumps; compositor casts retain frame numbers and milliseconds. It checks Enter, Space, persistence, reduced motion and layouts at 390px, 780px and 195px. Run `node tests/settings-cycle-motion.mjs [output-directory]`.
