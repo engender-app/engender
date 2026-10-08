@@ -192,7 +192,12 @@ public class KeystorePlugin extends Plugin {
         FragmentActivity activity = activityOrReject(call);
         if (activity == null) return;
 
-        int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG;
+        boolean deviceCredential = Boolean.TRUE.equals(call.getBoolean("deviceCredential", false));
+        int authenticators =
+            deviceCredential
+                ? BiometricManager.Authenticators.BIOMETRIC_STRONG
+                    | BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                : BiometricManager.Authenticators.BIOMETRIC_STRONG;
         if (reportedUnavailable(call, authenticators)) return;
 
         prompt(
@@ -200,7 +205,7 @@ public class KeystorePlugin extends Plugin {
             call,
             null,
             authenticators,
-            false,
+            deviceCredential,
             (answered, result) -> answered.resolve(outcome(BiometricOutcomes.AUTHENTICATED, null)));
     }
 
