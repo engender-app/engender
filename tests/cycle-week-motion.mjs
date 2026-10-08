@@ -83,10 +83,12 @@ try {
     assert.equal(await page.locator('.cycle-week-content').count(), 1);
     assert.equal(await page.locator('[data-cycle-event]').count(), events);
     assert.equal(await page.locator('.cycle-week').evaluate((node) => node.style.height), '');
+    const editorLauncher = await page.locator('[data-cycle-event]').first().elementHandle();
     await page.locator('[data-cycle-event]').first().click();
     await page.locator('#cycle-event-date').waitFor();
     await page.keyboard.press('Escape');
     await page.locator('#cycle-event-date').waitFor({ state: 'detached' });
+    assert.equal(await editorLauncher.evaluate((node) => node.isConnected && node === document.activeElement), true);
     await page.evaluate(() => { document.documentElement.dataset.a11yMotion = 'reduce'; });
     await page.locator('[data-strip-earlier]').click();
     await page.waitForTimeout(50);
