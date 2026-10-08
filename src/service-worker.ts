@@ -102,7 +102,12 @@ async function respond(request: Request): Promise<Response> {
   }
 
   const cached = await cache.match(request);
-  if (cached) return cached;
+  if (cached) {
+    // Complete cached script reads before handing their bodies to module loaders.
+    // Repeated navigation can abort imports served from the cached stream.
+    if (request.destination === 'script') return new Response(await cached.arrayBuffer(), cached);
+    return cached;
+  }
 
   /* Not part of the shell: SvelteKit's version.json, which has to stay live
      to be an update signal at all, and anything static/ does not hold yet.
