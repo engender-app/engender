@@ -65,7 +65,7 @@ async function maybeRun() {
     await reportFailure(false, now);
     const status = await androidAutoExport.status();
     // Packing stays deferred until this Android-only check runs.
-    const { isDue, runAndroidAutoExport } = await import('./android-auto-export');
+    const { runAndroidAutoExport } = await import('./android-auto-export');
     if (status.lastFailureAt != null && status.lastFailureAt > observedFailureAt) {
       observedFailureAt = status.lastFailureAt;
       await reportFailure(true, now);
@@ -76,7 +76,7 @@ async function maybeRun() {
     }
     if (!status.enabled || !status.destinationUri || !status.hasPassword) return;
     const refreshWindow = (status.nextDueAt ?? 0) - 24 * 60 * 60 * 1000;
-    if (!isDue(status, now) && status.stagedSnapshotAt != null &&
+    if (status.stagedSnapshotAt != null &&
         (now < refreshWindow || status.stagedSnapshotAt >= refreshWindow)) return;
 
     const snapshot = await journal.archive.snapshot();

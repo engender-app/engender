@@ -115,7 +115,8 @@ const probe = {
   },
   async disable() {
     probe.ready = false;
-    probe.result = await androidAutoExport.configure({ enabled: false, schedule: 'weekly' });
+    try { probe.result = await androidAutoExport.configure({ enabled: false, schedule: 'weekly' }); }
+    catch (error) { probe.result = { rejected: String(error) }; }
     probe.ready = true;
   },
   async concurrent() {

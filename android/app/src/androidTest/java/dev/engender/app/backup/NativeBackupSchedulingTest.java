@@ -39,7 +39,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
             while (!preferences.contains("deferredAt") && System.nanoTime() < deadline) Thread.sleep(100);
             assertTrue("cold job must record deferral", preferences.contains("deferredAt"));
-            assertFalse(preferences.contains("lastSuccessAt"));
+            assertEquals(preferences.getLong("proofPreviousSuccess", 0), preferences.getLong("lastSuccessAt", 0));
             assertTrue(documents().isEmpty());
             assertFalse(preferences.contains("encryptedStage"));
             return;
@@ -104,6 +104,14 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
             grantDestination();
             assertArrayEquals(previousBytes, hash(previous));
 
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "truncated", null);
+            try {
+                synchronized (BackupWork.OWNER) { PersistentBackup.deliver(app); }
+                fail("truncated target accepted");
+            } catch (Exception expected) {
+                assertTrue(new JSONObject(preferences.getString("encryptedStage", "{}")).has("target"));
+            } finally { resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null); }
+
             // A failed success-state commit must not prune earlier Archives or change memory state.
             File preferenceDirectory = new File(app.getApplicationInfo().dataDir, "shared_prefs");
             int mode = android.system.Os.stat(preferenceDirectory.getAbsolutePath()).st_mode & 0777;
@@ -140,6 +148,24 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 WebViewProbe probe = new WebViewProbe(scenario, 120);
                 probe.awaitTrue("window.backupProbe && window.backupProbe.ready");
                 assertEquals(2, command(probe, "recover(2)").getInt("recovered"));
+                stageCiphertext(encrypted, digest, snapshotAt);
+                String stagedBefore = preferences.getString("encryptedStage", null);
+                long generationBefore = preferences.getLong("backupGeneration", 0);
+                try {
+                    android.system.Os.chmod(preferenceDirectory.getAbsolutePath(), 0500);
+                    assertTrue(command(probe, "disable()").getString("rejected").contains("backup-state-unavailable"));
+                    assertTrue(preferences.getBoolean("enabled", false));
+                    assertEquals(generationBefore, preferences.getLong("backupGeneration", 0));
+                    try {
+                        synchronized (BackupWork.OWNER) { PersistentBackup.clear(app); }
+                        fail("undurable stage clear accepted");
+                    } catch (IllegalStateException expected) {
+                        assertEquals("backup-state-unavailable", expected.getMessage());
+                    }
+                    assertEquals(stagedBefore, preferences.getString("encryptedStage", null));
+                    assertEquals(1, PersistentBackup.directory(app).list().length);
+                } finally { android.system.Os.chmod(preferenceDirectory.getAbsolutePath(), mode); }
+
                 assertTrue(command(probe, "hold()").getBoolean("held"));
                 assertTrue(BackupWork.foregroundPacking);
                 stageCiphertext(encrypted, digest, snapshotAt);
@@ -186,6 +212,41 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         }
     }
 
+    @Test public void activityDestructionDoesNotWaitForNativeDelivery() throws Exception {
+        prepareNativeStage(false);
+        ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class);
+        java.util.concurrent.atomic.AtomicReference<Exception> failure = new java.util.concurrent.atomic.AtomicReference<>();
+        Thread delivery = new Thread(() -> {
+            synchronized (BackupWork.OWNER) {
+                try { PersistentBackup.deliver(app); }
+                catch (Exception error) { failure.set(error); }
+            }
+        });
+        try {
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "blocked", null);
+            delivery.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            boolean blocked = false;
+            while (System.nanoTime() < deadline) {
+                blocked = resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "blocked", null, null).getBoolean("blocked");
+                if (blocked) break;
+                Thread.sleep(50);
+            }
+            assertTrue("SAF delivery never reached the blocked provider", blocked);
+            long started = System.nanoTime();
+            scenario.close();
+            assertTrue("activity destruction waited for native delivery", System.nanoTime() - started < TimeUnit.SECONDS.toNanos(2));
+            assertTrue("delivery must still own its blocked copy", delivery.isAlive());
+            delivery.join(15000);
+            assertFalse(delivery.isAlive());
+            assertNotNull(failure.get());
+        } finally {
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
+            delivery.join(15000);
+            scenario.close();
+        }
+    }
+
     private void grantDestination() {
         InstrumentationRegistry.getInstrumentation().getContext().grantUriPermission(app.getPackageName(), tree,
             Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
@@ -228,6 +289,8 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                     .putString("destinationUri", tree.toString()).commit();
             }
             if (deferred) {
+                long last = System.currentTimeMillis() - 7 * BackupWork.DAY + 45000;
+                preferences.edit().putLong("lastSuccessAt", last).putLong("proofPreviousSuccess", last).commit();
                 BackupWork.schedule(app);
                 return;
             }

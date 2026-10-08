@@ -33,7 +33,8 @@ final class PersistentBackup {
                 }
             } catch (Exception unavailable) { /* Destination access may already be revoked. */ }
         }
-        preferences.edit().remove(STAGE).remove("deferredAt").remove("retryNotBeforeAt").commit();
+        AutoExportPlugin.commitState(preferences,
+            preferences.edit().remove(STAGE).remove("deferredAt").remove("retryNotBeforeAt"));
         File directory = directory(context);
         File[] files = directory.listFiles();
         if (files != null) for (File file : files) file.delete();

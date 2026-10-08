@@ -151,6 +151,16 @@ describe('auto-export scheduler', () => {
     expect(runAndroidAutoExport).not.toHaveBeenCalled();
   });
 
+  test('keeps an eligible due stage without reopening the native retry window', async () => {
+    status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
+      stagedSnapshotAt: nowSeed - 3600000, nextDueAt: nowSeed - 1800000,
+      lastFailureAt: nowSeed - 1000, lastFailureReason: 'destination-unavailable' });
+    startAutoExportScheduler();
+    await flush();
+    expect(snapshot).not.toHaveBeenCalled();
+    expect(runAndroidAutoExport).not.toHaveBeenCalled();
+  });
+
   test('prepares one stage before due when no encrypted snapshot is available', async () => {
     vi.mocked(isDue).mockReturnValue(false);
     runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });

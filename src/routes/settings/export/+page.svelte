@@ -44,6 +44,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { isAndroid } from '$lib/platform';
   import { onMount } from 'svelte';
+  import { periodicCheck } from '$lib/data/backgroundSchedulers';
 
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
@@ -343,8 +344,10 @@
   }
 
   onMount(() => {
-    if (android) void refreshAutoStatus();
+    const statusCheck = periodicCheck(() => void refreshAutoStatus());
+    if (android) statusCheck.start();
     void refreshImportLog();
+    return statusCheck.stop;
   });
 
   async function refreshImportLog() {

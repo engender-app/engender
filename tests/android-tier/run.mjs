@@ -311,8 +311,24 @@ for (const avd of AVDS) {
       try {
         if (backupStage('defer')) {
           const killed = device(['shell', 'am', 'kill', 'dev.engender.app']);
-          writeFileSync(join(evidenceDir, `${avd}-backup-deferred-process-death.log`), `${killed.stdout ?? ''}${killed.stderr ?? ''}\nexit=${killed.status}\n`);
-          backupStage('verify-deferred');
+          const absent = device(['shell', 'pidof', 'dev.engender.app']);
+          writeFileSync(join(evidenceDir, `${avd}-backup-deferred-process-death.log`),
+            `${killed.stdout ?? ''}${killed.stderr ?? ''}\nexit=${killed.status}\npidof exit=${absent.status} pid=${absent.stdout}\n`);
+          if (killed.status !== 0 || absent.status !== 1 || absent.stdout.trim()) {
+            fail(`${avd}: native backup deferred process death`, 'process death not established');
+          } else {
+            await sleep(50000);
+            const state = device(['shell', 'run-as', 'dev.engender.app', 'cat', 'shared_prefs/engender-auto-export.xml']);
+            const deferredAt = Number(/name="deferredAt" value="(\d+)"/.exec(state.stdout ?? '')?.[1] ?? 0);
+            writeFileSync(join(evidenceDir, `${avd}-backup-deferred-headless-result.json`),
+              JSON.stringify({ deferredAt, encryptedStage: /name="encryptedStage"/.test(state.stdout ?? '') }, null, 2));
+            if (state.status !== 0 || !deferredAt || /name="encryptedStage"/.test(state.stdout ?? '')) {
+              fail(`${avd}: native backup headless deferral`, 'no durable deferred state before restart instrumentation');
+            } else {
+              ok(`${avd}: native backup headless deferral`);
+              backupStage('verify-deferred');
+            }
+          }
         }
         backupStage('cleanup');
         if (!nativeOnly) {
@@ -396,6 +412,8 @@ for (const avd of AVDS) {
           }
           backupStage('cleanup');
           backupStage('ownership-and-destination', 'failuresRetentionAndCancellationUseTheNativeOwner');
+          backupStage('cleanup');
+          backupStage('activity-destruction', 'activityDestructionDoesNotWaitForNativeDelivery');
           backupStage('cleanup');
           const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
             'dev.engender.app.backup.AutoExportDeliveryTest#completeLargeBackupRoundTripsAndFailuresPreserveRecovery',
