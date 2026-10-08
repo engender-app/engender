@@ -160,7 +160,6 @@ To run one on its own, use
 | `entry-pending-save` | delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |
 | `roadmap-track-summary` | the selected track travels with the goal list it shows |
-| `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `prep-context-check` | an empty prep list still shows the next visit and keeps every section |
 | `debrief-offer-check` | the appointment debrief loop, end to end |
 | `home-fold-reserve` | nothing under Home's reserves moves in one frame on a cold open, with a right, wrong or missing guess, or when a notice inside one is dismissed |
@@ -185,6 +184,7 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 | Probe | Why not |
 | --- | --- |
 | `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |
+| `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
 | `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed reaches 48px by `elementFromPoint` from its centre, at 320 and 390px with text at 100% and 200%, and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. About six minutes over 13 screens, which is more than a CI shard has room for (after-release 18). |
