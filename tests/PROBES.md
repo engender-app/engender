@@ -183,6 +183,7 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 
 | Probe | Why not |
 | --- | --- |
+| `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |
 | `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |
 | `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
@@ -261,6 +262,7 @@ on this page ran green on 2026-09-23.
 | `gallery:savebar` | what the save bar covers, per screen and viewport, in minutes rather than the cohesion sweep's 25 |
 | `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
 | `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
+| `transition-summary-overlap` (`--paint`, `--matrix`) | Transition summaries stay inside Care while replacing text; painted probe compares outgoing red ink against Surgery title blue ink in the same PNG. Matrix covers shrinking/growing summaries at 230, 430 and 1024px in light/dark and reduced motion. |
 | `probe:field-text` | (ticket 285) nothing on a field paints past its painted edge or teleports against it, on every frame of every change that moves a field: doors both ways from top, middle and bottom, interrupted and reversed, deep push and back, gear, Polish, reduced motion, resize, setup's steps and handover, and the door field's height on a cold load, at 390 and 1440; `--only`, `--runs`, `--report`, `--frames`, `--json`, and `--device <serial>` to drive the Pixel WebView over its own forwarded port (`--port`, default 9341, `--package`, default the separate probe build and never the real app, `--rate` to slow the animations for reading the edge on pixels (`field-text-edge-series.mjs` reads the frames); the PIN gate opening is a scene there). Timing-dependent: run it several times |
 | `day-strip-fill-motion` (demo build, `--out <dir>`) | Records shared week-cell fill transitions on Wear, Cycle, dilation and hair removal in both themes. Fails when a changed fill has no intermediate painted colour; saves full casts and timestamped samples. |
 | `day-strip-week-motion` (demo build, `--out <dir>`) | Outgoing week labels stay anchored on Cycle, dilation, wear and hair removal in light and dark; paging, date selection, focus transfer and reduced motion retain their behavior. Saves full painted casts and frame geometry. |
