@@ -6,7 +6,7 @@
       "headRevision": "47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa"
     }
   },
-  "method": "Sum observed hosted attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds.",
+  "method": "Sum observed hosted attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement.",
   "builds": {
     "demo": 73,
     "production": 66
@@ -96,6 +96,7 @@
     "documents-rows-settle": 109.92,
     "tile-arrival-timing": 291.1,
     "home-idle-raster": 93.07,
+    "demo-worker-startup": 10,
     "boot-error-alone": 15.04,
     "restore-previous-journal": 41.98,
     "device-recovery-check": 19.76,
