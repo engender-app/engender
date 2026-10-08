@@ -108,7 +108,14 @@
   };
 
   let weekShown = false;
-  function revealWeek(_node: Element) {
+  function revealWeek(node: HTMLElement) {
+    if (node.dataset.leaving !== undefined) {
+      node.style.position = '';
+      node.style.width = '';
+      node.style.zIndex = '';
+      node.style.pointerEvents = '';
+      delete node.dataset.leaving;
+    }
     const duration = weekShown || weeksBack > 0 ? motionDuration('--dur-fast') : 0;
     weekShown = true;
     return fadeOnly(duration);
