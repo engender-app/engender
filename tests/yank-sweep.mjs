@@ -121,6 +121,7 @@ import {
   DEMO_THEME_EXPRESSION,
   prepareSceneExpression,
   actionPreparationExpression,
+  cleanupSceneExpression,
   actionPostconditionExpression,
   coverageSummary,
   createReportRecorder,
@@ -240,7 +241,9 @@ for (const profile of profiles) {
           report.push({ scene: scene.name, profile, theme, pass, skipped: 'Android-only reminder list; web renders install prompt' });
           continue;
         }
+        let captureEvidence;
         try {
+          await page.evaluate(`globalThis.__sweepAction = null; globalThis.__sweepPreparation = null; true;`);
           if (scene.reseed) {
             await settle('/', theme);
             await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
@@ -260,7 +263,10 @@ for (const profile of profiles) {
             const all_frames = await page.evaluate(samplerExpression(scene, SCENE_MS, VT_NAMES));
             return { cast, all_frames };
           });
+          captureEvidence = await saveSceneCast(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`);
+          await writeFile(`${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`, JSON.stringify(all_frames, null, 1));
           const action = await page.evaluate(actionPostconditionExpression(scene, all_frames[0]?.action));
+          const cleanup = await page.evaluate(cleanupSceneExpression(scene));
           /* A transition ran, so the pseudos are what the person saw, and only the
              frames it was running on are the gesture. */
           const transitioned = all_frames.some((f) => f.active);
@@ -270,12 +276,7 @@ for (const profile of profiles) {
           const all = findYanks(frames, instrument, frames.length - 1);
           const yanks = all.filter((y) => !EXEMPT.test(y.mark));
           const render = await readRenderYanks(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`, undefined, { allowThin: true });
-          const evidence = yanks.length ? await saveSceneCast(cast, outDir, scene.name, `${profile}-${theme}-p${pass}`) : null;
-          if (args.includes('--dump') || yanks.length)
-            await writeFile(
-              `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
-              JSON.stringify(all_frames, null, 1)
-            );
+          const evidence = captureEvidence;
           report.push({
             scene: scene.name,
             profile,
@@ -283,6 +284,7 @@ for (const profile of profiles) {
             pass,
             is: scene.is,
             action,
+            cleanup,
             profileProof,
             ...(evidence ? { evidence } : {}),
             instrument,
@@ -307,7 +309,8 @@ for (const profile of profiles) {
                 : '')
           );
         } catch (err) {
-          report.push({ scene: scene.name, profile, theme, pass, action: { requested: scene.act }, error: String(err).slice(0, 300) });
+          const failedState = await page.evaluate(`({ action: globalThis.__sweepAction, preparation: globalThis.__sweepPreparation, themeProof: globalThis.__sweepThemeProof })`).catch((failure) => ({ evidenceError: String(failure) }));
+            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
           console.log(`[${profile}-${theme}] ${scene.name} p${pass}: ERROR ${String(err).slice(0, 160)}`);
         }
       }

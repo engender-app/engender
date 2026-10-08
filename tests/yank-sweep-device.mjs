@@ -94,6 +94,7 @@ import {
   finishFirstRun,
   prepareSceneExpression,
   actionPreparationExpression,
+  cleanupSceneExpression,
   actionPostconditionExpression,
   coverageSummary,
   createReportRecorder,
@@ -449,7 +450,7 @@ const firstRunExpression = (target) => `(async () => {
   throw new Error('never reached the \${target} step');
 })()`;
 
-async function settle(path, theme) {
+async function settle(path, theme, reload = false) {
   await sleep(400);
   /* A sheet can survive the preceding pass. Its scrim intercepts the next
      tap, so close it before positioning another scene. */
@@ -467,7 +468,7 @@ async function settle(path, theme) {
     await ev(waitForExpression('[data-home-hello]', 30000, '/'));
     await sleep(800);
   }
-  if (await ev(`location.pathname + location.search !== ${JSON.stringify(path)}`)) {
+  if (reload || await ev(`location.pathname + location.search !== ${JSON.stringify(path)}`)) {
     await ev(`location.assign(${JSON.stringify(path)}); true;`);
     /* Navigated on the whole address, waited on its pathname - the two are
        deliberately different. A query is something a screen is allowed to
@@ -536,7 +537,7 @@ async function recordScreencast(fn) {
     /* Short clock: this socket may already be dead if fn() triggered a
        re-attach, and a teardown that waits the full send default on a
        corpse only stacks dead time onto a scene that is over. */
-    await c.send('Page.stopScreencast', {}, 2000).catch(() => {});
+    await c.send('Page.stopScreencast', {}, 2000).catch((error) => errors.push('screencast cleanup failed: ' + String(error)));
     c.offEvent(handler);
   }
 }
@@ -739,7 +740,7 @@ async function hydrationCold(href, profile, theme, outcome) {
 /** One sheet scene: settled screen, then the opening and its hydration
  *  recorded together. */
 async function hydrationSheet(scene, theme) {
-  await settle(scene.at, theme);
+  await settle(scene.at, theme, scene.name === 'segment-lookback' || scene.name === 'span-offer-appear');
   await ev(prepareSceneExpression(scene));
   await sleep(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
@@ -949,13 +950,15 @@ if (hydration) {
         if (scene.when && scene.when !== profile) continue;
         for (let pass = 1; pass <= passes; pass++) {
           const label = `[${profile}-${theme}] ${scene.name} p${pass}`;
+          let captureEvidence;
           try {
+            await ev(`globalThis.__sweepAction = null; globalThis.__sweepPreparation = null; true;`);
             if (scene.reseed) {
               await settle('/', theme);
               await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
               await markProfile(profile);
             }
-            await settle(scene.at, theme);
+            await settle(scene.at, theme, scene.name === 'segment-lookback' || scene.name === 'span-offer-appear');
             if (scene.firstRun) {
               await ev(firstRunExpression(scene.firstRun));
               await ev(DEMO_THEME_EXPRESSION(theme));
@@ -969,7 +972,10 @@ if (hydration) {
               const frames = await evFrames(samplerExpression(scene, SCENE_MS, VT_NAMES));
               return { cast: [...cast], frames };
             });
+            captureEvidence = await saveSceneCast(result.cast, outDir, scene.name, `${profile}-${theme}-p${pass}`);
+            await writeFile(`${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`, JSON.stringify(result.frames, null, 1));
             const action = await ev(actionPostconditionExpression(scene, result.frames[0]?.action));
+            const cleanup = await ev(cleanupSceneExpression(scene));
             await sleep(600);
             /* The style half, exactly as the desktop sweep reads it. */
             const transitioned = result.frames.some((f) => f.active);
@@ -1020,12 +1026,7 @@ if (hydration) {
 
             await writeEvidence({ scene: scene.name, profile, theme, pass }, findings, result.cast, castIndices);
 
-            const evidence = styleYanks.length ? await saveSceneCast(result.cast, outDir, scene.name, `${profile}-${theme}-p${pass}`) : null;
-            if (dump || styleYanks.length)
-              await writeFile(
-                `${outDir}/${scene.name}-${profile}-${theme}-p${pass}.frames.json`,
-                JSON.stringify(result.frames, null, 1)
-              );
+            const evidence = captureEvidence;
             if (castScenes.includes(scene.name)) {
               const castDir = `${outDir}/${scene.name}-${profile}-${theme}-p${pass}`;
               await mkdir(castDir, { recursive: true });
@@ -1040,6 +1041,7 @@ if (hydration) {
               pass,
               is: scene.is,
               action,
+            cleanup,
               profileProof,
               ...(evidence ? { evidence } : {}),
               instrument,
@@ -1061,7 +1063,8 @@ if (hydration) {
                   : '')
             );
           } catch (err) {
-            report.push({ scene: scene.name, profile, theme, pass, action: { requested: scene.act }, error: String(err).slice(0, 300) });
+            const failedState = await ev(`({ action: globalThis.__sweepAction, preparation: globalThis.__sweepPreparation, themeProof: globalThis.__sweepThemeProof })`).catch((failure) => ({ evidenceError: String(failure) }));
+            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
             console.log(`${label}: ERROR ${String(err).slice(0, 200)}`);
           }
         }
@@ -1070,7 +1073,8 @@ if (hydration) {
   }
 }
 } finally {
-  await restoreAccessMode(originalAccessMode);
+  try { await restoreAccessMode(originalAccessMode); }
+  catch (error) { errors.push('access-mode cleanup failed: ' + String(error)); await recorder.flush(); }
 }
 
 await recorder.flush();

@@ -119,6 +119,7 @@ export async function screencast(page, fn) {
     session.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {});
   });
   await session.send('Page.enable');
+  let failure;
   try {
     await session.send('Page.startScreencast', {
       format: 'png',
@@ -127,9 +128,17 @@ export async function screencast(page, fn) {
       everyNthFrame: 1
     });
     return await fn(frames);
+  } catch (error) {
+    failure = error;
+    throw error;
   } finally {
-    await session.send('Page.stopScreencast').catch(() => {});
-    await session.detach().catch(() => {});
+    const cleanupErrors = [];
+    await session.send('Page.stopScreencast').catch((error) => cleanupErrors.push(error));
+    await session.detach().catch((error) => cleanupErrors.push(error));
+    if (cleanupErrors.length) throw new AggregateError(
+      [...(failure ? [failure] : []), ...cleanupErrors],
+      [failure && String(failure), ...cleanupErrors.map((error) => 'screencast cleanup failed: ' + String(error))].filter(Boolean).join('; ')
+    );
   }
 }
 
