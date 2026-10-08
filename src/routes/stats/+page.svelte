@@ -94,7 +94,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
-  import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
@@ -257,16 +257,6 @@
       }
     };
   };
-
-  /* The link and the "not enough entries" line share one slot in
-     `.lookback-line` (ux-carpet 234): narrowing the span on Look back can
-     cross `enoughEntries` several times a second while a drag is still
-     moving, and the two used to swap by cut - one at full opacity, gone the
-     frame the other took its place. `crossfade` (out-only, reveal.ts) lifts
-     the leaving one out of flow and fades it there; the arriving one still
-     needs its own fade in, which is what `fadeIn` is for
-     (ReadReserve.svelte's own copy of the same three lines). */
-  const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* Two epoch days to the journal, which never reads the clock for a
      domain answer: the span's own, and before the effect above has set it,
@@ -572,13 +562,12 @@
           data-lookback-read
           data-span-keep
           href={`/wrapped/range${spanRangeQuery(span)}`}
-          in:fadeIn
-          out:crossfade
+          transition:disclose
         >
           {m.lookback_read_span()}
         </a>
       {:else}
-        <span class="lookback-thin" in:fadeIn out:crossfade data-lookback-thin>
+        <span class="lookback-thin" transition:disclose data-lookback-thin>
           {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
         </span>
       {/if}
@@ -603,8 +592,13 @@
          the recap as well as their own read - was inserted between them
          and the tiles after it jumped a cell in one frame. The recap and
          the vocabulary mirror are the two reads the screen holds for them. -->
+    <!-- A new span replaces the reading group in its own space. Reusing
+         its cells let the old Words and Compare tiles travel across the
+         new figures while their independent reads answered. -->
     <div class="screen-part" use:resize>
-    <ReadGroup answered={factsAnswered} count={2}>
+    {#key `${resolvedSpan.start}:${resolvedSpan.end}`}
+    <div transition:disclose onoutrostart={(event) => ((event.currentTarget as HTMLElement).inert = true)}>
+    <ReadGroup answered={factsAnswered && factsCurrent} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
@@ -618,6 +612,8 @@
       <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>
+    </div>
+    {/key}
     </div>
 
     <!-- The resurfacing block: the two look-back offers, moved here from
@@ -671,7 +667,9 @@
   .lookback-line {
     position: relative;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
     min-height: var(--touch-target);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
