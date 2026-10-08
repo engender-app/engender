@@ -49,6 +49,8 @@ const { ok, fail, finish } = createReporter();
 
 /* Headless runs use software graphics with Vulkan disabled. */
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
+const BACKUP_ONLY = process.env.ANDROID_TIER_BACKUP_ONLY === '1';
+const BACKUP_TEST = 'dev.engender.app.backup.NativeBackupSchedulingTest';
 const AVDS = (process.env.ANDROID_TIER_AVDS ?? 'gd26,tracker35').split(',').filter(Boolean);
 const BOOT_TIMEOUT_MS = 300_000;
 
@@ -157,7 +159,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of ['contract', 'encryption', 'archive', 'auto-export', 'long-journal']) {
+for (const probe of (BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'auto-export', 'long-journal'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -228,7 +230,13 @@ for (const avd of AVDS) {
        module Capacitor generates has an androidTest variant of its own, and it
        fails to dex on a Kotlin stdlib clash between androidx.test's 1.8.22 and a
        transitive 1.6.21. Nothing of ours is in that module. */
-    await runInstrumentation({
+    if (BACKUP_ONLY) {
+      const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2'], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600_000
+      });
+      writeFileSync(join(evidenceDir, `${avd}-backup-assemble.log`), `${built.stdout ?? ''}${built.stderr ?? ''}\nexit=${built.status}\n`);
+      if (built.status !== 0 || built.signal || built.error) throw new Error('backup APK build failed');
+    } else await runInstrumentation({
       label: avd,
       resultsDir: RESULTS_DIR,
       reporter: { ok, fail },
@@ -241,7 +249,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST}`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST}`])
           ],
           {
             cwd: androidDir,
@@ -278,7 +286,7 @@ for (const avd of AVDS) {
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}-process.log`), `${proofLog.stdout ?? ''}${proofLog.stderr ?? ''}`);
         return reportStage(`${avd}: PIN wait ${name}`, result, { ok, fail });
       };
-      try {
+      if (!BACKUP_ONLY) try {
         stage('preferences', 'preferenceDeadlineSurvivesANewOwnerAndNewBoot');
         if (stage('seed')) {
           const killed = device(['shell', 'am', 'force-stop', 'dev.engender.app']);
@@ -292,6 +300,111 @@ for (const avd of AVDS) {
           }
         }
       } finally { stage('cleanup'); }
+      const backupStage = (name, method = 'persistentDeliverySurvivesLifecycle') => {
+        const result = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+          `${BACKUP_TEST}#${method}`, '-e', 'backupStage', name,
+          'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
+        writeFileSync(join(evidenceDir, `${avd}-backup-${name}-${Date.now()}.log`),
+          `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
+        return reportStage(`${avd}: native backup ${name}`, result, { ok, fail });
+      };
+      try {
+        if (backupStage('defer')) {
+          const killed = device(['shell', 'am', 'kill', 'dev.engender.app']);
+          writeFileSync(join(evidenceDir, `${avd}-backup-deferred-process-death.log`), `${killed.stdout ?? ''}${killed.stderr ?? ''}\nexit=${killed.status}\n`);
+          backupStage('verify-deferred');
+        }
+        backupStage('cleanup');
+        if (!nativeOnly) {
+          for (const lifecycle of ['process-death', 'reboot']) {
+            if (!backupStage('prepare')) continue;
+            const state = device(['shell', 'dumpsys', 'jobscheduler']);
+            writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-jobs-before.log`), state.stdout ?? '');
+            if (!/dev\.engender\.app\/androidx\.work\.impl\.background\.systemjob\.SystemJobService/.test(state.stdout ?? '')) {
+              fail(`${avd}: native backup persistent work`, 'no WorkManager job in JobScheduler');
+              continue;
+            }
+            if (lifecycle === 'process-death') {
+              const previousPid = device(['shell', 'pidof', 'dev.engender.app']).stdout?.trim();
+              writeFileSync(join(evidenceDir, `${avd}-backup-process-before.log`), `pid=${previousPid}\n`);
+              device(['shell', 'am', 'kill', 'dev.engender.app']);
+              const pid = device(['shell', 'pidof', 'dev.engender.app']);
+              writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-absence.log`), `exit=${pid.status} pid=${pid.stdout}\n`);
+              if (pid.status !== 1 || pid.stdout.trim()) {
+                fail(`${avd}: native backup ordinary process death`, 'app process remained alive');
+                continue;
+              }
+            } else {
+              const before = device(['shell', 'cat', '/proc/sys/kernel/random/boot_id']).stdout?.trim();
+              const reboot = device(['reboot']);
+              if (reboot.status !== 0) throw new Error('backup proof reboot failed');
+              await sleep(5000);
+              const deadline = Date.now() + BOOT_TIMEOUT_MS;
+              let after;
+              while (Date.now() < deadline) {
+                if (queryDevice(['shell', 'getprop', 'sys.boot_completed']).stdout?.trim() === '1') {
+                  assertOwnedEmulator(ownedEmulator, disposableName, queryDevice);
+                  after = device(['shell', 'cat', '/proc/sys/kernel/random/boot_id']).stdout?.trim();
+                  if (after && after !== before) break;
+                }
+                await sleep(1000);
+              }
+              writeFileSync(join(evidenceDir, `${avd}-backup-reboot.log`), `before=${before} after=${after}\n`);
+              if (!after || after === before) throw new Error('backup proof did not observe a new boot');
+              device(['shell', 'input', 'keyevent', '82']);
+            }
+            // Give Android real elapsed time; no fake clock drives native execution.
+            await sleep(50000);
+            const activities = device(['shell', 'dumpsys', 'activity', 'activities']);
+            writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-activities.log`), activities.stdout ?? '');
+            if (/mResumedActivity:.*dev\.engender\.app/.test(activities.stdout ?? '')) {
+              fail(`${avd}: native backup page absence`, 'MainActivity resumed during delivery proof');
+              continue;
+            }
+            // Read only non-secret state via the debug test package, before instrumentation can start it.
+            let delivered;
+            const deadline = Date.now() + 120000;
+            do {
+              const metadata = device(['shell', 'run-as', 'dev.engender.app', 'cat', 'shared_prefs/engender-auto-export.xml']);
+              const xml = metadata.stdout ?? '';
+              const snapshotAt = Number(/name="lastSnapshotAt" value="(\d+)"/.exec(xml)?.[1] ?? 0);
+              const deliveredAt = Number(/name="lastSuccessAt" value="(\d+)"/.exec(xml)?.[1] ?? 0);
+              if (metadata.status === 0 && snapshotAt && deliveredAt > snapshotAt && !xml.includes('name="encryptedStage"')) {
+                delivered = { snapshotAt, deliveredAt, pid: device(['shell', 'pidof', 'dev.engender.app']).stdout?.trim() };
+                break;
+              }
+              await sleep(1000);
+            } while (Date.now() < deadline);
+            writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-headless-result.json`), JSON.stringify(delivered ?? { failure: 'no native delivery before verification instrumentation' }, null, 2));
+            if (!delivered) fail(`${avd}: native backup ${lifecycle} headless delivery`, 'no verified native result before instrumentation startup');
+            else {
+              ok(`${avd}: native backup ${lifecycle} headless delivery`);
+              backupStage('verify');
+            }
+            backupStage('cleanup');
+          }
+          // Force-stop is a separate platform limitation, never process-death evidence.
+          if (backupStage('prepare')) {
+            device(['shell', 'am', 'force-stop', 'dev.engender.app']);
+            await sleep(50000);
+            const state = device(['shell', 'dumpsys', 'package', 'dev.engender.app']);
+            const pid = device(['shell', 'pidof', 'dev.engender.app']);
+            writeFileSync(join(evidenceDir, `${avd}-backup-force-stop.log`), `${state.stdout}\npidof exit=${pid.status} pid=${pid.stdout}\n`);
+            if (!/stopped=true/.test(state.stdout ?? '') || pid.status !== 1 || pid.stdout.trim()) {
+              fail(`${avd}: native backup force-stop limitation`, 'package did not remain stopped with process absent');
+            } else ok(`${avd}: native backup force-stop limitation`);
+          }
+          backupStage('cleanup');
+          backupStage('ownership-and-destination', 'failuresRetentionAndCancellationUseTheNativeOwner');
+          backupStage('cleanup');
+          const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+            'dev.engender.app.backup.AutoExportDeliveryTest#completeLargeBackupRoundTripsAndFailuresPreserveRecovery',
+            'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 1_200_000 });
+          writeFileSync(join(evidenceDir, `${avd}-backup-existing-manual.log`),
+            `${manual.stdout ?? ''}${manual.stderr ?? ''}\nexit=${manual.status} signal=${manual.signal} error=${manual.error ?? ''}\n`);
+          reportStage(`${avd}: existing large manual backup`, manual, { ok, fail });
+        } else console.log(`SKIP ${avd}: staged Archive production needs a supported WebView`);
+      } finally { backupStage('cleanup'); }
     }
   } catch (e) {
     fail(`${avd}: emulator`, e.message ?? String(e));
