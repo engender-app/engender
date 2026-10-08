@@ -3,9 +3,10 @@ import { base } from '$app/paths';
 import { whenIdle } from '$lib/idle';
 import { isAndroid } from '$lib/platform';
 import { SHELL_CACHE_PREFIX } from './shell-assets';
-import { watchForUpdates } from './update';
+import { checkForNewerRelease as checkWatchedRelease, watchForUpdates } from './update';
 
 let scheduled = false;
+let registrationRequest: Promise<void> | null = null;
 
 /** Registers the worker once boot has reached `ready` or `needs-setup`, and
     then only when the browser is idle (phase 14 pre-release ticket 13).
@@ -46,11 +47,27 @@ export function registerServiceWorkerAfterBoot(status: string): void {
     update to watch for. Registering anyway copied about 50 MB of the app's own
     assets into WebView cache storage - a second copy of what was already on
     the device. */
-export function registerServiceWorker() {
-  if (dev || !('serviceWorker' in navigator)) return;
-  if (isAndroid()) return void removeAndroidServiceWorker();
+export function registerServiceWorker(): void {
+  void ensureServiceWorkerRegistration().catch(() => {
+    /* Background registration failure leaves the journal usable online. */
+  });
+}
 
-  navigator.serviceWorker
+/** Recovery is an explicit action, so it does not wait for boot or idle time.
+    It shares registration with normal boot to install only one watcher. */
+export async function checkForNewerRelease(): Promise<boolean> {
+  if (!(await ensureServiceWorkerRegistration())) return false;
+  return checkWatchedRelease();
+}
+
+async function ensureServiceWorkerRegistration(): Promise<boolean> {
+  if (dev || !('serviceWorker' in navigator)) return false;
+  if (isAndroid()) {
+    removeAndroidServiceWorker();
+    return false;
+  }
+
+  registrationRequest ??= navigator.serviceWorker
     .register(`${base}/service-worker.js`, { updateViaCache: 'none' })
     .then((registration) => {
       watchForUpdates(registration, {
@@ -73,12 +90,12 @@ export function registerServiceWorker() {
         if (document.visibilityState === 'visible') void registration.update().catch(() => {});
       });
     })
-    .catch(() => {
-      /* A worker that will not register - a browser setting, a private window,
-         an origin without HTTPS - leaves an app that needs the network to
-         start. Nothing about the journal itself changes, and there is nothing
-         to tell the user that they could act on. */
+    .catch((error) => {
+      registrationRequest = null;
+      throw error;
     });
+  await registrationRequest;
+  return true;
 }
 
 /** Undoes an install made before the rule above existed. Leaving that worker

@@ -9,6 +9,40 @@ const browser = await launchChromium();
 const { block, ok, finish } = createReporter();
 
 try {
+  await block('cold schema refusal discovers a waiting release', 3, async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(10000);
+    try {
+      await page.goto(`${base}/recovery.html?seed`);
+      await page.waitForSelector('body[data-ready="true"]', { state: 'attached' });
+      await page.evaluate(() => window.recoverySeed.offer());
+      await page.goto(`${base}/recovery.html`);
+      await page.waitForSelector('[data-schema-too-new]');
+      const before = await page.evaluate(() => window.recovery.state());
+      assert.equal(before.status, 'schema-too-new');
+      assert.equal(before.statuses.includes('ready'), false);
+      assert.equal(before.statuses.includes('needs-setup'), false);
+      assert.equal(before.registerCalls, 0);
+      assert.equal(before.updateReady, false);
+      assert.equal(before.waiting, true);
+      assert.equal(before.journalReads, 0);
+      ok('cold refusal leaves registration unwatched and journal unread');
+      const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame(), timeout: 10000 });
+      await page.locator('[data-look-for-newer]').click();
+      await reloaded;
+      await page.waitForSelector('body[data-ready="true"]');
+      const checkpoint = await page.evaluate(() => window.recovery.checkpoint());
+      assert.equal(checkpoint.registerCalls, 1);
+      assert.equal(checkpoint.takeovers, 1);
+      ok('explicit recovery acquires registration and real worker takes over');
+      assert.equal(checkpoint.status, 'schema-too-new');
+      assert.equal(checkpoint.journalReads, 0);
+      ok('handover reloads without reading incompatible journal');
+    } finally {
+      await context.close();
+    }
+  });
   for (const ordering of ['takeover', 'timeout']) {
     for (const fails of [false, true]) {
       const label = `${ordering}: ${fails ? 'failure recovery' : 'saved entry survives reload'}`;

@@ -15,7 +15,8 @@
      better than a button that appears to do nothing. */
 
   import { m } from '$lib/paraglide/messages';
-  import { applyUpdate, checkForNewerRelease } from '$lib/pwa/update';
+  import { applyUpdate } from '$lib/pwa/update';
+  import { checkForNewerRelease } from '$lib/pwa/register';
   import GateScreen from './GateScreen.svelte';
   import { collapse } from '$lib/motion/reveal';
 
