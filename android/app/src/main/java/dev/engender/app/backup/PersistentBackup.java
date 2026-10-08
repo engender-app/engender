@@ -21,13 +21,19 @@ final class PersistentBackup {
         return directory;
     }
 
+    private static boolean isVerified(SharedPreferences preferences, String target) throws org.json.JSONException {
+        org.json.JSONArray verified = new org.json.JSONArray(preferences.getString("verifiedBackups", "[]"));
+        for (int index = 0; index < verified.length(); index++) if (target.equals(verified.getString(index))) return true;
+        return false;
+    }
+
     static void clear(Context context) {
         SharedPreferences preferences = BackupWork.preferences(context);
         String raw = preferences.getString(STAGE, null);
         if (raw != null) {
             try {
                 JSONObject metadata = new JSONObject(raw);
-                if (metadata.has("target") && !preferences.getString("verifiedBackups", "[]").contains(metadata.getString("target"))) {
+                if (metadata.has("target") && !isVerified(preferences, metadata.getString("target"))) {
                     DocumentFile partial = DocumentFile.fromSingleUri(context, Uri.parse(metadata.getString("target")));
                     if (partial != null) partial.delete();
                 }
@@ -68,7 +74,7 @@ final class PersistentBackup {
         if (previous != null) {
             JSONObject old = new JSONObject(previous);
             new File(directory(context), old.getString("file")).delete();
-            if (old.has("target") && !preferences.getString("verifiedBackups", "[]").contains(old.getString("target"))) {
+            if (old.has("target") && !isVerified(preferences, old.getString("target"))) {
                 try {
                     DocumentFile partial = DocumentFile.fromSingleUri(context, Uri.parse(old.getString("target")));
                     if (partial != null) partial.delete();

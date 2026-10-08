@@ -32,8 +32,12 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 .stream().allMatch(info -> info.getState().isFinished()));
             return;
         }
-        if ("prepare".equals(phase) || "defer".equals(phase)) {
+        if ("prepare".equals(phase) || "prepare-interrupted".equals(phase) || "defer".equals(phase)) {
             prepareNativeStage("defer".equals(phase));
+            if ("prepare-interrupted".equals(phase)) {
+                preferences.edit().putString("proofJournalHash", journalFileHash()).commit();
+                resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "interrupted-write", null);
+            }
             return;
         }
         if ("verify-deferred".equals(phase)) {
@@ -45,7 +49,45 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
             assertFalse(preferences.contains("encryptedStage"));
             return;
         }
+        if ("resume-interrupted".equals(phase)) {
+            grantDestination();
+            JSONObject stage = new JSONObject(preferences.getString("encryptedStage", "{}"));
+            assertTrue(stage.has("target"));
+            assertEquals(1, documents().size());
+            assertEquals(preferences.getString("proofJournalHash", null), journalFileHash());
+            preferences.edit().putString("proofInterruptedTarget", stage.getString("target")).commit();
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
+            BackupWork.schedule(app);
+            return;
+        }
+        if ("catch-up".equals(phase)) {
+            try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+                scenario.onActivity(activity -> activity.getBridge().setServerBasePath(bundle.getAbsolutePath()));
+                WebViewProbe probe = new WebViewProbe(scenario, 120);
+                probe.awaitTrue("window.backupProbe && window.backupProbe.ready");
+                JSONObject result = command(probe, "catchUpProtected()");
+                assertTrue(result.toString(), result.getBoolean("authenticated"));
+                assertTrue(result.getBoolean("wrongSecretRejected"));
+                assertTrue(result.getBoolean("liveJournalPreserved"));
+                assertEquals(result.getLong("capturedAt"), result.getLong("backupAgeAt"));
+                assertTrue(result.getLong("deliveredAt") >= result.getLong("capturedAt"));
+                assertEquals(1, documents().size());
+                copyDocument(documents().get(0), new File(bundle, "delivered.ttbackup"));
+                JSONObject restored = command(probe, "recoverProtected()");
+                assertTrue(restored.toString(), restored.getBoolean("currentRows"));
+                assertEquals(2, restored.getInt("attachments"));
+                assertTrue(restored.getBoolean("decodedImage"));
+                System.out.println("Protected catch-up evidence: " + result);
+            }
+            return;
+        }
         assertEquals("verify", phase);
+        if (preferences.contains("proofJournalHash")) {
+            assertEquals(preferences.getString("proofJournalHash", null), journalFileHash());
+            assertEquals(1, documents().size());
+            assertEquals(preferences.getString("proofInterruptedTarget", null), documents().get(0).toString());
+        }
+
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120);
         while (preferences.getLong("lastSuccessAt", 0) == preferences.getLong("proofPreviousSuccess", 0)
             && System.nanoTime() < deadline) Thread.sleep(100);
@@ -90,7 +132,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 } catch (Exception expected) {
                     assertEquals(success, preferences.getLong("lastSuccessAt", 0));
                     assertTrue(preferences.contains("encryptedStage"));
-                    assertTrue(new org.json.JSONArray(preferences.getString("verifiedBackups", "[]")).toString().contains(previous.toString()));
+                    assertEquals(previous.toString(), new org.json.JSONArray(preferences.getString("verifiedBackups", "[]")).getString(0));
                 } finally { resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null); }
                 assertArrayEquals(previousBytes, hash(previous));
             }
@@ -278,11 +320,63 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         } finally { resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null); }
     }
 
+    @Test public void mountedScreenRefreshesNativeDeliveryInBothLocales() throws Exception {
+        prepareNativeStage(false);
+        java.nio.file.Files.copy(app.getDatabasePath("native-backup-protected.sqlite3").toPath(),
+            app.getDatabasePath("engender.sqlite3").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        SharedPreferences preferences = BackupWork.preferences(app);
+        long before = preferences.getLong("lastSuccessAt", 0);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            WebViewProbe page = new WebViewProbe(scenario, 120);
+            page.evaluate("location.href='/settings/export'");
+            page.awaitTrue("!!document.querySelector('#journal-passphrase')");
+            assertEquals("false", page.evaluate("!!document.querySelector('[data-auto-backup-status]')"));
+            unlockRenderedPage(page);
+            page.awaitTrue("!!document.querySelector('[data-auto-backup-status]')");
+            String staged = page.evaluate("document.querySelector('[data-auto-backup-status]').textContent");
+            assertTrue(staged.contains("Delivery is pending"));
+            scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120);
+            while (preferences.getLong("lastSuccessAt", 0) == before && System.nanoTime() < deadline) Thread.sleep(100);
+            assertTrue("native delivery never changed the mounted screen's underlying status", preferences.getLong("lastSuccessAt", 0) > before);
+            scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
+            page.awaitTrue("!!document.querySelector('[data-auto-backup-status]') && !document.querySelector('[data-auto-backup-status]').textContent.includes('Delivery is pending')");
+            assertTrue(page.evaluate("document.querySelector('[data-auto-backup-status]').textContent").contains("Journal captured"));
+            System.out.println("English native screen outcome: " + page.evaluate("document.querySelector('[data-auto-backup-status]').textContent"));
+            page.evaluate("localStorage.setItem('PARAGLIDE_LOCALE','pl');location.reload()");
+            page.awaitTrue("!!document.querySelector('#journal-passphrase')");
+            assertEquals("false", page.evaluate("!!document.querySelector('[data-auto-backup-status]')"));
+            assertEquals("false", page.evaluate("document.body.textContent.includes('Before cold deferral') || document.body.textContent.includes('After authenticated unlock')"));
+            unlockRenderedPage(page);
+            page.awaitTrue("!!document.querySelector('[data-auto-backup-status]')");
+            String polish = page.evaluate("document.querySelector('[data-auto-backup-status]').textContent");
+            assertTrue(polish.contains("Stan dziennika"));
+            preferences.edit().putLong("lastFailureAt", System.currentTimeMillis()).putString("lastFailureReason", "destination-unavailable").commit();
+            scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
+            scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
+            page.awaitTrue("document.querySelector('[data-auto-backup-status]').textContent.includes('Nie udało się zapisać zaszyfrowanej kopii')");
+            preferences.edit().putLong("deferredAt", System.currentTimeMillis()).remove("lastFailureAt").remove("lastFailureReason").commit();
+            scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);
+            scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);
+            page.awaitTrue("document.querySelector('[data-auto-backup-status]').textContent.includes('odblokowanie')");
+            System.out.println("Polish native screen outcome: " + page.evaluate("document.querySelector('[data-auto-backup-status]').textContent"));
+        }
+    }
+
+    private void unlockRenderedPage(WebViewProbe page) throws Exception {
+        page.evaluate("(() => {const input=document.querySelector('#journal-passphrase');input.value='synthetic current journal credential';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[data-passphrase-submit]').click();})()");
+    }
+
+    private String journalFileHash() throws Exception {
+        byte[] bytes = java.nio.file.Files.readAllBytes(app.getDatabasePath("native-backup-protected.sqlite3").toPath());
+        return android.util.Base64.encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(bytes), android.util.Base64.NO_WRAP);
+    }
+
     private void grantDestination() throws Exception {
         java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(1);
         app.sendOrderedBroadcast(new Intent().setComponent(new android.content.ComponentName(
             InstrumentationRegistry.getInstrumentation().getContext().getPackageName(), BackupDocumentsProvider.Bootstrap.class.getName()))
-            .putExtra("targetPackage", app.getPackageName()), null, new android.content.BroadcastReceiver() {
+            .putExtra("targetPackage", app.getPackageName()).putExtra("reset", false), null, new android.content.BroadcastReceiver() {
                 @Override public void onReceive(Context context, Intent intent) { ready.countDown(); }
             }, null, 0, null, null);
         assertTrue(ready.await(10, TimeUnit.SECONDS));
@@ -317,6 +411,15 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                     .putString("destinationUri", tree.toString()).commit();
             }
             if (deferred) {
+                if (android.os.Build.VERSION.SDK_INT >= 28) {
+                copyAssets("auto-export-probe", bundle);
+                try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+                    scenario.onActivity(activity -> activity.getBridge().setServerBasePath(bundle.getAbsolutePath()));
+                    WebViewProbe probe = new WebViewProbe(scenario, 120);
+                    probe.awaitTrue("window.backupProbe && window.backupProbe.ready");
+                    assertTrue(command(probe, "prepareProtected()").getBoolean("protectedClosed"));
+                }
+                }
                 long last = System.currentTimeMillis() - 7 * BackupWork.DAY + 45000;
                 preferences.edit().putLong("lastSuccessAt", last).putLong("proofPreviousSuccess", last).commit();
                 BackupWork.schedule(app);
