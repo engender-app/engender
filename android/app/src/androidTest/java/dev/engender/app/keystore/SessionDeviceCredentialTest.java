@@ -3,6 +3,11 @@ package dev.engender.app.keystore;
 import static org.junit.Assert.*;
 import static dev.engender.app.keystore.LockScreenTestSupport.*;
 
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.graphics.Rect;
+import android.accessibilityservice.AccessibilityServiceInfo;
+import android.app.UiAutomation;
+import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.lifecycle.Lifecycle;
 import androidx.biometric.BiometricManager;
 import static org.junit.Assume.assumeTrue;
@@ -60,7 +65,7 @@ public class SessionDeviceCredentialTest {
             scenario.onActivity(activity -> plugin(activity).confirm(confirm));
             enterCredential(confirm);
             assertEquals("authenticated", confirm.result.getString("outcome"));
-            CapturedCall unlock = new CapturedCall(true);
+            CapturedCall unlock = new CapturedCall("unlock", true);
             scenario.onActivity(activity -> plugin(activity).unlock(unlock));
             enterCredential(unlock);
             assertEquals("authenticated", unlock.result.getString("outcome"));
@@ -70,9 +75,30 @@ public class SessionDeviceCredentialTest {
 
     private void enterCredential(CapturedCall call) throws Exception {
         assertFalse("authentication answered without the credential", call.done.await(2, TimeUnit.SECONDS));
+        UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+        AccessibilityServiceInfo info = automation.getServiceInfo();
+        info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        automation.setServiceInfo(info);
+        AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+        assertTrue("credential field was not focused", focusCredentialField(root));
         shell("input text " + PIN);
         shell("input keyevent KEYCODE_ENTER");
         assertTrue("credential did not finish authentication", call.done.await(5, TimeUnit.SECONDS));
+    }
+
+    private boolean focusCredentialField(AccessibilityNodeInfo node) throws Exception {
+        if (node == null) return false;
+        String id = node.getViewIdResourceName();
+        if (id != null && (id.endsWith("/password_entry") || id.endsWith("/lockPassword"))) {
+            Rect bounds = new Rect();
+            node.getBoundsInScreen(bounds);
+            shell("input tap " + bounds.centerX() + " " + bounds.centerY());
+            return true;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            if (focusCredentialField(node.getChild(i))) return true;
+        }
+        return false;
     }
 
     private KeystorePlugin plugin(MainActivity activity) {
@@ -82,7 +108,10 @@ public class SessionDeviceCredentialTest {
         final CountDownLatch done = new CountDownLatch(1);
         JSObject result;
         CapturedCall(boolean credential) {
-            this("confirm", new JSObject().put("title", "Open journal").put("subtitle", "Confirm device access")
+            this("confirm", credential);
+        }
+        CapturedCall(String method, boolean credential) {
+            this(method, new JSObject().put("title", "Open journal").put("subtitle", "Confirm device access")
                 .put("cancel", "Cancel").put("deviceCredential", credential));
         }
         CapturedCall(String method, JSObject data) {
