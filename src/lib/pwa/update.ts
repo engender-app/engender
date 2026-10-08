@@ -145,7 +145,10 @@ export async function checkForNewerRelease(): Promise<boolean> {
   const registration = watched;
   if (!registration) return false;
 
-  await registration.update().catch(() => {});
+  await registration.update().catch((error) => {
+    // An installed release can still recover this page while offline.
+    if (!registration.waiting) throw error;
+  });
   const installing = registration.installing;
   if (installing && installing.state === 'installing') {
     await new Promise<void>((resolve) => {
