@@ -1,10 +1,24 @@
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchChromium, previewBuild, screencast, settlePage } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, saveSceneCast } from './yank-sweep-core.mjs';
 
 const args = process.argv.slice(2);
+const reportIndex = args.indexOf('--report');
+if (reportIndex >= 0) {
+  const report = JSON.parse(await readFile(args[reportIndex + 1], 'utf8'));
+  assert.equal(report.complete, true);
+  assert.equal(report.report.length, 4);
+  const owned = report.report.flatMap((run) => {
+    assert.ok(run.scene.startsWith('cycle-week-'));
+    assert.ok(!run.error && run.cast > 0);
+    return run.yanks.filter((finding) => !(finding.kind === 'colour' && finding.mark.includes('kit-strip-cell')) && !finding.mark.includes('day-strip-week'));
+  });
+  assert.deepEqual(owned, [], 'Cycle weekly rows or history still yank in the original sweep');
+  console.log('Original sweep: no Cycle weekly-row or history yanks');
+  process.exit(0);
+}
 const outIndex = args.indexOf('--out');
 const out = resolve(outIndex >= 0 ? args[outIndex + 1] : '.claude/cycle-week-motion');
 await mkdir(out, { recursive: true });
