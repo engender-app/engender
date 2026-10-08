@@ -20,7 +20,20 @@ describe('shared SPA gesture preparation', () => {
     const options = [];
     const oldRoot = { isConnected: true };
     const main = { children: [oldRoot] };
+    const product = { className: 'product-card' };
+    const proofRoot = {
+      children: [product], getAttribute: () => 'ready',
+      querySelectorAll(selector) {
+        expect(selector).toBe(':scope > [class^="yank-proof-"]');
+        return this.children.filter(node => node.className.startsWith('yank-proof-'));
+      }
+    };
+    if (over.proof) for (const shape of ['jump', 'cut', 'bloat', 'colour', 'there-and-back', 'arrival']) {
+      const node = { className: 'yank-proof-' + shape, remove: () => proofRoot.children.splice(proofRoot.children.indexOf(node), 1) };
+      proofRoot.children.push(node);
+    }
     const env = {
+      __yankProof: over.proof ? () => {} : undefined, journalData: product,
       Date: { now: () => clock }, Event: class {}, performance: { timeOrigin: 100 },
       setTimeout: (fn, ms) => { clock += ms; delete env.document.documentElement.dataset.nav; fn(); },
       location: { pathname: over.route ?? '/', search: '' },
@@ -28,6 +41,7 @@ describe('shared SPA gesture preparation', () => {
         documentElement: { dataset: {} },
         createElement: () => { const option = { value: '', remove: () => options.splice(options.indexOf(option), 1) }; return option; },
         querySelector: selector => selector === '#demo-jump' ? select : selector === '#app-main' ? main
+          : selector === '[data-app-root]' ? proofRoot
           : selector === '[data-quick-add]' && fan ? { click: () => { if (!over.stuckFan) fan = false; } }
           : selector === '[data-fan]' && fan ? {} : selector === '[data-app-root][data-boot="ready"]' && !over.gate ? {} : null
       }
@@ -48,7 +62,7 @@ describe('shared SPA gesture preparation', () => {
       }
     };
     const run = (path, predecessor = null) => runInNewContext(gestureNavigationExpression(path, predecessor), env);
-    return { run, env, routes, options, oldRoot };
+    return { run, env, routes, options, oldRoot, proofRoot, product };
   };
   it('remounts repeated routes without claiming a new document', async () => {
     const state = await fixture({ route: '/calendar', fan: true });
@@ -69,6 +83,14 @@ describe('shared SPA gesture preparation', () => {
     expect(await state.run('/stats')).toMatchObject({ targetMounted: true });
     expect(state.env.document.documentElement.dataset.nav).toBeUndefined();
     expect(await state.run('/stats')).toMatchObject({ targetMounted: true });
+  });
+  it('removes completed synthetic marks before the next SPA scene without touching product state', async () => {
+    const state = await fixture({ proof: true });
+    expect(state.proofRoot.children).toHaveLength(7);
+    await state.run('/settings');
+    expect(state.proofRoot.children).toEqual([state.product]);
+    expect(state.env.journalData).toBe(state.product);
+    expect(state.env.__yankProof).toBeUndefined();
   });
   for (const [name, setup, error] of [
     ['stale mount', { stale: true }, 'old screen remained mounted'],
