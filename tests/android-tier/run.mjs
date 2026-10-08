@@ -35,19 +35,18 @@
    instrumentation output into those lines. */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtempSync, openSync, closeSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { runInstrumentation, reportStage } from './instrumentation.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
 const androidDir = join(repo, 'android');
 const { ok, fail, finish } = createReporter();
 
-/* The emulator segfaults on this machine when started with -no-window, so
-   it is started windowed even in an automated run. Set ANDROID_TIER_HEADLESS=1
-   on a machine where that is not true. */
+/* Headless runs use software graphics with Vulkan disabled. */
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
 const AVDS = (process.env.ANDROID_TIER_AVDS ?? 'gd26,tracker35').split(',').filter(Boolean);
 const BOOT_TIMEOUT_MS = 300_000;
@@ -116,76 +115,52 @@ function run(command, args, options = {}) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Waits for the emulator to finish booting, not merely to appear in `adb devices`. */
-async function waitForBoot(deadline) {
+async function waitForBoot(serial, deadline) {
   while (Date.now() < deadline) {
-    const booted = run(adb, ['shell', 'getprop', 'sys.boot_completed']).stdout?.trim();
+    const booted = run(adb, ['-s', serial, 'shell', 'getprop', 'sys.boot_completed']).stdout?.trim();
     if (booted === '1') return true;
     await sleep(2000);
   }
   return false;
 }
 
-async function startEmulator(avd) {
-  const args = ['-avd', avd, '-no-snapshot', '-no-audio', '-wipe-data'];
-  if (HEADLESS) args.push('-no-window');
-  const child = spawn(emulatorBin, args, { env, detached: true, stdio: 'ignore' });
+let ownedEmulator;
+async function startEmulator(avd, serial, port) {
+  const args = ['-avd', avd, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
+  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
+  const avdHome = mkdtempSync(join(evidenceDir, `${avd}-`));
+  const source = join(process.env.ANDROID_AVD_HOME ?? join(process.env.HOME, '.android/avd'), `${avd}.avd`);
+  const clone = join(avdHome, `${avd}.avd`);
+  mkdirSync(clone);
+  const config = readFileSync(join(source, 'config.ini'), 'utf8')
+    .replace(/^disk.dataPartition.path=.*$/m, `disk.dataPartition.path=${join(clone, 'userdata-qemu.img')}`)
+    .replace(/^sdcard.path=.*\n?/m, '');
+  writeFileSync(join(clone, 'config.ini'), config);
+  writeFileSync(join(avdHome, `${avd}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
+  const log = openSync(join(avdHome, 'emulator.log'), 'w');
+  const child = spawn(emulatorBin, args, { env: { ...env, ANDROID_AVD_HOME: avdHome }, detached: true, stdio: ['ignore', log, log] });
+  ownedEmulator = child;
+  closeSync(log);
+  child.on('error', (error) => writeFileSync(join(avdHome, 'startup-error.log'), error.message));
   child.unref();
 
-  run(adb, ['wait-for-device'], { timeout: BOOT_TIMEOUT_MS });
-  const booted = await waitForBoot(Date.now() + BOOT_TIMEOUT_MS);
+  run(adb, ['-s', serial, 'wait-for-device'], { timeout: BOOT_TIMEOUT_MS });
+  const booted = await waitForBoot(serial, Date.now() + BOOT_TIMEOUT_MS);
   if (!booted) throw new Error(`${avd} did not finish booting within ${BOOT_TIMEOUT_MS / 1000}s`);
 
   // An emulator that is "booted" can still be showing the lock screen.
-  run(adb, ['shell', 'input', 'keyevent', '82']);
+  run(adb, ['-s', serial, 'shell', 'input', 'keyevent', '82']);
   return child;
 }
 
-function stopEmulator() {
-  run(adb, ['emu', 'kill']);
-  run(adb, ['kill-server']);
+function stopEmulator(serial) {
+  if (!ownedEmulator) return;
+  run(adb, ['-s', serial, 'emu', 'kill']);
+  ownedEmulator.kill();
+  ownedEmulator = undefined;
 }
 
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
-
-/** Gradle writes one XML per device and leaves earlier ones in place, so
-    without this the second emulator inherits the first one's verdicts - and
-    a run that skipped a test reports the last run's result for it. */
-function clearResults() {
-  rmSync(RESULTS_DIR, { recursive: true, force: true });
-}
-
-/** Parses `gradlew connectedAndroidTest` output into one line per test. */
-function reportInstrumentation(avd, output) {
-  /* Gradle prints a line per failing test and stays quiet about passing
-     ones, so the XML report is what says which tests ran at all. */
-  const resultsDir = RESULTS_DIR;
-
-  let files = [];
-  try {
-    files = readdirSync(resultsDir, { recursive: true }).filter((f) => String(f).endsWith('.xml'));
-  } catch {
-    fail(
-      `${avd}: instrumentation results`,
-      `no result XML in ${resultsDir}; gradle said:\n${output.slice(-1500)}`
-    );
-    return;
-  }
-
-  let sawAny = false;
-  for (const file of files) {
-    const xml = readFileSync(join(resultsDir, String(file)), 'utf8');
-    for (const [, attrs, body] of xml.matchAll(/<testcase([^>]*)(?:\/>|>([\s\S]*?)<\/testcase>)/g)) {
-      const name = /name="([^"]*)"/.exec(attrs)?.[1] ?? '?';
-      const klass = (/classname="([^"]*)"/.exec(attrs)?.[1] ?? '').split('.').pop();
-      const failure = body && /<(failure|error)[^>]*>([\s\S]*?)<\/\1>/.exec(body);
-      sawAny = true;
-      if (failure) fail(`${avd} ${klass}.${name}`, failure[2].trim().split('\n')[0]);
-      else ok(`${avd} ${klass}.${name}`);
-    }
-  }
-
-  if (!sawAny) fail(`${avd}: instrumentation results`, `no test cases in ${resultsDir}\n${output.slice(-800)}`);
-}
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
 for (const probe of ['contract', 'encryption', 'archive', 'auto-export', 'long-journal']) {
@@ -235,12 +210,19 @@ const gradleEnv = { JAVA_HOME: home };
      cd android && ./gradlew :app:connectedDebugAndroidTest \
        -Pandroid.testInstrumentationRunnerArguments.class=dev.engender.app.longjournal.LongJournalBenchmarkTest
    Then copy the logged JSON block into android-budgets.json and commit it. */
+const PIN_WAIT_TEST = 'dev.engender.app.lock.PinAttemptWaitPersistenceTest';
+const evidenceRoot = resolve(process.env.ANDROID_TIER_LOG_DIR ?? join(repo, '.claude/android-tier'));
+mkdirSync(evidenceRoot, { recursive: true });
+const evidenceDir = mkdtempSync(join(evidenceRoot, 'run-'));
+console.log(`Android evidence: ${evidenceDir}`);
+const port = Number(process.env.ANDROID_TIER_PORT ?? 5580);
+const serial = `emulator-${port}`;
+if (run(adb, ['-s', serial, 'get-state']).status === 0) throw new Error(`${serial} already exists; choose an unused ANDROID_TIER_PORT`);
 const BENCHMARK_TEST = 'dev.engender.app.longjournal.LongJournalBenchmarkTest';
 
 for (const avd of AVDS) {
   try {
-    clearResults();
-    await startEmulator(avd);
+    await startEmulator(avd, serial, port);
     ok(`${avd} booted`);
 
     const nativeOnly = NATIVE_ONLY.has(avd);
@@ -252,26 +234,60 @@ for (const avd of AVDS) {
        module Capacitor generates has an androidTest variant of its own, and it
        fails to dex on a Kotlin stdlib clash between androidx.test's 1.8.22 and a
        transitive 1.6.21. Nothing of ours is in that module. */
-    const test = run(
+    await runInstrumentation({
+      label: avd,
+      resultsDir: RESULTS_DIR,
+      reporter: { ok, fail },
+      invoke: () => {
+        const result = run(
       './gradlew',
       [
         ':app:connectedDebugAndroidTest',
         '--console=plain',
         ...(nativeOnly
           ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-          : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST}`])
+          : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST}`])
       ],
       {
         cwd: androidDir,
-        env: { ...env, ...gradleEnv },
+        env: { ...env, ...gradleEnv, ANDROID_SERIAL: serial },
         timeout: 900_000
       }
-    );
-    reportInstrumentation(avd, `${test.stdout ?? ''}${test.stderr ?? ''}`);
+        );
+        writeFileSync(join(evidenceDir, `${avd}-instrumentation.log`),
+          `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
+        return result;
+      }
+    });
+    {
+      const stage = (name, method = 'deadlineSurvivesActualProcessDeath') => {
+        const result = run(adb, ['-s', serial, 'shell', 'am', 'instrument', '-w', '-r',
+          '-e', 'class', `${PIN_WAIT_TEST}#${method}`, '-e', 'pinWaitStage', name,
+          'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 120_000 });
+        writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}.log`), `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
+        const proofLog = run(adb, ['-s', serial, 'logcat', '-d', '-s', 'PinWaitProof:I', '*:S']);
+        writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}-process.log`), `${proofLog.stdout ?? ''}${proofLog.stderr ?? ''}`);
+        return reportStage(`${avd}: PIN wait ${name}`, result, { ok, fail });
+      };
+      try {
+        stage('preferences', 'preferenceDeadlineSurvivesANewOwnerAndNewBoot');
+        if (stage('seed')) {
+          const killed = run(adb, ['-s', serial, 'shell', 'am', 'force-stop', 'dev.engender.app']);
+          const pid = run(adb, ['-s', serial, 'shell', 'pidof', 'dev.engender.app']);
+          writeFileSync(join(evidenceDir, `${avd}-pin-wait-termination.log`), `force-stop exit=${killed.status}\npidof exit=${pid.status} stdout=${pid.stdout}\n`);
+          if (killed.status !== 0 || pid.status !== 1 || pid.stdout.trim()) {
+            fail(`${avd}: PIN wait process termination`, 'force-stop did not leave the app process absent');
+          } else {
+            ok(`${avd}: PIN wait process termination`);
+            stage('restore');
+          }
+        }
+      } finally { stage('cleanup'); }
+    }
   } catch (e) {
     fail(`${avd}: emulator`, e.message ?? String(e));
   } finally {
-    stopEmulator();
+    stopEmulator(serial);
     await sleep(3000);
   }
 }
