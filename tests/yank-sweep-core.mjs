@@ -247,8 +247,8 @@ const SCENES = [
   { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', prepare: ['[data-list-row="tag-groups"]'], nav: true, after: {"route": "/settings/tags"}, is: 'a door into a deep screen' },
   { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, after: {"route": "/settings"}, is: 'a deep screen back to its door' },
   { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', after: {"selector": "[data-fan]"}, is: 'the sheet rising' },
-  { name: 'segment-lookback', at: '/stats', act: '[data-span-era], [data-span-band]', when: 'persona', after: {"selector": "[data-span-timeline]", "attribute": "data-span-start"}, is: 'the segmented pill sliding' },
-  { name: 'span-offer-appear', at: '/stats', act: '[data-span-era], [data-span-band]', when: 'persona', after: {"selector": "[data-span-timeline]", "attribute": "data-span-start"}, is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
+  { name: 'segment-lookback', at: '/stats', act: '[data-span-band]', when: 'persona', after: {"selector": "[data-span-timeline]", "attribute": "data-span-start"}, is: 'the segmented pill sliding' },
+  { name: 'span-offer-appear', at: '/stats', act: '[data-span-band]', when: 'persona', after: {"selector": "[data-era-offer]"}, is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', after: {"route": "/entry/new/today"}, is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '[data-backup-notice] [data-notice-dismiss]', when: 'persona', reseed: true, after: {"selector": "[data-backup-notice]", "absent": true}, is: 'a notice dismissed, its height closing' },
   /* Redesign ticket 47: Safe space opens on the breath and everything else
@@ -473,8 +473,23 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
     evidence.key = scene.key;
   } else hit.click();
   evidence.dispatched = true;
+  if (!scene.cleanup) env.__sweepAction = evidence;
   return evidence;
 }
+
+export const cleanupSceneExpression = (scene) => scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
+  const cleanup = { cleanup: true, act: '[data-era-offer-dismiss]', after: { selector: '[data-era-offer]', absent: true } };
+  const dispatch = ${dispatchSceneAction};
+  let ready = false;
+  for (let i = 0; i < 200 && !ready; i++) {
+    try { dispatch(cleanup, globalThis, true); ready = true; }
+    catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+  }
+  if (!ready) throw new Error('naming offer cleanup control did not become ready');
+  const action = dispatch(cleanup);
+  for (let i = 0; i < 200 && document.querySelector('[data-era-offer]'); i++) await new Promise((resolve) => setTimeout(resolve, 50));
+  return (${verifySceneAction})(cleanup, action);
+})()`;
 
 export const actionPreparationExpression = (scene) => `(${dispatchSceneAction})(${JSON.stringify(scene)}, globalThis, true)`;
 
@@ -548,13 +563,23 @@ export const profileProofExpression = (profile) => `(() => {
   return proof;
 })()`;
 
+export function readThemeProof(requested, env = globalThis) {
+  const button = [...env.document.querySelectorAll('.demo-bar button')].find((node) =>
+    (node.textContent ?? '').trim() === (requested === 'dark' ? 'Dark' : 'Light'));
+  return { requested, selected: !!button?.classList.contains('is-active'),
+    persisted: JSON.parse(env.localStorage.getItem('engender-boot-prefs') ?? '{}').theme,
+    painted: env.document.documentElement.dataset.theme,
+    transitioning: env.document.documentElement.dataset.appearanceTransition !== undefined };
+}
+
 export const coldLoadProofExpression = (href, profile, theme, outcome = null) => `(() => {
+  const themeProof = (${readThemeProof})(${JSON.stringify(theme)});
   const expected = new URL(${JSON.stringify(href)}, location.origin);
   const outcome = ${JSON.stringify(outcome)};
   const requested = expected.pathname + expected.search;
   if (outcome?.consumedQuery) expected.searchParams.delete(outcome.consumedQuery);
   const surface = outcome?.selector ? document.querySelector(outcome.selector) : null;
-  const proof = { requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
+  const proof = { themeProof, requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
     surface: outcome?.selector ? !!surface?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : undefined,
     surfaceSelector: outcome?.selector,
     profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
@@ -565,19 +590,20 @@ export const coldLoadProofExpression = (href, profile, theme, outcome = null) =>
   if (proof.profile !== ${JSON.stringify(profile)}) throw new Error('cold-load wrong profile: ' + JSON.stringify(proof));
   if (proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('cold-load journal profile mismatch: ' + JSON.stringify(proof));
   if (proof.boot !== 'ready' || proof.unavailable || proof.loading) throw new Error('cold-load unfinished screen: ' + JSON.stringify(proof));
-  if (proof.theme !== ${JSON.stringify(theme)}) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
+  if (proof.theme !== ${JSON.stringify(theme)} || !themeProof.selected || themeProof.persisted !== ${JSON.stringify(theme)} || themeProof.transitioning) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
   return proof;
 })()`;
 
 export function verifyGateProof(proof, profile, theme) {
   if (proof.route !== '/') throw new Error('PIN gate wrong route: ' + JSON.stringify(proof));
   if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
-  if (proof.theme !== theme) throw new Error('PIN gate wrong theme: ' + JSON.stringify(proof));
+  if (proof.theme !== theme || !proof.themeProof?.selected || proof.themeProof.persisted !== theme || proof.themeProof.painted !== theme || proof.themeProof.transitioning) throw new Error('PIN gate wrong theme: ' + JSON.stringify(proof));
   if (!proof.pin || proof.home || !['needs-unlock', 'ready'].includes(proof.boot)) throw new Error('PIN gate wrong boot state: ' + JSON.stringify(proof));
   return { ...proof, gate: 'pin' };
 }
 
 export const gateProofExpression = (profile, theme) => `(${verifyGateProof})({
+  themeProof: (${readThemeProof})(${JSON.stringify(theme)}),
   route: location.pathname + location.search,
   profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
   hasEntries: localStorage.getItem('engender-has-entries'),
@@ -634,6 +660,7 @@ export function coverageSummary(scenes, profiles, themes, passes, report) {
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};
   const control = ${dispatchSceneAction};
+  globalThis.__sweepAction = null;
   globalThis.__sweepPreparation = { scene: scene.name, steps: [] };
   const prepare = async (step) => {
     let error;
@@ -681,6 +708,26 @@ export const prepareSceneExpression = (scene) => `(async () => {
   if (document.querySelector('[data-comfort-grip]')) { await dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
   const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
   if (attribution) { attribution.click(); await sleep(500); }
+  if (scene.name === 'segment-lookback' || scene.name === 'span-offer-appear') {
+    await dispatch({ act: '[data-span-band]' });
+    await sleep(500);
+    const timeline = document.querySelector('[data-span-timeline]');
+    const before = timeline.getAttribute('data-span-start');
+    if (scene.name === 'span-offer-appear') {
+      await dispatch({ act: '[data-span-handle="start"]', key: 'Home' });
+      await sleep(500);
+      await dispatch({ act: '[data-span-handle="end"]', key: 'Home' });
+      await sleep(500);
+      await dispatch({ act: '[data-era-offer-dismiss]' });
+      for (let i = 0; i < 200 && document.querySelector('[data-era-offer]'); i++) await sleep(50);
+      if (document.querySelector('[data-era-offer]')) throw new Error('preparation naming offer did not dismiss');
+    } else {
+      const key = Number(before) > Number(timeline.getAttribute('data-rail-start')) ? 'ArrowLeft' : 'ArrowRight';
+      await dispatch({ act: '[data-span-handle="start"]', key });
+      await sleep(500);
+    }
+    if (timeline.getAttribute('data-span-start') === before) throw new Error('span prerequisite did not change its start');
+  }
   for (const act of scene.prepare ?? []) {
     await dispatch({ act });
     await sleep(500);
@@ -2083,14 +2130,7 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
 /** The demo bar's theme buttons, so a cold load reads the run's theme out
  *  of the preferences the boot stamps rather than out of a stylesheet
  *  patched after the fact. */
-export const DEMO_THEME_EXPRESSION = (theme) => `(() => {
-  const btn = [...document.querySelectorAll('.demo-bar button')].find((b) =>
-    (b.textContent ?? '').trim() === ${JSON.stringify(theme === 'dark' ? 'Dark' : 'Light')}
-  );
-  if (!btn) throw new Error('no ${theme} button on the demo bar');
-  btn.click();
-  return true;
-})()`;
+export const DEMO_THEME_EXPRESSION = (theme) => SETTLE_PAGE_EXPRESSION(theme);
 
 /** The lock-gate epilogue: walk the access-mode screen into a PIN, so the
  *  next cold load has a gate to draw. The pad completes and submits itself
@@ -2306,9 +2346,8 @@ export function describeHydrationRun(name, dom, render) {
 export async function pushHydrationRun(report, outDir, { name, is, profile, theme, result, href = null, dump = false }) {
   const dom = findHydrationYanks(result.frames);
   const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`, EVIDENCE_CAP, { readyFrame: result.readyFrame });
-  if (dump || dom.yanks.length)
-    await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
-  const evidence = dom.yanks.length ? await saveSceneCast(result.cast, outDir, name, `${profile}-${theme}`) : null;
+  await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
+  const evidence = await saveSceneCast(result.cast, outDir, name, `${profile}-${theme}`);
   const entry = {
     scene: name,
     ...(evidence ? { evidence } : {}),

@@ -117,7 +117,7 @@ it('rejects measured actions under the wrong starting theme', () => {
 
 it('rejects a PIN gate whose prepared journal or theme does not match', async () => {
   const { verifyGateProof } = await import('./yank-sweep-core.mjs');
-  const proof = { route: '/', profile: 'empty', hasEntries: '0', theme: 'light', boot: 'needs-unlock', pin: true, home: false };
+  const proof = { themeProof: { selected: true, persisted: 'light', painted: 'light', transitioning: false }, route: '/', profile: 'empty', hasEntries: '0', theme: 'light', boot: 'needs-unlock', pin: true, home: false };
   expect(() => verifyGateProof(proof, 'persona', 'light')).toThrow('profile');
   expect(() => verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'dark')).toThrow('theme');
   expect(verifyGateProof({ ...proof, profile: 'persona', hasEntries: '1' }, 'persona', 'light')).toMatchObject({ gate: 'pin' });
@@ -131,9 +131,10 @@ describe('query-driven cold surfaces', () => {
     return runInNewContext(coldLoadProofExpression(scene.at + extraQuery, 'persona', 'light', scene.coldOutcome), {
       URL,
       location: { origin: 'https://journal.test', pathname: new URL(scene.at, 'https://journal.test').pathname, search },
-      localStorage: { getItem: (key) => key === 'engender-has-entries' ? '1' : 'persona' },
+      localStorage: { getItem: (key) => key === 'engender-has-entries' ? '1' : key === 'engender-boot-prefs' ? JSON.stringify({ theme: 'light' }) : 'persona' },
       document: {
         documentElement: { dataset: { theme: 'light' } },
+        querySelectorAll: () => [{ textContent: 'Light', classList: { contains: () => true } }],
         querySelector: (selector) => selector === '[data-app-root]' ? { dataset: { boot: 'ready' } }
           : selector === scene.coldOutcome?.selector && surface ? { checkVisibility: () => true } : null
       }
@@ -152,8 +153,8 @@ describe('query-driven cold surfaces', () => {
     const { runInNewContext } = await import('node:vm');
     expect(() => runInNewContext(coldLoadProofExpression('/settings?unrelated=kept', 'persona', 'light'), {
       URL, location: { origin: 'https://journal.test', pathname: '/settings', search: '' },
-      localStorage: { getItem: () => 'persona' },
-      document: { documentElement: { dataset: { theme: 'light' } }, querySelector: () => null }
+      localStorage: { getItem: (key) => key === 'engender-boot-prefs' ? '{}' : 'persona' },
+      document: { documentElement: { dataset: { theme: 'light' } }, querySelectorAll: () => [], querySelector: () => null }
     })).toThrow('route');
   });
 });
@@ -394,4 +395,71 @@ it('retains preparation failure after bounded missing-control wait', async () =>
   env.setTimeout = (resolve) => resolve();
   await expect(runInNewContext(prepareSceneExpression({ name: 'missing', act: '#gone' }), env)).rejects.toThrow('preparation did not become ready');
   expect(env.__sweepPreparation.error).toContain('missing target: #gone');
+});
+
+it('changes span fixture before each measured band selection', async () => {
+  const { prepareSceneExpression, dispatchSceneAction, verifySceneAction } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  let start = '100';
+  const timeline = { getAttribute: (name) => name === 'data-rail-start' ? '0' : start };
+  const env = environment();
+  const band = control({ scrollIntoView: () => { env.document.elementFromPoint = () => band; }, click: () => { start = '100'; } });
+  const handle = control({ scrollIntoView: () => { env.document.elementFromPoint = () => handle; },
+    focus: () => { env.document.activeElement = handle; }, dispatchEvent: () => { start = '90'; } });
+  env.document.documentElement = { dataset: { theme: 'light' } };
+  env.document.querySelector = (selector) => selector === '[data-span-timeline]' ? timeline : null;
+  env.document.querySelectorAll = (selector) => selector === '[data-span-band]' ? [band]
+    : selector === '[data-span-handle="start"]' ? [handle] : selector === '[data-span-timeline]' ? [timeline] : [];
+  env.KeyboardEvent = class {};
+  env.setTimeout = (resolve) => resolve();
+  const scene = { name: 'segment-lookback', act: '[data-span-band]', after: { selector: '[data-span-timeline]', attribute: 'data-span-start' } };
+  for (let pass = 0; pass < 3; pass++) {
+    await runInNewContext(prepareSceneExpression(scene), env);
+    expect(start).toBe('90');
+    const action = dispatchSceneAction(scene, env);
+    expect(verifySceneAction(scene, action, env).verified).toBe(true);
+  }
+});
+
+it('prepares disjoint dismissed span, measures naming offer, and proves cleanup', async () => {
+  const { prepareSceneExpression, cleanupSceneExpression, dispatchSceneAction, verifySceneAction } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  let start = '100', end = '200', offer = true;
+  const timeline = { getAttribute: (name) => name === 'data-rail-start' ? '0' : name === 'data-span-start' ? start : end };
+  const env = environment();
+  const target = (over) => {
+    const node = control({ ...over, scrollIntoView: () => { env.document.elementFromPoint = () => node; }, focus: () => { env.document.activeElement = node; } });
+    return node;
+  };
+  const band = target({ click: () => { start = '100'; end = '200'; offer = true; } });
+  const startHandle = target({ dispatchEvent: () => { start = '0'; offer = true; } });
+  const endHandle = target({ dispatchEvent: () => { end = '0'; offer = true; } });
+  const dismiss = target({ click: () => { expect(start === '0' && end === '0' || start === '100' && end === '200').toBe(true); offer = false; } });
+  env.document.documentElement = { dataset: { theme: 'light' } };
+  const nodes = { '[data-span-band]': band, '[data-span-handle="start"]': startHandle, '[data-span-handle="end"]': endHandle, '[data-era-offer-dismiss]': dismiss, '[data-span-timeline]': timeline };
+  env.document.querySelector = (selector) => selector === '[data-era-offer]' ? (offer ? {} : null) : nodes[selector] ?? null;
+  env.document.querySelectorAll = (selector) => selector === '[data-era-offer]' ? (offer ? [{}] : []) : nodes[selector] ? [nodes[selector]] : [];
+  env.KeyboardEvent = class {};
+  env.setTimeout = (resolve) => resolve();
+  const scene = { name: 'span-offer-appear', act: '[data-span-band]', after: { selector: '[data-era-offer]' } };
+  await runInNewContext(prepareSceneExpression(scene), env);
+  expect(offer).toBe(false);
+  const action = dispatchSceneAction(scene, env);
+  expect(verifySceneAction(scene, action, env).verified).toBe(true);
+  expect(await runInNewContext(cleanupSceneExpression(scene), env)).toMatchObject({ verified: true });
+  expect(offer).toBe(false);
+  expect(env.__sweepAction).toBe(action);
+});
+
+it('preserves recording failure alongside screencast cleanup errors', async () => {
+  const { screencast } = await import('./browser-harness.mjs');
+  const session = { on: () => {}, send: async (method) => { if (method === 'Page.stopScreencast') throw new Error('stop failed'); }, detach: async () => { throw new Error('detach failed'); } };
+  const page = { context: () => ({ newCDPSession: async () => session }) };
+  try {
+    await screencast(page, async () => { throw new Error('capture failed'); });
+    throw new Error('expected capture failure');
+  } catch (error) {
+    expect(error).toBeInstanceOf(AggregateError);
+    expect(error.errors.map(String)).toEqual(['Error: capture failed', 'Error: stop failed', 'Error: detach failed']);
+  }
 });
