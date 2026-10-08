@@ -112,6 +112,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
        replaced between two of them. Taken before createDriver() so the window
        starts where the file is first touched. */
     const migrating = markJournalBusy();
+    let failed = false;
     try {
       // createDriver() itself isn't expected to be where a failure surfaces
       // (the web driver defers real I/O to its worker, so constructing it doesn't
@@ -138,6 +139,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
       // failure here means the caller must show a handled error state
       // instead of going on to render screens over a database that isn't
       // there (ticket 04's acceptance: not a blank screen).
+      failed = true;
       return { phase: 'error', error };
     } finally {
       /* The guard ends with the migrations, not with boot(). What follows is
@@ -146,7 +148,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
          row references - so an update landing mid-sweep leaves orphans for the
          next boot to reclaim, which is what its own failure path already
          does. */
-      migrating();
+      migrating(!failed);
     }
   }
 

@@ -195,8 +195,9 @@ export async function applyUpdate(): Promise<boolean> {
   try {
     if (!pendingReload) {
       let timer: ReturnType<typeof setTimeout> | undefined;
-      let stopControllerChange: (() => void) | void;
-      const controlChanged = new Promise<void>((resolve) => { stopControllerChange = env.onControllerChange(resolve); });
+      let takenControl!: () => void;
+      const controlChanged = new Promise<void>((resolve) => { takenControl = resolve; });
+      const stopControllerChange = env.onControllerChange(takenControl);
       try {
         waiting!.postMessage(SKIP_WAITING);
         await Promise.race([
