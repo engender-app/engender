@@ -17,6 +17,11 @@ starts after preparation with its existing window.
 
 Both gesture transports reload the requested route before each preparation.
 Repeated scenes start with fresh mounted state; journal data stays intact.
+Native settle waits for performance.timeOrigin to change before route/boot
+readiness, then waits for the mounted demo control before theme preparation.
+Native actions and cold coverage proofs retain finite previous and current
+document identities. Cold recording keeps its camera-before-navigation order
+and existing ready-to-sampler window.
 The unit-switcher scene enables Measurements through its visible switch when
 needed, proves that state, and restores its original visibility after capture.
 This exposes the control in an empty journal without adding measurement data.
