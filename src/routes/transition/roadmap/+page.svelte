@@ -90,7 +90,8 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { disclose, resize } from '$lib/motion/reveal';
+  import { trackPanel } from './trackPanel';
   import { crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -390,16 +391,16 @@
       onChange={(v) => (activeTrack = v as RoadmapTrack)}
     />
 
+    <div class="roadmap-track-slot" use:resize>
     {#each sections as section, i (section.track)}
       {@const track = section.track}
       <!-- Every track stays mounted - `[data-goal]` and its tick keep
            answering regardless of which panel is in front, which is what
            box 5 asks for ("the three-state tick still shows on every
            row") and what tests/walkthrough.test.mjs's offline/reload
-           assertions read off, reload included. `hidden` rather than an
-           `{#if}` is what keeps a goal mounted while its track is not the
-           one shown. -->
-      <div class="roadmap-track-panel" data-track-panel={track} hidden={track !== shownTrack}>
+           assertions read off, reload included. Inactive panels become
+           inert immediately and hide after their fade finishes. -->
+      <div class="roadmap-track-panel" data-track-panel={track} use:trackPanel={track === shownTrack}>
       <SectionHeading text={roadmapTrackName(track)}>
         <!-- On the heading rather than in the card: it is a statement about
              the whole track, and a row inside the list would read as one
@@ -557,6 +558,7 @@
       {/if}
       </div>
     {/each}
+    </div>
 
     <!-- The sources and the checked-on date carry no warning about how to
          read the list above - unlike the caveat and the marker note, which
@@ -686,6 +688,20 @@
 />
 
 <style>
+  .roadmap-track-slot {
+    position: relative;
+  }
+
+  .roadmap-track-panel {
+    top: 0;
+    left: 0;
+    padding-top: var(--space-4);
+  }
+
+  .roadmap-track-panel :global(.kit-heading:first-child) {
+    margin-top: 0;
+  }
+
   /* The sheet's own controls, set apart from the documents above them by
      the same rhythm the rest of the sheet uses rather than by a rule. */
   .goal-edit {

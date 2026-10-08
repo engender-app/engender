@@ -160,6 +160,7 @@ To run one on its own, use
 | `entry-pending-save` | delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |
 | `roadmap-track-summary` | the selected track travels with the goal list it shows |
+| `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `prep-context-check` | an empty prep list still shows the next visit and keeps every section |
 | `debrief-offer-check` | the appointment debrief loop, end to end |
 | `home-fold-reserve` | nothing under Home's reserves moves in one frame on a cold open, with a right, wrong or missing guess, or when a notice inside one is dismissed |
