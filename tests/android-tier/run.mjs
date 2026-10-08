@@ -415,6 +415,8 @@ for (const avd of AVDS) {
           backupStage('cleanup');
           backupStage('activity-destruction', 'activityDestructionDoesNotWaitForNativeDelivery');
           backupStage('cleanup');
+          backupStage('bounded-retries', 'nativeFailuresStopAfterThreeAttemptsUntilNextDay');
+          backupStage('cleanup');
           const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
             'dev.engender.app.backup.AutoExportDeliveryTest#completeLargeBackupRoundTripsAndFailuresPreserveRecovery',
             'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 1_200_000 });
