@@ -523,6 +523,19 @@
   .settings-sun-header { --sun-scale: 0.82; }
 }
 @container app (max-width: 239px) {
+  .settings-unit-row:has([data-segmented="theme"]) {
+    width: calc(100% + 2 * var(--space-5));
+    margin-inline: calc(-1 * var(--space-5));
+  }
+  .settings-unit-row:has([data-segmented="measurement-unit"]) .kit-row-text { min-width: min-content; max-width: 100%; }
+  .settings-unit-row:has([data-segmented="theme"]) .kit-row-trail { max-width: 100%; }
+  .settings-unit-row [data-segmented="theme"] .segment {
+    flex: 1 1 auto;
+    width: max-content;
+    padding-inline: var(--space-1);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
   .settings-sun-header { --sun-scale: 0.45; }
 }
 .palette-swatch {
