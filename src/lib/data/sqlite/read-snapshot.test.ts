@@ -183,3 +183,46 @@ test('a rejected shared read can retry without a write', async () => {
   assert.deepEqual(await db.query('SELECT value FROM pref'), []);
   await db.close();
 });
+
+test('CTE reads share results and preserve other cached reads', async () => {
+  const db = await migratedDb();
+  await db.run("INSERT INTO pref (key, value) VALUES ('answer', 'before')");
+  const original = db.raw.prepare.bind(db.raw);
+  const statements: string[] = [];
+  db.raw.prepare = ((sql: string) => {
+    statements.push(sql);
+    return original(sql);
+  }) as typeof db.raw.prepare;
+  const plain = 'SELECT value FROM pref WHERE key = ?';
+  const cte = `WITH RECURSIVE "update" AS (
+    SELECT value FROM pref WHERE key = ? /* DELETE */
+  ), nested AS (SELECT value, 'INSERT; -- UPDATE' AS note FROM "update")
+  SELECT value FROM nested; -- REPLACE`;
+  await db.query(plain, ['answer']);
+  const [first, second] = await Promise.all([db.query(cte, ['answer']), db.query(cte, ['answer'])]);
+  first[0].value = 'changed in caller';
+  assert.equal(second[0].value, 'before');
+  assert.equal((await db.query(cte, ['answer']))[0].value, 'before');
+  await db.query(plain, ['answer']);
+  assert.deepEqual(statements, [plain, cte]);
+  await db.run("UPDATE pref SET value = 'after'");
+  assert.equal((await db.query(cte, ['answer']))[0].value, 'after');
+  await db.close();
+});
+
+for (const write of [
+  "WITH next AS (SELECT 'after' AS value) UPDATE pref SET value = (SELECT value FROM next) RETURNING value",
+  "WITH next AS (SELECT 'after' AS value) INSERT OR REPLACE INTO pref SELECT 'answer', value FROM next RETURNING value",
+  "WITH next AS (SELECT 'answer' AS key) DELETE FROM pref WHERE key IN (SELECT key FROM next) RETURNING value"
+]) {
+  test(`CTE write invalidates shared reads: ${write}`, async () => {
+    const db = await migratedDb();
+    await db.run("INSERT INTO pref (key, value) VALUES ('answer', 'before')");
+    const plain = 'SELECT value FROM pref';
+    assert.deepEqual(await db.query(plain), [{ value: 'before' }]);
+    await db.query(write);
+    const expected = write.includes('DELETE') ? [] : [{ value: 'after' }];
+    assert.deepEqual(await db.query(plain), expected);
+    await db.close();
+  });
+}
