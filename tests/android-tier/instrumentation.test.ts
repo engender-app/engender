@@ -59,5 +59,10 @@ test('required raw instrumentation stage rejects skip, empty and aborted output'
   for (const output of ['', 'OK (0 tests)', 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -3', 'OK (1 test)\nINSTRUMENTATION_FAILED: crash']) {
     expect(reportStage('stage', { status: 0, stdout: output }, reporter())).toBe(false);
   }
-  expect(reportStage('stage', { status: 0, stdout: 'OK (1 test)' }, reporter())).toBe(true);
+  expect(reportStage('stage', { status: 0, stdout: 'INSTRUMENTATION_STATUS: current=1\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_STATUS: current=1\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS_CODE: 0\nOK (1 test)\nINSTRUMENTATION_CODE: -1\n' }, reporter())).toBe(true);
+});
+
+test('raw stage summary without complete protocol fails', () => {
+  expect(reportStage('stage', { status: 0, stdout: 'OK (1 test)' }, reporter())).toBe(false);
+  expect(reportStage('stage', { status: 0, stdout: 'INSTRUMENTATION_STATUS: numtests=2\nINSTRUMENTATION_STATUS_CODE: 1\nOK (1 test)\nINSTRUMENTATION_CODE: -1' }, reporter())).toBe(false);
 });
