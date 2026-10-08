@@ -31,6 +31,13 @@ results. Browser fixtures, walkthroughs, installed PWA and hosting run in
 separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
+`update-handover-check` (`tests/update-handover-check.mjs`) runs with
+`npm run test:browser`, or directly with `node tests/update-handover-check.mjs`.
+It holds public journal writes against worker takeover and activation timeout,
+checks encrypted persistence after reload, and preserves failed-write draft
+recovery followed by an explicit update retry. Fixture and platform limits are
+in [update-handover/README.md](update-handover/README.md).
+
 ## Walkthrough groups
 
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's

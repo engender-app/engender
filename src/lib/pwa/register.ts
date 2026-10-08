@@ -54,7 +54,10 @@ export function registerServiceWorker() {
     .register(`${base}/service-worker.js`, { updateViaCache: 'none' })
     .then((registration) => {
       watchForUpdates(registration, {
-        onControllerChange: (listener) => navigator.serviceWorker.addEventListener('controllerchange', listener),
+        onControllerChange: (listener) => {
+          navigator.serviceWorker.addEventListener('controllerchange', listener);
+          return () => navigator.serviceWorker.removeEventListener('controllerchange', listener);
+        },
         reload: () => location.reload()
       });
 

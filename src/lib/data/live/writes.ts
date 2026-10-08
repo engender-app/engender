@@ -1248,15 +1248,17 @@ function announcing(
 ) {
   return async (...args: never[]) => {
     const done = markJournalBusy();
+    let succeeded = false;
     try {
       const result = await implementation(...args);
+      succeeded = true;
       // A write that looked and changed nothing says so, and announcing it
       // anyway is how the run-out reconcile kept waking itself (ux-carpet 199).
       if (result === NOTHING_WRITTEN) return undefined;
       if (result !== noWriteResult) onWrite(tables);
       return result;
     } finally {
-      done();
+      done(succeeded);
     }
   };
 }
