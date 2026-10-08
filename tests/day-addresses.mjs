@@ -7,6 +7,10 @@ const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+const consoleErrors = [];
+page.on('console', message => {
+  if (message.type() === 'error') consoleErrors.push(message.text());
+});
 let failures = 0;
 async function load(path) {
   await page.goto(base + path, { waitUntil: 'networkidle' });
@@ -14,6 +18,7 @@ async function load(path) {
 }
 async function check(name, run) {
   errors.length = 0;
+  consoleErrors.length = 0;
   try {
     await run();
     assert.deepEqual(errors, [], `${name}: no page errors`);
@@ -21,6 +26,8 @@ async function check(name, run) {
   } catch (error) {
     failures++;
     console.error(`FAIL ${name}: ${error.message}; page errors: ${JSON.stringify(errors)}`);
+    const text = await page.locator('body').innerText({ timeout: 2000 }).catch(error => String(error));
+    console.log('ADDRESS FAILURE EVIDENCE ' + JSON.stringify({ url: page.url(), text: text.slice(0, 8192), consoleErrors }));
   }
 }
 
