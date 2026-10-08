@@ -1,0 +1,8 @@
+
+> check
+> svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+
+Loading svelte-check in workspace: /home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-ea988fc19efb
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
