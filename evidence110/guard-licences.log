@@ -1,0 +1,5 @@
+
+> check:licences
+> node scripts/check-licences.mjs
+
+PASS 317 package(s), all under a decided licence: MIT 264, ISC 23, Apache-2.0 13, BlueOak-1.0.0 10, Unlicense 2, BSD-2-Clause 2, MPL-2.0 1, BSD-3-Clause 1, 0BSD 1

@@ -310,3 +310,5 @@ and checks recovery, revision identity and retained evidence. The separate Guard
 recovery proof workflow uploads both attempts for seven days, including on success.
 
 `voice-tab-panel-motion` (`tests/voice-tab-panel-motion.mjs`) captures the Voice tab panel in both themes and checks withdrawal before replacement, keyboard focus, rapid switches, reduced motion and microphone cancellation. Run after a demo build: `node tests/voice-tab-panel-motion.mjs [output-directory]`.
+
+`settings-cycle-motion` (`tests/settings-cycle-motion.mjs`) checks the automatic Cycle tracking explanation against a demo build. Fresh preferences in each theme expose cuts and downstream jumps; compositor casts retain frame numbers and milliseconds. It checks Enter, Space, persistence, reduced motion and layouts at 390px, 780px and 195px. Run `node tests/settings-cycle-motion.mjs [output-directory]`.

@@ -1,0 +1,9 @@
+
+> check:first-load-budget
+> node scripts/check-first-load-budget.mjs
+
+locale en: 11 files, 730468B gzip (selector included)
+locale pl: 11 files, 731892B gzip (selector included)
+first-load: 11 files, 731892B gzip (714.7KB)  budget 104 files, 251272B
+on-demand (not gated): 21 files, 22866526B gzip (22330.6KB)
+NOT GATED demo build: Demo builds include fixture generation and worker prewarming for walkthroughs. They are not shipped as the production app. CI gates the production locale graphs; demo behavior has walkthrough checks.

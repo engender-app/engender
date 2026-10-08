@@ -1,0 +1,4 @@
+[persona-dark] settings-switch p1: 67 frames read as a state change / 22 render frames, 0 style / 0 render yank(s)
+
+1 run(s), 0 style / 0 render yank(s); report in /home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/final-dark/report.json
+coverage: {"persona:dark":{"requested":1,"attempted":1,"measured":1,"skipped":0,"failed":0,"missing":0}}

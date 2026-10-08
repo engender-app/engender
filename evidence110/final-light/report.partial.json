@@ -1,0 +1,124 @@
+{
+  "target": "desktop",
+  "complete": false,
+  "coverage": {
+    "requested": 1,
+    "attempted": 1,
+    "measured": 1,
+    "skipped": 0,
+    "failed": 0,
+    "missing": 0,
+    "groups": {
+      "persona:light": {
+        "requested": 1,
+        "attempted": 1,
+        "measured": 1,
+        "skipped": 0,
+        "failed": 0,
+        "missing": 0
+      }
+    },
+    "missingRuns": [],
+    "inventory": [
+      {
+        "name": "settings-switch",
+        "at": "/settings",
+        "act": "[data-cycle-tracking-toggle] button.switch",
+        "after": {
+          "selector": "[data-cycle-tracking-toggle] button.switch",
+          "attribute": "aria-checked"
+        },
+        "is": "toggling a settings switch"
+      }
+    ]
+  },
+  "report": [
+    {
+      "scene": "settings-switch",
+      "profile": "persona",
+      "theme": "light",
+      "pass": 1,
+      "is": "toggling a settings switch",
+      "action": {
+        "requested": "[data-cycle-tracking-toggle] button.switch",
+        "dispatched": true,
+        "beforeRoute": "/settings",
+        "beforeSearch": "",
+        "beforeTheme": "light",
+        "themeProof": {
+          "requested": "light",
+          "selected": true,
+          "persisted": "light",
+          "painted": "light",
+          "transitioning": false
+        },
+        "navigationProof": {
+          "kind": "spa-mount",
+          "requested": "/settings",
+          "previousRoute": "/",
+          "intermediate": "/settings/licences",
+          "actualRoute": "/settings",
+          "previousTimeOrigin": 1791491823178.71,
+          "timeOrigin": 1791491823178.71,
+          "oldRootDetached": true,
+          "targetMounted": true
+        },
+        "point": {
+          "x": 336,
+          "y": 421.890625
+        },
+        "bounds": {
+          "left": 312,
+          "top": 397.890625,
+          "width": 48,
+          "height": 48
+        },
+        "hit": {
+          "tag": "SPAN",
+          "id": null,
+          "target": false,
+          "descendant": true
+        },
+        "chosen": {
+          "selector": "[data-cycle-tracking-toggle] button.switch",
+          "tag": "BUTTON",
+          "id": null,
+          "label": "Cycle tracking",
+          "text": "",
+          "href": null
+        },
+        "beforePresent": true,
+        "beforeValue": "false",
+        "verified": true,
+        "afterRoute": "/settings",
+        "afterTheme": "light",
+        "postcondition": {
+          "selector": "[data-cycle-tracking-toggle] button.switch",
+          "attribute": "aria-checked"
+        }
+      },
+      "cleanup": null,
+      "profileProof": {
+        "prepared": "persona",
+        "hasEntries": "1",
+        "greeting": "Hi Alice · Thursday 8 October",
+        "route": "/"
+      },
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/final-light/settings-switch-persona-light-p1-cast",
+        "frames": 22,
+        "clock": 1791491874300.77
+      },
+      "instrument": "rows",
+      "frames": 67,
+      "sampled": 67,
+      "cast": 22,
+      "from": 14,
+      "span": 1114,
+      "yanks": [],
+      "pixelFindings": [],
+      "suppressed": 0
+    }
+  ],
+  "errors": []
+}
