@@ -13,7 +13,7 @@ if (reportIndex >= 0) {
   const owned = report.report.flatMap((run) => {
     assert.ok(run.scene.startsWith('cycle-week-'));
     assert.ok(!run.error && run.cast > 0);
-    return run.yanks.filter((finding) => !(finding.kind === 'colour' && finding.mark.includes('kit-strip-cell')) && !finding.mark.includes('day-strip-week'));
+    return run.yanks.filter((finding) => !(finding.kind === 'colour' && finding.mark.includes('kit-strip-cell')) && !(finding.kind === 'arrival' && finding.mark.startsWith('.day-strip-week.')));
   });
   assert.deepEqual(owned, [], 'Cycle weekly rows or history still yank in the original sweep');
   console.log('Original sweep: no Cycle weekly-row or history yanks');
