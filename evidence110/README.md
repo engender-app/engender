@@ -1,5 +1,7 @@
 # Ticket 110 evidence
 
+The reviewed candidate was refreshed with delivery `bf8f76ee`. [Delivery refresh evidence](delivery-bf8f76ee/README.md) records the preserved review commit, combined source SHA and post-build checks. Root filed the separate narrow-layout finding below as ticket 117.
+
 Base: `9b392184146966110982e8c89fc819263a393f50`. The final product change imports `collapse` and attaches it to Settings' conditional automatic Cycle tracking explanation. The preference rule, switch handler, accessible label and catalogue strings are unchanged.
 
 The explanation previously had no transition. Saving an explicit choice removed its block span during the DOM flush, shortening the row immediately. The shared `collapse` transition now masks and fades that span while returning its height through the existing 380ms motion contract. Reduced motion still uses the contract's immediate state change.
