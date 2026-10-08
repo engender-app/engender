@@ -1398,6 +1398,13 @@
 </div>
 
 <style>
+  /* The pinned block owns the 20px below it. Its reserve's list margin
+     collapses into that space at rest, but the closing wrapper's clipping
+     holds another 20px inside for the first painted frame. */
+  [data-home-pinned] :global([data-home-reserve='pinned'] .kit-list) {
+    margin-bottom: 0;
+  }
+
   /* The header is the field and its foot (phase 10, DIRECTION.md rule 7;
      redesign ticket 23). The header itself is a plain block; the field
      below it is what bleeds, clips and paints. */
