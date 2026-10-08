@@ -28,7 +28,7 @@
        the database has answered;
      - `release` lets go of everything else built over the key - the photo
        stores, the driver's file operations - and the journal content held
-       in memory outside the database;
+       in memory outside the database unless retained navigation keeps it;
      - `prewarm` starts a keyless worker for the next unlock, so the reopen
        costs one `open` rather than a worker start as well.
 
@@ -46,7 +46,7 @@ export interface JournalSessionPorts<Key, Driver extends Closable> {
   suspend(): Promise<void>;
   /** Check ownership after waits, before publishing journal access. */
   open(key: Key, current: () => void, dispose: (driver: Driver) => Promise<void>): Promise<Driver>;
-  release(): void;
+  release(retainContent: boolean): void;
   prewarm(): void;
 }
 
@@ -60,15 +60,19 @@ export interface JournalSession<Key, Driver extends Closable> {
       waiting for it - waits for the reopened database instead of reaching
       the worker the lock terminated. The lock drains it before closing. */
   readonly connection: SessionGate<Driver>;
-  /** The open database, or null while locked. */
+  /** The open database, or null while locked or suspended for navigation. */
   readonly driver: Driver | null;
-  /** Closed by a lock and not reopened yet. */
+  /** Closed by a lock or retained navigation and not reopened yet. */
   readonly locked: boolean;
   /** The first open, which boot does itself. Opens `connection` too, which
       boot has already done as soon as the driver existed, because the
       boot's own journal calls go through it; here for callers that do not. */
   adopt(key: Key, driver: Driver): void;
   lock(): Promise<void>;
+  /** Close a retained document's gates and worker, without inventing a lock.
+      A later lock discards the key retained for this return. */
+  suspendForNavigation(retainKey: boolean): Promise<void>;
+  resumeAfterNavigation(current: () => void): Promise<void>;
   /** Reopens a journal a lock closed, under the key just derived. Does
       nothing if no lock closed it. Rejects, still locked, if it cannot. */
   unlock(key: Key, current?: () => void): Promise<void>;
@@ -90,6 +94,8 @@ export function journalSession<Key, Driver extends Closable>(
   const connection = sessionGate<Driver>();
   let driver: Driver | null = null;
   let locked = false;
+  let navigationKey: Key | null = null;
+  let navigationSuspended = false;
   /* An unlock asked for while a lock is still waiting on the journal's
      calls ends that wait. The wait is there so a save can land before the
      database closes; with the person back, the database is about to reopen
@@ -110,7 +116,7 @@ export function journalSession<Key, Driver extends Closable>(
     return mine;
   };
 
-  async function close(closing: Driver, interruptible: boolean) {
+  async function close(closing: Driver, interruptible: boolean, suspended?: Promise<void>) {
     /* Fails closed: whatever suspending did or did not finish, the
        database closes and the key goes. A lock that stopped here would
        leave the gate drawn over a journal still open behind it. */
@@ -122,7 +128,7 @@ export function journalSession<Key, Driver extends Closable>(
       }, suspendLimitMs);
     });
     await Promise.race([
-      ports.suspend().catch((error) => {
+      (suspended ?? ports.suspend()).catch((error) => {
         console.warn('the journal did not settle cleanly before the lock', error);
       }),
       outOfTime,
@@ -145,8 +151,8 @@ export function journalSession<Key, Driver extends Closable>(
     driver = null;
     locked = true;
     await key.close();
-    ports.release();
-    ports.prewarm();
+    ports.release(navigationKey !== null);
+    if (!suspended && !navigationSuspended) ports.prewarm();
   }
 
   return {
@@ -166,11 +172,39 @@ export function journalSession<Key, Driver extends Closable>(
     },
     lock: () => {
       attempts.lock();
+      navigationKey = null;
       return inTurn(async () => {
         const closing = driver;
         if (closing === null) return;
         await close(closing, true);
       });
+    },
+    suspendForNavigation(retainKey) {
+      navigationSuspended = true;
+      attempts.lock();
+      if (retainKey) navigationKey ??= key.current;
+      else navigationKey = null;
+      // Stop handing out handles in the pagehide turn, before freezing.
+      const suspended = ports.suspend();
+      void connection.close();
+      void key.close();
+      return inTurn(async () => {
+        const closing = driver;
+        if (closing !== null) await close(closing, false, suspended);
+        else await suspended;
+      });
+    },
+    async resumeAfterNavigation(current) {
+      const held = navigationKey;
+      if (held === null) return;
+      try {
+        await this.unlock(held, () => {
+          current();
+          if (navigationKey !== held) throw new Error('the retained journal session was locked');
+        });
+      } finally {
+        if (navigationKey === held) navigationKey = null;
+      }
     },
     unlock(derived, current = () => {}) {
       const owned = attempts.begin();
@@ -195,6 +229,8 @@ export function journalSession<Key, Driver extends Closable>(
         connection.open(driver);
         locked = false;
         key.open(derived);
+        navigationSuspended = false;
+        navigationKey = null;
       });
     }
   };
