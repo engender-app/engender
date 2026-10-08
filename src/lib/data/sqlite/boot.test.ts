@@ -8,7 +8,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from './driver.ts';
-import { journalIsBusy } from '../journal-busy.ts';
+import { journalIsBusy, prepareJournalHandover } from '../journal-busy.ts';
 import { boot, migrateJournal } from './boot.ts';
 import { noopFileOps } from './test-support/migrated-db.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
@@ -542,4 +542,44 @@ test('failed worker preparation closes its driver and releases the write guard',
   if (result.phase === 'error') assert.equal(result.error, failure);
   assert.equal(closed, true);
   assert.equal(journalIsBusy(), false);
+});
+
+
+test('a failed migration cancels pending handover and retains the handled error', async () => {
+  const handover = prepareJournalHandover();
+  const failure = new Error('migration disk full');
+  let failMigration!: (error: Error) => void;
+  const opening = boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    prepareDatabase: () => new Promise<void>((_resolve, reject) => { failMigration = reject; })
+  });
+  let reloaded = false;
+  const completed = handover(() => { reloaded = true; });
+  assert.equal(journalIsBusy(), true);
+  failMigration(failure);
+  const result = await opening;
+  assert.deepEqual(result, { phase: 'error', error: failure });
+  assert.equal(await completed, false, 'handled migration failure must preserve recovery instead of reloading');
+  assert.equal(reloaded, false);
+  assert.equal(journalIsBusy(), false);
+  assert.equal(await prepareJournalHandover()(() => { reloaded = true; }), true);
+});
+
+test('a transient migration lock retried successfully still permits handover', async () => {
+  const handover = prepareJournalHandover();
+  let attempts = 0;
+  const result = await boot({
+    createDriver: makeFakeDriver,
+    fileOps: noopFileOps(),
+    sleep: async () => {},
+    prepareDatabase: async (driver, files) => {
+      attempts++;
+      if (attempts === 1) throw new Error('database is locked');
+      await migrateJournal(driver, files);
+    }
+  });
+  assert.equal(result.phase, 'ready');
+  assert.equal(attempts, 2);
+  assert.equal(await handover(() => {}), true);
 });
