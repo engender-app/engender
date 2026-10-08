@@ -1,0 +1,9 @@
+
+> check:copy
+> node scripts/check-copy.mjs
+
+PASS both catalogues are in serializer order
+PASS both catalogues hold the same keys
+PASS no new user-facing literals (0 known, in 0 file(s), 1 file(s) not scanned)
+PASS no Polish string genders the reader
+PASS no catalogue key sits with no caller (3640 referenced, 0 allow-listed)

@@ -1,0 +1,331 @@
+{
+  "root": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad",
+  "report": [
+    {
+      "theme": "light",
+      "screenshot": "candidate-final-light-195px.png",
+      "mainWidth": 185,
+      "mainScrollWidth": 232,
+      "overflow": [
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 159.58587646484375,
+          "right": 264.7929458618164,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 127.44332885742188,
+          "right": 248.72166442871094,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 95.421630859375,
+          "right": 232.7108154296875,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 63.513916015625,
+          "right": 216.7569580078125,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 31.7105712890625,
+          "right": 200.85528564453125,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "SPAN",
+          "className": "kit-row-trail",
+          "text": "SystemLightDark",
+          "width": 212.125,
+          "right": 232.125,
+          "minWidth": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "segmented-wrap is-compact",
+          "text": "SystemLightDark",
+          "width": 212.125,
+          "right": 232.125,
+          "minWidth": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "segmented is-compact",
+          "text": "SystemLightDark",
+          "width": 212.125,
+          "right": 232.125,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "BUTTON",
+          "className": "segment",
+          "text": "Dark",
+          "width": 56.65625,
+          "right": 229.125,
+          "minWidth": "48px"
+        }
+      ],
+      "owners": [
+        {
+          "selector": ".app-main",
+          "width": 195,
+          "left": 0,
+          "right": 195,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": ".screen",
+          "width": 185,
+          "left": 0,
+          "right": 185,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-cycle-tracking-toggle]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 145,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 153,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-ico",
+          "width": 36,
+          "left": 20,
+          "right": 56,
+          "scrollWidth": 34,
+          "clientWidth": 34,
+          "display": "grid",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-text",
+          "width": 152.796875,
+          "left": 20,
+          "right": 172.796875,
+          "scrollWidth": 153,
+          "clientWidth": 153,
+          "display": "block",
+          "minWidth": "max-content",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-trail",
+          "width": 110,
+          "left": 55,
+          "right": 165,
+          "scrollWidth": 110,
+          "clientWidth": 110,
+          "display": "flex",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "screenshot": "candidate-final-dark-195px.png",
+      "mainWidth": 185,
+      "mainScrollWidth": 232,
+      "overflow": [
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 158.40382385253906,
+          "right": 264.201904296875,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 126.56729125976562,
+          "right": 248.2836456298828,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 94.82269287109375,
+          "right": 232.41134643554688,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 63.15618896484375,
+          "right": 216.57809448242188,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "I",
+          "className": "sun-ring",
+          "text": "",
+          "width": 31.553466796875,
+          "right": 200.7767333984375,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "SPAN",
+          "className": "kit-row-trail",
+          "text": "SystemLightDark",
+          "width": 212.125,
+          "right": 232.125,
+          "minWidth": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "segmented-wrap is-compact",
+          "text": "SystemLightDark",
+          "width": 212.125,
+          "right": 232.125,
+          "minWidth": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "segmented is-compact",
+          "text": "SystemLightDark",
+          "width": 212.125,
+          "right": 232.125,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "SPAN",
+          "className": "segment-pill is-shown",
+          "text": "",
+          "width": 57.125,
+          "right": 229.125,
+          "minWidth": "0px"
+        },
+        {
+          "tag": "BUTTON",
+          "className": "segment is-active",
+          "text": "Dark",
+          "width": 56.65625,
+          "right": 229.125,
+          "minWidth": "48px"
+        }
+      ],
+      "owners": [
+        {
+          "selector": ".app-main",
+          "width": 195,
+          "left": 0,
+          "right": 195,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": ".screen",
+          "width": 185,
+          "left": 0,
+          "right": 185,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-cycle-tracking-toggle]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 145,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 153,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-ico",
+          "width": 36,
+          "left": 20,
+          "right": 56,
+          "scrollWidth": 34,
+          "clientWidth": 34,
+          "display": "grid",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-text",
+          "width": 152.796875,
+          "left": 20,
+          "right": 172.796875,
+          "scrollWidth": 153,
+          "clientWidth": 153,
+          "display": "block",
+          "minWidth": "max-content",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-trail",
+          "width": 110,
+          "left": 55,
+          "right": 165,
+          "scrollWidth": 110,
+          "clientWidth": 110,
+          "display": "flex",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        }
+      ]
+    }
+  ]
+}

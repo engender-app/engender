@@ -1,0 +1,28 @@
+[persona-light] settings-switch p1: 67 frames read as a state change / 13 render frames, 23 style / 0 render yank(s)
+  style teleport .kit-list|Measurement units  cmin#node-136 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport .kit-row-ico|#node-137 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport .kit-row-title|Measurement units#node-138 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [measurement-unit].segmented.is-compact|cmin#node-139 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [measurement-unit].segment-pill.is-shown|#node-140 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [cm].segment|cm#node-141 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [in].segment|in#node-142 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport .kit-heading|Reminders & prompts#node-143 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport h2|Reminders & prompts#node-144 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport .kit-list|Reminders reminders need#node-145 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [reminders].kit-row.svelte-az528z|Reminders reminders need#node-146 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [reminders].kit-row-ico|#node-147 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [reminders]span|Reminders#node-148 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [reminders].kit-row-sub|reminders need the Andro#node-149 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [notifications].kit-row.svelte-az528z|Notices and notification#node-150 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [notifications].kit-row-ico|#node-151 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [notifications]span|Notices and notification#node-152 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [journaling-pause].kit-row.svelte-az528z|Journaling pause#node-153 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [journaling-pause].kit-row-ico|#node-154 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [journaling-pause]span|Journaling pause#node-155 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [affirmations].kit-row.svelte-az528z|Affirmations#node-156 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [affirmations].kit-row-ico|#node-157 @32ms - 30px in one frame, 0px in the frames either side
+  style teleport [affirmations]span|Affirmations#node-158 @32ms - 30px in one frame, 0px in the frames either side
+[persona-dark] settings-switch p1: 67 frames read as a state change / 13 render frames, 0 style / 0 render yank(s)
+
+2 run(s), 23 style / 0 render yank(s); report in /home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/before/report.json
+coverage: {"persona:light":{"requested":1,"attempted":1,"measured":1,"skipped":0,"failed":0,"missing":0},"persona:dark":{"requested":1,"attempted":1,"measured":1,"skipped":0,"failed":0,"missing":0}}
