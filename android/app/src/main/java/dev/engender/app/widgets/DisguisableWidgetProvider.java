@@ -80,7 +80,7 @@ public abstract class DisguisableWidgetProvider extends AppWidgetProvider {
 
         for (ButtonSpec button : buttons(context)) {
             String label = buttonLabel(disguised, button.label);
-            if (label != null) views.setContentDescription(button.viewId, label);
+            views.setContentDescription(button.viewId, label);
             views.setOnClickPendingIntent(
                 button.viewId,
                 AppLaunch.openAppIntent(context, button.route, button.key, button.requestCode)
