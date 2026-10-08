@@ -52,6 +52,7 @@ export type NativeLeaveHooks = {
 export function watchLeave({
   page,
   native,
+  lifecycle,
   lockAfter,
   lock,
   now = Date.now
@@ -59,6 +60,8 @@ export function watchLeave({
   /** The document, or anything with its visibility and its event. */
   page: EventTarget & { readonly visibilityState: DocumentVisibilityState };
   native?: NativeLeaveHooks;
+  /** Browser history can restore a frozen document before visibility fires. */
+  lifecycle?: EventTarget;
   /** Read at each event rather than once, so a timing changed while the app
       was away applies to that absence. */
   lockAfter: () => LockAfter;
@@ -100,6 +103,18 @@ export function watchLeave({
       delete native.__lockOnReturnFromNative;
     };
   }
+  const onHide = (event: Event) => {
+    if ((event as PageTransitionEvent).persisted && hiddenAt === null) onLeave(false);
+  };
+  const onShow = (event: Event) => {
+    if ((event as PageTransitionEvent).persisted) onReturn();
+  };
   page.addEventListener('visibilitychange', onVisibility);
-  return () => page.removeEventListener('visibilitychange', onVisibility);
+  lifecycle?.addEventListener('pagehide', onHide);
+  lifecycle?.addEventListener('pageshow', onShow);
+  return () => {
+    page.removeEventListener('visibilitychange', onVisibility);
+    lifecycle?.removeEventListener('pagehide', onHide);
+    lifecycle?.removeEventListener('pageshow', onShow);
+  };
 }

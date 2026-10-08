@@ -238,16 +238,16 @@ describe('a connection made while a recovery worker is running', () => {
    kill outright, which can race the next boot's own `attach()`. Posting a
    `close` on this tab's own `pagehide` ahead of that is what narrows it. */
 describe('releasing every live connection on pagehide', () => {
-  it('posts close to a worker still holding the pool', () => {
+  it('posts close before retiring a worker still holding the pool', async () => {
     void prewarmJournalWorker('journal.sqlite3');
     const [worker] = FakeWorker.made;
 
-    releaseOnPageHide();
+    const released = releaseOnPageHide();
 
     expect(worker.posted.map((m) => m.op)).toEqual(['attach', 'close']);
-    /* Fire-and-forget: the worker is left to answer in its own time, not
-       terminated by the tab that is on its way out either way. */
     expect(worker.terminated).toBe(false);
+    await released;
+    expect(worker.terminated).toBe(true);
   });
 
   it('reaches every connection this tab holds, not only the prewarmed one', () => {
@@ -260,6 +260,34 @@ describe('releasing every live connection on pagehide', () => {
     for (const worker of FakeWorker.made) {
       expect(worker.posted.map((m) => m.op)).toEqual(expect.arrayContaining(['close']));
     }
+  });
+
+  it('retires an errored worker without waiting for another answer from it', async () => {
+    const attached = prewarmJournalWorker('journal.sqlite3');
+    const [worker] = FakeWorker.made;
+    worker.onerror?.({ message: 'worker failed' });
+    await expect(attached).rejects.toThrow('worker failed');
+    await releaseOnPageHide();
+    expect(worker.terminated).toBe(true);
+    expect(worker.posted.map((message) => message.op)).toEqual(['attach']);
+  });
+
+  it('holds a replacement worker until old handles have been released', async () => {
+    await prewarmJournalWorker('journal.sqlite3');
+    const [old] = FakeWorker.made;
+    FakeWorker.silent = true;
+    const released = releaseOnPageHide();
+    const close = old.posted.at(-1)!;
+    FakeWorker.silent = false;
+    const attached = prewarmJournalWorker('journal.sqlite3');
+    const replacement = FakeWorker.made.at(-1)!;
+    expect(replacement).not.toBe(old);
+    expect(replacement.posted).toEqual([]);
+    old.onmessage?.({ data: { id: close.id, ok: true } });
+    await released;
+    await attached;
+    expect(old.terminated).toBe(true);
+    expect(replacement.posted.map((message) => message.op)).toEqual(['attach']);
   });
 
   it('leaves a connection that is already closed alone', async () => {
