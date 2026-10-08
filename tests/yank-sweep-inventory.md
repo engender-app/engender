@@ -17,6 +17,9 @@ starts after preparation with its existing window.
 
 Both gesture transports reload the requested route before each preparation.
 Repeated scenes start with fresh mounted state; journal data stays intact.
+The unit-switcher scene enables Measurements through its visible switch when
+needed, proves that state, and restores its original visibility after capture.
+This exposes the control in an empty journal without adding measurement data.
 Preparation closes existing overlays and restores inline edit modes before
 opening the state a scene requires. It does not change the recorded motion
 window or detector thresholds. Quick add opening, closing, choosing a mood,

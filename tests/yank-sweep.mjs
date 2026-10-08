@@ -122,6 +122,7 @@ import {
   prepareSceneExpression,
   actionPreparationExpression,
   cleanupSceneExpression,
+  cleanupSceneFailure,
   actionPostconditionExpression,
   coverageSummary,
   createReportRecorder,
@@ -309,8 +310,9 @@ for (const profile of profiles) {
                 : '')
           );
         } catch (err) {
+          const failureCleanup = await cleanupSceneFailure(scene, (expression) => page.evaluate(expression));
           const failedState = await page.evaluate(`({ action: globalThis.__sweepAction, preparation: globalThis.__sweepPreparation, themeProof: globalThis.__sweepThemeProof })`).catch((failure) => ({ evidenceError: String(failure) }));
-            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
+            report.push({ scene: scene.name, profile, theme, pass, ...(captureEvidence ? { evidence: captureEvidence } : {}), ...failedState, ...(failureCleanup ? { failureCleanup } : {}), action: failedState.action ?? { requested: scene.act }, error: String(err).slice(0, 300) });
           console.log(`[${profile}-${theme}] ${scene.name} p${pass}: ERROR ${String(err).slice(0, 160)}`);
         }
       }

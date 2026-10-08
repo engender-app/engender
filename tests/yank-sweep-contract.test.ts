@@ -491,3 +491,64 @@ it('resets mounted state before each same-route native scene', async () => {
   expect(toggle.click).toHaveBeenCalledTimes(6);
   expect(env.location.assign).toHaveBeenCalledTimes(6);
 });
+
+
+it('enables hidden measurement controls without adding entries and restores feature visibility', async () => {
+  const { prepareSceneExpression, cleanupSceneExpression, scenesFor } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  for (const initiallyEnabled of [false, true]) {
+    let enabled = initiallyEnabled;
+    const env = environment();
+    const toggle = control({
+      scrollIntoView: () => { env.document.elementFromPoint = () => toggle; },
+      getAttribute: (name) => name === 'aria-checked' ? String(enabled) : null,
+      click: vi.fn(() => { enabled = !enabled; })
+    });
+    const cm = control({ scrollIntoView: () => { env.document.elementFromPoint = () => cm; } });
+    const inches = control({ scrollIntoView: () => { env.document.elementFromPoint = () => inches; } });
+    const selector = '[data-measurements-toggle] button.switch';
+    env.document.querySelectorAll = (query) => query === selector ? [toggle]
+      : enabled && query.includes('[data-segment="cm"]') ? [cm]
+      : enabled && query.includes('[data-segment="in"]') ? [inches] : [];
+    env.document.querySelector = (query) => env.document.querySelectorAll(query)[0] ?? null;
+    env.setTimeout = (resolve) => resolve();
+    const scene = scenesFor().find((scene) => scene.name === 'settings-unit-switcher');
+    for (let pass = 0; pass < 3; pass++) {
+      await runInNewContext(prepareSceneExpression(scene), env);
+      expect(enabled).toBe(true);
+      expect(() => JSON.stringify(env.__sweepPreparation)).not.toThrow();
+      const cleanup = await runInNewContext(cleanupSceneExpression(scene), env);
+      expect(enabled).toBe(initiallyEnabled);
+      await runInNewContext(cleanupSceneExpression(scene), env);
+      expect(enabled).toBe(initiallyEnabled);
+      if (!initiallyEnabled) expect(cleanup).toMatchObject({ verified: true, dispatched: true });
+    }
+    expect(toggle.click).toHaveBeenCalledTimes(initiallyEnabled ? 0 : 6);
+  }
+});
+
+
+it('restores unit feature on failed scenes and preserves cleanup failure separately', async () => {
+  const { cleanupSceneFailure } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  const scene = { name: 'settings-unit-switcher' };
+  let enabled = true;
+  const toggle = control({ scrollIntoView: () => {},
+    getAttribute: (name) => name === 'aria-checked' ? String(enabled) : null, click: () => { enabled = !enabled; } });
+  const env = environment([toggle]);
+  env.document.querySelector = () => toggle;
+  env.__sweepPreparation = { measurementsOriginallyEnabled: false };
+  env.setTimeout = (resolve) => resolve();
+  const evaluate = (expression) => runInNewContext(expression, env);
+  expect(await cleanupSceneFailure(scene, evaluate)).toMatchObject({ verified: true });
+  expect(enabled).toBe(false);
+  expect(await cleanupSceneFailure(scene, evaluate)).toBeNull();
+  enabled = true;
+  toggle.disabled = true;
+  expect(await cleanupSceneFailure(scene, evaluate))
+    .toEqual({ error: 'Error: measurement feature cleanup control did not become ready' });
+  expect(enabled).toBe(true);
+  const unused = vi.fn();
+  expect(await cleanupSceneFailure({ name: 'other' }, unused)).toBeNull();
+  expect(unused).not.toHaveBeenCalled();
+});

@@ -409,6 +409,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const { document, location } = env;
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
+  if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
   if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
   if (requested === 'inject') {
     if (typeof env.__yankProof !== 'function') throw new Error('missing injected proof action');
@@ -477,7 +478,22 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   return evidence;
 }
 
-export const cleanupSceneExpression = (scene) => scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
+export const cleanupSceneExpression = (scene) => scene.name === 'settings-unit-switcher' ? `(async () => {
+  if (globalThis.__sweepPreparation?.measurementsOriginallyEnabled !== false) return null;
+  const act = '[data-measurements-toggle] button.switch';
+  if (document.querySelector(act)?.getAttribute('aria-checked') === 'false') return null;
+  const cleanup = { cleanup: true, act, after: { selector: act, attribute: 'aria-checked', value: 'false' } };
+  const dispatch = ${dispatchSceneAction};
+  let ready = false;
+  for (let i = 0; i < 200 && !ready; i++) {
+    try { dispatch(cleanup, globalThis, true); ready = true; }
+    catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+  }
+  if (!ready) throw new Error('measurement feature cleanup control did not become ready');
+  const action = dispatch(cleanup);
+  for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'false'; i++) await new Promise((resolve) => setTimeout(resolve, 50));
+  return (${verifySceneAction})(cleanup, action);
+})()` : scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
   const cleanup = { cleanup: true, act: '[data-era-offer-dismiss]', after: { selector: '[data-era-offer]', absent: true } };
   const dispatch = ${dispatchSceneAction};
   let ready = false;
@@ -490,6 +506,12 @@ export const cleanupSceneExpression = (scene) => scene.name !== 'span-offer-appe
   for (let i = 0; i < 200 && document.querySelector('[data-era-offer]'); i++) await new Promise((resolve) => setTimeout(resolve, 50));
   return (${verifySceneAction})(cleanup, action);
 })()`;
+
+export async function cleanupSceneFailure(scene, evaluate) {
+  if (scene.name !== 'settings-unit-switcher') return null;
+  try { return await evaluate(cleanupSceneExpression(scene)); }
+  catch (error) { return { error: String(error) }; }
+}
 
 export const actionPreparationExpression = (scene) => `(${dispatchSceneAction})(${JSON.stringify(scene)}, globalThis, true)`;
 
@@ -708,7 +730,20 @@ export const prepareSceneExpression = (scene) => `(async () => {
       }
     }
   }
-  if (scene.name === 'settings-unit-switcher') await dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
+  if (scene.name === 'settings-unit-switcher') {
+    const act = '[data-measurements-toggle] button.switch';
+    await prepare({ act });
+    const enabled = document.querySelector(act).getAttribute('aria-checked');
+    if (enabled !== 'true' && enabled !== 'false') throw new Error('measurement feature state is unknown');
+    globalThis.__sweepPreparation.measurementsOriginallyEnabled = enabled === 'true';
+    if (enabled === 'false') {
+      const step = { act, after: { selector: act, attribute: 'aria-checked', value: 'true' } };
+      const action = await dispatch(step);
+      for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'true'; i++) await sleep(50);
+      globalThis.__sweepPreparation.measurementsEnabled = (${verifySceneAction})(step, action);
+    }
+    await dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
+  }
   if (document.querySelector('[data-edit-done]')) { await dispatch({ act: '[data-edit-done]' }); await sleep(500); }
   if (document.querySelector('[data-comfort-grip]')) { await dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
   const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
