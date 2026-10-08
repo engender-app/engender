@@ -282,9 +282,9 @@ const SECTIONS = [
       'DELETE FROM entry_dimension_value',
       'DELETE FROM entry_tag',
       'DELETE FROM entry_body_region',
-      /* entry_fts needs no statement of its own: migration v3's trigger drops
-         an index row with its entry, which is what lets this delete entries
-         without knowing the index exists. */
+      /* Reset the whole index once before deleting every entry. The trigger
+         still handles individual deletes, but now finds no index rows here. */
+      "INSERT INTO entry_fts(entry_fts) VALUES('delete-all')",
       'DELETE FROM entry'
     ],
     travels: 'none',

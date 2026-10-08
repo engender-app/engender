@@ -569,6 +569,8 @@ test("replace installs the archive's journal and discards this device's", async 
   await target.journal.archive.replace(await exported(source.journal));
 
   assert.equal(await target.journal.entries.getEntry(mine), undefined);
+  assert.deepEqual(await target.journal.entries.searchEntries('mine', []), []);
+  assert.deepEqual((await target.journal.entries.searchEntries('zazolc', [])).map((e) => e.epochDay), [20000]);
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
   assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
   assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
@@ -772,6 +774,19 @@ test('a schema-refused row rolls the whole restore back in both replace and merg
     const after = await target.journal.archive.snapshot();
     assert.deepEqual(after.journal, before.journal, `${mode} applied part of a refused restore`);
   }
+});
+
+test('a failed replacement keeps the original entries searchable', async () => {
+  const source = await populated();
+  const target = await device();
+  const mine = await target.journal.entries.upsertEntry({ epochDay: 20500, mood: 5, note: 'original searchable note' });
+  const contents = await exported(source.journal);
+  contents.journal.reminders = [{ ...contents.journal.reminders[0], type: 'nonsense' }];
+
+  await assert.rejects(target.journal.archive.replace(contents));
+
+  assert.deepEqual((await target.journal.entries.searchEntries('searchable', [])).map((e) => e.id), [mine]);
+  assert.deepEqual(await target.journal.entries.searchEntries('zazolc', []), []);
 });
 
 test('a failed import into a journal that has never been seeded leaves it empty, not half-seeded', async () => {
