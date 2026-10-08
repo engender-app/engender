@@ -318,8 +318,14 @@ for (const avd of AVDS) {
             fail(`${avd}: native backup deferred process death`, 'process death not established');
           } else {
             await sleep(50000);
-            const state = device(['shell', 'run-as', 'dev.engender.app', 'cat', 'shared_prefs/engender-auto-export.xml']);
-            const deferredAt = Number(/name="deferredAt" value="(\d+)"/.exec(state.stdout ?? '')?.[1] ?? 0);
+            let state, deferredAt = 0;
+            const deadline = Date.now() + 120000;
+            do {
+              state = device(['shell', 'run-as', 'dev.engender.app', 'cat', 'shared_prefs/engender-auto-export.xml']);
+              deferredAt = Number(/name="deferredAt" value="(\d+)"/.exec(state.stdout ?? '')?.[1] ?? 0);
+              if (deferredAt) break;
+              await sleep(1000);
+            } while (Date.now() < deadline);
             writeFileSync(join(evidenceDir, `${avd}-backup-deferred-headless-result.json`),
               JSON.stringify({ deferredAt, encryptedStage: /name="encryptedStage"/.test(state.stdout ?? '') }, null, 2));
             if (state.status !== 0 || !deferredAt || /name="encryptedStage"/.test(state.stdout ?? '')) {
@@ -327,20 +333,49 @@ for (const avd of AVDS) {
             } else {
               ok(`${avd}: native backup headless deferral`);
               backupStage('verify-deferred');
+              if (!nativeOnly) backupStage('catch-up');
             }
           }
         }
         backupStage('cleanup');
         if (!nativeOnly) {
-          for (const lifecycle of ['process-death', 'reboot']) {
-            if (!backupStage('prepare')) continue;
+          for (const lifecycle of ['process-death', 'reboot', 'interrupted-write']) {
+            if (!backupStage(lifecycle === 'interrupted-write' ? 'prepare-interrupted' : 'prepare')) continue;
             const state = device(['shell', 'dumpsys', 'jobscheduler']);
             writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-jobs-before.log`), state.stdout ?? '');
             if (!/dev\.engender\.app\/androidx\.work\.impl\.background\.systemjob\.SystemJobService/.test(state.stdout ?? '')) {
               fail(`${avd}: native backup persistent work`, 'no WorkManager job in JobScheduler');
               continue;
             }
-            if (lifecycle === 'process-death') {
+            if (lifecycle === 'interrupted-write') {
+              let partial;
+              const deadline = Date.now() + 120000;
+              do {
+                const marker = device(['shell', 'run-as', 'dev.engender.app.test', 'cat', 'files/backup-partial-state.json']);
+                try { partial = JSON.parse(marker.stdout); } catch {}
+                if (partial?.writtenBytes > 0) break;
+                await sleep(250);
+              } while (Date.now() < deadline);
+              if (!(partial?.writtenBytes > 0)) {
+                fail(`${avd}: interrupted native write`, 'provider never recorded written bytes');
+                continue;
+              }
+              const writerPid = device(['shell', 'pidof', 'dev.engender.app']).stdout.trim();
+              if (!/^\d+$/.test(writerPid)) {
+                fail(`${avd}: interrupted native write`, 'no single writer process');
+                continue;
+              }
+              const killed = device(['shell', 'run-as', 'dev.engender.app', 'kill', '-9', writerPid]);
+              await sleep(250);
+              const absent = device(['shell', 'pidof', 'dev.engender.app']);
+              writeFileSync(join(evidenceDir, `${avd}-backup-interrupted-write.json`),
+                JSON.stringify({ ...partial, writerPid, signal: 'SIGKILL', killExit: killed.status, pidExit: absent.status, pid: absent.stdout.trim() }, null, 2));
+              if (killed.status !== 0 || absent.status !== 1 || absent.stdout.trim()) {
+                fail(`${avd}: interrupted native write`, 'writer process death not established');
+                continue;
+              }
+              backupStage('resume-interrupted');
+            } else if (lifecycle === 'process-death') {
               const previousPid = device(['shell', 'pidof', 'dev.engender.app']).stdout?.trim();
               writeFileSync(join(evidenceDir, `${avd}-backup-process-before.log`), `pid=${previousPid}\n`);
               device(['shell', 'am', 'kill', 'dev.engender.app']);
@@ -410,6 +445,8 @@ for (const avd of AVDS) {
               fail(`${avd}: native backup force-stop limitation`, 'package did not remain stopped with process absent');
             } else ok(`${avd}: native backup force-stop limitation`);
           }
+          backupStage('cleanup');
+          backupStage('mounted-status', 'mountedScreenRefreshesNativeDeliveryInBothLocales');
           backupStage('cleanup');
           backupStage('ownership-and-destination', 'failuresRetentionAndCancellationUseTheNativeOwner');
           backupStage('cleanup');

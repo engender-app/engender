@@ -24,7 +24,8 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         @Override public void onReceive(android.content.Context context, android.content.Intent intent) {
             android.os.Bundle extras = new android.os.Bundle();
             extras.putString("targetPackage", intent.getStringExtra("targetPackage"));
-            context.getContentResolver().call(android.net.Uri.parse("content://" + AUTHORITY), "reset", null, extras);
+            context.getContentResolver().call(android.net.Uri.parse("content://" + AUTHORITY),
+                intent.getBooleanExtra("reset", true) ? "reset" : "grant", null, extras);
         }
     }
 
@@ -43,18 +44,22 @@ public class BackupDocumentsProvider extends DocumentsProvider {
 
     @Override public Bundle call(String method, String arg, Bundle extras) {
         if ("fault".equals(method)) {
+            release.countDown();
             fault = arg; blocked = false; release = new java.util.concurrent.CountDownLatch(1);
+            new File(getContext().getFilesDir(), "backup-partial-state.json").delete();
             return Bundle.EMPTY;
         }
         if ("blocked".equals(method)) { Bundle out = new Bundle(); out.putBoolean("blocked", blocked); return out; }
         if ("release".equals(method)) { release.countDown(); return Bundle.EMPTY; }
-        if ("reset".equals(method)) {
+        if ("reset".equals(method) || "grant".equals(method)) {
             if (extras != null && extras.getString("targetPackage") != null) grantTarget = extras.getString("targetPackage");
-            release.countDown();
-            File[] files = directory().listFiles();
-            if (files != null) for (File file : files) file.delete();
-            getContext().getSharedPreferences("backup-document-names", 0).edit().clear().commit();
-            fault = "none";
+            if ("reset".equals(method)) {
+                release.countDown();
+                File[] files = directory().listFiles();
+                if (files != null) for (File file : files) file.delete();
+                getContext().getSharedPreferences("backup-document-names", 0).edit().clear().commit();
+                fault = "none";
+            }
             for (String root : new String[] {"root", "root-second"}) {
                 getContext().grantUriPermission(grantTarget,
                     android.provider.DocumentsContract.buildTreeDocumentUri(AUTHORITY, root),
@@ -127,6 +132,30 @@ public class BackupDocumentsProvider extends DocumentsProvider {
             try {
                 if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new FileNotFoundException("provider-timeout");
             } catch (InterruptedException error) { throw new FileNotFoundException("provider-interrupted"); }
+        }
+        if (mode.contains("w") && "interrupted-write".equals(fault)) {
+            try {
+                ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createReliablePipe();
+                java.util.concurrent.CountDownLatch paused = release;
+                new Thread(() -> {
+                    try (java.io.InputStream input = new ParcelFileDescriptor.AutoCloseInputStream(pipe[0]);
+                         java.io.FileOutputStream output = new java.io.FileOutputStream(file)) {
+                        byte[] buffer = new byte[8192];
+                        int first = input.read(buffer);
+                        if (first > 0) {
+                            output.write(buffer, 0, first); output.flush();
+                            try (java.io.FileOutputStream marker = new java.io.FileOutputStream(new File(getContext().getFilesDir(), "backup-partial-state.json"))) {
+                                marker.write(("{\"target\":\"" + id + "\",\"writtenBytes\":" + first + "}").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            }
+                            blocked = true;
+                            paused.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                            int count;
+                            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                        }
+                    } catch (Exception ended) { /* A killed writer leaves its partial destination. */ }
+                }, "backup-provider-interruption").start();
+                return pipe[1];
+            } catch (IOException error) { throw new FileNotFoundException(error.toString()); }
         }
         if (!mode.contains("w") && "truncated".equals(fault)) {
             try (java.io.RandomAccessFile bytes = new java.io.RandomAccessFile(file, "rw")) {
