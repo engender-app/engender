@@ -35,11 +35,12 @@
    instrumentation output into those lines. */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtempSync, openSync, closeSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtempSync, openSync, closeSync, cpSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
+import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './emulator.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
@@ -114,49 +115,42 @@ function run(command, args, options = {}) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Waits for the emulator to finish booting, not merely to appear in `adb devices`. */
-async function waitForBoot(serial, deadline) {
-  while (Date.now() < deadline) {
-    const booted = run(adb, ['-s', serial, 'shell', 'getprop', 'sys.boot_completed']).stdout?.trim();
-    if (booted === '1') return true;
-    await sleep(2000);
-  }
-  return false;
+let ownedEmulator;
+let disposableName;
+const queryDevice = (args) => run(adb, ['-s', serial, ...args]);
+function device(args, options = {}) {
+  assertOwnedEmulator(ownedEmulator, disposableName, queryDevice);
+  return run(adb, ['-s', serial, ...args], options);
 }
 
-let ownedEmulator;
-async function startEmulator(avd, serial, port) {
-  const args = ['-avd', avd, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
-  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
+async function startEmulator(avd, port) {
   const avdHome = mkdtempSync(join(evidenceDir, `${avd}-`));
+  disposableName = `tier-${avd}-${avdHome.split('/').pop()}`;
   const source = join(process.env.ANDROID_AVD_HOME ?? join(process.env.HOME, '.android/avd'), `${avd}.avd`);
-  const clone = join(avdHome, `${avd}.avd`);
+  const clone = join(avdHome, `${disposableName}.avd`);
   mkdirSync(clone);
   const config = readFileSync(join(source, 'config.ini'), 'utf8')
     .replace(/^disk.dataPartition.path=.*$/m, `disk.dataPartition.path=${join(clone, 'userdata-qemu.img')}`)
     .replace(/^sdcard.path=.*\n?/m, '');
   writeFileSync(join(clone, 'config.ini'), config);
-  writeFileSync(join(avdHome, `${avd}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
-  const log = openSync(join(avdHome, 'emulator.log'), 'w');
-  const child = spawn(emulatorBin, args, { env: { ...env, ANDROID_AVD_HOME: avdHome }, detached: true, stdio: ['ignore', log, log] });
-  ownedEmulator = child;
-  closeSync(log);
-  child.on('error', (error) => writeFileSync(join(avdHome, 'startup-error.log'), error.message));
-  child.unref();
-
-  run(adb, ['-s', serial, 'wait-for-device'], { timeout: BOOT_TIMEOUT_MS });
-  const booted = await waitForBoot(serial, Date.now() + BOOT_TIMEOUT_MS);
-  if (!booted) throw new Error(`${avd} did not finish booting within ${BOOT_TIMEOUT_MS / 1000}s`);
-
-  // An emulator that is "booted" can still be showing the lock screen.
-  run(adb, ['-s', serial, 'shell', 'input', 'keyevent', '82']);
-  return child;
+  writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
+  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
+  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
+  ownedEmulator = await startOwnedEmulator({
+    name: disposableName, query: queryDevice, timeout: BOOT_TIMEOUT_MS,
+    launch: () => {
+      const log = openSync(join(avdHome, 'emulator.log'), 'w');
+      const child = spawn(emulatorBin, args, { env: { ...env, ANDROID_AVD_HOME: avdHome }, stdio: ['ignore', log, log] });
+      closeSync(log);
+      return child;
+    }
+  });
+  device(['shell', 'input', 'keyevent', '82']);
 }
 
-function stopEmulator(serial) {
+async function stopEmulator() {
   if (!ownedEmulator) return;
-  run(adb, ['-s', serial, 'emu', 'kill']);
-  ownedEmulator.kill();
+  await stopOwnedEmulator(ownedEmulator, disposableName, queryDevice);
   ownedEmulator = undefined;
 }
 
@@ -217,12 +211,12 @@ const evidenceDir = mkdtempSync(join(evidenceRoot, 'run-'));
 console.log(`Android evidence: ${evidenceDir}`);
 const port = Number(process.env.ANDROID_TIER_PORT ?? 5580);
 const serial = `emulator-${port}`;
-if (run(adb, ['-s', serial, 'get-state']).status === 0) throw new Error(`${serial} already exists; choose an unused ANDROID_TIER_PORT`);
+if (!Number.isInteger(port) || port % 2 !== 0 || port < 5554 || port > 5682) throw new Error('ANDROID_TIER_PORT must be an even port from 5554 to 5682');
 const BENCHMARK_TEST = 'dev.engender.app.longjournal.LongJournalBenchmarkTest';
 
 for (const avd of AVDS) {
   try {
-    await startEmulator(avd, serial, port);
+    await startEmulator(avd, port);
     ok(`${avd} booted`);
 
     const nativeOnly = NATIVE_ONLY.has(avd);
@@ -239,41 +233,43 @@ for (const avd of AVDS) {
       resultsDir: RESULTS_DIR,
       reporter: { ok, fail },
       invoke: () => {
+        assertOwnedEmulator(ownedEmulator, disposableName, queryDevice);
         const result = run(
-      './gradlew',
-      [
-        ':app:connectedDebugAndroidTest',
-        '--console=plain',
-        ...(nativeOnly
-          ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-          : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST}`])
-      ],
-      {
-        cwd: androidDir,
-        env: { ...env, ...gradleEnv, ANDROID_SERIAL: serial },
-        timeout: 900_000
-      }
+          './gradlew',
+          [
+            ':app:connectedDebugAndroidTest',
+            '--console=plain',
+            ...(nativeOnly
+              ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST}`])
+          ],
+          {
+            cwd: androidDir,
+            env: { ...env, ...gradleEnv, ANDROID_SERIAL: serial },
+            timeout: 900_000
+          }
         );
         writeFileSync(join(evidenceDir, `${avd}-instrumentation.log`),
           `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
         return result;
       }
     });
+    if (existsSync(RESULTS_DIR)) cpSync(RESULTS_DIR, join(evidenceDir, `${avd}-results`), { recursive: true });
     {
       const stage = (name, method = 'deadlineSurvivesActualProcessDeath') => {
-        const result = run(adb, ['-s', serial, 'shell', 'am', 'instrument', '-w', '-r',
+        const result = device(['shell', 'am', 'instrument', '-w', '-r',
           '-e', 'class', `${PIN_WAIT_TEST}#${method}`, '-e', 'pinWaitStage', name,
           'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 120_000 });
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}.log`), `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
-        const proofLog = run(adb, ['-s', serial, 'logcat', '-d', '-s', 'PinWaitProof:I', '*:S']);
+        const proofLog = device(['logcat', '-d', '-s', 'PinWaitProof:I', '*:S']);
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}-process.log`), `${proofLog.stdout ?? ''}${proofLog.stderr ?? ''}`);
         return reportStage(`${avd}: PIN wait ${name}`, result, { ok, fail });
       };
       try {
         stage('preferences', 'preferenceDeadlineSurvivesANewOwnerAndNewBoot');
         if (stage('seed')) {
-          const killed = run(adb, ['-s', serial, 'shell', 'am', 'force-stop', 'dev.engender.app']);
-          const pid = run(adb, ['-s', serial, 'shell', 'pidof', 'dev.engender.app']);
+          const killed = device(['shell', 'am', 'force-stop', 'dev.engender.app']);
+          const pid = device(['shell', 'pidof', 'dev.engender.app']);
           writeFileSync(join(evidenceDir, `${avd}-pin-wait-termination.log`), `force-stop exit=${killed.status}\npidof exit=${pid.status} stdout=${pid.stdout}\n`);
           if (killed.status !== 0 || pid.status !== 1 || pid.stdout.trim()) {
             fail(`${avd}: PIN wait process termination`, 'force-stop did not leave the app process absent');
@@ -287,7 +283,7 @@ for (const avd of AVDS) {
   } catch (e) {
     fail(`${avd}: emulator`, e.message ?? String(e));
   } finally {
-    stopEmulator(serial);
+    await stopEmulator();
     await sleep(3000);
   }
 }

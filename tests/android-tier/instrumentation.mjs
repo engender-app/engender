@@ -72,7 +72,12 @@ export async function runInstrumentation({ invoke, label, resultsDir, reporter, 
 /** @param {string} label @param {Invocation} invocation @param {Reporter} reporter */
 export function reportStage(label, invocation, reporter) {
   const output = `${invocation.stdout ?? ''}${invocation.stderr ?? ''}`;
-  if (invocation.status !== 0 || invocation.signal || invocation.error ||
+  const statuses = [...output.matchAll(/^INSTRUMENTATION_STATUS_CODE: (-?\d+)\s*$/gm)].map((match) => Number(match[1]));
+  const counts = [...output.matchAll(/^INSTRUMENTATION_STATUS: numtests=(\d+)\s*$/gm)].map((match) => Number(match[1]));
+  const current = [...output.matchAll(/^INSTRUMENTATION_STATUS: current=(\d+)\s*$/gm)].map((match) => Number(match[1]));
+  const complete = statuses.join(',') === '1,0' && counts.length === 2 && counts.every((count) => count === 1)
+    && current.length === 2 && current.every((count) => count === 1) && /^INSTRUMENTATION_CODE: -1\s*$/.test(output.trim().split('\n').at(-1) ?? '');
+  if (invocation.status !== 0 || invocation.signal || invocation.error || !complete ||
       !/^OK \(1 test\)/m.test(output) || /INSTRUMENTATION_(?:FAILED|ABORTED)|FAILURES!!!|INSTRUMENTATION_STATUS_CODE: -[34]/.test(output)) {
     reporter.fail(label, invocation.error?.message ?? `exit ${invocation.status}, signal ${invocation.signal ?? 'none'}\n${output}`);
     return false;
