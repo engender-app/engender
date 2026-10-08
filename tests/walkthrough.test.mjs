@@ -24,8 +24,18 @@ import { writeSummary } from '../scripts/check-process.mjs';
 
 const reporter = createReporter();
 const assertions = [];
+const failureEvidence = [];
 const ok = (label) => { assertions.push({ label, outcome: 'passed' }); reporter.ok(label); };
-const fail = (label, error) => { assertions.push({ label, outcome: 'failed', error: String(error) }); reporter.fail(label, error); };
+const fail = (label, error) => {
+  assertions.push({ label, outcome: 'failed', error: String(error) });
+  reporter.fail(label, error);
+  if (flight) {
+    const diagnostic = { label, error: String(error), url: page.url(), ...flight };
+    failureEvidence.push(boundedDiagnostic(() => page.evaluate(() => ({ url: location.href, text: document.body.innerText.slice(0, 8192) })))
+      .then(state => console.log('WALKTHROUGH FAILURE EVIDENCE ' + JSON.stringify({ ...diagnostic, state })))
+      .catch(error => console.log('WALKTHROUGH FAILURE EVIDENCE ' + JSON.stringify({ ...diagnostic, captureError: String(error) }))));
+  }
+};
 const { finish } = reporter;
 
 /* --group runs a complete sequence with its own synthetic journal. CI runs
@@ -80,10 +90,11 @@ if (ONLY) {
 async function flow(name, body) {
   if (!PICKED.includes(name)) return;
   const started = performance.now();
-  if (['plain export', 'onboarding restore'].includes(name)) flight = { name, events: [] };
+  flight = { name, events: [] };
   try {
     await body();
   } finally {
+    await Promise.all(failureEvidence.splice(0));
     flight = null;
     timings.push({ name, durationMs: performance.now() - started });
   }
@@ -110,6 +121,9 @@ function recordFlight(event) {
 }
 page.on('console', message => {
   if (message.type() === 'error') recordFlight({ kind: 'console-error', time: Date.now(), detail: message.text().slice(0, 4096) });
+});
+page.on('requestfailed', request => {
+  recordFlight({ kind: 'request-failed', time: Date.now(), url: request.url(), detail: request.failure()?.errorText });
 });
 page.on('worker', worker => {
   const url = worker.url();
