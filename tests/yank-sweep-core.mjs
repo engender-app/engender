@@ -1989,10 +1989,15 @@ export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ${DEMO_BAR_IDLE}
   const btn = document.querySelector('[data-fill-every-feature]');
-  if (!btn) return false;
+  if (!btn) throw new Error('no Fill every feature button on the demo bar');
   btn.click();
   ${AWAIT_DEMO_JUMP}
-  return location.pathname.includes('/more');
+  const ready = () => location.pathname === '/more'
+    && !!document.querySelector('[data-app-root][data-boot="ready"]')
+    && localStorage.getItem('engender-has-entries') === '1';
+  for (let i = 0; i < 120 && !ready(); i++) await sleep(250);
+  if (!ready()) throw new Error('full persona fixture did not reach More with a ready journal');
+  return true;
 })()`;
 
 /** The empty profile, split where the onboarding-mount scene needs the

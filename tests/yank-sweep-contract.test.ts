@@ -309,3 +309,32 @@ it('orders reversed compositor arrivals before the detector can invent an A-B-A 
   insertScreencastFrame(captured, sameClock);
   expect(captured[2]).toBe(sameClock);
 });
+
+
+describe('full persona fixture readiness', () => {
+  const run = async (options = {}) => {
+    const { runInNewContext } = await import('node:vm');
+    const { FILL_EVERY_FEATURE_EXPRESSION } = await import('./yank-sweep-core.mjs');
+    const click = vi.fn();
+    const result = runInNewContext(FILL_EVERY_FEATURE_EXPRESSION, {
+      document: { querySelector: (selector) => selector === '[data-fill-every-feature]'
+        ? (options.missing ? null : { click })
+        : selector.includes('data-boot') ? (options.ready === false ? null : {}) : null },
+      location: { pathname: options.path ?? '/more' },
+      localStorage: { getItem: () => options.entries ?? '1' },
+      setTimeout: (resolve) => resolve()
+    });
+    return result;
+  };
+  it('rejects missing fill control', async () => {
+    await expect(run({ missing: true })).rejects.toThrow('no Fill every feature button');
+  });
+  it('rejects unfinished or empty fixture', async () => {
+    for (const options of [{ path: '/' }, { ready: false }, { entries: '0' }]) {
+      await expect(run(options)).rejects.toThrow('full persona fixture');
+    }
+  });
+  it('accepts seeded ready More destination', async () => {
+    await expect(run()).resolves.toBe(true);
+  });
+});
