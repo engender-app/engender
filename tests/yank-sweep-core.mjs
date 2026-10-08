@@ -716,6 +716,9 @@ export const documentProofExpression = (previousTimeOrigin) => `(() => {
 })()`;
 
 export const gestureNavigationExpression = (path, predecessor = null) => `(${async function (path, predecessor) {
+  const proofRoot = document.querySelector('[data-app-root]');
+  for (const node of proofRoot?.querySelectorAll(':scope > [class^="yank-proof-"]') ?? []) node.remove();
+  delete globalThis.__yankProof;
   const started = Date.now();
   const wait = async (ready, stage) => {
     while (!ready()) {

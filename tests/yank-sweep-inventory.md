@@ -25,6 +25,8 @@ predecessor as the intermediate route. This resets screen state without
 creating a document for every gesture. Journal data stays intact.
 Each jump waits for the navigation transition to finish before another
 starts, so its outgoing-screen cleanup cannot remove the next mounted screen.
+Preparation also removes completed synthetic proof marks from the app root
+before the next scene. Their saved samples and compositor evidence remain.
 Cold recording still reloads the document, retains finite previous and
 current document identities, and keeps its camera-before-navigation order
 and existing ready-to-sampler window.
