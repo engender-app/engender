@@ -183,6 +183,7 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 
 | Probe | Why not |
 | --- | --- |
+| `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
 | `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed reaches 48px by `elementFromPoint` from its centre, at 320 and 390px with text at 100% and 200%, and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. About six minutes over 13 screens, which is more than a CI shard has room for (after-release 18). |
@@ -260,6 +261,7 @@ on this page ran green on 2026-09-23.
 | `measure:setup-contrast` | every piece of type in setup against what is actually behind it (`--palettes`, `--themes`) |
 | `cost:nav-motion` | the tab highlight's frame cadence at 4x CPU throttling, the number `app.css` and `motion-system.test.ts` cite |
 | `probe:field-text` | (ticket 285) nothing on a field paints past its painted edge or teleports against it, on every frame of every change that moves a field: doors both ways from top, middle and bottom, interrupted and reversed, deep push and back, gear, Polish, reduced motion, resize, setup's steps and handover, and the door field's height on a cold load, at 390 and 1440; `--only`, `--runs`, `--report`, `--frames`, `--json`, and `--device <serial>` to drive the Pixel WebView over its own forwarded port (`--port`, default 9341, `--package`, default the separate probe build and never the real app, `--rate` to slow the animations for reading the edge on pixels (`field-text-edge-series.mjs` reads the frames); the PIN gate opening is a scene there). Timing-dependent: run it several times |
+| `day-strip-week-motion` (demo build, `--out <dir>`) | Outgoing week labels stay anchored on Cycle, dilation, wear and hair removal in light and dark; paging, date selection, focus transfer and reduced motion retain their behavior. Saves full painted casts and frame geometry. |
 | `tab-bar-withdraw-crossfade` | the floating bar's withdrawal crossfade across three sheet scenes, per frame, for blur snaps and dropouts (ticket 232) |
 
 ## Helpers
