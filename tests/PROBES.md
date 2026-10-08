@@ -287,6 +287,7 @@ available for the surface or device it measures.
 
 | Probe | Purpose |
 | --- | --- |
+| `quick-add-mood-withdrawal` | check scrim withdrawal before mood navigation, chosen mood and heading focus for tap, keyboard and slide in both themes and motion preferences; requires a demo build, run with `node tests/quick-add-mood-withdrawal.mjs` |
 | `device-bound-writes` | verify wrapping-key reuse and failed metadata writes on real OPFS and IndexedDB; run with `node tests/device-bound-writes.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
