@@ -12,6 +12,8 @@
      https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans):
      no prediction of a next period, no fertility framing, no assumption
      that a regular cycle exists. */
+  import { crossfade, resize } from '$lib/motion/reveal';
+  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -104,6 +106,13 @@
     const onDay = eventsByDay.get(epochDay);
     return onDay && onDay.length ? onDay.map((event) => cycleEventKindName(event.kind)).join(' · ') : null;
   };
+
+  let weekShown = false;
+  function revealWeek(_node: Element) {
+    const duration = weekShown ? motionDuration('--dur-fast') : 0;
+    weekShown = true;
+    return fadeOnly(duration);
+  }
 
   let weeksBack = $state(0);
   let shownWeek = $derived(stripWindow(today, weeksBack));
@@ -202,26 +211,30 @@
         </ListCard>
       </div>
 
-      <div class="screen-part">
-        {#if weekEvents.length === 0}
-          <!-- Its own words rather than a day's answer stretched over seven,
-               the same line dilation's and wear's empty week carry. -->
-          <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-        {:else}
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-            {#each weekEvents as event (event.id)}
-              <ListRow
-                key={event.id}
-                data-cycle-event={event.id}
-                icon="calendar"
-                title={cycleEventKindName(event.kind)}
-                subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-                chevron={false}
-                onclick={() => record.openEditor(event)}
-              />
-            {/each}
-          </ListCard>
-        {/if}
+      <div class="screen-part cycle-week" use:resize={shownWeek.first}>
+        {#key shownWeek.first}
+          <div class="cycle-week-content" in:revealWeek out:crossfade>
+            {#if weekEvents.length === 0}
+              <!-- Its own words rather than a day's answer stretched over seven,
+                   the same line dilation's and wear's empty week carry. -->
+              <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+            {:else}
+              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+                {#each weekEvents as event (event.id)}
+                  <ListRow
+                    key={event.id}
+                    data-cycle-event={event.id}
+                    icon="calendar"
+                    title={cycleEventKindName(event.kind)}
+                    subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                    chevron={false}
+                    onclick={() => record.openEditor(event)}
+                  />
+                {/each}
+              </ListCard>
+            {/if}
+          </div>
+        {/key}
       </div>
 
       <div class="screen-part">
@@ -311,3 +324,16 @@
     {/snippet}
   </RecordSheet>
 </div>
+
+<style>
+  .cycle-week {
+    position: relative;
+    isolation: isolate;
+    display: flow-root;
+  }
+
+  .cycle-week > .cycle-week-content {
+    margin-bottom: 0;
+    display: flow-root;
+  }
+</style>
