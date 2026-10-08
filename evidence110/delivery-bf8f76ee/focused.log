@@ -1,0 +1,5 @@
+heavy waited 32.153s for 4 GiB: ['node', 'tests/settings-cycle-motion.mjs', 'evidence110/delivery-bf8f76ee/focused']
+light: max downstream step 11.30px, 13 intermediate frames; keyboard and persistence pass
+light-reduced: max downstream step 29.50px, 0 intermediate frames; keyboard and persistence pass
+dark: max downstream step 11.30px, 13 intermediate frames; keyboard and persistence pass
+dark-reduced: max downstream step 29.50px, 0 intermediate frames; keyboard and persistence pass

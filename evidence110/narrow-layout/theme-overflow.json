@@ -1,0 +1,46 @@
+[
+  {
+    "label": "clean-base",
+    "root": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/ticket110-clean-base/",
+    "theme": "light",
+    "file": "clean-base-light-theme-195px.png",
+    "geometry": {
+      "width": 212.125,
+      "right": 212.125,
+      "available": 185
+    }
+  },
+  {
+    "label": "clean-base",
+    "root": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/ticket110-clean-base/",
+    "theme": "dark",
+    "file": "clean-base-dark-theme-195px.png",
+    "geometry": {
+      "width": 212.125,
+      "right": 212.125,
+      "available": 185
+    }
+  },
+  {
+    "label": "candidate",
+    "root": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/",
+    "theme": "light",
+    "file": "candidate-light-theme-195px.png",
+    "geometry": {
+      "width": 212.125,
+      "right": 212.125,
+      "available": 185
+    }
+  },
+  {
+    "label": "candidate",
+    "root": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/",
+    "theme": "dark",
+    "file": "candidate-dark-theme-195px.png",
+    "geometry": {
+      "width": 212.125,
+      "right": 212.125,
+      "available": 185
+    }
+  }
+]

@@ -1,0 +1,1538 @@
+{
+  "results": [
+    {
+      "theme": "light",
+      "reduced": false,
+      "maxStep": 11.296875,
+      "remindersStep": 11.296875,
+      "intermediate": 13,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused/cycle-explanation-light-cast",
+        "frames": 21,
+        "clock": 1791492623264.4702
+      },
+      "samples": [
+        {
+          "ms": 3,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 20,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 37,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 53,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 70,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 87,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 103,
+          "height": 44.953125,
+          "unitY": 459.34375,
+          "remindersY": 627.734375,
+          "scroll": 1456
+        },
+        {
+          "ms": 120,
+          "height": 35.546875,
+          "unitY": 449.9375,
+          "remindersY": 618.328125,
+          "scroll": 1456
+        },
+        {
+          "ms": 137,
+          "height": 27.796875,
+          "unitY": 442.1875,
+          "remindersY": 610.578125,
+          "scroll": 1456
+        },
+        {
+          "ms": 153,
+          "height": 21.453125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 170,
+          "height": 16.328125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 187,
+          "height": 12.234375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 203,
+          "height": 9,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 220,
+          "height": 6.5,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 237,
+          "height": 4.578125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 253,
+          "height": 3.140625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 270,
+          "height": 2.09375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 287,
+          "height": 1.34375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 303,
+          "height": 0.828125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 320,
+          "height": 0.484375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 337,
+          "height": 0.265625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 353,
+          "height": 0.125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 370,
+          "height": 0.046875,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 387,
+          "height": 0.015625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 403,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 420,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 437,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 453,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 470,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 487,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 503,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 520,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 537,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 553,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 570,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 587,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 603,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 620,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 637,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 653,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 670,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 687,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 703,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 720,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ],
+      "layouts": [
+        {
+          "viewport": 390,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 380,
+          "mainScrollWidth": 380,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 340,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 360
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 170,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 238
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 250,
+              "right": 360
+            }
+          ]
+        },
+        {
+          "viewport": 780,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 770,
+          "mainScrollWidth": 770,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 730,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 750
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 560,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 628
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 640,
+              "right": 750
+            }
+          ]
+        },
+        {
+          "viewport": 195,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": true,
+          "mainWidth": 185,
+          "mainScrollWidth": 232,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 145,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 165
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 152.796875,
+              "minWidth": "max-content",
+              "left": 20,
+              "right": 172.796875
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 55,
+              "right": 165
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "reduced": true,
+      "maxStep": 29.5,
+      "remindersStep": 29.5,
+      "intermediate": 0,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused/cycle-explanation-light-reduced-cast",
+        "frames": 3,
+        "clock": 1791492639446.2458
+      },
+      "samples": [
+        {
+          "ms": 5,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 21,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 38,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 55,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 71,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 88,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 105,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 121,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 138,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 155,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 171,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 188,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 205,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 221,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 238,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 255,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 271,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 288,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 305,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 321,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 338,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 355,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 371,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 388,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 405,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 421,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 438,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 455,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 471,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 488,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 505,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 521,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 538,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 555,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 571,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 588,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 605,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 621,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 638,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 655,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 671,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 688,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 705,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 721,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "reduced": false,
+      "maxStep": 11.296875,
+      "remindersStep": 11.296875,
+      "intermediate": 13,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused/cycle-explanation-dark-cast",
+        "frames": 21,
+        "clock": 1791492691639.6738
+      },
+      "samples": [
+        {
+          "ms": 9,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 26,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 43,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 59,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 76,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 93,
+          "height": 44.953125,
+          "unitY": 459.34375,
+          "remindersY": 627.734375,
+          "scroll": 1456
+        },
+        {
+          "ms": 109,
+          "height": 35.546875,
+          "unitY": 449.9375,
+          "remindersY": 618.328125,
+          "scroll": 1456
+        },
+        {
+          "ms": 126,
+          "height": 27.796875,
+          "unitY": 442.1875,
+          "remindersY": 610.578125,
+          "scroll": 1456
+        },
+        {
+          "ms": 143,
+          "height": 21.453125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 159,
+          "height": 16.328125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 176,
+          "height": 12.234375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 193,
+          "height": 9,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 209,
+          "height": 6.5,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 226,
+          "height": 4.578125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 243,
+          "height": 3.140625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 259,
+          "height": 2.09375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 276,
+          "height": 1.34375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 293,
+          "height": 0.828125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 309,
+          "height": 0.484375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 326,
+          "height": 0.265625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 343,
+          "height": 0.125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 359,
+          "height": 0.046875,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 376,
+          "height": 0.015625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 393,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 409,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 426,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 443,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 459,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 476,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 493,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 509,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 526,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 543,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 559,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 576,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 593,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 609,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 626,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 643,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 659,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 676,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 693,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 709,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 726,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ],
+      "layouts": [
+        {
+          "viewport": 390,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 380,
+          "mainScrollWidth": 380,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 340,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 360
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 170,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 238
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 250,
+              "right": 360
+            }
+          ]
+        },
+        {
+          "viewport": 780,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 770,
+          "mainScrollWidth": 770,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 730,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 750
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 560,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 628
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 640,
+              "right": 750
+            }
+          ]
+        },
+        {
+          "viewport": 195,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": true,
+          "mainWidth": 185,
+          "mainScrollWidth": 232,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 145,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 165
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 152.796875,
+              "minWidth": "max-content",
+              "left": 20,
+              "right": 172.796875
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 55,
+              "right": 165
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "reduced": true,
+      "maxStep": 29.5,
+      "remindersStep": 29.5,
+      "intermediate": 0,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused/cycle-explanation-dark-reduced-cast",
+        "frames": 3,
+        "clock": 1791492710142.168
+      },
+      "samples": [
+        {
+          "ms": -11,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 6,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 23,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 39,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 56,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 73,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 89,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 106,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 123,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 139,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 156,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 173,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 189,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 206,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 223,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 239,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 256,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 273,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 289,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 306,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 323,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 339,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 356,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 373,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 389,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 406,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 423,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 439,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 456,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 473,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 489,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 506,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 523,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 539,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 556,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 573,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 589,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 606,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 623,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 639,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 656,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 673,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 689,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 706,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 723,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ]
+    }
+  ],
+  "failures": []
+}
