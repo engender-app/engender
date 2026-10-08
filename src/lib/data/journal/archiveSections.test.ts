@@ -200,8 +200,9 @@ test('a section with no constraint clears in the reverse of the order it was dec
 
 /** Which table each statement empties, however it is qualified. */
 const tableOf = (statement: string): string => {
+  if (statement === "INSERT INTO entry_fts(entry_fts) VALUES('delete-all')") return 'entry_fts';
   const named = /^DELETE FROM (\w+)/.exec(statement);
-  assert.ok(named, `a discard statement that is not a DELETE of one table: ${statement}`);
+  assert.ok(named, `a discard statement that is not a single-table delete or FTS reset: ${statement}`);
   return named[1];
 };
 
@@ -211,13 +212,12 @@ const tableOf = (statement: string): string => {
    remove, the same as every other reference table's built-in half. `pref` is
    not the journal's at all (ADR-0003), which is what leaves the PIN, the
    app-lock flags and the disguise settings in place through the most
-   destructive path in the app. `entry_fts` and its shadow tables are the
-   search index: migration v3's trigger drops an index row with its entry.
+   destructive path in the app. The `entry_fts` shadow tables belong to the
+   search index and are managed by FTS5's bulk reset.
    `sqlite_sequence` is SQLite's own AUTOINCREMENT bookkeeping. */
 const EMPTIED_BY_NOTHING = [
   'effect_category',
   'pref',
-  'entry_fts',
   'entry_fts_config',
   'entry_fts_data',
   'entry_fts_docsize',
@@ -278,9 +278,9 @@ test('every table in the schema is emptied by a section, or listed as one nothin
 
 /* Not "every section has a statement": one legitimately has none, and a list
    of exceptions is the thing that rots. This asserts the shape of what is
-   declared instead - a statement that is anything but a DELETE of one table
-   would break both the oracle above and the reverse ordering below it. */
-test('every section declares its discard as plain single-table deletes', () => {
+   declared instead - only single-table deletes and the native FTS reset
+   have a known owner for the oracle above and the reverse ordering. */
+test('every section declares its discard as single-table deletes or a native FTS reset', () => {
   for (const section of ARCHIVE_SECTIONS) {
     for (const statement of section.discard) assert.ok(tableOf(statement));
   }
