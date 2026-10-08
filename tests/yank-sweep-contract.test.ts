@@ -1,6 +1,84 @@
 // @ts-nocheck
 import { describe, expect, it, vi } from 'vitest';
 import { dispatchSceneAction, verifySceneAction, waitForReadiness, coverageSummary } from './yank-sweep-core.mjs';
+it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
+  const { preparePinGate } = await import('./yank-sweep-core.mjs');
+  let theme = 'dark';
+  const order = [];
+  await preparePinGate('dark', async () => { order.push('prepare'); theme = 'light'; }, async requested => { order.push('theme'); theme = requested; });
+  expect(order).toEqual(['prepare', 'theme']);
+  expect(theme).toBe('dark');
+});
+
+describe('shared SPA gesture preparation', () => {
+  const fixture = async (over = {}) => {
+    const { gestureNavigationExpression } = await import('./yank-sweep-core.mjs');
+    const { runInNewContext } = await import('node:vm');
+    let clock = 0;
+    let fan = !!over.fan;
+    const routes = [];
+    const options = [];
+    const oldRoot = { isConnected: true };
+    const main = { children: [oldRoot] };
+    const env = {
+      Date: { now: () => clock }, Event: class {}, performance: { timeOrigin: 100 },
+      setTimeout: (fn, ms) => { clock += ms; fn(); },
+      location: { pathname: over.route ?? '/', search: '' },
+      document: {
+        documentElement: { dataset: {} },
+        createElement: () => { const option = { value: '', remove: () => options.splice(options.indexOf(option), 1) }; return option; },
+        querySelector: selector => selector === '#demo-jump' ? select : selector === '#app-main' ? main
+          : selector === '[data-quick-add]' && fan ? { click: () => { if (!over.stuckFan) fan = false; } }
+          : selector === '[data-fan]' && fan ? {} : selector === '[data-app-root][data-boot="ready"]' && !over.gate ? {} : null
+      }
+    };
+    const select = {
+      disabled: !!over.disabled, append: option => options.push(option), value: '',
+      dispatchEvent: () => {
+        if (over.dispatchError) throw new Error('navigation dispatch failed');
+        expect(options.some(option => option.value === select.value)).toBe(true);
+        routes.push(select.value);
+        if (over.cancelled) return;
+        env.location.pathname = select.value;
+        if (!over.stale) for (const node of main.children) node.isConnected = false;
+        main.children = [{ isConnected: true }];
+        if (over.reload) env.performance.timeOrigin++;
+      }
+    };
+    const run = (path, predecessor = null) => runInNewContext(gestureNavigationExpression(path, predecessor), env);
+    return { run, env, routes, options, oldRoot };
+  };
+  it('remounts repeated routes without claiming a new document', async () => {
+    const state = await fixture({ route: '/calendar', fan: true });
+    expect(await state.run('/calendar')).toMatchObject({ kind: 'spa-mount', requested: '/calendar', actualRoute: '/calendar', previousTimeOrigin: 100, timeOrigin: 100, oldRootDetached: true, targetMounted: true });
+    expect(state.routes).toEqual(['/settings/licences', '/calendar']);
+    expect(state.oldRoot.isConnected).toBe(false);
+    expect(state.options).toHaveLength(0);
+  });
+  it('uses the expected parent for measured back navigation and supports detail URLs', async () => {
+    const state = await fixture();
+    await state.run('/settings/tags', '/settings');
+    expect(state.routes).toEqual(['/settings', '/settings/tags']);
+    expect(await state.run('/transition/tryouts/fixture-42')).toMatchObject({ actualRoute: '/transition/tryouts/fixture-42' });
+    expect(state.options).toHaveLength(0);
+  });
+  for (const [name, setup, error] of [
+    ['stale mount', { stale: true }, 'old screen remained mounted'],
+    ['cancelled navigation', { cancelled: true }, 'route'],
+    ['hidden gate', { gate: true }, 'mounted route'],
+    ['disabled demo control', { disabled: true }, 'control unavailable'],
+    ['surviving fan', { fan: true, stuckFan: true }, 'overlay cleanup'],
+    ['unexpected page reload', { reload: true }, 'replaced its document']
+  ]) it(`rejects ${name}`, async () => {
+    const state = await fixture(setup);
+    await expect(state.run('/calendar')).rejects.toThrow(error);
+  });
+  it('removes its temporary navigation option on dispatch failure', async () => {
+    const state = await fixture({ dispatchError: true });
+    await expect(state.run('/calendar')).rejects.toThrow('dispatch failed');
+    expect(state.options).toHaveLength(0);
+  });
+});
 
 const control = (over = {}) => ({
   tagName: 'BUTTON', disabled: false, textContent: 'Open',

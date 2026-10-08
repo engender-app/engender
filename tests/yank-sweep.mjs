@@ -119,6 +119,7 @@ import {
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   finishFirstRun,
   DEMO_THEME_EXPRESSION,
+  gestureNavigationExpression,
   prepareSceneExpression,
   actionPreparationExpression,
   cleanupSceneExpression,
@@ -192,15 +193,8 @@ let page = await browser.newPage({ viewport: { width: 390, height: 844 }, device
 page.on('pageerror', (err) => { errors.push(String(err)); recorder.persist(); });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 
-const settle = async (path, theme) => {
-  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
-  if (await page.locator('[data-leave-setup]').count()) {
-    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
-    await page.waitForSelector('[data-home-hello]', { timeout: 30000 });
-    await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
-  }
+const settle = async (path, theme, predecessor = null) => {
+  await page.evaluate(gestureNavigationExpression(path, predecessor));
   /* The demo bar is hidden rather than removed since redesign ticket 33:
      setup's own scenes reach the flow through the demo's first-run control,
      and a removed bar takes the control with it. Nothing measures the bar
@@ -250,7 +244,7 @@ for (const profile of profiles) {
             await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
             await page.evaluate(markProfileExpression(profile));
           }
-          await settle(scene.at, theme);
+          await settle(scene.at, theme, scene.act === 'back' ? scene.after.route : null);
           if (scene.firstRun) {
             await firstRunTo(page, scene.firstRun);
             await page.evaluate(DEMO_THEME_EXPRESSION(theme));
