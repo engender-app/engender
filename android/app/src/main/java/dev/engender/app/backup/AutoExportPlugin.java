@@ -136,15 +136,16 @@ public class AutoExportPlugin extends Plugin {
             }
 
             boolean enabled = enabledArg && destinationUri() != null;
-            if (!enabledArg) {
-                releaseDestinationGrant(destinationUri());
-                preferences().edit().remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL).apply();
-            }
-            preferences().edit().putBoolean(KEY_ENABLED, enabled).putString(KEY_SCHEDULE, schedule).apply();
-            preferences().edit().putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1).commit();
-            PersistentBackup.clear(getContext());
+            Uri previous = destinationUri();
             try {
+                SharedPreferences.Editor update = preferences().edit().putBoolean(KEY_ENABLED, enabled)
+                    .putString(KEY_SCHEDULE, schedule)
+                    .putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1);
+                if (!enabledArg) update.remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL);
+                commitState(preferences(), update);
                 BackupWork.schedule(getContext());
+                PersistentBackup.clear(getContext());
+                if (!enabledArg) releaseDestinationGrant(previous);
                 call.resolve(statusObject());
             } catch (Exception error) {
                 failure(message(error));
@@ -250,7 +251,7 @@ public class AutoExportPlugin extends Plugin {
             try {
                 passwordStore().clear();
                 invalidateStage();
-                preferences().edit().putBoolean(KEY_ENABLED, false).commit();
+                commitState(preferences(), preferences().edit().putBoolean(KEY_ENABLED, false));
                 BackupWork.schedule(getContext());
                 call.resolve();
             } catch (Exception e) {
@@ -531,10 +532,12 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
-    @Override protected synchronized void handleOnDestroy() {
-        synchronized (BackupWork.OWNER) {
-            try { clearPendingBackup(); } catch (IOException ignored) { }
-        }
+    @Override protected void handleOnDestroy() {
+        execute(() -> {
+            synchronized (BackupWork.OWNER) {
+                try { clearPendingBackup(); } catch (IOException ignored) { }
+            }
+        });
         super.handleOnDestroy();
     }
 
@@ -652,8 +655,25 @@ public class AutoExportPlugin extends Plugin {
     }
 
     private void invalidateStage() {
-        preferences().edit().putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1).commit();
+        commitState(preferences(), preferences().edit()
+            .putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1));
         PersistentBackup.clear(getContext());
+    }
+
+    static void commitState(SharedPreferences preferences, SharedPreferences.Editor update) {
+        java.util.Map<String, ?> before = preferences.getAll();
+        if (update.commit()) return;
+        SharedPreferences.Editor rollback = preferences.edit().clear();
+        for (java.util.Map.Entry<String, ?> entry : before.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof String) rollback.putString(entry.getKey(), (String) value);
+            else if (value instanceof Long) rollback.putLong(entry.getKey(), (Long) value);
+            else if (value instanceof Boolean) rollback.putBoolean(entry.getKey(), (Boolean) value);
+            else if (value instanceof Integer) rollback.putInt(entry.getKey(), (Integer) value);
+            else if (value instanceof Float) rollback.putFloat(entry.getKey(), (Float) value);
+        }
+        rollback.commit();
+        throw new IllegalStateException("backup-state-unavailable");
     }
 
     private SharedPreferences preferences() {
