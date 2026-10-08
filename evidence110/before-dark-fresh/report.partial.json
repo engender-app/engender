@@ -1,0 +1,385 @@
+{
+  "target": "desktop",
+  "complete": false,
+  "coverage": {
+    "requested": 1,
+    "attempted": 1,
+    "measured": 1,
+    "skipped": 0,
+    "failed": 0,
+    "missing": 0,
+    "groups": {
+      "persona:dark": {
+        "requested": 1,
+        "attempted": 1,
+        "measured": 1,
+        "skipped": 0,
+        "failed": 0,
+        "missing": 0
+      }
+    },
+    "missingRuns": [],
+    "inventory": [
+      {
+        "name": "settings-switch",
+        "at": "/settings",
+        "act": "[data-cycle-tracking-toggle] button.switch",
+        "after": {
+          "selector": "[data-cycle-tracking-toggle] button.switch",
+          "attribute": "aria-checked"
+        },
+        "is": "toggling a settings switch"
+      }
+    ]
+  },
+  "report": [
+    {
+      "scene": "settings-switch",
+      "profile": "persona",
+      "theme": "dark",
+      "pass": 1,
+      "is": "toggling a settings switch",
+      "action": {
+        "requested": "[data-cycle-tracking-toggle] button.switch",
+        "dispatched": true,
+        "beforeRoute": "/settings",
+        "beforeSearch": "",
+        "beforeTheme": "dark",
+        "themeProof": {
+          "requested": "dark",
+          "selected": true,
+          "persisted": "dark",
+          "painted": "dark",
+          "transitioning": false
+        },
+        "navigationProof": {
+          "kind": "spa-mount",
+          "requested": "/settings",
+          "previousRoute": "/",
+          "intermediate": "/settings/licences",
+          "actualRoute": "/settings",
+          "previousTimeOrigin": 1791491325999.25,
+          "timeOrigin": 1791491325999.25,
+          "oldRootDetached": true,
+          "targetMounted": true
+        },
+        "point": {
+          "x": 336,
+          "y": 421.890625
+        },
+        "bounds": {
+          "left": 312,
+          "top": 397.890625,
+          "width": 48,
+          "height": 48
+        },
+        "hit": {
+          "tag": "SPAN",
+          "id": null,
+          "target": false,
+          "descendant": true
+        },
+        "chosen": {
+          "selector": "[data-cycle-tracking-toggle] button.switch",
+          "tag": "BUTTON",
+          "id": null,
+          "label": "Cycle tracking",
+          "text": "",
+          "href": null
+        },
+        "beforePresent": true,
+        "beforeValue": "false",
+        "verified": true,
+        "afterRoute": "/settings",
+        "afterTheme": "dark",
+        "postcondition": {
+          "selector": "[data-cycle-tracking-toggle] button.switch",
+          "attribute": "aria-checked"
+        }
+      },
+      "cleanup": null,
+      "profileProof": {
+        "prepared": "persona",
+        "hasEntries": "1",
+        "greeting": "Hi Alice · Thursday 8 October",
+        "route": "/"
+      },
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/before-dark-fresh/settings-switch-persona-dark-p1-cast",
+        "frames": 12,
+        "clock": 1791491358805.4968
+      },
+      "instrument": "rows",
+      "frames": 67,
+      "sampled": 67,
+      "cast": 12,
+      "from": 13,
+      "span": 1113,
+      "yanks": [
+        {
+          "kind": "teleport",
+          "mark": ".kit-row-ico|#node-130",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "15px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".switch|#node-133",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "15px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".switch-track|#node-134",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "15px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".kit-list|Measurement units  cmin#node-136",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".kit-row-ico|#node-137",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".kit-row-title|Measurement units#node-138",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[measurement-unit].segmented.is-compact|cmin#node-139",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[measurement-unit].segment-pill.is-shown|#node-140",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[cm].segment|cm#node-141",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[in].segment|in#node-142",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".kit-heading|Reminders & prompts#node-143",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "h2|Reminders & prompts#node-144",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": ".kit-list|Reminders reminders need#node-145",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[reminders].kit-row.svelte-az528z|Reminders reminders need#node-146",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[reminders].kit-row-ico|#node-147",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[reminders]span|Reminders#node-148",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[reminders].kit-row-sub|reminders need the Andro#node-149",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[notifications].kit-row.svelte-az528z|Notices and notification#node-150",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[notifications].kit-row-ico|#node-151",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[notifications]span|Notices and notification#node-152",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[journaling-pause].kit-row.svelte-az528z|Journaling pause#node-153",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[journaling-pause].kit-row-ico|#node-154",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[journaling-pause]span|Journaling pause#node-155",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[affirmations].kit-row.svelte-az528z|Affirmations#node-156",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[affirmations].kit-row-ico|#node-157",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        },
+        {
+          "kind": "teleport",
+          "mark": "[affirmations]span|Affirmations#node-158",
+          "frames": [
+            0,
+            1
+          ],
+          "at": 29,
+          "detail": "30px in one frame, 0px in the frames either side"
+        }
+      ],
+      "pixelFindings": [],
+      "suppressed": 0
+    }
+  ],
+  "errors": []
+}

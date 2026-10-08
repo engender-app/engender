@@ -1,0 +1,175 @@
+{
+  "root": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad",
+  "report": [
+    {
+      "theme": "light",
+      "screenshot": "candidate-light-195px.png",
+      "mainWidth": 185,
+      "mainScrollWidth": 232,
+      "owners": [
+        {
+          "selector": ".app-main",
+          "width": 195,
+          "left": 0,
+          "right": 195,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": ".screen",
+          "width": 185,
+          "left": 0,
+          "right": 185,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-cycle-tracking-toggle]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 145,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 153,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-ico",
+          "width": 36,
+          "left": 20,
+          "right": 56,
+          "scrollWidth": 34,
+          "clientWidth": 34,
+          "display": "grid",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-text",
+          "width": 152.796875,
+          "left": 20,
+          "right": 172.796875,
+          "scrollWidth": 153,
+          "clientWidth": 153,
+          "display": "block",
+          "minWidth": "max-content",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-trail",
+          "width": 110,
+          "left": 55,
+          "right": 165,
+          "scrollWidth": 110,
+          "clientWidth": 110,
+          "display": "flex",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "screenshot": "candidate-dark-195px.png",
+      "mainWidth": 185,
+      "mainScrollWidth": 232,
+      "owners": [
+        {
+          "selector": ".app-main",
+          "width": 195,
+          "left": 0,
+          "right": 195,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": ".screen",
+          "width": 185,
+          "left": 0,
+          "right": 185,
+          "scrollWidth": 232,
+          "clientWidth": 185,
+          "display": "block",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-cycle-tracking-toggle]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 145,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit]",
+          "width": 145,
+          "left": 20,
+          "right": 165,
+          "scrollWidth": 153,
+          "clientWidth": 145,
+          "display": "flex",
+          "minWidth": "0px",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-ico",
+          "width": 36,
+          "left": 20,
+          "right": 56,
+          "scrollWidth": 34,
+          "clientWidth": 34,
+          "display": "grid",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-text",
+          "width": 152.796875,
+          "left": 20,
+          "right": 172.796875,
+          "scrollWidth": 153,
+          "clientWidth": 153,
+          "display": "block",
+          "minWidth": "max-content",
+          "flexShrink": "1"
+        },
+        {
+          "selector": "[data-measurement-unit] .kit-row-trail",
+          "width": 110,
+          "left": 55,
+          "right": 165,
+          "scrollWidth": 110,
+          "clientWidth": 110,
+          "display": "flex",
+          "minWidth": "auto",
+          "flexShrink": "0"
+        }
+      ]
+    }
+  ]
+}

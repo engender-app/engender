@@ -1,0 +1,32 @@
+heavy waited 4.013s for 4 GiB: ['node', 'tests/settings-cycle-motion.mjs', 'evidence110/focused-after']
+light: max downstream step 16.94px, 8 intermediate frames; keyboard and persistence pass
+light-reduced: max downstream step 29.50px, 0 intermediate frames; keyboard and persistence pass
+dark: max downstream step 16.94px, 8 intermediate frames; keyboard and persistence pass
+dark-reduced: max downstream step 29.50px, 0 intermediate frames; keyboard and persistence pass
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'light: explanation cut or downstream jump (16.9375px, 8 intermediate frames)',
++   'dark: explanation cut or downstream jump (16.9375px, 8 intermediate frames)'
++ ]
+- []
+
+    at file:///home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/tests/settings-cycle-motion.mjs:108:8
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'light: explanation cut or downstream jump (16.9375px, 8 intermediate frames)',
+    'dark: explanation cut or downstream jump (16.9375px, 8 intermediate frames)'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.14.1

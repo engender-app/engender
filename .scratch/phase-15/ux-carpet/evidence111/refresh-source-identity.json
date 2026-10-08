@@ -1,0 +1,22 @@
+{
+  "src/lib/components/kit/ListRow.svelte": {
+    "reviewed": "c20f417d3afa3a592fba0d5df931c719c9a7ed3e",
+    "refreshed": "c20f417d3afa3a592fba0d5df931c719c9a7ed3e"
+  },
+  "tests/browser-tier/transition-summary-fixture.svelte": {
+    "reviewed": "2bf711b1602617bca60fcc2787437c629ac71522",
+    "refreshed": "2bf711b1602617bca60fcc2787437c629ac71522"
+  },
+  "tests/browser-tier/transition-summary-mount.ts": {
+    "reviewed": "a08c7d3881acef0fe9abfc943fa6568eac0d0c3c",
+    "refreshed": "a08c7d3881acef0fe9abfc943fa6568eac0d0c3c"
+  },
+  "tests/browser-tier/transition-summary.html": {
+    "reviewed": "2a5eaae4a788a90a74980115623f83164737cf49",
+    "refreshed": "2a5eaae4a788a90a74980115623f83164737cf49"
+  },
+  "tests/transition-summary-overlap.mjs": {
+    "reviewed": "7a1a5ce65fad399ec1c7e7a2107d5325a059c7ee",
+    "refreshed": "7a1a5ce65fad399ec1c7e7a2107d5325a059c7ee"
+  }
+}

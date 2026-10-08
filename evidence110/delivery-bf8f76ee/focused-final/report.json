@@ -1,0 +1,1559 @@
+{
+  "results": [
+    {
+      "theme": "light",
+      "reduced": false,
+      "maxStep": 11.296875,
+      "remindersStep": 11.296875,
+      "intermediate": 13,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused-final/cycle-explanation-light-cast",
+        "frames": 21,
+        "clock": 1791492759927.967
+      },
+      "samples": [
+        {
+          "ms": 15,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 32,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 49,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 65,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 82,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 99,
+          "height": 44.953125,
+          "unitY": 459.34375,
+          "remindersY": 627.734375,
+          "scroll": 1456
+        },
+        {
+          "ms": 115,
+          "height": 35.546875,
+          "unitY": 449.9375,
+          "remindersY": 618.328125,
+          "scroll": 1456
+        },
+        {
+          "ms": 132,
+          "height": 27.796875,
+          "unitY": 442.1875,
+          "remindersY": 610.578125,
+          "scroll": 1456
+        },
+        {
+          "ms": 149,
+          "height": 21.453125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 165,
+          "height": 16.328125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 182,
+          "height": 12.234375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 199,
+          "height": 9,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 215,
+          "height": 6.5,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 232,
+          "height": 4.578125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 249,
+          "height": 3.140625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 265,
+          "height": 2.09375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 282,
+          "height": 1.34375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 299,
+          "height": 0.828125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 315,
+          "height": 0.484375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 332,
+          "height": 0.265625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 349,
+          "height": 0.125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 365,
+          "height": 0.046875,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 382,
+          "height": 0.015625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 399,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 415,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 432,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 449,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 465,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 482,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 499,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 515,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 532,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 549,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 565,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 582,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 599,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 615,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 632,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 649,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 665,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 682,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 699,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 715,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 732,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ],
+      "layouts": [
+        {
+          "viewport": 390,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 380,
+          "mainScrollWidth": 380,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 340,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 360
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 170,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 238
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 250,
+              "right": 360
+            }
+          ]
+        },
+        {
+          "viewport": 780,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 770,
+          "mainScrollWidth": 770,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 730,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 750
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 560,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 628
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 640,
+              "right": 750
+            }
+          ]
+        },
+        {
+          "viewport": 195,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": true,
+          "mainWidth": 185,
+          "mainScrollWidth": 232,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 145,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 165
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 152.796875,
+              "minWidth": "max-content",
+              "left": 20,
+              "right": 172.796875
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 55,
+              "right": 165
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "reduced": true,
+      "maxStep": 29.5,
+      "remindersStep": 29.5,
+      "intermediate": 0,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused-final/cycle-explanation-light-reduced-cast",
+        "frames": 5,
+        "clock": 1791492817780.742
+      },
+      "samples": [
+        {
+          "ms": -4,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 13,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 30,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 46,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 63,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 80,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 96,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 113,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 130,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 146,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 163,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 180,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 196,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 213,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 230,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 246,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 263,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 280,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 296,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 313,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 330,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 346,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 363,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 380,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 396,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 413,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 430,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 446,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 463,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 480,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 496,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 513,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 530,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 546,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 563,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 580,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 596,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 613,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 630,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 646,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 663,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 680,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 696,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 713,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 730,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 746,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 763,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "reduced": false,
+      "maxStep": 11.296875,
+      "remindersStep": 11.296875,
+      "intermediate": 13,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused-final/cycle-explanation-dark-cast",
+        "frames": 21,
+        "clock": 1791492856103.6711
+      },
+      "samples": [
+        {
+          "ms": 5,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 22,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 38,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 55,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 72,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 88,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 105,
+          "height": 44.953125,
+          "unitY": 459.34375,
+          "remindersY": 627.734375,
+          "scroll": 1456
+        },
+        {
+          "ms": 122,
+          "height": 35.546875,
+          "unitY": 449.9375,
+          "remindersY": 618.328125,
+          "scroll": 1456
+        },
+        {
+          "ms": 138,
+          "height": 27.796875,
+          "unitY": 442.1875,
+          "remindersY": 610.578125,
+          "scroll": 1456
+        },
+        {
+          "ms": 155,
+          "height": 21.453125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 172,
+          "height": 16.328125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 188,
+          "height": 12.234375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 205,
+          "height": 9,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 222,
+          "height": 6.5,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 238,
+          "height": 4.578125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 255,
+          "height": 3.140625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 272,
+          "height": 2.09375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 288,
+          "height": 1.34375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 305,
+          "height": 0.828125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 322,
+          "height": 0.484375,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 338,
+          "height": 0.265625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 355,
+          "height": 0.125,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 372,
+          "height": 0.046875,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 388,
+          "height": 0.015625,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 405,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 422,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 438,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 455,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 472,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 488,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 505,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 522,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 538,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 555,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 572,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 588,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 605,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 622,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 638,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 655,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 672,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 688,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 705,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 722,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ],
+      "layouts": [
+        {
+          "viewport": 390,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 380,
+          "mainScrollWidth": 380,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 340,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 360
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 170,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 238
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 250,
+              "right": 360
+            }
+          ]
+        },
+        {
+          "viewport": 780,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": false,
+          "mainWidth": 770,
+          "mainScrollWidth": 770,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 730,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 750
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 560,
+              "minWidth": "max-content",
+              "left": 68,
+              "right": 628
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 640,
+              "right": 750
+            }
+          ]
+        },
+        {
+          "viewport": 195,
+          "width": 48,
+          "height": 48,
+          "focused": true,
+          "horizontalOverflow": true,
+          "mainWidth": 185,
+          "mainScrollWidth": 232,
+          "units": [
+            {
+              "selector": "kit-row settings-unit-row",
+              "width": 145,
+              "minWidth": "0px",
+              "left": 20,
+              "right": 165
+            },
+            {
+              "selector": "kit-row-ico",
+              "width": 36,
+              "minWidth": "auto",
+              "left": 20,
+              "right": 56
+            },
+            {
+              "selector": "kit-row-text",
+              "width": 152.796875,
+              "minWidth": "max-content",
+              "left": 20,
+              "right": 172.796875
+            },
+            {
+              "selector": "kit-row-trail",
+              "width": 110,
+              "minWidth": "auto",
+              "left": 55,
+              "right": 165
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "reduced": true,
+      "maxStep": 29.5,
+      "remindersStep": 29.5,
+      "intermediate": 0,
+      "evidence": {
+        "directory": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/o-71de6a5f47ad/evidence110/delivery-bf8f76ee/focused-final/cycle-explanation-dark-reduced-cast",
+        "frames": 3,
+        "clock": 1791492874352.855
+      },
+      "samples": [
+        {
+          "ms": -11,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 5,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 22,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 39,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 55,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 72,
+          "height": 56.25,
+          "unitY": 470.640625,
+          "remindersY": 639.03125,
+          "scroll": 1456
+        },
+        {
+          "ms": 89,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 105,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 122,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 139,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 155,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 172,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 189,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 205,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 222,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 239,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 255,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 272,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 289,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 305,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 322,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 339,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 355,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 372,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 389,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 405,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 422,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 439,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 455,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 472,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 489,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 505,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 522,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 539,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 555,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 572,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 589,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 605,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 622,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 639,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 655,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 672,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 689,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 705,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        },
+        {
+          "ms": 722,
+          "height": 0,
+          "unitY": 441.140625,
+          "remindersY": 609.53125,
+          "scroll": 1456
+        }
+      ]
+    }
+  ],
+  "failures": []
+}
