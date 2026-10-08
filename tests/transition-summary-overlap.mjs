@@ -15,7 +15,7 @@ try {
   for (const width of matrix ? [230, 430, 1024] : [430]) for (const grow of matrix ? [false, true] : [false]) for (const theme of ['light', 'dark']) for (const reducedMotion of ['no-preference', 'reduce']) {
     const prefix = `${width}-${grow ? 'grow' : 'shrink'}-${theme}-${reducedMotion}`;
     const page = await browser.newPage({ viewport: { width, height: 700 }, reducedMotion });
-    await page.goto(`http://localhost:${server.config.server.port}/transition-summary.html${grow ? '?grow' : ''}`);
+    await page.goto(`http://localhost:${server.config.server.port}/transition-summary.html?motion=${reducedMotion === 'reduce' ? 'reduce' : 'full'}${grow ? '&grow' : ''}`);
     await page.waitForSelector('[data-list-row="care"]');
     await page.evaluate((theme) => document.documentElement.dataset.theme = theme, theme);
     if (painted) await page.addStyleTag({ content: '[data-list-row="care"] [data-leaving] { color: rgb(255,0,0) !important; } [data-list-row="surgery"] [data-row-title] { color: rgb(0,0,255) !important; }' });
@@ -39,7 +39,7 @@ try {
           const visibleBottom = clipped ? Math.min(ink.bottom, clip.getBoundingClientRect().bottom) : ink.bottom;
           return { text: n.textContent, top: b.top, bottom: b.bottom, visibleBottom, opacity: getComputedStyle(n).opacity, overlap: Number(getComputedStyle(n).opacity) > .05 && visibleBottom > title.top && ink.top < title.bottom };
         });
-        window.samples.push({ frame: window.samples.length, ms: performance.now() - start, rowBottom: bounds.bottom, nextTop: title.top, lines });
+        window.samples.push({ frame: window.samples.length, ms: performance.now() - start, rowBottom: bounds.bottom, nextTop: title.top, lines, heightAnimations: document.getAnimations().filter(a => a.effect?.getKeyframes().some(f => 'height' in f)).length });
         if (performance.now() - start < 600) requestAnimationFrame(sample);
       }; requestAnimationFrame(sample);
     });
@@ -69,10 +69,12 @@ try {
     await page.waitForTimeout(650);
     const samples = await page.evaluate(() => window.samples);
     const overlaps = samples.filter(s => s.lines.some(l => l.overlap));
-    const result = { theme, reducedMotion, keyboard, overlaps, paintedFrames, samples };
+    const appMotion = await page.evaluate(() => document.documentElement.dataset.a11yMotion);
+    const reducedPath = reducedMotion !== 'reduce' || (appMotion === 'reduce' && samples.every(s => s.heightAnimations === 0));
+    const result = { appMotion, reducedPath, theme, reducedMotion, keyboard, overlaps, paintedFrames, samples };
     await writeFile(`${out}/${prefix}.json`, JSON.stringify(result, null, 2));
-    console.log(`${prefix}: ${overlaps.length} geometry collisions; ${paintedFrames.filter(f => f.redPixels > 0).length} painted collisions; keyboard=${keyboard}`);
-    failed ||= overlaps.length > 0 || paintedFrames.some(f => f.redPixels > 0) || !keyboard;
+    console.log(`${prefix}: ${overlaps.length} geometry collisions; ${paintedFrames.filter(f => f.redPixels > 0).length} painted collisions; keyboard=${keyboard}; motion=${appMotion}; reducedPath=${reducedPath}`);
+    failed ||= overlaps.length > 0 || paintedFrames.some(f => f.redPixels > 0) || !keyboard || !reducedPath;
     await page.close();
   }
 } finally { await browser.close(); await server.close(); }

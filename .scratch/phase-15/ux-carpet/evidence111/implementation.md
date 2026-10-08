@@ -113,3 +113,27 @@ not attributed to main.
 Fresh Luna Standards and Spec reviews belong to the root's handoff, in
 separate review worktrees on this committed candidate. No integration,
 issue-status change or main modification performed here.
+
+## Standards review correction
+
+Review of candidate `3a95f00c` found that the fixture emulated the browser's
+reduced-motion media query but never set the app's `data-a11y-motion` setting.
+The earlier reduced-motion captures therefore exercised normal app motion.
+Those captures remain archived; their reduced-motion claims are superseded.
+
+The fixture now reads `motion=reduce|full` before mounting ListRow and sets
+the app's attribute before the resize action decides whether to observe.
+The runner retains browser media emulation too. Every reduced-motion sample
+must have zero active height animations; results record the app attribute
+and the explicit reduced-path assertion.
+
+`baseline-app-motion/` reruns the corrected final probe against delivery base
+`0d9871ab`. Normal light and dark each fail with one painted collision and
+five geometry collisions. Actual reduced-motion controls pass with no height
+animations. `matrix-app-motion/` reruns all 24 fixed cases with the actual app
+setting: no painted or geometry collisions, keyboard checks pass, and every
+reduced-path assertion passes. No product source changed for this correction.
+
+`check-app-motion.log`, `node-app-motion.log` and `copy-app-motion.log` record
+the affected verification rerun. The existing successful build and navigation
+casts still represent the unchanged product source.
