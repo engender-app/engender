@@ -439,8 +439,9 @@
              card it replaces was taller than the two goals it hid. The
              heading stays, so putting it back is where putting it away was,
              and the stored statuses wait untouched underneath. -->
-        <p class="roadmap-track-note" data-track-dismissed={track} in:disclose>{m.roadmap_track_dismissed()}</p>
+        <p class="roadmap-track-note" data-track-dismissed={track} transition:disclose>{m.roadmap_track_dismissed()}</p>
       {:else}
+      <div data-roadmap-track-goals={track} transition:disclose>
       <ListCard role={roleAt(activeFlag.roles, i)}>
         <!-- Every row below is hand-rolled rather than ListRow (ticket 16):
              .roadmap-box is a three-state control (checked/not-my-path/
@@ -552,6 +553,7 @@
           <span class="kit-row-text"><span class="kit-row-title muted">{m.roadmap_new_goal()}</span></span>
         </button>
       </ListCard>
+      </div>
       {/if}
       </div>
     {/each}
