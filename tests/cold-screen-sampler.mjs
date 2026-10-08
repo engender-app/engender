@@ -59,6 +59,17 @@ export const COLD_SCREEN_SAMPLER = `(() => {
   };
   /* After the frame's paint rather than inside its rAF: a rAF read lands
      before that frame's ResizeObserver callbacks (home-fold-reserve.mjs). */
-  const later = () => setTimeout(tick, 0);
+  let lastFrameAt = -Infinity;
+  const later = (frameAt) => {
+    /* A delayed timer can schedule another rAF in the same rendering
+       frame. Duplicate observations break a continuous travel into a
+       false one-frame move. Allow for timestamp rounding within 1ms. */
+    if (frameAt - lastFrameAt < 1) {
+      requestAnimationFrame(later);
+      return;
+    }
+    lastFrameAt = frameAt;
+    setTimeout(tick, 0);
+  };
   requestAnimationFrame(later);
 })()`;
