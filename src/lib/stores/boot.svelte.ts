@@ -278,6 +278,7 @@ export function closeJournalForLock(): Promise<void> {
      locked screen's to keep. */
   forgetJournalContent();
   if (android) return Promise.resolve();
+  forgetReference();
   /* Published now as well as when the lock's turn comes: a lock can wait
      behind a reopen still under way, and the boot machine has to treat the
      next key as an unlock from the moment the gate is drawn. */
@@ -324,46 +325,37 @@ let reopeningCurrent: () => void = () => {};
    key, the preferences and the vocabulary read back, and the facade opened
    on the new handle. The prewarmed worker the lock started is what the
    driver takes over, so the wait is an `open` and a few reads. */
-async function reopenJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void): Promise<SqliteDriver> {
+async function reopenJournal(
+  dataKey: Uint8Array<ArrayBuffer>,
+  current: () => void,
+  dispose: (driver: SqliteDriver) => Promise<void>
+): Promise<SqliteDriver> {
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   try {
-    const journal = attachJournal(openJournal(journalDriver, photoFiles));
+    const preparing = openJournal(sqlite.driver, photoFiles);
     const preferences = await openPreferences(sqlite.driver, bootCache);
     current();
-    /* The database has answered, so the journal's calls can go to it: the
-       hydrate below, and any write held across the lock, which starts now
-       on this driver rather than on the closed one it was made against.
-       Not later: the hydrate reads through this same gate. The cost is that
-       a reopen failing after this point fails a held write with it, where
-       waiting for the next unlock would have kept it. */
-    session.connection.open(sqlite.driver);
-    await hydrateReference(journal);
+    /* Reopen reads use the private driver. The shared connection stays
+       closed until every preparation step has finished under this lock. */
+    await hydrateReference(preparing, current);
     current();
+    await attachPreferences(preferences);
+    current();
+    const journal = attachJournal(openJournal(journalDriver, photoFiles));
     openDriver = sqlite.driver;
     openFileOps = sqlite.fileOps;
     setActiveDriver(sqlite.driver);
     useJournalFiles(photoFiles);
-    await attachPreferences(preferences);
-    current();
+    session.connection.open(sqlite.driver);
     journalIsOpen();
     dispatch({ type: 'journal-reopened', journal });
     return sqlite.driver;
   } catch (error) {
-    /* Still locked, so nothing read on the way stays: the vocabulary a
-       hydrate may already have filled, and the stores if they were set. */
-    forgetReference();
-    await detachPreferences();
-    /* Calls already handed this driver fail with it; the ones that come
-       after wait for the next unlock. */
-    if (session.connection.current === sqlite.driver) void session.connection.close();
-    if (openDriver === sqlite.driver) {
-      openDriver = null;
-      openFileOps = null;
-      setActiveDriver(null);
-      useJournalFiles(null);
-    }
-    await sqlite.driver.close().catch(() => {});
+    /* Preparation can have attached preferences before losing ownership.
+       The session drains those writes within the same bound as a lock,
+       closes this private driver, and releases every partially filled store. */
+    await dispose(sqlite.driver);
     throw error;
   }
 }
