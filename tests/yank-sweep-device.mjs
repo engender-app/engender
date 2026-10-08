@@ -93,6 +93,7 @@ import {
   WALK_FIRST_RUN_FINISH_EXPRESSION,
   finishFirstRun,
   prepareSceneExpression,
+  navigateSweepPage,
   actionPreparationExpression,
   cleanupSceneExpression,
   actionPostconditionExpression,
@@ -450,7 +451,7 @@ const firstRunExpression = (target) => `(async () => {
   throw new Error('never reached the \${target} step');
 })()`;
 
-async function settle(path, theme, reload = false) {
+async function settle(path, theme) {
   await sleep(400);
   /* A sheet can survive the preceding pass. Its scrim intercepts the next
      tap, so close it before positioning another scene. */
@@ -468,23 +469,9 @@ async function settle(path, theme, reload = false) {
     await ev(waitForExpression('[data-home-hello]', 30000, '/'));
     await sleep(800);
   }
-  if (reload || await ev(`location.pathname + location.search !== ${JSON.stringify(path)}`)) {
-    await ev(`location.assign(${JSON.stringify(path)}); true;`);
-    /* Navigated on the whole address, waited on its pathname - the two are
-       deliberately different. A query is something a screen is allowed to
-       consume: settings reads `?raise=` once on mount and strips it back
-       off (`replaceRoute('/settings')`), so a wait pinned on the search
-       can never come true for exactly the scenes that carry one. Passing
-       the full path here is what left `presentations-add` erroring 12/12
-       on a boot that had already happened - the other half of e5678ffd
-       (ticket 139), which taught the line above to reload on a repeated
-       pathname and left this one as it was. `hydrationCold` has always
-       pinned the pathname alone, which is why the same address measures
-       fine in the hydration half. */
-    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path.split('?')[0].split('#')[0]));
-  } else {
-    await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000));
-  }
+  await ev(`(${navigateSweepPage})(${JSON.stringify(path)});`);
+  // A consumed query may disappear on mount; readiness follows its pathname.
+  await ev(waitForExpression('[data-app-root][data-boot="ready"], [data-pin-pad]', 40000, path.split('?')[0].split('#')[0]));
   if (await ev(`!!document.querySelector('[data-pin-pad]')`)) {
     await ev(`(async () => {
       for (const d of ${JSON.stringify(PIN)}) {
@@ -740,7 +727,7 @@ async function hydrationCold(href, profile, theme, outcome) {
 /** One sheet scene: settled screen, then the opening and its hydration
  *  recorded together. */
 async function hydrationSheet(scene, theme) {
-  await settle(scene.at, theme, scene.name === 'segment-lookback' || scene.name === 'span-offer-appear');
+  await settle(scene.at, theme);
   await ev(prepareSceneExpression(scene));
   await sleep(HYDRATION_SETTLE_MS);
   return screencast(async (cast) => {
@@ -958,7 +945,7 @@ if (hydration) {
               await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
               await markProfile(profile);
             }
-            await settle(scene.at, theme, scene.name === 'segment-lookback' || scene.name === 'span-offer-appear');
+            await settle(scene.at, theme);
             if (scene.firstRun) {
               await ev(firstRunExpression(scene.firstRun));
               await ev(DEMO_THEME_EXPRESSION(theme));

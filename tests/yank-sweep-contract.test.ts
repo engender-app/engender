@@ -463,3 +463,31 @@ it('preserves recording failure alongside screencast cleanup errors', async () =
     expect(error.errors.map(String)).toEqual(['Error: capture failed', 'Error: stop failed', 'Error: detach failed']);
   }
 });
+
+it('resets mounted state before each same-route native scene', async () => {
+  const { prepareSceneExpression, scenesFor, navigateSweepPage } = await import('./yank-sweep-core.mjs');
+  const { runInNewContext } = await import('node:vm');
+  let expanded = false;
+  const env = environment();
+  const toggle = control({
+    scrollIntoView: () => { env.document.elementFromPoint = () => toggle; },
+    getAttribute: (name) => name === 'aria-expanded' ? String(expanded) : null,
+    click: vi.fn(() => { expanded = !expanded; })
+  });
+  const row = control({ scrollIntoView: () => { env.document.elementFromPoint = () => row; } });
+  env.document.querySelector = () => null;
+  env.document.querySelectorAll = (selector) => selector === '[data-ms-log-toggle]' ? [toggle]
+    : selector.startsWith('[data-milestone]') && expanded ? [row] : [];
+  env.setTimeout = (resolve) => resolve();
+  env.location = { pathname: '/transition/milestones', search: '', assign: vi.fn(() => { expanded = false; }) };
+  for (const name of ['milestones-edit', 'milestone-delete-ask']) {
+    const scene = scenesFor().find((scene) => scene.name === name);
+    for (let pass = 0; pass < 3; pass++) {
+      navigateSweepPage(scene.at, env);
+      await runInNewContext(prepareSceneExpression(scene), env);
+      expect(expanded).toBe(true);
+    }
+  }
+  expect(toggle.click).toHaveBeenCalledTimes(6);
+  expect(env.location.assign).toHaveBeenCalledTimes(6);
+});

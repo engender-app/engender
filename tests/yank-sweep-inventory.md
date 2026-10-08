@@ -15,6 +15,8 @@ Theme and palette preparation wait for their actual reset transition and
 boot preference mirror before another control is tested. Measurement still
 starts after preparation with its existing window.
 
+Both gesture transports reload the requested route before each preparation.
+Repeated scenes start with fresh mounted state; journal data stays intact.
 Preparation closes existing overlays and restores inline edit modes before
 opening the state a scene requires. It does not change the recorded motion
 window or detector thresholds. Quick add opening, closing, choosing a mood,

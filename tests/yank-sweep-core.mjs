@@ -657,6 +657,11 @@ export function coverageSummary(scenes, profiles, themes, passes, report) {
   return { ...counts, groups: grouped, missingRuns: missing, inventory: scenes };
 }
 
+export function navigateSweepPage(path, env = globalThis) {
+  env.location.assign(path);
+  return true;
+}
+
 export const prepareSceneExpression = (scene) => `(async () => {
   const scene = ${JSON.stringify(scene)};
   const control = ${dispatchSceneAction};

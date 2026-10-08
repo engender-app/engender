@@ -25,6 +25,7 @@ const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
     seven times on 2026-09-24, and each core dump raised a notification on
     the desktop. Neither flag touches rendering. A caller's own `args`
     are kept after them. */
+/** @param {import('playwright-core').LaunchOptions} options */
 export function launchChromium(options = {}) {
   return chromium.launch({
     executablePath: process.env.CHROMIUM_PATH ?? DEFAULT_CHROMIUM_PATH,
@@ -39,6 +40,8 @@ export function launchChromium(options = {}) {
     (ticket 03): Chromium calls an incognito profile uninstallable before it
     looks at anything else, and "restart the app" means a profile that was
     still there afterwards. The caller owns `userDataDir` and removes it. */
+/** @param {string} userDataDir
+ * @param {Parameters<typeof chromium.launchPersistentContext>[1]} options */
 export function launchPersistentChromium(userDataDir, options = {}) {
   return chromium.launchPersistentContext(userDataDir, {
     executablePath: process.env.CHROMIUM_PATH ?? DEFAULT_CHROMIUM_PATH,
@@ -53,6 +56,9 @@ export function launchPersistentChromium(userDataDir, options = {}) {
     Waits for the picker to have gone, so the next step starts on the
     screen again. A date outside the field's bounds leaves the picker open
     with its field marked invalid, and this times out on the wait. */
+/** @param {import('playwright-core').Page} page
+ * @param {string} selector
+ * @param {string} iso */
 export async function fillDate(page, selector, iso) {
   await page.locator(selector).click();
   const picker = page.locator('[data-date-picker]');
@@ -64,18 +70,23 @@ export async function fillDate(page, selector, iso) {
 /** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the
     day written out ("3 Oct 2026", after-release 28), so its `inputValue()`
     is what a person reads; the stored value rides on `data-date-value`. */
+/** @param {import('playwright-core').Locator} locator */
 export async function dateValue(locator) {
   return locator.getAttribute('data-date-value');
 }
 
 /** Any field's value as a guard compares it: a DatePicker's stored
     `yyyy-mm-dd`, every other field's own value. */
+/** @param {import('playwright-core').Locator} locator */
 export async function fieldValue(locator) {
   return (await locator.getAttribute('data-date-value')) ?? (await locator.inputValue());
 }
 
 /** fillDate's twin for a TimePicker: the picker's foot takes `HH:MM` and
     "Use time". */
+/** @param {import('playwright-core').Page} page
+ * @param {string} selector
+ * @param {string} hhmm */
 export async function fillTime(page, selector, hhmm) {
   await page.locator(selector).click();
   const picker = page.locator('[data-time-picker]');
@@ -90,6 +101,10 @@ export async function fillTime(page, selector, hhmm) {
  *  a first run left if it was in the way, and the page-side settle
  *  stamped - toasts gone, demo bar hidden, theme on <html> the way
  *  +layout.svelte stamps it. */
+/** @param {import('playwright-core').Page} page
+ * @param {string} base
+ * @param {string} path
+ * @param {string} theme */
 export async function settlePage(page, base, path, theme) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   /* Attached, not visible: at a 200%-zoom width the demo bar wraps taller
@@ -97,7 +112,7 @@ export async function settlePage(page, base, path, theme) {
      below hides the bar, so waiting for it to be visible first never ends. */
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { state: 'attached', timeout: 30000 });
   if (await page.locator('[data-leave-setup]').count()) {
-    await page.evaluate(() => document.querySelector('[data-leave-setup]')?.click());
+    await page.evaluate(() => /** @type {HTMLElement | null} */ (document.querySelector('[data-leave-setup]'))?.click());
     await page.waitForSelector('[data-home-hello]');
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
@@ -111,11 +126,15 @@ export async function settlePage(page, base, path, theme) {
 
 /** Collect compositor frames while `fn` runs, via CDP Page.startScreencast.
  *  Shared between tests/hydration-sweep.mjs and tests/yank-sweep.mjs. */
+/** @template T
+ * @param {import('playwright-core').Page} page
+ * @param {(frames: {data: string, at: number}[]) => Promise<T>} fn */
 export async function screencast(page, fn) {
   const session = await page.context().newCDPSession(page);
+  /** @type {{data: string, at: number}[]} */
   const frames = [];
   session.on('Page.screencastFrame', (ev) => {
-    frames.push({ data: ev.data, at: ev.metadata.timestamp * 1000 });
+    frames.push({ data: ev.data, at: /** @type {number} */ (ev.metadata.timestamp) * 1000 });
     session.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {});
   });
   await session.send('Page.enable');
@@ -132,6 +151,7 @@ export async function screencast(page, fn) {
     failure = error;
     throw error;
   } finally {
+    /** @type {unknown[]} */
     const cleanupErrors = [];
     await session.send('Page.stopScreencast').catch((error) => cleanupErrors.push(error));
     await session.detach().catch((error) => cleanupErrors.push(error));
@@ -151,10 +171,13 @@ export async function screencast(page, fn) {
 export function createReporter() {
   let failures = 0;
   let checks = 0;
+  /** @param {string} name */
   const ok = (name) => {
     checks++;
     console.log('PASS', name);
   };
+  /** @param {string} name
+   * @param {unknown} detail */
   const fail = (name, detail) => {
     checks++;
     failures++;
@@ -164,6 +187,7 @@ export function createReporter() {
   /* Sets the exit code itself. Six probes called finish() and ignored what
      it returned, so a run that printed FAILURE(S) still exited 0 and the
      guard runner recorded a pass (hosted run 37504870508). */
+  /** @param {string} passMessage */
   const finish = (passMessage) => {
     console.log(failures ? `\n${failures} FAILURE(S)` : `\n${passMessage}`);
     if (failures) process.exitCode = 1;
@@ -176,12 +200,15 @@ export function createReporter() {
       threw or just under-ran, a shortfall against `expected` is reported
       too, so a block that quietly ran fewer checks than it has cannot pass
       by omission. */
+  /** @param {string} label
+   * @param {number} expected
+   * @param {() => unknown | Promise<unknown>} fn */
   const block = async (label, expected, fn) => {
     const before = checks;
     try {
       await fn();
     } catch (e) {
-      fail(label, e?.message ?? String(e));
+      fail(label, /** @type {{message?: unknown} | null | undefined} */ (e)?.message ?? String(e));
     }
     const ran = checks - before;
     if (ran < expected) {
@@ -203,6 +230,7 @@ export function createReporter() {
     relative paths afterwards keeps reading that tree. Resolve any output
     path the caller takes before calling it. Without `--root` the root is
     the checkout the probe runs in and the change is a no-op. */
+/** @param {string} root */
 export function previewBuild(root) {
   process.chdir(root);
   return serveBuild(root);
