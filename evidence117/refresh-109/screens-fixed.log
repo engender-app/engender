@@ -1,0 +1,7 @@
+
+> check:screens-classes
+> node scripts/check-screens-classes.mjs
+
+PASS 103 class(es) in src/lib/styles/screens.css, every single-consumer one accounted for
+PASS 147 class(es) in src/lib/styles/kit.css, every single-consumer one accounted for
+PASS 169 class(es) in src/lib/styles/components.css, every single-consumer one accounted for

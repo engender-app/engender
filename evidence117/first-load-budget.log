@@ -1,0 +1,9 @@
+
+> check:first-load-budget
+> node scripts/check-first-load-budget.mjs
+
+locale en: 103 files, 245862B gzip (selector included)
+locale pl: 103 files, 247488B gzip (selector included)
+first-load: 103 files, 247488B gzip (241.7KB)  budget 104 files, 251272B
+on-demand (not gated): 21 files, 22866526B gzip (22330.6KB)
+PASS first-load payload is within budget
