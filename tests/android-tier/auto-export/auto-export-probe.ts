@@ -16,6 +16,14 @@ journal.entries = Array.from({ length: 3300 }, (_, i) => ({
 const fileName = (index: number) => `${uuid(10000 + Math.floor(index / 2))}${index % 2 ? '-thumb' : ''}.jpg`;
 const bytes = new Uint8Array(1024 * 1024);
 for (let index = 0; index < bytes.length; index++) bytes[index] = (index * 31 + 17) % 256;
+// A valid synthetic JPEG, padded to keep the streaming-size proof intact.
+const canvas = document.createElement('canvas');
+canvas.width = canvas.height = 64;
+const drawing = canvas.getContext('2d')!;
+drawing.fillStyle = '#62749a';
+drawing.fillRect(0, 0, 64, 64);
+const jpeg = Uint8Array.from(atob(canvas.toDataURL('image/jpeg').split(',')[1]), c => c.charCodeAt(0));
+bytes.set(jpeg);
 
 const snapshot = (count: number): ArchiveSnapshot => {
   journal.entries[0].photos = Array.from({ length: Math.ceil(count / 2) }, (_, i) => ({
@@ -32,13 +40,13 @@ const preferences = { ...PREFERENCE_DEFAULTS, name: 'Backup proof' };
 const probe = {
   result: null as unknown,
   ready: false,
-  async run(count: number) {
+  async run(count: number, scheduled = false) {
     probe.ready = false;
     let recorded: number | null = null;
     try {
       probe.result = { result: await runAndroidAutoExport(
-        { snapshot: snapshot(count), preferences },
-        { recordBackup: (at) => { recorded = at; } }
+        { snapshot: snapshot(count), snapshotAt: Date.now(), preferences },
+        { scheduled, recordBackup: (at) => { recorded = at; } }
       ), recorded };
     } catch (error) { probe.result = { error: String(error) }; }
     probe.ready = true;
@@ -58,19 +66,63 @@ const probe = {
           }
         } finally { reader.releaseLock(); }
       }
+      snapshot(count);
       const restored = await openArchive(source(), password);
       if (JSON.stringify(restored.payload.journal) !== JSON.stringify(journal)) throw new Error('rows differ');
       let recovered = 0;
+      let decodedImage = false;
       for await (const file of restored.files) {
         if (file.name !== fileName(recovered) || file.bytes.length !== bytes.length) throw new Error('file differs');
         for (let i = 0; i < bytes.length; i++) {
           if (file.bytes[i] !== bytes[i]) throw new Error(`attachment byte differs: ${i}`);
         }
+        if (recovered === 0) {
+          const image = await createImageBitmap(new Blob([file.bytes as Uint8Array<ArrayBuffer>], { type: 'image/jpeg' }));
+          if (image.width !== 64 || image.height !== 64) throw new Error('restored photo is not usable');
+          image.close();
+          decodedImage = true;
+        }
         recovered++;
       }
       if (recovered !== count) throw new Error('attachment count differs');
-      probe.result = { recovered, rows: restored.payload.journal.entries.length };
+      probe.result = { recovered, decodedImage, rows: restored.payload.journal.entries.length };
     } catch (error) { probe.result = { error: String(error) }; }
+    probe.ready = true;
+  },
+  heldTransfer: null as string | null,
+  async hold() {
+    probe.ready = false;
+    try {
+      probe.heldTransfer = (await androidAutoExport.beginBackup({ fileName: 'auto-held.ttbackup', snapshotAt: Date.now() })).transferId;
+      probe.result = { held: true };
+    } catch (error) { probe.result = { error: String(error) }; }
+    probe.ready = true;
+  },
+  async appendHeld() {
+    probe.ready = false;
+    try {
+      await androidAutoExport.appendBackup({ transferId: probe.heldTransfer!, offset: 0, base64: btoa('GDIARY') });
+      probe.result = { appended: true };
+    } catch (error) { probe.result = { rejected: String(error) }; }
+    probe.ready = true;
+  },
+  async abortHeld() {
+    probe.ready = false;
+    await androidAutoExport.abortBackup({ transferId: probe.heldTransfer! });
+    probe.heldTransfer = null;
+    probe.result = { aborted: true };
+    probe.ready = true;
+  },
+  async disable() {
+    probe.ready = false;
+    probe.result = await androidAutoExport.configure({ enabled: false, schedule: 'weekly' });
+    probe.ready = true;
+  },
+  async concurrent() {
+    probe.ready = false;
+    const source = { snapshot: snapshot(2), snapshotAt: Date.now(), preferences };
+    probe.result = { outcomes: await Promise.all([false, true].map(scheduled =>
+      runAndroidAutoExport(source, { scheduled, recordBackup: () => {} }))) };
     probe.ready = true;
   },
   async invalid(kind: string) {
