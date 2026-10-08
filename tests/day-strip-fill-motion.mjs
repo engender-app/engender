@@ -77,17 +77,19 @@ try {
       await page.waitForTimeout(350);
       const result = await page.evaluate(async () => {
         const read = () => [...document.querySelectorAll('.day-strip .kit-strip-cell')].map(node => getComputedStyle(node).background);
+        const settleReduced = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 30))));
         document.querySelector('[data-strip-earlier]').click();
         await new Promise(resolve => setTimeout(resolve, 350));
         const animated = read();
         document.documentElement.dataset.a11yMotion = 'reduce';
+        read();
         document.querySelector('[data-strip-later]').click();
-        await new Promise(resolve => setTimeout(resolve, 30));
+        await settleReduced();
         document.querySelector('[data-strip-earlier]').click();
-        await new Promise(resolve => setTimeout(resolve, 30));
+        await settleReduced();
         const reduced = read();
         document.querySelector('[data-strip-later]').click();
-        await new Promise(resolve => setTimeout(resolve, 30));
+        await settleReduced();
         delete document.documentElement.dataset.a11yMotion;
         return { animated, reduced };
       });
