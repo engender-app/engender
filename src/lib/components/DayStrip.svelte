@@ -143,6 +143,8 @@
      its own cap does the centring, which is what that cap was written
      for. */
   .day-strip-head {
+    /* Keep the absolute outro inside its original grid column. */
+    position: relative;
     display: grid;
     /* The two controls take the same width, so the week's words sit centred
        over the strip below them rather than wherever the longer of two
