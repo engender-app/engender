@@ -7,7 +7,9 @@ is an error. Preparation centers the selected control, and keyboard actions
 focus it before capture. Dispatch hit-tests the control center, then viewport-inset points when
 part of the target is covered. A scrim can remain usable outside its fan.
 A fully covered or offscreen target still fails. Bounds, hit point and hit
-identity stay in the action record. Cold-load and injected-proof actions
+identity stay in the action record. When a selector matches several controls,
+dispatch chooses the first visible, enabled candidate that passes the same
+hit-test; its label and ID identify the chosen control. Cold-load and injected-proof actions
 remain explicit programmatic cases. An unchanged destination or state is also an error. The
 report records the requested selector, chosen control and actual outcome.
 
@@ -21,6 +23,8 @@ previous screen and intermediate screen detached, the target mounted, and
 performance.timeOrigin stayed unchanged. Deep-back scenes use their expected
 predecessor as the intermediate route. This resets screen state without
 creating a document for every gesture. Journal data stays intact.
+Each jump waits for the navigation transition to finish before another
+starts, so its outgoing-screen cleanup cannot remove the next mounted screen.
 Cold recording still reloads the document, retains finite previous and
 current document identities, and keeps its camera-before-navigation order
 and existing ready-to-sampler window.

@@ -432,34 +432,39 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
     return box.width > 0 && box.height > 0 && css.display !== 'none' && css.visibility !== 'hidden' && Number(css.opacity) > 0;
   });
   if (!visible.length) throw new Error(`target not visible: ${selector}`);
-  const hit = visible.find((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('[inert]'));
-  if (!hit) throw new Error(`no enabled target: ${selector}`);
-  if (prepareOnly) {
-    if (scene.key) {
-      hit.focus();
-      if (document.activeElement !== hit) throw new Error('keyboard target did not receive focus');
+  const enabled = visible.filter((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('[inert]'));
+  if (!enabled.length) throw new Error(`no enabled target: ${selector}`);
+  let hit, box, point, front;
+  for (const candidate of enabled) {
+    hit = candidate;
+    if (prepareOnly) {
+      if (scene.key) {
+        hit.focus();
+        if (document.activeElement !== hit) throw new Error('keyboard target did not receive focus');
+      }
+      hit.scrollIntoView({ block: 'center', behavior: 'instant' });
     }
-    hit.scrollIntoView({ block: 'center', behavior: 'instant' });
+    box = hit.getBoundingClientRect();
+    const left = Math.max(0, box.left), top = Math.max(0, box.top);
+    const right = Math.min(env.innerWidth ?? box.left + box.width, box.left + box.width);
+    const bottom = Math.min(env.innerHeight ?? box.top + box.height, box.top + box.height);
+    const insetX = Math.min(8, (right - left) / 2), insetY = Math.min(8, (bottom - top) / 2);
+    const points = [
+      { x: box.left + box.width / 2, y: box.top + box.height / 2 },
+      { x: left + insetX, y: top + insetY }, { x: right - insetX, y: top + insetY },
+      { x: left + insetX, y: bottom - insetY }, { x: right - insetX, y: bottom - insetY }
+    ];
+    point = right > left && bottom > top && points.find((point) => {
+      front = document.elementFromPoint(point.x, point.y);
+      return front === hit || hit.contains(front);
+    });
+    if (point) break;
   }
-  const box = hit.getBoundingClientRect();
-  const left = Math.max(0, box.left), top = Math.max(0, box.top);
-  const right = Math.min(env.innerWidth ?? box.left + box.width, box.left + box.width);
-  const bottom = Math.min(env.innerHeight ?? box.top + box.height, box.top + box.height);
-  const insetX = Math.min(8, (right - left) / 2), insetY = Math.min(8, (bottom - top) / 2);
-  const points = [
-    { x: box.left + box.width / 2, y: box.top + box.height / 2 },
-    { x: left + insetX, y: top + insetY }, { x: right - insetX, y: top + insetY },
-    { x: left + insetX, y: bottom - insetY }, { x: right - insetX, y: bottom - insetY }
-  ];
-  let front;
-  const point = right > left && bottom > top && points.find((point) => {
-    front = document.elementFromPoint(point.x, point.y);
-    return front === hit || hit.contains(front);
-  });
   if (!point) throw new Error('target remains covered or outside viewport: ' + selector);
   evidence.point = point;
   evidence.bounds = { left: box.left, top: box.top, width: box.width, height: box.height };
   evidence.hit = { tag: front.tagName, id: front.id || null, target: front === hit, descendant: front !== hit };
+  evidence.chosen = { selector, tag: hit.tagName, id: hit.id || null, label: hit.getAttribute('aria-label'), text: hit.textContent?.trim().slice(0, 100), href: hit.getAttribute('href') };
   if (prepareOnly) return { ...evidence, prepared: true };
   const after = scene.after;
   if (after?.selector) evidence.beforePresent = !!document.querySelectorAll(after.selector)[0];
@@ -469,7 +474,6 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   }
   if (after?.text) evidence.beforeValue = document.querySelectorAll(after.selector)[0]?.textContent ?? null;
   if (after?.order) evidence.beforeValue = [...document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|');
-  evidence.chosen = { selector, tag: hit.tagName, text: hit.textContent?.trim().slice(0, 100), href: hit.getAttribute('href') };
   if (scene.key) {
     if (document.activeElement !== hit) throw new Error('keyboard target lacks prepared focus: ' + selector);
     hit.dispatchEvent(new env.KeyboardEvent('keydown', { key: scene.key, bubbles: true, cancelable: true }));
@@ -715,7 +719,11 @@ export const gestureNavigationExpression = (path, predecessor = null) => `(${asy
   const started = Date.now();
   const wait = async (ready, stage) => {
     while (!ready()) {
-      if (Date.now() - started >= 40000) throw new Error('gesture preparation timed out: ' + stage);
+      if (Date.now() - started >= 40000) throw new Error('gesture preparation timed out: ' + stage + ' ' + JSON.stringify({
+        route: location.pathname + location.search, boot: document.querySelector('[data-app-root]')?.getAttribute('data-boot') ?? null,
+        mainChildren: document.querySelector('#app-main')?.children.length ?? null,
+        elapsedMs: Date.now() - started
+      }));
       await new Promise(resolve => setTimeout(resolve, 50));
     }
   };
@@ -729,6 +737,7 @@ export const gestureNavigationExpression = (path, predecessor = null) => `(${asy
   const roots = [...(document.querySelector('#app-main')?.children ?? [])];
   if (!roots.length) throw new Error('gesture preparation has no mounted source screen');
   const jump = async (href) => {
+    await wait(() => !document.documentElement.dataset.nav, 'previous navigation transition');
     const select = document.querySelector('#demo-jump');
     if (!select || select.disabled) throw new Error('gesture demo navigation control unavailable');
     const option = document.createElement('option');
@@ -739,6 +748,7 @@ export const gestureNavigationExpression = (path, predecessor = null) => `(${asy
     await wait(() => location.pathname + location.search === href, 'route ' + href);
     await wait(() => document.querySelector('[data-app-root][data-boot="ready"]')
       && document.querySelector('#app-main')?.children.length > 0, 'mounted route ' + href);
+    await wait(() => !document.documentElement.dataset.nav, 'navigation transition ' + href);
   };
   const intermediate = predecessor ?? (path === '/settings/licences' ? '/calendar' : '/settings/licences');
   if (previousRoute === intermediate) await jump(intermediate === '/calendar' ? '/settings/licences' : '/calendar');

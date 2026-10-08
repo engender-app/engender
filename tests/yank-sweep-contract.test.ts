@@ -22,7 +22,7 @@ describe('shared SPA gesture preparation', () => {
     const main = { children: [oldRoot] };
     const env = {
       Date: { now: () => clock }, Event: class {}, performance: { timeOrigin: 100 },
-      setTimeout: (fn, ms) => { clock += ms; fn(); },
+      setTimeout: (fn, ms) => { clock += ms; delete env.document.documentElement.dataset.nav; fn(); },
       location: { pathname: over.route ?? '/', search: '' },
       document: {
         documentElement: { dataset: {} },
@@ -35,6 +35,7 @@ describe('shared SPA gesture preparation', () => {
     const select = {
       disabled: !!over.disabled, append: option => options.push(option), value: '',
       dispatchEvent: () => {
+        if (over.transition && env.document.documentElement.dataset.nav) throw new Error('previous navigation cleanup overlaps next mount');
         if (over.dispatchError) throw new Error('navigation dispatch failed');
         expect(options.some(option => option.value === select.value)).toBe(true);
         routes.push(select.value);
@@ -42,6 +43,7 @@ describe('shared SPA gesture preparation', () => {
         env.location.pathname = select.value;
         if (!over.stale) for (const node of main.children) node.isConnected = false;
         main.children = [{ isConnected: true }];
+        if (over.transition) env.document.documentElement.dataset.nav = 'fade-through';
         if (over.reload) env.performance.timeOrigin++;
       }
     };
@@ -61,6 +63,12 @@ describe('shared SPA gesture preparation', () => {
     expect(state.routes).toEqual(['/settings', '/settings/tags']);
     expect(await state.run('/transition/tryouts/fixture-42')).toMatchObject({ actualRoute: '/transition/tryouts/fixture-42' });
     expect(state.options).toHaveLength(0);
+  });
+  it('finishes each navigation transition before starting another mount', async () => {
+    const state = await fixture({ transition: true });
+    expect(await state.run('/stats')).toMatchObject({ targetMounted: true });
+    expect(state.env.document.documentElement.dataset.nav).toBeUndefined();
+    expect(await state.run('/stats')).toMatchObject({ targetMounted: true });
   });
   for (const [name, setup, error] of [
     ['stale mount', { stale: true }, 'old screen remained mounted'],
@@ -106,6 +114,24 @@ describe('shared sweep action contract', () => {
     const env = environment([control({ parentElement: parent })]);
     env.getComputedStyle = (node) => ({ display: 'block', visibility: 'visible', opacity: node === parent ? '0' : '1' });
     expect(() => dispatchSceneAction({ act: '#covered' }, env)).toThrow('visible');
+  });
+  it('chooses an exposed matching band when the first band is covered', () => {
+    const covered = control({ id: 'covered-band' });
+    const exposed = control({ id: 'exposed-band', getAttribute: name => name === 'aria-label' ? 'Exposed stretch' : null });
+    const env = environment([covered, exposed]);
+    env.document.elementFromPoint = () => exposed;
+    const action = dispatchSceneAction({ act: '[data-span-band]' }, env);
+    expect(covered.click).not.toHaveBeenCalled();
+    expect(exposed.click).toHaveBeenCalledOnce();
+    expect(action.chosen).toMatchObject({ id: 'exposed-band', label: 'Exposed stretch' });
+    expect(action.hit).toMatchObject({ id: 'exposed-band', target: true });
+  });
+  it('rejects overlapping candidates when none passes the existing hit-test', () => {
+    const hits = [control(), control()];
+    const env = environment(hits);
+    env.document.elementFromPoint = () => control();
+    expect(() => dispatchSceneAction({ act: '[data-span-band]' }, env)).toThrow('covered or outside viewport');
+    for (const hit of hits) expect(hit.click).not.toHaveBeenCalled();
   });
   it('records chosen control and dispatch, then rejects stale destination', () => {
     const hit = control();
