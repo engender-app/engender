@@ -30,7 +30,7 @@ let eventIndex = 0;
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('console', (message) => {
   if (message.type() === 'error') {
-    consoleErrors.push({ index: ++eventIndex, text: message.text() });
+    consoleErrors.push({ index: ++eventIndex, text: message.text(), source: message.location().url });
     console.error('RAW BROWSER ERROR', message.text());
   } else if (message.text().startsWith('BFCache database event ')) {
     const event = JSON.parse(message.text().slice('BFCache database event '.length));
@@ -56,6 +56,8 @@ await page.addInitScript(() => {
     constructor(...args) {
       super(...args);
       this.requests = new Map();
+      this.workerId = crypto.randomUUID();
+      this.source = new URL(String(args[0]), location.href).href;
       window.historyProof.workers.push(this);
       this.addEventListener('message', event => {
         const request = this.requests.get(event.data.id);
@@ -63,15 +65,26 @@ await page.addInitScript(() => {
         if (!request || !['attach', 'open'].includes(request.op)) return;
         if (event.data.ok === false || request.op === 'open') {
           console.info('BFCache database event ' + JSON.stringify({
-            type: event.data.ok ? 'open' : 'failure', op: request.op,
+            type: event.data.ok ? 'open' : 'failure', op: request.op, id: event.data.id,
+            worker: this.workerId, source: this.source, token: window.historyProof.token,
             path: request.args.path, ...(event.data.ok ? {} : { error: event.data.error })
           }));
         }
       });
     }
-    terminate() { this.retired = true; return super.terminate(); }
+    terminate() {
+      this.retired = true;
+      console.info('BFCache database event ' + JSON.stringify({ type: 'retired',
+        worker: this.workerId, source: this.source, token: window.historyProof.token }));
+      return super.terminate();
+    }
     postMessage(message, ...args) {
       this.requests.set(message.id, message);
+      if (['attach', 'open'].includes(message.op)) {
+        console.info('BFCache database event ' + JSON.stringify({ type: 'request',
+          op: message.op, id: message.id, path: message.args.path,
+          worker: this.workerId, source: this.source, token: window.historyProof.token }));
+      }
       if (message.op === 'open') window.historyProof.databasePath = message.args.path;
       if (window.holdReopen && message.op === 'query' && message.args.sql === 'SELECT key, value FROM pref') {
         window.holdReopen = false;
@@ -97,7 +110,7 @@ async function clientRoute(path) {
 async function ready() {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   await page.waitForSelector('[data-nav-item="calendar"]', { timeout: 15000 });
-  databaseEvents.push({ type: 'ready', path: await page.evaluate(() => window.historyProof.databasePath), index: ++eventIndex });
+  databaseEvents.push({ type: 'ready', ...await page.evaluate(() => ({ path: window.historyProof.databasePath, token: window.historyProof.token })), index: ++eventIndex });
 }
 async function calendar() {
   await clientRoute('/calendar');
