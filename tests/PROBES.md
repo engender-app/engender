@@ -99,6 +99,7 @@ To run one on its own, use
 | `chart-tick-readout` | what a chart's tick says under a mouse and a finger, across grains, languages and widths |
 | `year-days-list` | the yearly grid's days as a list: the painted cells out of the accessibility tree, every day's value (or "Not logged") read off it a month at a time, three tab stops, a tap or Enter to open and step, and the fold and a month change never moving anything in one frame |
 | `voice-task-names` | the voice task chooser's labels fit their segments in both languages |
+| `android-door-motion` | outgoing Android door content fades; warm interruptions keep the intended screen, Back and reduced motion work, and gates remove journal content |
 | `record-dismissal-check` | a cancelled dismissal keeps unsaved record edits and the sheet's position |
 | `letter-composition-check` | letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock uses real routes |
 | `save-and-failure-check` | a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today |
