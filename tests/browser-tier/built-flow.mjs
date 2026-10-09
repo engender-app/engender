@@ -60,6 +60,17 @@ async function settleNavigation(page) {
   });
 }
 
+/** Finish the save's own return navigation before opening another route. */
+export async function saveEntryAndReturn(page) {
+  const current = new URL(page.url());
+  const destination = new URL(current.searchParams.get('from') ?? '/', current.origin);
+  await page.locator('[data-save]').click();
+  await page.waitForURL(url => url.pathname === destination.pathname && url.search === destination.search);
+  await page.waitForLoadState('networkidle');
+  await settleNavigation(page);
+  await page.locator('#ed-note').waitFor({ state: 'detached' });
+}
+
 export async function clientRoute(page, path, discard = false) {
   await settleNavigation(page);
   await page.evaluate((path) => {

@@ -5,7 +5,7 @@ import { serveBuild } from '../serve-build.mjs';
 import { tinyPhoto } from '../photo-fixture.mjs';
 import { mediaFixtures } from '../media-fixtures.mjs';
 import { makePdf } from '../pdf-fixture.mjs';
-import { firstRun, reachAccessSetup, choosePassphrase, unlock, clientRoute, openSection, pickFile, trackTransitions } from './built-flow.mjs';
+import { firstRun, reachAccessSetup, choosePassphrase, unlock, clientRoute, openSection, pickFile, trackTransitions, saveEntryAndReturn } from './built-flow.mjs';
 
 const engine = browserEngine();
 const server = await serveBuild(process.cwd());
@@ -52,8 +52,7 @@ let entryPath;
 async function saveNote(text) {
   await clientRoute(page, '/entry/new/2026-10-05?seedMood=4');
   await page.locator('#ed-note').fill(text);
-  await page.locator('[data-save]').click();
-  await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
+  await saveEntryAndReturn(page);
   await clientRoute(page, '/day/2026-10-05');
   await page.getByText(text, { exact: true }).first().waitFor();
 }
@@ -207,8 +206,7 @@ try {
     await pickFile(page, '[data-add-photo]', { name: 'capability.png', mimeType: 'image/png', buffer: await tinyPhoto(page, '#c94f7c') });
     await page.locator('[data-photo-day-skip]').click();
     await page.waitForFunction(() => [...document.querySelectorAll('[data-editor-section="photos"] img')].some(image => image.complete && image.naturalWidth > 0));
-    await page.locator('[data-save]').click();
-    await page.waitForFunction(() => !document.querySelector('#ed-note'));
+    await saveEntryAndReturn(page);
     return { decoded: true, saved: true };
   });
   const media = await mediaFixtures();
@@ -222,8 +220,7 @@ try {
     await page.locator(`${row} [data-transport-toggle]`).last().waitFor({ timeout: 30000 });
     await page.locator(`${row} [data-transport-toggle]`).last().click();
     await page.waitForFunction(row => [...document.querySelectorAll(`${row} audio, ${row} video`)].some(media => media.currentTime > 0.2 && !media.paused && media.readyState >= 2), row);
-    await page.locator('[data-save]').click();
-    await page.waitForFunction(() => !document.querySelector('#ed-note'));
+    await saveEntryAndReturn(page);
     return { fixture: file.split('/').pop(), playbackAdvances: true, saved: true };
   });
   for (const [capability, section, row] of [
@@ -247,8 +244,7 @@ try {
       await panel.locator(`${row} [data-transport-toggle]`).waitFor({ timeout: 30000 });
       await panel.locator(`${row} [data-transport-toggle]`).click();
       await page.waitForFunction(row => [...document.querySelectorAll(`${row} audio, ${row} video`)].some(media => media.currentTime > 0.2 && (!media.paused || media.ended) && media.readyState >= 2), row);
-      await page.locator('[data-save]').click();
-      await page.waitForFunction(() => !document.querySelector('#ed-note'));
+      await saveEntryAndReturn(page);
       return { source: 'browser synthetic device', playbackAdvances: true, saved: true };
     });
   }
@@ -312,8 +308,7 @@ try {
       await firstRun(pending, origin);
       await clientRoute(pending, '/entry/new/2026-10-05?seedMood=4');
       await pending.locator('#ed-note').fill('Save while persistence waits');
-      await pending.locator('[data-save]').click();
-      await pending.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
+      await saveEntryAndReturn(pending);
       await clientRoute(pending, '/day/2026-10-05');
       await pending.getByText('Save while persistence waits', { exact: true }).first().waitFor();
       return { fault: 'unanswered persist request', startupAndSaveComplete: true };
