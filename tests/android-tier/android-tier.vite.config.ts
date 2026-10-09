@@ -31,6 +31,7 @@ const PROBES = {
   /** Ticket 13: seeds a journal so the claim gate can read its bytes. */
   encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` },
   /** Ticket 17: archive import/export between web and Android implementations. */
+  'archive-recovery': { root: 'archive/recovery', outDir: `${ASSETS}/archive-recovery-probe` },
   archive: { root: 'archive', outDir: `${ASSETS}/archive-cross-probe` },
   /** Ticket 20: ten-year Journal benchmark over the native driver. */
   'long-journal': { root: 'long-journal', outDir: `${ASSETS}/long-journal-probe` }
@@ -47,12 +48,15 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
-      $lib: join(repo, 'src/lib')
+      $lib: join(repo, 'src/lib'),
+      '$app/state': join(repo, 'tests/browser-tier/screen-router.svelte.ts'),
+      '$app/navigation': join(repo, 'tests/browser-tier/app-navigation-stub.ts')
     }
   },
-  plugins: name === 'auto-export' ? [svelte({ configFile: false })] : [],
+  plugins: (name === 'auto-export' || name === 'archive-recovery') ? [svelte({ configFile: false })] : [],
   define: {
-    __DEMO__: JSON.stringify(false)
+    __DEMO__: JSON.stringify(false),
+    __APP_VERSION__: JSON.stringify('0.0.0-archive-recovery')
   },
   optimizeDeps: {
     exclude: ['@evolu/sqlite-wasm']
