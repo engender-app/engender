@@ -3,8 +3,6 @@
 # move out one at a time. Regenerate with `node scripts/check-screens-classes.mjs
 # --update` after moving a class out or deliberately accepting a new one.
 app-nav
-bloom
-bloom-core
 body-region-feeling
 cal-num
 can-scroll
@@ -66,7 +64,6 @@ pin-key
 pin-pad
 pin-wait
 rail-add
-rive-stage
 screen-back
 screen-field
 screen-field-slot

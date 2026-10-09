@@ -583,9 +583,8 @@ try {
   else fail('the shell names what an offline boot reaches for first', `no ${absent.join(', no ')}`);
 
   /* The animation assets, which are the one part of the shell there is
-     nothing to check yet: static/rive/ does not exist, and RiveSlot.svelte
-     renders its CSS fallback until a .riv lands in there. The trap waiting
-     for whoever lands the first one is that @rive-app/canvas fetches its
+     nothing to check yet: static/rive/ does not exist. If one lands later,
+     @rive-app/canvas fetches its
      runtime WASM from unpkg, falling back to jsdelivr, so an animation that
      plays online would be a request off the origin and a blank canvas
      offline. Hence a check that stays quiet until an asset exists and then
