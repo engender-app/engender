@@ -6,12 +6,16 @@
 
    One dev server and one browser for the whole file; each ticket adds its
    own probe page + a `run(...)` block below rather than its own script. */
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createReporter, launchChromium } from '../browser-harness.mjs';
 import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
+import { builtArchiveRecovery } from './archive-built-recovery.mjs';
+import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
@@ -75,6 +79,17 @@ async function load(path, name) {
   return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
+
+await block('Archive after browser installation loss', 2, async () => {
+  const origin = `http://localhost:${port}`;
+  const source = await browserRecoverySource(browser, origin);
+  const destination = await browserRecoveryDestination(browser, origin, source);
+  assertRecoveryResult(destination);
+  const built = await builtArchiveRecovery(browser, source);
+  ok(`compiled app restores Archive after installation loss through first-run UI: ${JSON.stringify(built)}`);
+  ok(`password-only Archive recovery: independent Chromium contexts, ${destination.sections} sections, ${destination.attachments} attachments, usable image/audio/video/document, rejected and interrupted imports`);
+  console.log(`RECOVERY ${JSON.stringify({ revision: execFileSync('git', ['-C', resolve(here, '../..'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), runtime: browser.version(), source: 'web', destination: 'web', producer: 'manual', sourceIdentity: source.identity, destinationIdentity: destination.identity, sourceDestroyed: true, ...destination })}`);
+});
 
 await block('rendered screen contracts', 171, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
@@ -693,7 +708,7 @@ await block('ticket 04 (phase 2) update guard', 5, async () => {
 });
 
 // --- Ticket 04 (phase 2): forward migration, refusal and the copy ---------
-await block('ticket 04 (phase 2) migration and rollback', 9, async () => {
+await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
   const r = await load('/migration.html', 'migration-probe');
   if (r.error) throw new Error(r.error);
 
@@ -744,6 +759,10 @@ await block('ticket 04 (phase 2) migration and rollback', 9, async () => {
       'a failing migration leaves the schema where it was',
       JSON.stringify({ thrown: r.brokenMigration, version: r.versionAfterFailure })
     );
+
+  if (r.interruptedRestoreRefused === true && r.copyAfterInterruptedRestart === true && r.versionAfterInterruptedRestart === 0)
+    ok('an interrupted restore refuses empty first-run migration and retains its readable recovery copy on restart');
+  else fail('interrupted restore retains explicit recoverable state', JSON.stringify(r));
 
   if (r.copyAfterFailure === true && r.copyAfterRetry === true)
     ok('the failure leaves a copy, and the retry does not spend it on a worse one');
