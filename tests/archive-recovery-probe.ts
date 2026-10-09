@@ -69,7 +69,7 @@ export function installRecoveryProbe(kind: 'web' | 'android') {
   async function execute(name: string, input?: { archive: string; expected: RecoveryEvidence; portable: PortablePreferences }) {
     if (!key) {
       key = await setupJournalPassphrase(`independent installation ${identity}`);
-      files = encryptedFileStore(kind === 'web' ? opfsPhotoFiles('recovery-photos') : appPrivatePhotoFiles('recovery-photos'), key);
+      files = encryptedFileStore(kind === 'web' ? opfsPhotoFiles('recovery-photos') : appPrivatePhotoFiles(), key);
     }
     opened ??= await open();
     if (name === 'source' || name === 'automatic') {

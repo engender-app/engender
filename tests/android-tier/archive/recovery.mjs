@@ -10,7 +10,7 @@ import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult
 export async function installationRecovery({ device, repo, evidenceDir, avd, reporter }) {
   const { ok } = reporter;
   const required = (result, label) => {
-    if (result.status !== 0 || result.error || result.signal) throw new Error(`${label}: ${result.stderr ?? result.error ?? result.status}`);
+    if (result.status !== 0 || result.error || result.signal) throw new Error(`${label}: status=${result.status} signal=${result.signal} error=${result.error ?? ''} stderr=${result.stderr ?? ''}`);
     return result.stdout;
   };
   const destroy = () => {
@@ -19,8 +19,15 @@ export async function installationRecovery({ device, repo, evidenceDir, avd, rep
     if (absent.stdout?.trim()) throw new Error('source process survived installation destruction');
   };
   const phase = (name, input) => {
-    if (input) required(device(['shell', 'run-as', 'dev.engender.app', 'mkdir', '-p', 'files']), 'create destination artifact directory');
-    if (input) required(device(['exec-out', 'run-as', 'dev.engender.app', 'tee', 'files/recovery-input.json'], { input: JSON.stringify(input), maxBuffer: 4 * 1024 * 1024 }), 'deliver Archive-only input');
+    if (input) {
+      required(device(['shell', 'run-as', 'dev.engender.app', 'mkdir', '-p', 'files']), 'create destination artifact directory');
+      const directory = required(device(['shell', 'run-as', 'dev.engender.app', 'ls', '-ld', 'files']), 'verify destination artifact directory');
+      const json = JSON.stringify(input);
+      const args = ['shell', '-T', "run-as dev.engender.app sh -c 'cat > files/recovery-input.json'"];
+      const transfer = device(args, { input: json, timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
+      writeFileSync(join(evidenceDir, `${avd}-recovery-input-transfer-${Date.now()}.json`), JSON.stringify({ args, inputBytes: Buffer.byteLength(json), directory, status: transfer.status, signal: transfer.signal, error: transfer.error?.message, stderr: transfer.stderr }));
+      required(transfer, 'deliver Archive-only input');
+    }
     const result = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
       'dev.engender.app.backup.ArchiveInstallationRecoveryTest#recoveryPhase', '-e', 'recoveryPhase', name,
       'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 300000, maxBuffer: 4 * 1024 * 1024 });

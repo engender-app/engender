@@ -41,7 +41,7 @@ public class ArchiveInstallationRecoveryTest extends AutoExportDeliveryTest {
                 }, null, 0, null, null);
             assertTrue(granted.await(10, TimeUnit.SECONDS));
             BackupWork.preferences(app).edit().clear().putBoolean("enabled", true).putString("schedule", "weekly")
-                .putString("destinationUri", tree.toString()).putLong("lastSuccessAt", System.currentTimeMillis()).commit();
+                .putString("destinationUri", tree.toString()).putLong("lastSuccessAt", System.currentTimeMillis() - 7 * BackupWork.DAY + 120000).commit();
         }
         JSONObject result;
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -55,18 +55,26 @@ public class ArchiveInstallationRecoveryTest extends AutoExportDeliveryTest {
             assertFalse(result.toString(), result.has("error"));
             assertTrue(result.toString(), result.has("identity"));
             if (phase.equals("automatic")) {
-                assertTrue("verified stage must exist before the page closes", BackupWork.preferences(app).contains("encryptedStage"));
-                assertFalse("delivery must remain ineligible while the page is alive", BackupWork.preferences(app).contains("lastSnapshotAt"));
+                synchronized (BackupWork.OWNER) {
+                    result.put("nativeStageObservedAt", System.currentTimeMillis());
+                    result.put("nativeDueAt", BackupWork.due(BackupWork.preferences(app)));
+                    assertTrue("packing outran the delivery deadline", BackupWork.due(BackupWork.preferences(app)) > System.currentTimeMillis());
+                    assertTrue("verified stage must exist before the page closes", BackupWork.preferences(app).contains("encryptedStage"));
+                    assertFalse("delivery must not happen while the page is alive", BackupWork.preferences(app).contains("lastSnapshotAt"));
+                    // The worker holds this same lock, so it cannot cross the page-close boundary.
+                    scenario.close();
+                    result.put("nativePageClosedAt", System.currentTimeMillis());
+                }
             }
         }
         if (phase.equals("automatic")) {
-            // Release due work only after ActivityScenario has closed the page.
-            BackupWork.preferences(app).edit().putLong("lastSuccessAt", System.currentTimeMillis() - 7 * BackupWork.DAY).commit();
-            BackupWork.schedule(app);
+            // Preserve the due value authenticated into the stage and let scheduled work run.
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(180);
             while (!BackupWork.preferences(app).contains("lastSnapshotAt") && System.nanoTime() < deadline) Thread.sleep(100);
             assertTrue("automatic stage was not delivered", BackupWork.preferences(app).contains("lastSnapshotAt"));
             assertFalse(BackupWork.preferences(app).contains("encryptedStage"));
+            result.put("nativeDeliveredAt", BackupWork.preferences(app).getLong("lastSuccessAt", 0));
+            assertTrue("delivery must follow page closure", result.getLong("nativeDeliveredAt") >= result.getLong("nativePageClosedAt"));
             Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, "root");
             try (Cursor cursor = resolver.query(children, new String[] { DocumentsContract.Document.COLUMN_DOCUMENT_ID }, null, null, null)) {
                 assertNotNull(cursor);
