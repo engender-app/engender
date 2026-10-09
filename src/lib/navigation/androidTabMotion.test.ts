@@ -24,7 +24,7 @@ class Element {
   animations: { frames: Keyframe[]; options: KeyframeAnimationOptions; currentTime: number | null; pause: ReturnType<typeof vi.fn>; play: ReturnType<typeof vi.fn>; cancel: ReturnType<typeof vi.fn>; finished: Promise<void>; finish: () => void }[] = [];
   getBoundingClientRect() { return { top: 0, bottom: this.bottom, height: this.height }; }
   closest() { return this.screen; }
-  contains(child: Element) { return child === this || this.children.includes(child); }
+  contains(child: Element): boolean { return child === this || this.children.some((element) => element.contains(child)); }
   querySelector() { return this.blind; }
   querySelectorAll(selector: string) { return selector.includes('part') ? this.parts : []; }
   animate(frames: Keyframe[], options: KeyframeAnimationOptions) {
@@ -51,11 +51,12 @@ beforeEach(() => {
   field.screen = screen;
   field.blind = new Element();
   field.parts = [new Element()];
+  field.children = [field.blind, ...field.parts];
   screen.children = [field, new Element()];
   frames = [];
   vi.stubGlobal('HTMLElement', Element);
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
-  vi.stubGlobal('getComputedStyle', (element: Element) => ({ getPropertyValue: () => '', translate: element.translate }));
+  vi.stubGlobal('getComputedStyle', (element: Element) => ({ getPropertyValue: () => '', translate: element.translate, opacity: '1' }));
   vi.stubGlobal('document', {
     documentElement: { dataset: {} },
     querySelector: () => field
@@ -64,10 +65,20 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 async function arrive() {
-  await animateAndroidTab({
+  let complete!: () => void;
+  const departing = animateAndroidTab({
     to: { url: new URL('https://localhost/calendar') },
-    complete: Promise.resolve()
+    complete: new Promise<void>((resolve) => { complete = resolve; })
   } as OnNavigate);
+  const exits = animations().filter((animation) => animation.frames.at(-1)?.opacity === 0);
+  exits.forEach((animation) => animation.finish());
+  await departing;
+  // The route swap mounts a new page. Keep only its arrival animations below.
+  for (const element of [...screen.children, ...field.parts]) {
+    element.animations = element.animations.filter((animation) => !exits.includes(animation));
+  }
+  complete();
+  await Promise.resolve();
 }
 function paint() {
   const pending = frames.splice(0);
@@ -132,14 +143,41 @@ it('does not let an older field release a newer arrival', async () => {
 
 it('releases a superseded navigation before its destination mounts', async () => {
   let complete!: () => void;
-  await animateAndroidTab({
+  const departing = animateAndroidTab({
     to: { url: new URL('https://localhost/calendar') },
     complete: new Promise<void>((resolve) => { complete = resolve; })
   } as OnNavigate);
   expect(ui.tabMoving).toBe(true);
   finishAndroidTab();
+  await departing;
   complete();
   await Promise.resolve();
   expect(ui.tabMoving).toBe(false);
-  expect(animations()).toHaveLength(0);
+  expect(field.animations).toHaveLength(0);
+  expect(animations().every((animation) => animation.cancel.mock.calls.length > 0)).toBe(true);
+});
+
+it('keeps the route until outgoing content fades, including content beside a nested field', async () => {
+  const header = new Element();
+  const greeting = new Element();
+  header.children = [field, greeting];
+  screen.children[0] = header;
+  let released = false;
+  const departing = animateAndroidTab({
+    to: { url: new URL('https://localhost/calendar') },
+    complete: new Promise<void>(() => {})
+  } as OnNavigate).then(() => { released = true; });
+  await Promise.resolve();
+  expect(released).toBe(false);
+  expect(field.animations).toHaveLength(0);
+  expect(field.blind!.animations).toHaveLength(0);
+  const exits = [...greeting.animations, ...field.parts[0].animations, ...screen.children[1].animations];
+  expect(exits).toHaveLength(3);
+  for (const animation of exits) {
+    expect(animation.frames).toEqual([{ opacity: '1' }, { opacity: 0 }]);
+    animation.finish();
+  }
+  await departing;
+  expect(released).toBe(true);
+  finishAndroidTab();
 });
