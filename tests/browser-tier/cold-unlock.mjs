@@ -190,6 +190,59 @@ export async function coldUnlock(browser, origin) {
         assert.equal(await page.evaluate((entryId) => coldBoot.bootState.journal.entries.getEntry(entryId)
           .then((entry) => entry.note), entryId), 'Kept across a cancelled cold boot', `${mode} retained contents`);
         assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
+        if (mode === 'passphrase') {
+          await load();
+          await page.waitForFunction(() => coldBoot.bootState.status === 'needs-unlock');
+          await page.evaluate(() => {
+            window.realViewTransition = document.startViewTransition;
+            window.heldPublications = [];
+            document.startViewTransition = (commit) => {
+              let finish;
+              const finished = new Promise((resolve) => { finish = resolve; });
+              window.heldPublications.push(async () => { await commit(); finish(); });
+              return { ready: Promise.resolve(), finished };
+            };
+          });
+          await page.evaluate(submit, { mode, secret, recoveryKey, leave: false });
+          const beforePublication = await page.evaluate(async () => ({
+            keyBytes: (await coldBoot.journalDataKey()).length,
+            status: coldBoot.bootState.status
+          }));
+          assert.deepEqual(beforePublication, { keyBytes: 32, status: 'needs-unlock' });
+          const whilePublicationWaits = await page.evaluate(async () => {
+            Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+            document.dispatchEvent(new Event('visibilitychange'));
+            await coldBoot.closeJournalForLock();
+            return {
+              locked: coldLock.isLocked(coldBoot.bootState.accessMode),
+              workerClosed: window.closedJournalWorkers > 0,
+              key: await Promise.race([
+                coldBoot.journalDataKey().then(() => 'available'),
+                new Promise((resolve) => setTimeout(() => resolve('blocked'), 100))
+              ])
+            };
+          });
+          assert.deepEqual(whilePublicationWaits, {
+            locked: true, workerClosed: true, key: 'blocked'
+          }, 'lock while ready-state publication waits');
+          await page.evaluate(async () => {
+            document.startViewTransition = window.realViewTransition;
+            for (const publish of window.heldPublications) await publish();
+            Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+            document.dispatchEvent(new Event('visibilitychange'));
+          });
+          await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+          assert.equal(await page.evaluate(() => coldBoot.bootState.journal), null);
+          await page.evaluate(async ({ source, secret }) => {
+            const { unlockJournalPassphrase } = await import(`${source}/data/journal-passphrase.ts`);
+            const current = coldLock.beginSessionUnlock();
+            await coldBoot.reopenJournalAfterUnlock(await unlockJournalPassphrase(secret), current);
+            current();
+            coldLock.markUnlocked();
+          }, { source, secret });
+          assert.equal(await page.evaluate((entryId) => coldBoot.bootState.journal.entries.getEntry(entryId)
+            .then((entry) => entry.note), entryId), 'Kept across a cancelled cold boot', 'unlock after delayed publication');
+        }
       }
       assert.deepEqual(errors, [], mode);
       verified.push(mode);
