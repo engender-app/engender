@@ -273,7 +273,9 @@ export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
     nothing. */
 export function closeJournalForLock(): Promise<void> {
   const android = isAndroid();
-  if (!isReadyState(bootState) || !accessModeHasSecret(bootState.accessMode, android)) return Promise.resolve();
+  // A view transition can delay the screen's ready state after the session
+  // has opened. Lock the machine's session, regardless of that publication.
+  if (!isReadyState(machine.boot) || !accessModeHasSecret(machine.boot.accessMode, android)) return Promise.resolve();
   /* Every lock that draws the gate takes the content copied out of the
      journal at once, Android's included: its database stays open, but the
      held search, the room answers and the waveforms are still not the
