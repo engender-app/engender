@@ -16,9 +16,9 @@
 import type { SqliteDriver } from '../sqlite/driver';
 import type { MedicationStock, Reminder } from '../types';
 import { bool, mintUuid, now } from './support';
-import type { DosesArea } from './doses';
-import type { RegimenArea } from './regimen';
-import type { RemindersArea } from './reminders';
+import { makeDosesArea, type DosesArea } from './doses';
+import { makeRegimenArea, type RegimenArea } from './regimen';
+import { makeRemindersArea } from './reminders';
 import { projectEveryStock, reorderByEpochDay, type StockProjection } from '../stockProjection';
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
@@ -135,17 +135,11 @@ const STOCK_COLUMNS =
     switches ask what a row is. */
 const autoSourceFor = stockAutoSource;
 
-export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: RegimenArea, reminders: RemindersArea): StockArea {
+export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: RegimenArea): StockArea {
   const getEntries = async (): Promise<MedicationStock[]> => {
     const rows = await driver.query<StockRow>(`SELECT ${STOCK_COLUMNS} FROM medication_stock ORDER BY drug`);
     return rows.map(toStock);
   };
-
-  const setReminderFlags = (id: string, everCreated: boolean, dismissed: boolean): Promise<unknown> =>
-    driver.run(
-      'UPDATE medication_stock SET reminder_ever_created = ?, reminder_dismissed = ?, updated_at = ? WHERE uuid = ?',
-      [everCreated ? 1 : 0, dismissed ? 1 : 0, now(), id]
-    );
 
   const findAutoReminder = (all: readonly Reminder[], drug: string): Reminder | null =>
     all.find((reminder) => reminder.autoSource === autoSourceFor(drug)) ?? null;
@@ -183,143 +177,152 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     getProjections: projections,
 
     async upsertEntry(input) {
-      const drug = input.drug.trim();
-      const allReminders = await reminders.getReminders();
-      let existing: { uuid: string }[];
-      if (input.id === undefined) {
-        existing = await driver.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]);
-      } else {
-        const edited = await driver.query<{ uuid: string; drug: string }>(
-          'SELECT uuid, drug FROM medication_stock WHERE uuid = ?',
-          [input.id]
-        );
-        if (edited.length === 0) throw new Error(`unknown stock entry ${input.id}`);
-        if (edited[0].drug !== drug) {
-          /* A rename. The old name's reminder goes first and any row that
-             already counts the new name second, in the order deleteEntry
-             uses and for its reason: a reminder left behind for a name no
-             row carries any more is one nothing can ever clear. */
-          const oldAuto = findAutoReminder(allReminders, edited[0].drug);
-          if (oldAuto) await reminders.deleteReminder(oldAuto.id);
-          await driver.run('DELETE FROM medication_stock WHERE drug = ? AND uuid <> ?', [drug, input.id]);
+      return driver.transaction(async (scope) => {
+        const scopedReminders = makeRemindersArea(scope);
+        const drug = input.drug.trim();
+        const allReminders = await scopedReminders.getReminders();
+        let existing: { uuid: string }[];
+        if (input.id === undefined) {
+          existing = await scope.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]);
+        } else {
+          const edited = await scope.query<{ uuid: string; drug: string }>(
+            'SELECT uuid, drug FROM medication_stock WHERE uuid = ?',
+            [input.id]
+          );
+          if (edited.length === 0) throw new Error(`unknown stock entry ${input.id}`);
+          if (edited[0].drug !== drug) {
+            /* A rename. The old name's reminder goes first and any row that
+               already counts the new name second, in the order deleteEntry
+               uses and for its reason: a reminder left behind for a name no
+               row carries any more is one nothing can ever clear. */
+            const oldAuto = findAutoReminder(allReminders, edited[0].drug);
+            if (oldAuto) await scopedReminders.deleteReminder(oldAuto.id);
+            await scope.run('DELETE FROM medication_stock WHERE drug = ? AND uuid <> ?', [drug, input.id]);
+          }
+          existing = edited;
         }
-        existing = edited;
-      }
-      /* `dismissed` always resets: recording a fresh count is the
-         deliberate act that re-arms it. `everCreated` resets to whether an
-         auto reminder happens to exist right now, rather than always to
-         false - if the person never touched it, it is still there and
-         must keep reading as "already created", or the very next write
-         that finds it missing would read as a person's own delete and
-         mark the drug dismissed again immediately (stockReminder.ts's
-         `everCreated && !existing` check), undoing the re-arm in the same
-         breath it happened. */
-      const everCreated = allReminders.some((reminder) => reminder.autoSource === autoSourceFor(drug));
-      const values = [
-        input.quantity,
-        input.unit,
-        input.recordedEpochDay,
-        everCreated ? 1 : 0,
-        input.openedEpochDay ?? null,
-        input.inUseWindowDays ?? null,
-        input.inUseEndEpochDay ?? null,
-        input.leadTimeDays ?? null,
-        input.dosesPerUnit ?? null,
-        now()
-      ];
+        /* `dismissed` always resets: recording a fresh count is the
+           deliberate act that re-arms it. `everCreated` resets to whether an
+           auto reminder happens to exist right now, rather than always to
+           false - if the person never touched it, it is still there and
+           must keep reading as "already created", or the very next write
+           that finds it missing would read as a person's own delete and
+           mark the drug dismissed again immediately (stockReminder.ts's
+           `everCreated && !existing` check), undoing the re-arm in the same
+           breath it happened. */
+        const everCreated = allReminders.some((reminder) => reminder.autoSource === autoSourceFor(drug));
+        const values = [
+          input.quantity,
+          input.unit,
+          input.recordedEpochDay,
+          everCreated ? 1 : 0,
+          input.openedEpochDay ?? null,
+          input.inUseWindowDays ?? null,
+          input.inUseEndEpochDay ?? null,
+          input.leadTimeDays ?? null,
+          input.dosesPerUnit ?? null,
+          now()
+        ];
 
-      if (existing.length > 0) {
-        await driver.run(
-          `UPDATE medication_stock
-              SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                  opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?, updated_at = ?,
-                  drug = ?
-            WHERE uuid = ?`,
-          [...values, drug, existing[0].uuid]
+        if (existing.length > 0) {
+          await scope.run(
+            `UPDATE medication_stock
+                SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
+                    opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?, updated_at = ?,
+                    drug = ?
+              WHERE uuid = ?`,
+            [...values, drug, existing[0].uuid]
+          );
+          return existing[0].uuid;
+        }
+
+        const uuid = mintUuid();
+        await scope.run(
+          `INSERT INTO medication_stock
+             (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
+              opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [uuid, drug, ...values]
         );
-        return existing[0].uuid;
-      }
-
-      const uuid = mintUuid();
-      await driver.run(
-        `INSERT INTO medication_stock
-           (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
-            opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, drug, ...values]
-      );
-      return uuid;
+        return uuid;
+      });
     },
 
-    /* The reminder goes first and the row second, with no transaction
-       around the pair. A process death between two writes has to leave a
-       state something can still fix, and only this order does:
-       reconcileRunOutReminders iterates the medication_stock rows that
-       exist, so a row that survived with its reminder already gone is
-       visited (and reads as the person's own handoff, stockReminder.ts)
-       and the delete retries cleanly. The reverse leaves a reminder for a
-       drug that has no row, which that loop can never reach and nothing
-       else clears - it just keeps firing. */
+    /* The reminder and stock row leave in one transaction. Reconciliation
+       cannot create an auto reminder between their lookup and deletion. */
     async deleteEntry(id) {
-      const rows = await driver.query<{ drug: string }>('SELECT drug FROM medication_stock WHERE uuid = ?', [id]);
-      if (rows.length === 0) return;
+      return driver.transaction(async (scope) => {
+        const rows = await scope.query<{ drug: string }>('SELECT drug FROM medication_stock WHERE uuid = ?', [id]);
+        if (rows.length === 0) return;
 
-      const auto = findAutoReminder(await reminders.getReminders(), rows[0].drug);
-      if (auto) await reminders.deleteReminder(auto.id);
-      await driver.run('DELETE FROM medication_stock WHERE uuid = ?', [id]);
+        const scopedReminders = makeRemindersArea(scope);
+        const auto = findAutoReminder(await scopedReminders.getReminders(), rows[0].drug);
+        if (auto) await scopedReminders.deleteReminder(auto.id);
+        await scope.run('DELETE FROM medication_stock WHERE uuid = ?', [id]);
+      });
     },
 
     async reconcileRunOutReminders(asOfEpochDay) {
-      const rows = await projections(asOfEpochDay);
-      if (rows.length === 0) return NOTHING_WRITTEN;
-      const allReminders = await reminders.getReminders();
-      let wrote = false;
+      return driver.transaction(async (scope) => {
+        const scopedRegimen = makeRegimenArea(scope);
+        const scopedReminders = makeRemindersArea(scope);
+        const rows = await makeStockArea(scope, makeDosesArea(scope, scopedRegimen), scopedRegimen)
+          .getProjections(asOfEpochDay);
+        if (rows.length === 0) return NOTHING_WRITTEN;
+        const allReminders = await scopedReminders.getReminders();
+        const setReminderFlags = (id: string, everCreated: boolean, dismissed: boolean) =>
+          scope.run(
+            'UPDATE medication_stock SET reminder_ever_created = ?, reminder_dismissed = ?, updated_at = ? WHERE uuid = ?',
+            [everCreated ? 1 : 0, dismissed ? 1 : 0, now(), id]
+          );
+        let wrote = false;
 
-      for (const { entry, projection } of rows) {
-        const auto = findAutoReminder(allReminders, entry.drug);
-        const action = reconcileStockReminder(
-          { everCreated: entry.reminderEverCreated, dismissed: entry.reminderDismissed },
-          projection,
-          auto ? { id: auto.id, epochDay: auto.epochDay ?? asOfEpochDay } : null,
-          asOfEpochDay
-        );
+        for (const { entry, projection } of rows) {
+          const auto = findAutoReminder(allReminders, entry.drug);
+          const action = reconcileStockReminder(
+            { everCreated: entry.reminderEverCreated, dismissed: entry.reminderDismissed },
+            projection,
+            auto ? { id: auto.id, epochDay: auto.epochDay ?? asOfEpochDay } : null,
+            asOfEpochDay
+          );
 
-        switch (action.kind) {
-          case 'none':
-            continue;
-          case 'mark-dismissed':
-            await setReminderFlags(entry.id, entry.reminderEverCreated, true);
-            break;
-          case 'clear':
-            await reminders.deleteReminder(action.reminderId);
-            await setReminderFlags(entry.id, false, false);
-            break;
-          case 'create':
-            await reminders.upsertReminder({
-              // Just the drug's own name: a Reminder's title is ordinarily
-              // whatever a person types, and echoing the drug name back
-              // needs no copy of its own to translate (ADR-0016 keeps
-              // paraglide out of this tier anyway).
-              title: entry.drug,
-              type: 'med',
-              time: '09:00',
-              recurrence: null,
-              interval: null,
-              anchorEpochDay: null,
-              epochDay: action.epochDay,
-              enabled: true,
-              autoSource: autoSourceFor(entry.drug)
-            });
-            await setReminderFlags(entry.id, true, false);
-            break;
-          case 'update':
-            if (!auto) continue;
-            await reminders.upsertReminder({ ...auto, epochDay: action.epochDay });
-            break;
+          switch (action.kind) {
+            case 'none':
+              continue;
+            case 'mark-dismissed':
+              await setReminderFlags(entry.id, entry.reminderEverCreated, true);
+              break;
+            case 'clear':
+              await scopedReminders.deleteReminder(action.reminderId);
+              await setReminderFlags(entry.id, false, false);
+              break;
+            case 'create':
+              await scopedReminders.upsertReminder({
+                // Just the drug's own name: a Reminder's title is ordinarily
+                // whatever a person types, and echoing the drug name back
+                // needs no copy of its own to translate (ADR-0016 keeps
+                // paraglide out of this tier anyway).
+                title: entry.drug,
+                type: 'med',
+                time: '09:00',
+                recurrence: null,
+                interval: null,
+                anchorEpochDay: null,
+                epochDay: action.epochDay,
+                enabled: true,
+                autoSource: autoSourceFor(entry.drug)
+              });
+              await setReminderFlags(entry.id, true, false);
+              break;
+            case 'update':
+              if (!auto) continue;
+              await scopedReminders.upsertReminder({ ...auto, epochDay: action.epochDay });
+              break;
+          }
+          wrote = true;
         }
-        wrote = true;
-      }
-      if (!wrote) return NOTHING_WRITTEN;
+        if (!wrote) return NOTHING_WRITTEN;
+      });
     }
   };
 }
