@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'vite';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,7 +59,7 @@ export async function installationRecovery({ device, repo, evidenceDir, avd, rep
     assertRecoveryResult(automaticNative);
     rows.push({ source: 'android', destination: 'android', producer: 'automatic ticket08', sourceDestroyed: true, sourceIdentity: automatic.identity, result: automaticNative });
     const version = required(device(['shell', 'dumpsys', 'webviewupdate']), 'WebView runtime');
-    writeFileSync(join(evidenceDir, `${avd}-installation-recovery.json`), JSON.stringify({ revision: process.env.RECOVERY_REVISION ?? 'working tree', browser: browser.version(), androidWebView: version, fixture: 'complete Archive journal with encoded JPEG/Opus/VP8', rows }, null, 2));
+    writeFileSync(join(evidenceDir, `${avd}-installation-recovery.json`), JSON.stringify({ revision: execFileSync('git', ['-C', repo, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), dirty: Boolean(execFileSync('git', ['-C', repo, 'status', '--porcelain'], { encoding: 'utf8' }).trim()), browser: browser.version(), androidWebView: version, fixture: 'complete Archive journal with encoded JPEG/Opus/VP8', rows }, null, 2));
     for (const row of rows) ok(`${avd}: ${row.source}->${row.destination} ${row.producer} password-only recovery after source destruction: 54 sections and usable restored media`);
   } finally { destroy(); await browser.close(); await server.close(); }
 }
