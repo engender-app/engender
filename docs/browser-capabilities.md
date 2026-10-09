@@ -15,7 +15,6 @@ A missing executable produces `not-run` results and a nonzero exit code.
 ```sh
 npm run build
 npm run verify:capabilities
-VITE_DEMO=1 npm run build
 npm run verify:capabilities:lifecycle
 ```
 
@@ -28,7 +27,8 @@ takeover and the automatic navigation request while offline, then verifies
 the recovered page and unchanged encrypted fixture after connectivity
 returns. Production cold offline startup is
 verified separately. The lifecycle tier reuses the actual BFCache
-restoration guard, which needs the demo fixture. Both tiers are required.
+restoration guard with a journal created and saved through production UI.
+The standalone guard keeps its existing demo default. Both tiers are required.
 During orchestration, run each build and matrix through the existing heavy
 command gate with the corresponding `build` or `guards-built` loop.
 
@@ -106,3 +106,9 @@ CDP audit and receive `unsupported` for it. That label does not mean their
 offline engine checks passed, and neither check proves an OS-installed app.
 Actual BFCache evidence requires retained document identity and persisted
 `pagehide`/`pageshow` events. A normal history reload cannot satisfy it.
+The measured Linux Firefox 155 automation runtime explicitly disables
+BFCache in Juggler. Automated WebKit 26.6 also reloads an empty control
+document on Back, with a new token and `pageshow.persisted === false`.
+Those runtime results leave actual restoration unverified; they do not
+establish how stock Firefox or Safari handles the application. Failed
+application probes and control logs remain in the evidence.

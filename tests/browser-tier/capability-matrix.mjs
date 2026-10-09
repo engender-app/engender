@@ -31,7 +31,7 @@ const suites = tier === 'production' ? [
   { path: 'tests/update-handover-check.mjs', capabilities: ['schema-recovery-update', 'update-during-write'], mode: 'real-driver lifecycle probe' },
   { path: 'tests/pending-unlock-lock-check.mjs', capabilities: ['pending-unlock-later-lock'], mode: 'development demo' }
 ] : [
-  { path: 'tests/bfcache-journal-check.mjs', capabilities: ['actual-bfcache-return'], mode: 'built demo' }
+  { path: 'tests/bfcache-journal-check.mjs', capabilities: ['actual-bfcache-return'], mode: 'built production' }
 ];
 function capabilities(engine, suite) {
   return [...suite.capabilities, ...(engine === 'webkit' && suite.detailed ? ['private-context-opfs'] : [])];
@@ -71,7 +71,7 @@ try {
       const prefix = `${engine}-${index}`;
       const log = resolve(directory, `${prefix}.log`);
       const resultsFile = resolve(directory, `${prefix}.json`);
-      const result = await runCapabilityInvocation(suite.path, { env: { BROWSER_ENGINE: engine, CAPABILITY_RESULTS: resultsFile }, log, resultsFile });
+      const result = await runCapabilityInvocation(suite.path, { env: { BROWSER_ENGINE: engine, CAPABILITY_RESULTS: resultsFile, ...(tier === 'lifecycle' ? { BFCACHE_BUILD_MODE: 'production' } : {}) }, log, resultsFile });
       matrix.invocations.push({ engine, version, script: suite.path, mode: suite.mode, code: result.code, signal: result.signal, timedOut: result.timedOut, startupError: result.startupError, log });
       if (suite.detailed) {
         const rows = result.cases;

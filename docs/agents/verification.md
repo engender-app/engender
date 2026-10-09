@@ -240,9 +240,9 @@ build.
 ## Browser capability matrix
 
 `npm run verify:capabilities` runs the production checks in Chromium,
-Firefox and automated WebKit. Build first. Then build with `VITE_DEMO=1`
-and run `npm run verify:capabilities:lifecycle` for the existing actual
-BFCache guard. Both runs write per-engine results and raw logs under
+Firefox and automated WebKit. Build first, then run
+`npm run verify:capabilities:lifecycle` against the same production build
+for the existing actual BFCache guard. Both runs write per-engine results and raw logs under
 `.claude/browser-capabilities/`; failed or unavailable cases remain visible.
 See [browser capabilities](../browser-capabilities.md) for executable
 selection, fault boundaries and evidence limits. Actual Safari and iOS PWA
