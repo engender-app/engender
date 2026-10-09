@@ -114,6 +114,7 @@ establish how stock Firefox or Safari handles the application. Failed
 application probes and control logs remain in the evidence.
 
 The BFCache probe keeps raw OPFS conflict messages. A conflict counts as a
-handled retry only when its real failed worker response is followed by a
-successful open, ready state and a saved record read back after reload from
-the same journal. Unmatched console errors and all uncaught page errors fail.
+handled retry only when its source matches an active worker request, that
+request fails, the worker retires, and a replacement opens the same journal
+and reaches ready in the same document. A later saved record must also read
+back after reload from that journal. Unmatched console errors and all uncaught page errors fail.
