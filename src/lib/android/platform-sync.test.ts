@@ -546,7 +546,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: true });
   });
 
-  test('subscribes to reminder/entry and dose/stock writes exactly once, ever', async () => {
+  test('subscribes to reminder/entry/pause/area-state and dose/stock writes exactly once, ever', async () => {
     const onTablesWritten = vi.fn();
     const firstDeps = makeDeps({ onTablesWritten });
     platformSync.startAndroidPlatformSync(firstDeps);
@@ -587,6 +587,31 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     await flush();
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
+  });
+
+  test('area-state writes cancel finished wear reminders and restore them when tracking resumes', async () => {
+    const onTablesWritten = vi.fn();
+    const wear = { ...REMINDER, id: 'wear-1', autoSource: 'wear:session-1' };
+    const deps = makeDeps({ onTablesWritten });
+    vi.mocked(deps.journal.reminders.getReminders).mockResolvedValue([REMINDER, wear]);
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].reminders).toEqual([REMINDER, wear]);
+
+    const notifyReminderWrites = onTablesWritten.mock.calls[0][0] as (tables: string[]) => void;
+    vi.mocked(deps.journal.areaStates.getAreaStates).mockResolvedValue({
+      wearSessions: { hidden: false, finishedEpochDay: 20313, suspendedEpochDay: null }
+    });
+    notifyReminderWrites(['areaState']);
+    await flush();
+    expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[1][0].reminders).toEqual([REMINDER]);
+
+    vi.mocked(deps.journal.areaStates.getAreaStates).mockResolvedValue({});
+    notifyReminderWrites(['areaState']);
+    await flush();
+    expect(deps.androidReminders.sync).toHaveBeenCalledTimes(3);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[2][0].reminders).toEqual([REMINDER, wear]);
   });
 
   test('reconciles stock run-out reminders when a dose or stock write is announced', async () => {
@@ -665,13 +690,13 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     let finishRead: (value: typeof REMINDER[]) => void;
     vi.mocked(deps.journal.reminders.getReminders).mockReturnValue(new Promise((resolve) => { finishRead = resolve; }));
     platformSync.startAndroidPlatformSync(deps);
-    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    listeners.forEach((listener) => listener(['areaState', 'stock']));
     await flush();
     platformSync.stopAndroidPlatformSync();
     const reconciles = vi.mocked(deps.journal.stock.reconcileRunOutReminders).mock.calls.length;
     finishRead!([REMINDER]);
     await flush();
-    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    listeners.forEach((listener) => listener(['areaState', 'stock']));
     await flush();
     expect(deps.androidReminders.sync).not.toHaveBeenCalled();
     expect(deps.journal.reminders.getReminders).toHaveBeenCalledTimes(1);
