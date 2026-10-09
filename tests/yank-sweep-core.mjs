@@ -241,7 +241,7 @@ export const PROOF = {
 };
 
 /* Each scene is a rest, a gesture, and what the gesture is supposed to be.
-    The four door changes, then the state changes ADR-0078 flipped the default
+    Every door direction, then the state changes ADR-0078 flipped the default
    for: a sheet, a fold, a notice, a row leaving, a segment, a save.
 
    `firstRun`, where present, names the setup step the scene needs the walk
@@ -252,6 +252,14 @@ const SCENES = [
   { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
   { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind down to Transition' },
   { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind back to the tallest field' },
+  { name: 'door-today-lookback', at: '/', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind from today to lookback' },
+  { name: 'door-today-transition', at: '/', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind from today to transition' },
+  { name: 'door-journal-today', at: '/calendar', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind from journal to today' },
+  { name: 'door-journal-transition', at: '/calendar', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind from journal to transition' },
+  { name: 'door-lookback-today', at: '/stats', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind from lookback to today' },
+  { name: 'door-lookback-journal', at: '/stats', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind from lookback to journal' },
+  { name: 'door-transition-journal', at: '/more', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind from transition to journal' },
+  { name: 'door-transition-lookback', at: '/more', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind from transition to lookback' },
   { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', prepare: ['[data-list-row="tag-groups"]'], nav: true, after: {"route": "/settings/tags"}, is: 'a door into a deep screen' },
   { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, after: {"route": "/settings"}, is: 'a deep screen back to its door' },
   { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', after: {"selector": "[data-fan]"}, is: 'the sheet rising' },

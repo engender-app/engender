@@ -16,9 +16,10 @@ export function finishAndroidTab(): void {
 }
 
 function bodyOf(screen: HTMLElement, field: HTMLElement | null): HTMLElement[] {
-  return [...screen.children].filter(
-    (child): child is HTMLElement => child instanceof HTMLElement && !child.contains(field)
-  );
+  return [...screen.children].flatMap((child) => {
+    if (!(child instanceof HTMLElement) || child === field) return [];
+    return child.contains(field) ? bodyOf(child, field) : [child];
+  });
 }
 
 function animateIn(fromHeight: number, toPath: string, type: string): Promise<void> | void {
@@ -94,7 +95,11 @@ function animateIn(fromHeight: number, toPath: string, type: string): Promise<vo
 export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
   finishCurrent();
   ui.tabMoving = true;
+  const outgoing: Animation[] = [];
+  let releaseNavigation = () => {};
   const finish = () => {
+    for (const animation of outgoing) animation.cancel();
+    releaseNavigation();
     if (finishCurrent === finish) {
       endTabArrival();
       ui.tabMoving = false;
@@ -106,9 +111,27 @@ export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
   const fromHeight = fromField
     ? fromField.getBoundingClientRect().height + parseFloat(getComputedStyle(fromField).translate.split(' ')[1] ?? '0')
     : 0;
+  const screen = fromField?.closest<HTMLElement>('.screen') ?? document.querySelector<HTMLElement>(SCREEN);
+  if (screen) {
+    /* Keep the live page until its content has left. The blind stays solid
+       for the incoming field's bridge; no journal copy outlives a gate. */
+    const blind = fromField?.querySelector<HTMLElement>('[data-field-blind]') ?? null;
+    const content = bodyOf(screen, blind);
+    const sun = blind?.querySelector<HTMLElement>('[data-flag-sun]');
+    if (sun) content.push(sun);
+    for (const element of content) {
+      outgoing.push(element.animate([{ opacity: getComputedStyle(element).opacity }, { opacity: 0 }], {
+        duration: motionDuration('--dur-fast'),
+        easing: EASE_OUT_CSS,
+        fill: 'forwards'
+      }));
+    }
+  }
   return new Promise((resolve) => {
-    resolve();
+    releaseNavigation = resolve;
+    void Promise.all(outgoing.map((animation) => animation.finished.catch(() => {}))).then(() => resolve());
     void navigation.complete.then(() => {
+      for (const animation of outgoing) animation.cancel();
       if (finishCurrent === finish && navigation.to) return animateIn(fromHeight, navigation.to.url.pathname, navigation.type);
     }).then(finish, finish);
   });
