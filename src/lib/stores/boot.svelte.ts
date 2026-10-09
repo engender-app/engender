@@ -76,6 +76,7 @@ import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
+import { UnlockCancelledError } from '../lock/unlock-attempt';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
@@ -227,20 +228,21 @@ const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     if (detached.status === 'rejected') throw detached.reason;
   },
   open: reopenJournal,
-  release(retainContent) {
-    openDriver = null;
-    openFileOps = null;
-    setActiveDriver(null);
-    useJournalFiles(null);
-    forgetReference();
-    /* Again, after the drain: a read that was still answering when the lock
-       began may have put an answer back. */
-    if (!retainContent) forgetJournalContent();
-  },
+  release: releaseJournal,
   prewarm() {
     prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
   }
 });
+
+function releaseJournal(retainContent: boolean): void {
+  openDriver = null;
+  openFileOps = null;
+  setActiveDriver(null);
+  useJournalFiles(null);
+  forgetReference();
+  // A read still answering when the lock began may have put content back.
+  if (!retainContent) forgetJournalContent();
+}
 
 /* What every journal handle is built over, so that one held across a lock
    reaches the reopened database rather than the closed one. */
@@ -901,36 +903,50 @@ async function perform(effect: BootEffect): Promise<void> {
     constructed over a driver, boot() runs its sequence, and how it ended goes
     back to the reducer as an event. */
 async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  // Effects start synchronously at dispatch, before another leave can run.
+  const current = !isAndroid() && accessModeHasSecret(machine.boot.accessMode, false)
+    ? beginSessionUnlock() : () => {};
+  try {
+    await prepareJournal(dataKey, current);
+  } catch (error) {
+    if (!(error instanceof UnlockCancelledError)) throw error;
+    // The boot machine refuses another open until this cleanup returns to
+    // the credential gate. Migrations have settled; no newer session exists.
+    try {
+      await detachPreferences();
+    } finally {
+      try { await openDriver?.close(); }
+      finally { releaseJournal(false); }
+    }
+    recoveryUnlock.used = false;
+    dispatch({ type: 'journal-open-cancelled' });
+  }
+}
+
+async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void): Promise<void> {
   if (openDriver) {
     await openDriver.close().catch(() => {});
     openDriver = null;
     openFileOps = null;
   }
   await closeActiveDriver();
+  current();
 
-  session.key.open(dataKey);
   const photoFiles = journalPhotoFiles(dataKey);
-
-  // Set before boot() rather than after, so the first screen to render a
-  // photo already has somewhere to read it from. One underlying store
-  // (journal.ts's PhotoFileStore covers any opaque blob, recordings and
-  // video notes included) behind three setters, because VoicePlayer.svelte,
-  // VideoNotePlayer.svelte and PhotoThumb.svelte each read a different kind
-  // of file.
-  useJournalFiles(photoFiles);
 
   let activeSqlite: WebSqlite | null = null;
   let journal: Journal | null = null;
   let personaPrepared = false;
+  let housekeeping: (() => void) | undefined;
 
   const result = await boot({
     createDriver: () => {
       activeSqlite = createJournalSqlite(dataKey);
       openDriver = activeSqlite.driver;
       openFileOps = activeSqlite.fileOps;
-      setActiveDriver(activeSqlite.driver);
-      session.connection.open(activeSqlite.driver);
-      journal = attachJournal(openJournal(journalDriver, photoFiles));
+      // Cold-boot work owns its driver privately until authentication is
+      // checked again. No key or journal gate opens during preparation.
+      journal = openJournal(activeSqlite.driver, photoFiles);
       return activeSqlite.driver;
     },
     prepareDatabase: __DEMO__ ? async (driver, fileOps) => {
@@ -957,8 +973,9 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
     // of a transaction and a module fetch (builtInsStamp.ts, ticket 208).
     // Then the mirror is filled from what that left behind (ADR-0004).
     loadReferenceData: async () => {
+      current();
       await journal!.reconcileBuiltIns({ unlessCurrent: true });
-      await hydrateReference(journal!);
+      await hydrateReference(journal!, current);
     },
     /* Step 4: after the database is open and migrated, so the rows it
        compares against are the current ones (ADR-0008), and behind an idle
@@ -986,7 +1003,8 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
       await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
     },
-    scheduleHousekeeping: whenIdle
+    // A cancelled cold boot must not leave work queued over its closed driver.
+    scheduleHousekeeping: (run) => { housekeeping = run; }
   });
 
   if (result.phase === 'error') {
@@ -994,6 +1012,8 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
     dispatch({ type: 'journal-open-failed', error: result.error });
     return;
   }
+
+  current();
 
   // Off the path the reads below take (ticket 202): whenever the browser
   // answers, a refusal still reaches the toast - it just no longer holds up
@@ -1022,13 +1042,16 @@ async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
     }
   }
   await attachPreferences(preferences);
+  current();
 
-  /* Last, so no query runs against a half-written journal. Each of the
-     persona's entries bumps the entry version, and announcing that to
-     screens that are already mounted would re-run Home's list once per
-     seeded entry. */
-  journalIsOpen();
+  // Publish after the last ownership check, so queued reads and draft
+  // writes cannot obtain a session superseded while boot was preparing it.
+  journal = attachJournal(openJournal(journalDriver, photoFiles));
   session.adopt(dataKey, result.driver);
+  setActiveDriver(result.driver);
+  useJournalFiles(photoFiles);
+  journalIsOpen();
 
   dispatch({ type: 'journal-opened', journal: journal! });
+  if (housekeeping) whenIdle(housekeeping);
 }
