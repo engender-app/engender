@@ -4,9 +4,10 @@
       "run": "https://github.com/engender-app/engender/actions/runs/37223138118",
       "revision": "07d8347caa92f7b0ab8a4fc0788f4d46497289c5",
       "headRevision": "47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa"
-    }
+    },
+    "android-door-motion": "Local Fedora run on 2026-10-09, excluding build; tests/android-door-motion.mjs"
   },
-  "method": "Sum observed hosted attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
+  "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
     "demo": 73,
     "production": 66
@@ -103,7 +104,8 @@
     "settings-erase-check": 81.24,
     "save-and-failure-check": 30,
     "pending-unlock-lock-check": 60,
-    "bfcache-journal-check": 60
+    "bfcache-journal-check": 60,
+    "android-door-motion": 24.61
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -343,6 +345,9 @@
     ],
     "save-and-failure-check": [
       30
+    ],
+    "android-door-motion": [
+      24.61
     ]
   }
 }

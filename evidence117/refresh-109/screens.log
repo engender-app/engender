@@ -1,0 +1,10 @@
+
+> check:screens-classes
+> node scripts/check-screens-classes.mjs
+
+FAIL .segment has exactly one consumer (src/lib/components/Segmented.svelte) - move it there, or add it to SHARED with why
+FAIL .settings-sun-header has exactly one consumer (src/routes/settings/+page.svelte) - move it there, or add it to SHARED with why
+2 FAILURE(S) in src/lib/styles/screens.css
+
+PASS 147 class(es) in src/lib/styles/kit.css, every single-consumer one accounted for
+PASS 169 class(es) in src/lib/styles/components.css, every single-consumer one accounted for

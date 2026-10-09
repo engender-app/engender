@@ -12,9 +12,17 @@
    imports are node:fs/promises and plain data and plain decoding from
    the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
 
-import { writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { decodePng, grayFrame } from './png-decode.mjs';
+
+export function parseSweepViewport(value) {
+  const dimensions = typeof value === 'string' && /^[1-9]\d*x[1-9]\d*$/.test(value)
+    ? value.split('x').map(Number) : [];
+  if (dimensions.length !== 2 || dimensions.some((dimension) => !Number.isSafeInteger(dimension)))
+    throw new Error('viewport must be WIDTHxHEIGHT with positive integer dimensions');
+  return { width: dimensions[0], height: dimensions[1] };
+}
 
 /** A jump under this many pixels is not a teleport however sharp it is: at
     390px wide, a mark moving 12px in a frame is still inside its own glyph. */
@@ -233,72 +241,78 @@ export const PROOF = {
 };
 
 /* Each scene is a rest, a gesture, and what the gesture is supposed to be.
-    The four door changes, then the state changes ADR-0078 flipped the default
+    Every door direction, then the state changes ADR-0078 flipped the default
    for: a sheet, a fold, a notice, a row leaving, a segment, a save.
 
    `firstRun`, where present, names the setup step the scene needs the walk
    to stop on; each transport implements its own walk (Playwright locators
    on desktop, devtools evaluates on the device). */
 const SCENES = [
-  { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"]', nav: true, is: 'the blind pulled up to Journal' },
-  { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"]', nav: true, is: 'the blind between two doors' },
-  { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"]', nav: true, is: 'the blind down to Transition' },
-  { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"]', nav: true, is: 'the blind back to the tallest field' },
-  { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', nav: true, is: 'a door into a deep screen' },
-  { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, is: 'a deep screen back to its door' },
-  { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the sheet rising' },
-  { name: 'segment-lookback', at: '/stats', act: '[data-segment]:not([aria-selected="true"])', is: 'the segmented pill sliding' },
-  { name: 'span-offer-appear', at: '/stats', act: '[data-span-milestone]', when: 'persona', is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
-  { name: 'mood-pick', at: '/', act: '[data-mood="4"]', is: 'a mood picked, the row looking at it' },
-  { name: 'notice-dismiss', at: '/', act: '.kit-notice-x', is: 'a notice dismissed, its height closing' },
+  { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
+  { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
+  { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind down to Transition' },
+  { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind back to the tallest field' },
+  { name: 'door-today-lookback', at: '/', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind from today to lookback' },
+  { name: 'door-today-transition', at: '/', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind from today to transition' },
+  { name: 'door-journal-today', at: '/calendar', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind from journal to today' },
+  { name: 'door-journal-transition', at: '/calendar', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind from journal to transition' },
+  { name: 'door-lookback-today', at: '/stats', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind from lookback to today' },
+  { name: 'door-lookback-journal', at: '/stats', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind from lookback to journal' },
+  { name: 'door-transition-journal', at: '/more', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind from transition to journal' },
+  { name: 'door-transition-lookback', at: '/more', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind from transition to lookback' },
+  { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', prepare: ['[data-list-row="tag-groups"]'], nav: true, after: {"route": "/settings/tags"}, is: 'a door into a deep screen' },
+  { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, after: {"route": "/settings"}, is: 'a deep screen back to its door' },
+  { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', after: {"selector": "[data-fan]"}, is: 'the sheet rising' },
+  { name: 'segment-lookback', at: '/stats', act: '[data-span-band]', when: 'persona', after: {"selector": "[data-span-timeline]", "attribute": "data-span-start"}, is: 'the segmented pill sliding' },
+  { name: 'span-offer-appear', at: '/stats', act: '[data-span-band]', when: 'persona', after: {"selector": "[data-era-offer]"}, is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
+  { name: 'mood-pick', at: '/', act: '[data-mood="4"]', after: {"route": "/entry/new/today"}, is: 'a mood picked, the row looking at it' },
+  { name: 'notice-dismiss', at: '/', act: '[data-backup-notice] [data-notice-dismiss]', when: 'persona', reseed: true, after: {"selector": "[data-backup-notice]", "absent": true}, is: 'a notice dismissed, its height closing' },
   /* Redesign ticket 47: Safe space opens on the breath and everything else
      is one tap down, so the tap off that screen is the gesture the ticket
      added and the one place a person mid-crisis meets a navigation. */
-  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, is: 'a way down from the breath' },
+  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, after: {"route": "/transition/letters"}, is: 'a way down from the breath' },
 
   /* Transition screens (ticket 108): buttons, switchers and modals */
-  { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', is: 'the milestone template picker sheet rising' },
-  /* Redesign ticket 16 collapsed the list behind `[data-ms-log-toggle]`, so
-     `[data-milestone]` no longer exists until that row is opened - this
-     scene has no step for that and needs one before ticket 139's sweep. */
-  { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone]', when: 'persona', is: 'an existing milestone edit sheet opening' },
-  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', is: 'a mark on the rail opening the same editor (redesign 43)' },
-  { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '.kit-row.is-split .kit-row-main', when: 'persona', is: 'a goal check state cycled' },
-  { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', is: 'a goal details sheet opening' },
-  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', is: 'the add custom goal sheet opening' },
-  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', is: 'the compose letter sheet opening' },
+  { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the milestone template picker sheet rising' },
+  /* The recorded list is disclosed before measuring the edit action. */
+  { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone] .kit-row-main', prepare: ['[data-ms-log-toggle]'], when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an existing milestone edit sheet opening' },
+  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor (redesign 43)' },
+  { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
+  { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
      open under it. New movement, and the one on this screen most likely to
      read as a jump. */
-  { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', is: 'the rest of the good moments disclosed under the six' },
+  { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', after: {"selector": "[data-evidence-see-all]", "absent": true}, is: 'the rest of the good moments disclosed under the six' },
   /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
      45: a sealed letter's card answers no press at all now, and it is the
      first card on the screen, so the old selector picked the one letter that
      cannot open. This handle is on the two states that can. */
-  { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', is: 'a letter unfolded to read' },
-  { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-tryout]', when: 'persona', nav: true, is: 'navigating to tryout detail' },
-  { name: 'eras-add', at: '/settings/eras', act: '[data-add]', is: 'the add era sheet opening' },
+  { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', after: {"selector": "[data-letter-state=\"reading\"]"}, is: 'a letter unfolded to read' },
+  { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-open-tryout], a[data-tryout]', when: 'persona', nav: true, after: {"route": "chosen-href"}, is: 'navigating to tryout detail' },
+  { name: 'eras-add', at: '/settings/eras', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add era sheet opening' },
 
   /* Settings screens (ticket 108): swatches, switchers, switches and modals */
-  { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', is: 'picking a palette swatch' },
-  { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', is: 'the mood colours sheet opening' },
-  { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', is: 'the accessibility sheet opening' },
-  { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', is: 'the tag groups sheet opening' },
-  { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', is: 'switching theme segmented control' },
-  { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', is: 'toggling a settings switch' },
-  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', is: 'switching measurement unit segmented control' },
-  { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', is: 'the gender scales checklist sheet opening' },
-  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', is: 'the calendar colour metric sheet opening' },
-  { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', is: 'the disguise preview sheet opening' },
-  { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', is: 'the about sheet opening' },
-  { name: 'presentations-add', at: '/settings?raise=modes', act: '[data-add]', is: 'the add presentation sheet opening' },
-  { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', when: 'persona', is: 'hiding a tag in settings' },
-  { name: 'reminders-open', at: '/settings/reminders', act: '[data-list-row]', when: 'persona', is: 'opening a reminder for editing' },
-  { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', is: 'opening regimen template picker sheet' },
-  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', is: 'the dose editor sheet opening' },
-  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet opening' },
-  { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', is: 'opening regimen episode editor' },
+  { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', after: {"selector": "html", "attribute": "data-palette", "value": "nonbinary"}, is: 'picking a palette swatch' },
+  { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', after: {"selector": "[data-sheet]"}, is: 'the mood colours sheet opening' },
+  { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', after: {"selector": "[data-sheet]"}, is: 'the accessibility sheet opening' },
+  { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', after: {"selector": "[data-sheet]"}, is: 'the tag groups sheet opening' },
+  { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', after: {"selector": "html", "attribute": "data-theme", "value": "dark"}, is: 'switching theme segmented control' },
+  { name: 'settings-switch', at: '/settings', act: '[data-cycle-tracking-toggle] button.switch', after: {"selector": "[data-cycle-tracking-toggle] button.switch", "attribute": "aria-checked"}, is: 'toggling a settings switch' },
+  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', after: {"selector": "[data-segmented=\"measurement-unit\"] [data-segment=\"in\"]", "attribute": "aria-checked", "value": "true"}, is: 'switching measurement unit segmented control' },
+  { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', after: {"selector": "[data-sheet]"}, is: 'the gender scales checklist sheet opening' },
+  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
+  { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
+  { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', after: {"selector": "[data-sheet]"}, is: 'the about sheet opening' },
+  { name: 'presentations-add', at: '/settings', prepare: ['[data-list-row="presentations"]'], act: '[data-sheet] [data-add]', after: { selector: '[name="presentation-name"]' }, is: 'the add presentation sheet opening' },
+  { name: 'tags-hide', at: '/settings/tags', act: '[data-tag-hide]', prepare: ['[data-tag-group] [data-disclosure-toggle]'], when: 'persona', after: {"selector": "[data-tag-hide]", "attribute": "aria-label"}, is: 'hiding a tag in settings' },
+  { name: 'reminders-open', at: '/settings/reminders', act: 'a[href^="/settings/reminders/"]', androidOnly: true, requiresFixture: 'reminder', when: 'persona', after: {"route": "chosen-href"}, is: 'opening a reminder for editing' },
+  { name: 'regimen-add', at: '/care/regimen', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'opening regimen template picker sheet' },
+  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet opening' },
+  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet opening' },
+  { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'opening regimen episode editor' },
   /* Ticket 09 (ADR-0084): the stock editor stopped being its own screen,
      so opening it is no longer one `at`/`act` step from a cold load - it
      is a sheet off Care's regimen block, which the carpet's ticket 139
@@ -313,6 +327,8 @@ const SCENES = [
      deciding, not the scene declaring. */
   {
     name: 'setup-step-forward',
+    when: 'empty',
+    after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'flag',
     act: '[data-next]',
@@ -320,6 +336,8 @@ const SCENES = [
   },
   {
     name: 'setup-step-back',
+    when: 'empty',
+    after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'scales',
     act: '[data-back]',
@@ -327,6 +345,8 @@ const SCENES = [
   },
   {
     name: 'setup-flag-pick',
+    when: 'empty',
+    after: {"selector": "html", "attribute": "data-palette", "value": "agender"},
     at: '/',
     firstRun: 'flag',
     act: '[data-palette-pick="agender"]',
@@ -334,22 +354,533 @@ const SCENES = [
   },
   {
     name: 'setup-handover',
+    when: 'empty',
+    after: {"route": "/"},
     at: '/',
     firstRun: 'done',
     act: '[data-finish]',
     nav: true,
     is: "setup's field closing to Home's, as one object"
-  }
+  },
+  { name: 'quick-add-close', at: '/', prepare: ['[data-nav-fab], [data-rail-add]'], act: '.fan-scrim', after: { selector: '[data-fan]', absent: true }, is: 'the open fan withdrawing into its add control' },
+  { name: 'quick-add-mood', at: '/', prepare: ['[data-nav-fab], [data-rail-add]'], act: '[data-fan-target="mood-4"]', after: { route: '/entry/new/today' }, is: 'choosing a mood from the open fan and entering today' },
+  { name: 'quick-add-backdate', at: '/', prepare: ['[data-nav-fab], [data-rail-add]'], act: '[data-fan-target="another-day"]', after: { selector: '[data-sheet]' }, is: 'the fan handing over to the backdate sheet' },
+  { name: 'quick-add-backdate-close', at: '/', prepare: ['[data-nav-fab], [data-rail-add]', '[data-fan-target="another-day"]'], act: '[data-sheet-scrim]', after: { selector: '[data-sheet]', absent: true }, is: 'the backdate sheet withdrawing' },
+  { name: 'quick-add-date-picker', at: '/', prepare: ['[data-nav-fab], [data-rail-add]', '[data-fan-target="another-day"]'], act: '[data-date-value]', after: { selector: '[data-date-picker-entry]' }, is: 'the backdate calendar opening' },
+  { name: 'doses-attribution-open', at: '/care/doses', act: '.doses-attribution-toggle', after: { selector: '.doses-attribution-toggle', attribute: 'aria-expanded', value: 'true' }, is: 'the dose attribution fold opening' },
+  { name: 'doses-attribution-close', at: '/care/doses', prepare: ['.doses-attribution-toggle'], act: '.doses-attribution-toggle', after: { selector: '.doses-attribution-toggle', attribute: 'aria-expanded', value: 'false' }, is: 'the dose attribution fold closing' },
+  { name: 'care-stock-open', at: '/care', act: '[data-care-regimen-stock]', when: 'persona', after: { selector: '[data-sheet]' }, is: 'the regimen stock sheet opening in Care' },
+  { name: 'care-stock-add', at: '/care', prepare: ['[data-list-row="stock"]'], act: '[data-notice="care-stock-empty"] [data-notice-action]', when: 'empty', after: { selector: '[data-save-stock]' }, is: 'the nested stock editor opening' },
+  { name: 'settings-about-close', at: '/settings', prepare: ['[data-list-row="about"]'], act: '[data-sheet-scrim]', after: { selector: '[data-sheet]', absent: true }, is: 'the About sheet withdrawing' },
+  { name: 'comfort-arrange', at: '/doubt/comfort', act: '[data-comfort-arrange]', when: 'persona', after: { selector: '[data-comfort-grip]' }, is: 'the comfort list entering its arrange state' },
+  { name: 'today-editor-open', at: '/', act: '[data-edit-today]', after: { selector: '[data-today-editor]' }, is: 'the front page editor opening' },
+  { name: 'today-editor-reset-ask', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-reset]', after: { selector: '[data-confirm-edit-reset]' }, is: 'the front page reset confirmation opening' }
+,
+  { name: 'wear-week-earlier', at: '/body/wear', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the wear week earlier' },
+  { name: 'wear-week-later', at: '/body/wear', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the wear week later' },
+  { name: 'hair-removal-week-earlier', at: '/body/hair-removal', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the hair-removal week earlier' },
+  { name: 'hair-removal-week-later', at: '/body/hair-removal', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the hair-removal week later' },
+  { name: 'dilation-week-earlier', at: '/health/dilation', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the dilation week earlier' },
+  { name: 'dilation-week-later', at: '/health/dilation', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the dilation week later' },
+  { name: 'cycle-week-earlier', at: '/health/cycle-events', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week earlier' },
+  { name: 'cycle-week-later', at: '/health/cycle-events', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week later' },
+  { name: 'roadmap-track-switch', at: '/transition/roadmap', act: '[data-segmented="roadmap-track"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="roadmap-track"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the roadmap track' },
+  { name: 'roadmap-track-dismiss', at: '/transition/roadmap', act: '[data-track-panel]:not([hidden]) [data-track-toggle]', after: { selector: '[data-track-panel]:not([hidden]) [data-track-toggle]', attribute: 'data-dismissed' }, is: 'dismissing or restoring the visible roadmap track' },
+  { name: 'comfort-reorder', at: '/doubt/comfort', prepare: ['[data-comfort-arrange]'], act: '[data-comfort-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-comfort-item]', order: 'data-comfort-item' }, is: 'moving the first comfort row down with keyboard' },
+  { name: 'today-editor-reorder', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-edit-pinned-row]', order: 'data-edit-pinned-row' }, is: 'moving a pinned row down with keyboard' },
+  { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },
+  { name: 'tryout-new', at: '/transition/tryouts', act: 'a[href="/transition/tryouts/new"]', after: { route: '/transition/tryouts/new' }, is: 'opening the new tryout editor' },
+  { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' }
+
 ];
 
 /** The scenes a run covers: the table above, narrowed to `only`, with the
  *  proof scene always prepended when the run is out to show it can fail. */
 export function scenesFor({ prove = false, only = [] } = {}) {
+  for (const name of only) if (!SCENES.some((scene) => scene.name === name)) throw new Error(`unknown gesture scene: ${name}`);
   const scenes = only.length ? SCENES.filter((s) => only.includes(s.name)) : SCENES;
   return prove
     ? [{ name: PROOF.scene, at: '/', act: 'inject', is: 'six marks built to be wrong, so the arithmetic can be seen to catch them' }, ...scenes]
     : scenes;
 }
+
+/** Semantic labels explain a mark; node identity decides whether it left. */
+export function createMarkIdentity() {
+  const identities = new WeakMap();
+  let next = 0;
+  return (node, semantic) => {
+    if (!identities.has(node)) identities.set(node, `${semantic}#node-${++next}`);
+    return identities.get(node);
+  };
+}
+
+export function sceneForTheme(scene, theme) {
+  if (scene.name !== 'settings-theme-switcher') return { ...scene, startTheme: theme };
+  const target = theme === 'light' ? 'dark' : 'light';
+  return { ...scene, startTheme: theme, act: `[data-segmented="theme"] [data-segment="${target}"]`, after: { selector: 'html', attribute: 'data-theme', value: target } };
+}
+
+/** Dispatch proof travels with the first sampled frame on both transports. */
+export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false) {
+  const { document, location } = env;
+  const requested = scene.act;
+  const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
+  if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
+  if (env.__sweepDocumentProof) evidence.documentProof = env.__sweepDocumentProof;
+  if (env.__sweepNavigationProof) evidence.navigationProof = env.__sweepNavigationProof;
+  if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
+  if (requested === 'inject') {
+    if (typeof env.__yankProof !== 'function') throw new Error('missing injected proof action');
+    env.__yankProof();
+    return { ...evidence, programmatic: 'injected proof', dispatched: true };
+  }
+  const selector = requested === 'back' ? '[data-screen-back]' : requested;
+  const hits = [...document.querySelectorAll(selector)];
+  if (!hits.length) throw new Error(`missing target: ${selector}`);
+  const visible = hits.filter((el) => {
+    if (el.checkVisibility) return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+    for (let node = el; node; node = node.parentElement) {
+      const style = env.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+    }
+    const box = el.getBoundingClientRect();
+    const css = env.getComputedStyle(el);
+    return box.width > 0 && box.height > 0 && css.display !== 'none' && css.visibility !== 'hidden' && Number(css.opacity) > 0;
+  });
+  if (!visible.length) throw new Error(`target not visible: ${selector}`);
+  const enabled = visible.filter((el) => !el.disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('[inert]'));
+  if (!enabled.length) throw new Error(`no enabled target: ${selector}`);
+  let hit, box, point, front;
+  for (const candidate of enabled) {
+    hit = candidate;
+    if (prepareOnly) {
+      if (scene.key) {
+        hit.focus();
+        if (document.activeElement !== hit) throw new Error('keyboard target did not receive focus');
+      }
+      hit.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+    box = hit.getBoundingClientRect();
+    const left = Math.max(0, box.left), top = Math.max(0, box.top);
+    const right = Math.min(env.innerWidth ?? box.left + box.width, box.left + box.width);
+    const bottom = Math.min(env.innerHeight ?? box.top + box.height, box.top + box.height);
+    const insetX = Math.min(8, (right - left) / 2), insetY = Math.min(8, (bottom - top) / 2);
+    const points = [
+      { x: box.left + box.width / 2, y: box.top + box.height / 2 },
+      { x: left + insetX, y: top + insetY }, { x: right - insetX, y: top + insetY },
+      { x: left + insetX, y: bottom - insetY }, { x: right - insetX, y: bottom - insetY }
+    ];
+    point = right > left && bottom > top && points.find((point) => {
+      front = document.elementFromPoint(point.x, point.y);
+      return front === hit || hit.contains(front);
+    });
+    if (point) break;
+  }
+  if (!point) throw new Error('target remains covered or outside viewport: ' + selector);
+  evidence.point = point;
+  evidence.bounds = { left: box.left, top: box.top, width: box.width, height: box.height };
+  evidence.hit = { tag: front.tagName, id: front.id || null, target: front === hit, descendant: front !== hit };
+  evidence.chosen = { selector, tag: hit.tagName, id: hit.id || null, label: hit.getAttribute('aria-label'), text: hit.textContent?.trim().slice(0, 100), href: hit.getAttribute('href') };
+  if (prepareOnly) return { ...evidence, prepared: true };
+  const after = scene.after;
+  if (after?.selector) evidence.beforePresent = !!document.querySelectorAll(after.selector)[0];
+  if (after?.attribute) {
+    const subject = after.selector ? document.querySelectorAll(after.selector)[0] : hit;
+    evidence.beforeValue = subject?.getAttribute(after.attribute) ?? null;
+  }
+  if (after?.text) evidence.beforeValue = document.querySelectorAll(after.selector)[0]?.textContent ?? null;
+  if (after?.order) evidence.beforeValue = [...document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|');
+  if (scene.key) {
+    if (document.activeElement !== hit) throw new Error('keyboard target lacks prepared focus: ' + selector);
+    hit.dispatchEvent(new env.KeyboardEvent('keydown', { key: scene.key, bubbles: true, cancelable: true }));
+    evidence.key = scene.key;
+  } else hit.click();
+  evidence.dispatched = true;
+  if (!scene.cleanup) env.__sweepAction = evidence;
+  return evidence;
+}
+
+export const cleanupSceneExpression = (scene) => scene.name === 'settings-unit-switcher' ? `(async () => {
+  if (globalThis.__sweepPreparation?.measurementsOriginallyEnabled !== false) return null;
+  const act = '[data-measurements-toggle] button.switch';
+  if (document.querySelector(act)?.getAttribute('aria-checked') === 'false') return null;
+  const cleanup = { cleanup: true, act, after: { selector: act, attribute: 'aria-checked', value: 'false' } };
+  const dispatch = ${dispatchSceneAction};
+  let ready = false;
+  for (let i = 0; i < 200 && !ready; i++) {
+    try { dispatch(cleanup, globalThis, true); ready = true; }
+    catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+  }
+  if (!ready) throw new Error('measurement feature cleanup control did not become ready');
+  const action = dispatch(cleanup);
+  for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'false'; i++) await new Promise((resolve) => setTimeout(resolve, 50));
+  return (${verifySceneAction})(cleanup, action);
+})()` : scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
+  const cleanup = { cleanup: true, act: '[data-era-offer-dismiss]', after: { selector: '[data-era-offer]', absent: true } };
+  const dispatch = ${dispatchSceneAction};
+  let ready = false;
+  for (let i = 0; i < 200 && !ready; i++) {
+    try { dispatch(cleanup, globalThis, true); ready = true; }
+    catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+  }
+  if (!ready) throw new Error('naming offer cleanup control did not become ready');
+  const action = dispatch(cleanup);
+  for (let i = 0; i < 200 && document.querySelector('[data-era-offer]'); i++) await new Promise((resolve) => setTimeout(resolve, 50));
+  return (${verifySceneAction})(cleanup, action);
+})()`;
+
+export async function cleanupSceneFailure(scene, evaluate) {
+  if (scene.name !== 'settings-unit-switcher') return null;
+  try { return await evaluate(cleanupSceneExpression(scene)); }
+  catch (error) { return { error: String(error) }; }
+}
+
+export const actionPreparationExpression = (scene) => `(${dispatchSceneAction})(${JSON.stringify(scene)}, globalThis, true)`;
+
+/** Check an explicit route or state outcome, never infer success from zero yanks. */
+export function verifySceneAction(scene, action, env = globalThis) {
+  if (!action?.dispatched) throw new Error('action was not dispatched');
+  if (scene.startTheme && action.beforeTheme !== scene.startTheme) throw new Error(`wrong starting theme: expected ${scene.startTheme}, got ${action.beforeTheme}`);
+  if (scene.act === 'inject' || scene.act === 'none') return { ...action, verified: true };
+  const after = scene.after;
+  if (!after) throw new Error(`missing action postcondition: ${scene.name ?? scene.act}`);
+  const route = env.location.pathname;
+  if (after.route) {
+    const expected = after.route === 'chosen-href' ? action.chosen?.href?.split(/[?#]/)[0] : after.route;
+    if (route !== expected) throw new Error(`postcondition route: expected ${expected}, got ${route}`);
+    if (route === action.beforeRoute && env.location.search === (action.beforeSearch ?? '')) throw new Error(`postcondition route unchanged: ${route}`);
+  } else {
+    const subject = env.document.querySelectorAll(after.selector)[0];
+    if (after.absent ? !!subject : !subject) throw new Error(`postcondition ${after.absent ? 'absent' : 'present'}: ${after.selector}`);
+    if (!after.attribute && !after.text && !after.order && (after.absent ? !action.beforePresent : action.beforePresent)) throw new Error(`postcondition state unchanged: ${after.selector}`);
+    if (after.text || after.order) {
+      const value = after.order ? [...env.document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|') : subject?.textContent;
+      if (value === action.beforeValue) throw new Error(`postcondition content unchanged: ${after.selector}`);
+    }
+    if (after.attribute) {
+      const value = subject?.getAttribute(after.attribute) ?? null;
+      if (after.value !== undefined ? value !== after.value || value === action.beforeValue : value === action.beforeValue) throw new Error(`postcondition attribute unchanged or wrong: ${after.attribute}=${value}`);
+    }
+  }
+  return { ...action, verified: true, afterRoute: route, afterTheme: env.document.documentElement?.dataset.theme, postcondition: after };
+}
+
+export const actionPostconditionExpression = (scene, action) => `(${verifySceneAction})(${JSON.stringify(scene)}, ${JSON.stringify(action)})`;
+
+/** Boot seeding is preparation, not a motion settle window. Poll with feedback. */
+export async function waitForReadiness(read, {
+  timeoutMs = 600000, pollMs = 1000, now = Date.now,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), onProgress = () => {}
+} = {}) {
+  const started = now();
+  let state;
+  let feedbackAt = -Infinity;
+  for (;;) {
+    state = await read();
+    if (state.ready) return { ...state, elapsedMs: now() - started };
+    if (now() - started >= timeoutMs) throw new Error(`boot readiness timed out after ${timeoutMs}ms: ${JSON.stringify(state)}`);
+    if (now() - feedbackAt >= 10000) { onProgress({ ...state, elapsedMs: now() - started }); feedbackAt = now(); }
+    await sleep(pollMs);
+  }
+}
+
+export const BOOT_READINESS_EXPRESSION = `(() => ({
+  ready: document.querySelector('[data-app-root]')?.dataset.boot === 'ready' && !!document.querySelector('[data-home-hello]'),
+  route: location.pathname,
+  gate: document.querySelector('[data-app-root]')?.dataset.boot ?? 'no app root',
+  setup: !!document.querySelector('[data-setup-question]'),
+  access: !!document.querySelector('[data-access-modes]')
+}))()`;
+
+export async function finishFirstRun(evaluate, options = {}) {
+  if (!(await evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION))) throw new Error('first-run finish was not dispatched');
+  return waitForReadiness(() => evaluate(BOOT_READINESS_EXPRESSION), options);
+}
+
+export const PROFILE_KEY = 'yank-sweep-prepared-profile';
+export const markProfileExpression = (profile) => `localStorage.setItem(${JSON.stringify(PROFILE_KEY)}, ${JSON.stringify(profile)}); true;`;
+export const profileProofExpression = (profile) => `(() => {
+  const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+    greeting: document.querySelector('[data-home-hello]')?.textContent?.trim(), route: location.pathname };
+  if (proof.prepared !== ${JSON.stringify(profile)} || proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('wrong journal profile: ' + JSON.stringify(proof));
+  if (${JSON.stringify(profile)} === 'persona' && !proof.greeting?.includes('Alice')) throw new Error('persona greeting missing: ' + JSON.stringify(proof));
+  return proof;
+})()`;
+
+export function readThemeProof(requested, env = globalThis) {
+  const button = [...env.document.querySelectorAll('.demo-bar button')].find((node) =>
+    (node.textContent ?? '').trim() === (requested === 'dark' ? 'Dark' : 'Light'));
+  return { requested, selected: !!button?.classList.contains('is-active'),
+    persisted: JSON.parse(env.localStorage.getItem('engender-boot-prefs') ?? '{}').theme,
+    painted: env.document.documentElement.dataset.theme,
+    transitioning: env.document.documentElement.dataset.appearanceTransition !== undefined };
+}
+
+export const coldLoadProofExpression = (href, profile, theme, outcome = null) => `(() => {
+  const themeProof = (${readThemeProof})(${JSON.stringify(theme)});
+  const expected = new URL(${JSON.stringify(href)}, location.origin);
+  const outcome = ${JSON.stringify(outcome)};
+  const requested = expected.pathname + expected.search;
+  if (outcome?.consumedQuery) expected.searchParams.delete(outcome.consumedQuery);
+  const surface = outcome?.selector ? document.querySelector(outcome.selector) : null;
+  const proof = { ...(globalThis.__sweepDocumentProof ? { documentProof: globalThis.__sweepDocumentProof } : {}), themeProof, requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
+    surface: outcome?.selector ? !!surface?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : undefined,
+    surfaceSelector: outcome?.selector,
+    profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+    boot: document.querySelector('[data-app-root]')?.dataset.boot, theme: document.documentElement.dataset.theme,
+    loading: !!document.querySelector('[data-gate-skeleton]'), unavailable: !!document.querySelector('[data-unavailable], [data-notice$="-unavailable"]') };
+  if (proof.route !== proof.expected) throw new Error('cold-load wrong route: ' + JSON.stringify(proof));
+  if (outcome?.selector && !proof.surface) throw new Error('cold-load missing raised surface: ' + JSON.stringify(proof));
+  if (proof.profile !== ${JSON.stringify(profile)}) throw new Error('cold-load wrong profile: ' + JSON.stringify(proof));
+  if (proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('cold-load journal profile mismatch: ' + JSON.stringify(proof));
+  if (proof.boot !== 'ready' || proof.unavailable || proof.loading) throw new Error('cold-load unfinished screen: ' + JSON.stringify(proof));
+  if (proof.theme !== ${JSON.stringify(theme)} || !themeProof.selected || themeProof.persisted !== ${JSON.stringify(theme)} || themeProof.transitioning) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
+  return proof;
+})()`;
+
+export function verifyGateProof(proof, profile, theme) {
+  if (proof.route !== '/') throw new Error('PIN gate wrong route: ' + JSON.stringify(proof));
+  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
+  if (proof.theme !== theme || !proof.themeProof?.selected || proof.themeProof.persisted !== theme || proof.themeProof.painted !== theme || proof.themeProof.transitioning) throw new Error('PIN gate wrong theme: ' + JSON.stringify(proof));
+  if (!proof.pin || proof.home || !['needs-unlock', 'ready'].includes(proof.boot)) throw new Error('PIN gate wrong boot state: ' + JSON.stringify(proof));
+  return { ...proof, gate: 'pin' };
+}
+
+export const gateProofExpression = (profile, theme) => `(${verifyGateProof})({
+  ...(globalThis.__sweepDocumentProof ? { documentProof: globalThis.__sweepDocumentProof } : {}),
+  themeProof: (${readThemeProof})(${JSON.stringify(theme)}),
+  route: location.pathname + location.search,
+  profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
+  hasEntries: localStorage.getItem('engender-has-entries'),
+  theme: document.documentElement.dataset.theme,
+  boot: document.querySelector('[data-app-root]')?.dataset.boot,
+  pin: !!document.querySelector('[data-pin-pad]'), home: !!document.querySelector('[data-home-hello]')
+}, ${JSON.stringify(profile)}, ${JSON.stringify(theme)})`;
+
+/** Partial snapshots survive a stopped sweep and remain explicitly incomplete. */
+export function createReportRecorder(outDir, metadata, inventory, profiles, themes, passes, errors) {
+  const report = [];
+  let pending = Promise.resolve();
+  const persist = () => {
+    const snapshot = JSON.stringify({ ...metadata, complete: false, coverage: coverageSummary(inventory, profiles, themes, passes, report), report, errors }, null, 2);
+    pending = pending.then(async () => {
+      await writeFile(`${outDir}/report.partial.json.tmp`, snapshot);
+      await rename(`${outDir}/report.partial.json.tmp`, `${outDir}/report.partial.json`);
+    });
+  };
+  report.push = (...rows) => { const count = Array.prototype.push.apply(report, rows); persist(); return count; };
+  persist();
+  return { report, persist, flush: () => pending };
+}
+
+/** Expected repeats remain visible even when setup aborts before a scene runs. */
+export function coverageSummary(scenes, profiles, themes, passes, report) {
+  const expected = [];
+  for (const profile of profiles) for (const theme of themes) for (const scene of scenes) {
+    if (scene.when && scene.when !== profile) continue;
+    const repeats = scene.setup ? 1 : passes;
+
+    for (let pass = 1; pass <= repeats; pass++) expected.push({ scene: scene.name, profile, theme, pass });
+  }
+  const key = (row) => `${row.scene}:${row.profile}:${row.theme}:${row.pass ?? 1}`;
+  const rows = new Map(report.map((row) => [key(row), row]));
+  const grouped = {};
+  const counts = { requested: expected.length, attempted: 0, measured: 0, skipped: 0, failed: 0, missing: 0 };
+  const missing = [];
+  for (const run of expected) {
+    const row = rows.get(key(run));
+    const status = !row ? 'missing' : row.error ? 'failed' : row.skipped ? 'skipped' : 'measured';
+    counts[status]++;
+    if (status === 'failed' || status === 'measured') counts.attempted++;
+    if (!row) missing.push(run);
+    const group = `${run.profile}:${run.theme}`;
+    grouped[group] ??= { requested: 0, attempted: 0, measured: 0, skipped: 0, failed: 0, missing: 0 };
+    grouped[group].requested++;
+    grouped[group][status]++;
+    if (status === 'failed' || status === 'measured') grouped[group].attempted++;
+  }
+  return { ...counts, groups: grouped, missingRuns: missing, inventory: scenes };
+}
+
+export function navigateSweepPage(path, env = globalThis) {
+  env.location.assign(path);
+  return true;
+}
+
+export async function navigateFreshSweepPage(path, evaluate, options = {}) {
+  const previousTimeOrigin = await evaluate('performance.timeOrigin');
+  if (!Number.isFinite(previousTimeOrigin)) throw new Error('invalid previous document time origin');
+  await evaluate(`(${navigateSweepPage})(${JSON.stringify(path)});`);
+  return waitForReadiness(async () => {
+    try {
+      const timeOrigin = await evaluate('performance.timeOrigin');
+      if (!Number.isFinite(timeOrigin)) throw new Error('invalid current document time origin');
+      return { ready: timeOrigin !== previousTimeOrigin, previousTimeOrigin, timeOrigin, stage: 'document navigation' };
+    } catch (error) {
+      if (!/Execution context was destroyed|Cannot find default execution context/.test(String(error))) throw error;
+      return { ready: false, previousTimeOrigin, stage: 'document navigation', contextError: String(error) };
+    }
+  }, { timeoutMs: 40000, pollMs: 100, ...options });
+}
+
+export const documentProofExpression = (previousTimeOrigin) => `(() => {
+  const previousTimeOrigin = ${JSON.stringify(previousTimeOrigin)};
+  const timeOrigin = performance.timeOrigin;
+  if (!Number.isFinite(previousTimeOrigin) || !Number.isFinite(timeOrigin)) throw new Error('invalid document time origin');
+  if (timeOrigin === previousTimeOrigin) throw new Error('native settle retained its previous document');
+  return globalThis.__sweepDocumentProof = { previousTimeOrigin, timeOrigin };
+})()`;
+
+export const gestureNavigationExpression = (path, predecessor = null) => `(${async function (path, predecessor) {
+  const proofRoot = document.querySelector('[data-app-root]');
+  for (const node of proofRoot?.querySelectorAll(':scope > [class^="yank-proof-"]') ?? []) node.remove();
+  delete globalThis.__yankProof;
+  const started = Date.now();
+  const wait = async (ready, stage) => {
+    while (!ready()) {
+      if (Date.now() - started >= 40000) throw new Error('gesture preparation timed out: ' + stage + ' ' + JSON.stringify({
+        route: location.pathname + location.search, boot: document.querySelector('[data-app-root]')?.getAttribute('data-boot') ?? null,
+        mainChildren: document.querySelector('#app-main')?.children.length ?? null,
+        elapsedMs: Date.now() - started
+      }));
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  };
+  for (const [selector, absent] of [['[data-quick-add]', '[data-fan]'], ['[data-sheet-scrim]', '[data-sheet-scrim]'], ['[data-leave-setup]', '[data-leave-setup]']]) {
+    const control = document.querySelector(selector);
+    if (control) { control.click(); await wait(() => !document.querySelector(absent), 'overlay cleanup ' + absent); }
+  }
+  const origin = performance.timeOrigin;
+  if (!Number.isFinite(origin)) throw new Error('invalid gesture document time origin');
+  const previousRoute = location.pathname + location.search;
+  const roots = [...(document.querySelector('#app-main')?.children ?? [])];
+  if (!roots.length) throw new Error('gesture preparation has no mounted source screen');
+  const jump = async (href) => {
+    await wait(() => !document.documentElement.dataset.nav, 'previous navigation transition');
+    const select = document.querySelector('#demo-jump');
+    if (!select || select.disabled) throw new Error('gesture demo navigation control unavailable');
+    const option = document.createElement('option');
+    option.value = href;
+    select.append(option);
+    try { select.value = href; select.dispatchEvent(new Event('change', { bubbles: true })); }
+    finally { option.remove(); }
+    await wait(() => location.pathname + location.search === href, 'route ' + href);
+    await wait(() => document.querySelector('[data-app-root][data-boot="ready"]')
+      && document.querySelector('#app-main')?.children.length > 0, 'mounted route ' + href);
+    await wait(() => !document.documentElement.dataset.nav, 'navigation transition ' + href);
+  };
+  const intermediate = predecessor ?? (path === '/settings/licences' ? '/calendar' : '/settings/licences');
+  if (previousRoute === intermediate) await jump(intermediate === '/calendar' ? '/settings/licences' : '/calendar');
+  await jump(intermediate);
+  await wait(() => roots.every(node => !node.isConnected), 'old screen remained mounted');
+  const intermediateRoots = [...document.querySelector('#app-main').children];
+  await jump(path);
+  await wait(() => intermediateRoots.every(node => !node.isConnected), 'target screen did not remount');
+  await wait(() => !document.documentElement.dataset.appearanceTransition, 'appearance transition');
+  if (performance.timeOrigin !== origin) throw new Error('gesture SPA navigation replaced its document');
+  const proof = { kind: 'spa-mount', requested: path, previousRoute, intermediate,
+    actualRoute: location.pathname + location.search, previousTimeOrigin: origin, timeOrigin: performance.timeOrigin,
+    oldRootDetached: roots.every(node => !node.isConnected), targetMounted: document.querySelector('#app-main').children.length > 0 };
+  globalThis.__sweepDocumentProof = null;
+  return globalThis.__sweepNavigationProof = proof;
+}})(${JSON.stringify(path)}, ${JSON.stringify(predecessor)})`;
+
+export async function preparePinGate(theme, prepare, applyTheme) {
+  await prepare();
+  return applyTheme(theme);
+}
+
+export const prepareSceneExpression = (scene) => `(async () => {
+  const scene = ${JSON.stringify(scene)};
+  const control = ${dispatchSceneAction};
+  globalThis.__sweepAction = null;
+  globalThis.__sweepPreparation = { scene: scene.name, steps: [] };
+  const prepare = async (step) => {
+    let error;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      try {
+        const proof = control(step, globalThis, true);
+        globalThis.__sweepPreparation.steps.push({ ...proof, attempts: attempt + 1 });
+        return proof;
+      } catch (caught) {
+        error = String(caught);
+        if (!/missing target|target not visible|no enabled target|target remains covered/.test(error)) break;
+        await sleep(50);
+      }
+    }
+    globalThis.__sweepPreparation.error = error;
+    throw new Error('target preparation did not become ready: ' + error);
+  };
+  const dispatch = async (step) => { await prepare(step); return control(step); };
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const appearanceReady = () => document.documentElement.dataset.appearanceTransition === undefined
+    && JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === scene.startTheme;
+  const waitAppearance = async () => {
+    for (let i = 0; i < 60 && !appearanceReady(); i++) await sleep(50);
+    if (!appearanceReady()) throw new Error('appearance preparation transition or theme mirror did not settle');
+  };
+  for (const scrim of document.querySelectorAll('.fan-scrim, [data-sheet-scrim]')) scrim.click();
+  for (let i = 0; i < 60 && document.querySelector('.fan-scrim, [data-sheet-scrim]'); i++) await sleep(50);
+  if (document.querySelector('.fan-scrim, [data-sheet-scrim]')) throw new Error('previous overlay did not close');
+  if (scene.name === 'settings-theme-switcher') {
+    await dispatch({ act: '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]' });
+    await waitAppearance();
+  }
+  if (scene.name === 'settings-palette') {
+    for (const act of ['[data-palette-pick="trans"]', '[data-segmented="theme"] [data-segment="' + scene.startTheme + '"]']) {
+      await dispatch({ act });
+      if (act.includes('data-segmented')) await waitAppearance();
+      else {
+        for (let i = 0; i < 60 && document.documentElement.dataset.appearanceTransition !== undefined; i++) await sleep(50);
+        if (document.documentElement.dataset.appearanceTransition !== undefined) throw new Error('palette preparation transition did not finish');
+      }
+    }
+  }
+  if (scene.name === 'settings-unit-switcher') {
+    const act = '[data-measurements-toggle] button.switch';
+    await prepare({ act });
+    const enabled = document.querySelector(act).getAttribute('aria-checked');
+    if (enabled !== 'true' && enabled !== 'false') throw new Error('measurement feature state is unknown');
+    globalThis.__sweepPreparation.measurementsOriginallyEnabled = enabled === 'true';
+    if (enabled === 'false') {
+      const step = { act, after: { selector: act, attribute: 'aria-checked', value: 'true' } };
+      const action = await dispatch(step);
+      for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'true'; i++) await sleep(50);
+      globalThis.__sweepPreparation.measurementsEnabled = (${verifySceneAction})(step, action);
+    }
+    await dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
+  }
+  if (document.querySelector('[data-edit-done]')) { await dispatch({ act: '[data-edit-done]' }); await sleep(500); }
+  if (document.querySelector('[data-comfort-grip]')) { await dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
+  const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
+  if (attribution) { attribution.click(); await sleep(500); }
+  if (scene.name === 'segment-lookback' || scene.name === 'span-offer-appear') {
+    await dispatch({ act: '[data-span-band]' });
+    await sleep(500);
+    const timeline = document.querySelector('[data-span-timeline]');
+    const before = timeline.getAttribute('data-span-start');
+    if (scene.name === 'span-offer-appear') {
+      await dispatch({ act: '[data-span-handle="start"]', key: 'Home' });
+      await sleep(500);
+      await dispatch({ act: '[data-span-handle="end"]', key: 'Home' });
+      await sleep(500);
+      await dispatch({ act: '[data-era-offer-dismiss]' });
+      for (let i = 0; i < 200 && document.querySelector('[data-era-offer]'); i++) await sleep(50);
+      if (document.querySelector('[data-era-offer]')) throw new Error('preparation naming offer did not dismiss');
+    } else {
+      const key = Number(before) > Number(timeline.getAttribute('data-rail-start')) ? 'ArrowLeft' : 'ArrowRight';
+      await dispatch({ act: '[data-span-handle="start"]', key });
+      await sleep(500);
+    }
+    if (timeline.getAttribute('data-span-start') === before) throw new Error('span prerequisite did not change its start');
+  }
+  for (const act of scene.prepare ?? []) {
+    await dispatch({ act });
+    await sleep(500);
+  }
+  if (scene.act !== 'inject' && scene.act !== 'none') await prepare(scene);
+  return true;
+})()`;
 
 /** Furniture rather than the app: the demo bar and a toast are injected over
     whatever is being looked at. A navigation needs no exemption at all now
@@ -399,6 +930,8 @@ export const INJECT_PROOF_EXPRESSION =
     cut.style.top = '240px';
     const bloat = make('yank-proof-bloat');
     bloat.style.top = '280px';
+    // Keep the injected paint defect visible to the same area threshold on desktop.
+    bloat.style.width = `${innerWidth > 600 ? innerWidth * 0.35 : 120}px`;
     const colour = make('yank-proof-colour');
     colour.style.top = '320px';
     const thereAndBack = make('yank-proof-there-and-back');
@@ -465,11 +998,10 @@ export const STUB_PERSIST_SCRIPT = `(() => {
 
 /** The page-side half of settling a scene: toasts gone, demo bar hidden
     (kept in the tree for the setup scenes' first-run control, but out of
-    the frame and out of the flow), and the theme stamped on <html> the way
-    +layout.svelte stamps it. An expression string for the same reason as
+    the frame and out of the flow), and the requested theme restored through runtime preferences. An expression string for the same reason as
     above. */
 export const SETTLE_PAGE_EXPRESSION = (theme) =>
-  `(() => {
+  `(async () => {
     let hide = document.getElementById('yank-sweep-hide-demo');
     if (!hide) {
       hide = document.createElement('style');
@@ -480,8 +1012,21 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     for (const toast of document.querySelectorAll('[data-toast]')) toast.remove();
     for (const bar of document.querySelectorAll('.demo-bar')) bar.style.display = 'none';
     document.body.classList.remove('has-demo-bar');
-    document.documentElement.dataset.theme = ${JSON.stringify(theme)};
-    return true;
+    const requested = ${JSON.stringify(theme)};
+    const button = [...document.querySelectorAll('.demo-bar button')].find((node) =>
+      (node.textContent ?? '').trim() === (requested === 'dark' ? 'Dark' : 'Light'));
+    if (!button) throw new Error('no requested theme control on the demo bar');
+    const proof = () => ({ requested, selected: button.classList.contains('is-active'),
+      persisted: JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme,
+      painted: document.documentElement.dataset.theme,
+      transitioning: document.documentElement.dataset.appearanceTransition !== undefined });
+    const aligned = () => { const state = proof(); return state.selected
+      && state.persisted === requested && state.painted === requested && !state.transitioning; };
+    if (!aligned()) button.click();
+    for (let i = 0; i < 200 && !aligned(); i++) await new Promise((resolve) => setTimeout(resolve, 50));
+    globalThis.__sweepThemeProof = proof();
+    if (!aligned()) throw new Error('requested theme did not align: ' + JSON.stringify(proof()));
+    return proof();
   })()`;
 
 /** The sampler. One rAF loop, reading both instruments into a keyed row per
@@ -492,7 +1037,10 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     same code runs through Playwright's evaluate and through the WebView's
     devtools socket on a device. */
 export function samplerExpression(act, ms, names) {
-  const fn = async (act, ms, names) => {
+  const fn = async (scene, ms, names, dispatch, createIdentity) => {
+    const identity = createIdentity();
+    const act = scene.act;
+    let action;
     const root = document.querySelector('[data-app-root]');
     const readPseudo = (pseudo, prop) =>
       getComputedStyle(document.documentElement, pseudo)?.getPropertyValue(prop) ?? '';
@@ -532,7 +1080,7 @@ export function samplerExpression(act, ms, names) {
     };
     const STATE_CLS =
       /^(is-active|is-selected|is-open|is-fan-open|is-checked|is-ticked|is-withdrawn|press|press-add|setup-paint-was|roadmap-ticked|roadmap-skip|roadmap-done|roadmap-skip-text)$/;
-    const key = (el) => {
+    const semanticKey = (el) => {
       const clsList = [...el.classList].filter((c) => !STATE_CLS.test(c));
       const cls = clsList.length ? `.${clsList.join('.')}` : el.tagName.toLowerCase();
       const letter = el.closest?.('[data-letter]')?.getAttribute('data-letter');
@@ -566,6 +1114,7 @@ export function samplerExpression(act, ms, names) {
         ? '' : (words ?? '').trim().replace(/\d+/g, '#').slice(0, 24);
       return `${scope ? `[${scope}]` : ''}${cls}|${text}`;
     };
+    const key = (el) => identity(el, semanticKey(el));
     /* The browser's own answer to "is a transition running", for the
        length of this sample only; restored before the promise resolves. */
     let active = false;
@@ -620,23 +1169,9 @@ export function samplerExpression(act, ms, names) {
        gone by the first sample, no frame held it, and the injected cut in
        --prove went unreported. It also gives the teleport test real
        neighbours at the start of a run instead of a missing one. */
-    const go = () => {
-      if (act === 'none') return;
-      if (act === 'inject') window.__yankProof();
-      else if (act.startsWith('goto:')) location.assign(act.slice(5));
-      else if (act === 'back') {
-        const btn = document.querySelector('[data-screen-back]');
-        if (btn) btn.click();
-        else history.back();
-      }
-      else {
-        const hits = document.querySelectorAll(act);
-        const hit = [...hits].find((el) => el.offsetParent !== null) || hits[0];
-        if (hit) hit.click();
-      }
-    };
+    const go = () => { action = dispatch(scene); frames[0].action = action; };
     let started = false;
-    return await new Promise((done) => {
+    return await new Promise((done, reject) => {
       /* Change a hidden sentinel in rAF. ResizeObserver reads after the app's
          resize actions and before paint, so intermediate layout never enters
          the report. The sentinel changes only once per frame. */
@@ -654,7 +1189,7 @@ export function samplerExpression(act, ms, names) {
         if (live) {
           const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
           const ancestorClips = new WeakMap();
-          for (const el of live.querySelectorAll('*')) {
+          for (const el of live.querySelectorAll(act === 'inject' ? '[class^="yank-proof-"]' : '*')) {
             const cs = getComputedStyle(el);
             if (cs.display === 'none') continue;
             const box = el.getBoundingClientRect();
@@ -733,6 +1268,7 @@ export function samplerExpression(act, ms, names) {
             let scrollY = window.scrollY;
             for (let up = el.parentElement; up; up = up.parentElement) scrollY += up.scrollTop;
             rows[k] = {
+              semantic: semanticKey(el),
               x: Math.round(box.x * 10) / 10,
               y: Math.round(box.y * 10) / 10,
               w: Math.round(box.width * 10) / 10,
@@ -755,10 +1291,12 @@ export function samplerExpression(act, ms, names) {
             const row = vtRow(side, name);
             if (row) vt[`${side}(${name})`] = row;
           }
-        frames.push({ at: Math.round(now), active, rows, vt });
+        frames.push({ at: Math.round(now), wallAt: performance.timeOrigin + performance.now(), active, rows, vt });
         if (!started) {
           started = true;
-          go();
+          try { go(); } catch (error) {
+            observer.disconnect(); sentinel.remove(); restore(); reject(error); return;
+          }
         }
         if (now < ms) requestAnimationFrame(tick);
         else {
@@ -776,7 +1314,7 @@ export function samplerExpression(act, ms, names) {
       requestAnimationFrame(tick);
     });
   };
-  return `(${fn})(${JSON.stringify(act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)})`;
+  return `(${fn})(${JSON.stringify(typeof act === 'string' ? { act } : act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)}, ${dispatchSceneAction}, ${createMarkIdentity})`;
 }
 
 /** The arithmetic, in node: per mark, per consecutive frame pair.
@@ -1064,7 +1602,8 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
  *  the scene already knows about, and either way the still-neighbour or
  *  missing-return guard suppresses it. */
 function findBloat(run, k) {
-  const rows = run.map((r) => r.row);
+  // Hidden placement can span the track before measurement without painting it.
+  const rows = run.map(({ row }) => row && row.o > 0 && row.v !== false ? row : null);
   const presentRows = rows.filter(Boolean);
   const restingW = resting(presentRows.map((r) => r.w));
   const restingH = resting(presentRows.map((r) => r.h));
@@ -1521,8 +2060,8 @@ const HYDRATION_SCENES = [
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
-  { name: 'entry-templates', at: '/settings?raise=templates', is: 'editable entry templates' },
-  { name: 'presentations', at: '/settings?raise=modes', is: 'the presentation catalogue' },
+  { name: 'entry-templates', at: '/settings?raise=templates', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-entry-template])' }, is: 'editable entry templates' },
+  { name: 'presentations', at: '/settings?raise=modes', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-presentation], [data-notice="presentations-empty"])' }, is: 'the presentation catalogue' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
   { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
@@ -1543,10 +2082,10 @@ const HYDRATION_SCENES = [
      are right to ignore. The quick-log dims sheet is a query param, so it
      opens over Home's own cold mount - the after-save state a real quick
      log lands in. */
-  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
-  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', is: 'the quick add fan opening' },
-  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', is: 'the dose editor sheet' },
-  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', is: 'the procedure sheet' },
+  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', coldOutcome: { consumedQuery: 'quickLogDims', selector: '[data-sheet] [data-quick-log-dims]' }, needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
+  { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
+  { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
+  { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },
   /* The two prologue scenes. Onboarding only exists before the profile
      finishes it, so the empty profile records its cold mount between the
      jump and the walk. The lock gate is a boot state no route produces:
@@ -1580,6 +2119,7 @@ export const HYDRATION_NEEDS = {
 /** The hydration scenes a run covers: the table above, narrowed to `only`,
  *  with the proof scene always prepended when proving. */
 export function hydrationScreensFor({ prove = false, only = [] } = {}) {
+  for (const name of only) if (!HYDRATION_SCENES.some((scene) => scene.name === name)) throw new Error(`unknown cold-load scene: ${name}`);
   const scenes = only.length ? HYDRATION_SCENES.filter((s) => only.includes(s.name)) : HYDRATION_SCENES;
   return prove
     ? [{ name: PROOF.scene, at: '/', is: 'five marks built to be wrong, so the arithmetic can be seen to catch them' }, ...scenes]
@@ -1674,10 +2214,15 @@ export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ${DEMO_BAR_IDLE}
   const btn = document.querySelector('[data-fill-every-feature]');
-  if (!btn) return false;
+  if (!btn) throw new Error('no Fill every feature button on the demo bar');
   btn.click();
   ${AWAIT_DEMO_JUMP}
-  return location.pathname.includes('/more');
+  const ready = () => location.pathname === '/more'
+    && !!document.querySelector('[data-app-root][data-boot="ready"]')
+    && localStorage.getItem('engender-has-entries') === '1';
+  for (let i = 0; i < 120 && !ready(); i++) await sleep(250);
+  if (!ready()) throw new Error('full persona fixture did not reach More with a ready journal');
+  return true;
 })()`;
 
 /** The empty profile, split where the onboarding-mount scene needs the
@@ -1728,21 +2273,13 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
   const finish = document.querySelector('[data-finish]');
   if (!finish) throw new Error('no finish control on the done step');
   finish.click();
-  for (let i = 0; i < 60 && !(${ON_TODAY_BOOTED}); i++) await sleep(500);
-  return ${ON_TODAY_BOOTED};
+  return true;
 })()`;
 
 /** The demo bar's theme buttons, so a cold load reads the run's theme out
  *  of the preferences the boot stamps rather than out of a stylesheet
  *  patched after the fact. */
-export const DEMO_THEME_EXPRESSION = (theme) => `(() => {
-  const btn = [...document.querySelectorAll('.demo-bar button')].find((b) =>
-    (b.textContent ?? '').trim() === ${JSON.stringify(theme === 'dark' ? 'Dark' : 'Light')}
-  );
-  if (!btn) throw new Error('no ${theme} button on the demo bar');
-  btn.click();
-  return true;
-})()`;
+export const DEMO_THEME_EXPRESSION = (theme) => SETTLE_PAGE_EXPRESSION(theme);
 
 /** The lock-gate epilogue: walk the access-mode screen into a PIN, so the
  *  next cold load has a gate to draw. The pad completes and submits itself
@@ -1827,6 +2364,29 @@ export function findHydrationYanks(frames) {
     frames: sliced.length,
     sampled: frames.length
   };
+}
+
+/** CDP can deliver older frames late. Keep capture order on its own clock. */
+export function insertScreencastFrame(frames, frame) {
+  const before = frames.findIndex((existing) => existing.at > frame.at);
+  if (before === -1) frames.push(frame);
+  else frames.splice(before, 0, frame);
+}
+
+export async function saveSceneCast(cast, outDir, name, label) {
+  const directory = `${outDir}/${name}-${label}-cast`;
+  await mkdir(directory, { recursive: true });
+  const ordered = [...cast].sort((a, b) => a.at - b.at);
+  const clock = ordered[0]?.at ?? 0;
+  const frames = [];
+  for (const [index, frame] of ordered.entries()) {
+    const ms = Math.round(frame.at - clock);
+    const file = `${String(index).padStart(3, '0')}-${ms}ms.png`;
+    await writeFile(`${directory}/${file}`, Buffer.from(frame.data, 'base64'));
+    frames.push({ index, ms, at: frame.at, file });
+  }
+  await writeFile(`${directory}/frames.json`, JSON.stringify(frames, null, 2));
+  return { directory, frames: frames.length, clock };
 }
 
 /** The render half over the same scene's cast, with the timestamped
@@ -1932,16 +2492,35 @@ export function describeHydrationRun(name, dom, render) {
  *  report entry, one console line. `result` is whatever the transport's
  *  recorder gathered - `{ cast, frames }` on both ends, by construction
  *  rather than by type. */
+export async function captureHydrationCoverage(read) {
+  try { return { coverageProof: await read() }; }
+  catch (error) { return { coverageError: String(error) }; }
+}
+
+export function requireHydrationCoverage(result, profile, theme) {
+  if (result.coverageError) throw new Error(result.coverageError);
+  const proof = result.coverageProof;
+  if (!proof) throw new Error('missing hydration coverage proof');
+  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('hydration coverage wrong profile');
+  if (typeof proof.route !== 'string' || !proof.route.startsWith('/')) throw new Error('hydration coverage missing route');
+  const alignment = proof.themeProof;
+  if (!alignment?.selected || alignment.requested !== theme || alignment.persisted !== theme || alignment.painted !== theme || alignment.transitioning) throw new Error('hydration coverage wrong theme');
+  return proof;
+}
+
 export async function pushHydrationRun(report, outDir, { name, is, profile, theme, result, href = null, dump = false }) {
   const dom = findHydrationYanks(result.frames);
   const render = await readRenderYanks(result.cast, outDir, name, `${profile}-${theme}`, EVIDENCE_CAP, { readyFrame: result.readyFrame });
-  if (dump || dom.yanks.length)
-    await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
+  await writeFile(`${outDir}/${name}-${profile}-${theme}.frames.json`, JSON.stringify(result.frames, null, 1));
+  const evidence = await saveSceneCast(result.cast, outDir, name, `${profile}-${theme}`);
   const entry = {
     scene: name,
+    ...(evidence ? { evidence } : {}),
     profile,
     theme,
     is,
+    ...(result.action ? { action: result.action } : {}),
+    ...(result.coverageProof ? { coverageProof: result.coverageProof } : {}),
     instrument: 'rows',
     styleFrames: dom.frames,
     sampled: dom.sampled,
@@ -1950,9 +2529,18 @@ export async function pushHydrationRun(report, outDir, { name, is, profile, them
     pixelFindings: render.findings
   };
   if (href) entry.href = href;
+  try { requireHydrationCoverage(result, profile, theme); }
+  catch (error) { entry.error = String(error); }
   report.push(entry);
-  console.log(`[${profile}-${theme}] ${describeHydrationRun(name, dom, render)}`);
+  console.log(`[${profile}-${theme}] ${entry.error ? name + ": ERROR " + entry.error : describeHydrationRun(name, dom, render)}`);
   return entry;
+}
+
+export function missingPaintedProof(report) {
+  const runs = report.filter((run) => run.scene === PROOF.scene);
+  if (!runs.length) return ['the painted proof scene'];
+  return runs.filter((run) => !(run.pixelFindings ?? []).some((finding) => finding.areaPct >= 0.05))
+    .map((run) => `${run.profile}:${run.theme}:pass ${run.pass ?? 1}: camera saw no injected painted defect`);
 }
 
 /** What the proof scene owes but did not deliver, read off whichever

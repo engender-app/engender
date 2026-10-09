@@ -1,0 +1,640 @@
+
+> test:browser
+> svelte-kit sync && node tests/browser-tier/run.mjs
+
+11:35:15 PM [vite] (client) Forced re-optimization of dependencies
+PASS direction: Rendered token --r-block retains 6px
+PASS direction: Rendered token --radius-pill retains 999px
+PASS direction: Rendered token --text-4xl retains 3rem
+PASS direction: Rendered token --text-3xl retains 2.5rem
+PASS direction: Rendered token --text-2xl retains 1.75rem
+PASS direction: Rendered token --text-lg retains 1.0625rem
+PASS direction: Rendered token --text-sm retains 0.9375rem
+PASS direction: Rendered token --weight-display retains 800
+PASS direction: Rendered token --display-track retains -0.04em
+PASS direction: Rendered token --space-3 retains 12px
+PASS direction: Rendered token --space-5 retains 20px
+PASS direction: Rendered token --space-8 retains 40px
+PASS direction: Retired radius, line and elevation tokens no longer resolve
+PASS direction: Legibility boost strengthens both remaining line tokens
+PASS direction: Kit surfaces cast no elevation shadow
+PASS direction: Kit corners resolve to blocks, discs, chart ends or mood geometry
+PASS direction: Lists, notices and mood rows stay flush between hairlines
+PASS direction: Chart and day surfaces stay unboxed
+PASS direction: Section heading keeps 40 above, 12 below and three-pixel ink rule
+PASS direction: Section heading uses 28px display type with 800 weight
+PASS direction: Content title uses 17px body type
+PASS direction: Secondary text keeps 15px and 600 weight
+PASS direction: Display type stays within door title size
+PASS direction: Row icon is 36px stripe block with proven ink and flush row
+PASS direction: Day date bar uses page-on-ink with no edge
+PASS direction: Notice mark is 40px ink square with six-pixel corners
+PASS direction: Tiles use undiluted stripe, one outline and six-pixel corners
+PASS direction: Tile title and value use proven fill ink at large sizes
+PASS direction: Tile note sits on page ground with secondary ink
+PASS direction: Tile foot reaches both edges and clamps inner text at two lines
+PASS direction: Series draws two-pixel square caps and miter joins
+PASS direction: Kit chart strokes use one, two or twelve pixels
+PASS direction: A line casing is its 2px series plus a pixel each side
+PASS direction: Bar is 14px with two-pixel ends
+PASS direction: Chart picker face keeps six-pixel box and two-pixel edge
+PASS direction: Plain, action, dismiss, combined and row tiles keep stripe and outline
+PASS direction: Value-free tile gets one display title at forty pixels
+PASS direction: Row tile value uses twenty-eight pixels
+PASS direction: Tight tile keeps note on stripe without page foot
+PASS direction: Tight tile draws flag band with two-pixel ends
+PASS direction: Tile action uses page ground and page ink; dismiss uses fill ink
+PASS direction: Constellation trail and curve marker draw one-pixel secondary ink
+PASS direction: Breathing exercise renders without old card container
+PASS direction: Skeleton and wrapped surfaces retain outline edges
+PASS direction: Segmented track keeps eight-pixel corners and ink pill six
+PASS direction: Button variants use ink or transparent page grounds
+PASS direction: Secondary and destructive buttons retain outlined page blocks
+PASS direction: Home count and greeting remain off field with gear
+PASS direction: Home field paints shell field with proven field ink
+PASS direction: Sun bands touch through three-pixel black seams
+PASS direction: Sun scales to 0.82 at 350px container
+PASS direction: Sun scales to 0.6 at 230px container
+PASS direction: Settings mounts seeded journal and keeps sixteen palette choices
+PASS direction: Screen title uses 48px display size, 800 weight and 0.95 line height
+PASS direction: Screen field holds title and back and keeps subtitle outside
+PASS direction: Chrome back remains on phone and disappears at desktop container
+PASS direction: Desktop field banner has six-pixel corners and no full inset bleed
+PASS direction: Transition search sits in field on page ground with page ink
+PASS home: Home uses kit surfaces without old cards or empty placeholders
+PASS home: Home keeps data-home-header
+PASS home: Home keeps data-home-hero
+PASS home: Home keeps data-home-hello
+PASS home: Home keeps data-home-log
+PASS home: Home keeps data-home-pinned
+PASS home: Home hides the count when no entry exists
+PASS home: Getting started offers five destinations including More without dismiss
+PASS home: Home keeps five shared mood handles
+PASS home: Home keeps writes out of the mood strip
+PASS home: Home has no entries, duplicate week, milestones, teasers or streak
+PASS home: Home has no tally, doubt, onset or effects card
+PASS home: Home puts sun and wordmark in field and greeting and gear on page
+PASS home: Home log and pins use current trans roles
+PASS home: Home log and pins use current agender roles
+PASS home: Home log and pins use current nonbinary roles
+PASS home: Disguise removes flag and roles and changes Home name
+PASS home: Five entries remove getting started and report whole journal
+PASS home: Agenda precedes log; notices and pins follow log
+PASS home: Agenda shows three upcoming items and fold is a named button
+PASS home: Agenda fold expands in place and collapses again
+PASS home: Pinned rows preserve chosen order and resolve forward lines
+PASS home: Empty pin arrangement keeps edit entry point
+PASS home: Home editor opens in place
+PASS home: Widget tally deep link still writes a tally
+PASS home: Home greeting follows the day across midnight without a reload
+PASS home: A tally link on a mounted Home after midnight lands on the new day
+PASS home: More keeps Safe Space and milestones destinations
+PASS home: Quick mood opens dimension prompt with add and skip handles
+PASS home: Quick add retains dose, tally and wear write shapes
+PASS home: Home waits for initial wearSessions.getRunningSession
+PASS home: Home waits for initial regimen.getEpisodes
+PASS home: Home waits for initial procedures.getProcedures
+PASS home: Home waits for initial letters.getLetterSeals
+PASS home: Home waits for initial revisits.getDueRevisits
+PASS home: Home waits for initial entries.latestBadMomentEntryId
+PASS home: Home waits for initial tryouts.getTryouts
+PASS home: Home waits for initial feltSense.latestDaysForTryouts
+PASS home: Home waits for initial doses.getSchedules
+PASS home: Home waits for initial doses.getPauses
+PASS home: Home waits for initial doses.getDoses(20734)
+PASS home: Home waits for initial doses.getDoses(20733)
+PASS home: Home waits for initial voiceBenchmarks.lastWriteEpochDay
+PASS home: Home waits for initial journalingPauses.getPauses
+PASS home: Home waits for initial areaStates.getAreaStates
+PASS home: Home waits for initial hairRemoval.latestSession
+PASS home: Home waits for initial measurements.countAll
+PASS home: Home waits for initial measurements.lastWriteEpochDay
+PASS home: Home waits for initial appointments.getDayRecords
+PASS home: Home live tiles retain registry keys and running versus waiting weights
+PASS home: Running tier leads agenda and mood log
+PASS home: Backup notice stays below mood strip and out of agenda
+PASS home: Live tile overflow is named button with collapsed state
+PASS home: Live tile overflow expands in place without losing registry keys
+PASS home: Milestone celebration plays once and stops under reduced motion
+PASS calendar: Calendar keeps named title and shared surfaces
+PASS calendar: Calendar keeps data-cal-month
+PASS calendar: Calendar keeps data-cal-step
+PASS calendar: Calendar keeps data-cal-open
+PASS calendar: Calendar uses shared entry handles and no duplicate week
+PASS calendar: Earlier entries grows five days at a tap
+PASS calendar: Two readings render earlier and later halves, pip and no stack
+PASS calendar: Split mood day renders two active half faces
+PASS calendar: Earlier and later halves preserve exact logged mood colors and faces
+PASS calendar: Face and fill clip along identical cuts with two-pixel gutter
+PASS calendar: Mood has no ramp legend
+PASS calendar: Date sits outside fill and uses page ink
+PASS calendar: Filled cells link to their day
+PASS calendar: Future mark links to day and reveals date only
+PASS calendar: Today and past never carry future marks
+PASS calendar: Empty future day has no link or mark
+PASS calendar: Dimension removes faces, uses one chromatic flag ramp and native endpoints
+PASS calendar: Calendar responds to shell palette updates without stale roles
+PASS calendar: Day keeps named title and shared surfaces
+PASS calendar: Day keeps add and shared entry handles and named title
+PASS calendar: Entry card names transform synchronously before click navigation
+PASS calendar: Editor transform names from route before entry read lands
+PASS calendar: Existing Entry keeps named title and shared surfaces
+PASS calendar: Changing existing entry id remounts editor with second entry data
+PASS calendar: Clearing transform removes editor name immediately
+PASS calendar: Reduced motion names no entry transform
+PASS calendar: Launch seedMood 1 respects integer 1..5 contract
+PASS calendar: Launch seedMood 5 respects integer 1..5 contract
+PASS calendar: Launch seedMood 0 respects integer 1..5 contract
+PASS calendar: Launch seedMood 6 respects integer 1..5 contract
+PASS calendar: Launch seedMood 2.5 respects integer 1..5 contract
+PASS calendar: Launch seedMood broken respects integer 1..5 contract
+PASS calendar: New Entry keeps named title and shared surfaces
+PASS calendar: Editor keeps save, template, note and shared mood handles
+PASS calendar: Editor offers both file and record controls for voice
+PASS calendar: Editor offers both file and record controls for video
+PASS calendar: Recording picker rejects wrong MIME despite dialog hint
+PASS calendar: Video picker rejects wrong MIME despite dialog hint
+PASS calendar: Video picker rejects real metadata beyond thirty-second limit
+PASS calendar: Video picker refuses oversized file when re-encoding cannot decode it
+PASS calendar: Recording picker refuses bytes over archive ceiling
+PASS calendar: Search keeps named title and shared surfaces
+PASS calendar: Search renders first thirty results and reports full entries-plus-records match count
+PASS calendar: Scroll does not load next search page
+PASS calendar: Search explicit next page appends thirty results
+PASS calendar: Changing search resets page size
+PASS calendar: Search day bar does not invent total entries on filtered day
+PASS calendar: Search filter sheet keeps data-filter-mood
+PASS calendar: Search filter sheet keeps data-filter-has-note
+PASS calendar: Search filter sheet keeps data-filter-has-photo
+PASS calendar: Search filter sheet keeps data-filter-start
+PASS calendar: Search filter sheet keeps data-filter-end
+PASS calendar: Active filters remain visible after sheet closes and can be cleared
+PASS calendar: Starred search total includes entry, elsewhere record and starred photo
+PASS calendar: Loading /day/20733 waits with skeleton before records
+PASS calendar: Loading /search waits with skeleton before records
+PASS calendar: Loading /entry/1 waits with skeleton before records
+PASS calendar: Calendar keeps full grid busy without claims while reads are held
+PASS calendar: Calendar publishes claims only after all held reads settle
+PASS Below 240px viewport notice drops mark and keeps text column
+PASS Below 240px viewport compact segments become scrollable
+PASS equal take span
+PASS equal density span
+PASS equal comfort band
+PASS equal clipped middle-band edges
+PASS repeated caller ticks
+PASS repeated entry tags and marks
+PASS compact wrapped keeps distinct equal-label tags
+PASS year wrapped keeps distinct equal-label tags
+PASS wrapped card keeps repeated stat labels
+PASS recap naming preserves tag identities
+PASS clinician dose totals keep distinct tuples with equal joined labels
+PASS all wear labels preserve unknown archived kinds, including inherited property names
+PASS unknown wear kinds receive no invented safety advice
+PASS known wear kinds retain every catalogue translation
+PASS known wear kinds retain their safety facts and sources
+PASS the Wear screen renders running sessions with unknown kinds
+PASS the Wear screen names its add control for an unknown latest kind
+PASS the Wear screen renders completed sessions with unknown kinds
+PASS the More hub renders running wear sessions with unknown kinds
+PASS the pool probe exercises real OPFS lock contention
+PASS failed initialization preserves an existing encrypted journal while its old owner closes
+PASS failed initialization waits for and releases all seven late access handles
+PASS partial handle acquisition preserves the encrypted journal
+PASS preserved journals survive successful close and reopen without leaked handles
+PASS preserved journals still reject another data key
+PASS the production worker keeps an attach failure through queued open and query messages
+PASS the production worker leaves the old owner journal readable and persistent
+PASS sqlite3mc opens a fresh database backed by OPFS
+PASS FTS5 remove_diacritics folds ą/ę/ś in 'zażółć gęślą jaźń'
+PASS FTS5 does not fold ł (ADR-0005: no canonical decomposition)
+PASS 'zazolc' finds nothing without app-level folding, confirming ADR-0005's premise
+PASS OPFS survives a full page reload
+PASS sqlite3mc enables foreign keys before migrations
+PASS migrations leave enforcement on and no foreign key violations
+PASS session, procedure and checklist deletions remove their child rows
+PASS deleted session photos do not travel in the next archive
+PASS boot() opens the database and migrates it to the current schema (v88)
+PASS boot() runs against a fresh database on first load
+PASS navigator.storage.persist() resolved (denied: true)
+PASS run() reports changes truthfully for an insert, a hit and a miss
+PASS run() reports lastInsertRowid as the row just inserted (checked against its uuid)
+PASS two transactions started at once both commit, one after the other
+PASS the production web driver passes the shared journal and ownership contract
+PASS the WASM build has the window functions the recap reads with
+PASS data written before a reload is still there after boot() re-runs
+PASS 'lozko' finds 'łóżko' in the WASM build
+PASS 'zazolc' finds 'zażółć' in the WASM build
+PASS 'cwiczenia' finds 'ćwiczenia' in the WASM build
+PASS prefix matching works in the WASM build
+PASS typing the accented form folds the same way
+PASS a matched tag finds the entry carrying it
+PASS 'Müller' finds the note it was typed from
+PASS 'muller' finds it too, unicode61 folding ü on both sides
+PASS the fold still reaches ł in that same note
+PASS editing a note leaves none of the old text in the index
+PASS editing a note indexes the new text
+PASS a deleted entry leaves the index
+PASS Argon2id derives a 32-byte key for both the archive and PIN parameter sets
+PASS AES-256-GCM round-trips a real derived key through encrypt/decrypt
+PASS hash-wasm makes no separate request for its WASM - it is bundled as base64, not fetched
+PASS a 4000x3000 photo normalizes to 2048px on the long edge (ADR-0008)
+PASS a photo smaller than the cap is not upscaled
+PASS a thumbnail is generated alongside, small enough that the grid never decodes a full photo
+PASS the orientation fixture really does carry EXIF going in
+PASS normalize() leaves no EXIF, GPS, IPTC or comment metadata in the photo or its thumbnail (ADR-0015)
+PASS the ICC fixtures are what they claim: one source with no profile, one with a forged profile
+PASS the 470-byte ICC profile comes from the encoder: a source with none comes back with one
+PASS a source's own ICC profile does not survive the re-encode, so no device name can ride in on one
+PASS EXIF orientation 6 is baked into the pixels: a 100x50 landscape stores as a 50x100 portrait
+PASS HEIC is refused by name with a message that says what to do, not silently dropped
+PASS a file that is not an image is refused the same way
+PASS the OPFS store writes, lists and reads a photo back byte for byte
+PASS reading a file that is not there answers null rather than throwing
+PASS remove takes the file, and removing what is not there stays quiet
+PASS photos live in photos/, so the sweep can never see the database pool (mc-pool-p4r8fk/)
+PASS the photo file on raw OPFS carries no JPEG signature - ciphertext, not a photo
+PASS a normalized photo attaches to an entry and reads back under its opaque uuid name
+PASS the thumbnail loads from the store at 320px, so the Progress grid never decodes the full photo
+PASS deleting the entry takes the photo and its thumbnail off real storage
+PASS the boot sweep reclaims a file no row references, against real OPFS
+PASS the web picker returns the raw bytes of every file chosen, ready for normalize()
+PASS picked bytes go straight into normalize() with no filename or MIME type involved
+PASS a real journal packs into 3 chunks of 1048576 bytes (2148197 bytes, 139ms including the KDF)
+PASS every photo and thumbnail comes back out of the archive, byte for byte, through the browser's own WebCrypto
+PASS the entry round-trips with its note, dimension values and tags
+PASS portable preferences travel and the PIN hash appears nowhere in the file (ADR-0003)
+PASS a wrong password fails with nothing but "wrong password"
+PASS a Replace installs the archive over the encrypted driver and OPFS: rows, photo bytes and the built-ins it kept by key
+PASS a restored note is in the search index, folded by the import rather than carried in the file
+PASS merging the same archive again on the real platform changes nothing
+PASS the archive downloads as alicja-journal-2026-10-08.ttbackup
+PASS the downloaded file is the archive, and its version, KDF parameters and salt read without a password
+INFO  cross-platform archive round-trips are verified in tests/android-tier
+PASS the keystore file round-trips: unlock returns the same data key that was created
+PASS the web database cipher is pinned explicitly (chacha20)
+PASS a database written under the pre-pin implicit cipher default still opens under the pinned cipher
+PASS FTS5 searches the encrypted journal while it is open (1 hits)
+PASS closed-app scan: no protected content readable in any of 19 OPFS files (pre-migration copy included)
+PASS closed-app scan: the localStorage boot mirror and the entry-draft mirror hold none of the protected content
+PASS the encrypted entry-draft mirror restores under the journal key and reads as no draft under any other
+PASS a wrong passphrase fails with nothing but "wrong password"
+PASS the right passphrase brings back the journal and its photos through a full close
+PASS changing the passphrase rewraps the data key: old passphrase dead, journal untouched and readable
+PASS a wrong raw key is refused by SQLite rather than read as garbage
+PASS legacy storage refuses boot before setup or unlock
+PASS demo builds also refuse legacy storage without resetting it
+PASS all legacy file names and bytes survive refusal
+PASS a second release installs and waits behind the one running the page
+PASS with a write in flight the update is neither offered nor applied
+PASS the waiting worker really did not activate: same controller, still waiting
+PASS the update is offered once the write lands, without anything else happening
+PASS applying it when idle hands the page to the new worker and reloads once
+PASS the fixture is a journal on the shipped schema (v88) with an entry in it
+PASS newer code migrates the older journal forward and the entry survives it
+PASS the pre-migration copy outlives the boot that migrated and goes on the next clean one
+PASS older code refuses a journal a newer schema touched, naming both versions
+PASS the refusal leaves the journal exactly as it was, and takes no copy
+PASS a failing migration rolls its step back and leaves the schema at v89
+PASS the failure leaves a copy, and the retry does not spend it on a worse one
+PASS the copy goes back as the live journal and the previous visible journal is what opens
+PASS and the restored journal coming up clean is what finally retires the copy
+PASS a collage comes back as real JPEG bytes, not a canvas nobody encoded
+PASS the collage is the size collageLayout() measured (772x860)
+PASS the cells hold the photos in journey order, oldest first
+PASS and a grid slot past the end of the journey stays empty rather than repeating a photo
+PASS a portrait photo is cropped to fill its square cell, not letterboxed (800px taken from 1200px)
+PASS progress is reported per photo, so a long export can say where it is
+PASS the export consumes the stored full-size photos, never a thumbnail or an original (ADR-0008)
+PASS a photo with no file, reclaimed or never stored, leaves a gap rather than failing the whole export
+PASS a photo smaller than its cell is centred at its own size, not stretched to fill (200px in a 360px cell)
+PASS and a recording in flight can be abandoned, so a minutes-long timelapse is not a trap
+PASS MediaRecorder can record WebM here, which is what the timelapse option needs
+PASS a timelapse comes back as a real WebM file (EBML header)
+PASS the recorded video decodes at 1080x1080
+PASS and its first frame is the oldest photo, on the canvas before recording started
+PASS recording runs in real time, as the duration estimate says (2120ms for 3 photos)
+PASS a collage and a timelapse both exist and nothing has been shared: generating transmits nothing
+PASS the files are named for a journey rather than a journal, so neither reads as a backup
+PASS and it takes a click on the share button to hand the file over - once
+PASS what the share sheet receives is the generated collage itself, named and typed for what it is
+PASS a video note is stored under an opaque <uuid>.webm, resolvable on either platform
+PASS startVideoRecording() produces a real capture off the fake camera (110KB)
+PASS re-encoding compresses an oversized capture rather than accepting it (110KB to 38KB)
+PASS and it lands in the same container, so the stored .webm means what its name says
+PASS the re-encoded file is still the same video, not an empty one of the right length
+PASS a capture below the 1080p cap keeps its own size rather than being upscaled to it
+PASS the target comes from limits.ts, so the probe exercises the real decision
+PASS the re-encode carries the audio over, so speech survives what the picture gives up
+PASS and a file the browser cannot decode yields null, so an oversized capture is kept rather than lost
+PASS the wrapped card rasterizes to a real PNG, not a canvas nobody encoded
+PASS the rasterized card has a real size (720x500)
+PASS the palette art strip rasterizes with real colour, not a blank div ([143,193,227])
+PASS a picked stat tile carries its own text into the rasterized card
+PASS a card with nothing picked has no art strip and no stat tile to rasterize in the first place
+PASS a card with nothing picked still rasterizes (its own padding), smaller than one with content (84px vs 500px)
+PASS .btn answers across 48px on every instance (6 of them, smallest box 358x48)
+PASS .icon-btn answers across 48px on every instance (2 of them, smallest box 48x48)
+PASS .switch answers across 48px on every instance (4 of them, smallest box 48x48)
+PASS .segment answers across 48px on every instance (5 of them, smallest box 65.6x48)
+PASS .pin-key answers across 48px on every instance (12 of them, smallest box 85.3x56)
+PASS .slider answers across 48px on every instance (4 of them, smallest box 358x48)
+PASS .input answers across 48px on every instance (5 of them, smallest box 358x50)
+PASS .list-row answers across 48px, though it belongs to a screen ticket (2 of them, smallest box 358x72)
+PASS .mood-btn answers across 48px, though it belongs to a screen ticket (5 of them, smallest box 68.4x90)
+PASS .tag-chip answers across 48px, though it belongs to a screen ticket (6 of them, smallest box 55.6x40.5)
+PASS .toast-action answers across 48px, though it belongs to a screen ticket (1 of them, smallest box 48.3x32)
+PASS the wide press depth resolves to what press.css declares (0.97)
+PASS a button at rest carries no transform of its own
+PASS a finger on the thumb puts the whole control into its held state
+PASS the readout travels from the edge to the thumb while held (106px)
+PASS the readout lands centred over the thumb (0.0px off)
+PASS and goes back to the edge when the finger comes off
+PASS the held thumb carries its ring rather than a scale
+PASS the segmented pill crosses to the chosen segment (88px)
+PASS and it settles on that segment's own box rather than staying stretched (0.8px off)
+PASS the ruler draws one mark per stop (21 on 0-100, 11 on 0-10)
+PASS exactly one mark is the one the thumb is standing on
+PASS reduced motion takes all three press depths to 1, so no control moves
+PASS only the selected segment (Month) is a tab stop
+PASS ArrowRight moves the tab stop and the selection to the next segment
+PASS ArrowRight wraps from the last segment back to the first
+PASS ArrowLeft moves back to the previous segment
+PASS Segmented: Space, arrows, Tab re-entry and disabled choices
+PASS MoodPicker: Space, arrows, Tab re-entry and disabled choices
+PASS only the picked mood (4) is a tab stop
+PASS ArrowRight moves focus to the next face and leaves the pick where it was
+PASS and the focused face becomes the one tab stop
+PASS Enter picks the focused face
+PASS Enter on the picked face clears it, the same as a click would
+PASS none of the 3 switches carries aria-pressed beside aria-checked
+PASS no switch sits inside another control (the kit row holding one is static)
+PASS Tab reaches each of the 3 switches once and nothing else in their rows
+PASS Space flips the row's switch once (true to false)
+PASS a second Space flips it back, so one press is one change
+PASS hovering a segment too narrow for its own label shows count and percent in a tooltip
+PASS the hovered segment carries a visible highlight
+PASS moving the pointer off the segment closes the tooltip
+PASS a touch tap is the segment's equivalent of a hover: it opens the tooltip
+PASS tapping the same segment again closes the tooltip
+PASS hovering a donut legend row reveals its count and highlights its arc
+PASS moving the pointer off the legend row hides the count again
+PASS tapping the arc itself is also a touch equivalent, not only its legend row
+PASS Enter on the focused legend row is the keyboard path to the same reveal
+PASS Enter again toggles the reveal back off
+PASS only tiles near the viewport read on mount (27 of 60)
+PASS the whole screenful leaves as a single readMany
+PASS a photo with no stored file still renders as a placeholder
+PASS scrolling down reads the tiles it reaches (54 of 60)
+PASS a scroll through the grid and back leaves the blob URLs where they were (26)
+11:36:19 PM [vite-plugin-svelte] tests/browser-tier/live-reads-probe.svelte.ts:202:43 This reference only captures the initial value of `debouncedQuery`. Did you mean to reference it inside a closure instead?
+https://svelte.dev/e/state_referenced_locally
+PASS a query preserves the first real read rejection retry
+PASS a mounted query follows writes and reports later rejections without another retry
+PASS disposing a query rejects its older in-flight answer
+PASS editing a regimen episode re-reads the stock projection the stock screen shows
+PASS a narrowed query ignores a write to a table it deliberately does not watch
+PASS a narrowed query still re-runs for the table it does watch
+PASS a batched read fed a live list re-runs for the list it reads and for the table it asks
+PASS web lock: a save in flight lands before the database closes
+PASS web lock: the closed database answers nothing (the database worker was closed)
+PASS web lock: the locked session hands out no key
+PASS web lock: the vocabulary mirror is empty while locked
+PASS web lock: a save made while locked waits and lands on the reopened journal
+PASS web lock: a save holding the journal from before the lock lands on the reopened database
+PASS web lock: the mirror refreshes against the reopened journal
+PASS web lock: five lock and unlock rounds lose no write
+PASS web lock: reopen 129/185/197/201/221 ms (median 197), lock 5/6/13/20/27 ms
+PASS web lock, CPU throttled 4x: a save in flight lands before the database closes
+PASS web lock, CPU throttled 4x: the closed database answers nothing (the database worker was closed)
+PASS web lock, CPU throttled 4x: the locked session hands out no key
+PASS web lock, CPU throttled 4x: the vocabulary mirror is empty while locked
+PASS web lock, CPU throttled 4x: a save made while locked waits and lands on the reopened journal
+PASS web lock, CPU throttled 4x: a save holding the journal from before the lock lands on the reopened database
+PASS web lock, CPU throttled 4x: the mirror refreshes against the reopened journal
+PASS web lock, CPU throttled 4x: five lock and unlock rounds lose no write
+PASS web lock, CPU throttled 4x: reopen 132/166/296/320/342 ms (median 296), lock 8/12/13/20/112 ms
+PASS a query asked for the first time starts loading
+PASS the same query asked again has its last answer in the frame it is created
+PASS a write to a table the answer read takes it away
+PASS after a lock the first visit reads fresh
+PASS an unseeded query over a read with reads past its first await settles at three runs: the key-learning call, the run, the late read
+PASS the same read, seeded with its own table list, settles at two runs: the key-learning call and the run
+PASS /compare's recap-then-dayAverages shape settles at two runs unseeded, the key-learning call and the run, since dayAverages reads no table recap doesn't
+PASS typing ten characters fires one debounced run rather than ten
+PASS clearing the query lands within a flush, without waiting out the debounce
+PASS typing a three-digit interval length fires one debounced run rather than three
+PASS a closure reading a saved question object directly re-runs when an unrelated saved question is renamed (the defect)
+PASS the signature-memoized read ignores an unrelated saved question being renamed
+PASS the signature-memoized read still re-runs when the viewed question's own queryText changes
+PASS a read that hangs off a record does answer empty before the record lands
+PASS waiting on the record shows the placeholder over that gap, never the empty state
+PASS the entries in the tryout range arrive either way
+PASS every field label carries a for that names a real id inside the same field
+PASS a legend field still mints an id, for the group beneath it to point an aria-labelledby at
+PASS two fields given no id mint two different ones rather than colliding
+PASS a field given an explicit id uses it verbatim rather than minting over it
+PASS a hidden field still gives its control a real for/id pair, just off screen
+PASS the maximal day fills every registered section (21)
+PASS a day with only an entry draws the day card and nothing else at all
+PASS a day with other records adds exactly one heading and one card, however many kinds it holds
+PASS a day inside the cap shows every row it has and offers no overflow
+PASS a maximal day is still one heading and one card, not a section per area
+PASS a day past the cap shows five rows and one way to the rest
+PASS the overflow opens a sheet holding the whole list, all 26 rows
+PASS the overflow row counts what is hidden rather than what the day holds (21 of 26)
+PASS three hair photos are one row and two doses are two rows
+PASS three concurrent medications at one amount and route stay identifiable by name
+PASS a dose two regimens could both explain says so instead of naming one
+PASS a dose older than every episode says so rather than borrowing today’s regimen
+PASS a recorded, stored and decoded take still measures its own pitch (185.02 Hz against 185)
+PASS decodeTake resamples to 16 kHz and keeps the take's length (4.02s)
+PASS what gets stored is a real file rather than an empty one (63.5KB)
+PASS a steady take clears the gate after the round trip, and reads as steady
+PASS the live gauge tracked the same take frame by frame and agreed (3.89s held)
+PASS a take pushed into the rails is caught while it is happening (peak 3.888)
+PASS a take records the chain it was made through (X11; Linux x86_64 | MediaStreamAudioDestinationNode | ec=? ns=? agc=?)
+PASS the flags come off the track: unprocessed (X11; Linux x86_64 | Fake Default Audio Input | ec=off ns=off agc=off) is not the processed path (X11; Linux x86_64 | Fake Default Audio Input | ec=on ns=on agc=on)
+PASS a real recording stores a track of its whole passage (16 points over 3.75s)
+PASS the stored track reads back as the take it came from (worst point off by 0.00 Hz)
+PASS the live trace lands where the axis puts 185 Hz (y 37.3 against 37.3)
+PASS the trace is drawn from the frames the microphone delivered (200 points in 1 run(s))
+PASS the figure carries both cited ranges, the region between them bounded and filled, and the comfort bracket
+PASS a finished take draws its stored track with the median and the p10-p90 pair
+PASS a benchmark from before the column says so instead of drawing an empty field
+PASS every band prints its two Hz figures, and the source line and the caveat are both there
+PASS a screen destroyed while the microphone is still opening leaves no track running
+PASS and arms no poll interval for a take nobody is on screen for any more
+PASS a recorder that throws on stop() still leaves its tracks stopped
+PASS practice: two quick taps open one microphone and disable Record while opening
+PASS practice: leaving the screen closes every microphone track
+PASS benchmark: two quick taps open one microphone and disable Record while opening
+PASS benchmark: leaving the screen closes every microphone track
+PASS the first save really removes the photo from the journal
+PASS a successful save does not clear the draft mirror by itself, before the fix
+PASS draftMatchesRoute re-associates the surviving mirror on resume
+PASS applyPersistedDraft reapplies the already-actioned removal onto the resumed draft
+PASS the sequence reproduces: the re-save throws (unknown photo: aafa4921-3973-4e21-a85c-3e761c1b6830)
+PASS the first save still really removes the photo, after the fix
+PASS the fix clears the mirror the moment the save that made it stale lands
+PASS with no mirror left to find, resume has nothing to reapply
+PASS the resumed draft carries no stale removal id
+PASS the re-save no longer throws
+PASS every registered figure is in the list a take shows (pitch, span, spread, rate, resonance, room, scale)
+PASS the list states seven figures and one way in (What these figures are)
+PASS every figure's own query names a real section of the reference sheet
+PASS all seven sections render all seven fields, none omitted
+PASS only the Referenced figure states published ranges, one citation per language
+PASS an Own-series section reads differently from the Referenced one, in words
+PASS the whole table carries one reviewed-on date (Content checked against its sources: 4 September 2026.)
+PASS a take draws its own distribution, with the three marks on it (96 points)
+PASS the median mark ends on the outline, not across the box (81.8 against 81.7)
+PASS the shape is a 2px square-capped series with no fill, on a 1px guide spine (rgb(91, 206, 250))
+PASS the trace, the outline and the history lines each sit on a casing in the role's edge (#0082ab)
+PASS the cited bands run behind the shape as well as the plot (2)
+PASS a take with no stored track draws its sentence and no empty shape
+PASS a first benchmark draws six figures and no empty plot anywhere
+PASS four joined takes draw a bandless history under every figure, ringed on this one (7 lines)
+PASS a change of capture chain takes the history off every figure at once
+PASS the area chart's line sits on a casing in its role's edge (rgb(0, 130, 171))
+PASS the card offers every Own-series figure and nothing else (span, spread, rate, resonance, room, scale)
+PASS every figure draws the history as two runs, every plot with a line on it
+PASS the break between them names the phone as the reason ("A different phone or microphone starts a new ser...")
+PASS no band, target region or heat ramp is drawn on any of the six
+PASS every plot prints its own unit down its own side and no 0-to-1 axis (271 Hz 200 Hz 130 Hz; 651 Hz 633 Hz 615 Hz)
+PASS one benchmark and a figure never measured read as two different empty cards
+PASS a template applied to a blank draft saves its tags, its dims, its scaffold and its presentation
+PASS over a filled draft: tags union, dims replace by key, a written note stays written
+PASS a template naming a hidden tag, dimension and presentation applies none of the three
+PASS and the hidden presentation the third template named is a real row, not one the journal never had
+PASS a committed entry survives navigation failure and offers navigation rather than another save
+11:37:30 PM [vite] (client) ✨ new dependencies optimized: pdfjs-dist/legacy/build/pdf.worker.mjs
+11:37:30 PM [vite] (client) ✨ optimized dependencies changed. reloading
+PASS a PDF opens and counts its pages
+PASS a page draws at the size asked for, in the paper's own shape (800px, 0.706)
+PASS standard-font text draws from the app's own /pdf-fonts/, and page 3 is not page 1 again (0.41% vs 0.48% ink)
+PASS the first page is stored as the same JPEG shape a photo's thumbnail is (2004 bytes)
+PASS a file that only says %PDF- is refused rather than opened
+PASS an undrawable file answers with no thumbnail, and a page that is not there rejects
+PASS every PDF worker opened is terminated (4 created, 4 terminated)
+PASS no PDF worker is still attached to the page once every document is closed
+PASS a hundred rows arrive as one batch of thirty
+PASS scrolling to the end of the rendered rows brings the next batch, unpressed
+PASS and brings exactly one batch, not the rest of the list
+PASS the control at the end of the list brings a batch too
+PASS and also exactly one
+PASS the list runs out at its own length and the control goes with it
+PASS a deep link past the first batch renders exactly enough batches to include the row
+PASS a link-expanded list is not what a later, link-free visit remembers
+PASS the secret screen carries no consequence text or export note - both stayed on screen one
+INFO  PIN secret screen: 568px tall at 320 wide (today's plain PIN unlock gate: 568px). Neither fits ticket 29's 320x568/320x360 no-scroll sizes yet - GateScreen and PinPad need a short-viewport treatment, tracked against ticket 34.
+PASS splitting the screen leaves the pad screen no taller than the gate shell already was
+PASS healthy: the prompt fired 1x
+PASS no-lock: the prompt fired 0x, and the recovery action shows
+PASS invalidated: the prompt fired 0x, and the recovery action shows
+PASS every case stays on the gate: no journal handle, no route content
+PASS no sheet opens over the gate: there is no question left to ask
+PASS no-lock fires nothing; once the lock is back, Check again is the one prompt and a cancel is not re-prompted
+PASS cancelled and failed prompts offer retry while the invalidated key offers reset - three distinguishable states
+PASS the persona seed writes entries (207)
+PASS batching the seed writes the same number of entries as running it unbatched
+PASS batching collapses 228 live-query re-runs into 1
+✔ [paraglide-js] Compilation complete (locale-modules)
+11:38:08 PM [vite] (client) Forced re-optimization of dependencies
+PASS failure, stale rows, retry races, empty recovery and locked-gate concealment
+ℹ [paraglide-js] Compilation skipped — inputs unchanged (locale-modules)
+11:38:14 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/0.js
+11:38:14 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/1.js
+11:38:14 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/2.js
+11:38:14 PM [vite] (client) page reload .svelte-kit/generated/client/app.js
+11:38:14 PM [vite] (client) page reload .svelte-kit/generated/client/matchers.js
+11:38:14 PM [vite] (ssr) page reload .svelte-kit/generated/shared/error-template.js
+11:38:15 PM [vite] (ssr) page reload .svelte-kit/generated/server/internal.js
+11:38:15 PM [vite] (client) page reload .svelte-kit/generated/root.js
+11:38:15 PM [vite] (ssr) page reload .svelte-kit/generated/root.js
+PASS Care waits for totals, keeps stale facts and refreshes every fact after a dose write
+ℹ [paraglide-js] Compilation skipped — inputs unchanged (locale-modules)
+11:38:22 PM [vite] (client) ✨ new dependencies optimized: pdfjs-dist/legacy/build/pdf.worker.mjs
+11:38:22 PM [vite] (client) ✨ optimized dependencies changed. reloading
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/0.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/1.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/2.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/15.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/34.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/36.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/114.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/nodes/116.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/app.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/client/matchers.js
+11:38:26 PM [vite] (ssr) page reload .svelte-kit/generated/shared/error-template.js
+11:38:26 PM [vite] (ssr) page reload .svelte-kit/generated/server/internal.js
+11:38:26 PM [vite] (client) page reload .svelte-kit/generated/root.js
+11:38:26 PM [vite] (ssr) page reload .svelte-kit/generated/root.js
+11:38:27 PM [vite] (client) page reload build/index.html
+Route: http://localhost:5173/transition/roadmap?goal=pl-medical-keep-opinions&returnTo=%2Fmedia%2Fdocuments%2Fbc71360b-84a9-4659-ab9e-996a328e8c18%3Fpage%3D2 Page errors: []
+FAIL Cross-area source records — locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-source-return]')[22m
+[2m    2 × locator resolved to <a data-source-return="" class="btn btn-soft press" href="/media/documents/bc71360b-84a9-4659-ab9e-996a328e8c18?page=2">Back to source</a>[22m
+[2m    - attempting click action[22m
+[2m      - waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m    - <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> intercepts pointer events[22m
+[2m  - retrying click action[22m
+[2m    - waiting for element to be visible, enabled and stable[22m
+[2m    - element is visible, enabled and stable[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> intercepts pointer events[22m
+[2m  - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    14 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+[2m       - waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div role="dialog" tabindex="-1" data-sheet="" aria-modal="true" class="sheet s-iSsve4p8cQUV" aria-label="Originals, and copies for the court">…</div> from <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+[2m       - waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div role="dialog" tabindex="-1" data-sheet="" aria-modal="true" class="sheet s-iSsve4p8cQUV" aria-label="Originals, and copies for the court">…</div> from <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+[2m       - waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+[2m    - waiting for element to be visible, enabled and stable[22m
+[2m    - element is visible, enabled and stable[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - <div role="presentation" data-sheet-scrim="" class="sheet-scrim s-iSsve4p8cQUV">…</div> intercepts pointer events[22m
+[2m  - retrying click action[22m
+[2m    - waiting 500ms[22m
+
+ℹ [paraglide-js] Compilation skipped — inputs unchanged (locale-modules)
+PASS Care spine links: concurrent regimens, facts, window expansion, return navigation, and unavailable states
+PASS concurrent drugs, recorded and scheduled dose facts, labs, unavailable states and lane return
+ℹ [paraglide-js] Compilation skipped — inputs unchanged (locale-modules)
+   at 390px: 7 of 48 facts own their own middle (38 under another drawing, 3 under a range handle)
+   at 195px: 1 of 48 facts own their own middle (30 under another drawing, 17 under a range handle)

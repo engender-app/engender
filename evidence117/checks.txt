@@ -1,0 +1,8 @@
+Production build: passed, isolated from this worktree's browser/dev processes.
+First-load budget: passed, en 245862B, pl 247488B gzip; ceiling 251272B, 103 files of 104 allowed.
+Svelte check: passed, zero errors and warnings (check.log).
+Node tier: 7314/7314 passed (node.log).
+Copy and licences: passed. Initial screen-class log failed; refresh-109/screens-fixed.log records corrected source passing.
+Focused demo matrix: 768/768 layout cases passed across 16 palettes, keyboard selection and reload persistence passed (matrix.log).
+Broad browser tier: inconclusive, concurrent build regeneration and sheet-scrim timeout; preserved in browser-tier-inconclusive.log. No failure attributed to main.
+Native runtime: not run; CSS acceptance measured in shared web bundle.

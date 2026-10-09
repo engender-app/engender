@@ -77,6 +77,7 @@
   let passphrase = $state('');
   let error = $state('');
   let busy = $state(false);
+  let deviceRefused = $state(false);
   let resetOpen = $state(false);
   let resetting = $state(false);
   let resetError = $state('');
@@ -183,7 +184,7 @@
   /* Android device-bound mode: the Keystore prompt is the secret. Unlike the
      retired PIN pad's biometric key, this is the only way in for this mode,
      so a refusal leaves the button rather than a line beside a keypad. */
-  async function useDeviceLock() {
+  async function useDeviceLock(deviceCredential = false) {
     if (busy) return;
     busy = true;
     error = '';
@@ -193,12 +194,13 @@
         title: m.ak_prompt_title(),
         subtitle: m.ak_prompt_subtitle(),
         cancel: m.ak_prompt_cancel(),
-        deviceCredential: false
+        deviceCredential
       });
       if (result.unlocksJournal) {
         await opened(current);
         return;
       }
+      deviceRefused = true;
       error =
         result.outcome === 'unenrolled' ? m.ak_unenrolled()
         : result.outcome === 'unavailable' ? m.ak_unavailable()
@@ -208,6 +210,7 @@
     } catch (e) {
       if (e instanceof UnlockCancelledError) return;
       console.error('the device-lock prompt failed', e);
+      deviceRefused = true;
       error = m.ak_failed();
     } finally {
       settle();
@@ -292,9 +295,19 @@
     </div>
   {:else if mode === 'device-bound' && isAndroid()}
     <div class="gate-actions">
-      <button class="btn btn-primary" data-session-device-lock disabled={busy} onclick={useDeviceLock}>
+      <button class="btn btn-primary" data-session-device-lock disabled={busy} onclick={() => useDeviceLock(false)}>
         <span>{busy ? m.ak_unlocking() : m.ak_unlock_action()}</span>
       </button>
+      {#if deviceRefused}
+        <button
+          class="btn btn-soft"
+          data-session-device-credential
+          disabled={busy}
+          onclick={() => useDeviceLock(true)}
+        >
+          <span>{m.ak_use_device_lock()}</span>
+        </button>
+      {/if}
     </div>
   {/if}
 

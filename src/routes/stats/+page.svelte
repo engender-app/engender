@@ -94,7 +94,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
-  import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
@@ -210,7 +210,84 @@
   let existingEraSpans = $derived(
     railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
   );
+  let readingsReplaced = $state(false);
+  const readingFade = (_node: Element) => fadeOnly(isReducedMotion() ? 0 : motionDuration('--dur-fast'));
+  const readingArrival = (node: Element) => ({
+    ...readingFade(node),
+    delay: readingsReplaced && !isReducedMotion() ? motionDuration('--dur-fast') : 0
+  });
+  let captureReadingSpace = () => {};
+  const settleReadingSpace = (node: HTMLElement) => {
+    if (isReducedMotion()) return;
+    let previousTop = node.getBoundingClientRect().top;
+    const restTransform = node.style.transform;
+    const restClip = node.style.clipPath;
+    let painted = false;
+    let current: Animation | undefined;
+    let clippingFrame = 0;
+    const clipReadingSpace = () => {
+      const readingSpace = node.previousElementSibling!;
+      let boundary = readingSpace.getBoundingClientRect().top;
+      for (const slot of readingSpace.querySelectorAll('.lookback-reading-slot')) {
+        const box = slot.getBoundingClientRect();
+        boundary = Math.max(boundary, box.top + box.height * Number(getComputedStyle(slot).opacity));
+      }
+      const top = Math.min(node.getBoundingClientRect().height, Math.max(0, boundary - node.getBoundingClientRect().top));
+      node.style.clipPath = `inset(${top}px 0 0)`;
+    };
+    captureReadingSpace = () => {
+      const translation = current ? new DOMMatrixReadOnly(getComputedStyle(node).transform).m42 : 0;
+      previousTop = node.getBoundingClientRect().top - translation;
+    };
+    requestAnimationFrame(() => setTimeout(() => {
+      previousTop = node.getBoundingClientRect().top;
+      painted = true;
+    }));
+    const observer = new ResizeObserver(() => {
+      if (!painted) return;
+      const translation = current ? new DOMMatrixReadOnly(getComputedStyle(node).transform).m42 : 0;
+      const from = previousTop + translation;
+      current?.cancel();
+      cancelAnimationFrame(clippingFrame);
+      current = undefined;
+      node.style.transform = restTransform;
+      node.style.clipPath = restClip;
+      const top = node.getBoundingClientRect().top;
+      previousTop = top;
+      if (from >= innerHeight || Math.abs(top - from) < 1) return;
+      // Travel ends at the viewport edge; the remaining layout is offscreen.
+      node.style.transform = `translateY(${from - top}px)`;
+      const animation = node.animate([
+        { transform: `translateY(${from - top}px)` },
+        { transform: `translateY(${Math.min(top, innerHeight) - top}px)` }
+      ], { duration: motionDuration('--dur-med'), easing: EASE_OUT_SOFT_CSS, fill: 'both' });
+      current = animation;
+      clipReadingSpace();
+      const clipFrame = () => {
+        if (current !== animation) return;
+        clipReadingSpace();
+        clippingFrame = requestAnimationFrame(clipFrame);
+      };
+      clippingFrame = requestAnimationFrame(clipFrame);
+      animation.finished.then(() => {
+        if (current !== animation) return;
+        cancelAnimationFrame(clippingFrame);
+        node.style.transform = restTransform;
+        node.style.clipPath = restClip;
+        animation.cancel();
+        current = undefined;
+        previousTop = node.getBoundingClientRect().top;
+      }).catch(() => {});
+    });
+    observer.observe(node.parentElement!);
+    for (const sibling of node.parentElement!.children) {
+      if (sibling !== node) observer.observe(sibling);
+    }
+    return { destroy() { captureReadingSpace = () => {}; observer.disconnect(); cancelAnimationFrame(clippingFrame); node.style.transform = restTransform; node.style.clipPath = restClip; current?.cancel(); } };
+  };
   const pickSpan = (next: Span) => {
+    captureReadingSpace();
+    readingsReplaced = true;
     if (enoughEntries) factsExited = false;
     span = next;
     live = next;
@@ -257,16 +334,6 @@
       }
     };
   };
-
-  /* The link and the "not enough entries" line share one slot in
-     `.lookback-line` (ux-carpet 234): narrowing the span on Look back can
-     cross `enoughEntries` several times a second while a drag is still
-     moving, and the two used to swap by cut - one at full opacity, gone the
-     frame the other took its place. `crossfade` (out-only, reveal.ts) lifts
-     the leaving one out of flow and fades it there; the arriving one still
-     needs its own fade in, which is what `fadeIn` is for
-     (ReadReserve.svelte's own copy of the same three lines). */
-  const fadeIn = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   /* Two epoch days to the journal, which never reads the clock for a
      domain answer: the span's own, and before the effect above has set it,
@@ -568,17 +635,19 @@
       {#if factsQuery.loading}
         <span class="lookback-thin" aria-hidden="true"></span>
       {:else if enoughEntries}
-        <a class="lookback-read"
-          data-lookback-read
-          data-span-keep
-          href={`/wrapped/range${spanRangeQuery(span)}`}
-          in:fadeIn
-          out:crossfade
-        >
-          {m.lookback_read_span()}
-        </a>
+        <!-- Reveal the link at its full height so its centred text stays
+             clear of the outgoing explanation. -->
+        <div transition:disclose>
+          <a class="lookback-read"
+            data-lookback-read
+            data-span-keep
+            href={`/wrapped/range${spanRangeQuery(span)}`}
+          >
+            {m.lookback_read_span()}
+          </a>
+        </div>
       {:else}
-        <span class="lookback-thin" in:fadeIn out:crossfade data-lookback-thin>
+        <span class="lookback-thin" transition:disclose data-lookback-thin>
           {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
         </span>
       {/if}
@@ -603,8 +672,17 @@
          the recap as well as their own read - was inserted between them
          and the tiles after it jumped a cell in one frame. The recap and
          the vocabulary mirror are the two reads the screen holds for them. -->
-    <div class="screen-part" use:resize>
-    <ReadGroup answered={factsAnswered} count={2}>
+    <!-- A new span replaces the reading group in its own space. Reusing
+         its cells let the old Words and Compare tiles travel across the
+         new figures while their independent reads answered. The old group
+         fades before the new one appears in the same grid slot. The following
+         block keeps its painted position with a transform while the reads
+         answer, without animating the reading grid's height. -->
+    <div class="screen-part">
+    <div class="lookback-reading-swap">
+    {#key `${resolvedSpan.start}:${resolvedSpan.end}`}
+    <div class="lookback-reading-slot" in:readingArrival out:readingFade onoutrostart={(event) => ((event.currentTarget as HTMLElement).inert = true)}>
+    <ReadGroup answered={factsAnswered && factsCurrent} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
@@ -619,6 +697,9 @@
     </ReadingGrid>
     </ReadGroup>
     </div>
+    {/key}
+    </div>
+    </div>
 
     <!-- The resurfacing block: the two look-back offers, moved here from
          Home (redesign ticket 11), each gating itself on its own preference
@@ -628,7 +709,7 @@
          on its own, whichever card answered first stood full width for a
          frame before the other halved it. No fade: each tile's own clip
          from the left, on the grid's stagger, is the arrival. -->
-    <div class="screen-part" use:resize>
+    <div class="screen-part" use:resize use:settleReadingSpace>
     <ReadGroup fade={false}>
     <TileGrid
       role={tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack)}
@@ -659,6 +740,17 @@
 </div>
 
 <style>
+  .lookback-reading-swap {
+    display: grid;
+  }
+
+  .lookback-reading-slot {
+    grid-area: 1 / 1;
+    align-self: start;
+    min-width: 0;
+    contain: layout;
+  }
+
   .lookback-rail {
     display: grid;
     gap: var(--space-3);
@@ -671,7 +763,9 @@
   .lookback-line {
     position: relative;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
     min-height: var(--touch-target);
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
