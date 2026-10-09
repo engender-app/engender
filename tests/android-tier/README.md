@@ -28,3 +28,29 @@ tokens and remaining delay.
 
 Parser and invocation regressions run in the Node tier through
 `tests/android-tier/instrumentation.test.ts`.
+
+## Persistent automatic backups
+
+The standard runner also runs `NativeBackupSchedulingTest` in separate required
+phases. It prepares an encrypted Archive with two MiB of attachments and 3300
+rows using the existing TypeScript codec, closes the page, then kills the
+background app process or reboots the disposable emulator. WorkManager delivers
+the due Archive through a real test DocumentsProvider. Verification establishes
+the native success and snapshot timestamps before opening a page to restore it
+through the public Archive reader. The provider supports destination failures;
+it is test storage, not a personal folder. No fake clock drives the native job.
+
+A separate no-stage exercise records deferral with no journal open. Force-stop
+is exercised separately and must leave the package stopped and its process
+absent after the due time. Cleanup cancels unique work and deletes encrypted
+staging. All stage failures remain failures in the aggregate result.
+
+Use `ANDROID_TIER_BACKUP_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`
+for the same backup stages without unrelated native suites. API 26's bundled
+WebView cannot produce the Archive; the runner reports that skip explicitly.
+The no-stage native deferral exercise still runs there.
+
+For an affected-phase rerun, set `ANDROID_TIER_BACKUP_STAGES` to a comma-separated
+list, for example `defer,verify-deferred,catch-up,cleanup`. The report names the
+selection. Unknown stages and selected stages that never execute fail the run;
+unselected stages are explicit skips. Omit the variable for the full roster.

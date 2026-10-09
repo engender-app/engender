@@ -12,17 +12,20 @@ const BASE64_CHUNK = 0x8000;
 
 interface AndroidAutoExportSource {
   snapshot: ArchiveSnapshot;
+  snapshotAt?: number;
   preferences: PreferenceValues;
 }
 
 type AndroidAutoExportResult =
   | { outcome: 'ok'; writtenAt: number }
+  | { outcome: 'staged' }
   | { outcome: 'needs-destination' }
   | { outcome: 'cancelled' }
   | { outcome: 'failed'; reason: string };
 
 interface AndroidAutoExportDeps {
   now?(): number;
+  scheduled?: boolean;
   recordBackup(at: number): void;
   /** How far the pack has got, and a way to stop it (phase 9 audit ticket
       11). Passed by the export screen's "Back up now"; the scheduler
@@ -121,7 +124,7 @@ export async function runAndroidAutoExport(
     deps.watch?.signal?.throwIfAborted();
     const { createSHA256 } = await import('hash-wasm');
     const digest = await createSHA256();
-    ({ transferId } = await androidAutoExport.beginBackup({ fileName }));
+    ({ transferId } = await androidAutoExport.beginBackup({ fileName, snapshotAt: source.snapshotAt ?? writtenAt, scheduled: deps.scheduled ?? false }));
     let byteLength = 0;
     for await (const piece of body) {
       deps.watch?.signal?.throwIfAborted();
@@ -131,15 +134,19 @@ export async function runAndroidAutoExport(
     }
     deps.watch?.signal?.throwIfAborted();
     const payload = { transferId, byteLength, sha256: digest.digest('hex') };
+    let finished;
     try {
-      await androidAutoExport.finishBackup(payload);
+      finished = await androidAutoExport.finishBackup(payload);
     } catch (error) {
       const first = reasonText(error);
-      if (!isTransientFailure(first)) throw error;
-      await androidAutoExport.finishBackup(payload);
+      if (deps.scheduled || !isTransientFailure(first)) throw error;
+      finished = await androidAutoExport.finishBackup(payload);
     }
-    deps.recordBackup(writtenAt);
-    return { outcome: 'ok', writtenAt };
+    if (finished.staged) return { outcome: 'staged' };
+    if (finished.writtenAt == null) throw new Error('verification-failed');
+    // Backup age describes the captured journal, not a later native delivery.
+    deps.recordBackup(source.snapshotAt ?? writtenAt);
+    return { outcome: 'ok', writtenAt: finished.writtenAt };
   } catch (error) {
     /* A stopped pack is an answer, not a failure (ADR-0070): no completed archive
        reached the folder and nothing was stamped, so the screen has
