@@ -350,6 +350,7 @@ for (const avd of AVDS) {
         if (!nativeOnly) {
           for (const lifecycle of ['process-death', 'reboot', 'interrupted-write']) {
             if (!backupStage(lifecycle === 'interrupted-write' ? 'prepare-interrupted' : 'prepare')) continue;
+            try {
             const state = device(['shell', 'dumpsys', 'jobscheduler']);
             writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-jobs-before.log`), state.stdout ?? '');
             if (!/dev\.engender\.app\/androidx\.work\.impl\.background\.systemjob\.SystemJobService/.test(state.stdout ?? '')) {
@@ -441,7 +442,7 @@ for (const avd of AVDS) {
               ok(`${avd}: native backup ${lifecycle} headless delivery`);
               backupStage('verify');
             }
-            backupStage('cleanup');
+            } finally { backupStage('cleanup'); }
           }
           // Force-stop is a separate platform limitation, never process-death evidence.
           if (backupStage('prepare')) {

@@ -553,7 +553,7 @@ public class AutoExportPlugin extends Plugin {
         String reason = deliveryFailure(e);
         if (reason.contains("destination-revoked")) {
             disableWithFailure(reason);
-        } else {
+        } else if (!"backup-configuration-changed".equals(reason)) {
             failure(reason);
         }
         call.reject(reason, e);
