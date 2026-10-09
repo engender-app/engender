@@ -70,7 +70,8 @@ public final class LongJournalBackupSupport {
         int beforePss = pss();
         int maxPss = beforePss;
         int samples = 1;
-        long deadline = startedAt + 180_000;
+        long remainingDueMs = Math.max(0, stage.getLong("due") - System.currentTimeMillis());
+        long deadline = startedAt + remainingDueMs + 180_000;
         while (preferences.contains("encryptedStage") && SystemClock.elapsedRealtime() < deadline) {
             maxPss = Math.max(maxPss, pss());
             samples++;
