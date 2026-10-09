@@ -30,6 +30,9 @@
      anything (PRODUCT.md:109, and labTiming.ts and /care/curve as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
+  import { maskHeight } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
+  import { flushSync, onDestroy } from 'svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
@@ -108,6 +111,63 @@
      editor with the drug it is already naming, and the stock row below opens
      on the plain list so stock can still be tracked and added to with no
      regimen naming it. */
+  const stockSwap = (_node: Element) => fadeOnly(crossfadeDuration());
+  let stockBody: HTMLDivElement;
+
+  function retireStockContent(node: HTMLElement) {
+    if (node.classList.contains('is-leaving')) return;
+    const scroll = node.closest<HTMLElement>('[data-sheet]')!.scrollTop;
+    node.inert = true;
+    node.classList.add('is-leaving');
+    if (scroll) node.style.transform = `translateY(${-scroll}px)`;
+  }
+
+  let stockResize: AbortController | undefined;
+  onDestroy(() => stockResize?.abort());
+
+  // The sheet is bottom anchored and capped. Animate its visible height,
+  // not the form's full height, while both bodies share its moving origin.
+  async function editStock(editor: typeof stockEditor) {
+    if (!stockSheetOpen || stockEditor === editor) {
+      stockEditor = editor;
+      return;
+    }
+    const sheet = stockBody.closest<HTMLElement>('[data-sheet]')!;
+    const from = sheet.getBoundingClientRect().height;
+    stockResize?.abort();
+    sheet.style.height = '';
+    // Exclude the old body before measuring; outrostart follows this flush.
+    retireStockContent(stockBody.querySelector<HTMLElement>('.stock-content:not(.is-leaving)')!);
+    stockEditor = editor;
+    flushSync();
+    if (isReducedMotion()) {
+      sheet.focus({ preventScroll: true });
+      return;
+    }
+    const controller = new AbortController();
+    stockResize = controller;
+    const travel = maskHeight(sheet, from, motionDuration('--dur-slow'), {
+      signal: controller.signal,
+      easing: EASE_OUT_SOFT_CSS
+    });
+    sheet.style.height = `${from}px`;
+    sheet.focus({ preventScroll: true });
+    await travel;
+    if (stockResize === controller) {
+      sheet.style.height = '';
+      stockResize = undefined;
+    }
+  }
+
+  let stockSavedId = $state<string | null>(null);
+  // Measure the saved list after the live read, rather than its empty notice.
+  $effect(() => {
+    if (stockSavedId && !careQuery.running && !careQuery.failed && stock.some((row) => row.entry.id === stockSavedId)) {
+      stockSavedId = null;
+      queueMicrotask(() => { void editStock(null); });
+    }
+  });
+
   let stockSheetOpen = $state(false);
   let stockEditor = $state<{
     id?: string;
@@ -180,12 +240,14 @@
   }
 
   function closeStockSheet() {
+    stockSavedId = null;
     stockSheetOpen = false;
     stockEditor = null;
   }
 
   async function saveStockEntry() {
     if (!stockEditor) return;
+    const editor = stockEditor;
     const quantity = parseFloat(stockEditor.quantity);
     const drug = stockEditor.drug.trim();
     const unit = stockEditor.unit.trim();
@@ -206,7 +268,7 @@
         ? epochDayFromDateInputValue(stockEditor.windowEndDate)
         : null;
 
-    await journal.stock.upsertEntry({
+    const id = await journal.stock.upsertEntry({
       id: stockEditor.id,
       drug,
       quantity,
@@ -218,7 +280,7 @@
       inUseWindowDays,
       inUseEndEpochDay
     });
-    stockEditor = null;
+    if (stockEditor === editor) stockSavedId = id;
   }
 
   /* Stopping tracking takes the automatic run-out reminder with it, so it
@@ -964,7 +1026,9 @@
     title={stockEditor ? (stockEditor.id ? m.stock_edit_sheet() : m.stock_new_sheet()) : m.stock_title()}
     onClose={closeStockSheet}
   >
+    <div class="stock-body" bind:this={stockBody}>
     {#if stockEditor}
+      <div class="stock-content" transition:stockSwap onoutrostart={(event) => retireStockContent(event.currentTarget)}>
       <Field label={m.stock_drug_label()} id="care-stock-drug">
         {#snippet children(id)}
           <input class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
@@ -1072,7 +1136,9 @@
           </button>
         {/if}
       </div>
+      </div>
     {:else}
+      <div class="stock-content" transition:stockSwap onoutrostart={(event) => retireStockContent(event.currentTarget)}>
       {#if stock.length}
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
           {#each stock as row (row.entry.id)}
@@ -1089,7 +1155,7 @@
                 rowRunOut.text,
                 stockOpenedWindowLine(row.entry, today)
               ]}
-              onclick={() => (stockEditor = stockEditorFromRow(row))}
+              onclick={() => editStock(stockEditorFromRow(row))}
             >
               {#snippet leading()}
                 <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
@@ -1109,7 +1175,7 @@
           class="btn btn-soft btn-block press"
           data-add-stock
           style="margin-top:var(--space-3)"
-          onclick={() => (stockEditor = newStockEditor())}
+          onclick={() => editStock(newStockEditor())}
         >
           <Icon name="plus" size={18} /> <span>{m.stock_add_aria()}</span>
         </button>
@@ -1120,10 +1186,12 @@
           role={roleAt(activeFlag.roles, AREA_ROLE.readings)}
           title={m.stock_empty_title()}
           text={m.stock_empty_body()}
-          action={{ label: m.stock_empty_action(), primary: true, onclick: () => (stockEditor = newStockEditor()) }}
+          action={{ label: m.stock_empty_action(), primary: true, onclick: () => editStock(newStockEditor()) }}
         />
       {/if}
+      </div>
     {/if}
+    </div>
   </Sheet>
 
   <ConfirmDeleteSheet
@@ -1142,6 +1210,26 @@
 </div>
 
 <style>
+  .stock-body {
+    position: relative;
+    display: grid;
+    grid-template-rows: max-content;
+  }
+
+  .stock-content {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+
+  .stock-content.is-leaving {
+    position: absolute;
+    width: 100%;
+  }
+
+  .stock-content > :global(* + *) {
+    margin-top: var(--space-4);
+  }
+
   .care-fold {
     margin: var(--space-4) 0 0;
   }
