@@ -14,6 +14,7 @@ import { periodicCheck } from '../backgroundSchedulers';
 
 let running = false;
 let lastAttemptAt = 0;
+let observedFailureAt = 0;
 
 const MIN_GAP_MS = 60 * 1000;
 
@@ -64,16 +65,31 @@ async function maybeRun() {
     await reportFailure(false, now);
     const status = await androidAutoExport.status();
     // Packing stays deferred until this Android-only check runs.
-    const { isDue, runAndroidAutoExport } = await import('./android-auto-export');
-    if (!isDue(status, now)) return;
+    const { runAndroidAutoExport } = await import('./android-auto-export');
+    if (status.lastFailureAt != null && status.lastFailureAt > observedFailureAt) {
+      observedFailureAt = status.lastFailureAt;
+      await reportFailure(true, now);
+    }
+    if (status.lastSnapshotAt != null && (prefs.lastBackupAt == null || status.lastSnapshotAt > prefs.lastBackupAt)) {
+      prefs.lastBackupAt = status.lastSnapshotAt;
+      prefs.backupNoticeDismissed = false;
+    }
+    if (!status.enabled || !status.destinationUri || !status.hasPassword) return;
+    const refreshWindow = (status.nextDueAt ?? 0) - 24 * 60 * 60 * 1000;
+    if (status.stagedSnapshotAt != null &&
+        (now < refreshWindow || status.stagedSnapshotAt >= refreshWindow)) return;
 
+    const snapshot = await journal.archive.snapshot();
+    const snapshotAt = Date.now();
     const result = await runAndroidAutoExport(
       {
-        snapshot: await journal.archive.snapshot(),
+        snapshot,
+        snapshotAt,
         preferences: prefs
       },
       {
         now: () => now,
+        scheduled: true,
         recordBackup: (at) => {
           prefs.lastBackupAt = at;
           prefs.backupNoticeDismissed = false;
@@ -81,7 +97,7 @@ async function maybeRun() {
       }
     );
 
-    if (result.outcome === 'ok') return;
+    if (result.outcome === 'ok' || result.outcome === 'staged') return;
     if (result.outcome === 'needs-destination') toast(m.exp_auto_reselect_needed());
     await reportFailure(true, now);
   } catch (error) {
@@ -95,7 +111,10 @@ async function maybeRun() {
 const check = periodicCheck(() => void maybeRun());
 
 export function startAutoExportScheduler() {
-  if (isAndroid()) check.start();
+  if (isAndroid()) {
+    lastAttemptAt = 0;
+    check.start();
+  }
 }
 
 export const stopAutoExportScheduler = check.stop;

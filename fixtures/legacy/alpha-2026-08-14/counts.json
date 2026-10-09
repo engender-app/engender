@@ -1,0 +1,31 @@
+{
+  "archiveSections": {
+    "dimensions": 6,
+    "presets": 8,
+    "tagGroups": 4,
+    "entries": 1,
+    "milestones": 1,
+    "labResults": 1,
+    "reminders": 1
+  },
+  "sqliteTables": {
+    "entry": 1,
+    "entry_dimension_value": 1,
+    "entry_fts": 1,
+    "entry_fts_config": 1,
+    "entry_fts_data": 3,
+    "entry_fts_docsize": 1,
+    "entry_fts_idx": 1,
+    "entry_tag": 1,
+    "gender_dimension": 6,
+    "gender_preset": 8,
+    "lab_result": 1,
+    "milestone": 1,
+    "photo": 1,
+    "pref": 0,
+    "preset_dimension": 24,
+    "reminder": 1,
+    "tag": 20,
+    "tag_group": 4
+  }
+}

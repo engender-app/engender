@@ -95,6 +95,7 @@ dependencies {
     implementation "androidx.biometric:biometric:$androidxBiometricVersion"
     // SAF tree/document operations for scheduled backup destinations.
     implementation "androidx.documentfile:documentfile:$androidxDocumentFileVersion"
+    implementation "androidx.work:work-runtime:$androidxWorkVersion"
     // WebMessageListener/ArrayBuffer transfer for the photo write channel -
     // lets bytes cross into native as a structured clone instead of a
     // JSON string.

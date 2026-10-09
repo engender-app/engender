@@ -28,6 +28,7 @@
    the second tab has no journal open to write to. */
 
 let open = 0;
+let failedWrites = 0;
 const listeners = new Set<(busy: boolean) => void>();
 
 function announce(busy: boolean): void {
@@ -39,16 +40,18 @@ function announce(busy: boolean): void {
     release that never runs would keep the app on an old release for the rest
     of the session.
 
-    The release is idempotent, so a caller that has already let go cannot
+    Pass false when the operation failed so an update leaves recovery on
+    screen. The release is idempotent, so a caller that has already let go cannot
     release somebody else's write by calling twice. */
-export function markJournalBusy(): () => void {
+export function markJournalBusy(): (succeeded?: boolean) => void {
   open += 1;
   if (open === 1) announce(true);
 
   let released = false;
-  return () => {
+  return (succeeded = true) => {
     if (released) return;
     released = true;
+    if (!succeeded) failedWrites += 1;
     open -= 1;
     if (open === 0) announce(false);
   };
@@ -88,4 +91,33 @@ export function watchJournalWrites(): { sawWrite: () => boolean; stop: () => voi
     if (busy) saw = true;
   });
   return { sawWrite: () => saw, stop };
+}
+
+
+/** Captures the write outcome before an asynchronous handover starts.
+    Complete it only after activation settles. Reload runs in an idle task,
+    after the write caller has handled its result; another write starting in
+    that gap postpones it again. A failure cancels this attempt so the caller
+    can show its existing recovery UI. No writes are refused or locked. */
+export function prepareJournalHandover(): (handover: () => void) => Promise<boolean> {
+  const failuresBefore = failedWrites;
+  return (handover) => new Promise<boolean>((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = () => {
+      timer = undefined;
+      if (failedWrites !== failuresBefore) {
+        stop();
+        resolve(false);
+      } else if (!journalIsBusy()) {
+        stop();
+        handover();
+        resolve(true);
+      }
+    };
+    const schedule = () => {
+      if (timer === undefined) timer = setTimeout(check, 0);
+    };
+    const stop = onJournalBusyChange(schedule);
+    schedule();
+  });
 }

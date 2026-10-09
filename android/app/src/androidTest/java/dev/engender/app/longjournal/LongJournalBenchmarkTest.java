@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.engender.app.MainActivity;
+import dev.engender.app.backup.LongJournalBackupSupport;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -53,6 +54,14 @@ import java.util.concurrent.atomic.AtomicReference;
 @RunWith(AndroidJUnit4.class)
 public class LongJournalBenchmarkTest {
 
+    private final LongJournalBackupSupport backups = new LongJournalBackupSupport();
+    private File probeDirectory;
+    private int configuredDays;
+    private int deliveredDays;
+    private boolean backupConfigurationStarted;
+    private final boolean disposableBackups = "true".equals(
+        InstrumentationRegistry.getArguments().getString("longJournalDisposableBackup"));
+
     private static final String TAG = "LongJournalBenchmark";
 
     /** Where run.mjs puts the long-journal probe bundle inside the test APK. */
@@ -72,6 +81,16 @@ public class LongJournalBenchmarkTest {
     @Test
     public void longJournalMeasurementsAreWithinBudget() throws Exception {
         File probeDir = unpackProbe();
+        probeDirectory = probeDir;
+        if (disposableBackups) {
+            assertTrue("automatic backup benchmark requires an emulator", Build.FINGERPRINT.startsWith("generic")
+                || Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish") || Build.PRODUCT.contains("sdk"));
+            File index = new File(probeDir, "index.html");
+            String html = new String(java.nio.file.Files.readAllBytes(index.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue("probe head", html.contains("<head>"));
+            java.nio.file.Files.write(index.toPath(), html.replace("<head>",
+                "<head><script>window.__backupBenchmarkEnabled=true;</script>").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
         deleteProbeArtifacts();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -112,6 +131,8 @@ public class LongJournalBenchmarkTest {
                 scaling.getDouble("sizeRatio"), scaling.getDouble("limit")));
             logMeasurements(measurements, budgetTable, scaling.getJSONArray("measurements"));
             logRecordingBlock(measurements, budgets, budgetTable);
+            Log.i(TAG, "Automatic backup one year: " + oneYear.getJSONObject("automaticBackup"));
+            Log.i(TAG, "Automatic backup ten years: " + result.getJSONObject("automaticBackup"));
 
             if (!unrecorded) {
                 checkBudgets(oneYear.getJSONArray("measurements"), budgetTable);
@@ -119,7 +140,7 @@ public class LongJournalBenchmarkTest {
             }
             JSONArray growthBreaches = scaling.getJSONArray("breaches");
             assertTrue("long-journal scaling exceeded: " + growthBreaches, growthBreaches.length() == 0);
-        }
+        } finally { if (backupConfigurationStarted) backups.cleanup(); }
     }
 
     /** Returns true when all baselines are zero, meaning no real-device run has been recorded yet. */
@@ -231,10 +252,11 @@ public class LongJournalBenchmarkTest {
     }
 
     /** Polls the WebView until the probe publishes its result. */
-    private String awaitResult(ActivityScenario<MainActivity> scenario) throws InterruptedException {
+    private String awaitResult(ActivityScenario<MainActivity> scenario) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(RESULT_TIMEOUT_SECONDS);
 
         while (System.nanoTime() < deadline) {
+            serviceBackup(scenario);
             AtomicReference<String> value = new AtomicReference<>();
             CountDownLatch evaluated = new CountDownLatch(1);
 
@@ -262,6 +284,31 @@ public class LongJournalBenchmarkTest {
 
         throw new AssertionError(
             "the long-journal probe did not report within " + RESULT_TIMEOUT_SECONDS + "s; check logcat for errors");
+    }
+
+    private void serviceBackup(ActivityScenario<MainActivity> scenario) throws Exception {
+        if (!disposableBackups) return;
+        AtomicReference<String> value = new AtomicReference<>();
+        CountDownLatch evaluated = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "JSON.stringify(window.__backupBenchmarkRequest || null)", result -> { value.set(result); evaluated.countDown(); }));
+        assertTrue("benchmark request evaluation", evaluated.await(30, TimeUnit.SECONDS));
+        String raw = unquote(value.get());
+        if (raw == null || raw.equals("null")) return;
+        JSONObject request = new JSONObject(raw);
+        int days = request.getInt("days");
+        String response;
+        if ("configure".equals(request.getString("phase")) && configuredDays != days) {
+            backupConfigurationStarted = true;
+            backups.configure();
+            configuredDays = days;
+            response = "window.__backupBenchmarkConfigured=" + days;
+        } else if ("deliver".equals(request.getString("phase")) && deliveredDays != days) {
+            JSONObject nativeResult = backups.deliver(probeDirectory);
+            deliveredDays = days;
+            response = "window.__backupBenchmarkDelivered=" + new JSONObject().put("days", days).put("native", nativeResult);
+        } else return;
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(response, null));
     }
 
     private static String unquote(String evaluated) {

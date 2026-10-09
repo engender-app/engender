@@ -80,7 +80,7 @@ describe('runAndroidAutoExport', () => {
       }
     );
 
-    expect(result).toEqual({ outcome: 'ok', writtenAt: 17 });
+    expect(result).toEqual({ outcome: 'ok', writtenAt: 12345 });
     expect(recorded).toBe(17);
     expect(androidAutoExport.finishBackup).toHaveBeenCalledTimes(1);
     expect(androidAutoExport.appendBackup).toHaveBeenCalled();
@@ -95,12 +95,52 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.notifyFailure).not.toHaveBeenCalled();
   });
 
+  test('staging is not reported as a verified delivered backup', async () => {
+    vi.mocked(androidAutoExport.finishBackup).mockResolvedValue({ writtenAt: null, staged: true });
+    const recordBackup = vi.fn();
+    expect(await runAndroidAutoExport(
+      { snapshot, snapshotAt: 11, preferences: PREFERENCE_DEFAULTS },
+      { now: () => 17, scheduled: true, recordBackup }
+    )).toEqual({ outcome: 'staged' });
+    expect(recordBackup).not.toHaveBeenCalled();
+    expect(androidAutoExport.beginBackup).toHaveBeenCalledWith(expect.objectContaining({ snapshotAt: 11, scheduled: true }));
+  });
+
+  test('backup age uses snapshot capture while result uses verified delivery', async () => {
+    const recordBackup = vi.fn();
+    expect(await runAndroidAutoExport(
+      { snapshot, snapshotAt: 11, preferences: PREFERENCE_DEFAULTS },
+      { now: () => 17, recordBackup }
+    )).toEqual({ outcome: 'ok', writtenAt: 12345 });
+    expect(recordBackup).toHaveBeenCalledWith(11);
+  });
+
+  test('a missing verification receipt never stamps backup success', async () => {
+    vi.mocked(androidAutoExport.finishBackup).mockResolvedValue({ writtenAt: null });
+    const recordBackup = vi.fn();
+    expect(await runAndroidAutoExport(
+      { snapshot, preferences: PREFERENCE_DEFAULTS }, { recordBackup }
+    )).toEqual({ outcome: 'failed', reason: 'verification-failed' });
+    expect(recordBackup).not.toHaveBeenCalled();
+  });
+
+  test('native scheduled delivery owns bounded retry', async () => {
+    vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-full'));
+    expect(await runAndroidAutoExport(
+      { snapshot, preferences: PREFERENCE_DEFAULTS },
+      { scheduled: true, recordBackup: vi.fn() }
+    )).toEqual({ outcome: 'failed', reason: 'destination-full' });
+    expect(androidAutoExport.finishBackup).toHaveBeenCalledTimes(1);
+  });
+
   test('scheduled backups use a neutral file name while disguised', async () => {
     await runAndroidAutoExport(
       { snapshot, preferences: { ...PREFERENCE_DEFAULTS, name: 'Alicja', disguise: true } },
       { now: () => 17, recordBackup: () => {} }
     );
     expect(androidAutoExport.beginBackup).toHaveBeenCalledWith({
+      snapshotAt: 17,
+      scheduled: false,
       fileName: expect.stringMatching(/^auto-backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.ttbackup$/)
     });
   });
@@ -170,7 +210,7 @@ describe('runAndroidAutoExport', () => {
       }
     );
 
-    expect(result).toEqual({ outcome: 'ok', writtenAt: 17 });
+    expect(result).toEqual({ outcome: 'ok', writtenAt: 12345 });
     expect(recorded).toBe(17);
     expect(androidAutoExport.finishBackup).toHaveBeenCalledTimes(2);
   });

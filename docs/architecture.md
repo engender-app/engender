@@ -21,8 +21,10 @@ This is a map of the codebase for anyone about to change it: what runs where, ho
 
 ## Reading this guide
 
-The implementation snapshot is `41db8fff`. Counts and recorded measurements
-describe that snapshot; follow the source links to check later changes.
+The implementation snapshot is `e035ba72`, the phase 15 after-release delivery
+merged into `main`. Architecture and inventory counts describe that snapshot.
+Performance figures are recorded measurements, not a fresh benchmark of this
+commit; their source files carry the measurement context.
 
 | Public reference | What it covers |
 |---|---|
@@ -129,15 +131,15 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](../scripts/chec
 ```text
 .
 ├── src/                 the app (SvelteKit)
-│   ├── routes/          68 screens (+page.svelte), root +layout.svelte
+│   ├── routes/          69 screens (+page.svelte), root +layout.svelte
 │   ├── lib/             everything else, see section 4
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
 │   └── service-worker.ts
-├── messages/            en.json, pl.json (3511 keys each), untranslated-literals.txt
+├── messages/            en.json, pl.json (3616 keys each), untranslated-literals.txt
 ├── project.inlang/      paraglide project settings
 ├── static/              fonts, icons, 16 palette favicons, manifests
-├── android/             Capacitor project, 48 Java sources under app/src/main
+├── android/             Capacitor project, 50 Java sources under app/src/main
 ├── tests/               non-unit tiers, guards, galleries, harness
 ├── scripts/             build, release, CI and check scripts (.mjs)
 ├── deploy/              nginx config, self-host Dockerfile, hosting docs
@@ -183,7 +185,7 @@ Naming conventions you'll meet everywhere:
 | [crypto/](../src/lib/crypto) | AES-GCM, Argon2id and its worker, KDF profiles, keystore wrap format, recovery key |
 | [lock/](../src/lib/lock) | Lock timing, PIN throttle, Keystore, lock-timing and screen-capture bridges |
 | [stores/](../src/lib/stores) | App-level state in runes: the boot adapter and machine, lock, UI, toasts, media capture |
-| [components/](../src/lib/components) | 129 top-level components, the control and reading kit (`kit/`), readings tiles (`readings/`), hub icon masks |
+| [components/](../src/lib/components) | 128 top-level components, the control and reading kit (`kit/`), readings tiles (`readings/`), hub icon masks |
 | [motion/](../src/lib/motion) | Motion primitives, tokens, press and material CSS |
 | [theme/](../src/lib/theme) | Fonts, base tokens, 16 palettes, flag roles, active flag |
 | [styles/](../src/lib/styles) | [app.css](../src/lib/styles/app.css), [components.css](../src/lib/styles/components.css), [kit.css](../src/lib/styles/kit.css), [screens.css](../src/lib/styles/screens.css), print CSS, class baselines |
@@ -249,7 +251,7 @@ Ordinary `SELECT` calls with identical SQL and scalar bindings share an answer w
 
 **Native plugins** are listed once in [src/lib/android/plugin-registry.ts](../src/lib/android/plugin-registry.ts), each with the JS module that owns it: `Sqlite`, `Keystore`, `PinBinding`, `Photos`, `Reminders`, `AutoExport`, `FileDelivery`, `RetrospectiveNotifications`, `Disguise`, `LockTiming`, `ScreenCapture`, `DeviceReset`, `Print`, `SensitiveClipboard`, `Permissions` and `StatusBarAppearance`, plus `@capacitor/app` for the back button. Every required plugin is checked at startup. The Java side registers them in [AndroidPluginRegistry.java](../android/app/src/main/java/dev/engender/app/AndroidPluginRegistry.java).
 
-**Write notifications.** Every journal write announces the tables it touched. Live queries and the reference mirror react to that (section 6.4).
+**Write notifications.** The journal wrapper announces a successful write's declared tables. Known no-op results skip the announcement (section 6.4).
 
 **Service worker.** It exchanges three messages, each defined once and imported by both sides: `engender:skip-waiting` and `engender:cache-on-demand` (OCR assets) in [src/lib/pwa/sw-messages.ts](../src/lib/pwa/sw-messages.ts), and `engender:cache-pdf-worker` in [src/lib/pwa/pdf-worker-cache.ts](../src/lib/pwa/pdf-worker-cache.ts).
 
@@ -365,7 +367,7 @@ URLs. The interface requires a registered surface key; its type check rejects
 missing and unknown keys. Direct Journal reads remain possible; code review
 must check that resurfacing surfaces use this interface.
 
-Count the tables with `grep -c '^CREATE TABLE' src/lib/data/sqlite/schema.ts`.
+Count the ordinary tables with `rg -c '^CREATE TABLE' src/lib/data/sqlite/schema.ts`; the FTS5 virtual table is separate.
 
 ### 6.3 The journal facade
 
@@ -404,7 +406,7 @@ flowchart LR
 
 - **Every operation is declared.** [data/live/writes.ts](../src/lib/data/live/writes.ts) classifies every journal operation as a read or a write and names the tables it touches (52 coarse table names in `TABLE_NAMES`). The `OPERATIONS` table is checked at compile time against the `Journal` interface, and `observeWrites` throws at boot on anything unclassified.
 - **The declarations are checked against SQL.** For operations and branches exercised by its fixtures, [writes.sql.test.ts](../src/lib/data/live/writes.sql.test.ts) checks that observed SQL tables fit within each operation's declarations. A separate union check requires coverage of the tables behind each coarse name. Redundant declarations can still pass, and unexercised branches, trigger/view internals and the file's explicit importer opt-outs remain outside that proof. Extend the fixtures when adding behavior.
-- **Writes bump versions.** [live/journal.svelte.ts](../src/lib/data/live/journal.svelte.ts) exports `journal`, a proxy over the open journal. A write runs, then bumps a version for each of its tables ([tableVersions.svelte.ts](../src/lib/data/live/tableVersions.svelte.ts)). `batchWrites()` coalesces the bumps from a batch into one.
+- **Writes bump versions.** [live/journal.svelte.ts](../src/lib/data/live/journal.svelte.ts) exports `journal`, a proxy over the open journal. A successful write bumps a version for each of its declared tables ([tableVersions.svelte.ts](../src/lib/data/live/tableVersions.svelte.ts)). A write that knows it changed nothing can return `NOTHING_WRITTEN` from [journal/nothingWritten.ts](../src/lib/data/journal/nothingWritten.ts); the wrapper returns `undefined` without a version bump. `doses.autoLogDueDoses` instead preserves its count and skips the bump when that count is zero. These exceptions keep reconciliation from waking itself on unchanged data. `batchWrites()` coalesces the bumps from a batch into one.
 - **Reads re-run on their own tables.** `liveQuery(run)` records which operations its run called, maps them to tables with `tablesReadBy`, and re-runs only when one of those tables' versions moves. Saving a lab result doesn't re-run the entry list.
 - **A refresh failure keeps the last result.** Read state is `{ value, loading, failed }` ([live/readState.ts](../src/lib/data/live/readState.ts)). A failed refresh keeps the previous result on screen and sets `failed`.
 - **Locking on the web.** [stores/journal-session.ts](../src/lib/stores/journal-session.ts) is the lifecycle, rune-free. A lock in a lockable web mode closes the live facade's gate ([live/sessionGate.ts](../src/lib/data/live/sessionGate.ts)) and waits for every call already running, so a save in flight lands; flushes preference writes; closes the driver, which terminates the worker holding the hex key; stops handing the key out; drops the photo stores, the vocabulary mirror and the content caches ([lock/forget-content.ts](../src/lib/lock/forget-content.ts)); and starts a keyless worker for the next unlock. The unlock derives the key from the access mode's secret as before and reopens on that worker, about 30 to 80 ms measured in the browser tier. Calls made while locked queue at the gate and run against the reopened journal. The entry editor keeps its encrypted draft mirror when a lock unmounts it, so the unlock returns to the same draft.
@@ -499,6 +501,14 @@ flowchart TB
 - **[codec.ts](../src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2.
 - **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](../tests/released-formats.test.ts) reads archives from released versions in [fixtures/released/](../fixtures/released).
 - **[journal/archiveSections.ts](../src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 54 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that.
+
+[journal/archive.ts](../src/lib/data/journal/archive.ts) reads all archive rows
+and builds the file manifest inside one `readSnapshot()` reservation, so writes
+on that connection wait until the manifest is complete. Packing reads file
+bytes afterwards, one file at a time. The reservation does not freeze the file
+store; a file missing when `readFile()` runs fails the export rather than
+silently supplying empty bytes. Import previews also read the existing journal
+through a snapshot.
 
 ```mermaid
 flowchart TD
@@ -685,7 +695,8 @@ stateDiagram-v2
 - Runes everywhere. Module-level reactive state lives in `*.svelte.ts` files and is held in an object, such as `$state({ journal: null })`, because reassigning a bare module `let` doesn't reach readers in other modules.
 - Logic that has a rule in it lives in a rune-free `.ts` file next to the reactive file, so the Node tier can test it: [readState.ts](../src/lib/data/live/readState.ts) beside [journal.svelte.ts](../src/lib/data/live/journal.svelte.ts), [boot-machine.ts](../src/lib/stores/boot-machine.ts) beside [boot.svelte.ts](../src/lib/stores/boot.svelte.ts), [tableVersions.notify.ts](../src/lib/data/live/tableVersions.notify.ts) beside [tableVersions.svelte.ts](../src/lib/data/live/tableVersions.svelte.ts).
 - Screens read through `liveQuery`/`liveList` and write through `journal`. They never import a driver.
-- A screen draws an edit draft through `kit/recordEditor.svelte.ts` or `kit/detailDraft.svelte.ts`, which expose `{ changed, saving, discard }`. `recordEditor` toasts "Saved." and "Deleted." once a write lands (a screen that says more passes `saved` or `deleted` returning null), and keeps the delete sheet open with the error when a remove fails. Records that can only be hidden omit the delete handler and confirmation wording.
+- A screen draws an edit draft through `kit/recordEditor.svelte.ts` or `kit/detailDraft.svelte.ts`. `recordEditor` owns the open editor, its baseline and save/delete state; `detailDraft` owns a route-bound draft and its read/retry state. `recordEditor` toasts "Saved." and "Deleted." once a write lands (a screen that says more passes `saved` or `deleted` returning null), and keeps the delete sheet open with the error when a remove fails. Records that can only be hidden omit the delete handler and confirmation wording.
+- Changed drafts use [kit/leaveGuard.svelte.ts](../src/lib/components/kit/leaveGuard.svelte.ts) and [DiscardSheet.svelte](../src/lib/components/kit/DiscardSheet.svelte), backed by the rune-free [leaveGuard.ts](../src/lib/components/kit/leaveGuard.ts). `detailDraft` installs the guard by default, and the entry session uses the same guard. Other editors supply their changed and saving state to it. A save in flight blocks departure. Discard replays the held history move or URL once, and a failed replay leaves later departures guarded. Reloads and external departures use the browser's confirmation.
 - Every tapped write says how it ended. A write outside `recordEditor` goes through [stores/attempt.svelte.ts](../src/lib/stores/attempt.svelte.ts): `attempt(write, failMessage)` toasts a rejection, `writer()` adds a `busy` flag for the button so a double tap writes once, and `deleter()` does the same for a screen's own `ConfirmDeleteSheet`. A sheet closes after its write lands, never before. The rune-free core is [stores/writeOutcome.ts](../src/lib/stores/writeOutcome.ts).
 - Svelte transitions are local by default. Use `|global` when the block that toggles is not the transition's own.
 
@@ -755,6 +766,7 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 
 - **Catalogues.** Paraglide compiles [messages/en.json](../messages/en.json) and [messages/pl.json](../messages/pl.json). The base locale is `en`, and the locale is resolved from `localStorage`, then the browser's preferred language, then the base locale ([vite.config.ts](../vite.config.ts)).
 - **Locale builds.** [scripts/build-locales.mjs](../scripts/build-locales.mjs) runs two ordinary SvelteKit builds with Paraglide's `experimentalStaticLocale`, using one build ID. It joins hashed assets, checks the generated startup contract and composes the fallback shell with a synchronous locale selector. The final service worker receives both emitted asset lists before compilation. Both languages therefore work offline, while startup imports one client graph. `npm run dev` keeps the runtime locale resolver.
+- **Dates and numbers.** [data/dates.ts](../src/lib/data/dates.ts) binds display formatting to the selected language: `en-GB` or `pl-PL`, rather than the host's default locale. `fmtNumber` delegates to the rune-free [numbers.ts](../src/lib/data/numbers.ts); stored values and calculation inputs remain numbers. Date and time formatters are cached per locale and options. Picked dates and day bars use the shared functions described in section 8.4.
 - **Import aliases.** Daylio matching loads the static English and Polish tag strings through [import-labels.ts](../src/lib/data/vocabulary/import-labels.ts) when an import preview starts. Their catalogue shape and built-in tag coverage have Node tests; display labels use the active compiled locale.
 - **Human copy review.** `npm run strings` serves the local catalogue editor in [scripts/strings.mjs](../scripts/strings.mjs). Field saves compare the displayed value with disk before replacing it; bulk save uses the same operation and retains conflicting edits in the browser. Literal find-and-replace previews selected languages across shown or all keys, then applies replacements to drafts before saving. Individual and group checkboxes save fingerprints of the reviewed English/Polish pairs in `.scratch/copy-review.json`. Later copy changes invalidate approval for the affected keys. A filtered group checkbox applies only to the shown keys. Copy outside the catalogues (Android resources, web manifests, the store listing, the privacy policy by paragraph) is read by [scripts/strings-outside.mjs](../scripts/strings-outside.mjs) as values with their offsets, so a save splices one value into its file and leaves the formatting alone. This review state is local tooling data, separate from the journal and shipped catalogues.
 - **Keys, not words, in the database.** Built-in rows store keys, and [data/vocabulary/](../src/lib/data/vocabulary) turns keys into words (ADR-0024).
@@ -770,6 +782,7 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Text fields** are edged in `--input-edge`, `--text` at 53%, which clears 3:1 on every ground in every palette and theme. It edges `.input` and `.rule-input` only; every other line keeps `--outline` and `--hairline`.
 - **Speech.** A live region only speaks a change inside a region that was already there. The root layout draws two that never leave the page, outside `[data-app-root]` so a sheet's inert background never silences them, the urgent one as `aria-live="assertive"` rather than a permanent empty `role="alert"`, and `announce(text, urgent?)` from [stores/announcer.svelte.ts](../src/lib/stores/announcer.svelte.ts) is the way to speak into them. It empties the region and writes the words 100ms later, so the same sentence twice is heard twice. Toasts, the progress bar, the update notice, the PIN wait, keyboard reordering and picking an area back up speak through it. A line that comes and goes inside a screen that stays (the schema gate's result) can instead sit inside a status element that stays.
 - **Headings** take their level from the placing screen: ChartCard, DayCard (and EntryDays) and EmptyState accept a `level`.
+- **Route focus.** After navigation, [navigation/arrivalFocus.ts](../src/lib/navigation/arrivalFocus.ts) focuses the screen's `h1`, or the scroll region when no heading exists, without scrolling. It preserves focus already held by a control in the new screen or an open overlay. The target gets `tabindex="-1"`, so it adds no Tab stop; the private tab title can remain the app's name.
 - **Form errors.** A control is marked `aria-invalid` only once focus has left it or a submit has been refused; `Field` hands its control the first as a third snippet argument. An error names the field it is about through `aria-describedby`.
 - **Reduced motion** is described in section 8.5.
 - **Visible text first.** `aria-label` doesn't replace a card's visible reading.
@@ -812,9 +825,9 @@ The native features:
 flowchart TB
   A["Android tier<br/>emulators, instrumentation"] --- B
   B["Walkthrough<br/>full app, demo build, 4 groups"] --- C
-  C["Guards<br/>74 in tests/guards.json"] --- D
-  D["Browser tier<br/>29 probes, real OPFS/WASM"] --- E
-  E["Node tier, vitest<br/>525 test files, real SQLite"]
+  C["Guards<br/>78 in tests/guards.json"] --- D
+  D["Browser tier<br/>real OPFS/WASM, rendered routes"] --- E
+  E["Node tier, vitest<br/>563 tracked test files, real SQLite"]
   F["Static: check, check:copy,<br/>licences, budgets"] -.- E
 ```
 
@@ -822,7 +835,7 @@ flowchart TB
 |---|---|---|
 | Node | `npm test` | The data layer against real `node:sqlite` through `test-support` drivers; schema, migrations, archive round trips and golden archives; declarations against SQL; pure domain logic; machines and policies; stylesheet invariants. Build once first, because [csp.test.ts](../tests/csp.test.ts) reads `build/`. |
 | Browser | `npm run test:browser` | [tests/browser-tier/](../tests/browser-tier): SQLite3MultipleCiphers on real OPFS, WebCrypto, canvas photo and video processing, the service-worker lifecycle, kit geometry and rendered screen contracts. Each check group declares how many checks it expects (`createReporter().block`), so a group that runs fewer fails. |
-| Guards | `npm run test:guards`, `test:guards:built` | One Playwright script per regression, listed in [tests/guards.json](../tests/guards.json) (35 `dev`, 39 `built`) and run by [tests/run-guards.mjs](../tests/run-guards.mjs) with retry and shards. [tests/PROBES.md](../tests/PROBES.md) is the index; a probe that isn't indexed is deleted before its ticket merges. |
+| Guards | `npm run test:guards`, `test:guards:built` | One Playwright script per regression, listed in [tests/guards.json](../tests/guards.json) (37 `dev`, 41 `built`) and run by [tests/run-guards.mjs](../tests/run-guards.mjs) with retry and shards. [tests/PROBES.md](../tests/PROBES.md) is the index; a probe that isn't indexed is deleted before its ticket merges. |
 | Walkthrough | `npm run test:walkthrough` | [tests/walkthrough.test.mjs](../tests/walkthrough.test.mjs) drives the whole demo build through real flows by `data-*` handles. Four groups: journal, setup, features, actions. A full run takes about 15 minutes. |
 | Built app | `npm run verify:build`, `verify:hosting` | Installed-PWA cold start, offline start, update and PIN; the nginx container's headers, cache rules and SPA routing. |
 | Benchmarks | `npm run benchmark:long-journal`, `test:return-floor` | A ten-year fixture against [tests/long-journal/budgets.json](../tests/long-journal/budgets.json); the return-floor timing. |
@@ -884,6 +897,16 @@ flowchart LR
 - `batchWrites` coalesces bursts of writes into one round of re-runs.
 - A refresh that comes back equal leaves the screen untouched.
 - `lastResults` paints a warm revisit from memory in its first frame.
+
+Home also limits which questions it asks. [data/pinnedRows.ts](../src/lib/data/pinnedRows.ts)'s
+`pinReadScope()` supplies the selected rows, last-write areas and forward facts;
+editing the pins expands that scope to all registered rows.
+[rowForwardReads.ts](../src/lib/data/rowForwardReads.ts) fetches only the requested
+facts, and `lastWrite` uses bounded date queries. The agenda reads its facts once
+through [agendaReads.ts](../src/lib/data/agendaReads.ts), then `projectAgenda()`
+applies visibility switches and dose-panel coverage without fetching again.
+Identical ordinary driver reads also share results within the generation
+described in section 5.
 
 A returning visit with a full fixture reaches ready in about 0.6 s at 4x CPU throttling, with first contentful paint under 100 ms.
 

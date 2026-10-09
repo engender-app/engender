@@ -115,7 +115,7 @@ let hydrated = $state(false);
     a screen needs to tell "genuinely nothing here yet" apart from "still
     loading" during that window, the same distinction a `liveList` gets for
     free from its own query and this mirror does not. */
-export async function hydrateReference(journal: Journal): Promise<void> {
+export async function hydrateReference(journal: Journal, current: () => void = () => {}): Promise<void> {
   // Re-armed on every call, not just the first: a journal re-open (access
   // mode switch) runs this again, and `ready` should describe *this* fill
   // rather than staying stuck true from a previous journal's.
@@ -143,6 +143,7 @@ export async function hydrateReference(journal: Journal): Promise<void> {
     journal.presentations.getPresentations(),
     journal.entryTemplates.getEntryTemplates()
   ]);
+  current();
   mirror.dimensions = dimensions;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;

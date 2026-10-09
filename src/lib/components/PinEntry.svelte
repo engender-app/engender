@@ -32,8 +32,9 @@
       failure: this browser has lost the key the PIN was bound to, so the PIN
       is not wrong and retyping will never help. `unopened`: the PIN was
       right but the journal would not open again after a web lock
-      (after-release ticket 10); not counted as a guess either. */
-  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened';
+      (after-release ticket 10); not counted as a guess either. `cancelled`:
+      a newer lock superseded the attempt, so the pad accepts a fresh PIN. */
+  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened' | 'cancelled';
 
   let {
     onVerify,
@@ -131,6 +132,7 @@
         return;
       }
       pin = '';
+      if (outcome === 'cancelled') return;
       if (outcome === 'unopened') {
         fail(m.su_reopen_failed());
         return;

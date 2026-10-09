@@ -11,6 +11,9 @@ export interface AutoExportStatus {
   hasPassword: boolean;
   nextDueAt: number | null;
   lastSuccessAt: number | null;
+  lastSnapshotAt?: number | null;
+  stagedSnapshotAt?: number | null;
+  deferredAt?: number | null;
   lastFailureAt: number | null;
   lastFailureReason: string | null;
 }
@@ -25,9 +28,9 @@ interface AndroidAutoExportBridge {
       for one archive rather than the cleartext password. */
   deriveKey(options: { salt: string; kdf: Argon2Params }): Promise<{ key: string | null }>;
   clearPassword(): Promise<void>;
-  beginBackup(options: { fileName: string }): Promise<{ transferId: string }>;
+  beginBackup(options: { fileName: string; snapshotAt?: number; scheduled?: boolean }): Promise<{ transferId: string }>;
   appendBackup(options: { transferId: string; offset: number; base64: string }): Promise<void>;
-  finishBackup(options: { transferId: string; byteLength: number; sha256: string }): Promise<{ writtenAt: number }>;
+  finishBackup(options: { transferId: string; byteLength: number; sha256: string }): Promise<{ writtenAt: number | null; staged?: boolean }>;
   abortBackup(options: { transferId: string }): Promise<void>;
   /** Posts the scheduled-backup failure notice (phase 6 ticket 04). The
       strings arrive from this side now, so the notice is localized and the

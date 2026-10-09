@@ -22,7 +22,7 @@
    Every driver is closed before the next opens: the pool's synchronous access
    handles belong to one worker at a time (ADR-0020). */
 
-import { runMigrations, SchemaTooNewError } from '../../src/lib/data/sqlite/migration-runner.ts';
+import { runMigrations, SchemaTooNewError, InterruptedRestoreError } from '../../src/lib/data/sqlite/migration-runner.ts';
 import { migrations } from '../../src/lib/data/sqlite/migrations.ts';
 import { LATEST_SCHEMA_VERSION } from '../../src/lib/data/sqlite/schema-version.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -161,6 +161,23 @@ async function run() {
   await withJournal(async ({ driver, fileOps }) => {
     await runMigrations(driver, fileOps, BROKEN_RELEASE).catch(() => {});
     result.copyAfterRetry = await fileOps.preMigrationCopyIsUsable();
+  });
+
+  // An interrupted copy restore can leave an unversioned live file beside
+  // the valid recovery copy. Reopening must refuse first-run migration.
+  await withJournal(async ({ driver }) => {
+    await driver.exec('DELETE FROM entry');
+    await driver.setUserVersion(0);
+  });
+  await withJournal(async ({ driver, fileOps }) => {
+    try {
+      await runMigrations(driver, fileOps, NEXT_RELEASE);
+      result.interruptedRestoreRefused = false;
+    } catch (error) {
+      result.interruptedRestoreRefused = error instanceof InterruptedRestoreError;
+    }
+    result.copyAfterInterruptedRestart = await fileOps.preMigrationCopyIsUsable();
+    result.versionAfterInterruptedRestart = await driver.getUserVersion();
   });
 
   await withJournal(async ({ fileOps }) => {

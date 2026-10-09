@@ -6,7 +6,7 @@
       "headRevision": "47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa"
     }
   },
-  "method": "Sum observed hosted attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement.",
+  "method": "Sum observed hosted attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
     "demo": 73,
     "production": 66
@@ -101,7 +101,9 @@
     "restore-previous-journal": 41.98,
     "device-recovery-check": 19.76,
     "settings-erase-check": 81.24,
-    "save-and-failure-check": 30
+    "save-and-failure-check": 30,
+    "pending-unlock-lock-check": 60,
+    "bfcache-journal-check": 60
   },
   "attempts": {
     "blind-edge-padding-check": [
