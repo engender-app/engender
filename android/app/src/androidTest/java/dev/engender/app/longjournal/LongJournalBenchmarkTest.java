@@ -58,6 +58,9 @@ public class LongJournalBenchmarkTest {
     private File probeDirectory;
     private int configuredDays;
     private int deliveredDays;
+    private boolean backupConfigurationStarted;
+    private final boolean disposableBackups = "true".equals(
+        InstrumentationRegistry.getArguments().getString("longJournalDisposableBackup"));
 
     private static final String TAG = "LongJournalBenchmark";
 
@@ -79,6 +82,15 @@ public class LongJournalBenchmarkTest {
     public void longJournalMeasurementsAreWithinBudget() throws Exception {
         File probeDir = unpackProbe();
         probeDirectory = probeDir;
+        if (disposableBackups) {
+            assertTrue("automatic backup benchmark requires an emulator", Build.FINGERPRINT.startsWith("generic")
+                || Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish") || Build.PRODUCT.contains("sdk"));
+            File index = new File(probeDir, "index.html");
+            String html = new String(java.nio.file.Files.readAllBytes(index.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue("probe head", html.contains("<head>"));
+            java.nio.file.Files.write(index.toPath(), html.replace("<head>",
+                "<head><script>window.__backupBenchmarkEnabled=true;</script>").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
         deleteProbeArtifacts();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -128,7 +140,7 @@ public class LongJournalBenchmarkTest {
             }
             JSONArray growthBreaches = scaling.getJSONArray("breaches");
             assertTrue("long-journal scaling exceeded: " + growthBreaches, growthBreaches.length() == 0);
-        } finally { backups.cleanup(); }
+        } finally { if (backupConfigurationStarted) backups.cleanup(); }
     }
 
     /** Returns true when all baselines are zero, meaning no real-device run has been recorded yet. */
@@ -275,6 +287,7 @@ public class LongJournalBenchmarkTest {
     }
 
     private void serviceBackup(ActivityScenario<MainActivity> scenario) throws Exception {
+        if (!disposableBackups) return;
         AtomicReference<String> value = new AtomicReference<>();
         CountDownLatch evaluated = new CountDownLatch(1);
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
@@ -286,6 +299,7 @@ public class LongJournalBenchmarkTest {
         int days = request.getInt("days");
         String response;
         if ("configure".equals(request.getString("phase")) && configuredDays != days) {
+            backupConfigurationStarted = true;
             backups.configure();
             configuredDays = days;
             response = "window.__backupBenchmarkConfigured=" + days;

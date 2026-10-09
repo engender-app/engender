@@ -35,6 +35,7 @@ import { snapshotOrigin, type OriginDirectory } from './origin-snapshot.ts';
 declare global {
   interface Window {
     __longJournalResult?: unknown;
+    __backupBenchmarkEnabled?: boolean;
     __backupBenchmarkRequest?: { days: number; phase: 'configure' | 'deliver' };
     __backupBenchmarkConfigured?: number;
     __backupBenchmarkDelivered?: { days: number; native: Record<string, unknown> };
@@ -294,7 +295,9 @@ async function run(days: number) {
 
   reopenedJournal.archive.snapshot = originalSnapshot;
   if (!snapshot) throw new Error('Archive workload did not capture its snapshot');
-  const automaticBackup = await measureAutomaticBackup(snapshot, days);
+  const automaticBackup = window.__backupBenchmarkEnabled
+    ? await measureAutomaticBackup(snapshot, days)
+    : { state: 'not-run', reason: 'Automatic backup measurement requires disposable emulator opt-in' };
   await reopened.driver.close();
   return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes, automaticBackup };
 }
