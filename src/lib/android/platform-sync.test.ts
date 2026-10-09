@@ -62,7 +62,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -79,7 +79,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.', 'Your pace is the right pace.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -96,7 +96,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -113,14 +113,14 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
     expect(payload.latestEntryEpochDay).toBeNull();
   });
 
-  test('a journaling pause covering today quiets the check-in prompt without touching the preference itself', () => {
+  test('carries dated pauses without changing the check-in preference', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
@@ -130,11 +130,26 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: true,
+      journalingPauses: [{ startEpochDay: 20309, endEpochDay: 20311 }],
       texts: TEXTS
     });
 
-    expect(payload.checkInEnabled).toBe(false);
+    expect(payload.checkInEnabled).toBe(true);
+    expect(payload.journalingPauses).toEqual([{ startEpochDay: 20309, endEpochDay: 20311 }]);
+  });
+
+  test('carries future and open-ended pauses for native scheduling', () => {
+    const journalingPauses = [
+      { startEpochDay: 20315, endEpochDay: 20317 },
+      { startEpochDay: 20320, endEpochDay: null }
+    ];
+    const payload = assembleReminderSyncPayload({
+      reminders: [], recentEntries: [], checkInEnabled: true, checkInTime: '21:30',
+      checkInAffirmationsEnabled: false, affirmationLines: [], hideNotificationTitles: false,
+      ...ALL_ON, journalingPauses, texts: TEXTS
+    });
+    expect(payload.checkInEnabled).toBe(true);
+    expect(payload.journalingPauses).toEqual(journalingPauses);
   });
 
   test('checkInEnabled stays false when it was already off, regardless of a pause', () => {
@@ -147,7 +162,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -164,7 +179,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: PREFERENCE_DEFAULTS.hideNotificationTitles,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -181,7 +196,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -261,7 +276,7 @@ describe('what the payload carries about the registry', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS,
       ...over
     });
@@ -546,7 +561,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: true });
   });
 
-  test('subscribes to reminder/entry and dose/stock writes exactly once, ever', async () => {
+  test('subscribes to reminder/entry/pause/area-state and dose/stock writes exactly once, ever', async () => {
     const onTablesWritten = vi.fn();
     const firstDeps = makeDeps({ onTablesWritten });
     platformSync.startAndroidPlatformSync(firstDeps);
@@ -579,14 +594,42 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
   test('resyncs reminder schedules when a journaling pause write is announced', async () => {
     const onTablesWritten = vi.fn();
     const deps = makeDeps({ onTablesWritten });
+    const pauses = [{ startEpochDay: 20314, endEpochDay: 20316 }];
+    vi.mocked(deps.journal.journalingPauses.getPauses).mockResolvedValue(pauses);
     platformSync.startAndroidPlatformSync(deps);
     await flush();
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].journalingPauses).toEqual(pauses);
     const notifyReminderWrites = onTablesWritten.mock.calls[0][0] as (tables: string[]) => void;
 
     notifyReminderWrites(['journalingPause']);
     await flush();
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
+  });
+
+  test('area-state writes cancel finished wear reminders and restore them when tracking resumes', async () => {
+    const onTablesWritten = vi.fn();
+    const wear = { ...REMINDER, id: 'wear-1', autoSource: 'wear:session-1' };
+    const deps = makeDeps({ onTablesWritten });
+    vi.mocked(deps.journal.reminders.getReminders).mockResolvedValue([REMINDER, wear]);
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].reminders).toEqual([REMINDER, wear]);
+
+    const notifyReminderWrites = onTablesWritten.mock.calls[0][0] as (tables: string[]) => void;
+    vi.mocked(deps.journal.areaStates.getAreaStates).mockResolvedValue({
+      wearSessions: { hidden: false, finishedEpochDay: 20313, suspendedEpochDay: null }
+    });
+    notifyReminderWrites(['areaState']);
+    await flush();
+    expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[1][0].reminders).toEqual([REMINDER]);
+
+    vi.mocked(deps.journal.areaStates.getAreaStates).mockResolvedValue({});
+    notifyReminderWrites(['areaState']);
+    await flush();
+    expect(deps.androidReminders.sync).toHaveBeenCalledTimes(3);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[2][0].reminders).toEqual([REMINDER, wear]);
   });
 
   test('reconciles stock run-out reminders when a dose or stock write is announced', async () => {
@@ -665,13 +708,13 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     let finishRead: (value: typeof REMINDER[]) => void;
     vi.mocked(deps.journal.reminders.getReminders).mockReturnValue(new Promise((resolve) => { finishRead = resolve; }));
     platformSync.startAndroidPlatformSync(deps);
-    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    listeners.forEach((listener) => listener(['areaState', 'stock']));
     await flush();
     platformSync.stopAndroidPlatformSync();
     const reconciles = vi.mocked(deps.journal.stock.reconcileRunOutReminders).mock.calls.length;
     finishRead!([REMINDER]);
     await flush();
-    listeners.forEach((listener) => listener(['reminder', 'stock']));
+    listeners.forEach((listener) => listener(['areaState', 'stock']));
     await flush();
     expect(deps.androidReminders.sync).not.toHaveBeenCalled();
     expect(deps.journal.reminders.getReminders).toHaveBeenCalledTimes(1);

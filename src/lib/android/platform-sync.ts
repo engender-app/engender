@@ -35,7 +35,6 @@ import type { LockAfter } from '../data/prefs/catalogue';
    SvelteKit plugin and cannot resolve the alias, and this pure module
    (unlike buildAndroidReminderPayload below) has no reason to be mocked
    out. */
-import { isPausedOn } from '../data/journalingPause';
 import { isWearAutoSource } from '../data/autoSource';
 import type { AreaStates } from '../data/areaState';
 import { unpromptedQuiet } from '../unprompted/registry';
@@ -77,9 +76,8 @@ export interface PlatformSyncDeps {
     reminders: { getReminders(): Promise<Reminder[]> };
     entries: { recentDays(dayCount: number): Promise<Array<{ epochDay: number }>> };
     stock: { reconcileRunOutReminders(asOfEpochDay: number): Promise<unknown> };
-    /** The journaling pause: while one covers today, the check-in prompt
-        goes quiet while a journaling pause runs, without touching the
-        `checkInEnabled` preference itself. */
+    /** Native scheduling reads pause dates while the app is closed, without
+        changing the `checkInEnabled` preference. */
     journalingPauses: { getPauses(): Promise<Array<{ startEpochDay: number; endEpochDay: number | null }>> };
     /** Which areas are hidden or finished: finishing the wear log stops
         its elapsed prompts the same way the preference does, and for the
@@ -201,16 +199,14 @@ export function assembleReminderSyncPayload(input: {
   areaStates: AreaStates;
   todayEpochDay: number;
   quietHours: QuietHours;
-  /** Whether a journaling pause covers today. Gated here, not by clearing
-      the `checkInEnabled` preference, so the prompt resumes on its own
-      once the pause ends. */
-  pausedToday: boolean;
+  journalingPauses: Array<{ startEpochDay: number; endEpochDay: number | null }>;
   texts: AndroidReminderTexts;
 }): AndroidReminderSyncPayload {
   return buildAndroidReminderPayload({
     reminders: schedulableReminders(input.reminders, input),
-    checkInEnabled: input.checkInEnabled && !input.pausedToday,
+    checkInEnabled: input.checkInEnabled,
     checkInTime: input.checkInTime,
+    journalingPauses: input.journalingPauses,
     checkInAffirmations: input.checkInAffirmationsEnabled ? input.affirmationLines : [],
     latestEntryEpochDay: input.recentEntries[0]?.epochDay ?? null,
     hideNotificationTitles: input.hideNotificationTitles,
@@ -252,7 +248,7 @@ const syncReminderSchedules = coalescing(
         areaStates,
         todayEpochDay: deps.todayEpochDay(),
         quietHours: quietHoursOf(deps.prefs),
-        pausedToday: isPausedOn(pauses, deps.todayEpochDay()),
+        journalingPauses: pauses,
         texts: deps.reminderTexts()
       })
     );
@@ -299,7 +295,10 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   if (!subscribedToTableWrites) {
     subscribedToTableWrites = true;
     deps.onTablesWritten((tables) => {
-      if (tables.includes('reminder') || tables.includes('entry') || tables.includes('journalingPause')) {
+      if (
+        tables.includes('reminder') || tables.includes('entry') ||
+        tables.includes('journalingPause') || tables.includes('areaState')
+      ) {
         void syncReminderSchedules();
       }
     });
