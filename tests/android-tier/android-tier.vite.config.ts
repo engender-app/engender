@@ -19,6 +19,7 @@
 
    ANDROID_TIER_PROBE picks which one; run.mjs builds both. */
 import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { join } from 'node:path';
 
 const ASSETS = 'android/app/src/androidTest/assets';
@@ -49,7 +50,7 @@ export default defineConfig({
       $lib: join(repo, 'src/lib')
     }
   },
-  plugins: [],
+  plugins: name === 'auto-export' ? [svelte({ configFile: false })] : [],
   define: {
     __DEMO__: JSON.stringify(false)
   },

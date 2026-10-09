@@ -98,46 +98,77 @@ public class AutoExportPlugin extends Plugin {
     private StagedBackup pendingBackup;
     private String pendingTransferId;
     private String pendingFileName;
+    private long pendingGeneration;
+    private long pendingResetEpoch;
+    private long pendingDue;
+    private long pendingSnapshotAt;
+    private boolean pendingScheduled;
+
+    @Override public void load() {
+        if (!preferences().getBoolean(KEY_ENABLED, false)) return;
+        execute(() -> {
+            synchronized (BackupWork.OWNER) {
+                try { BackupWork.schedule(getContext()); }
+                catch (Exception error) { failure(message(error)); }
+            }
+        });
+    }
 
     @PluginMethod
     public void status(PluginCall call) {
-        call.resolve(statusObject());
+        synchronized (BackupWork.OWNER) {
+            call.resolve(statusObject());
+        }
     }
 
     @PluginMethod
     public void configure(PluginCall call) {
-        Boolean enabledArg = call.getBoolean("enabled");
-        String schedule = call.getString("schedule", "weekly");
-        if (enabledArg == null) {
-            call.reject("configure requires enabled");
-            return;
-        }
-        if (!isSchedule(schedule)) {
-            call.reject("invalid schedule");
-            return;
-        }
+        synchronized (BackupWork.OWNER) {
+            Boolean enabledArg = call.getBoolean("enabled");
+            String schedule = call.getString("schedule", "weekly");
+            if (enabledArg == null) {
+                call.reject("configure requires enabled");
+                return;
+            }
+            if (!isSchedule(schedule)) {
+                call.reject("invalid schedule");
+                return;
+            }
 
-        boolean enabled = enabledArg && destinationUri() != null;
-        if (!enabledArg) {
-            releaseDestinationGrant(destinationUri());
-            preferences().edit().remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL).apply();
+            boolean enabled = enabledArg && destinationUri() != null;
+            Uri previous = destinationUri();
+            try {
+                SharedPreferences.Editor update = preferences().edit().putBoolean(KEY_ENABLED, enabled)
+                    .putString(KEY_SCHEDULE, schedule)
+                    .putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1);
+                if (!enabledArg) update.remove(KEY_DESTINATION_URI).remove(KEY_DESTINATION_LABEL);
+                commitState(preferences(), update);
+                BackupWork.schedule(getContext());
+                PersistentBackup.clear(getContext());
+                if (!enabledArg) releaseDestinationGrant(previous);
+                call.resolve(statusObject());
+            } catch (Exception error) {
+                failure(message(error));
+                call.reject(message(error), error);
+            }
         }
-        preferences().edit().putBoolean(KEY_ENABLED, enabled).putString(KEY_SCHEDULE, schedule).apply();
-        call.resolve(statusObject());
     }
 
     @PluginMethod
     public void setPassword(PluginCall call) {
-        String password = call.getString("password");
-        if (password == null || password.isEmpty()) {
-            call.reject("setPassword requires password");
-            return;
-        }
-        try {
-            passwordStore().write(password);
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
+        synchronized (BackupWork.OWNER) {
+            String password = call.getString("password");
+            if (password == null || password.isEmpty()) {
+                call.reject("setPassword requires password");
+                return;
+            }
+            try {
+                passwordStore().write(password);
+                invalidateStage();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
         }
     }
 
@@ -216,11 +247,16 @@ public class AutoExportPlugin extends Plugin {
 
     @PluginMethod
     public void clearPassword(PluginCall call) {
-        try {
-            passwordStore().clear();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
+        synchronized (BackupWork.OWNER) {
+            try {
+                passwordStore().clear();
+                invalidateStage();
+                commitState(preferences(), preferences().edit().putBoolean(KEY_ENABLED, false));
+                BackupWork.schedule(getContext());
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
         }
     }
 
@@ -236,154 +272,202 @@ public class AutoExportPlugin extends Plugin {
 
     @ActivityCallback
     private void pickedDestination(PluginCall call, ActivityResult result) {
-        JSObject out = new JSObject();
-        if (result == null || result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
-            out.put("picked", false);
-            out.put("destinationUri", JSObject.NULL);
-            out.put("destinationLabel", JSObject.NULL);
-            call.resolve(out);
-            return;
+        execute(() -> {
+        synchronized (BackupWork.OWNER) {
+            JSObject out = new JSObject();
+            if (result == null || result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+                out.put("picked", false);
+                out.put("destinationUri", JSObject.NULL);
+                out.put("destinationLabel", JSObject.NULL);
+                call.resolve(out);
+                return;
+            }
+
+            Uri uri = result.getData().getData();
+            if (uri == null) {
+                out.put("picked", false);
+                out.put("destinationUri", JSObject.NULL);
+                out.put("destinationLabel", JSObject.NULL);
+                call.resolve(out);
+                return;
+            }
+
+            try {
+                int flags = result.getData().getFlags();
+                int grants = flags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                getContext().getContentResolver().takePersistableUriPermission(uri, grants);
+
+                Uri previous = destinationUri();
+                String label = destinationLabel(uri);
+                preferences().edit()
+                    .putString(KEY_DESTINATION_URI, uri.toString())
+                    .putString(KEY_DESTINATION_LABEL, label)
+                    .remove(KEY_LAST_FAILURE_AT)
+                    .remove(KEY_LAST_FAILURE_REASON)
+                    .apply();
+
+                invalidateStage();
+                BackupWork.schedule(getContext());
+                if (previous != null && !previous.equals(uri)) releaseDestinationGrant(previous);
+                out.put("picked", true);
+                out.put("destinationUri", uri.toString());
+                out.put("destinationLabel", label == null ? JSObject.NULL : label);
+                call.resolve(out);
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
         }
-
-        Uri uri = result.getData().getData();
-        if (uri == null) {
-            out.put("picked", false);
-            out.put("destinationUri", JSObject.NULL);
-            out.put("destinationLabel", JSObject.NULL);
-            call.resolve(out);
-            return;
-        }
-
-        try {
-            int flags = result.getData().getFlags();
-            int grants = flags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            getContext().getContentResolver().takePersistableUriPermission(uri, grants);
-
-            Uri previous = destinationUri();
-            String label = destinationLabel(uri);
-            preferences().edit()
-                .putString(KEY_DESTINATION_URI, uri.toString())
-                .putString(KEY_DESTINATION_LABEL, label)
-                .remove(KEY_LAST_FAILURE_AT)
-                .remove(KEY_LAST_FAILURE_REASON)
-                .apply();
-
-            if (previous != null && !previous.equals(uri)) releaseDestinationGrant(previous);
-            out.put("picked", true);
-            out.put("destinationUri", uri.toString());
-            out.put("destinationLabel", label == null ? JSObject.NULL : label);
-            call.resolve(out);
-        } catch (Exception e) {
-            call.reject(message(e), e);
-        }
+        });
     }
 
     @PluginMethod
     public synchronized void beginBackup(PluginCall call) {
-        String fileName = call.getString("fileName");
-        if (fileName == null || fileName.isEmpty()) {
-            call.reject("beginBackup requires fileName");
-            return;
-        }
-        if (pendingBackup != null) {
-            call.reject("backup-in-progress");
-            return;
-        }
-        try {
-            // A new run truncates any staging file left by process death.
-            pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export.pending"));
-            pendingTransferId = UUID.randomUUID().toString();
-            pendingFileName = fileName;
-            JSObject result = new JSObject();
-            result.put("transferId", pendingTransferId);
-            call.resolve(result);
-        } catch (Exception e) {
-            rejectDelivery(call, e);
+        synchronized (BackupWork.OWNER) {
+            String fileName = call.getString("fileName");
+            if (fileName == null || fileName.isEmpty()) {
+                call.reject("beginBackup requires fileName");
+                return;
+            }
+            if (pendingBackup != null || BackupWork.foregroundPacking) {
+                call.reject("backup-in-progress");
+                return;
+            }
+            try {
+                pendingTransferId = UUID.randomUUID().toString();
+                pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export-" + pendingTransferId + ".pending"));
+                BackupWork.foregroundTransferId = pendingTransferId;
+                BackupWork.foregroundPacking = true;
+                pendingFileName = fileName;
+                pendingGeneration = preferences().getLong("backupGeneration", 0);
+                pendingResetEpoch = BackupWork.resetEpoch;
+                pendingDue = BackupWork.due(preferences());
+                pendingSnapshotAt = call.getLong("snapshotAt", System.currentTimeMillis());
+                pendingScheduled = call.getBoolean("scheduled", false);
+                JSObject result = new JSObject();
+                result.put("transferId", pendingTransferId);
+                call.resolve(result);
+            } catch (Exception e) {
+                rejectDelivery(call, e);
+            }
         }
     }
 
     @PluginMethod
     public synchronized void appendBackup(PluginCall call) {
-        try {
-            StagedBackup backup = requireTransfer(call);
-            long offset = byteCount(call, "offset");
-            String base64 = call.getString("base64");
-            if (base64 == null || base64.isEmpty()
-                || base64.length() > 4 * ((StagedBackup.MAX_PIECE_BYTES + 2) / 3)) {
-                throw new IllegalStateException("incomplete-archive");
+        synchronized (BackupWork.OWNER) {
+            try {
+                StagedBackup backup = requireTransfer(call);
+                long offset = byteCount(call, "offset");
+                String base64 = call.getString("base64");
+                if (base64 == null || base64.isEmpty()
+                    || base64.length() > 4 * ((StagedBackup.MAX_PIECE_BYTES + 2) / 3)) {
+                    throw new IllegalStateException("incomplete-archive");
+                }
+                backup.append(offset, Base64.decode(base64, Base64.DEFAULT));
+                call.resolve();
+            } catch (Exception e) {
+                rejectDelivery(call, e);
             }
-            backup.append(offset, Base64.decode(base64, Base64.DEFAULT));
-            call.resolve();
-        } catch (Exception e) {
-            rejectDelivery(call, e);
         }
     }
 
     @PluginMethod
     public synchronized void finishBackup(PluginCall call) {
-        DocumentFile target = null;
-        boolean destinationVerified = false;
-        try {
-            StagedBackup backup = requireTransfer(call);
-            long expectedLength = byteCount(call, "byteLength");
-            String sha256 = call.getString("sha256");
-            backup.prepare(expectedLength, sha256);
+        synchronized (BackupWork.OWNER) {
+            DocumentFile target = null;
+            boolean destinationVerified = false;
+            try {
+                StagedBackup backup = requireTransfer(call);
+                long expectedLength = byteCount(call, "byteLength");
+                String sha256 = call.getString("sha256");
+                backup.prepare(expectedLength, sha256);
+                if (pendingResetEpoch != BackupWork.resetEpoch || pendingGeneration != preferences().getLong("backupGeneration", 0)) {
+                    throw new IllegalStateException("backup-configuration-changed");
+                }
+                if (pendingScheduled) {
+                    if (pendingDue != BackupWork.due(preferences())) throw new IllegalStateException("backup-already-delivered");
+                    PersistentBackup.stage(getContext(), backup, expectedLength, sha256, pendingSnapshotAt, pendingGeneration);
+                    BackupWork.schedule(getContext());
+                    clearPendingBackup();
+                    boolean delivered = BackupWork.due(preferences()) <= System.currentTimeMillis() && PersistentBackup.deliver(getContext());
+                    BackupWork.schedule(getContext());
+                    JSObject result = new JSObject();
+                    result.put("staged", !delivered);
+                    result.put("writtenAt", delivered ? preferences().getLong(KEY_LAST_SUCCESS_AT, 0) : JSObject.NULL);
+                    call.resolve(result);
+                    return;
+                }
 
-            Uri destination = destinationUri();
-            if (destination == null) throw new IllegalStateException("destination-unavailable");
-            DocumentFile folder = DocumentFile.fromTreeUri(getContext(), destination);
-            if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
+                Uri destination = destinationUri();
+                if (destination == null) throw new IllegalStateException("destination-unavailable");
+                DocumentFile folder = DocumentFile.fromTreeUri(getContext(), destination);
+                if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
 
-            // Always create a new document. Never truncate a recoverable backup.
-            target = folder.createFile("application/octet-stream", pendingFileName);
-            if (target == null) throw new IllegalStateException("destination-unavailable");
-            ContentResolver resolver = getContext().getContentResolver();
-            try (InputStream input = new FileInputStream(backup.file);
-                 OutputStream output = resolver.openOutputStream(target.getUri(), "w")) {
-                if (output == null) throw new IllegalStateException("destination-unavailable");
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-                output.flush();
-            }
-            try (InputStream input = resolver.openInputStream(target.getUri())) {
-                if (input == null) throw new IllegalStateException("destination-unavailable");
-                StagedBackup.verify(input, expectedLength, sha256);
-                destinationVerified = true;
-            }
+                // Always create a new document. Never truncate a recoverable backup.
+                target = folder.createFile("application/octet-stream", pendingFileName);
+                if (target == null) throw new IllegalStateException("destination-unavailable");
+                ContentResolver resolver = getContext().getContentResolver();
+                try (InputStream input = new FileInputStream(backup.file);
+                     OutputStream output = resolver.openOutputStream(target.getUri(), "w")) {
+                    if (output == null) throw new IllegalStateException("destination-unavailable");
+                    byte[] buffer = new byte[8192];
+                    int read;
+                    while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
+                    output.flush();
+                }
+                try (InputStream input = resolver.openInputStream(target.getUri())) {
+                    if (input == null) throw new IllegalStateException("destination-unavailable");
+                    StagedBackup.verify(input, expectedLength, sha256);
+                    destinationVerified = true;
+                }
 
-            // Cleanup failure must never remove the newly verified backup.
-            try { clearPendingBackup(); }
-            catch (IOException cleanup) { Log.w("AutoExport", "Could not remove backup staging file", cleanup); }
-            try { retainVerifiedBackup(folder, target); }
-            catch (Exception cleanup) { Log.w("AutoExport", "Could not prune automatic backups", cleanup); }
-            long now = System.currentTimeMillis();
-            preferences().edit()
-                .putLong(KEY_LAST_SUCCESS_AT, now)
-                .remove(KEY_LAST_FAILURE_AT)
-                .remove(KEY_LAST_FAILURE_REASON)
-                .apply();
-            JSObject result = new JSObject();
-            result.put("writtenAt", now);
-            call.resolve(result);
-        } catch (Exception e) {
-            if (target != null && !destinationVerified) {
-                try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
+                // Cleanup failure must never remove the newly verified backup.
+                try { clearPendingBackup(); }
+                catch (IOException cleanup) { Log.w("AutoExport", "Could not remove backup staging file", cleanup); }
+                long now = System.currentTimeMillis();
+                completeVerifiedBackup(getContext(), folder, target, pendingSnapshotAt, now);
+                PersistentBackup.clear(getContext());
+                JSObject result = new JSObject();
+                result.put("writtenAt", now);
+                BackupWork.schedule(getContext());
+                call.resolve(result);
+            } catch (Exception e) {
+                if (target != null && !destinationVerified) {
+                    try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
+                }
+                rejectDelivery(call, e);
             }
-            rejectDelivery(call, e);
         }
     }
 
-    private void retainVerifiedBackup(DocumentFile folder, DocumentFile target) throws Exception {
-        SharedPreferences prefs = preferences();
+    static void completeVerifiedBackup(Context context, DocumentFile folder, DocumentFile target, long snapshotAt, long deliveredAt) throws Exception {
+        SharedPreferences prefs = BackupWork.preferences(context);
         JSONArray recorded = new JSONArray(prefs.getString(KEY_VERIFIED_BACKUPS, "[]"));
         List<String> verified = new ArrayList<>();
         for (int i = 0; i < recorded.length(); i++) verified.add(recorded.getString(i));
         String uri = target.getUri().toString();
         verified.remove(uri);
         verified.add(uri);
-        // Persist ownership before any old document is deleted.
-        if (!prefs.edit().putString(KEY_VERIFIED_BACKUPS, new JSONArray(verified).toString()).commit()) return;
+        String[] stateKeys = { KEY_VERIFIED_BACKUPS, KEY_LAST_SUCCESS_AT, "lastSnapshotAt",
+            KEY_LAST_FAILURE_AT, KEY_LAST_FAILURE_REASON, "deferredAt", "encryptedStage", "retryNotBeforeAt" };
+        java.util.Map<String, ?> before = prefs.getAll();
+        // Success, snapshot time and ownership become durable together before pruning.
+        if (!prefs.edit().putString(KEY_VERIFIED_BACKUPS, new JSONArray(verified).toString())
+            .putLong(KEY_LAST_SUCCESS_AT, deliveredAt).putLong("lastSnapshotAt", snapshotAt)
+            .remove(KEY_LAST_FAILURE_AT).remove(KEY_LAST_FAILURE_REASON).remove("deferredAt")
+            .remove("encryptedStage").remove("retryNotBeforeAt").commit()) {
+            // SharedPreferences changes memory even when its disk commit fails.
+            SharedPreferences.Editor rollback = prefs.edit();
+            for (String key : stateKeys) {
+                Object value = before.get(key);
+                if (value instanceof String) rollback.putString(key, (String) value);
+                else if (value instanceof Long) rollback.putLong(key, (Long) value);
+                else rollback.remove(key);
+            }
+            rollback.commit();
+            throw new IllegalStateException("backup-state-unavailable");
+        }
+        try {
         List<BackupRetention.Document> documents = new ArrayList<>();
         for (DocumentFile file : folder.listFiles()) {
             if (!file.isFile()) continue;
@@ -393,12 +477,15 @@ public class AutoExportPlugin extends Plugin {
                 public boolean delete() { return file.delete(); }
             });
         }
-        BackupRetention.prune(verified, documents, this::verifiedDocumentStillExists);
+        BackupRetention.prune(verified, documents, uriValue -> verifiedDocumentStillExists(context, uriValue));
         prefs.edit().putString(KEY_VERIFIED_BACKUPS, new JSONArray(verified).toString()).apply();
+        } catch (Exception cleanup) {
+            Log.w("AutoExport", "Could not prune automatic backups");
+        }
     }
 
-    private boolean verifiedDocumentStillExists(String uri) {
-        try (Cursor rows = getContext().getContentResolver().query(Uri.parse(uri),
+    private static boolean verifiedDocumentStillExists(Context context, String uri) {
+        try (Cursor rows = context.getContentResolver().query(Uri.parse(uri),
             new String[] { DocumentsContract.Document.COLUMN_DOCUMENT_ID }, null, null, null)) {
             // No answer or a provider failure cannot prove a document was deleted.
             return rows == null || rows.moveToFirst();
@@ -409,11 +496,13 @@ public class AutoExportPlugin extends Plugin {
 
     @PluginMethod
     public synchronized void abortBackup(PluginCall call) {
-        try {
-            if (pendingBackup != null && pendingTransferId.equals(call.getString("transferId"))) clearPendingBackup();
-            call.resolve();
-        } catch (Exception e) {
-            call.reject(message(e), e);
+        synchronized (BackupWork.OWNER) {
+            try {
+                if (pendingBackup != null && pendingTransferId.equals(call.getString("transferId"))) clearPendingBackup();
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(message(e), e);
+            }
         }
     }
 
@@ -426,6 +515,9 @@ public class AutoExportPlugin extends Plugin {
         if (pendingBackup == null || !pendingTransferId.equals(call.getString("transferId"))) {
             throw new IllegalStateException("incomplete-archive");
         }
+        if (pendingResetEpoch != BackupWork.resetEpoch || pendingGeneration != preferences().getLong("backupGeneration", 0)) {
+            throw new IllegalStateException("backup-configuration-changed");
+        }
         return pendingBackup;
     }
 
@@ -433,23 +525,35 @@ public class AutoExportPlugin extends Plugin {
         try {
             if (pendingBackup != null) pendingBackup.close();
         } finally {
+            if (pendingTransferId != null && pendingTransferId.equals(BackupWork.foregroundTransferId)) {
+                BackupWork.foregroundTransferId = null;
+                BackupWork.foregroundPacking = false;
+            }
             pendingBackup = null;
             pendingTransferId = null;
             pendingFileName = null;
         }
     }
 
-    @Override protected synchronized void handleOnDestroy() {
-        try { clearPendingBackup(); } catch (IOException ignored) { }
+    @Override protected void handleOnDestroy() {
+        execute(() -> {
+            synchronized (BackupWork.OWNER) {
+                try { clearPendingBackup(); } catch (IOException ignored) { }
+            }
+        });
         super.handleOnDestroy();
     }
 
+    static String deliveryFailure(Exception error) {
+        return error instanceof SecurityException ? "destination-revoked"
+            : error instanceof IOException ? classifyIoFailure((IOException) error) : message(error);
+    }
+
     private void rejectDelivery(PluginCall call, Exception e) {
-        String reason = e instanceof SecurityException ? "destination-revoked"
-            : e instanceof IOException ? classifyIoFailure((IOException) e) : message(e);
+        String reason = deliveryFailure(e);
         if (reason.contains("destination-revoked")) {
             disableWithFailure(reason);
-        } else {
+        } else if (!"backup-configuration-changed".equals(reason)) {
             failure(reason);
         }
         call.reject(reason, e);
@@ -503,9 +607,19 @@ public class AutoExportPlugin extends Plugin {
      * back.
      */
     public static void wipe(Context context) throws Exception {
-        releaseDestinationGrants(context);
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
-        PasswordStore.deleteKey();
+        synchronized (BackupWork.OWNER) {
+            BackupWork.resetEpoch++;
+            BackupWork.await(androidx.work.WorkManager.getInstance(context).cancelUniqueWork(BackupWork.NAME));
+            PersistentBackup.clear(context);
+            File[] pendingFiles = context.getCacheDir().listFiles((directory, name) ->
+                name.equals("auto-export.pending") || name.matches("auto-export-[a-f0-9-]{36}\\.pending"));
+            if (pendingFiles != null) for (File pending : pendingFiles) {
+                if (!pending.delete()) throw new IOException("staging-cleanup-unavailable");
+            }
+            releaseDestinationGrants(context);
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
+            PasswordStore.deleteKey();
+        }
     }
 
     /**
@@ -546,6 +660,28 @@ public class AutoExportPlugin extends Plugin {
         }
     }
 
+    private void invalidateStage() {
+        commitState(preferences(), preferences().edit()
+            .putLong("backupGeneration", preferences().getLong("backupGeneration", 0) + 1));
+        PersistentBackup.clear(getContext());
+    }
+
+    static void commitState(SharedPreferences preferences, SharedPreferences.Editor update) {
+        java.util.Map<String, ?> before = preferences.getAll();
+        if (update.commit()) return;
+        SharedPreferences.Editor rollback = preferences.edit().clear();
+        for (java.util.Map.Entry<String, ?> entry : before.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof String) rollback.putString(entry.getKey(), (String) value);
+            else if (value instanceof Long) rollback.putLong(entry.getKey(), (Long) value);
+            else if (value instanceof Boolean) rollback.putBoolean(entry.getKey(), (Boolean) value);
+            else if (value instanceof Integer) rollback.putInt(entry.getKey(), (Integer) value);
+            else if (value instanceof Float) rollback.putFloat(entry.getKey(), (Float) value);
+        }
+        rollback.commit();
+        throw new IllegalStateException("backup-state-unavailable");
+    }
+
     private SharedPreferences preferences() {
         return getContext().getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
     }
@@ -564,6 +700,8 @@ public class AutoExportPlugin extends Plugin {
     }
 
     private void disableWithFailure(String reason) {
+        PersistentBackup.clear(getContext());
+        androidx.work.WorkManager.getInstance(getContext()).cancelUniqueWork(BackupWork.NAME);
         releaseDestinationGrant(destinationUri());
         long now = System.currentTimeMillis();
         preferences().edit()
@@ -585,6 +723,13 @@ public class AutoExportPlugin extends Plugin {
         JSObject out = new JSObject();
 
         out.put("enabled", prefs.getBoolean(KEY_ENABLED, false));
+        out.put("lastSnapshotAt", prefs.contains("lastSnapshotAt") ? prefs.getLong("lastSnapshotAt", 0) : JSObject.NULL);
+        out.put("stagedSnapshotAt", JSObject.NULL);
+        try {
+            String stage = prefs.getString("encryptedStage", null);
+            if (stage != null) out.put("stagedSnapshotAt", new org.json.JSONObject(stage).getLong("snapshotAt"));
+        } catch (org.json.JSONException ignored) { }
+        out.put("deferredAt", prefs.contains("deferredAt") ? prefs.getLong("deferredAt", 0) : JSObject.NULL);
         out.put("schedule", prefs.getString(KEY_SCHEDULE, "weekly"));
 
         String destinationUri = prefs.getString(KEY_DESTINATION_URI, null);
@@ -651,7 +796,7 @@ public class AutoExportPlugin extends Plugin {
         return value.isEmpty() ? null : value;
     }
 
-    private static String message(Exception e) {
+    static String message(Exception e) {
         String detail = e.getMessage();
         return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
     }
