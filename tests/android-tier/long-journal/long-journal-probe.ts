@@ -9,6 +9,13 @@
    measure.ts are untouched - they speak openJournal(driver, files), which is the
    same contract both drivers satisfy. */
 
+import { Capacitor } from '@capacitor/core';
+import { androidAutoExport } from '../../../src/lib/data/archive/android-auto-export-bridge';
+import { runAndroidAutoExport } from '../../../src/lib/data/archive/android-auto-export';
+import { openArchive } from '../../../src/lib/data/archive/pack';
+import { portablePreferences } from '../../../src/lib/data/archive/payload';
+import { PREFERENCE_DEFAULTS } from '../../../src/lib/data/prefs/catalogue';
+import type { ArchiveSnapshot } from '../../../src/lib/data/journal/archive';
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';
 import { openJournal } from '../../../src/lib/data/journal/journal.ts';
@@ -28,6 +35,9 @@ import { snapshotOrigin, type OriginDirectory } from './origin-snapshot.ts';
 declare global {
   interface Window {
     __longJournalResult?: unknown;
+    __backupBenchmarkRequest?: { days: number; phase: 'configure' | 'deliver' };
+    __backupBenchmarkConfigured?: number;
+    __backupBenchmarkDelivered?: { days: number; native: Record<string, unknown> };
   }
 }
 
@@ -88,6 +98,90 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
     const hue = (n * 37) % 360;
     return { full: await draw(FULL, hue), thumb: await draw(THUMB, hue) };
   };
+}
+
+const BACKUP_PASSWORD = 'long-journal automatic backup proof';
+const waitFor = async (condition: () => boolean) => {
+  const deadline = performance.now() + 180_000;
+  while (!condition()) {
+    if (performance.now() >= deadline) throw new Error('automatic backup instrumentation did not answer');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+};
+
+// Runs after scored operations. No archive bytes accumulate in this recorder.
+async function measureAutomaticBackup(snapshot: ArchiveSnapshot, days: number) {
+  window.__backupBenchmarkRequest = { days, phase: 'configure' };
+  await waitFor(() => window.__backupBenchmarkConfigured === days);
+  await androidAutoExport.setPassword({ password: BACKUP_PASSWORD });
+  const preferences = { ...PREFERENCE_DEFAULTS, name: 'Long journal' };
+  const crossings = { calls: 0, bytes: 0, base64Characters: 0, maxPieceBytes: 0, maxBase64Characters: 0, maxInFlight: 0 };
+  const bridge = Capacitor as typeof Capacitor & {
+    nativePromise(plugin: string, method: string, options: Record<string, unknown>): Promise<unknown>;
+  };
+  const original = bridge.nativePromise;
+  let inFlight = 0;
+  bridge.nativePromise = async (plugin, method, options) => {
+    if (plugin !== 'AutoExport' || method !== 'appendBackup') return original.call(bridge, plugin, method, options);
+    const text = options.base64 as string;
+    const bytes = text.length / 4 * 3 - (text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0);
+    crossings.calls++;
+    crossings.bytes += bytes;
+    crossings.base64Characters += text.length;
+    crossings.maxPieceBytes = Math.max(crossings.maxPieceBytes, bytes);
+    crossings.maxBase64Characters = Math.max(crossings.maxBase64Characters, text.length);
+    crossings.maxInFlight = Math.max(crossings.maxInFlight, ++inFlight);
+    try { return await original.call(bridge, plugin, method, options); }
+    finally { inFlight--; }
+  };
+  const startedAt = performance.now();
+  const snapshotAt = Date.now();
+  let outcome;
+  try {
+    outcome = await runAndroidAutoExport({ snapshot, snapshotAt, preferences }, {
+      scheduled: true,
+      recordBackup: () => { throw new Error('staging reported delivery before verification'); }
+    });
+  } finally { bridge.nativePromise = original; }
+  const stageMs = performance.now() - startedAt;
+  if (outcome.outcome !== 'staged') throw new Error(`scheduled backup did not stage: ${JSON.stringify(outcome)}`);
+  if (!crossings.calls || crossings.maxPieceBytes > 1024 * 1024 + 28 || crossings.maxInFlight !== 1) {
+    throw new Error(`automatic backup transfer is not bounded: ${JSON.stringify(crossings)}`);
+  }
+  window.__backupBenchmarkRequest = { days, phase: 'deliver' };
+  await waitFor(() => window.__backupBenchmarkDelivered?.days === days);
+  const native = window.__backupBenchmarkDelivered!.native;
+  if (native.bytes !== crossings.bytes || native.snapshotAt !== snapshotAt) throw new Error('staged metadata differs from transferred Archive');
+
+  // Same streaming decoder as Archive recovery; consume every authenticated file.
+  const response = await fetch('./delivered.ttbackup');
+  if (!response.ok || !response.body) throw new Error('delivered Archive is unavailable');
+  const reader = response.body.getReader();
+  async function* body() {
+    try {
+      while (true) { const item = await reader.read(); if (item.done) break; yield item.value; }
+    } finally { reader.releaseLock(); }
+  }
+  const recovered = await openArchive(body(), BACKUP_PASSWORD);
+  if (JSON.stringify(recovered.payload.journal) !== JSON.stringify(snapshot.journal) ||
+      JSON.stringify(recovered.payload.preferences) !== JSON.stringify(portablePreferences(preferences))) {
+    throw new Error('delivered Archive payload differs from snapshot');
+  }
+  let files = 0;
+  let fileBytes = 0;
+  let maxFileBytes = 0;
+  for await (const file of recovered.files) {
+    const expected = await snapshot.readFile(file.name);
+    if (expected.length !== file.bytes.length || expected.some((byte, index) => byte !== file.bytes[index])) {
+      throw new Error(`delivered Archive file differs: ${file.name}`);
+    }
+    files++;
+    fileBytes += file.bytes.length;
+    maxFileBytes = Math.max(maxFileBytes, file.bytes.length);
+  }
+  if (files !== snapshot.files.length) throw new Error('delivered Archive file count differs');
+  window.__backupBenchmarkRequest = undefined;
+  return { stageMs, crossings, native, files, fileBytes, maxFileBytes, entries: snapshot.journal.entries.length };
 }
 
 async function run(days: number) {
@@ -185,14 +279,24 @@ async function run(days: number) {
   let photoBytes = 0;
   for (const name of await reopenedFiles.list()) photoBytes += (await reopenedFiles.size(name)) ?? 0;
 
+  let snapshot: ArchiveSnapshot | undefined;
+  const originalSnapshot = reopenedJournal.archive.snapshot;
+  reopenedJournal.archive.snapshot = async () => {
+    const value = await originalSnapshot();
+    snapshot ??= value;
+    return value;
+  };
   const measurements = await measureLongJournal(reopenedJournal, reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
     recorder
   });
 
+  reopenedJournal.archive.snapshot = originalSnapshot;
+  if (!snapshot) throw new Error('Archive workload did not capture its snapshot');
+  const automaticBackup = await measureAutomaticBackup(snapshot, days);
   await reopened.driver.close();
-  return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes };
+  return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes, automaticBackup };
 }
 
 /* The probe shares the app's origin, so it hands the origin back before it
