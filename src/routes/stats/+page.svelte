@@ -94,7 +94,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
-  import { EASE_OUT_CSS, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
@@ -210,7 +210,21 @@
   let existingEraSpans = $derived(
     railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
   );
+  let readingsReplaced = false;
+  const readingFade = (_node: Element) => fadeOnly(isReducedMotion() ? 0 : motionDuration('--dur-fast'));
+  const readingArrival = (node: Element) => {
+    if (!readingsReplaced || isReducedMotion()) return readingFade(node);
+    const box = node.getBoundingClientRect();
+    const height = Math.min(box.height, Math.max(0, innerHeight - box.top));
+    return {
+      delay: motionDuration('--dur-fast'),
+      duration: motionDuration('--dur-med'),
+      easing: bezier(EASE_OUT_SOFT_POINTS),
+      css: (t: number) => `height: ${t * height}px; overflow: clip; opacity: ${t}`
+    };
+  };
   const pickSpan = (next: Span) => {
+    readingsReplaced = true;
     if (enoughEntries) factsExited = false;
     span = next;
     live = next;
@@ -594,10 +608,13 @@
          the vocabulary mirror are the two reads the screen holds for them. -->
     <!-- A new span replaces the reading group in its own space. Reusing
          its cells let the old Words and Compare tiles travel across the
-         new figures while their independent reads answered. -->
+         new figures while their independent reads answered. The old group
+         fades before the new one appears in the same grid slot. Its arrival
+         travels only to the visible viewport edge; the rest lands below it. -->
     <div class="screen-part" use:resize>
+    <div class="lookback-reading-swap">
     {#key `${resolvedSpan.start}:${resolvedSpan.end}`}
-    <div transition:disclose onoutrostart={(event) => ((event.currentTarget as HTMLElement).inert = true)}>
+    <div class="lookback-reading-slot" in:readingArrival out:readingFade onoutrostart={(event) => ((event.currentTarget as HTMLElement).inert = true)}>
     <ReadGroup answered={factsAnswered && factsCurrent} count={2}>
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
@@ -614,6 +631,7 @@
     </ReadGroup>
     </div>
     {/key}
+    </div>
     </div>
 
     <!-- The resurfacing block: the two look-back offers, moved here from
@@ -655,6 +673,17 @@
 </div>
 
 <style>
+  .lookback-reading-swap {
+    display: grid;
+  }
+
+  .lookback-reading-slot {
+    grid-area: 1 / 1;
+    align-self: start;
+    min-width: 0;
+    contain: layout;
+  }
+
   .lookback-rail {
     display: grid;
     gap: var(--space-3);
