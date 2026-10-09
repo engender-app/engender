@@ -180,9 +180,15 @@ Configure these secrets in GitHub's `release` environment: `VPS_HOST`,
 OpenSSH host-key entry, including `[hostname]:port` for a non-default port.
 The job refuses unknown or changed host keys and fails if any secret is missing.
 
-The VPS needs Node.js 18 or later, Bash, tar, diff and flock. Install
+The VPS needs Node.js 18 or later, Python 3.12 or later, Bash, diff and flock. Install
 `deploy/receive-release.sh` as root-owned, mode 755 at
-`/usr/local/libexec/engender-receive-release`. Give `journal` a Bash login
+`/usr/local/libexec/engender-receive-release`. Install
+`scripts/journal-release.mjs` and `scripts/app-version.mjs` as root-owned,
+mode 644 under `/usr/local/lib/engender/`, also root-owned and mode 755.
+Update these scripts as an administrator when deployment logic changes;
+uploads contain only static build files. The receiver rejects links, special
+files and paths outside `build/` before extracting anything.
+Give `journal` a Bash login
 shell and keep its password locked. Its CI public key in
 `/home/journal/.ssh/authorized_keys` must use:
 
