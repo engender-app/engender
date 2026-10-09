@@ -635,14 +635,17 @@
       {#if factsQuery.loading}
         <span class="lookback-thin" aria-hidden="true"></span>
       {:else if enoughEntries}
-        <a class="lookback-read"
-          data-lookback-read
-          data-span-keep
-          href={`/wrapped/range${spanRangeQuery(span)}`}
-          transition:disclose
-        >
-          {m.lookback_read_span()}
-        </a>
+        <!-- Reveal the link at its full height so its centred text stays
+             clear of the outgoing explanation. -->
+        <div transition:disclose>
+          <a class="lookback-read"
+            data-lookback-read
+            data-span-keep
+            href={`/wrapped/range${spanRangeQuery(span)}`}
+          >
+            {m.lookback_read_span()}
+          </a>
+        </div>
       {:else}
         <span class="lookback-thin" transition:disclose data-lookback-thin>
           {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
