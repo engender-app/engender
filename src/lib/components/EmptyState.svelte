@@ -1,5 +1,4 @@
 <script lang="ts">
-  import RiveSlot from './RiveSlot.svelte';
   import type { Snippet } from 'svelte';
 
   let {
@@ -18,7 +17,6 @@
 </script>
 
 <div class="empty-state">
-  <RiveSlot height={140} />
   <svelte:element this={`h${level}`}>{title}</svelte:element>
   <p>{text}</p>
   {#if action}{@render action()}{/if}

@@ -1746,20 +1746,13 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    its *opacity* in. The sharp bar underneath never changes; the blurred
    copy over it goes from invisible to fully covering across the scrim's
    own `--dur-slow`, so what the eye reads is the bar softening, not
-   snapping. Before this, on a scrolled screen the frame `inert` landed on
-   also dropped the bar behind `.app-main` in the same tick, so whatever
-   the screen was scrolled to painted through where the bar had been for
-   one frame; the delayed z-index below is the other half of that fix. */
-/* No `position` written here: `.app-nav` is already `position: absolute`
-   and `.app-rail` (app.css) is already `position: relative` at the
-   desktop breakpoint, which is what `::after`'s own `inset: 0` needs from
-   an ancestor - and a rule this generic writing `position` would win over
-   either one on specificity alone ([data-app-root] > [inert] beats a
-   single class), turning the floating bar into an in-flow block for as
-   long as a sheet stayed open. Measured the hard way: the first version of
-   this fix did exactly that, and the bar's own pixels moved far more than
-   the blur crossfade this ticket exists to add. */
-:is([data-app-root] > [inert], [data-app-savebar][inert])::after {
+   snapping. Full-frame overlays now mount beside the chrome in `.app`,
+   where their z-index covers it without moving the bar behind the screen. */
+/* Only these visible surfaces carry a withdrawal layer. The shell also
+   marks a `display: contents` wrapper inert. Its absolutely positioned
+   pseudo-element uses `.app` as its containing block and blurs the sheet
+   itself. The nav and rail already provide their own positioning. */
+:is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1769,7 +1762,7 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   transition: opacity var(--dur-slow) var(--ease-out);
 }
 @supports (backdrop-filter: blur(1px)) {
-  :is([data-app-root] > [inert], [data-app-savebar][inert])::after {
+  :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
     backdrop-filter: blur(var(--blur-withdraw));
   }
 }
@@ -1781,56 +1774,18 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    `requestAnimationFrame` after `inert`, so the browser paints the
    overlay's own resting state - opacity 0, the rule above - at least once
    before this rule gives it something to transition to. */
-:is([data-app-root] > [inert], [data-app-savebar][inert]).is-withdrawn::after {
+:is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert]).is-withdrawn::after {
   opacity: 1;
-}
-/* Behind the screen while it is withdrawn, and this is the whole of ticket
-   99 item 40 ("overall - the menu renders over the popups", and Alicja
-   confirmed she meant a sheet).
-
-   The bar really did paint in front of an open sheet, and z-index said it
-   should not: the bar is 30 and the sheet's scrim is 40. The two numbers
-   were never compared, though. `.app-main` carries `view-transition-name:
-   screen`, and a view-transition-name makes an element a stacking context
-   - so the scrim's 40 is spent *inside* `.app-main`, which itself sits at
-   `z-index: auto` beside the bar's 30 in `.app`. Every sheet in the app was
-   painting one level below the bar, and no z-index on the sheet could have
-   fixed it from in there.
-
-   The bar is inert exactly when a sheet is up, which is when it should be
-   behind the screen rather than above it, so the withdrawal is where this
-   belongs. A negative index puts it under `.app-main` and still above
-   `.app`'s own background, which is what leaves it visible through the
-   scrim where the sheet does not cover - the blurred, receded bar the
-   withdrawal was always meant to be.
-
-   An earlier round of this ticket read the same symptom as the blur failing
-   to composite and dimmed the bar to 0.5 to compensate. The blur was
-   painting all along; it was painting in the wrong place. The dim goes with
-   the diagnosis that asked for it.
-
-   Delayed rather than instant now (ux-carpet 232): `transition: z-index 0s
-   var(--dur-slow)` holds the old value for the whole delay and then jumps,
-   which is what a discrete property can do instead of animating - the same
-   trick as a `visibility` swap timed to an opacity fade. Landing at
-   `--dur-slow` means the drop happens once the scrim's own fade
-   (Sheet.svelte's `scrimFade`, the same duration) has actually finished
-   covering the bar, not on the frame the sheet started opening - so
-   whatever the screen is scrolled to is never what paints where the bar
-   was. */
-:is([data-app-root] > [inert], [data-app-savebar][inert]) {
-  z-index: -1;
-  transition: z-index 0s var(--dur-slow);
 }
 /* The foot is a static flex item, and the blur layer above needs something
    to be absolute against. */
 [data-app-savebar][inert] { position: relative; }
-html[data-a11y-motion='reduce'] :is([data-app-root] > [inert], [data-app-savebar][inert])::after {
+html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
   opacity: 0;
   backdrop-filter: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  :is([data-app-root] > [inert], [data-app-savebar][inert])::after {
+  :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
     opacity: 0;
     backdrop-filter: none;
   }
@@ -2278,57 +2233,6 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   inset: -8px 0;
 }
 
-/* ---------- decorative motion stage (ticket 09: RiveSlot's CSS fallback is
-   now its only content - see RiveSlot.svelte) ---------- */
-/* The wash reaches transparent inside its own box. At `transparent 75%` on
-   an ellipse centred at 60% height it was still coloured where the box ends,
-   and `overflow: hidden` cut it off along a hard horizontal line (Alicja,
-   2026-08-25, on the yearly wrapped's cover - it is the same stage on the
-   empty state and in onboarding). */
-.rive-stage {
-  position: relative;
-  border-radius: var(--r-block);
-  background: radial-gradient(ellipse 72% 62% at 50% 48%, var(--accent-soft), transparent 68%);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  width: 100%;
-}
-.bloom { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.bloom i {
-  position: absolute; border-radius: 50%;
-  border: 2.5px solid var(--accent);
-  width: 52px; height: 52px;
-  opacity: 0;
-  animation: bloom-ring 3.2s var(--ease-out) infinite;
-}
-.bloom i:nth-child(2) { border-color: var(--accent-2); animation-delay: 1.05s; }
-.bloom i:nth-child(3) { animation-delay: 2.1s; }
-@keyframes bloom-ring {
-  0% { transform: scale(0.5); opacity: 0; }
-  25% { opacity: 0.65; }
-  100% { transform: scale(2.1); opacity: 0; }
-}
-.bloom-core {
-  position: relative; z-index: 1;
-  color: var(--accent);
-  display: flex;
-  animation: bloom-beat 3.2s var(--ease-out) infinite;
-}
-@keyframes bloom-beat {
-  0%, 100% { transform: scale(1); }
-  12% { transform: scale(1.18); }
-  24% { transform: scale(1); }
-}
-/* MO-001: both rings and the beat rest at their own 0%/100% frame - the
-   rings' resting opacity is 0 (a static bloom-core icon, no rings), the
-   beat's is scale(1) - rather than restarting every millisecond. */
-html[data-a11y-motion='reduce'] .bloom i,
-html[data-a11y-motion='reduce'] .bloom-core {
-  animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .bloom i, .bloom-core { animation: none; }
-}
 .photo-thumb {
   border-radius: var(--r-block);
   display: flex; align-items: center; justify-content: center;
@@ -2369,7 +2273,6 @@ html[data-a11y-motion='reduce'] .bloom-core {
 }
 .empty-state :is(h2, h3) { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: var(--space-2) 0 0; }
 .empty-state p { color: var(--text-2); font-size: var(--text-sm); margin: 0; max-width: 34ch; }
-.empty-state .rive-stage { width: 100%; }
 
 /* ---------- staggered list entrance ---------- */
 .stagger-in {
