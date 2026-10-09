@@ -20,6 +20,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 public class ReminderAlarmReceiver extends BroadcastReceiver {
 
@@ -55,12 +57,19 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
 
     private void handleCheckIn(Context context, JSONObject payload) {
         ZonedDateTime now = ZonedDateTime.now();
+        handleCheckIn(payload, now,
+            day -> postCheckInNotification(context, payload, day),
+            fireAt -> ReminderScheduler.scheduleCheckInAt(context, fireAt));
+    }
+
+    static void handleCheckIn(JSONObject payload, ZonedDateTime now,
+                              IntConsumer postNotification, Consumer<ZonedDateTime> scheduleAlarm) {
         int today = (int) now.toLocalDate().toEpochDay();
         boolean skip = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today
             || !ReminderPlanner.checkInAllowedOn(payload, today);
 
-        if (!skip) postCheckInNotification(context, payload, today);
-        ReminderScheduler.scheduleCheckIn(context, payload, now);
+        if (!skip) postNotification.accept(today);
+        ReminderScheduler.scheduleCheckIn(payload, now, scheduleAlarm);
     }
 
     private void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {

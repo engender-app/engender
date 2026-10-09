@@ -152,8 +152,16 @@ public final class ReminderScheduler {
     }
 
     static void scheduleCheckIn(Context context, JSONObject payload, ZonedDateTime now) {
+        scheduleCheckIn(payload, now, fireAt -> scheduleCheckInAt(context, fireAt));
+    }
+
+    static void scheduleCheckIn(JSONObject payload, ZonedDateTime now, Consumer<ZonedDateTime> scheduleAlarm) {
         ZonedDateTime fireAt = ReminderPlanner.nextCheckIn(payload, now);
         if (fireAt == null) return;
+        scheduleAlarm.accept(fireAt);
+    }
+
+    static void scheduleCheckInAt(Context context, ZonedDateTime fireAt) {
         PendingIntent pending = PendingIntent.getBroadcast(
             context,
             REQUEST_CHECK_IN,
