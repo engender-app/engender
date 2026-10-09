@@ -161,6 +161,55 @@ whether newer statistics would be lost before replacing the database.
 
 ## Deploy command
 
+### GitHub Actions
+
+The last job in `.github/workflows/release.yml` deploys stable signed tags
+(`v<major>.<minor>.<patch>`) after CI and GitHub publication succeed. Prerelease
+tags publish downloadable artifacts without changing production. The optional
+Play upload remains non-blocking. The existing `release` environment approval
+still applies.
+
+The job downloads the published web archive and verifies its checksum, uploads
+it over SSH, then calls `journal-release.mjs` on the VPS. It compares the public
+`release.json` with the uploaded metadata before reporting success. No build
+runs on the VPS, and nginx configuration is not part of deployment.
+
+Configure these secrets in GitHub's `release` environment: `VPS_HOST`,
+`VPS_PORT`, `VPS_USER`, `VPS_DEPLOY_KEY`, and `VPS_KNOWN_HOSTS`. Use the
+`journal` account and a dedicated CI key. `VPS_KNOWN_HOSTS` contains the verified
+OpenSSH host-key entry, including `[hostname]:port` for a non-default port.
+The job refuses unknown or changed host keys and fails if any secret is missing.
+
+The VPS needs Node.js 18 or later, Bash, tar, diff and flock. Install
+`deploy/receive-release.sh` as root-owned, mode 755 at
+`/usr/local/libexec/engender-receive-release`. Give `journal` a Bash login
+shell and keep its password locked. Its CI public key in
+`/home/journal/.ssh/authorized_keys` must use:
+
+```text
+restrict,command="/usr/local/libexec/engender-receive-release" ssh-ed25519 <CI public key>
+```
+
+Install `deploy/sshd-journal.conf` as root-owned, mode 644 at
+`/etc/ssh/sshd_config.d/60-engender-deploy.conf`, test with `sshd -t`, and
+reload `ssh`. This adds `journal` to the existing allowed users and enforces
+the receiver command for the whole account. Verify the existing administrator
+still appears in `sshd -T` before reloading.
+
+The account owns `/home/journal` and `/home/journal/releases`; nginx needs read
+access to the release files. The CI key can run only the receiver, with no PTY
+or forwarding. Deployment jobs and the receiver serialize switches. A stale
+stable version or lower database schema is rejected. Previous releases stay
+available for the rollback command below.
+
+If upload fails, the active release stays in place. If the public check fails
+after switching, the job fails and leaves the selected release in place for
+inspection; automatic rollback could strand a migrated journal. Rerun only
+the failed deployment job in GitHub Actions. Uploading identical contents to
+the active release is a no-op, followed by another public check.
+
+### Manual operation
+
 Build locally or in CI, upload the `build/` directory to the VPS, then run:
 
 ```bash
@@ -179,6 +228,8 @@ What deploy enforces:
 - source `release.json` must name a release version (not `0.0.0-dev...`) unless `--allow-development-version` is passed deliberately
 - full directory copy lands before the symlink switch
 - previous release directory stays in place
+- deployment refuses a lower `schemaMax` or an older stable version; use the
+  explicit rollback command for a deliberate rollback
 
 For explicit non-release checks only:
 
