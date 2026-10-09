@@ -15,18 +15,21 @@ class Element {
   isConnected = true;
   style = { setProperty: vi.fn(), removeProperty: vi.fn() };
   translate = 'none';
+  opacity = '1';
+  scale = '1';
   classList = { add: vi.fn(), remove: vi.fn() };
   height = 100;
   bottom = 100;
   blind: Element | null = null;
   parts: Element[] = [];
+  rings: Element[] = [];
   screen: Element | null = null;
   animations: { frames: Keyframe[]; options: KeyframeAnimationOptions; currentTime: number | null; pause: ReturnType<typeof vi.fn>; play: ReturnType<typeof vi.fn>; cancel: ReturnType<typeof vi.fn>; finished: Promise<void>; finish: () => void }[] = [];
   getBoundingClientRect() { return { top: 0, bottom: this.bottom, height: this.height }; }
   closest() { return this.screen; }
   contains(child: Element): boolean { return child === this || this.children.some((element) => element.contains(child)); }
   querySelector() { return this.blind; }
-  querySelectorAll(selector: string) { return selector.includes('part') ? this.parts : []; }
+  querySelectorAll(selector: string) { return selector.includes('part') ? this.parts : this.rings; }
   animate(frames: Keyframe[], options: KeyframeAnimationOptions) {
     let finish!: () => void;
     const finished = new Promise<void>((resolve) => { finish = resolve; });
@@ -56,7 +59,10 @@ beforeEach(() => {
   frames = [];
   vi.stubGlobal('HTMLElement', Element);
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
-  vi.stubGlobal('getComputedStyle', (element: Element) => ({ getPropertyValue: () => '', translate: element.translate, opacity: '1' }));
+  vi.stubGlobal('getComputedStyle', (element: Element) => ({
+    getPropertyValue: (name: string) => name === '--stagger-ring' ? '30ms' : name === '--ease-in-out' ? 'ease-in-out' : '',
+    translate: element.translate, opacity: element.opacity, scale: element.scale
+  }));
   vi.stubGlobal('document', {
     documentElement: { dataset: {} },
     querySelector: () => field
@@ -176,6 +182,52 @@ it('keeps the route until outgoing content fades, including content beside a nes
   for (const animation of exits) {
     expect(animation.frames).toEqual([{ opacity: '1' }, { opacity: 0 }]);
     animation.finish();
+  }
+  await departing;
+  expect(released).toBe(true);
+  finishAndroidTab();
+});
+
+it('holds partially faded ink until the superseding navigation completes', async () => {
+  const first = animateAndroidTab({
+    to: { url: new URL('https://localhost/calendar') },
+    complete: new Promise<void>(() => {})
+  } as OnNavigate);
+  const body = screen.children[1];
+  const exit = body.animations[0];
+  body.opacity = '0.25';
+  exit.cancel.mockImplementation(() => { body.opacity = '1'; });
+  let complete!: () => void;
+  const second = animateAndroidTab({
+    to: { url: new URL('https://localhost/more') },
+    complete: new Promise<void>((resolve) => { complete = resolve; })
+  } as OnNavigate);
+  await first;
+  expect(exit.pause).toHaveBeenCalledOnce();
+  expect(exit.cancel).not.toHaveBeenCalled();
+  expect(body.animations[1].frames[0]).toEqual({ opacity: '0.25' });
+  finishAndroidTab();
+  await second;
+  complete();
+  await Promise.resolve();
+  expect(exit.cancel).toHaveBeenCalledOnce();
+});
+
+it('closes sun rings in order before releasing the route', async () => {
+  const rings = Array.from({ length: 5 }, () => new Element());
+  field.blind!.rings = rings;
+  let released = false;
+  const departing = animateAndroidTab({
+    to: { url: new URL('https://localhost/calendar') },
+    complete: new Promise<void>(() => {})
+  } as OnNavigate).then(() => { released = true; });
+  animations().forEach((animation) => animation.finish());
+  await Promise.resolve();
+  expect(released).toBe(false);
+  expect(rings.map((ring) => ring.animations[0].options.delay)).toEqual([0, 30, 60, 90, 120]);
+  for (const ring of rings) {
+    expect(ring.animations[0].frames).toEqual([{ scale: '1' }, { scale: 0 }]);
+    ring.animations[0].finish();
   }
   await departing;
   expect(released).toBe(true);
