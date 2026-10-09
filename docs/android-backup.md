@@ -41,8 +41,8 @@ Foreground staging runs once per due period, with one refresh during the final
 24 hours if the page is open then. It does not pack a large journal every fifteen
 minutes. The native job may deliver an older snapshot when the page has stayed
 closed; the settings screen shows its capture time. New journal entries require
-the next unlocked foreground snapshot. Ticket 11 must measure this additional
-foreground packing cost.
+the next unlocked foreground snapshot. Foreground packing and native delivery measurements appear in
+[performance verification](performance-verification.md).
 
 Cold failures are recorded silently. On the next unlocked foreground check, the
 existing failure notice policy applies consent, quiet hours and hidden titles.
