@@ -9,7 +9,10 @@
    walkthrough and a gallery script both needed it. `previewBuild` is the
    one exception to that: every probe that takes `--root` needs the same
    chdir, and twelve copies of it had already gone wrong (ticket 226). */
-import { chromium } from 'playwright-core';
+import { chromium, firefox, webkit } from 'playwright-core';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { serveBuild } from './serve-build.mjs';
 import { SETTLE_PAGE_EXPRESSION } from './yank-sweep-core.mjs';
 
@@ -48,6 +51,29 @@ export function launchPersistentChromium(userDataDir, options = {}) {
   });
 }
 
+/** Selects the runtime for capability checks without changing Chromium callers. */
+export function browserEngine() {
+  const engine = process.env.BROWSER_ENGINE ?? 'chromium';
+  if (!['chromium', 'firefox', 'webkit'].includes(engine)) throw new Error(`Unknown browser engine: ${engine}`);
+  return engine;
+}
+
+export function launchBrowser(options = {}) {
+  const engine = browserEngine();
+  if (engine === 'chromium') return launchChromium(options);
+  const executablePath = process.env[`${engine.toUpperCase()}_PATH`];
+  return ({ firefox, webkit })[engine].launch({ headless: true, ...(executablePath ? { executablePath } : {}), ...options });
+}
+
+export function launchPersistentBrowser(userDataDir, options = {}) {
+  const engine = browserEngine();
+  if (engine === 'chromium') return launchPersistentChromium(userDataDir, options);
+  const executablePath = process.env[`${engine.toUpperCase()}_PATH`];
+  return ({ firefox, webkit })[engine].launchPersistentContext(userDataDir, {
+    headless: true, ...(executablePath ? { executablePath } : {}), ...options
+  });
+}
+
 /** Puts a date into a DatePicker the way a person types one: a tap on the
     field opens the picker, whose foot takes `yyyy-mm-dd` and "Use date".
     Waits for the picker to have gone, so the next step starts on the
@@ -59,6 +85,18 @@ export async function fillDate(page, selector, iso) {
   await picker.locator('[data-date-picker-entry]').fill(iso);
   await picker.locator('[data-date-picker-apply]').click();
   await picker.waitFor({ state: 'detached' });
+}
+
+/** WebKit's ephemeral runtime rejects OPFS on Linux. Capability checks use
+    independent normal profiles there; private-mode behavior is checked separately. */
+export async function newCapabilityContext(browser, options = {}) {
+  if (browserEngine() !== 'webkit') return browser.newContext(options);
+  const profile = await mkdtemp(join(tmpdir(), 'engender-webkit-capability-'));
+  let context;
+  try { context = await launchPersistentBrowser(profile, options); }
+  catch (error) { await rm(profile, { recursive: true, force: true }); throw error; }
+  context.on('close', () => { void rm(profile, { recursive: true, force: true }); });
+  return context;
 }
 
 /** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the
