@@ -476,7 +476,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     tally,
     regimen,
     doses,
-    stock: makeStockArea(driver, doses, regimen, reminders),
+    stock: makeStockArea(driver, doses, regimen),
     exposure,
     /* Deferred (ticket 03): the curve models are 2,600 lines of
        pharmacokinetics, the largest thing in the first-load graph, and only
