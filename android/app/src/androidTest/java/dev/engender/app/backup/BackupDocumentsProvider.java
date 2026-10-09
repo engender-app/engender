@@ -29,7 +29,17 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         }
     }
 
-    @Override public boolean onCreate() { return true; }
+    @Override public boolean onCreate() {
+        fault = getContext().getSharedPreferences("backup-provider-fault", 0).getString("fault", "none");
+        return true;
+    }
+
+    private void setFault(String value) {
+        if (!getContext().getSharedPreferences("backup-provider-fault", 0).edit().putString("fault", value).commit()) {
+            throw new IllegalStateException("provider-fault-commit-failed");
+        }
+        fault = value;
+    }
 
     private File directory() {
         File directory = new File(getContext().getCacheDir(), "backup-destination");
@@ -45,7 +55,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
     @Override public Bundle call(String method, String arg, Bundle extras) {
         if ("fault".equals(method)) {
             release.countDown();
-            fault = arg; blocked = false; release = new java.util.concurrent.CountDownLatch(1);
+            setFault(arg); blocked = false; release = new java.util.concurrent.CountDownLatch(1);
             new File(getContext().getFilesDir(), "backup-partial-state.json").delete();
             return Bundle.EMPTY;
         }
@@ -63,7 +73,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
                 File[] files = directory().listFiles();
                 if (files != null) for (File file : files) file.delete();
                 getContext().getSharedPreferences("backup-document-names", 0).edit().clear().commit();
-                fault = "none";
+                setFault("none");
             }
             for (String root : new String[] {"root", "root-second"}) {
                 getContext().grantUriPermission(grantTarget,
