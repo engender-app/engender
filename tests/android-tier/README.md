@@ -49,3 +49,8 @@ Use `ANDROID_TIER_BACKUP_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android
 for the same backup stages without unrelated native suites. API 26's bundled
 WebView cannot produce the Archive; the runner reports that skip explicitly.
 The no-stage native deferral exercise still runs there.
+
+For an affected-phase rerun, set `ANDROID_TIER_BACKUP_STAGES` to a comma-separated
+list, for example `defer,verify-deferred,catch-up,cleanup`. The report names the
+selection. Unknown stages and selected stages that never execute fail the run;
+unselected stages are explicit skips. Omit the variable for the full roster.

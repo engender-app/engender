@@ -51,6 +51,13 @@ const { ok, fail, finish } = createReporter();
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
 const BACKUP_ONLY = process.env.ANDROID_TIER_BACKUP_ONLY === '1';
 const BACKUP_TEST = 'dev.engender.app.backup.NativeBackupSchedulingTest';
+const BACKUP_STAGES = new Set((process.env.ANDROID_TIER_BACKUP_STAGES ?? '').split(',').filter(Boolean));
+const KNOWN_BACKUP_STAGES = new Set(['defer', 'verify-deferred', 'catch-up', 'cleanup', 'prepare',
+  'prepare-interrupted', 'resume-interrupted', 'verify', 'mounted-status', 'ownership-and-destination',
+  'activity-destruction', 'bounded-retries', 'existing-manual']);
+for (const stage of BACKUP_STAGES) if (!KNOWN_BACKUP_STAGES.has(stage)) throw new Error(`Unknown Android backup stage: ${stage}`);
+const executedBackupStages = new Set();
+if (BACKUP_STAGES.size) console.log(`Selected Android backup stages: ${[...BACKUP_STAGES].join(', ')}`);
 const AVDS = (process.env.ANDROID_TIER_AVDS ?? 'gd26,tracker35').split(',').filter(Boolean);
 const BOOT_TIMEOUT_MS = 300_000;
 
@@ -301,6 +308,8 @@ for (const avd of AVDS) {
         }
       } finally { stage('cleanup'); }
       const backupStage = (name, method = 'persistentDeliverySurvivesLifecycle') => {
+        if (BACKUP_STAGES.size && !BACKUP_STAGES.has(name)) { console.log(`SKIP ${avd}: native backup ${name} (selected stages)`); return false; }
+        executedBackupStages.add(name);
         const result = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
           `${BACKUP_TEST}#${method}`, '-e', 'backupStage', name,
           'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
@@ -454,12 +463,15 @@ for (const avd of AVDS) {
           backupStage('cleanup');
           backupStage('bounded-retries', 'nativeFailuresStopAfterThreeAttemptsUntilNextDay');
           backupStage('cleanup');
+          if (!BACKUP_STAGES.size || BACKUP_STAGES.has('existing-manual')) {
+          executedBackupStages.add('existing-manual');
           const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
             'dev.engender.app.backup.AutoExportDeliveryTest#completeLargeBackupRoundTripsAndFailuresPreserveRecovery',
             'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 1_200_000 });
           writeFileSync(join(evidenceDir, `${avd}-backup-existing-manual.log`),
             `${manual.stdout ?? ''}${manual.stderr ?? ''}\nexit=${manual.status} signal=${manual.signal} error=${manual.error ?? ''}\n`);
           reportStage(`${avd}: existing large manual backup`, manual, { ok, fail });
+          }
         } else console.log(`SKIP ${avd}: staged Archive production needs a supported WebView`);
       } finally { backupStage('cleanup'); }
     }
@@ -471,5 +483,6 @@ for (const avd of AVDS) {
   }
 }
 
-const failures = finish('ALL ANDROID-TIER CHECKS PASS');
+for (const stage of BACKUP_STAGES) if (!executedBackupStages.has(stage)) fail(`selected Android backup stage ${stage}`, 'selected stage never executed');
+const failures = finish(BACKUP_STAGES.size ? 'ALL SELECTED ANDROID BACKUP STAGES PASS' : 'ALL ANDROID-TIER CHECKS PASS');
 process.exit(failures ? 1 : 0);
