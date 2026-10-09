@@ -39,6 +39,7 @@
   import { submitRecoveryKeyUnlock } from '$lib/stores/boot.svelte';
   import { RecoveryKeyMistypedError } from '$lib/crypto/recoveryKey';
   import { RecoveryKeyAbsentError } from '$lib/data/recovery-key';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import { crossfadeDuration } from '$lib/motion/tokens';
   import GateScreen from './GateScreen.svelte';
   import Icon from './Icon.svelte';
@@ -103,6 +104,7 @@
       await submitRecoveryKeyUnlock(typed);
       typed = '';
     } catch (e) {
+      if (e instanceof UnlockCancelledError) return;
       error =
         e instanceof RecoveryKeyMistypedError
           ? m.rke_mistyped()
