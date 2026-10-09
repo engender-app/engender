@@ -37,7 +37,7 @@ const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
    <html> as a data attribute for app.css to read - the decision is a
    table, and this is only the wiring. */
 export function navigateWithTransition(navigation: OnNavigate, replacesApp: boolean): Promise<void> | void {
-  finishAndroidTab();
+  finishAndroidTab(navigation.complete);
   /* The bar sits above quick add's scrim so the add control stays sharp
      while the fan is up, which leaves the four tabs pressable behind it.
      Rather than making them inert - which would need the button to escape
