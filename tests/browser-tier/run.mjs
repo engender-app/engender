@@ -17,6 +17,7 @@ import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { builtArchiveRecovery } from './archive-built-recovery.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
+import { coldUnlock } from './cold-unlock.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
     element under it is stroked in the role's edge, over the same geometry,
@@ -79,6 +80,12 @@ async function load(path, name) {
   return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
+
+await block('cold authentication respects newer locks', 5, async () => {
+  for (const mode of await coldUnlock(browser, `http://localhost:${port}`)) {
+    ok(`${mode} cold authentication cancels after a newer lock and accepts a fresh attempt`);
+  }
+});
 
 await block('Archive after browser installation loss', 2, async () => {
   const origin = `http://localhost:${port}`;
