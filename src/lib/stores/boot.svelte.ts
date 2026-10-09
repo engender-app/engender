@@ -39,7 +39,7 @@ import { sweepOrphanPhotos } from '../data/journal/photos';
 import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
 import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
-import { tablesWrittenBy } from '../data/live/writes';
+import { observeWrites, tablesWrittenBy } from '../data/live/writes';
 import { todayEpochDay } from '../data/epochDay';
 import { forgetReference, hydrateReference } from '../data/live/reference.svelte';
 import type { ListableDirectory } from '../data/photos/opfs-file-store';
@@ -946,7 +946,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
       openFileOps = activeSqlite.fileOps;
       // Cold-boot work owns its driver privately until authentication is
       // checked again. No key or journal gate opens during preparation.
-      journal = openJournal(activeSqlite.driver, photoFiles);
+      journal = observeWrites(openJournal(activeSqlite.driver, photoFiles), bump);
       return activeSqlite.driver;
     },
     prepareDatabase: __DEMO__ ? async (driver, fileOps) => {

@@ -21,6 +21,7 @@ export async function coldUnlock(browser, origin) {
         window.__APP_VERSION__ = '0.0.0-browser-tier';
         window.closedJournalWorkers = 0;
         window.lockWhenJournalOpens = false;
+        window.reconcileBusy = [];
         const BrowserWorker = window.Worker;
         window.Worker = class extends BrowserWorker {
           constructor(url, options) {
@@ -32,6 +33,9 @@ export async function coldUnlock(browser, origin) {
             super.terminate();
           }
           postMessage(message, ...options) {
+            if (this.journalWorker && message.op === 'query' && message.args.sql === 'PRAGMA application_id') {
+              window.reconcileBusy.push(window.coldBusy.journalIsBusy());
+            }
             super.postMessage(message, ...options);
             if (this.journalWorker && message.op === 'open' && window.lockWhenJournalOpens) {
               window.lockWhenJournalOpens = false;
@@ -68,6 +72,7 @@ export async function coldUnlock(browser, origin) {
           window.coldBoot = await import(`${source}/stores/boot.svelte.ts`);
           window.coldLock = await import(`${source}/stores/lock.svelte.ts`);
           window.coldPrefs = await import(`${source}/data/prefs/store.svelte.ts`);
+          window.coldBusy = await import(`${source}/data/journal-busy.ts`);
           coldBoot.startBoot();
           coldLock.watchLock(coldBoot.closeJournalForLock);
         }, source);
@@ -80,6 +85,7 @@ export async function coldUnlock(browser, origin) {
           mode === 'recovery' ? 'passphrase' : mode, mode === 'pin' ? '1234' : secret
         ), { mode, secret }), 'ok');
         await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+        assert.deepEqual(await page.evaluate(() => window.reconcileBusy), [true], `${mode} setup reconciliation guard`);
         await page.evaluate(() => coldPrefs.setPreferenceDurably('lockAfter', 'immediately'));
         if (mode === 'recovery') {
           recoveryKey = await page.evaluate(async (source) => {
@@ -144,6 +150,7 @@ export async function coldUnlock(browser, origin) {
         await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
         assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), false, `${mode} retry`);
         assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
+        assert.deepEqual(await page.evaluate(() => window.reconcileBusy), [true], `${mode} unlock reconciliation guard`);
 
         const entryId = await page.evaluate(() => coldBoot.bootState.journal.entries.upsertEntry({
           epochDay: 20000, mood: 3, note: 'Kept across a cancelled cold boot'
