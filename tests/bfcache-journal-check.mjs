@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { newCapabilityContext, launchBrowser, browserEngine } from './browser-harness.mjs';
 import { buildRequestHandler } from './serve-build.mjs';
+import { firstRun, JOURNAL_SECRET, unlock as coldUnlock } from './browser-tier/built-flow.mjs';
 import { INIT_HIDE_DEMO_SCRIPT } from './yank-sweep-core.mjs';
 
 const server = createServer(buildRequestHandler(process.cwd()));
@@ -13,6 +14,8 @@ const awayServer = createServer((_req, res) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 await new Promise((resolve) => awayServer.listen(0, '127.0.0.1', resolve));
+const production = process.env.BFCACHE_BUILD_MODE === 'production';
+const secret = production ? JOURNAL_SECRET : 'demo';
 const base = `http://localhost:${server.address().port}`;
 const away = `http://localhost:${awayServer.address().port}/leave`;
 // Playwright disables BFCache by default, even when Chromium supports it.
@@ -85,6 +88,7 @@ async function restore({ forward = false, elapsed = 0 } = {}) {
     const url = page.url();
     await page.goto(away);
     await page.goto(url);
+    if (production) await coldUnlock(page);
     await ready();
   }
   const before = await page.evaluate(() => ({ token: window.historyProof.token,
@@ -109,13 +113,21 @@ async function restore({ forward = false, elapsed = 0 } = {}) {
 async function unlock() {
   await page.locator('[data-applock]').waitFor();
   assert.equal(await page.locator('[data-nav-item]').count(), 0, 'locked journal has no route chrome');
-  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('#session-passphrase').fill(secret);
   await page.locator('[data-session-submit]').click();
   await page.locator('[data-applock]').waitFor({ state: 'detached' });
   await ready();
 }
 try {
-  await page.goto(base);
+  if (production) {
+    await firstRun(page, base);
+    await clientRoute('/entry/new/2026-10-04?seedMood=4');
+    await page.locator('#ed-note').fill('BFCache production baseline');
+    await page.locator('[data-save]').click();
+    await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
+  } else {
+    await page.goto(base);
+  }
   await ready();
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
   await timing('restart');
@@ -144,6 +156,7 @@ try {
   await clientRoute('/day/2026-10-05');
   await page.getByText(note, { exact: true }).first().waitFor();
   await page.reload();
+  if (production) await coldUnlock(page);
   await ready();
   await page.getByText(note, { exact: true }).first().waitFor();
   console.log('PASS restored read and saved change survive normal reload');
@@ -154,7 +167,7 @@ try {
     await restore({ forward: true }); await ready(); await calendar();
     const workers = await page.evaluate(() => window.historyProof.workers.filter((worker) => !worker.retired).length);
     assert.equal(workers, 1, 'only current database worker remains');
-    await page.reload(); await ready(); await calendar();
+    await page.reload(); if (production) await coldUnlock(page); await ready(); await calendar();
   }
   await timing('one-minute');
   await restore(); await ready(); await calendar();
