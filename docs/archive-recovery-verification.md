@@ -10,9 +10,12 @@ belongs to; it cannot restore lost files or open an Archive.
 The recovery harness is implemented. The focused encrypted browser probe has
 passed with 54 sections and 18 attachments. The compiled app also completes
 first-run restoration, unlocks with its independent credential after reload and
-plays restored audio and video and renders its document. Android recovery and
-the new interrupted-migration assertion still require a completed runtime run before this ticket can be marked verified. Failed runs are
-retained in the ticket handoff; implementation alone is not acceptance evidence.
+plays restored audio and video and renders its document. Android recovery passes
+all four manual/automatic platform directions at
+`2fa20af49ceba11fc013dd30447da7c1602acbaf` with a clean checkout. The new
+interrupted-migration assertion still requires a completed maintained browser
+run before this ticket can be marked verified. Failed runs are retained in the
+ticket handoff; implementation alone is not acceptance evidence.
 
 ## Maintained checks
 
@@ -119,3 +122,11 @@ Automation does not close the signed-candidate
 or the human cross-platform release checks. Their owner and status remain
 unchanged. These tests use disposable Android emulators. They make no claim about
 a personal phone, Apple hardware, Safari or an iOS PWA.
+
+The native acceptance run used Chromium 154.0.8037.57 and tracker35 with
+Android WebView 124.0.6367.219. Its final evidence records the Git revision, clean state, installation
+identities, Archive digests, section/file counts and media results. The APK
+asserted that the encrypted stage existed before page closure and that delivery
+followed closure without changing the staged due value. Numeric timestamps were
+not included in that run's final host JSON; the host now retains those values
+for subsequent executions. The original evidence remains unchanged.

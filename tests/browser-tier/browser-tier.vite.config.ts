@@ -107,7 +107,9 @@ export default defineConfig({
          it; without the second no whole screen does, because a screen
          navigates. */
       '$app/state': resolve(import.meta.dirname, 'screen-router.svelte.ts'),
-      '$app/navigation': resolve(import.meta.dirname, 'app-navigation-stub.ts')
+      '$app/navigation': resolve(import.meta.dirname, 'app-navigation-stub.ts'),
+      '$app/environment': resolve(import.meta.dirname, 'app-environment-stub.ts'),
+      '$app/paths': resolve(import.meta.dirname, '../update-handover/paths.ts')
     }
   },
   /* The two literals vite.config.ts replaces in the app's own build. The

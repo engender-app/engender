@@ -61,7 +61,7 @@ export async function installationRecovery({ device, repo, evidenceDir, avd, rep
     destroy();
     const automaticWeb = await browserRecoveryDestination(browser, origin, automatic);
     assertRecoveryResult(automaticWeb);
-    rows.push({ source: 'android', destination: 'web', producer: 'automatic ticket08', sourceDestroyed: true, nativeDeliveredWithoutPage: true, sourceIdentity: automatic.identity, result: automaticWeb });
+    rows.push({ source: 'android', destination: 'web', producer: 'automatic ticket08', sourceDestroyed: true, nativeDeliveredWithoutPage: true, nativeDelivery: { dueAt: automatic.nativeDueAt, stageObservedAt: automatic.nativeStageObservedAt, pageClosedAt: automatic.nativePageClosedAt, deliveredAt: automatic.nativeDeliveredAt }, sourceIdentity: automatic.identity, result: automaticWeb });
     const automaticNative = phase('restore', automatic);
     assertRecoveryResult(automaticNative);
     rows.push({ source: 'android', destination: 'android', producer: 'automatic ticket08', sourceDestroyed: true, sourceIdentity: automatic.identity, result: automaticNative });
