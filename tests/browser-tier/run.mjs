@@ -798,7 +798,7 @@ await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
 });
 
 // --- Ticket 27: the photo journey export, against a real canvas and MediaRecorder ---
-await block('ticket 27 photo journey export', 19, async () => {
+await block('ticket 27 photo journey export', 20, async () => {
   const r = await load('/journey.html', 'journey-probe');
   if (r.error) throw new Error(r.error);
 
@@ -882,6 +882,12 @@ await block('ticket 27 photo journey export', 19, async () => {
   if (nearInVideo(r.firstFrame.centre, RED))
     ok('and its first frame is the oldest photo, on the canvas before recording started');
   else fail('the first frame is the oldest photo', JSON.stringify(r.firstFrame.centre));
+
+  const recordedOrder = r.recordedColours.map((colour) => [RED, GREEN, BLUE].findIndex((want) => nearInVideo(colour, want)))
+    .filter((colour, index, colours) => index === 0 || colour !== colours[index - 1]);
+  if (recordedOrder.join() === '0,1,2')
+    ok('every photograph survives asynchronous reads in the recorded video, in order and without blank frames');
+  else fail('every photograph survives in the recorded video', JSON.stringify(r.recordedColours));
 
   // Recording is real time (MediaRecorder has no other clock), so three
   // photos at 700ms each cannot come back in less than about two seconds.
