@@ -32,6 +32,19 @@ final class ReminderPlanner {
         return nextOccurrence(reminder, now);
     }
 
+    /** Quiet hours can leave yesterday's occurrence waiting for this morning.
+        Compare delivery times before discarding an elapsed rule occurrence. */
+    static ZonedDateTime nextReminder(JSONObject reminder, ZonedDateTime now, JSONObject quietHours) {
+        ZonedDateTime cursor = now.toLocalDate().minusDays(1).atStartOfDay(now.getZone()).minusNanos(1);
+        ZonedDateTime candidate;
+        while ((candidate = nextReminder(reminder, cursor)) != null) {
+            ZonedDateTime held = QuietHours.hold(candidate, quietHours);
+            if (held.isAfter(now)) return held;
+            cursor = candidate;
+        }
+        return null;
+    }
+
     /** When the rule fires next, strictly after `now`, or null when it never
         will again. Takes the rule's own fields - time, recurrence, interval,
         anchorEpochDay, epochDay - which is what the shared fixture holds,
@@ -90,32 +103,25 @@ final class ReminderPlanner {
         return changed;
     }
 
-    static ZonedDateTime nextCheckIn(String time, ZonedDateTime now, boolean todayHasEntry) {
-        int today = (int) now.toLocalDate().toEpochDay();
-        ZonedDateTime todayAt = occurrenceOn(today, time, now.getZone());
-        if (todayAt.isAfter(now) && !todayHasEntry) return todayAt;
-        return occurrenceOn(today + 1, time, now.getZone());
-    }
-
     static ZonedDateTime nextCheckIn(JSONObject payload, ZonedDateTime now) {
         if (!payload.optBoolean("checkInEnabled", false)) return null;
         String time = payload.optString("checkInTime", "21:00");
         int today = (int) now.toLocalDate().toEpochDay();
-        boolean todayHasEntry = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today;
-        ZonedDateTime candidate = nextCheckIn(time, now, todayHasEntry);
+        int latestEntryDay = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE);
+        ZonedDateTime candidate = occurrenceOn(today - 1, time, now.getZone());
         JSONArray pauses = payload.optJSONArray("journalingPauses");
 
         while (true) {
             int day = (int) candidate.toLocalDate().toEpochDay();
-            JSONObject pause = coveringPause(pauses, day);
-            if (pause != null) {
-                if (pause.isNull("endEpochDay")) return null;
-                candidate = occurrenceOn(pause.optInt("endEpochDay") + 1, time, now.getZone());
+            ZonedDateTime held = QuietHours.hold(candidate, payload.optJSONObject("quietHours"));
+            int deliveryDay = (int) held.toLocalDate().toEpochDay();
+            // An entry suppresses both its own prompt and a prompt deferred to that day.
+            if (!held.isAfter(now) || day == latestEntryDay || deliveryDay == latestEntryDay) {
+                candidate = occurrenceOn(day + 1, time, now.getZone());
                 continue;
             }
-
-            ZonedDateTime held = QuietHours.hold(candidate, payload.optJSONObject("quietHours"));
-            pause = coveringPause(pauses, (int) held.toLocalDate().toEpochDay());
+            JSONObject pause = coveringPause(pauses, day);
+            if (pause == null) pause = coveringPause(pauses, deliveryDay);
             if (pause == null) return held;
             if (pause.isNull("endEpochDay")) return null;
             candidate = occurrenceOn(pause.optInt("endEpochDay") + 1, time, now.getZone());
