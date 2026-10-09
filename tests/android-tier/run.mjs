@@ -39,6 +39,7 @@ import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtem
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { installationRecovery } from './archive/recovery.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
 import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './emulator.mjs';
 
@@ -49,6 +50,7 @@ const { ok, fail, finish } = createReporter();
 
 /* Headless runs use software graphics with Vulkan disabled. */
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
+const RECOVERY_ONLY = process.env.ANDROID_TIER_RECOVERY_ONLY === '1';
 const BACKUP_ONLY = process.env.ANDROID_TIER_BACKUP_ONLY === '1';
 const BACKUP_TEST = 'dev.engender.app.backup.NativeBackupSchedulingTest';
 const BACKUP_STAGES = new Set((process.env.ANDROID_TIER_BACKUP_STAGES ?? '').split(',').filter(Boolean));
@@ -166,7 +168,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'auto-export', 'long-journal'])) {
+for (const probe of (RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'long-journal'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -237,7 +239,7 @@ for (const avd of AVDS) {
        module Capacitor generates has an androidTest variant of its own, and it
        fails to dex on a Kotlin stdlib clash between androidx.test's 1.8.22 and a
        transitive 1.6.21. Nothing of ours is in that module. */
-    if (BACKUP_ONLY) {
+    if (BACKUP_ONLY || RECOVERY_ONLY) {
       const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2'], {
         cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600_000
       });
@@ -256,7 +258,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST}`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest`])
           ],
           {
             cwd: androidDir,
@@ -284,6 +286,10 @@ for (const avd of AVDS) {
         }
         ok(`${avd}: install ${name} APK for PIN wait stages`);
       }
+      if (!nativeOnly && !BACKUP_ONLY) {
+        await installationRecovery({ device, repo, evidenceDir, avd, reporter: { ok, fail } });
+      } else if (RECOVERY_ONLY) throw new Error('selected Archive recovery requires a supported Android WebView');
+      if (RECOVERY_ONLY) continue;
       const stage = (name, method = 'deadlineSurvivesActualProcessDeath') => {
         const result = device(['shell', 'am', 'instrument', '-w', '-r',
           '-e', 'class', `${PIN_WAIT_TEST}#${method}`, '-e', 'pinWaitStage', name,
