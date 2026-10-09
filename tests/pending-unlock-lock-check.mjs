@@ -40,6 +40,7 @@ async function state() {
   });
 }
 let mode = 'passphrase';
+let phase = 'startup';
 async function submit(secret = mode === 'pin' ? '1234' : 'demo') {
   if (mode === 'biometric') {
     await page.locator('[data-session-biometric]').click();
@@ -63,11 +64,13 @@ try {
   });
   for (const accessMode of (browserEngine() === 'chromium' ? ['passphrase', 'pin', 'biometric'] : ['passphrase', 'pin'])) {
     mode = accessMode;
+    phase = 'change-mode';
     if (mode !== 'passphrase') await page.evaluate(async (mode) => {
       const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
       await changeAccessMode(mode, '1234');
     }, mode);
     if (mode !== 'biometric') {
+      phase = 'wrong-secret';
       await visibility('hidden');
       await page.waitForSelector('[data-applock]');
       await visibility('visible');
@@ -83,6 +86,7 @@ try {
       console.log(`PASS ${mode}: wrong secret stays locked`);
     }
     for (const stage of ['derivation', 'reopen', 'hydration', 'transition']) {
+      phase = stage;
       await page.evaluate(async () => {
         const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
         window.beforeLockJournal = bootState.journal;
@@ -154,16 +158,27 @@ try {
     await visibility('hidden');
     await page.waitForSelector('[data-applock]');
     await visibility('visible');
+    phase = 'reopen-failure';
     const attemptsBeforeFailure = await page.evaluate(() => localStorage.getItem('engender-pin-attempts'));
     await page.evaluate(() => {
+      window.reopenFaultResponse = null;
+      const reopening = new WeakMap();
+      let workerId = 0;
       const post = Worker.prototype.postMessage;
       Worker.prototype.postMessage = function (message, ...args) {
-        if (message.op === 'query') {
+        if (message.op === 'open' && message.args.path === 'engender.sqlite3') {
+          reopening.set(this, { workerId: ++workerId, openRequestId: message.id, path: message.args.path });
+        }
+        const opened = reopening.get(this);
+        if (opened && message.op === 'query' && message.args.sql === 'SELECT key, value FROM pref') {
           Worker.prototype.postMessage = post;
           const receive = this.onmessage;
           this.onmessage = (event) => {
             if (event.data.id !== message.id) return receive.call(this, event);
             this.onmessage = receive;
+            window.reopenFaultResponse = { ...opened, requestId: message.id, responseId: event.data.id,
+              sql: message.args.sql, originalOk: event.data.ok };
+            if (!event.data.ok) return receive.call(this, event);
             receive.call(this, { data: { id: message.id, ok: false, error: 'injected reopen failure' } });
           };
         }
@@ -171,6 +186,14 @@ try {
       };
     });
     await submit();
+    await page.waitForFunction(() => window.reopenFaultResponse !== null);
+    const fault = await page.evaluate(() => window.reopenFaultResponse);
+    assert.equal(fault.responseId, fault.requestId);
+    assert.equal(fault.originalOk, true, `${mode}: fault replaces a successful real reopen response`);
+    assert.equal(fault.sql, 'SELECT key, value FROM pref');
+    assert.equal(fault.path, 'engender.sqlite3');
+    assert.ok(fault.requestId > fault.openRequestId, `${mode}: fault belongs to the newly opened journal worker`);
+    console.log('INJECTED REOPEN FAILURE', mode, JSON.stringify(fault));
     await page.waitForSelector('[data-pin-status="wrong"]');
     assert.deepEqual(await state(), { unlocked: false, journal: false, accessible: false, referenceReady: false, gate: true }, `${mode}: failed reopen`);
     assert.equal(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), attemptsBeforeFailure, `${mode}: failed reopen is not a wrong PIN`);
@@ -179,6 +202,13 @@ try {
     console.log(`PASS ${mode}: failed reopen stays locked; fresh authentication succeeds`);
   }
   assert.deepEqual(errors, [], 'no uncaught browser errors');
+} catch (error) {
+  console.error('UNLOCK PROBE FAILURE', JSON.stringify({ mode, phase,
+    fault: await page.evaluate(() => window.reopenFaultResponse ?? null).catch(() => null),
+    state: await state().catch(failure => ({ error: String(failure) })),
+    document: await page.locator('body').innerText().catch(() => 'unavailable')
+  }));
+  throw error;
 } finally {
   await context.close();
   await browser.close();
