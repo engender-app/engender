@@ -151,7 +151,18 @@ export function overlayIsOpen(): boolean {
 export function hostAppOverlay(node: HTMLElement): () => void {
   const root = node.closest('[data-app-root]');
   if (!root) return () => {};
+  /* Child attachments can set scroll positions before this attachment runs.
+     Moving the frame resets those positions in Chromium, including the time
+     picker's drums. Restore them before the frame paints at its new layer. */
+  const scrolled = [node, ...node.querySelectorAll('*')].flatMap((element) => {
+    if (!(element instanceof HTMLElement) || (!element.scrollTop && !element.scrollLeft)) return [];
+    return [{ element, top: element.scrollTop, left: element.scrollLeft }];
+  });
   root.append(node);
+  for (const { element, top, left } of scrolled) {
+    element.scrollTop = top;
+    element.scrollLeft = left;
+  }
   /* Svelte's block anchors remain at the original location. */
   return () => node.remove();
 }
