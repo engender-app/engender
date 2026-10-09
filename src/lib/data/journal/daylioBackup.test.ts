@@ -114,8 +114,14 @@ test.each([false, true])('repeated attachments import independently and remain i
   });
   const entries = (await journal.entries.recentDays(10)).filter((entry) => entry.photos.length > 0);
   const milestone = (await journal.milestones.getMilestones()).find((milestone) => milestone.photo)!;
-  const kept = [entries[1].photos[0].fileName, thumbFileName(entries[1].photos[0].fileName),
-    entries[1].recordings[0].fileName, milestone.photo!.fileName, thumbFileName(milestone.photo!.fileName)];
+  const removedPhotoName = entries[0].photos[0].fileName;
+  const keptPhotoName = entries[1].photos[0].fileName;
+  const milestonePhotoName = milestone.photo?.fileName;
+  assert.ok(removedPhotoName);
+  assert.ok(keptPhotoName);
+  assert.ok(milestonePhotoName);
+  const kept = [keptPhotoName, thumbFileName(keptPhotoName),
+    entries[1].recordings[0].fileName, milestonePhotoName, thumbFileName(milestonePhotoName)];
   const keptBytes = await Promise.all(kept.map((name) => files.read(name)));
   assert.ok(keptBytes.every((bytes) => bytes !== null));
   const storedNames = files.names();
@@ -128,7 +134,7 @@ test.each([false, true])('repeated attachments import independently and remain i
 
   await journal.entries.upsertEntry({ id: entries[0].id, removePhotoIds: [entries[0].photos[0].id],
     removeRecordingIds: [entries[0].recordings[0].id] });
-  assert.equal(await files.read(entries[0].photos[0].fileName), null);
+  assert.equal(await files.read(removedPhotoName), null);
   assert.equal(await files.read(entries[0].recordings[0].fileName), null);
   assert.deepEqual(await Promise.all(kept.map((name) => files.read(name))), keptBytes);
 });
@@ -176,12 +182,16 @@ test('equal-checksum attachments within one entry commit and delete independentl
   assert.equal(result.attachmentsAdded, 7);
   const entry = (await journal.entries.recentDays(10)).find((entry) => entry.photos.length === 2)!;
   assert.ok(entry);
+  const removedPhotoName = entry.photos[0].fileName;
+  const keptPhotoName = entry.photos[1].fileName;
+  assert.ok(removedPhotoName);
+  assert.ok(keptPhotoName);
   await journal.entries.upsertEntry({ id: entry.id, removePhotoIds: [entry.photos[0].id],
     removeRecordingIds: [entry.recordings[0].id] });
-  assert.equal(await files.read(entry.photos[0].fileName), null);
+  assert.equal(await files.read(removedPhotoName), null);
   assert.equal(await files.read(entry.recordings[0].fileName), null);
-  assert.ok(await files.read(entry.photos[1].fileName));
-  assert.ok(await files.read(thumbFileName(entry.photos[1].fileName)));
+  assert.ok(await files.read(keptPhotoName));
+  assert.ok(await files.read(thumbFileName(keptPhotoName)));
   assert.ok(await files.read(entry.recordings[1].fileName));
 });
 
