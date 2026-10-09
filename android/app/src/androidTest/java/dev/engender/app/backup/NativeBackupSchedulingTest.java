@@ -415,7 +415,7 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
             grantDestination();
             synchronized (BackupWork.OWNER) {
                 PersistentBackup.clear(app);
-                preferences.edit().clear().putBoolean("enabled", true).putString("schedule", "weekly")
+                preferences.edit().clear().putBoolean("enabled", !deferred).putString("schedule", "weekly")
                     .putString("destinationUri", tree.toString()).commit();
             }
             if (deferred) {
@@ -430,7 +430,9 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 }
                 }
                 long last = System.currentTimeMillis() - 7 * BackupWork.DAY + 45000;
-                preferences.edit().putLong("lastSuccessAt", last).putLong("proofPreviousSuccess", last).commit();
+                preferences.edit().putBoolean("enabled", true).remove("deferredAt")
+                    .putLong("lastSuccessAt", last).putLong("proofPreviousSuccess", last).commit();
+                assertFalse("deferral must not predate cold execution", preferences.contains("deferredAt"));
                 BackupWork.schedule(app);
                 return;
             }
