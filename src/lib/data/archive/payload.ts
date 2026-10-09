@@ -1057,9 +1057,73 @@ const presetBecomesTickedScales: PayloadMigration = (payload) => {
   };
 };
 
+/** The published alpha wrote v1 with seven sections. Later pre-release
+    additions did not change that format number. Recognise that original
+    shape only; malformed present sections and partial newer shapes still
+    reach the restore guards unchanged. */
+const alphaSections = ['dimensions', 'presets', 'tagGroups', 'entries', 'milestones', 'labResults', 'reminders'] as const;
+const postAlphaSections = [
+  'presentations',
+  'entryTemplates',
+  'affirmations',
+  'bodyRegions',
+  'marginNotes',
+  'wordIgnore',
+  'documents',
+  'measurementTypes',
+  'measurements',
+  'sizeRecords',
+  'taper',
+  'taperSessions',
+  'sideEffects',
+  'cycleEvents',
+  'journalingPauses',
+  'savedQuestions',
+  'revisits',
+  'eras',
+  'eraMutes',
+  'effectCategories',
+  'personalEffectTypes',
+  'personalEffects',
+  'hairStages',
+  'hairPhotos',
+  'hairRemovalSessions',
+  'procedures',
+  'appointments',
+  'tallyEvents',
+  'counterevidenceSnapshots',
+  'letters',
+  'voicePracticeTakes',
+  'roadmapChecks',
+  'roadmapTracks',
+  'roadmapGoals',
+  'regimenEpisodes',
+  'doseEvents',
+  'doseSchedules',
+  'dosePauses',
+  'medicationStock',
+  'tryouts',
+  'feltSenseEntries',
+  'checklists',
+  'wearSessions',
+  'voiceBenchmarks',
+  'comfortItems',
+  'areaStates',
+  'importLog',
+] as const satisfies readonly (keyof ArchiveJournal)[];
+
+const alphaBecomesCompleteJournal: PayloadMigration = (payload) => {
+  const journal = payload.journal;
+  if (!alphaSections.every((name) => Array.isArray(journal?.[name])) ||
+      postAlphaSections.some((name) => Object.hasOwn(journal, name))) return payload;
+  const complete = { ...journal };
+  for (const name of postAlphaSections) complete[name] = [];
+  return { ...payload, journal: complete };
+};
+
 /** Step i migrates a payload written at format version i + 1. Appending here
     is what a format change costs, and the ladder below then walks it. */
-export const PAYLOAD_MIGRATIONS: readonly PayloadMigration[] = [presetBecomesTickedScales];
+export const PAYLOAD_MIGRATIONS: readonly PayloadMigration[] = [(payload) => alphaBecomesCompleteJournal(presetBecomesTickedScales(payload))];
 
 /** Walks the version ladder one step at a time, so a v1 archive opened by
     a build on v4 goes through every shape in between rather than needing a
