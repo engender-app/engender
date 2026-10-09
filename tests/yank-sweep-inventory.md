@@ -13,6 +13,17 @@ hit-test; its label and ID identify the chosen control. Cold-load and injected-p
 remain explicit programmatic cases. An unchanged destination or state is also an error. The
 report records the requested selector, chosen control and actual outcome.
 
+Both web runners accept `--viewport WIDTHxHEIGHT`. The default remains
+`390x844`; use `--viewport 1280x900` to exercise the desktop layout. Each
+partial and final report records its viewport. Run gesture and cold-load
+matrices at both sizes when claiming coverage of both web layouts, using
+separate output directories. The physical-device runner uses the device's
+actual WebView dimensions.
+Door scenes select the visible control from the mobile bar or desktop rail.
+Above 600px, the injected bloat mark widens to 35% of the viewport so its
+painted defect still exceeds the unchanged camera proof threshold. Narrow
+and device proof geometry stays unchanged.
+
 Theme and palette preparation wait for their actual reset transition and
 boot preference mirror before another control is tested. Measurement still
 starts after preparation with its existing window.

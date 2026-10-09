@@ -16,6 +16,14 @@ import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { decodePng, grayFrame } from './png-decode.mjs';
 
+export function parseSweepViewport(value) {
+  const dimensions = typeof value === 'string' && /^[1-9]\d*x[1-9]\d*$/.test(value)
+    ? value.split('x').map(Number) : [];
+  if (dimensions.length !== 2 || dimensions.some((dimension) => !Number.isSafeInteger(dimension)))
+    throw new Error('viewport must be WIDTHxHEIGHT with positive integer dimensions');
+  return { width: dimensions[0], height: dimensions[1] };
+}
+
 /** A jump under this many pixels is not a teleport however sharp it is: at
     390px wide, a mark moving 12px in a frame is still inside its own glyph. */
 export const TELEPORT_PX = 14;
@@ -240,10 +248,10 @@ export const PROOF = {
    to stop on; each transport implements its own walk (Playwright locators
    on desktop, devtools evaluates on the device). */
 const SCENES = [
-  { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
-  { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
-  { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind down to Transition' },
-  { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind back to the tallest field' },
+  { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
+  { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
+  { name: 'door-lookback-transition', at: '/stats', act: '[data-nav-item="settings"], [data-rail-item="settings"]', nav: true, after: {"route": "/more"}, is: 'the blind down to Transition' },
+  { name: 'door-transition-today', at: '/more', act: '[data-nav-item="home"], [data-rail-item="home"]', nav: true, after: {"route": "/"}, is: 'the blind back to the tallest field' },
   { name: 'deep-settings-tags', at: '/settings', act: 'a[href="/settings/tags"]', prepare: ['[data-list-row="tag-groups"]'], nav: true, after: {"route": "/settings/tags"}, is: 'a door into a deep screen' },
   { name: 'deep-back', at: '/settings/tags', act: 'back', nav: true, after: {"route": "/settings"}, is: 'a deep screen back to its door' },
   { name: 'sheet-quick-add', at: '/', act: '[data-rail-add], [data-nav-fab]', after: {"selector": "[data-fan]"}, is: 'the sheet rising' },
@@ -914,6 +922,8 @@ export const INJECT_PROOF_EXPRESSION =
     cut.style.top = '240px';
     const bloat = make('yank-proof-bloat');
     bloat.style.top = '280px';
+    // Keep the injected paint defect visible to the same area threshold on desktop.
+    bloat.style.width = `${innerWidth > 600 ? innerWidth * 0.35 : 120}px`;
     const colour = make('yank-proof-colour');
     colour.style.top = '320px';
     const thereAndBack = make('yank-proof-there-and-back');
