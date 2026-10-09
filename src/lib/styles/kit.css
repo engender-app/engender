@@ -2822,22 +2822,21 @@ button.kit-strip-day .kit-strip-cell {
 
 /* --- the year, a day at a time ---
 
-   Twelve rows of up to 31 cells, a row per month (phase 11 ticket 07). It
-   was three rows of 27px faces per month, which is why the block above the
-   figures on /wrapped/year ran to 1900px and 145 svgs; a shaded cell wants
-   no size a face does, so a month is one row and the year is one screen.
-
-   `--year-columns` is the widest month, from the data (yearRows.ts), so
-   every row shares one grid and February simply stops short - a true thing
-   about February and not a gap to fill. The cell is whatever a 31st of the
-   row's width is, square, with a 2px corner (rule 5's smallest). */
+   Twelve month columns, names at the top and days below. February simply
+   stops short - a true thing about February and not a gap to fill. */
 .kit-year {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.kit-year > [data-year-month] {
+  min-width: 0;
 }
 
 .kit-year-label {
-  margin-top: var(--space-2);
+  display: block;
+  margin-bottom: var(--space-2);
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   color: var(--text-2);
@@ -2845,13 +2844,12 @@ button.kit-strip-day .kit-strip-cell {
 
 .kit-year-rows {
   display: grid;
-  grid-template-columns: repeat(var(--year-columns, 31), minmax(0, 1fr));
+  grid-auto-rows: 12px;
   gap: 2px;
 }
 
 .kit-year-cell {
   display: block;
-  aspect-ratio: 1;
   border-radius: 2px;
 }
 
