@@ -59,10 +59,11 @@ try {
         const start = performance.now();
         const tick = () => {
           const at = performance.now() - start;
-          const items = [...document.querySelectorAll('[data-lookback-fact], [data-reading], [data-lookback-thin], [data-lookback-read]')].map(el => {
+          const nav = document.querySelector('[data-app-nav]')?.getBoundingClientRect();
+          const items = [...document.querySelectorAll('[data-lookback-fact], [data-reading], [data-lookback-thin], [data-lookback-read], [data-era-offer] .era-offer-said, [data-era-offer-confirm], [data-era-offer-dismiss], [data-tile="wrapped"], [data-tile="on-this-day"]')].map(el => {
             const box = el.getBoundingClientRect();
             const css = getComputedStyle(el);
-            let opacity = Number(css.opacity);
+            let opacity = css.visibility === 'hidden' ? 0 : Number(css.opacity);
             let left = box.left, right = box.right, top = box.top, bottom = box.bottom;
             const ancestors = [];
             for (let parent = el.parentElement; parent; parent = parent.parentElement) {
@@ -70,17 +71,22 @@ try {
               const clip = parent.getBoundingClientRect();
               opacity *= Number(style.opacity);
               if (style.visibility === 'hidden') opacity = 0;
+              const inset = /^inset\(([\d.]+)px 0px 0px/.exec(style.clipPath);
+              if (inset) top = Math.max(top, clip.top + Number(inset[1]));
               if (['clip', 'hidden', 'auto', 'scroll'].includes(style.overflowX)) { left = Math.max(left, clip.left); right = Math.min(right, clip.right); }
               if (['clip', 'hidden', 'auto', 'scroll'].includes(style.overflowY)) { top = Math.max(top, clip.top); bottom = Math.min(bottom, clip.bottom); }
               if (style.overflow !== 'visible' || style.height !== 'auto') ancestors.push({ tag: parent.className, y: clip.y, height: clip.height, overflow: style.overflow });
             }
-            return { visible: { x: left, y: top, width: Math.max(0, right-left), height: Math.max(0, bottom-top) }, ancestors, key: el.dataset.reading ?? (el.hasAttribute('data-lookback-fact') ? el.textContent.trim() : el.hasAttribute('data-lookback-thin') ? 'thin' : 'wrapped'), x: box.x, y: box.y, width: box.width, height: box.height, opacity, position: css.position, transform: css.transform, overflow: css.overflow, text: el.textContent.trim() };
+            if (nav?.width && left >= nav.left && right <= nav.right) bottom = Math.min(bottom, nav.top);
+            return { visible: { x: left, y: top, width: Math.max(0, right-left), height: Math.max(0, bottom-top) }, ancestors, key: el.dataset.reading ?? el.dataset.tile ?? (el.hasAttribute('data-lookback-fact') ? el.textContent.trim() : el.hasAttribute('data-lookback-thin') ? 'thin' : el.hasAttribute('data-lookback-read') ? 'wrapped-link' : el.textContent.trim()), x: box.x, y: box.y, width: box.width, height: box.height, opacity, position: css.position, transform: css.transform, overflow: css.overflow, text: el.textContent.trim() };
           });
           const swaps = [...document.querySelectorAll('.lookback-reading-slot')].map(el => ({
             top: el.getBoundingClientRect().top,
             heights: el.getAnimations().flatMap(animation => animation.effect.getKeyframes().filter(frame => frame.height !== undefined).map(frame => parseFloat(frame.height)))
           }));
-          window.__spanSamples.push({ at, items, swaps });
+          const surrounding = document.querySelector('[data-tile="wrapped"]')?.closest('.screen-part');
+          const card = document.querySelector('[data-tile="wrapped"]');
+          window.__spanSamples.push({ at, items, swaps, surrounding: surrounding && { top: surrounding.getBoundingClientRect().top, transform: getComputedStyle(surrounding).transform, cardTop: card.getBoundingClientRect().top, animations: surrounding.getAnimations().map(a => ({ start: a.startTime, current: a.currentTime, frames: a.effect.getKeyframes() })) } });
           if (at < 1000) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
@@ -90,9 +96,9 @@ try {
       const { samples, start } = await page.evaluate(() => ({ samples: window.__spanSamples, start: window.__spanStart }));
       assert(samples.length >= 20, 'probe collects at least twenty animation-frame samples');
       const firstHeightTravel = samples.flatMap(sample => sample.swaps).find(swap => swap.heights.length);
-      assert(reduced || firstHeightTravel, 'reading replacement records bounded height travel');
+      assert(!firstHeightTravel, 'reading replacement does not animate grid height');
       const heightFrames = samples.flatMap(sample => sample.swaps.flatMap(swap => swap.heights));
-      if (firstHeightTravel) assert(Math.max(...heightFrames) <= Math.max(0, 844 - firstHeightTravel.top) + 2, 'reading replacement height travel stays within visible viewport');
+      assert.equal(heightFrames.length, 0, 'reading slots have no layout-property keyframes');
       assert(frames.length >= 3, 'camera sees transition frames');
       assert(frames.every((frame, i) => i === 0 || frame.at >= frames[i - 1].at), 'camera timestamps are monotonic');
       const collisions = samples.flatMap(sample => sample.items.flatMap((a, i) => sample.items.slice(i + 1).filter(b => a.opacity > .15 && b.opacity > .15 && a.visible.y < 844 && b.visible.y < 844 && Math.min(a.visible.x+a.visible.width,b.visible.x+b.visible.width)-Math.max(a.visible.x,b.visible.x)>2 && Math.min(a.visible.y+a.visible.height,b.visible.y+b.visible.height)-Math.max(a.visible.y,b.visible.y)>2).map(b => ({ at: sample.at, a: a.key, b: b.key }))));
