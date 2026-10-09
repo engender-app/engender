@@ -280,7 +280,7 @@ npm run verify:build
 The [browser capability matrix](docs/browser-capabilities.md) also runs
 Firefox and automated WebKit against the built app. Run
 `npm run verify:capabilities` after a production build, then
-`npm run verify:capabilities:lifecycle` after a demo build. Automated WebKit
+`npm run verify:capabilities:lifecycle` against the same build. Automated WebKit
 provides engine evidence; actual Safari and iOS PWA remain unverified.
 
 
