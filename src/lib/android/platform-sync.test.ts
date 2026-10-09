@@ -62,7 +62,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -79,7 +79,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.', 'Your pace is the right pace.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -96,7 +96,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -113,14 +113,14 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
     expect(payload.latestEntryEpochDay).toBeNull();
   });
 
-  test('a journaling pause covering today quiets the check-in prompt without touching the preference itself', () => {
+  test('carries dated pauses without changing the check-in preference', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
@@ -130,11 +130,26 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: true,
+      journalingPauses: [{ startEpochDay: 20309, endEpochDay: 20311 }],
       texts: TEXTS
     });
 
-    expect(payload.checkInEnabled).toBe(false);
+    expect(payload.checkInEnabled).toBe(true);
+    expect(payload.journalingPauses).toEqual([{ startEpochDay: 20309, endEpochDay: 20311 }]);
+  });
+
+  test('carries future and open-ended pauses for native scheduling', () => {
+    const journalingPauses = [
+      { startEpochDay: 20315, endEpochDay: 20317 },
+      { startEpochDay: 20320, endEpochDay: null }
+    ];
+    const payload = assembleReminderSyncPayload({
+      reminders: [], recentEntries: [], checkInEnabled: true, checkInTime: '21:30',
+      checkInAffirmationsEnabled: false, affirmationLines: [], hideNotificationTitles: false,
+      ...ALL_ON, journalingPauses, texts: TEXTS
+    });
+    expect(payload.checkInEnabled).toBe(true);
+    expect(payload.journalingPauses).toEqual(journalingPauses);
   });
 
   test('checkInEnabled stays false when it was already off, regardless of a pause', () => {
@@ -147,7 +162,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -164,7 +179,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: PREFERENCE_DEFAULTS.hideNotificationTitles,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -181,7 +196,7 @@ describe('assembleReminderSyncPayload', () => {
       affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS
     });
 
@@ -261,7 +276,7 @@ describe('what the payload carries about the registry', () => {
       affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      pausedToday: false,
+      journalingPauses: [],
       texts: TEXTS,
       ...over
     });
@@ -579,8 +594,11 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
   test('resyncs reminder schedules when a journaling pause write is announced', async () => {
     const onTablesWritten = vi.fn();
     const deps = makeDeps({ onTablesWritten });
+    const pauses = [{ startEpochDay: 20314, endEpochDay: 20316 }];
+    vi.mocked(deps.journal.journalingPauses.getPauses).mockResolvedValue(pauses);
     platformSync.startAndroidPlatformSync(deps);
     await flush();
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].journalingPauses).toEqual(pauses);
     const notifyReminderWrites = onTablesWritten.mock.calls[0][0] as (tables: string[]) => void;
 
     notifyReminderWrites(['journalingPause']);

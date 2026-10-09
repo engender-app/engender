@@ -97,6 +97,49 @@ final class ReminderPlanner {
         return occurrenceOn(today + 1, time, now.getZone());
     }
 
+    static ZonedDateTime nextCheckIn(JSONObject payload, ZonedDateTime now) {
+        if (!payload.optBoolean("checkInEnabled", false)) return null;
+        String time = payload.optString("checkInTime", "21:00");
+        int today = (int) now.toLocalDate().toEpochDay();
+        boolean todayHasEntry = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today;
+        ZonedDateTime candidate = nextCheckIn(time, now, todayHasEntry);
+        JSONArray pauses = payload.optJSONArray("journalingPauses");
+
+        while (true) {
+            int day = (int) candidate.toLocalDate().toEpochDay();
+            JSONObject pause = coveringPause(pauses, day);
+            if (pause != null) {
+                if (pause.isNull("endEpochDay")) return null;
+                candidate = occurrenceOn(pause.optInt("endEpochDay") + 1, time, now.getZone());
+                continue;
+            }
+
+            ZonedDateTime held = QuietHours.hold(candidate, payload.optJSONObject("quietHours"));
+            pause = coveringPause(pauses, (int) held.toLocalDate().toEpochDay());
+            if (pause == null) return held;
+            if (pause.isNull("endEpochDay")) return null;
+            candidate = occurrenceOn(pause.optInt("endEpochDay") + 1, time, now.getZone());
+        }
+    }
+
+    static boolean checkInAllowedOn(JSONObject payload, int day) {
+        return payload.optBoolean("checkInEnabled", false)
+            && coveringPause(payload.optJSONArray("journalingPauses"), day) == null;
+    }
+
+    private static JSONObject coveringPause(JSONArray pauses, int day) {
+        if (pauses == null) return null;
+        for (int i = 0; i < pauses.length(); i++) {
+            JSONObject pause = pauses.optJSONObject(i);
+            if (pause == null || !pause.has("startEpochDay")) continue;
+            int start = pause.optInt("startEpochDay", Integer.MAX_VALUE);
+            int end = pause.isNull("endEpochDay") ? Integer.MAX_VALUE
+                : pause.optInt("endEpochDay", Integer.MIN_VALUE);
+            if (start <= day && day <= end) return pause;
+        }
+        return null;
+    }
+
     private static ZonedDateTime occurrenceOn(int epochDay, String hhmm, ZoneId zone) {
         LocalDate day = LocalDate.ofEpochDay(epochDay);
         LocalTime time = parseTime(hhmm);

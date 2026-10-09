@@ -56,7 +56,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
     private void handleCheckIn(Context context, JSONObject payload) {
         ZonedDateTime now = ZonedDateTime.now();
         int today = (int) now.toLocalDate().toEpochDay();
-        boolean skip = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today;
+        boolean skip = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today
+            || !ReminderPlanner.checkInAllowedOn(payload, today);
 
         if (!skip) postCheckInNotification(context, payload, today);
         ReminderScheduler.scheduleCheckIn(context, payload, now);
