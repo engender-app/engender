@@ -137,6 +137,7 @@ import {
   readRenderYanks,
   scenesFor,
   sceneForTheme,
+  parseSweepViewport,
   samplerExpression
 } from './yank-sweep-core.mjs';
 
@@ -147,6 +148,7 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const root = resolve(flag('root', resolve(here, '..')));
+const viewport = parseSweepViewport(flag('viewport', '390x844'));
 const outDir = resolve(flag('out', resolve(here, '../.claude/yank-sweep')));
 const only = flag('scenes', '')
   .split(',')
@@ -186,10 +188,10 @@ const browser = await launchChromium();
 const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
-const recorder = createReportRecorder(outDir, { target: 'desktop' }, SCENES, profiles, themes, passes, errors);
+const recorder = createReportRecorder(outDir, { target: 'desktop', viewport }, SCENES, profiles, themes, passes, errors);
 const report = recorder.report;
 
-let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+let page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
 page.on('pageerror', (err) => { errors.push(String(err)); recorder.persist(); });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 
@@ -320,6 +322,7 @@ await writeFile(
   JSON.stringify(
     {
       target: 'desktop',
+      viewport,
       complete: true,
       themes,
       passes,
