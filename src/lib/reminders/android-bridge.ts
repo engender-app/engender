@@ -13,6 +13,7 @@ export interface AndroidReminderSyncPayload {
   reminders: Reminder[];
   checkInEnabled: boolean;
   checkInTime: string;
+  journalingPauses: Array<{ startEpochDay: number; endEpochDay: number | null }>;
   /** The affirmation pool the check-in notification draws its daily line
       from (phase 4 features ticket 22), already in the app's language.
       Empty when affirmations are turned off - the native side never sees
