@@ -9,10 +9,10 @@ import { beginTabArrival, endTabArrival, playAfterPaint } from '$lib/motion/scre
 
 const FIELD = '[data-screen-field], [data-home-field]';
 const SCREEN = '[data-app-scroll-region] .screen';
-let finishCurrent: (complete?: Promise<void>) => void = () => {};
+let finishCurrent: (complete?: Promise<void>) => () => void = () => () => {};
 
-export function finishAndroidTab(complete?: Promise<void>): void {
-  finishCurrent(complete);
+export function finishAndroidTab(complete?: Promise<void>): () => void {
+  return finishCurrent(complete);
 }
 
 function bodyOf(screen: HTMLElement, field: HTMLElement | null): HTMLElement[] {
@@ -92,8 +92,10 @@ function animateIn(fromHeight: number, toPath: string, type: string): Promise<vo
   });
 }
 
-export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
-  finishCurrent(navigation.complete);
+export function animateAndroidTab(
+  navigation: OnNavigate,
+  releasePrevious = finishCurrent(navigation.complete)
+): Promise<void> {
   ui.tabMoving = true;
   const outgoing: Animation[] = [];
   let releaseNavigation = () => {};
@@ -106,12 +108,13 @@ export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
       for (const animation of departing) animation.pause();
       void complete.then(cancel, cancel);
     } else cancel();
-    releaseNavigation();
+    if (!complete) releaseNavigation();
     if (finishCurrent === finish) {
       endTabArrival();
       ui.tabMoving = false;
-      finishCurrent = () => {};
+      finishCurrent = () => () => {};
     }
+    return releaseNavigation;
   };
   finishCurrent = finish;
   const fromField = document.querySelector<HTMLElement>(FIELD);
@@ -142,8 +145,8 @@ export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
     });
   }
   return new Promise((resolve) => {
-    releaseNavigation = resolve;
-    void Promise.all(outgoing.map((animation) => animation.finished.catch(() => {}))).then(() => resolve());
+    releaseNavigation = () => { releasePrevious(); resolve(); };
+    void Promise.all(outgoing.map((animation) => animation.finished.catch(() => {}))).then(releaseNavigation);
     void navigation.complete.then(() => {
       for (const animation of outgoing) animation.cancel();
       if (finishCurrent === finish && navigation.to) return animateIn(fromHeight, navigation.to.url.pathname, navigation.type);
