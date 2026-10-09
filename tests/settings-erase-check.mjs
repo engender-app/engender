@@ -89,11 +89,12 @@ async function setUp(page, mode) {
   await page.locator('[data-leave-setup]').click();
   await page.locator('[data-access-modes]').waitFor();
   await chooseMode(page, mode);
-  for (let i = 0; i < 20 && !(await page.locator('[data-home-hello]').count()); i++) {
-    if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click().catch(() => {});
-    else if (await page.locator('[data-skip-recovery-offer]').count()) await page.locator('[data-skip-recovery-offer]').click().catch(() => {});
-    await page.waitForTimeout(500);
-  }
+  await finishSetup(page);
+}
+
+async function finishSetup(page) {
+  await page.locator('[data-app-root][data-boot="ready"]').waitFor();
+  await page.locator('[data-leave-setup]').click();
   await page.locator('[data-home-hello]').waitFor();
 }
 
@@ -214,12 +215,21 @@ async function check(mode) {
     /* A fresh start finds no keystore to unlock and no entry from before. */
     await page.locator('[data-leave-setup]').click();
     await page.locator('[data-access-modes]').waitFor();
-    await chooseMode(page, 'device-bound');
-    for (let i = 0; i < 20 && !(await page.locator('[data-home-hello]').count()); i++) {
-      if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click().catch(() => {});
-      await page.waitForTimeout(500);
+    if (mode === 'device-bound') {
+      // Key creation can outlast the old ten-second setup polling loop.
+      // Hold one real crypto result; the journal still uses its real key.
+      await page.evaluate(() => {
+        const generateKey = crypto.subtle.generateKey.bind(crypto.subtle);
+        crypto.subtle.generateKey = async (...args) => {
+          crypto.subtle.generateKey = generateKey;
+          const key = await generateKey(...args);
+          await new Promise((resolve) => setTimeout(resolve, 12_000));
+          return key;
+        };
+      });
     }
-    await page.locator('[data-home-hello]').waitFor();
+    await chooseMode(page, 'device-bound');
+    await finishSetup(page);
     assert.equal(await findsNote(page), false, `${mode}: the old entry is gone`);
     console.log(`PASS ${mode}: a new journal after the erase holds nothing from before`);
     assert.deepEqual(errors, [], `${mode}: no page errors`);
