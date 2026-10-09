@@ -89,9 +89,9 @@ test('a web journal with a passphrase keystore reaches the unlock gate', () => {
   expect(effects).toEqual([]);
 });
 
-test('a web journal held only by a device-bound key unlocks itself', () => {
+test.each([false, true])('a web journal held only by a device-bound key unlocks itself (demo: %s)', (demo) => {
   const { machine, effects } = walk(
-    started('web'),
+    started('web', demo),
     surveyedWeb({ deviceBoundKeystoreExists: true })
   );
 
