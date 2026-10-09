@@ -22,15 +22,13 @@ unset VPS_DEPLOY_KEY VPS_KNOWN_HOSTS
 bundle="engender-web-${RELEASE_TAG#v}.tar.gz"
 gh release download "$RELEASE_TAG" --pattern "$bundle" --pattern SHA256SUMS --dir "$work"
 (cd "$work" && sha256sum --check --strict --ignore-missing SHA256SUMS)
-mkdir -p "$work/payload/build" "$work/payload/scripts"
+mkdir -p "$work/payload/build"
 tar -xzf "$work/$bundle" -C "$work/payload/build"
 node --input-type=module - "$work/payload/build/release.json" "${RELEASE_TAG#v}" <<'NODE'
 import { readFileSync } from 'node:fs';
 import { strict as assert } from 'node:assert';
 assert.equal(JSON.parse(readFileSync(process.argv[2], 'utf8')).version, process.argv[3]);
 NODE
-cp scripts/journal-release.mjs scripts/app-version.mjs "$work/payload/scripts/"
-
 tar -czf - -C "$work/payload" . | ssh -T -F /dev/null \
   -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
   -o "UserKnownHostsFile=$work/known_hosts" -o GlobalKnownHostsFile=/dev/null \

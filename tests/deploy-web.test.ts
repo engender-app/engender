@@ -49,7 +49,7 @@ describe('web deployment transport', () => {
     const { root, result } = replay();
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, 'received/build/index.html'), 'utf8')).toBe('release document');
-    expect(existsSync(join(root, 'received/scripts/journal-release.mjs'))).toBe(true);
+    expect(existsSync(join(root, 'received/scripts'))).toBe(false);
     expect(readFileSync(join(root, 'ssh-args'), 'utf8')).toContain('StrictHostKeyChecking=yes');
     expect(readFileSync(join(root, 'key-mode'), 'utf8').trim()).toBe('600');
     expect(existsSync(readFileSync(join(root, 'key-path'), 'utf8'))).toBe(false);
