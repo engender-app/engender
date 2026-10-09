@@ -154,6 +154,20 @@ function deploy(source, options) {
     );
   }
   const name = releaseName(metadata);
+  const previous = currentTarget(options.current);
+  if (previous) {
+    const currentMeta = readReleaseMetadata(previous);
+    if (metadata.schemaMax < currentMeta.schemaMax) {
+      die(`Refusing deploy: schemaMax ${metadata.schemaMax} is lower than current ${currentMeta.schemaMax}`);
+    }
+    const stable = /^\d+\.\d+\.\d+$/;
+    if (stable.test(metadata.version) && stable.test(currentMeta.version)) {
+      const candidate = metadata.version.split('.').map(Number);
+      const currentVersion = currentMeta.version.split('.').map(Number);
+      const difference = candidate.map((value, index) => value - currentVersion[index]).find((value) => value !== 0);
+      if (difference < 0) die(`Refusing deploy of ${metadata.version} over newer ${currentMeta.version}`);
+    }
+  }
 
   mkdirSync(options.root, { recursive: true });
   const targetPath = join(options.root, name);
@@ -162,7 +176,6 @@ function deploy(source, options) {
   }
 
   const staging = join(options.root, `.staging-${name}-${Date.now()}-${process.pid}`);
-  const previous = currentTarget(options.current);
 
   try {
     cpSync(sourcePath, staging, { recursive: true, errorOnExist: true, force: false });
