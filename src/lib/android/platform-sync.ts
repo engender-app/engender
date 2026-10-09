@@ -299,7 +299,10 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   if (!subscribedToTableWrites) {
     subscribedToTableWrites = true;
     deps.onTablesWritten((tables) => {
-      if (tables.includes('reminder') || tables.includes('entry') || tables.includes('journalingPause')) {
+      if (
+        tables.includes('reminder') || tables.includes('entry') ||
+        tables.includes('journalingPause') || tables.includes('areaState')
+      ) {
         void syncReminderSchedules();
       }
     });
