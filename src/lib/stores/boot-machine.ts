@@ -73,6 +73,8 @@ export type BootEvent =
       a key the platform handed over unasked does not. */
   | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean }
   | { type: 'journal-opened'; journal: Journal }
+  /** A web lock superseded cold boot before it published journal access. */
+  | { type: 'journal-open-cancelled' }
   /** The persistence request came back denied, whenever the browser answers
       (ticket 202) - decoupled from `journal-opened` because that no longer
       waits for it. */
@@ -289,6 +291,9 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       }
       return step(machine, ready);
     }
+
+    case 'journal-open-cancelled':
+      return step({ ...machine, journalOpening: false }, bootTransitions.toNeedsUnlock(machine.boot));
 
     case 'persist-request-denied':
       /* Not ready yet: nothing to mark denied on, so the fact is carried on

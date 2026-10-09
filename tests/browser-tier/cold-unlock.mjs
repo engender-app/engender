@@ -19,6 +19,31 @@ export async function coldUnlock(browser, origin) {
       await page.addInitScript((native) => {
         window.__DEMO__ = false;
         window.__APP_VERSION__ = '0.0.0-browser-tier';
+        window.closedJournalWorkers = 0;
+        window.lockWhenJournalOpens = false;
+        window.reconcileBusy = [];
+        const BrowserWorker = window.Worker;
+        window.Worker = class extends BrowserWorker {
+          constructor(url, options) {
+            super(url, options);
+            this.journalWorker = String(url).includes('mc-worker');
+          }
+          terminate() {
+            if (this.journalWorker) window.closedJournalWorkers++;
+            super.terminate();
+          }
+          postMessage(message, ...options) {
+            if (this.journalWorker && message.op === 'query' && message.args.sql === 'PRAGMA application_id') {
+              window.reconcileBusy.push(window.coldBusy.journalIsBusy());
+            }
+            super.postMessage(message, ...options);
+            if (this.journalWorker && message.op === 'open' && window.lockWhenJournalOpens) {
+              window.lockWhenJournalOpens = false;
+              Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+              document.dispatchEvent(new Event('visibilitychange'));
+            }
+          }
+        };
         const credential = {
           rawId: new Uint8Array([1]).buffer,
           getClientExtensionResults: () => ({ prf: { enabled: true, results: { first: new Uint8Array(32).fill(7).buffer } } })
@@ -47,6 +72,7 @@ export async function coldUnlock(browser, origin) {
           window.coldBoot = await import(`${source}/stores/boot.svelte.ts`);
           window.coldLock = await import(`${source}/stores/lock.svelte.ts`);
           window.coldPrefs = await import(`${source}/data/prefs/store.svelte.ts`);
+          window.coldBusy = await import(`${source}/data/journal-busy.ts`);
           coldBoot.startBoot();
           coldLock.watchLock(coldBoot.closeJournalForLock);
         }, source);
@@ -59,6 +85,7 @@ export async function coldUnlock(browser, origin) {
           mode === 'recovery' ? 'passphrase' : mode, mode === 'pin' ? '1234' : secret
         ), { mode, secret }), 'ok');
         await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+        assert.deepEqual(await page.evaluate(() => window.reconcileBusy), [true], `${mode} setup reconciliation guard`);
         await page.evaluate(() => coldPrefs.setPreferenceDurably('lockAfter', 'immediately'));
         if (mode === 'recovery') {
           recoveryKey = await page.evaluate(async (source) => {
@@ -123,6 +150,99 @@ export async function coldUnlock(browser, origin) {
         await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
         assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), false, `${mode} retry`);
         assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
+        assert.deepEqual(await page.evaluate(() => window.reconcileBusy), [true], `${mode} unlock reconciliation guard`);
+
+        const entryId = await page.evaluate(() => coldBoot.bootState.journal.entries.upsertEntry({
+          epochDay: 20000, mood: 3, note: 'Kept across a cancelled cold boot'
+        }));
+        await load();
+        await page.waitForFunction(() => coldBoot.bootState.status === 'needs-unlock');
+        const submit = async ({ mode, secret, recoveryKey, leave }) => {
+          // Hide after the real worker receives its key, before it answers.
+          window.lockWhenJournalOpens = leave;
+          if (mode === 'pin') await coldBoot.submitPinUnlock('1234');
+          else if (mode === 'biometric') await coldBoot.submitBiometricUnlock();
+          else if (mode === 'recovery') await coldBoot.submitRecoveryKeyUnlock(recoveryKey);
+          else await coldBoot.submitPassphraseUnlock(secret);
+        };
+        await page.evaluate(submit, { mode, secret, recoveryKey, leave: true });
+        await page.waitForFunction(() => window.closedJournalWorkers > 0 || coldBoot.bootState.status === 'ready');
+        const afterBootLock = await page.evaluate(async () => ({
+          status: coldBoot.bootState.status,
+          locked: coldLock.isLocked(coldBoot.bootState.accessMode),
+          journalPresent: coldBoot.bootState.journal !== null,
+          workerClosed: window.closedJournalWorkers > 0,
+          key: await Promise.race([
+            coldBoot.journalDataKey().then(() => 'available'),
+            new Promise((resolve) => setTimeout(() => resolve('blocked'), 100))
+          ])
+        }));
+        assert.deepEqual(afterBootLock, {
+          status: 'needs-unlock', locked: true, journalPresent: false, workerClosed: true, key: 'blocked'
+        }, `${mode} lock after derivation`);
+        await page.evaluate(() => {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+          document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await page.evaluate(submit, { mode, secret, recoveryKey, leave: false });
+        await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+        assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), false, `${mode} later unlock`);
+        assert.equal(await page.evaluate((entryId) => coldBoot.bootState.journal.entries.getEntry(entryId)
+          .then((entry) => entry.note), entryId), 'Kept across a cancelled cold boot', `${mode} retained contents`);
+        assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
+        if (mode === 'passphrase') {
+          await load();
+          await page.waitForFunction(() => coldBoot.bootState.status === 'needs-unlock');
+          await page.evaluate(() => {
+            window.realViewTransition = document.startViewTransition;
+            window.heldPublications = [];
+            document.startViewTransition = (commit) => {
+              let finish;
+              const finished = new Promise((resolve) => { finish = resolve; });
+              window.heldPublications.push(async () => { await commit(); finish(); });
+              return { ready: Promise.resolve(), finished };
+            };
+          });
+          await page.evaluate(submit, { mode, secret, recoveryKey, leave: false });
+          const beforePublication = await page.evaluate(async () => ({
+            keyBytes: (await coldBoot.journalDataKey()).length,
+            status: coldBoot.bootState.status
+          }));
+          assert.deepEqual(beforePublication, { keyBytes: 32, status: 'needs-unlock' });
+          const whilePublicationWaits = await page.evaluate(async () => {
+            Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+            document.dispatchEvent(new Event('visibilitychange'));
+            await coldBoot.closeJournalForLock();
+            return {
+              locked: coldLock.isLocked(coldBoot.bootState.accessMode),
+              workerClosed: window.closedJournalWorkers > 0,
+              key: await Promise.race([
+                coldBoot.journalDataKey().then(() => 'available'),
+                new Promise((resolve) => setTimeout(() => resolve('blocked'), 100))
+              ])
+            };
+          });
+          assert.deepEqual(whilePublicationWaits, {
+            locked: true, workerClosed: true, key: 'blocked'
+          }, 'lock while ready-state publication waits');
+          await page.evaluate(async () => {
+            document.startViewTransition = window.realViewTransition;
+            for (const publish of window.heldPublications) await publish();
+            Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+            document.dispatchEvent(new Event('visibilitychange'));
+          });
+          await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+          assert.equal(await page.evaluate(() => coldBoot.bootState.journal), null);
+          await page.evaluate(async ({ source, secret }) => {
+            const { unlockJournalPassphrase } = await import(`${source}/data/journal-passphrase.ts`);
+            const current = coldLock.beginSessionUnlock();
+            await coldBoot.reopenJournalAfterUnlock(await unlockJournalPassphrase(secret), current);
+            current();
+            coldLock.markUnlocked();
+          }, { source, secret });
+          assert.equal(await page.evaluate((entryId) => coldBoot.bootState.journal.entries.getEntry(entryId)
+            .then((entry) => entry.note), entryId), 'Kept across a cancelled cold boot', 'unlock after delayed publication');
+        }
       }
       assert.deepEqual(errors, [], mode);
       verified.push(mode);
