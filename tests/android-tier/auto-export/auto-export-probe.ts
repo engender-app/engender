@@ -184,7 +184,7 @@ const probe = {
       if (JSON.stringify(actual.journal.entries) !== JSON.stringify(reopened.payload.journal.entries)) throw new Error('restored journal rows differ');
       if (actual.files.length !== 2) throw new Error('restored journal attachments absent');
       for (const file of actual.files) {
-        const image = await createImageBitmap(new Blob([await actual.readFile(file.name)], {type:'image/jpeg'}));
+        const image = await createImageBitmap(new Blob([(await actual.readFile(file.name)) as Uint8Array<ArrayBuffer>], {type:'image/jpeg'}));
         if(image.width!==64||image.height!==64)throw new Error('restored journal photo not usable');image.close();
       }
       await sqlite.driver.close();key.fill(0);
