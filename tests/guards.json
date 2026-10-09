@@ -1,5 +1,10 @@
 [
   {
+    "name": "pending-unlock-lock-check",
+    "tier": "dev",
+    "holds": "a newer lock cancels pending authentication and its opening transition"
+  },
+  {
     "name": "blind-edge-padding-check",
     "tier": "dev",
     "holds": "a padding-only change to a field still moves `--blind-edge`"
@@ -207,6 +212,11 @@
     "name": "leave-lock-check",
     "tier": "dev",
     "holds": "leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open"
+  },
+  {
+    "name": "bfcache-journal-check",
+    "tier": "built",
+    "holds": "real BFCache Back and Forward restore journal reads and writes without bypassing lock policy or retaining obsolete workers"
   },
   {
     "name": "date-picker-check",

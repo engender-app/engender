@@ -28,13 +28,14 @@
        the database has answered;
      - `release` lets go of everything else built over the key - the photo
        stores, the driver's file operations - and the journal content held
-       in memory outside the database;
+       in memory outside the database unless retained navigation keeps it;
      - `prewarm` starts a keyless worker for the next unlock, so the reopen
        costs one `open` rather than a worker start as well.
 
    Android's lock is out of scope and does not come through here: its
    database lives behind a native plugin with a lock path of its own. */
 
+import { unlockAttempts } from '../lock/unlock-attempt.ts';
 import { sessionGate, type SessionGate } from '../data/live/sessionGate.ts';
 
 interface Closable {
@@ -43,8 +44,9 @@ interface Closable {
 
 export interface JournalSessionPorts<Key, Driver extends Closable> {
   suspend(): Promise<void>;
-  open(key: Key): Promise<Driver>;
-  release(): void;
+  /** Check ownership after waits, before publishing journal access. */
+  open(key: Key, current: () => void, dispose: (driver: Driver) => Promise<void>): Promise<Driver>;
+  release(retainContent: boolean): void;
   prewarm(): void;
 }
 
@@ -58,18 +60,22 @@ export interface JournalSession<Key, Driver extends Closable> {
       waiting for it - waits for the reopened database instead of reaching
       the worker the lock terminated. The lock drains it before closing. */
   readonly connection: SessionGate<Driver>;
-  /** The open database, or null while locked. */
+  /** The open database, or null while locked or suspended for navigation. */
   readonly driver: Driver | null;
-  /** Closed by a lock and not reopened yet. */
+  /** Closed by a lock or retained navigation and not reopened yet. */
   readonly locked: boolean;
   /** The first open, which boot does itself. Opens `connection` too, which
       boot has already done as soon as the driver existed, because the
       boot's own journal calls go through it; here for callers that do not. */
   adopt(key: Key, driver: Driver): void;
   lock(): Promise<void>;
+  /** Close a retained document's gates and worker, without inventing a lock.
+      A later lock discards the key retained for this return. */
+  suspendForNavigation(retainKey: boolean): Promise<void>;
+  resumeAfterNavigation(current: () => void): Promise<void>;
   /** Reopens a journal a lock closed, under the key just derived. Does
       nothing if no lock closed it. Rejects, still locked, if it cannot. */
-  unlock(key: Key): Promise<void>;
+  unlock(key: Key, current?: () => void): Promise<void>;
 }
 
 /** How long a lock waits for the calls already running before it closes the
@@ -83,10 +89,13 @@ export function journalSession<Key, Driver extends Closable>(
   ports: JournalSessionPorts<Key, Driver>,
   { suspendLimitMs = SUSPEND_LIMIT_MS }: { suspendLimitMs?: number } = {}
 ): JournalSession<Key, Driver> {
+  const attempts = unlockAttempts();
   const key = sessionGate<Key>();
   const connection = sessionGate<Driver>();
   let driver: Driver | null = null;
   let locked = false;
+  let navigationKey: Key | null = null;
+  let navigationSuspended = false;
   /* An unlock asked for while a lock is still waiting on the journal's
      calls ends that wait. The wait is there so a save can land before the
      database closes; with the person back, the database is about to reopen
@@ -98,13 +107,53 @@ export function journalSession<Key, Driver extends Closable>(
   /* One at a time, in the order asked. Someone who comes straight back
      unlocks while the lock is still waiting for a save, and someone who
      leaves again under `immediately` locks while the unlock is reopening;
-     either way the second waits for the first to finish. */
+     either way the second waits for the first to finish. A newer lock
+     cancels the pending unlock before it can publish access. */
   let turn: Promise<void> = Promise.resolve();
   const inTurn = (step: () => Promise<void>): Promise<void> => {
     const mine = turn.then(step);
     turn = mine.catch(() => {});
     return mine;
   };
+
+  async function close(closing: Driver, interruptible: boolean, suspended?: Promise<void>) {
+    /* Fails closed: whatever suspending did or did not finish, the
+       database closes and the key goes. A lock that stopped here would
+       leave the gate drawn over a journal still open behind it. */
+    let limit: ReturnType<typeof setTimeout> | undefined;
+    const outOfTime = new Promise<void>((resolve) => {
+      limit = setTimeout(() => {
+        console.warn(`the journal was still busy ${suspendLimitMs} ms into the lock; closing it anyway`);
+        resolve();
+      }, suspendLimitMs);
+    });
+    await Promise.race([
+      (suspended ?? ports.suspend()).catch((error) => {
+        console.warn('the journal did not settle cleanly before the lock', error);
+      }),
+      outOfTime,
+      ...(interruptible ? [new Promise<void>((resolve) => {
+        stopWaiting = resolve;
+        if (unlockWaiting) resolve();
+      })] : [])
+    ]);
+    stopWaiting = null;
+    /* Whatever the journal's calls are doing now, the ones that come
+       to the database from here wait for the reopen. The ones already
+       in the worker get the rest of the same limit to answer. */
+    await Promise.race([connection.close(), outOfTime]);
+    clearTimeout(limit);
+    /* A worker that already died has nothing left to close, and the
+       key still has to go. */
+    await closing.close().catch((error) => {
+      console.warn('the journal database was already closed at the lock', error);
+    });
+    driver = null;
+    locked = true;
+    await key.close();
+    ports.release(navigationKey !== null);
+    if (!suspended && !navigationSuspended) ports.prewarm();
+  }
 
   return {
     key,
@@ -121,57 +170,67 @@ export function journalSession<Key, Driver extends Closable>(
       driver = openDriver;
       locked = false;
     },
-    lock: () =>
-      inTurn(async () => {
+    lock: () => {
+      attempts.lock();
+      navigationKey = null;
+      return inTurn(async () => {
         const closing = driver;
         if (closing === null) return;
-        /* Fails closed: whatever suspending did or did not finish, the
-           database closes and the key goes. A lock that stopped here would
-           leave the gate drawn over a journal still open behind it. */
-        let limit: ReturnType<typeof setTimeout> | undefined;
-        const outOfTime = new Promise<void>((resolve) => {
-          limit = setTimeout(() => {
-            console.warn(`the journal was still busy ${suspendLimitMs} ms into the lock; closing it anyway`);
-            resolve();
-          }, suspendLimitMs);
+        await close(closing, true);
+      });
+    },
+    suspendForNavigation(retainKey) {
+      navigationSuspended = true;
+      attempts.lock();
+      if (retainKey) navigationKey ??= key.current;
+      else navigationKey = null;
+      // Stop handing out handles in the pagehide turn, before freezing.
+      const suspended = ports.suspend();
+      void connection.close();
+      void key.close();
+      return inTurn(async () => {
+        const closing = driver;
+        if (closing !== null) await close(closing, false, suspended);
+        else await suspended;
+      });
+    },
+    async resumeAfterNavigation(current) {
+      const held = navigationKey;
+      if (held === null) return;
+      try {
+        await this.unlock(held, () => {
+          current();
+          if (navigationKey !== held) throw new Error('the retained journal session was locked');
         });
-        await Promise.race([
-          ports.suspend().catch((error) => {
-            console.warn('the journal did not settle cleanly before the lock', error);
-          }),
-          outOfTime,
-          new Promise<void>((resolve) => {
-            stopWaiting = resolve;
-            if (unlockWaiting) resolve();
-          })
-        ]);
-        stopWaiting = null;
-        /* Whatever the journal's calls are doing now, the ones that come
-           to the database from here wait for the reopen. The ones already
-           in the worker get the rest of the same limit to answer. */
-        await Promise.race([connection.close(), outOfTime]);
-        clearTimeout(limit);
-        /* A worker that already died has nothing left to close, and the
-           key still has to go. */
-        await closing.close().catch((error) => {
-          console.warn('the journal database was already closed at the lock', error);
-        });
-        driver = null;
-        locked = true;
-        await key.close();
-        ports.release();
-        ports.prewarm();
-      }),
-    unlock(derived) {
+      } finally {
+        if (navigationKey === held) navigationKey = null;
+      }
+    },
+    unlock(derived, current = () => {}) {
+      const owned = attempts.begin();
+      const check = () => {
+        owned();
+        current();
+      };
       unlockWaiting = true;
       stopWaiting?.();
       return inTurn(async () => {
         unlockWaiting = false;
+        check();
         if (!locked) return;
-        driver = await ports.open(derived);
+        const opened = await ports.open(derived, check, (opening) => close(opening, false));
+        try {
+          check();
+        } catch (error) {
+          await close(opened, false);
+          throw error;
+        }
+        driver = opened;
         connection.open(driver);
         locked = false;
         key.open(derived);
+        navigationSuspended = false;
+        navigationKey = null;
       });
     }
   };

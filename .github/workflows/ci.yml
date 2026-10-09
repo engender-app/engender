@@ -157,6 +157,8 @@ jobs:
         include:
           - name: browser-tier
             entry: tests/browser-tier/run.mjs
+          - name: update-handover
+            entry: tests/update-handover-check.mjs
           - name: walkthrough-journal
             entry: tests/walkthrough.test.mjs
             args: --group journal
@@ -213,7 +215,6 @@ jobs:
       # Nothing in this job holds a real Journal, a key or a password, which is
       # what makes the logs safe to keep after a failure.
       - name: Build the verification bundle
-        if: matrix.name != 'browser-tier'
         env:
           VITE_DEMO: ${{ startsWith(matrix.name, 'walkthrough-') && '1' || '0' }}
           ENGENDER_VERSION: ${{ startsWith(matrix.name, 'walkthrough-') && '9.9.9-walkthrough' || '' }}

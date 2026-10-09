@@ -33,6 +33,7 @@ import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-acc
 import { isAndroid } from '../platform';
 import { ui } from './ui.svelte';
 import { forgetLastResults } from '../data/live/lastResults';
+import { unlockAttempts } from '../lock/unlock-attempt';
 import { watchLeave, type NativeLeaveHooks } from '../lock/leave-lock';
 
 export const lockState = $state({
@@ -58,12 +59,17 @@ export function isLockedNow(mode: JournalAccessMode): boolean {
   return accessModeHasSecret(mode, isAndroid()) && !unlockedNow;
 }
 
+const attempts = unlockAttempts();
+
+export const beginSessionUnlock = () => attempts.begin();
+
 export function markUnlocked() {
   lockState.unlocked = true;
   unlockedNow = true;
 }
 
 function lockNow(closeJournal: () => Promise<void>) {
+  attempts.lock();
   unlockedNow = false;
   lockState.unlocked = false;
   /* A locked app keeps none of the journal in the page: the reads' last
@@ -90,6 +96,7 @@ function lockNow(closeJournal: () => Promise<void>) {
 export function watchLock(closeJournal: () => Promise<void>): () => void {
   return watchLeave({
     page: document,
+    lifecycle: window,
     native: isAndroid() ? (window as unknown as NativeLeaveHooks) : undefined,
     lockAfter: () => prefs.lockAfter,
     lock: () => lockNow(closeJournal)

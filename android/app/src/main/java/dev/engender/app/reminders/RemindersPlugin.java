@@ -43,6 +43,7 @@ public class RemindersPlugin extends Plugin {
             payload.put("checkInTime", text(call, "checkInTime", "21:00"));
             JSArray affirmations = call.getArray("checkInAffirmations");
             payload.put("checkInAffirmations", affirmations == null ? new JSArray() : affirmations);
+            payload.put("quietHours", call.getObject("quietHours"));
             payload.put("hideNotificationTitles", Boolean.TRUE.equals(call.getBoolean("hideNotificationTitles", false)));
 
             Integer latestEntryEpochDay = call.getInt("latestEntryEpochDay");
