@@ -102,8 +102,8 @@ function photoMaker(): (n: number) => Promise<NormalizedPhoto> {
 }
 
 const BACKUP_PASSWORD = 'long-journal automatic backup proof';
-const waitFor = async (condition: () => boolean) => {
-  const deadline = performance.now() + 180_000;
+const waitFor = async (condition: () => boolean, timeoutMs = 180_000) => {
+  const deadline = performance.now() + timeoutMs;
   while (!condition()) {
     if (performance.now() >= deadline) throw new Error('automatic backup instrumentation did not answer');
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -149,8 +149,11 @@ async function measureAutomaticBackup(snapshot: ArchiveSnapshot, days: number) {
   if (!crossings.calls || crossings.maxPieceBytes > 1024 * 1024 + 28 || crossings.maxInFlight !== 1) {
     throw new Error(`automatic backup transfer is not bounded: ${JSON.stringify(crossings)}`);
   }
+  const status = await androidAutoExport.status();
+  const remainingDueMs = Math.max(0, (status.nextDueAt ?? 0) - Date.now());
   window.__backupBenchmarkRequest = { days, phase: 'deliver' };
-  await waitFor(() => window.__backupBenchmarkDelivered?.days === days);
+  // Natural due delay, three minutes for worker delivery, then copy/poll margin.
+  await waitFor(() => window.__backupBenchmarkDelivered?.days === days, remainingDueMs + 180_000 + 30_000);
   const native = window.__backupBenchmarkDelivered!.native;
   if (native.bytes !== crossings.bytes || native.snapshotAt !== snapshotAt) throw new Error('staged metadata differs from transferred Archive');
 
