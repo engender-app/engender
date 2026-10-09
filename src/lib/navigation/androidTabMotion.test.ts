@@ -189,10 +189,11 @@ it('keeps the route until outgoing content fades, including content beside a nes
 });
 
 it('holds partially faded ink until the superseding navigation completes', async () => {
+  const released: string[] = [];
   const first = animateAndroidTab({
     to: { url: new URL('https://localhost/calendar') },
     complete: new Promise<void>(() => {})
-  } as OnNavigate);
+  } as OnNavigate).then(() => { released.push('first'); });
   const body = screen.children[1];
   const exit = body.animations[0];
   body.opacity = '0.25';
@@ -201,13 +202,15 @@ it('holds partially faded ink until the superseding navigation completes', async
   const second = animateAndroidTab({
     to: { url: new URL('https://localhost/more') },
     complete: new Promise<void>((resolve) => { complete = resolve; })
-  } as OnNavigate);
-  await first;
+  } as OnNavigate).then(() => { released.push('second'); });
+  await Promise.resolve();
+  expect(released).toEqual([]);
   expect(exit.pause).toHaveBeenCalledOnce();
   expect(exit.cancel).not.toHaveBeenCalled();
   expect(body.animations[1].frames[0]).toEqual({ opacity: '0.25' });
   finishAndroidTab();
-  await second;
+  await Promise.all([first, second]);
+  expect(released).toEqual(['first', 'second']);
   complete();
   await Promise.resolve();
   expect(exit.cancel).toHaveBeenCalledOnce();

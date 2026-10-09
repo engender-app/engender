@@ -37,7 +37,10 @@ const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
    <html> as a data attribute for app.css to read - the decision is a
    table, and this is only the wiring. */
 export function navigateWithTransition(navigation: OnNavigate, replacesApp: boolean): Promise<void> | void {
-  finishAndroidTab(navigation.complete);
+  const releasePrevious = finishAndroidTab(navigation.complete);
+  /* SvelteKit can still mount a superseded route after its onNavigate
+     promise resolves. Release both routes together, once the successor
+     can swap, so the intermediate route never gets a painted frame. */
   /* The bar sits above quick add's scrim so the add control stays sharp
      while the fan is up, which leaves the four tabs pressable behind it.
      Rather than making them inert - which would need the button to escape
@@ -63,7 +66,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      ones whose reads answer a few dozen milliseconds later. */
   markScreenArrival();
 
-  if (!navigation.to) return;
+  if (!navigation.to) return releasePrevious();
   const pattern = screenTransition({
     from: navigation.from?.url.pathname ?? null,
     to: navigation.to.url.pathname,
@@ -120,8 +123,8 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
     pattern === 'fade-through' &&
     TAB_ROOTS.has(navigation.from?.url.pathname ?? '') &&
     TAB_ROOTS.has(navigation.to.url.pathname)
-  ) return animateAndroidTab(navigation);
-  if (!document.startViewTransition || pattern === 'none') return;
+  ) return animateAndroidTab(navigation, releasePrevious);
+  if (!document.startViewTransition || pattern === 'none') return releasePrevious();
 
   /* The field is a blind over the content (redesign ticket 28): named
      before the old side is captured, handed to the incoming screen after
@@ -144,6 +147,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
     document.documentElement.dataset.nav = pattern;
     if (shortBlindHold) document.documentElement.dataset.blindHold = 'short';
     const transition = document.startViewTransition(async () => {
+      releasePrevious();
       resolve();
       /* Both of these reject rather than resolve when a navigation is
          superseded - a redirect landing on top of it, a second tap, a

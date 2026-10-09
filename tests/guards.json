@@ -482,5 +482,13 @@
     "diagnostics": [
       "/tmp/settings-erase-*-failure.png"
     ]
+  },
+  {
+    "name": "android-door-motion",
+    "tier": "dev",
+    "holds": "Android door departures stay continuous across warm route interruptions, return navigation and gates",
+    "diagnostics": [
+      ".claude/android-door-motion/*"
+    ]
   }
 ]
