@@ -1,0 +1,148 @@
+import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const source = `/@fs${resolve(import.meta.dirname, '../../src/lib')}`;
+const secret = 'cold-unlock-regression';
+
+/** Real boot, gates, KDF and storage. Visibility events are injected because
+ * headless Chromium keeps every tab visible. Only platform credentials are
+ * stubbed; their returned secrets still pass through the production owners. */
+export async function coldUnlock(browser, origin) {
+  const verified = [];
+  for (const mode of ['passphrase', 'pin', 'biometric', 'recovery', 'native']) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    try {
+      await page.addInitScript((native) => {
+        window.__DEMO__ = false;
+        window.__APP_VERSION__ = '0.0.0-browser-tier';
+        const credential = {
+          rawId: new Uint8Array([1]).buffer,
+          getClientExtensionResults: () => ({ prf: { enabled: true, results: { first: new Uint8Array(32).fill(7).buffer } } })
+        };
+        Object.defineProperty(navigator, 'credentials', { value: {
+          create: async () => credential, get: async () => credential
+        } });
+        if (!native) return;
+        window.androidBridge = {};
+        window.Capacitor = {
+          PluginHeaders: [
+            { name: 'Keystore', methods: ['status', 'unlock'].map((name) => ({ name, rtype: 'promise' })) },
+            { name: 'Sqlite', methods: [{ name: 'isPlaintextDatabase', rtype: 'promise' }] }
+          ],
+          nativePromise: async (_plugin, method) => {
+            if (method === 'status') return { hasKey: true, authRequired: true };
+            if (method === 'isPlaintextDatabase') return { plaintext: false };
+            if (method === 'unlock') return new Promise((resolve) => { window.answerNative = resolve; });
+            throw new Error(`unexpected native call: ${method}`);
+          }
+        };
+      }, mode === 'native');
+      const load = async () => {
+        await page.goto(`${origin}/cold-unlock.html`);
+        await page.evaluate(async (source) => {
+          window.coldBoot = await import(`${source}/stores/boot.svelte.ts`);
+          window.coldLock = await import(`${source}/stores/lock.svelte.ts`);
+          window.coldPrefs = await import(`${source}/data/prefs/store.svelte.ts`);
+          coldBoot.startBoot();
+          coldLock.watchLock(coldBoot.closeJournalForLock);
+        }, source);
+      };
+      await load();
+      let recoveryKey;
+      if (mode !== 'native') {
+        await page.waitForFunction(() => coldBoot.bootState.status === 'needs-setup');
+        assert.equal(await page.evaluate(({ mode, secret }) => coldBoot.submitAccessModeSetup(
+          mode === 'recovery' ? 'passphrase' : mode, mode === 'pin' ? '1234' : secret
+        ), { mode, secret }), 'ok');
+        await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+        await page.evaluate(() => coldPrefs.setPreferenceDurably('lockAfter', 'immediately'));
+        if (mode === 'recovery') {
+          recoveryKey = await page.evaluate(async (source) => {
+            const { mintRecoveryKey } = await import(`${source}/data/recovery-key.ts`);
+            return mintRecoveryKey(await coldBoot.journalDataKey());
+          }, source);
+        }
+        await load();
+      }
+      const gateState = mode === 'native' ? 'needs-authentication' : 'needs-unlock';
+      await page.waitForFunction((state) => coldBoot.bootState.status === state, gateState);
+      await page.evaluate(async ({ source, mode }) => {
+        if (mode === 'native') coldPrefs.prefs.lockAfter = 'immediately';
+        const { mountInto } = await import('/mount.ts');
+        const component = mode === 'native' ? 'AndroidKeyGate' : mode === 'recovery' ? 'RecoveryKeyEntry' : 'JournalGate';
+        const { default: Gate } = await import(`${source}/components/${component}.svelte`);
+        mountInto(Gate, mode === 'recovery' ? { onBack() {} } : {}, document.getElementById('gate'));
+      }, { source, mode });
+      const button = mode === 'pin' ? '[data-key="1"]' : mode === 'biometric' ? '[data-biometric-submit]'
+        : mode === 'recovery' ? '[data-submit-recovery-key]' : mode === 'native' ? '[data-key-retry]' : '[data-passphrase-submit]';
+      if (mode === 'native') await page.waitForFunction(() => typeof window.answerNative === 'function');
+      else await page.waitForFunction((button) => document.querySelector(button)?.disabled === false, button);
+      if (mode === 'passphrase') await page.locator('#journal-passphrase').fill(secret);
+      if (mode === 'recovery') await page.locator('[data-recovery-key-input]').fill(recoveryKey);
+      await page.evaluate(({ mode, button }) => {
+        if (mode === 'pin') for (const digit of '1234') document.querySelector(`[data-key="${digit}"]`).click();
+        else if (mode !== 'native') document.querySelector(button).click();
+        if (mode === 'native') {
+          window.__lockOnLeaveFromNative(false);
+          window.answerNative({ outcome: 'authenticated', hexKey: '07'.repeat(32) });
+        } else {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+      }, { mode, button });
+      await page.waitForFunction(({ button, state }) =>
+        coldBoot.bootState.status !== state || document.querySelector(button)?.disabled === false,
+      { button, state: gateState });
+      const cancelled = await page.evaluate(() => ({
+        status: coldBoot.bootState.status, locked: coldLock.isLocked(coldBoot.bootState.accessMode),
+        recovery: coldBoot.recoveryUnlock.used, timing: coldPrefs.prefs.lockAfter,
+        errors: [...document.querySelectorAll('[role="alert"]')].map((node) => node.textContent.trim()).filter(Boolean),
+        attempts: JSON.parse(localStorage.getItem('engender-pin-attempts') ?? 'null')?.wrongAttempts ?? 0
+      }));
+      assert.deepEqual(cancelled, { status: gateState, locked: true, recovery: false, timing: 'immediately', errors: [], attempts: 0 }, mode);
+      await page.evaluate((native) => {
+        if (native) window.__lockOnReturnFromNative();
+        else {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+      }, mode === 'native');
+      assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), true, `${mode} return`);
+      if (mode === 'native') {
+        // An ordinary refusal still reaches the native gate after cancellation.
+        await page.locator(button).click();
+        await page.evaluate(() => window.answerNative({ outcome: 'cancelled' }));
+        await page.waitForFunction(() => coldBoot.bootState.androidKey?.authentication?.outcome === 'cancelled');
+      } else {
+        if (mode === 'pin') for (const digit of '1234') await page.locator(`[data-key="${digit}"]`).click();
+        else await page.locator(button).click();
+        await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+        assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), false, `${mode} retry`);
+        assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
+      }
+      assert.deepEqual(errors, [], mode);
+      verified.push(mode);
+    } finally {
+      await context.close();
+    }
+  }
+  return verified;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { createServer } = await import('vite');
+  const { launchChromium } = await import('../browser-harness.mjs');
+  const server = await createServer({ configFile: resolve(import.meta.dirname, 'browser-tier.vite.config.ts'), server: { port: 0, watch: null } });
+  await server.listen();
+  const browser = await launchChromium();
+  try {
+    console.log(await coldUnlock(browser, `http://localhost:${server.config.server.port}`));
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+}

@@ -29,6 +29,19 @@ function replayPublish(version: string): string[] {
 }
 
 describe('release publication contract', () => {
+  it('deploys stable web releases only after publication, with isolated credentials and serialized switches', () => {
+    const deploy = workflow.slice(workflow.indexOf('\n  deploy-web:'));
+    expect(deploy).toContain('needs: publish');
+    expect(deploy).toContain("if: ${{ !contains(github.ref_name, '-') }}");
+    expect(deploy).toContain('environment: release');
+    expect(deploy).toContain('group: journal-production');
+    expect(deploy).toContain('cancel-in-progress: false');
+    expect(deploy).toContain('contents: read');
+    expect(deploy).toContain('bash scripts/deploy-web.sh');
+    expect(deploy).not.toContain('continue-on-error:');
+    expect(workflow.slice(0, workflow.indexOf('\n  deploy-web:'))).not.toContain('secrets.VPS_');
+  });
+
   it.each(['1.0.0-rc.1', '1.0.0-beta.2', '1.0.0-preview.7', '1.0.0-0'])('excludes %s from stable release discovery', (version) => {
     const args = replayPublish(version);
     expect(args.slice(0, 3)).toEqual(['release', 'create', `v${version}`]);

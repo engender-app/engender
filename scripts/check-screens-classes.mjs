@@ -123,7 +123,10 @@ const SHEETS = [
       /* overlayLock.ts adds `is-withdrawn` via classList.add() one rAF after
          `inert`, so the pre-blurred ::after can crossfade in (ticket 232).
          Added in TypeScript, not a .svelte class attribute. */
-      'is-withdrawn'
+      'is-withdrawn',
+      /* Both nav layouts share the overlay withdrawal rule. The rail's
+         desktop instance lives in AppNav.svelte alone. */
+      'app-rail'
     ])
   }
 ];

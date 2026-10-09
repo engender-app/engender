@@ -14,17 +14,12 @@
      kit's horizontal bars, then a grid of every day of the year as a mood
      face each - 365 svgs and 1900px of them, with the year's own figures
      pushed underneath (the whole-app audit's finding 7). Phase 11 ticket
-     07 put the figures first and made the year twelve shaded rows on the
+     07 put the figures first and made the year twelve shaded month columns on the
      active scale's single-hue ramp (YearRows.svelte): a face wanted 27px,
      a shaded cell wants none, and mood's own five hexes are all dark on the
      dark theme at that size, which is what ADR-0025's ramp was never built
      for. Twelve bars say where the shape went, and a year of cells says
-     what the year was. And the cover dropped the
-     decorative bloom - an infinite ring animation - because the flag sun on
-     Home is the whole of the app's ambient motion budget and a second loop
-     spends it twice - and Alicja put it back: a yearly wrapped is opened
-     deliberately, once, and it is the one screen allowed to be an occasion.
-     What the cover also gained is the year at display size over the flag's
+     what the year was. The cover keeps the year at display size over the flag's
      own bands, which is the same treatment the kit's tile gives a number
      that matters, in place of the gradient text the craft floor refuses. */
   import { m } from '$lib/paraglide/messages';
@@ -49,7 +44,6 @@
   import type { WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
   import type { RetrospectiveLetter } from '$lib/data/letterRetrospective';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
-  import RiveSlot from './RiveSlot.svelte';
   import BarRows from './kit/BarRows.svelte';
   import YearRows from './kit/YearRows.svelte';
   import YearDaysList, { type YearDaysFormat } from './kit/YearDaysList.svelte';
@@ -201,14 +195,6 @@
   {#if flagFill}
     <span class="wrapped-cover-flag" style={`--flag-fill: ${flagFill}`} aria-hidden="true"></span>
   {/if}
-  <!-- Kept, at Alicja's call (2026-08-25). This ticket had taken it off,
-       reading DIRECTION's "the sun is the whole of the app's ambient budget"
-       as covering it; a yearly retrospective is opened deliberately, once,
-       and it is the one screen in the app that is allowed to be a bit of an
-       occasion. Under the year rather than above the whole cover (2026-08-28:
-       "it should be under '2025'") - the flourish belongs to the number, not
-       to the screen's top edge. -->
-  <RiveSlot height={140} variant="bloom" />
   <p class="wrapped-cover-intro">{intro}</p>
 </div>
 

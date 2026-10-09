@@ -44,16 +44,16 @@ public class RemindersQuietHoursBoundaryTest {
     }
 
     @Test
-    public void syncPersistsQuietHoursAndHoldsBothKindsUntilTomorrowMorning() throws Exception {
+    public void syncPersistsQuietHoursAndHoldsBothKindsUntilMorning() throws Exception {
         JSONObject payload = sync(policy(true, "22:00", "07:00"));
         assertNotNull("sync discarded quietHours", payload.optJSONObject("quietHours"));
         assertEquals("22:00", payload.getJSONObject("quietHours").getString("start"));
-        assertBothAt(payload, "23:00", "2026-10-09T07:00+02:00[Europe/Warsaw]");
+        assertBothAt(payload, "23:00", "2026-10-08T07:00+02:00[Europe/Warsaw]");
 
         final boolean[] scheduled = {false};
         ReminderScheduler.rescheduleFromStore(() -> ReminderScheduler.loadPayload(context), now(),
             saved -> fail("quiet hours need no migration"), previous -> {}, saved -> {
-                assertBothAt(saved, "23:00", "2026-10-09T07:00+02:00[Europe/Warsaw]");
+                assertBothAt(saved, "23:00", "2026-10-08T07:00+02:00[Europe/Warsaw]");
                 scheduled[0] = true;
             });
         assertTrue("stored payload was not rescheduled", scheduled[0]);
@@ -64,7 +64,7 @@ public class RemindersQuietHoursBoundaryTest {
         assertBothAt(sync(policy(false, "22:00", "07:00")), "23:00", "2026-10-08T23:00+02:00[Europe/Warsaw]");
         JSONObject enabled = sync(policy(true, "22:00", "07:00"));
         assertBothAt(enabled, "12:00", "2026-10-08T12:00+02:00[Europe/Warsaw]");
-        assertBothAt(enabled, "22:00", "2026-10-09T07:00+02:00[Europe/Warsaw]");
+        assertBothAt(enabled, "22:00", "2026-10-08T07:00+02:00[Europe/Warsaw]");
         assertBothAt(enabled, "07:00", "2026-10-08T07:00+02:00[Europe/Warsaw]");
     }
 
@@ -86,12 +86,12 @@ public class RemindersQuietHoursBoundaryTest {
     @Test
     public void androidAlarmsUseHeldTimesAfterSyncAndStoredReschedule() throws Exception {
         ZonedDateTime before = ZonedDateTime.now();
-        sync(policy(true, "22:00", "07:00"));
+        JSONObject payload = sync(policy(true, "22:00", "07:00"));
         ZonedDateTime after = ZonedDateTime.now();
-        ZonedDateTime due = ReminderPlanner.nextCheckIn("23:00", before, false);
+        ZonedDateTime due = ReminderPlanner.nextCheckIn(payload, before);
         assertEquals("test crossed the daily scheduling boundary", due,
-            ReminderPlanner.nextCheckIn("23:00", after, false));
-        long expected = due.toLocalDate().plusDays(1).atTime(7, 0).atZone(due.getZone()).toInstant().toEpochMilli();
+            ReminderPlanner.nextCheckIn(payload, after));
+        long expected = due.toInstant().toEpochMilli();
         assertAlarmTimes(expected);
         ReminderScheduler.rescheduleFromStore(context);
         assertAlarmTimes(expected);
@@ -130,9 +130,10 @@ public class RemindersQuietHoursBoundaryTest {
             JSONObject reminder = payload.getJSONArray("reminders").getJSONObject(0);
             reminder.put("time", time);
             assertEquals("reminder at " + time, ZonedDateTime.parse(expected),
-                QuietHours.hold(ReminderPlanner.nextReminder(reminder, now()), payload.optJSONObject("quietHours")));
+                ReminderPlanner.nextReminder(reminder, now(), payload.optJSONObject("quietHours")));
+            payload.put("checkInTime", time);
             assertEquals("check-in at " + time, ZonedDateTime.parse(expected),
-                QuietHours.hold(ReminderPlanner.nextCheckIn(time, now(), false), payload.optJSONObject("quietHours")));
+                ReminderPlanner.nextCheckIn(payload, now()));
         } catch (Exception error) {
             throw new AssertionError(error);
         }

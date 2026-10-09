@@ -2,14 +2,29 @@ package dev.engender.app.reminders;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 
 import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.SharedPreferences;
 import android.content.Intent;
 import android.service.notification.StatusBarNotification;
+import android.os.Build;
+
+import dev.engender.app.reset.DeviceStores;
+import dev.engender.app.lock.LockTimingPlugin;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -40,9 +55,11 @@ public class ReminderNotificationPrivacyTest {
     @Before
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        InstrumentationRegistry.getInstrumentation()
-            .getUiAutomation()
-            .grantRuntimePermission(context.getPackageName(), Manifest.permission.POST_NOTIFICATIONS);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            InstrumentationRegistry.getInstrumentation()
+                .getUiAutomation()
+                .grantRuntimePermission(context.getPackageName(), Manifest.permission.POST_NOTIFICATIONS);
+        }
         context.getSharedPreferences(ReminderScheduler.PREFS, Context.MODE_PRIVATE).edit().clear().commit();
         notificationManager().cancelAll();
         // RemindersPlugin.ensureChannels does this from the JS sync path;
@@ -126,6 +143,124 @@ public class ReminderNotificationPrivacyTest {
         } finally {
             dev.engender.app.disguise.DisguiseAlias.apply(context, false, "trans", "current");
         }
+    }
+
+    @Test
+    public void resetRemovesPostedTitlesAndAffirmations() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, checkInPayload());
+        fireReminderAlarm();
+        fireCheckInAlarm();
+        Notification reminder = findNotification();
+        Notification checkIn = findCheckInNotification();
+        assertNotNull("no reminder was posted", reminder);
+        assertNotNull("no check-in was posted", checkIn);
+        assertEquals(SENSITIVE_TITLE, reminder.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
+        assertTrue(checkIn.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString()
+            .contains("You are allowed to take up space"));
+
+        DeviceStores.wipe(context);
+
+        assertNoActiveNotifications();
+        fireReminderAlarm();
+        fireCheckInAlarm();
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void failedReminderCleanupStillClearsOtherOwnersAndNotifications() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(false));
+        fireReminderAlarm();
+        assertNotNull(findNotification());
+        context.getSharedPreferences(LockTimingPlugin.PREFS, Context.MODE_PRIVATE)
+            .edit().putString("timing", "immediately").commit();
+        Context failingReminders = new ContextWrapper(context) {
+            @Override
+            public SharedPreferences getSharedPreferences(String name, int mode) {
+                if (ReminderScheduler.PREFS.equals(name)) throw new IllegalStateException("reminder cleanup failed");
+                return super.getSharedPreferences(name, mode);
+            }
+        };
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> DeviceStores.wipe(failingReminders));
+
+        assertEquals("reminder cleanup failed", failure.getMessage());
+        assertTrue(context.getSharedPreferences(LockTimingPlugin.PREFS, Context.MODE_PRIVATE).getAll().isEmpty());
+        assertNoActiveNotifications();
+    }
+
+    @Test
+    public void resetWaitsForDeliveryThenRemovesItsNotification() throws Exception {
+        ReminderScheduler.saveAndSchedule(context, payload(false));
+        CountDownLatch beforePost = new CountDownLatch(1);
+        CountDownLatch releasePost = new CountDownLatch(1);
+        CountDownLatch resetStarted = new CountDownLatch(1);
+        AtomicBoolean held = new AtomicBoolean();
+        AtomicBoolean resetReadPayload = new AtomicBoolean();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Context delayed = new ContextWrapper(context) {
+            @Override
+            public Object getSystemService(String name) {
+                if (Context.NOTIFICATION_SERVICE.equals(name) && held.compareAndSet(false, true)) {
+                    beforePost.countDown();
+                    try {
+                        if (!releasePost.await(5, TimeUnit.SECONDS)) throw new AssertionError("delivery was not released");
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+                return super.getSystemService(name);
+            }
+        };
+        Thread delivery = new Thread(() -> {
+            try {
+                new ReminderAlarmReceiver().onReceive(delayed, new Intent()
+                    .putExtra(ReminderScheduler.EXTRA_KIND, ReminderScheduler.KIND_REMINDER)
+                    .putExtra(ReminderScheduler.EXTRA_REMINDER_ID, REMINDER_ID));
+            } catch (Throwable error) { failure.set(error); }
+        });
+        Context observedReset = new ContextWrapper(context) {
+            @Override
+            public SharedPreferences getSharedPreferences(String name, int mode) {
+                if (ReminderScheduler.PREFS.equals(name)) resetReadPayload.set(true);
+                return super.getSharedPreferences(name, mode);
+            }
+        };
+        Thread reset = new Thread(() -> {
+            try {
+                resetStarted.countDown();
+                DeviceStores.wipe(observedReset);
+            } catch (Throwable error) { failure.set(error); }
+        });
+
+        delivery.start();
+        try {
+            assertTrue("delivery never reached NotificationManager", beforePost.await(5, TimeUnit.SECONDS));
+            reset.start();
+            assertTrue(resetStarted.await(5, TimeUnit.SECONDS));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!resetReadPayload.get() && reset.isAlive() && reset.getState() != Thread.State.BLOCKED
+                && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertFalse("reset entered the reminder owner while delivery still held its payload", resetReadPayload.get());
+            assertEquals("reset must wait for the payload already being delivered", Thread.State.BLOCKED, reset.getState());
+        } finally {
+            releasePost.countDown();
+            delivery.join(5000);
+            reset.join(5000);
+        }
+        assertFalse(delivery.isAlive());
+        assertFalse(reset.isAlive());
+        assertNull(failure.get());
+        assertNoActiveNotifications();
+    }
+
+    private void assertNoActiveNotifications() throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (notificationManager().getActiveNotifications().length > 0 && System.nanoTime() < deadline) {
+            Thread.sleep(50);
+        }
+        assertEquals("a notification survived the reset", 0, notificationManager().getActiveNotifications().length);
     }
 
     private JSONObject checkInPayload() throws Exception {

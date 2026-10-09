@@ -27,6 +27,7 @@
   import { m } from '$lib/paraglide/messages';
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import { appWordmark } from '$lib/disguise/identity';
   import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
@@ -77,6 +78,8 @@
         cancel: m.ak_prompt_cancel(),
         deviceCredential
       });
+    } catch (error) {
+      if (!(error instanceof UnlockCancelledError)) throw error;
     } finally {
       busy = false;
     }
