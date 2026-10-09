@@ -89,6 +89,24 @@ test('a web journal with a passphrase keystore reaches the unlock gate', () => {
   expect(effects).toEqual([]);
 });
 
+test.each(['passphrase', 'pin', 'biometric'] as const)('a cancelled %s cold boot returns to its gate and accepts another key', (accessMode) => {
+  const opening = walk(started('web'), surveyedWeb({ keystoreSecretSource: accessMode }), {
+    type: 'key-obtained', dataKey: KEY, accessMode, unlocked: true
+  }).machine;
+  const cancelled = reduce(opening, { type: 'journal-open-cancelled' });
+  expect(cancelled.machine.boot.status).toBe('needs-unlock');
+  expect(cancelled.machine.boot.accessMode).toBe(accessMode);
+  expect(cancelled.machine.boot.journal).toBeNull();
+  expect(cancelled.machine.journalOpening).toBe(false);
+  expect(cancelled.effects).toEqual([]);
+  expect(reduce(cancelled.machine, {
+    type: 'key-obtained', dataKey: KEY, accessMode, unlocked: true
+  }).effects).toEqual([
+    { type: 'mark-unlocked' },
+    { type: 'open-journal', dataKey: KEY, accessMode }
+  ]);
+});
+
 test.each([false, true])('a web journal held only by a device-bound key unlocks itself (demo: %s)', (demo) => {
   const { machine, effects } = walk(
     started('web', demo),

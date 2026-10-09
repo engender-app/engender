@@ -19,6 +19,27 @@ export async function coldUnlock(browser, origin) {
       await page.addInitScript((native) => {
         window.__DEMO__ = false;
         window.__APP_VERSION__ = '0.0.0-browser-tier';
+        window.closedJournalWorkers = 0;
+        window.lockWhenJournalOpens = false;
+        const BrowserWorker = window.Worker;
+        window.Worker = class extends BrowserWorker {
+          constructor(url, options) {
+            super(url, options);
+            this.journalWorker = String(url).includes('mc-worker');
+          }
+          terminate() {
+            if (this.journalWorker) window.closedJournalWorkers++;
+            super.terminate();
+          }
+          postMessage(message, ...options) {
+            super.postMessage(message, ...options);
+            if (this.journalWorker && message.op === 'open' && window.lockWhenJournalOpens) {
+              window.lockWhenJournalOpens = false;
+              Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+              document.dispatchEvent(new Event('visibilitychange'));
+            }
+          }
+        };
         const credential = {
           rawId: new Uint8Array([1]).buffer,
           getClientExtensionResults: () => ({ prf: { enabled: true, results: { first: new Uint8Array(32).fill(7).buffer } } })
@@ -122,6 +143,45 @@ export async function coldUnlock(browser, origin) {
         else await page.locator(button).click();
         await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
         assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), false, `${mode} retry`);
+        assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
+
+        const entryId = await page.evaluate(() => coldBoot.bootState.journal.entries.upsertEntry({
+          epochDay: 20000, mood: 3, note: 'Kept across a cancelled cold boot'
+        }));
+        await load();
+        await page.waitForFunction(() => coldBoot.bootState.status === 'needs-unlock');
+        const submit = async ({ mode, secret, recoveryKey, leave }) => {
+          // Hide after the real worker receives its key, before it answers.
+          window.lockWhenJournalOpens = leave;
+          if (mode === 'pin') await coldBoot.submitPinUnlock('1234');
+          else if (mode === 'biometric') await coldBoot.submitBiometricUnlock();
+          else if (mode === 'recovery') await coldBoot.submitRecoveryKeyUnlock(recoveryKey);
+          else await coldBoot.submitPassphraseUnlock(secret);
+        };
+        await page.evaluate(submit, { mode, secret, recoveryKey, leave: true });
+        await page.waitForFunction(() => window.closedJournalWorkers > 0 || coldBoot.bootState.status === 'ready');
+        const afterBootLock = await page.evaluate(async () => ({
+          status: coldBoot.bootState.status,
+          locked: coldLock.isLocked(coldBoot.bootState.accessMode),
+          journalPresent: coldBoot.bootState.journal !== null,
+          workerClosed: window.closedJournalWorkers > 0,
+          key: await Promise.race([
+            coldBoot.journalDataKey().then(() => 'available'),
+            new Promise((resolve) => setTimeout(() => resolve('blocked'), 100))
+          ])
+        }));
+        assert.deepEqual(afterBootLock, {
+          status: 'needs-unlock', locked: true, journalPresent: false, workerClosed: true, key: 'blocked'
+        }, `${mode} lock after derivation`);
+        await page.evaluate(() => {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+          document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await page.evaluate(submit, { mode, secret, recoveryKey, leave: false });
+        await page.waitForFunction(() => coldBoot.bootState.status === 'ready');
+        assert.equal(await page.evaluate(() => coldLock.isLocked(coldBoot.bootState.accessMode)), false, `${mode} later unlock`);
+        assert.equal(await page.evaluate((entryId) => coldBoot.bootState.journal.entries.getEntry(entryId)
+          .then((entry) => entry.note), entryId), 'Kept across a cancelled cold boot', `${mode} retained contents`);
         assert.equal(await page.evaluate(() => coldBoot.recoveryUnlock.used), mode === 'recovery');
       }
       assert.deepEqual(errors, [], mode);
