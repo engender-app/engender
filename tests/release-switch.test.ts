@@ -20,6 +20,24 @@ function run(args: string[], cwd: string) {
 }
 
 describe('journal-release deploy and rollback', () => {
+  test.each([
+    ['3.0.0', 2, 'schemaMax'],
+    ['1.9.9', 3, 'over newer']
+  ])('refuses unsafe or stale deployment %s without switching current', (version, schemaMax, reason) => {
+    const root = join(ROOT, `stale-${version}`, 'releases');
+    const current = join(ROOT, `stale-${version}`, 'current');
+    const active = join(root, '2.0.0--active');
+    const source = join(ROOT, `stale-${version}`, 'upload');
+    makeRelease(active, '2.0.0', 'active', 3);
+    makeRelease(source, String(version), 'candidate', Number(schemaMax));
+    symlinkSync(active, current);
+
+    const result = run(['deploy', source, '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(reason);
+    expect(readlinkSync(current)).toBe(active);
+  });
+
   test('deploy publishes complete release directories and switches current to the newest one', () => {
     const root = join(ROOT, 'deploy-one', 'releases');
     const current = join(ROOT, 'deploy-one', 'current');
