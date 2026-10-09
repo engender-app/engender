@@ -44,6 +44,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { isAndroid } from '$lib/platform';
   import { onMount } from 'svelte';
+  import { periodicCheck } from '$lib/data/backgroundSchedulers';
 
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
@@ -172,6 +173,10 @@
     return new Date(at).toLocaleString(intlLocale());
   }
 
+  let autoSnapshotAt = $state<number | null>(null);
+  let autoStagedAt = $state<number | null>(null);
+  let autoDeferredAt = $state<number | null>(null);
+
   function applyAutoStatus(status: AutoExportStatus) {
     prefs.autoExportEnabled = status.enabled;
     prefs.autoExportSchedule = status.schedule;
@@ -179,6 +184,9 @@
     autoDestinationUri = status.destinationUri;
     autoHasPassword = status.hasPassword;
     autoLastSuccessAt = status.lastSuccessAt;
+    autoSnapshotAt = status.lastSnapshotAt ?? null;
+    autoStagedAt = status.stagedSnapshotAt ?? null;
+    autoDeferredAt = status.deferredAt ?? null;
     autoLastFailureAt = status.lastFailureAt;
     autoLastFailureReason = status.lastFailureReason;
   }
@@ -274,9 +282,12 @@
         autoHasPassword = true;
       }
 
+      const snapshot = await journal.archive.snapshot();
+      const snapshotAt = Date.now();
       const result = await runAndroidAutoExport(
         {
-          snapshot: await journal.archive.snapshot(),
+          snapshot,
+          snapshotAt,
           preferences: prefs
         },
         {
@@ -315,6 +326,8 @@
         // Stopping is an answer, not a failure: nothing reached the folder.
         autoProgress.abandon();
         toast(m.exp_cancelled());
+      } else if (result.outcome === 'staged') {
+        autoProgress.abandon();
       } else {
         autoProgress.abandon();
         console.error('auto-export failed', result.reason);
@@ -331,8 +344,10 @@
   }
 
   onMount(() => {
-    if (android) void refreshAutoStatus();
+    const statusCheck = periodicCheck(() => void refreshAutoStatus());
+    if (android) statusCheck.start();
     void refreshImportLog();
+    return statusCheck.stop;
   });
 
   async function refreshImportLog() {
@@ -904,17 +919,30 @@
     <p class="muted small">
       {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
     </p>
-    <p class="muted small">
-      {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
-    </p>
-    {#if autoLastFailureAt !== null}
+    <div role="status" aria-live="polite" aria-atomic="true" data-auto-backup-status>
       <p class="muted small">
-        {m.exp_auto_last_failure({ when: stampText(autoLastFailureAt) })}
+        {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
       </p>
-      {#if autoLastFailureReason}
-        <p class="muted small">{m.exp_auto_failed()}</p>
+      {#if autoSnapshotAt != null}
+        <p class="small muted">{m.exp_auto_snapshot({ when: stampText(autoSnapshotAt) })}</p>
       {/if}
-    {/if}
+      {#if autoDeferredAt != null}
+        <p class="small muted">{m.exp_auto_deferred()}</p>
+      {:else if autoStagedAt != null}
+        <p class="small muted">{m.exp_auto_staged({ when: stampText(autoStagedAt) })}</p>
+      {/if}
+      <p class="small muted">
+        {m.exp_auto_native_limits()}
+      </p>
+      {#if autoLastFailureAt !== null}
+        <p class="muted small">
+          {m.exp_auto_last_failure({ when: stampText(autoLastFailureAt) })}
+        </p>
+        {#if autoLastFailureReason}
+          <p class="muted small">{m.exp_auto_failed()}</p>
+        {/if}
+      {/if}
+    </div>
   {/if}
 
   <SectionHeading text={m.imp_section()} />
