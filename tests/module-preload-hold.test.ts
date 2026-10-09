@@ -1,60 +1,75 @@
-/* The built document holds its module hints back (phase 14 pre-release
-   ticket 13), and gives them back.
-
-   The first paint of a first visit depends on it: the document names about a
-   hundred modules and six stylesheets, the browser fetches them all at once
-   and shares the connection evenly, and the stylesheets a paint waits for
-   arrived at 2.5 s behind modules nothing was waiting for. With the hints
-   held until after the first frame, first paint was 0.9 s. Nothing about the
-   build fails if the hook that does it (src/hooks.server.ts) stops running,
-   or if SvelteKit moves where the fallback page is rendered, so this reads
-   the built document and fails instead.
-
-   It reads `build/`, so it needs a build, like csp.test.ts. */
+/* Reads the built shell because a missing build-time hold hook would otherwise
+   leave the app working while its module hints compete with first-paint CSS.
+   Chunk grouping changes the number of hints; the selected locale's emitted
+   graph, and when those exact URLs become live, are the contract. */
 import { existsSync, readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { expect, test } from 'vitest';
 
 const DOCUMENT = 'build/index.html';
+const LOCALES = ['en', 'pl'] as const;
+type Locale = typeof LOCALES[number];
 
 function built(): string {
   if (!existsSync(DOCUMENT)) throw new Error(`No ${DOCUMENT}. Run npm run build first.`);
   return readFileSync(DOCUMENT, 'utf8');
 }
 
-test('the built document has no live modulepreload link, and names its modules as held ones', () => {
+function expectedHints(locale: Locale): string[] {
   const html = built();
-  expect(html.match(/rel="modulepreload"/g) ?? []).toHaveLength(0);
-  expect(runRelease('h2').count).toBeGreaterThan(50);
-});
+  // The locale build records each graph before composing the selector script.
+  // Async scripts (the demo worker prewarm) load separately, without a hint.
+  const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((match) => match[1]);
+  const { graph } = JSON.parse(readFileSync('.svelte-kit/locale-graphs.json', 'utf8')) as {
+    graph: Record<Locale, string[]>;
+  };
+  const hints = graph[locale].filter((url) => url.endsWith('.js') && !scripts.includes(url)).sort();
+  expect(hints.filter((url) => /\/entry\/(start|app)\./.test(url))).toHaveLength(2);
+  expect(hints.some((url) => /\/nodes\/0\./.test(url))).toBe(true);
+  for (const url of hints) expect(existsSync(`build${url}`), url).toBe(true);
+  return hints;
+}
+
+for (const locale of LOCALES) {
+  test(`${locale}: the built document holds every emitted startup module hint`, () => {
+    expect(built().match(/rel="modulepreload"/g) ?? []).toHaveLength(0);
+    const { selectedLocale, hints } = runRelease('h2', locale);
+    expect(selectedLocale).toBe(locale);
+    expect(hints).toEqual(expectedHints(locale));
+    expect(new Set(hints).size).toBe(hints.length);
+  });
+}
 
 test('the stylesheets a paint waits for are still ordinary links', () => {
   expect((built().match(/<link[^>]*rel="stylesheet"/g) ?? []).length).toBeGreaterThan(0);
 });
 
-/* Runs the document's own inline script in a fake window that serves the
-   page over `protocol`, and returns what happened to the held links at each
-   step a browser takes: the parser adding them, DOMContentLoaded, the next
-   frame, the task after it. */
-function runRelease(protocol: string) {
+/* Runs the document's own script through parser insertion, DOMContentLoaded,
+   the first frame, and the task after it. Keeps URLs so a partial release or
+   a release of the wrong locale cannot pass by matching a count. */
+function runRelease(protocol: string, locale: Locale) {
   const html = built();
   const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
     .map((match) => match[1])
     .find((body) => body.includes('x-modulepreload'));
   if (!script) throw new Error('no inline script in the built document mentions x-modulepreload');
 
-  const staticCount = [...html.matchAll(/<link[^>]*rel="x-modulepreload"[^>]*>/g)].length;
-  let count = staticCount;
-  const held: Array<{ rel: string }> = [];
+  const linksIn = (markup: string) => [...markup.matchAll(/<link\b[^>]*>/g)].flatMap(([tag]) => {
+    const rel = tag.match(/\brel="([^"]+)"/)?.[1];
+    const href = tag.match(/\bhref="([^"]+)"/)?.[1];
+    return href && (rel === 'x-modulepreload' || rel === 'modulepreload') ? [{ rel, href }] : [];
+  });
+  const held: Array<{ rel: string; href: string }> = [];
   const heard: Record<string, Array<() => void>> = {};
   const observers: Array<() => void> = [];
   const frames: Array<() => void> = [];
   const tasks: Array<() => void> = [];
+  const root = { dataset: {}, lang: 'en' };
   runInNewContext(script, {
     JSON,
-    localStorage: { getItem: () => null },
+    localStorage: { getItem: () => locale, setItem: () => {} },
     matchMedia: () => ({ matches: false }),
-    navigator: { language: 'en' },
+    navigator: { language: locale, languages: [locale] },
     performance: { getEntriesByType: (type: string) => (type === 'navigation' ? [{ nextHopProtocol: protocol }] : []) },
     MutationObserver: class {
       constructor(private callback: () => void) {}
@@ -66,12 +81,8 @@ function runRelease(protocol: string) {
       }
     },
     document: {
-      documentElement: { dataset: {}, lang: 'en' },
-      write: (markup: string) => {
-        const links = [...markup.matchAll(/<link[^>]*rel="x-modulepreload"[^>]*>/g)];
-        held.push(...links.map(() => ({ rel: 'x-modulepreload' })));
-        count += links.length;
-      },
+      documentElement: root,
+      write: (markup: string) => held.push(...linksIn(markup)),
       querySelector: () => ({ href: '' }),
       querySelectorAll: (selector: string) =>
         selector === 'link[rel="x-modulepreload"]' ? held.filter((link) => link.rel === 'x-modulepreload') : []
@@ -81,33 +92,35 @@ function runRelease(protocol: string) {
     setTimeout: (callback: () => void) => void tasks.push(callback)
   });
 
-  const live = () => held.filter((link) => link.rel === 'modulepreload').length;
-  // The parser reaches the links in <head>, after the script has run.
-  for (let k = 0; k < staticCount; k++) held.push({ rel: 'x-modulepreload' });
+  const live = () => held.filter((link) => link.rel === 'modulepreload').map((link) => link.href).sort();
+  // Static head links follow the script; locale-selected links use document.write.
+  held.push(...linksIn(html.slice(0, html.indexOf('</head>'))));
   for (const notify of [...observers]) notify();
+  const hints = held.map((link) => link.href).sort();
   const parsed = live();
   for (const listener of heard.DOMContentLoaded ?? []) listener();
   const loaded = live();
-  for (const frame of frames.splice(0)) frame();
+  for (const callback of frames.splice(0)) callback();
+  const frame = live();
   for (const task of tasks.splice(0)) task();
-  return { count, parsed, loaded, after: live() };
+  return { selectedLocale: root.lang, hints, parsed, loaded, frame, after: live() };
 }
 
-test('over HTTP/2 and HTTP/3 the hints stay held until the first frame has had its turn', () => {
-  for (const protocol of ['h2', 'h3']) {
-    const { count, parsed, loaded, after } = runRelease(protocol);
-    expect(count).toBeGreaterThan(50);
-    expect([parsed, loaded, after]).toEqual([0, 0, count]);
-  }
-});
+for (const locale of LOCALES) {
+  test(`${locale}: multiplexed and offline hints stay held through the first frame`, () => {
+    for (const protocol of ['h2', 'h3', '']) {
+      const { hints, parsed, loaded, frame, after } = runRelease(protocol, locale);
+      expect(hints).toEqual(expectedHints(locale));
+      expect([parsed, loaded, frame]).toEqual([[], [], []]);
+      expect(after).toEqual(hints);
+    }
+  });
 
-/* After-release ticket 31 (audit PERF-03): six connections, not one, so
-   the stylesheets were never the ones waiting, and holding the hints only
-   queued ninety-eight modules behind the first frame. LCP was 7125-7134 ms
-   held against 6842-6861 ms given back at once. */
-test('over HTTP/1.1 each hint is given back as the parser adds it, before DOMContentLoaded', () => {
-  const { count, parsed, after } = runRelease('http/1.1');
-  expect(count).toBeGreaterThan(50);
-  expect(parsed).toBe(count);
-  expect(after).toBe(count);
-});
+  test(`${locale}: HTTP/1.x releases every hint as the parser adds it`, () => {
+    for (const protocol of ['http/1.1', 'http/1.0']) {
+      const { hints, parsed, loaded, frame, after } = runRelease(protocol, locale);
+      expect(hints).toEqual(expectedHints(locale));
+      expect([parsed, loaded, frame, after]).toEqual([hints, hints, hints, hints]);
+    }
+  });
+}

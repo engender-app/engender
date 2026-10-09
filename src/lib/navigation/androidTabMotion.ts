@@ -9,16 +9,17 @@ import { beginTabArrival, endTabArrival, playAfterPaint } from '$lib/motion/scre
 
 const FIELD = '[data-screen-field], [data-home-field]';
 const SCREEN = '[data-app-scroll-region] .screen';
-let finishCurrent = () => {};
+let finishCurrent: (complete?: Promise<void>) => () => void = () => () => {};
 
-export function finishAndroidTab(): void {
-  finishCurrent();
+export function finishAndroidTab(complete?: Promise<void>): () => void {
+  return finishCurrent(complete);
 }
 
 function bodyOf(screen: HTMLElement, field: HTMLElement | null): HTMLElement[] {
-  return [...screen.children].filter(
-    (child): child is HTMLElement => child instanceof HTMLElement && !child.contains(field)
-  );
+  return [...screen.children].flatMap((child) => {
+    if (!(child instanceof HTMLElement) || child === field) return [];
+    return child.contains(field) ? bodyOf(child, field) : [child];
+  });
 }
 
 function animateIn(fromHeight: number, toPath: string, type: string): Promise<void> | void {
@@ -91,25 +92,64 @@ function animateIn(fromHeight: number, toPath: string, type: string): Promise<vo
   });
 }
 
-export function animateAndroidTab(navigation: OnNavigate): Promise<void> {
-  finishCurrent();
+export function animateAndroidTab(
+  navigation: OnNavigate,
+  releasePrevious = finishCurrent(navigation.complete)
+): Promise<void> {
   ui.tabMoving = true;
-  const finish = () => {
+  const outgoing: Animation[] = [];
+  let releaseNavigation = () => {};
+  const finish = (complete?: Promise<void>) => {
+    const departing = outgoing.splice(0);
+    const cancel = () => { for (const animation of departing) animation.cancel(); };
+    if (complete) {
+      /* Hold the visible opacity for the successor's fade or snapshot.
+         Cancelling now would restore full ink between rapid taps. */
+      for (const animation of departing) animation.pause();
+      void complete.then(cancel, cancel);
+    } else cancel();
+    if (!complete) releaseNavigation();
     if (finishCurrent === finish) {
       endTabArrival();
       ui.tabMoving = false;
-      finishCurrent = () => {};
+      finishCurrent = () => () => {};
     }
+    return releaseNavigation;
   };
   finishCurrent = finish;
   const fromField = document.querySelector<HTMLElement>(FIELD);
   const fromHeight = fromField
     ? fromField.getBoundingClientRect().height + parseFloat(getComputedStyle(fromField).translate.split(' ')[1] ?? '0')
     : 0;
+  const screen = fromField?.closest<HTMLElement>('.screen') ?? document.querySelector<HTMLElement>(SCREEN);
+  if (screen) {
+    /* Keep the live page until its content has left. The blind stays solid
+       for the incoming field's bridge; no journal copy outlives a gate. */
+    const blind = fromField?.querySelector<HTMLElement>('[data-field-blind]') ?? null;
+    const content = bodyOf(screen, blind);
+    for (const element of content) {
+      outgoing.push(element.animate([{ opacity: getComputedStyle(element).opacity }, { opacity: 0 }], {
+        duration: motionDuration('--dur-fast'),
+        easing: EASE_OUT_CSS,
+        fill: 'forwards'
+      }));
+    }
+    const style = getComputedStyle(document.documentElement);
+    blind?.querySelectorAll<HTMLElement>('[data-flag-sun] > i').forEach((ring, index) => {
+      outgoing.push(ring.animate([{ scale: getComputedStyle(ring).scale }, { scale: 0 }], {
+        duration: motionDuration('--dur-fast'),
+        delay: index * parseFloat(style.getPropertyValue('--stagger-ring')),
+        easing: style.getPropertyValue('--ease-in-out').trim(),
+        fill: 'forwards'
+      }));
+    });
+  }
   return new Promise((resolve) => {
-    resolve();
+    releaseNavigation = () => { releasePrevious(); resolve(); };
+    void Promise.all(outgoing.map((animation) => animation.finished.catch(() => {}))).then(releaseNavigation);
     void navigation.complete.then(() => {
+      for (const animation of outgoing) animation.cancel();
       if (finishCurrent === finish && navigation.to) return animateIn(fromHeight, navigation.to.url.pathname, navigation.type);
-    }).then(finish, finish);
+    }).then(() => finish(), () => finish());
   });
 }

@@ -1,9 +1,15 @@
 package dev.engender.app.keystore;
 
+import android.app.Activity;
+import android.app.KeyguardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.UserNotAuthenticatedException;
 import android.util.Log;
 
+import androidx.activity.result.ActivityResult;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
@@ -14,6 +20,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.ActivityCallback;
 
 import java.security.UnrecoverableKeyException;
 import java.util.Arrays;
@@ -192,7 +199,12 @@ public class KeystorePlugin extends Plugin {
         FragmentActivity activity = activityOrReject(call);
         if (activity == null) return;
 
-        int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG;
+        boolean deviceCredential = Boolean.TRUE.equals(call.getBoolean("deviceCredential", false));
+        int authenticators =
+            deviceCredential
+                ? BiometricManager.Authenticators.BIOMETRIC_STRONG
+                    | BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                : BiometricManager.Authenticators.BIOMETRIC_STRONG;
         if (reportedUnavailable(call, authenticators)) return;
 
         prompt(
@@ -200,7 +212,7 @@ public class KeystorePlugin extends Plugin {
             call,
             null,
             authenticators,
-            false,
+            deviceCredential,
             (answered, result) -> answered.resolve(outcome(BiometricOutcomes.AUTHENTICATED, null)));
     }
 
@@ -217,6 +229,8 @@ public class KeystorePlugin extends Plugin {
 
     /* --- the prompt -------------------------------------------------------- */
 
+    private boolean credentialPending;
+
     /** What a successful prompt does next. The two callers differ only here. */
     private interface OnAuthenticated {
         void run(PluginCall call, BiometricPrompt.AuthenticationResult result);
@@ -228,7 +242,7 @@ public class KeystorePlugin extends Plugin {
                one; otherwise one built now, inside the window the prompt has
                just opened. */
             Cipher authorized =
-                result.getCryptoObject() != null
+                result != null && result.getCryptoObject() != null
                     ? result.getCryptoObject().getCipher()
                     : keystore.unwrapCipher();
             call.resolve(outcome(BiometricOutcomes.AUTHENTICATED, keystore.unwrap(authorized)));
@@ -250,6 +264,31 @@ public class KeystorePlugin extends Plugin {
         int authenticators,
         boolean deviceCredential,
         OnAuthenticated onAuthenticated) {
+
+        /* API 28/29 reject strong-plus-credential prompts. Credential crypto
+           prompts require API 30. */
+        if (deviceCredential && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            activity.runOnUiThread(() -> {
+                if (credentialPending) {
+                    call.resolve(outcome(BiometricOutcomes.FAILED, null));
+                    return;
+                }
+                KeyguardManager keyguard = (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
+                Intent intent = keyguard.createConfirmDeviceCredentialIntent(text(call, "title"), text(call, "subtitle"));
+                if (intent == null) {
+                    call.resolve(outcome(BiometricOutcomes.NO_DEVICE_CREDENTIAL, null));
+                    return;
+                }
+                credentialPending = true;
+                try {
+                    startActivityForResult(call, intent, "deviceCredentialResult");
+                } catch (Exception error) {
+                    credentialPending = false;
+                    call.reject(message(error), error);
+                }
+            });
+            return;
+        }
 
         BiometricPrompt.PromptInfo.Builder info =
             new BiometricPrompt.PromptInfo.Builder()
@@ -291,12 +330,32 @@ public class KeystorePlugin extends Plugin {
             });
     }
 
+    @ActivityCallback
+    private void deviceCredentialResult(PluginCall call, ActivityResult result) {
+        credentialPending = false;
+        if (call == null) return;
+        if (result == null || result.getResultCode() != Activity.RESULT_OK) {
+            call.resolve(outcome(BiometricOutcomes.CANCELLED, null));
+        } else if ("confirm".equals(call.getMethodName())) {
+            call.resolve(outcome(BiometricOutcomes.AUTHENTICATED, null));
+        } else {
+            unwrapInto(call, null);
+        }
+    }
+
     /**
      * Answers the call and returns true when there is no point showing a
      * prompt - no sensor, or nothing enrolled on it. Asked before a dialog is
      * built, so those two states are reported without one appearing.
      */
     private boolean reportedUnavailable(PluginCall call, int authenticators) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+            && (authenticators & BiometricManager.Authenticators.DEVICE_CREDENTIAL) != 0) {
+            KeyguardManager keyguard = (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
+            if (keyguard.isDeviceSecure()) return false;
+            call.resolve(outcome(BiometricOutcomes.NO_DEVICE_CREDENTIAL, null));
+            return true;
+        }
         int availability = BiometricManager.from(getContext()).canAuthenticate(authenticators);
         if (availability == BiometricManager.BIOMETRIC_SUCCESS) return false;
         call.resolve(outcome(BiometricOutcomes.forAvailability(availability), null));

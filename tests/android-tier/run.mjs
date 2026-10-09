@@ -79,6 +79,7 @@ const NATIVE_TESTS = [
   'dev.engender.app.sqlite.NativeSqliteCapabilitiesTest',
   'dev.engender.app.keystore.JournalKeystoreTest',
   'dev.engender.app.keystore.BiometricAuthenticatorAvailabilityTest',
+  'dev.engender.app.keystore.SessionDeviceCredentialTest',
   'dev.engender.app.photos.PhotoDirectoryInitializationTest',
   'dev.engender.app.screencapture.CaptureChoiceOnLeaveTest'
 ].join(',');
