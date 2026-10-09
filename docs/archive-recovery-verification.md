@@ -12,10 +12,11 @@ passed with 54 sections and 18 attachments. The compiled app also completes
 first-run restoration, unlocks with its independent credential after reload and
 plays restored audio and video and renders its document. Android recovery passes
 all four manual/automatic platform directions at
-`2fa20af49ceba11fc013dd30447da7c1602acbaf` with a clean checkout. The new
-interrupted-migration assertion still requires a completed maintained browser
-run before this ticket can be marked verified. Failed runs are retained in the
-ticket handoff; implementation alone is not acceptance evidence.
+`2fa20af49ceba11fc013dd30447da7c1602acbaf` with a clean checkout. The maintained
+browser command passes at `10c487c6acd7c3b3c527abc0c5eb4679e0da351d`, including
+the interrupted-migration assertion and update handover regression. Failed runs
+are retained in the ticket handoff; implementation alone is not acceptance
+evidence.
 
 ## Maintained checks
 
