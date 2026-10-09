@@ -296,6 +296,15 @@ export function daylioPayload(): Record<string, unknown> {
   };
 }
 
+export function repeatedAttachmentPayload(distinctAssetIds: boolean): Record<string, unknown> {
+  const payload = daylioPayload();
+  const assets = payload.assets as Record<string, unknown>[];
+  if (distinctAssetIds) assets.push({ ...assets[0], id: 104 }, { ...assets[1], id: 105 });
+  (payload.dayEntries as Record<string, unknown>[])[1].assets = distinctAssetIds ? [104, 105] : [101, 102];
+  (payload.milestones as Record<string, unknown>[])[0].assetId = 101;
+  return payload;
+}
+
 /** The asset members of a well-formed backup, in Daylio's own
     leading-slash form, with a 1-based month directory. */
 export function daylioAssetFiles(): ZipSource[] {

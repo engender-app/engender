@@ -424,7 +424,7 @@ export async function daylioBackupPreview(
       in the preview is of attachments somebody will notice missing
       rather than of rows nothing referenced. */
   const unimported = new Set<number>();
-  const plannedAssets = new Map<number, DaylioAsset>();
+  const plannedAssets = new Map<string, DaylioAsset>();
   const assetPaths = new Map<number, string>();
   for (const [id, asset] of assets) {
     const directory = asset.type === AUDIO_ASSET ? AUDIO_DIRECTORY : PHOTO_DIRECTORY;
@@ -627,7 +627,7 @@ export async function daylioBackupPreview(
 
     const photos: ArchiveEntry['photos'] = [];
     const recordings: ArchiveEntry['recordings'] = [];
-    for (const assetId of ints(record.assets)) {
+    for (const assetId of new Set(ints(record.assets))) {
       const asset = assets.get(assetId);
       if (!asset) {
         throw new DaylioBackupError('record', `${named} names asset ${assetId}, which the backup has no asset row for`);
@@ -637,14 +637,14 @@ export async function daylioBackupPreview(
         continue;
       }
 
-      const planned = await planAsset(assetId, asset, readAsset, missingAssets);
+      const planned = await planAsset(uuid, assetId, asset, readAsset, missingAssets);
       if (!planned) {
         unimported.add(assetId);
         continue;
       }
       if (planned.kind === 'photo') photos.push({ id: planned.id, fileName: planned.fileName, starred: false, epochDayOverride: null });
       else recordings.push({ id: planned.id, fileName: planned.fileName });
-      plannedAssets.set(assetId, planned.asset);
+      plannedAssets.set(planned.id, planned.asset);
     }
 
     if (!logged && tags.length === 0 && note === '' && photos.length === 0 && recordings.length === 0) {
@@ -697,10 +697,10 @@ export async function daylioBackupPreview(
       if (!asset) {
         throw new DaylioBackupError('record', `${named} names asset ${assetId}, which the backup has no asset row for`);
       }
-      const planned = missingAssets.has(assetId) ? null : await planAsset(assetId, asset, readAsset, missingAssets);
+      const planned = missingAssets.has(assetId) ? null : await planAsset(uuid, assetId, asset, readAsset, missingAssets);
       if (planned && planned.kind === 'photo') {
         photo = { id: planned.id, fileName: planned.fileName, starred: false, epochDayOverride: null };
-        plannedAssets.set(assetId, planned.asset);
+        plannedAssets.set(planned.id, planned.asset);
       } else {
         unimported.add(assetId);
       }
@@ -780,13 +780,16 @@ export async function daylioBackupPreview(
     set and is counted rather than handed to a commit that would fail on
     it partway through. */
 async function planAsset(
+  ownerId: string,
   id: number,
   asset: AssetRow,
   readAsset: (id: number, prefix?: boolean) => Promise<Uint8Array>,
   missing: Set<number>
 ): Promise<{ kind: 'photo' | 'audio'; id: string; fileName: string; asset: DaylioAsset } | null> {
   const bytes = await readAsset(id, true);
-  const uuid = await contentUuid(['daylio-asset', asset.checksum]);
+  // Each owner needs separate rows and files, even when Daylio reuses bytes.
+  // Existing owners are skipped before planning, so older imported IDs stay intact.
+  const uuid = await contentUuid(['daylio-asset', ownerId, id, asset.checksum]);
 
   if (asset.type === AUDIO_ASSET) {
     const extension = audioExtension(bytes) ?? recordingExtensionOf(asset.sourceName);

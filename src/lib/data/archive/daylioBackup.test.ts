@@ -28,6 +28,7 @@ import {
   makeDaylioBackup,
   makeDaylioBackupFrom,
   makeMalformedDaylioBackup,
+  repeatedAttachmentPayload,
   makeZip
 } from './test-support/daylio-backup.ts';
 
@@ -255,6 +256,36 @@ test('a milestone photo resolves through assetId, from a deflated member', async
   assert.ok(milestone.photo, 'the milestone carries its photo');
   const asset = result.assets.find((one) => one.fileName === milestone.photo!.fileName)!;
   assert.deepEqual(await asset.read(), MILESTONE_PHOTO_BYTES);
+});
+
+test.each([false, true])('repeated attachments keep owner-specific identities and bytes (distinct IDs: %s)', async (distinctIds) => {
+  const payload = repeatedAttachmentPayload(distinctIds);
+  const result = await preview(payload);
+  const attachments = result.journal.entries.flatMap((entry) => [...entry.photos, ...entry.recordings]);
+  attachments.push(result.journal.milestones[0].photo!);
+
+  assert.equal(attachments.length, 5);
+  assert.equal(new Set(attachments.map((attachment) => attachment.id)).size, 5);
+  assert.equal(new Set(attachments.map((attachment) => attachment.fileName)).size, 5);
+  assert.equal(result.photoCount, 3);
+  assert.equal(result.audioCount, 2);
+  assert.equal(result.assets.length, 5);
+  for (const attachment of attachments) {
+    const asset = result.assets.find((asset) => asset.fileName === attachment.fileName)!;
+    assert.ok(asset, 'every attachment has its own planned file');
+    assert.deepEqual(await asset.read(), asset.kind === 'photo' ? PHOTO_BYTES : AUDIO_BYTES);
+  }
+  assert.deepEqual((await preview(payload)).journal, result.journal, 'attachment identities survive another preview');
+});
+
+test('one entry can attach equal-checksum assets without duplicating repeated references', async () => {
+  const payload = repeatedAttachmentPayload(true);
+  (payload.dayEntries as Record<string, unknown>[])[0].assets = [101, 104, 101, 102, 105, 102];
+  const result = await preview(payload);
+  const entry = result.journal.entries[0];
+  assert.equal(entry.photos.length, 2);
+  assert.equal(entry.recordings.length, 2);
+  assert.equal(new Set([...entry.photos, ...entry.recordings].map((attachment) => attachment.id)).size, 4);
 });
 
 test('an audio asset keeps an extension matching its own bytes', async () => {

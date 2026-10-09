@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { dateInputValueFromEpochDay } from '../epochDay.ts';
-import { makeDaylioBackup, daylioPayload } from '../archive/test-support/daylio-backup.ts';
+import { makeDaylioBackup, daylioPayload, repeatedAttachmentPayload } from '../archive/test-support/daylio-backup.ts';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
@@ -103,6 +103,86 @@ test('an imported photo arrives as its full file and its derived thumbnail', asy
   assert.ok(await files.size(thumbFileName(photo.fileName)));
   // A recording has no thumbnail pair and is stored as its own bytes.
   assert.deepEqual(await files.read(audio.fileName), await audio.read());
+});
+
+test.each([false, true])('repeated attachments import independently and remain idempotent (distinct IDs: %s)', async (distinctIds) => {
+  const { journal, files } = await journalWithFiles();
+  const backup = await makeDaylioBackup(repeatedAttachmentPayload(distinctIds));
+  const preview = await journal.archive.previewDaylioBackupImport(backup, naming);
+  assert.deepEqual(await journal.archive.commitDaylioBackupImport(preview, normalize), {
+    entriesAdded: 3, milestonesAdded: 2, tagsAdded: 2, attachmentsAdded: 5
+  });
+  const entries = (await journal.entries.recentDays(10)).filter((entry) => entry.photos.length > 0);
+  const milestone = (await journal.milestones.getMilestones()).find((milestone) => milestone.photo)!;
+  const kept = [entries[1].photos[0].fileName, thumbFileName(entries[1].photos[0].fileName),
+    entries[1].recordings[0].fileName, milestone.photo!.fileName, thumbFileName(milestone.photo!.fileName)];
+  const keptBytes = await Promise.all(kept.map((name) => files.read(name)));
+  assert.ok(keptBytes.every((bytes) => bytes !== null));
+  const storedNames = files.names();
+
+  const again = await journal.archive.previewDaylioBackupImport(backup, naming);
+  assert.deepEqual(await journal.archive.commitDaylioBackupImport(again, normalize), {
+    entriesAdded: 0, milestonesAdded: 0, tagsAdded: 0, attachmentsAdded: 0
+  });
+  assert.deepEqual(files.names(), storedNames);
+
+  await journal.entries.upsertEntry({ id: entries[0].id, removePhotoIds: [entries[0].photos[0].id],
+    removeRecordingIds: [entries[0].recordings[0].id] });
+  assert.equal(await files.read(entries[0].photos[0].fileName), null);
+  assert.equal(await files.read(entries[0].recordings[0].fileName), null);
+  assert.deepEqual(await Promise.all(kept.map((name) => files.read(name))), keptBytes);
+});
+
+test('an older imported photo stays unchanged when a later backup repeats it on another owner', async () => {
+  const { journal, files } = await journalWithFiles();
+  const original = daylioPayload();
+  original.dayEntries = (original.dayEntries as Record<string, unknown>[]).slice(0, 1);
+  original.milestones = [];
+  const before = await journal.archive.previewDaylioBackupImport(await makeDaylioBackup(original), naming);
+  const photo = before.journal.entries[0].photos[0];
+  const asset = before.assets.find((asset) => asset.fileName === photo.fileName)!;
+  // The checksum-only identity written before owner-specific attachment IDs.
+  photo.id = 'cca12dde-6d51-53a8-a618-d3f100bb2d4f';
+  photo.fileName = `${photo.id}.jpg`;
+  asset.fileName = photo.fileName;
+  await journal.archive.commitDaylioBackupImport(before, normalize);
+  const originalBytes = await files.read(photo.fileName);
+
+  const backup = await makeDaylioBackup(repeatedAttachmentPayload(true));
+  const preview = await journal.archive.previewDaylioBackupImport(backup, naming);
+  assert.equal(preview.entryCount, 2);
+  await journal.archive.commitDaylioBackupImport(preview, normalize);
+  const entries = await journal.entries.recentDays(10);
+  assert.ok(entries.some((entry) => entry.photos.some((stored) => stored.id === photo.id)));
+  assert.deepEqual(await files.read(photo.fileName), originalBytes);
+  const addedPhoto = preview.journal.entries.find((entry) => entry.photos.length > 0)!.photos[0];
+  assert.notEqual(addedPhoto.fileName, photo.fileName);
+  const addedBytes = await files.read(addedPhoto.fileName);
+  const addedThumb = await files.read(thumbFileName(addedPhoto.fileName));
+  assert.ok(addedBytes && addedThumb);
+
+  await journal.photos.remove(photo.id);
+  assert.deepEqual(await files.read(addedPhoto.fileName), addedBytes);
+  assert.deepEqual(await files.read(thumbFileName(addedPhoto.fileName)), addedThumb);
+  assert.equal((await journal.archive.previewDaylioBackupImport(backup, naming)).entryCount, 0);
+});
+
+test('equal-checksum attachments within one entry commit and delete independently', async () => {
+  const { journal, files } = await journalWithFiles();
+  const payload = repeatedAttachmentPayload(true);
+  (payload.dayEntries as Record<string, unknown>[])[0].assets = [101, 104, 101, 102, 105, 102];
+  const preview = await journal.archive.previewDaylioBackupImport(await makeDaylioBackup(payload), naming);
+  const result = await journal.archive.commitDaylioBackupImport(preview, normalize);
+  assert.equal(result.attachmentsAdded, 7);
+  const entry = (await journal.entries.recentDays(10)).find((entry) => entry.photos.length === 2)!;
+  assert.ok(entry);
+  await journal.entries.upsertEntry({ id: entry.id, removePhotoIds: [entry.photos[0].id],
+    removeRecordingIds: [entry.recordings[0].id] });
+  assert.equal(await files.read(entry.photos[0].fileName), null);
+  assert.equal(await files.read(entry.recordings[0].fileName), null);
+  assert.ok(await files.read(entry.photos[1].fileName));
+  assert.ok(await files.read(thumbFileName(entry.photos[1].fileName)));
+  assert.ok(await files.read(entry.recordings[1].fileName));
 });
 
 test("an imported entry's custom scale value resolves against a dimension row that exists", async () => {
