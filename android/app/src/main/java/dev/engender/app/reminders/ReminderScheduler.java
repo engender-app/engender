@@ -152,18 +152,8 @@ public final class ReminderScheduler {
     }
 
     static void scheduleCheckIn(Context context, JSONObject payload, ZonedDateTime now) {
-        boolean enabled = payload.optBoolean("checkInEnabled", false);
-        if (!enabled) return;
-
-        String time = payload.optString("checkInTime", "21:00");
-        int today = (int) now.toLocalDate().toEpochDay();
-        int latestEntryEpochDay = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE);
-        boolean todayHasEntry = latestEntryEpochDay == today;
-
-        ZonedDateTime fireAt = QuietHours.hold(
-            ReminderPlanner.nextCheckIn(time, now, todayHasEntry),
-            payload.optJSONObject("quietHours")
-        );
+        ZonedDateTime fireAt = ReminderPlanner.nextCheckIn(payload, now);
+        if (fireAt == null) return;
         PendingIntent pending = PendingIntent.getBroadcast(
             context,
             REQUEST_CHECK_IN,
