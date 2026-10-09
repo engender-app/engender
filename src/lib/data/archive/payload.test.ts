@@ -105,3 +105,22 @@ test('a v1 archive that never carried a preset at all is left saying nothing abo
   const migrated = migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION);
   assert.deepEqual(migrated.journal, bare.journal);
 });
+
+
+test('only the original complete alpha shape gains later empty sections', () => {
+  const original = { dimensions: [], presets: [], tagGroups: [], entries: [], milestones: [], labResults: [], reminders: [] };
+  const source = { journal: original, preferences: {}, files: [] } as unknown as ArchivePayload;
+  const migrated = migratePayload(source, 1, ARCHIVE_FORMAT_VERSION);
+  assert.deepEqual(migrated.journal.presentations, []);
+  assert.deepEqual(migrated.journal.documents, []);
+  assert.deepEqual(source.journal, original);
+  for (const bad of [null, {}, 'bad']) {
+    const malformed = { ...source, journal: { ...original, presentations: bad } } as unknown as ArchivePayload;
+    assert.equal(migratePayload(malformed, 1, ARCHIVE_FORMAT_VERSION), malformed);
+  }
+  const missing = { ...source, journal: { ...original, entries: undefined } } as unknown as ArchivePayload;
+  assert.equal(migratePayload(missing, 1, ARCHIVE_FORMAT_VERSION), missing);
+  assert.equal(migratePayload(source, 2, 2), source);
+  const unknown = { ...source, journal: { ...original, futureArea: [] } } as unknown as ArchivePayload;
+  assert.deepEqual((migratePayload(unknown, 1, 2).journal as unknown as Record<string, unknown>).futureArea, []);
+});
