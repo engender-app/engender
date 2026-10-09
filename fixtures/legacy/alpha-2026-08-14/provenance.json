@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-10-08T22:56:10.520256+00:00",
+  "release_tag": "alpha-2026-08-14",
+  "release_commit": "565c5f2eecb57d57178ac8e4521d0c74bedb6519",
+  "release_published_at": "2026-08-14T16:41:17Z",
+  "worktree": "/home/alice/_projekty/priv/gender-diary/.claude/worktrees/before-release-v2-alpha-archive",
+  "tracked_diff": "",
+  "fixture_sha256": {
+    "archive.ttbackup": "5cdec86e3f4728b27fc7c4a84c5020a2844eba7219181b44655ae8cb0222e80a",
+    "journal.sqlite": "684adeae36847a1f55f5660c35e8314db63662248e62377c4286e4cb1d22956b",
+    "counts.json": "083c14cd99203a0a9c08537b688aec8176c9fe6c375a8b795d02708a4f55ecdb"
+  },
+  "generator_sha256": "06993985a4b7045f5019e2cc9ebaa570ff75ee4f27280165ce16175cb61c4f06",
+  "node": "v24.14.1",
+  "scope": "Newly generated invented fixture using unchanged published alpha Archive producer and migrations, real default KDF/WebCrypto under Node; synthetic attachment bytes. Not an original release artifact, browser/device runtime or usable media proof. Current consumer verification pending.",
+  "evidence": [
+    "checks/gender-diary/releases-inventory.log",
+    "checks/gender-diary/release-tags-inventory.log",
+    "checks/before-release-v2-alpha-archive/alpha-setup.log",
+    "checks/before-release-v2-alpha-archive/alpha-generate.log (failed missing generated tsconfig)",
+    "checks/before-release-v2-alpha-archive/alpha-sync.log",
+    "checks/before-release-v2-alpha-archive/alpha-generate-after-sync.log"
+  ]
+}
