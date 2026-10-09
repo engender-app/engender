@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { launchChromium } from './browser-harness.mjs';
+import { newCapabilityContext, launchBrowser, browserEngine } from './browser-harness.mjs';
 import { buildRequestHandler } from './serve-build.mjs';
+import { classifyBfcacheConsoleErrors } from './browser-tier/bfcache-error-policy.mjs';
+import { firstRun, JOURNAL_SECRET, unlock as coldUnlock } from './browser-tier/built-flow.mjs';
 import { INIT_HIDE_DEMO_SCRIPT } from './yank-sweep-core.mjs';
 
 const server = createServer(buildRequestHandler(process.cwd()));
@@ -13,17 +15,34 @@ const awayServer = createServer((_req, res) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 await new Promise((resolve) => awayServer.listen(0, '127.0.0.1', resolve));
+const production = process.env.BFCACHE_BUILD_MODE === 'production';
+const secret = production ? JOURNAL_SECRET : 'demo';
 const base = `http://localhost:${server.address().port}`;
 const away = `http://localhost:${awayServer.address().port}/leave`;
 // Playwright disables BFCache by default, even when Chromium supports it.
-const browser = await launchChromium({ ignoreDefaultArgs: ['--disable-back-forward-cache'] });
-const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const browser = await launchBrowser(browserEngine() === 'chromium' ? { ignoreDefaultArgs: ['--disable-back-forward-cache'] } : {});
+const context = await newCapabilityContext(browser, { viewport: { width: 390, height: 844 } });
+const page = await context.newPage();
 const errors = [];
+const consoleErrors = [];
+const databaseEvents = [];
+let eventIndex = 0;
 page.on('pageerror', (error) => errors.push(error.message));
-page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-const cdp = await page.context().newCDPSession(page);
-await cdp.send('Page.enable');
-cdp.on('Page.backForwardCacheNotUsed', (event) => console.error('BFCache not used', JSON.stringify(event)));
+page.on('console', (message) => {
+  if (message.type() === 'error') {
+    consoleErrors.push({ index: ++eventIndex, text: message.text(), source: message.location().url });
+    console.error('RAW BROWSER ERROR', message.text());
+  } else if (message.text().startsWith('BFCache database event ')) {
+    const event = JSON.parse(message.text().slice('BFCache database event '.length));
+    databaseEvents.push({ ...event, index: ++eventIndex });
+    console.log('DATABASE RESPONSE', JSON.stringify(event));
+  }
+});
+if (browserEngine() === 'chromium') {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Page.enable');
+  cdp.on('Page.backForwardCacheNotUsed', (event) => console.error('BFCache not used', JSON.stringify(event)));
+}
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 await page.addInitScript(() => {
   window.historyProof = { token: crypto.randomUUID(), events: [], workers: [], clockOffset: 0 };
@@ -34,9 +53,39 @@ await page.addInitScript(() => {
   });
   const NativeWorker = Worker;
   window.Worker = class extends NativeWorker {
-    constructor(...args) { super(...args); window.historyProof.workers.push(this); }
-    terminate() { this.retired = true; return super.terminate(); }
+    constructor(...args) {
+      super(...args);
+      this.requests = new Map();
+      this.workerId = crypto.randomUUID();
+      this.source = new URL(String(args[0]), location.href).href;
+      window.historyProof.workers.push(this);
+      this.addEventListener('message', event => {
+        const request = this.requests.get(event.data.id);
+        this.requests.delete(event.data.id);
+        if (!request || !['attach', 'open'].includes(request.op)) return;
+        if (event.data.ok === false || request.op === 'open') {
+          console.info('BFCache database event ' + JSON.stringify({
+            type: event.data.ok ? 'open' : 'failure', op: request.op, id: event.data.id,
+            worker: this.workerId, source: this.source, token: window.historyProof.token,
+            path: request.args.path, ...(event.data.ok ? {} : { error: event.data.error })
+          }));
+        }
+      });
+    }
+    terminate() {
+      this.retired = true;
+      console.info('BFCache database event ' + JSON.stringify({ type: 'retired',
+        worker: this.workerId, source: this.source, token: window.historyProof.token }));
+      return super.terminate();
+    }
     postMessage(message, ...args) {
+      this.requests.set(message.id, message);
+      if (['attach', 'open'].includes(message.op)) {
+        console.info('BFCache database event ' + JSON.stringify({ type: 'request',
+          op: message.op, id: message.id, path: message.args.path,
+          worker: this.workerId, source: this.source, token: window.historyProof.token }));
+      }
+      if (message.op === 'open') window.historyProof.databasePath = message.args.path;
       if (window.holdReopen && message.op === 'query' && message.args.sql === 'SELECT key, value FROM pref') {
         window.holdReopen = false;
         const receive = this.onmessage;
@@ -61,6 +110,7 @@ async function clientRoute(path) {
 async function ready() {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   await page.waitForSelector('[data-nav-item="calendar"]', { timeout: 15000 });
+  databaseEvents.push({ type: 'ready', ...await page.evaluate(() => ({ path: window.historyProof.databasePath, token: window.historyProof.token })), index: ++eventIndex });
 }
 async function calendar() {
   await clientRoute('/calendar');
@@ -82,6 +132,7 @@ async function restore({ forward = false, elapsed = 0 } = {}) {
     const url = page.url();
     await page.goto(away);
     await page.goto(url);
+    if (production) await coldUnlock(page);
     await ready();
   }
   const before = await page.evaluate(() => ({ token: window.historyProof.token,
@@ -96,9 +147,15 @@ async function restore({ forward = false, elapsed = 0 } = {}) {
     await page.goto(away);
     await page.goBack({ waitUntil: 'commit' });
   }
-  await page.waitForFunction((before) => window.historyProof?.token === before.token &&
-    window.historyProof.events.filter(([type, persisted]) => type === 'pageshow' && persisted).length > before.shows,
-  before, { timeout: 10000 });
+  try {
+    await page.waitForFunction((before) => window.historyProof?.token === before.token &&
+      window.historyProof.events.filter(([type, persisted]) => type === 'pageshow' && persisted).length > before.shows,
+    before, { timeout: 10000 });
+  } catch (error) {
+    console.error('BFCACHE NOT RESTORED', JSON.stringify({ before,
+      after: await page.evaluate(() => ({ token: window.historyProof?.token, events: window.historyProof?.events })) }));
+    throw error;
+  }
   const proof = await page.evaluate(() => ({ token: window.historyProof.token, events: window.historyProof.events }));
   assert.ok(proof.events.some(([type, persisted]) => type === 'pagehide' && persisted));
   console.log('PASS actual BFCache restoration', JSON.stringify(proof));
@@ -106,13 +163,21 @@ async function restore({ forward = false, elapsed = 0 } = {}) {
 async function unlock() {
   await page.locator('[data-applock]').waitFor();
   assert.equal(await page.locator('[data-nav-item]').count(), 0, 'locked journal has no route chrome');
-  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('#session-passphrase').fill(secret);
   await page.locator('[data-session-submit]').click();
   await page.locator('[data-applock]').waitFor({ state: 'detached' });
   await ready();
 }
 try {
-  await page.goto(base);
+  if (production) {
+    await firstRun(page, base);
+    await clientRoute('/entry/new/2026-10-04?seedMood=4');
+    await page.locator('#ed-note').fill('BFCache production baseline');
+    await page.locator('[data-save]').click();
+    await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
+  } else {
+    await page.goto(base);
+  }
   await ready();
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
   await timing('restart');
@@ -141,6 +206,7 @@ try {
   await clientRoute('/day/2026-10-05');
   await page.getByText(note, { exact: true }).first().waitFor();
   await page.reload();
+  if (production) await coldUnlock(page);
   await ready();
   await page.getByText(note, { exact: true }).first().waitFor();
   console.log('PASS restored read and saved change survive normal reload');
@@ -151,7 +217,7 @@ try {
     await restore({ forward: true }); await ready(); await calendar();
     const workers = await page.evaluate(() => window.historyProof.workers.filter((worker) => !worker.retired).length);
     assert.equal(workers, 1, 'only current database worker remains');
-    await page.reload(); await ready(); await calendar();
+    await page.reload(); if (production) await coldUnlock(page); await ready(); await calendar();
   }
   await timing('one-minute');
   await restore(); await ready(); await calendar();
@@ -172,9 +238,24 @@ try {
   await restore(); await ready(); await calendar();
   assert.equal(await page.locator('[data-applock]').count(), 0);
   console.log('PASS web device-bound mode restores without inventing authentication');
+  // A final write and normal reload must follow any transient open conflict.
+  const finalNote = `BFCache final readback ${Date.now()}`;
+  await clientRoute('/entry/new/2026-10-06?seedMood=4');
+  await page.locator('#ed-note').fill(finalNote);
+  await page.locator('[data-save]').click();
+  await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
+  await clientRoute('/day/2026-10-06');
+  await page.getByText(finalNote, { exact: true }).first().waitFor();
+  await page.reload(); await ready();
+  await page.getByText(finalNote, { exact: true }).first().waitFor();
+  databaseEvents.push({ type: 'durable', path: await page.evaluate(() => window.historyProof.databasePath), index: ++eventIndex });
+  const classified = classifyBfcacheConsoleErrors(consoleErrors, databaseEvents);
+  console.log('HANDLED DATABASE RETRIES', JSON.stringify(classified.handled));
+  assert.deepEqual(classified.unmatched, [], 'every console error requires matching driver recovery and durable readback');
   assert.deepEqual(errors, []);
 } finally {
   if (errors.length) console.error('Browser errors', errors);
+  await context.close();
   await browser.close();
   await new Promise((resolve) => { server.closeAllConnections(); server.close(resolve); });
   await new Promise((resolve) => { awayServer.closeAllConnections(); awayServer.close(resolve); });
