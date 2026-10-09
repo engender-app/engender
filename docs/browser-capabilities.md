@@ -24,8 +24,9 @@ competing-tab, biometric, media and manual Archive checks. It also runs the
 existing unlock and update probes against real encrypted drivers. Their
 individual results state whether execution used a production build, a demo
 build or a development probe. The schema-recovery probe observes controller
-takeover while offline, then verifies its reload and unchanged encrypted
-fixture after connectivity returns. Production cold offline startup is
+takeover and the automatic navigation request while offline, then verifies
+the recovered page and unchanged encrypted fixture after connectivity
+returns. Production cold offline startup is
 verified separately. The lifecycle tier reuses the actual BFCache
 restoration guard, which needs the demo fixture. Both tiers are required.
 During orchestration, run each build and matrix through the existing heavy

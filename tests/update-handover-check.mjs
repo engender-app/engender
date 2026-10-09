@@ -43,8 +43,9 @@ try {
         assert.equal(before.journalReads, 0);
         ok(`${mode}: cold refusal leaves registration unwatched and journal unread`);
         if (mode === 'offline-waiting') await context.setOffline(true);
+        const refusalURL = page.url();
         const reloaded = mode === 'offline-waiting'
-          ? page.waitForFunction(() => JSON.parse(sessionStorage.getItem('schema-recovery-handover') ?? 'null')?.takeovers === 1, null, { timeout: 10000 })
+          ? page.waitForEvent('request', { predicate: request => request.isNavigationRequest() && request.frame() === page.mainFrame() && request.url() === refusalURL, timeout: 10000 })
           : page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame(), timeout: 10000 });
         await page.locator('[data-look-for-newer]').click();
         if (mode === 'installing') {
@@ -54,8 +55,9 @@ try {
           ok('installing: recovery waits for the real worker install');
           await page.request.get(`${base}/recovery-install-release`);
         }
-        await reloaded;
+        const navigation = await reloaded;
         if (mode === 'offline-waiting') {
+          console.log('AUTOMATIC OFFLINE RELOAD REQUEST', navigation.url());
           await context.setOffline(false);
           await page.goto(`${base}/recovery.html`);
         }
@@ -66,7 +68,9 @@ try {
         ok(`${mode}: explicit recovery acquires registration and real worker takes over`);
         assert.equal(checkpoint.status, 'schema-too-new');
         assert.equal(checkpoint.journalReads, 0);
-        ok(`${mode}: handover reloads without reading incompatible journal`);
+        ok(mode === 'offline-waiting'
+          ? 'offline-waiting: automatic reload requested offline; recovered page leaves journal unread'
+          : `${mode}: handover reloads without reading incompatible journal`);
         const fixture = await page.evaluate(() => window.recovery.inspectFixture());
         assert.equal(fixture.version, fixture.latest + 1);
         assert.deepEqual(fixture.rows, [{ note: 'Future journal content' }]);
