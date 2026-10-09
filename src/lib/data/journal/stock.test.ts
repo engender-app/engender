@@ -6,30 +6,28 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-import type { Journal } from './journal.ts';
+import { openJournal, type Journal } from './journal.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
-import type { RemindersArea } from './reminders.ts';
 import { makeStockArea } from './stock.ts';
+import { observeWrites } from '../live/writes.ts';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource.ts';
 import { projectStock } from '../stockProjection.ts';
 
 const DIED = /the process died here/;
 
-/** A driver that stops running statements matching `sql`, and a reminders
-    area that stops deleting - the two points a process can die between
-    deleteEntry's two writes. Neither comes back. */
+/** Refuse one statement inside a transaction to check rollback. */
 const driverDyingOn = (driver: SqliteDriver, sql: string): SqliteDriver => ({
   ...driver,
-  run(statement, params) {
-    if (statement.includes(sql)) throw new Error('the process died here');
-    return driver.run(statement, params);
-  }
-});
-
-const remindersDyingOnDelete = (reminders: RemindersArea): RemindersArea => ({
-  ...reminders,
-  deleteReminder() {
-    throw new Error('the process died here');
+  transaction(work) {
+    return driver.transaction((scope) => work({
+      ...scope,
+      run(statement, params) {
+        if (statement.includes(sql)) throw new Error('the process died here');
+        return scope.run(statement, params);
+      }
+    }));
   }
 });
 
@@ -416,13 +414,103 @@ test('deleting a stock entry drops its auto-managed reminder too', async () => {
   assert.deepEqual(await journal.reminders.getReminders(), []);
 });
 
-/* Two writes with no transaction around them, so the question is what a
-   death between them leaves behind. The reminder is deleted first because
-   reconcileRunOutReminders only ever visits drugs that still have a
-   medication_stock row: a reminder outliving its row is unreachable by
-   every path that could clear it, and keeps firing for a drug the journal
-   no longer counts. */
-test('a death mid-delete cannot leave a reminder for a drug with no stock row', async () => {
+/** Hold a reconcile just before it owns the connection. The query hook also
+    catches the old implementation after its reminder snapshot has returned. */
+async function journalWithDelayedReconcile() {
+  const db = await migratedDb();
+  let armed = false;
+  let entered!: () => void;
+  let release!: () => void;
+  const paused = new Promise<void>((resolve) => { entered = resolve; });
+  const resume = new Promise<void>((resolve) => { release = resolve; });
+  const pause = async () => {
+    if (!armed) return;
+    armed = false;
+    entered();
+    await resume;
+  };
+  const driver: SqliteDriver = {
+    ...db,
+    async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      const rows = await db.query<Row>(sql, params);
+      if (sql.includes('FROM reminder ORDER BY id')) await pause();
+      return rows;
+    },
+    async transaction(work) {
+      await pause();
+      return db.transaction(work);
+    }
+  };
+  const journal = observeWrites(openJournal(driver, fakeFileStore()), () => {});
+  await episode(journal, 19000, 'estradiol');
+  const stockId = await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 3, unit: 'pills', recordedEpochDay: 19000 });
+  for (let day = 19000; day <= 19002; day++) {
+    await journal.doses.upsertDose({ timestamp: at(day), route: 'oral', dose: 2, doseUnit: 'mg' });
+  }
+  return { db, journal, stockId, arm: () => { armed = true; }, paused, release };
+}
+
+test('a completed stock deletion cannot be followed by a stale run-out reminder', async () => {
+  const { db, journal, stockId, arm, paused, release } = await journalWithDelayedReconcile();
+  arm();
+  const first = journal.stock.reconcileRunOutReminders(19002);
+  await paused;
+  await journal.stock.deleteEntry(stockId);
+  const queued = journal.stock.reconcileRunOutReminders(19002);
+  release();
+  await Promise.all([first, queued]);
+  assert.deepEqual(await journal.stock.getEntries(), []);
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+  await db.close();
+});
+
+test('stock deletion sees a reminder created while it waited to own the connection', async () => {
+  const { db, journal, stockId, arm, paused, release } = await journalWithDelayedReconcile();
+  arm();
+  const deleting = journal.stock.deleteEntry(stockId);
+  await paused;
+  await journal.stock.reconcileRunOutReminders(19002);
+  release();
+  await deleting;
+  assert.deepEqual(await journal.stock.getEntries(), []);
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+  await db.close();
+});
+
+test('stock rename sees a reminder created while it waited to own the connection', async () => {
+  const { db, journal, stockId, arm, paused, release } = await journalWithDelayedReconcile();
+  arm();
+  const renaming = journal.stock.upsertEntry({
+    id: stockId, drug: 'estradiol valerate', quantity: 3, unit: 'pills', recordedEpochDay: 19000
+  });
+  await paused;
+  await journal.stock.reconcileRunOutReminders(19002);
+  release();
+  await renaming;
+  assert.deepEqual((await journal.stock.getEntries()).map((entry) => entry.drug), ['estradiol valerate']);
+  assert.deepEqual(await journal.reminders.getReminders(), []);
+  await db.close();
+});
+
+test('a completed personal edit and disable survive run-out reconciliation', async () => {
+  const { db, journal, stockId, arm, paused, release } = await journalWithDelayedReconcile();
+  await journal.stock.reconcileRunOutReminders(19002);
+  await journal.stock.upsertEntry({ id: stockId, drug: 'estradiol', quantity: 20, unit: 'pills', recordedEpochDay: 19000 });
+  const [auto] = await journal.reminders.getReminders();
+  arm();
+  const first = journal.stock.reconcileRunOutReminders(19002);
+  await paused;
+  await journal.reminders.upsertReminder({ ...auto, title: 'Personal reminder', enabled: false, autoSource: null });
+  const queued = journal.stock.reconcileRunOutReminders(19002);
+  release();
+  await Promise.all([first, queued]);
+  assert.deepEqual((await journal.reminders.getReminders()).map(({ title, enabled, autoSource }) =>
+    ({ title, enabled, autoSource })), [{ title: 'Personal reminder', enabled: false, autoSource: null }]);
+  assert.equal((await journal.stock.getEntries())[0].reminderDismissed, true);
+  await db.close();
+});
+
+test('a failed stock deletion rolls back reminder and row changes together', async () => {
   const { journal, db } = await journalWithBuiltIns();
   await episode(journal, 19000, 'estradiol');
   const stockId = await journal.stock.upsertEntry({ drug: 'estradiol', quantity: 3, unit: 'pills', recordedEpochDay: 19000 });
@@ -439,30 +527,24 @@ test('a death mid-delete cannot leave a reminder for a drug with no stock row', 
     );
   };
 
-  // Dying on the reminder, the first of the two writes: nothing was
-  // written, so both the row and its reminder are still here.
-  const beforeTheReminder = makeStockArea(db, journal.doses, journal.regimen, remindersDyingOnDelete(journal.reminders));
+  const beforeTheReminder = makeStockArea(driverDyingOn(db, 'DELETE FROM reminder'), journal.doses, journal.regimen);
   await assert.rejects(beforeTheReminder.deleteEntry(stockId), DIED);
   assert.deepEqual(await orphaned(), []);
   assert.deepEqual((await journal.reminders.getReminders()).map((reminder) => reminder.id), [auto.id]);
   assert.equal((await journal.stock.getEntries()).length, 1);
 
-  // Dying on the row, the second: the reminder is gone and the row it
-  // belonged to survives, which is the state reconcileRunOutReminders
-  // still visits - it iterates the rows that exist.
+  // Failure after deleting the reminder rolls it back with the stock row.
   const beforeTheRow = makeStockArea(
     driverDyingOn(db, 'DELETE FROM medication_stock'),
     journal.doses,
-    journal.regimen,
-    journal.reminders
+    journal.regimen
   );
   await assert.rejects(beforeTheRow.deleteEntry(stockId), DIED);
   assert.deepEqual(await orphaned(), []);
-  assert.deepEqual(await journal.reminders.getReminders(), []);
+  assert.deepEqual((await journal.reminders.getReminders()).map((reminder) => reminder.id), [auto.id]);
   await journal.stock.reconcileRunOutReminders(19000);
-  assert.deepEqual(await journal.reminders.getReminders(), []);
+  assert.deepEqual((await journal.reminders.getReminders()).map((reminder) => reminder.id), [auto.id]);
 
-  // And the delete retries from there.
   await journal.stock.deleteEntry(stockId);
   assert.deepEqual(await journal.stock.getEntries(), []);
   assert.deepEqual(await journal.reminders.getReminders(), []);
