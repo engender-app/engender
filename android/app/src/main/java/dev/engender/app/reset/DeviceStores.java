@@ -2,6 +2,8 @@ package dev.engender.app.reset;
 
 import android.content.Context;
 
+import androidx.core.app.NotificationManagerCompat;
+
 import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.files.FileDeliveryPlugin;
 import dev.engender.app.clipboard.SensitiveClipboard;
@@ -55,7 +57,9 @@ public final class DeviceStores {
             CameraCapture::cancel,
             LockTimingPlugin::wipe,
             ScreenCapturePlugin::wipe,
-            SensitiveClipboard::wipe
+            SensitiveClipboard::wipe,
+            // Posted notifications belong to the system, independently of alarms and stored payloads.
+            owner -> NotificationManagerCompat.from(owner).cancelAll()
         }) {
             try {
                 store.wipe(context);

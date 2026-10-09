@@ -191,9 +191,9 @@ export async function recordTimelapse(
   if (!context) throw new Error('no 2d canvas context to record a timelapse with');
 
   const paint = async (frame: JourneyFrame) => {
+    const bitmap = await decode(read, frame.fileName);
     context.fillStyle = JOURNEY_SURROUND;
     context.fillRect(0, 0, TIMELAPSE_EDGE, TIMELAPSE_EDGE);
-    const bitmap = await decode(read, frame.fileName);
     if (bitmap) {
       const fit = fitContain(bitmap.width, bitmap.height, TIMELAPSE_EDGE, TIMELAPSE_EDGE);
       context.drawImage(bitmap, fit.x, fit.y, fit.width, fit.height);

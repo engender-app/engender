@@ -75,7 +75,7 @@ import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
 import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
-import { isLocked, markUnlocked } from './lock.svelte';
+import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
@@ -583,7 +583,9 @@ export async function submitPassphraseSetup(passphrase: string): Promise<void> {
 /** The unlock screen's submit. Throws DecryptionFailedError back to the
     screen on a wrong passphrase; the screen owns the copy. */
 export async function submitPassphraseUnlock(passphrase: string): Promise<void> {
+  const current = beginSessionUnlock();
   const dataKey = await unlockJournalPassphrase(passphrase);
+  current();
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
 }
 
@@ -599,7 +601,9 @@ async function submitPinSetup(pin: string): Promise<void> {
     was bound to; the gate owns both sentences, and they are different
     sentences because only one of them is worth retyping for. */
 export async function submitPinUnlock(pin: string): Promise<void> {
+  const current = beginSessionUnlock();
   const dataKey = await unlockJournalPin(pin);
+  current();
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
 }
 
@@ -616,7 +620,9 @@ async function submitBiometricSetup(): Promise<void> {
 /** The biometric gate's submit. There is nothing to retype, so every failure
     is the same one: the authenticator did not release the secret. */
 export async function submitBiometricUnlock(): Promise<void> {
+  const current = beginSessionUnlock();
   const dataKey = await unlockJournalBiometric();
+  current();
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
 }
 
@@ -648,7 +654,9 @@ export const recoveryUnlock = $state({ used: false });
     DecryptionFailedError separately, because the gate says three different
     things (data/recovery-key.ts). */
 export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
+  const current = beginSessionUnlock();
   const dataKey = await openWithRecoveryKey(typed);
+  current();
   recoveryUnlock.used = true;
   dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
 }
@@ -806,10 +814,12 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
     Android draws the dialog, so its words are UI copy and belong in the
     catalogue with the rest of it. */
 export async function openAndroidJournal(request: UnlockRequest): Promise<void> {
+  const current = beginSessionUnlock();
   let result;
   try {
     result = await openAndroidDataKey(androidKeystore, request);
   } catch (error) {
+    current();
     /* The bridge itself failed - no plugin, no keystore, a platform that
        threw. Not a refusal with a way forward, so it goes to the boot error
        screen rather than being dressed up as one. */
@@ -817,6 +827,7 @@ export async function openAndroidJournal(request: UnlockRequest): Promise<void> 
     return;
   }
 
+  current();
   dispatch({ type: 'android-key-answered', result });
 }
 
