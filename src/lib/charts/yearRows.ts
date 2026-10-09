@@ -1,23 +1,23 @@
-/* Every day of one year, a row per month, shaded at its step.
+/* Every day of one year, a month at a time, shaded at its step.
 
    It was `moodYear`: the same calendar walk with mood's own five steps
    baked in, drawn as a face per day - 365 svgs on one screen. Phase 11
-   ticket 07 made the year twelve shaded rows on the active scale's own
+   ticket 07 made the year twelve shaded groups on the active scale's own
    ramp, so the step function is the caller's now: mood hands in
    `moodStep`, any other scale `heatLevel` over its range, and this module
    only walks the calendar.
 
    The arithmetic is here rather than in the component because the awkward
    parts are calendar rules: how long each month is, and what a leap year
-   does to February's row. */
+   does to February. */
 
 import { epochDayFromLocalDate } from '../data/epochDay';
 
 export interface YearCell {
   epochDay: number;
-  /** 0 to 11 - which row. */
+  /** 0 to 11 - which month. */
   month: number;
-  /** 1 to 31 - which column. */
+  /** 1 to 31 - day within that month. */
   dayOfMonth: number;
   /** The day's value on the caller's own steps, or 0 for a day that
       carried none. A day with nothing logged is not a day at the bottom of
@@ -29,15 +29,15 @@ export interface YearCell {
 
 export interface YearRows {
   cells: YearCell[];
-  /** Twelve, one per month, so the grid can draw its row labels without
+  /** Twelve, one per month, so the grid can draw its labels without
       re-deriving them. */
   months: number[];
-  /** 31 - the widest month. Short months simply have fewer cells in their
-      row, which is a true thing about February and not a gap to fill. */
+  /** 31 - the widest month. Short months simply have fewer cells, which is
+      a true thing about February and not a gap to fill. */
   columns: number;
 }
 
-/** The widest a month gets, and so how many columns the grid has. */
+/** The widest a month gets. */
 const YEAR_COLUMNS = 31;
 
 /** `days` is the day-average series the stats seam answers; days it does

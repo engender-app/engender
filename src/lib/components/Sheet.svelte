@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import { sheetEntranceDelay, sheetRise, scrimFade } from '$lib/motion/navigation';
   import { isReducedMotion } from '$lib/motion/tokens';
-  import { firstFocusable, lockBackground, registerOverlay } from './overlayLock';
+  import { firstFocusable, hostAppOverlay, lockBackground, registerOverlay } from './overlayLock';
 
   /* Ticket 242: `|global` is a compile-time modifier, so it cannot be
      parametrised on the directive itself - the two branches below (where
@@ -230,11 +230,16 @@
   let recedeBackground: (() => void) | null = null;
 
   function holdBackground(node: HTMLElement) {
+    /* The screen and save bar form separate stacking contexts. Keep the
+       scrim beside them in the app frame so its layer covers both during
+       the whole entrance. */
+    const unhost = hostAppOverlay(node);
     const release = lockBackground(node);
     recedeBackground = release.recede;
     return () => {
       recedeBackground = null;
       release();
+      unhost();
       queueMicrotask(() => onClosed?.());
     };
   }

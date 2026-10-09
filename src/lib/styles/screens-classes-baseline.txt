@@ -23,7 +23,6 @@ next-preview
 otd-photos
 pin-dots
 pin-pad
-rive-stage
 screen-gate
 search-chips
 search-filter-dates

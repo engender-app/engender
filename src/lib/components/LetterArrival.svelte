@@ -44,7 +44,7 @@
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { collapse } from '$lib/motion/reveal';
-  import { lockBackground, registerOverlay } from './overlayLock';
+  import { hostAppOverlay, lockBackground, registerOverlay } from './overlayLock';
   import { roleAttrs } from '$lib/components/kit/role';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -71,6 +71,15 @@
   let opened = $state(false);
   let frame: HTMLElement | null = $state(null);
 
+  function holdArrival(node: HTMLElement) {
+    const unhost = hostAppOverlay(node);
+    const release = lockBackground(node);
+    return () => {
+      release();
+      unhost();
+    };
+  }
+
   /* The frame takes focus rather than the open control: a screen that
      arrived on its own should announce itself before it offers anything, and
      putting focus on the card would make the way past the second stop for a
@@ -94,7 +103,7 @@
   class="letter-arrival"
   data-letter-arrival={letter.id}
   transition:blind
-  {@attach lockBackground}
+  {@attach holdArrival}
 >
   <section
     class="letter-arrival-frame"
