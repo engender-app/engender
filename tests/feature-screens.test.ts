@@ -292,9 +292,8 @@ describe('what a first-run journal sees', () => {
   });
 
   it('has retired the old bloom-and-heading empty state', () => {
-    // EmptyState draws a RiveSlot: a soft blob standing in for content,
-    // which is on the craft floor's Refuse list. The kit's Notice carries
-    // the area's own flag stripe and the screen's one call to action.
+    // Route-level empty states use Notice; EmptyState remains for the
+    // trash screen and the body-region inspector sheet.
     for (const route of ROUTES) {
       expect(sourceOf.get(route), route).not.toContain('EmptyState.svelte');
     }

@@ -4176,10 +4176,8 @@ try {
   const coverYear = (await page.locator('[data-wrapped-cover-year]').textContent())?.trim();
   const previousYear = await page.evaluate(() => String(new Date().getFullYear() - 1));
   if (coverYear !== previousYear) throw new Error('yearly wrapped cover shows ' + coverYear);
-  /* Twelve months of days rather than twelve bars: the year is a cell per
-     day on mood's own ramp now, and a month is a block of them. A silent
-     month is still a block - a year with a quiet spring reads as one, and
-     dropping its row would close the gap up. */
+  /* Twelve month columns, each with a cell per day on mood's own ramp.
+     Silent months still show their days. */
   const months = page.locator('[data-chart-card="wrapped-months"] [data-year-month]');
   if ((await months.count()) !== 12) {
     throw new Error('the year should read as twelve months, silent ones included');
@@ -4190,7 +4188,7 @@ try {
   }
   /* The five entries this flow wrote landed in June, and a day that carried
      a value is a shaded cell rather than an empty one (phase 11 ticket 07:
-     a shaded row per month on the active scale's ramp, no face per day). */
+     a shaded column per month on the active scale's ramp, no face per day). */
   if ((await june.locator('[data-year-cell]:not([data-year-step="0"])').count()) < 5) {
     throw new Error('the month the entries went into shaded no days');
   }
