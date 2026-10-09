@@ -1115,7 +1115,7 @@ const postAlphaSections = [
 const alphaBecomesCompleteJournal: PayloadMigration = (payload) => {
   const journal = payload.journal;
   if (!alphaSections.every((name) => Array.isArray(journal?.[name])) ||
-      postAlphaSections.some((name) => Object.hasOwn(journal, name))) return payload;
+      postAlphaSections.some((name) => Object.prototype.hasOwnProperty.call(journal, name))) return payload;
   const complete = { ...journal };
   for (const name of postAlphaSections) complete[name] = [];
   return { ...payload, journal: complete };

@@ -8,9 +8,10 @@ belongs to; it cannot restore lost files or open an Archive.
 ## Execution status
 
 The recovery harness is implemented. The focused encrypted browser probe has
-passed with 54 sections and 18 attachments. Compiled-app first-run restoration,
-Android recovery and the new interrupted-migration assertion still require a
-completed runtime run before this ticket can be marked verified. Failed runs are
+passed with 54 sections and 18 attachments. The compiled app also completes
+first-run restoration, unlocks with its independent credential after reload and
+plays restored audio and video and renders its document. Android recovery and
+the new interrupted-migration assertion still require a completed runtime run before this ticket can be marked verified. Failed runs are
 retained in the ticket handoff; implementation alone is not acceptance evidence.
 
 ## Maintained checks

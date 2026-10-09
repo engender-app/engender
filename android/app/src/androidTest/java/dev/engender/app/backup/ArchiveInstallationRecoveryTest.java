@@ -41,7 +41,7 @@ public class ArchiveInstallationRecoveryTest extends AutoExportDeliveryTest {
                 }, null, 0, null, null);
             assertTrue(granted.await(10, TimeUnit.SECONDS));
             BackupWork.preferences(app).edit().clear().putBoolean("enabled", true).putString("schedule", "weekly")
-                .putString("destinationUri", tree.toString()).putLong("lastSuccessAt", System.currentTimeMillis() - 7 * BackupWork.DAY + 15000).commit();
+                .putString("destinationUri", tree.toString()).putLong("lastSuccessAt", System.currentTimeMillis()).commit();
         }
         JSONObject result;
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -54,9 +54,15 @@ public class ArchiveInstallationRecoveryTest extends AutoExportDeliveryTest {
             result = new JSONObject(new org.json.JSONTokener(probe.evaluate("JSON.stringify(window.recoveryProbe.result)")).nextValue().toString());
             assertFalse(result.toString(), result.has("error"));
             assertTrue(result.toString(), result.has("identity"));
+            if (phase.equals("automatic")) {
+                assertTrue("verified stage must exist before the page closes", BackupWork.preferences(app).contains("encryptedStage"));
+                assertFalse("delivery must remain ineligible while the page is alive", BackupWork.preferences(app).contains("lastSnapshotAt"));
+            }
         }
         if (phase.equals("automatic")) {
-            // No foreground page remains while WorkManager delivers the verified stage.
+            // Release due work only after ActivityScenario has closed the page.
+            BackupWork.preferences(app).edit().putLong("lastSuccessAt", System.currentTimeMillis() - 7 * BackupWork.DAY).commit();
+            BackupWork.schedule(app);
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(180);
             while (!BackupWork.preferences(app).contains("lastSnapshotAt") && System.nanoTime() < deadline) Thread.sleep(100);
             assertTrue("automatic stage was not delivered", BackupWork.preferences(app).contains("lastSnapshotAt"));
