@@ -47,7 +47,9 @@ test('imports alpha producer output through the current public Archive boundary'
     assert.deepEqual(entries[0].videos, []);
     assert.equal(actual.files.length, 2);
     for (const file of actual.files) {
-      assert.equal(new TextDecoder().decode(await files.read(file.name)), 'Invented alpha attachment bytes; format coverage only');
+      const bytes = await files.read(file.name);
+      assert.ok(bytes);
+      assert.equal(new TextDecoder().decode(bytes), 'Invented alpha attachment bytes; format coverage only');
     }
     assert.deepEqual(new Uint8Array(readFileSync(path)), bytes);
   } finally {
