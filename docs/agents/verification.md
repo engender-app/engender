@@ -33,9 +33,10 @@ locator gate passed.
 
 ## Browser tier — `npm run test:browser`
 
-`svelte-kit sync && node tests/browser-tier/run.mjs`: serves the probe
-pages under `tests/browser-tier/` on a throwaway dev server and drives them
-through headless Chromium with Playwright. Set `CHROMIUM_PATH` if
+`npm run build && node tests/browser-tier/run.mjs && node tests/update-handover-check.mjs`:
+builds the production app for Archive recovery, then serves the probe pages
+under `tests/browser-tier/` on a throwaway dev server and drives them through
+headless Chromium with Playwright. Set `CHROMIUM_PATH` if
 `/usr/bin/chromium-browser` isn't where Chromium lives on this machine.
 
 Answers what the Node tier structurally cannot: the production encrypted
