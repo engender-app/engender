@@ -418,7 +418,8 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                     scenario.onActivity(activity -> activity.getBridge().setServerBasePath(bundle.getAbsolutePath()));
                     WebViewProbe probe = new WebViewProbe(scenario, 120);
                     probe.awaitTrue("window.backupProbe && window.backupProbe.ready");
-                    assertTrue(command(probe, "prepareProtected()").getBoolean("protectedClosed"));
+                    JSONObject protectedSetup = command(probe, "prepareProtected()");
+                    assertTrue(protectedSetup.toString(), protectedSetup.optBoolean("protectedClosed"));
                 }
                 }
                 long last = System.currentTimeMillis() - 7 * BackupWork.DAY + 45000;
