@@ -64,6 +64,7 @@ async function readNote() {
 try {
   if (engine === 'webkit') {
     const privateContext = await browser.newContext();
+    privateContext.on('page', page => page.on('pageerror', error => errors.push(error.message)));
     const privatePage = await privateContext.newPage();
     try {
       await privatePage.goto(origin);
