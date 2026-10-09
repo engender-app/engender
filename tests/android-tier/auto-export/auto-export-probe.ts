@@ -102,7 +102,7 @@ const probe = {
       const sqlite = createAndroidSqlite('native-backup-protected.sqlite3', key);
       const opened = await boot({ createDriver: () => sqlite.driver, fileOps: sqlite.fileOps, requestPersistentStorage: sqlite.requestPersistentStorage });
       if (opened.phase === 'error') throw opened.error;
-      const live = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('native-backup-protected-photos'), key));
+      const live = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('encryption-probe-photos'), key));
       const entryId = await live.entries.upsertEntry({ epochDay: 20000, mood: 4, note: 'Before cold deferral', dims: {}, tags: [] });
       await live.photos.attach({ entryId }, { full: jpeg, thumb: jpeg });
       const { openPreferences } = await import('../../../src/lib/data/prefs/preferences');
@@ -133,7 +133,7 @@ const probe = {
       const { attachPreferences, prefs } = await import('../../../src/lib/data/prefs/store.svelte');
       const { startAutoExportScheduler, stopAutoExportScheduler } = await import('../../../src/lib/data/archive/auto-export-scheduler');
       const sqlite = createAndroidSqlite('native-backup-protected.sqlite3', key);
-      const live = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('native-backup-protected-photos'), key));
+      const live = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('encryption-probe-photos'), key));
       await live.entries.upsertEntry({ epochDay: 20001, mood: 4, note: 'After authenticated unlock', dims: {}, tags: [] });
       await attachPreferences(await openPreferences(sqlite.driver));
       attachJournal(live);journalIsOpen();
@@ -178,7 +178,7 @@ const probe = {
       const sqlite = createAndroidSqlite('native-backup-restored.sqlite3', key);
       const opened = await boot({ createDriver: () => sqlite.driver, fileOps: sqlite.fileOps, requestPersistentStorage: sqlite.requestPersistentStorage });
       if (opened.phase === 'error') throw opened.error;
-      const restored = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('native-backup-restored-photos'), key));
+      const restored = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles('ee-wa-replace-photos'), key));
       await restored.archive.replace({ journal: reopened.payload.journal, files: reopened.files });
       const actual = await restored.archive.snapshot();
       if (JSON.stringify(actual.journal.entries) !== JSON.stringify(reopened.payload.journal.entries)) throw new Error('restored journal rows differ');
