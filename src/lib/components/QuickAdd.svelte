@@ -53,7 +53,7 @@
      they belong with no travel and no stagger, and the highlight keeps its
      colour and loses its lift. Both gestures still work, which is the part
      that matters. */
-  import { goto } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
@@ -223,9 +223,23 @@
   /* The same route Home's quick log and the Android widget already use, so
      a mood picked here lands in the editor the same way it lands from
      either of those. launch-routes.json pins that shape and is untouched. */
+  // Finish the live scrim fade before navigation photographs the screen.
+  // A departure or a reopened fan cancels the pending mood destination.
+  let moodAfterWithdrawal: number | null = null;
+  beforeNavigate(() => { moodAfterWithdrawal = null; });
+  $effect(() => {
+    if (ui.chooserOpen) moodAfterWithdrawal = null;
+  });
+
   function pickMood(v: number) {
+    moodAfterWithdrawal = v;
     close();
-    goto(`/entry/new/today?seedMood=${v}`);
+  }
+
+  function finishWithdrawal() {
+    const mood = moodAfterWithdrawal;
+    moodAfterWithdrawal = null;
+    if (mood !== null) goto(`/entry/new/today?seedMood=${mood}`);
   }
 
   /* The backdate, unchanged: the same parse, through the same route.
@@ -696,6 +710,7 @@
     data-quick-add
     transition:fade={{ duration: motionDuration('--dur-fast') }}
     onclick={close}
+    onoutroend={finishWithdrawal}
   ></div>
 
   <!-- Source order is the phone's, nearest the thumb first: the bar's fan
