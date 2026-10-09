@@ -209,11 +209,11 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       const plan = describeWebBootPlan({ keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent });
       // Refuse before any key creation, unlock or demo reset can change storage.
       if (plan === 'legacy-refused') return step(machine, bootTransitions.toLegacyRefused(surveyed));
+      if (plan === 'auto-unlock') return step(machine, surveyed, [{ type: 'auto-unlock-device-bound' }]);
       if (machine.demo) {
         return step(machine, surveyed, [{ type: plan === 'needs-setup' ? 'demo-setup' : 'demo-unlock' }]);
       }
 
-      if (plan === 'auto-unlock') return step(machine, surveyed, [{ type: 'auto-unlock-device-bound' }]);
       return step(
         machine,
         plan === 'needs-unlock'
