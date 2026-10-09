@@ -32,16 +32,19 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        JSONObject payload = ReminderScheduler.loadPayload(context);
-        if (payload == null) return;
+        // Wipe must wait until an already-read payload has finished posting and rescheduling.
+        synchronized (ReminderScheduler.class) {
+            JSONObject payload = ReminderScheduler.loadPayload(context);
+            if (payload == null) return;
 
-        String kind = intent.getStringExtra(ReminderScheduler.EXTRA_KIND);
-        if (ReminderScheduler.KIND_REMINDER.equals(kind)) {
-            handleReminder(context, payload, intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_ID));
-            return;
-        }
-        if (ReminderScheduler.KIND_CHECK_IN.equals(kind)) {
-            handleCheckIn(context, payload);
+            String kind = intent.getStringExtra(ReminderScheduler.EXTRA_KIND);
+            if (ReminderScheduler.KIND_REMINDER.equals(kind)) {
+                handleReminder(context, payload, intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_ID));
+                return;
+            }
+            if (ReminderScheduler.KIND_CHECK_IN.equals(kind)) {
+                handleCheckIn(context, payload);
+            }
         }
     }
 
