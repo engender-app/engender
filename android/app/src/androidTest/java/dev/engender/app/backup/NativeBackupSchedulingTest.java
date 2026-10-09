@@ -325,6 +325,13 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         prepareNativeStage(false);
         java.nio.file.Files.copy(app.getDatabasePath("native-backup-protected.sqlite3").toPath(),
             app.getDatabasePath("engender.sqlite3").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        File publicPhotos = new File(app.getFilesDir(), "photos");
+        publicPhotos.mkdirs();
+        File[] protectedPhotos = new File(app.getFilesDir(), "encryption-probe-photos").listFiles();
+        if (protectedPhotos != null) for (File photo : protectedPhotos) {
+            if (photo.isFile()) java.nio.file.Files.copy(photo.toPath(), new File(publicPhotos, photo.getName()).toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
         SharedPreferences preferences = BackupWork.preferences(app);
         long before = preferences.getLong("lastSuccessAt", 0);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
