@@ -351,7 +351,7 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
          FROM photo p
          LEFT JOIN entry e ON e.id = p.entry_id
          LEFT JOIN milestone m ON m.id = p.milestone_id
-         WHERE p.starred = 1
+         WHERE p.starred = 1 AND (p.entry_id IS NULL OR e.trashed_at IS NULL)
          ORDER BY epoch_day, p.order_index, p.id`
       );
       return rows.map((row) => ({

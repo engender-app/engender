@@ -345,6 +345,28 @@ test('every photo in the journal comes back dated, oldest first, naming its mile
   ]);
 });
 
+test('starred photos hide trashed entries, return on restore, and keep milestones', async () => {
+  const { db, journal } = await journalWithFiles();
+  try {
+    const entryId = await anEntry(journal);
+    const milestoneId = await journal.milestones.upsertMilestone({ name: 'Voice', epochDay: 19000 });
+    const entryPhoto = await journal.photos.attach({ entryId }, shot('entry', 'thumb'));
+    const milestonePhoto = await journal.photos.attach({ milestoneId }, shot('milestone', 'thumb'));
+    await journal.photos.attach({ entryId }, shot('unstarred', 'thumb'));
+    await journal.photos.setStarred(entryPhoto, true);
+    await journal.photos.setStarred(milestonePhoto, true);
+
+    const starredIds = async () => (await journal.photos.starredPhotos()).map((photo) => photo.id);
+    assert.deepEqual(await starredIds(), [milestonePhoto, entryPhoto]);
+    await journal.entries.deleteEntry(entryId);
+    assert.deepEqual(await starredIds(), [milestonePhoto]);
+    await journal.entries.restoreEntry(entryId);
+    assert.deepEqual(await starredIds(), [milestonePhoto, entryPhoto]);
+  } finally {
+    await db.close();
+  }
+});
+
 test('an override takes precedence over the owner day in both inJournal and starredPhotos (ticket 47)', async () => {
   const { journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
