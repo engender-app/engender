@@ -1602,7 +1602,8 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
  *  the scene already knows about, and either way the still-neighbour or
  *  missing-return guard suppresses it. */
 function findBloat(run, k) {
-  const rows = run.map((r) => r.row);
+  // Hidden placement can span the track before measurement without painting it.
+  const rows = run.map(({ row }) => row && row.o > 0 && row.v !== false ? row : null);
   const presentRows = rows.filter(Boolean);
   const restingW = resting(presentRows.map((r) => r.w));
   const restingH = resting(presentRows.map((r) => r.h));

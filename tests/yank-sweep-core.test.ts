@@ -404,6 +404,21 @@ describe('findYanks', () => {
   });
 
   describe('bloat - the field-blind shape (ticket 99 round 2, ticket 100)', () => {
+    it.each([
+      ['transparent', { o: 0 }],
+      ['clipped', { v: false, c: 0 }]
+    ])('ignores an oversized %s first placement before the mark becomes visible', (_, hidden) => {
+      const frames = [frame(null, 0), frame(mark({ w: 350, ...hidden }), 16), ...still(8)];
+      expect(findYanks(frames, 'rows').filter((yank) => yank.kind === 'bloat')).toEqual([]);
+    });
+
+    it('reports an oversized visible first placement', () => {
+      const frames = [frame(null, 0), frame(mark({ w: 350 }), 16), ...still(8)];
+      expect(findYanks(frames, 'rows')).toContainEqual(
+        expect.objectContaining({ kind: 'bloat', mark: 'mark' })
+      );
+    });
+
     it('reports a mark that renders larger than its resting bounds for one frame', () => {
       const frames = [...still(8), frame(mark({ h: 520 }), 128), ...still(4)];
       const yanks = findYanks(frames, 'rows');
