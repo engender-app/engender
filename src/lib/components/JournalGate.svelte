@@ -17,6 +17,7 @@
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
@@ -118,7 +119,8 @@
       if (mode === 'setup') await submitPassphraseSetup(passphrase);
       else await submitPassphraseUnlock(passphrase);
       passphrase = '';
-    } catch {
+    } catch (e) {
+      if (e instanceof UnlockCancelledError) return;
       // DecryptionFailedError, deliberately undiagnosed (see header).
       error = m.pp_wrong();
     } finally {
@@ -135,6 +137,7 @@
       await submitPinUnlock(entered);
       return 'ok';
     } catch (e) {
+      if (e instanceof UnlockCancelledError) return 'cancelled';
       return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
     }
   }
@@ -148,6 +151,7 @@
     try {
       await submitBiometricUnlock();
     } catch (e) {
+      if (e instanceof UnlockCancelledError) return;
       console.error('the biometric unlock failed', e);
       error = m.bm_unlock_failed();
     } finally {

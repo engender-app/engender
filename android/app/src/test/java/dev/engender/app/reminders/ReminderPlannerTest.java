@@ -55,9 +55,10 @@ public class ReminderPlannerTest {
     }
 
     @Test
-    public void checkInSkipsTodayWhenThereIsAlreadyAnEntry() {
+    public void checkInSkipsTodayWhenThereIsAlreadyAnEntry() throws Exception {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 13, 10, 0, 0, 0, ZONE);
-        ZonedDateTime next = ReminderPlanner.nextCheckIn("21:00", now, true);
+        ZonedDateTime next = ReminderPlanner.nextCheckIn(checkIn(new JSONArray())
+            .put("latestEntryEpochDay", now.toLocalDate().toEpochDay()), now);
 
         assertEquals(ZonedDateTime.of(2026, 8, 14, 21, 0, 0, 0, ZONE), next);
     }

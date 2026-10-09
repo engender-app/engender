@@ -17,6 +17,7 @@ import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { builtArchiveRecovery } from './archive-built-recovery.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
+import { coldUnlock } from './cold-unlock.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
     element under it is stroked in the role's edge, over the same geometry,
@@ -79,6 +80,12 @@ async function load(path, name) {
   return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
+
+await block('cold authentication respects newer locks', 5, async () => {
+  for (const mode of await coldUnlock(browser, `http://localhost:${port}`)) {
+    ok(`${mode} cold authentication cancels after a newer lock and accepts a fresh attempt`);
+  }
+});
 
 await block('Archive after browser installation loss', 2, async () => {
   const origin = `http://localhost:${port}`;
@@ -798,7 +805,7 @@ await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
 });
 
 // --- Ticket 27: the photo journey export, against a real canvas and MediaRecorder ---
-await block('ticket 27 photo journey export', 19, async () => {
+await block('ticket 27 photo journey export', 20, async () => {
   const r = await load('/journey.html', 'journey-probe');
   if (r.error) throw new Error(r.error);
 
@@ -882,6 +889,12 @@ await block('ticket 27 photo journey export', 19, async () => {
   if (nearInVideo(r.firstFrame.centre, RED))
     ok('and its first frame is the oldest photo, on the canvas before recording started');
   else fail('the first frame is the oldest photo', JSON.stringify(r.firstFrame.centre));
+
+  const recordedOrder = r.recordedColours.map((colour) => [RED, GREEN, BLUE].findIndex((want) => nearInVideo(colour, want)))
+    .filter((colour, index, colours) => index === 0 || colour !== colours[index - 1]);
+  if (recordedOrder.join() === '0,1,2')
+    ok('every photograph survives asynchronous reads in the recorded video, in order and without blank frames');
+  else fail('every photograph survives in the recorded video', JSON.stringify(r.recordedColours));
 
   // Recording is real time (MediaRecorder has no other clock), so three
   // photos at 700ms each cannot come back in less than about two seconds.

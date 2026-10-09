@@ -129,26 +129,25 @@ public final class ReminderScheduler {
         return ReminderPayloadStore.read(context);
     }
 
-    /**
-     * Quiet hours are applied here rather than inside {@link ReminderPlanner}:
-     * the planner answers what the rule says, which is
-     * what the shared reminder-rule fixture pins, and holding an alarm out of
-     * the window is a separate decision on top of that answer.
-     */
     static void scheduleOneReminder(Context context, JSONObject payload, JSONObject reminder, ZonedDateTime now) {
-        ZonedDateTime fireAt = ReminderPlanner.nextReminder(reminder, now);
-        if (fireAt == null) return;
-        fireAt = QuietHours.hold(fireAt, payload.optJSONObject("quietHours"));
-        String reminderId = reminder.optString("id", "");
-        if (reminderId.isBlank()) return;
+        scheduleOneReminder(payload, reminder, now, fireAt -> {
+            String reminderId = reminder.optString("id", "");
+            if (reminderId.isBlank()) return;
+            PendingIntent pending = PendingIntent.getBroadcast(
+                context,
+                REQUEST_REMINDER,
+                reminderIntent(context, reminderId),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            schedule(context, pending, fireAt.toInstant().toEpochMilli());
+        });
+    }
 
-        PendingIntent pending = PendingIntent.getBroadcast(
-            context,
-            REQUEST_REMINDER,
-            reminderIntent(context, reminderId),
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-        schedule(context, pending, fireAt.toInstant().toEpochMilli());
+    static void scheduleOneReminder(JSONObject payload, JSONObject reminder, ZonedDateTime now,
+                                    Consumer<ZonedDateTime> scheduleAlarm) {
+        ZonedDateTime fireAt = ReminderPlanner.nextReminder(reminder, now, payload.optJSONObject("quietHours"));
+        if (fireAt == null) return;
+        scheduleAlarm.accept(fireAt);
     }
 
     static void scheduleCheckIn(Context context, JSONObject payload, ZonedDateTime now) {
