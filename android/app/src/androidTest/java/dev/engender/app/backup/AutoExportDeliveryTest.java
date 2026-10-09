@@ -30,9 +30,9 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class AutoExportDeliveryTest {
-    private final Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    private final Uri tree = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root");
-    private final ContentResolver resolver = app.getContentResolver();
+    protected final Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    protected final Uri tree = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root");
+    protected final ContentResolver resolver = app.getContentResolver();
 
     @Test public void completeLargeBackupRoundTripsAndFailuresPreserveRecovery() throws Exception {
         java.util.concurrent.CountDownLatch bootstrapped = new java.util.concurrent.CountDownLatch(1);
@@ -144,14 +144,14 @@ public class AutoExportDeliveryTest {
                 assertEquals(1, afterCleanup.size());
                 copyDocument(afterCleanup.get(0), delivered);
                 assertEquals(1, command(probe, "recover(1)").getInt("recovered"));
-                assertTrue("the fixture must leave staging behind", new File(app.getCacheDir(), "auto-export.pending").exists());
+                assertTrue("the fixture must leave staging behind", pendingFiles().length > 0);
             } finally {
                 Os.chmod(cachePath, cacheMode);
                 resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null);
-                Files.deleteIfExists(new File(app.getCacheDir(), "auto-export.pending").toPath());
+                for (File pending : pendingFiles()) Files.deleteIfExists(pending.toPath());
             }
 
-            assertFalse(new File(app.getCacheDir(), "auto-export.pending").exists());
+            assertFalse(pendingFiles().length > 0);
         } finally {
             resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
             Files.deleteIfExists(delivered.toPath());
@@ -159,14 +159,19 @@ public class AutoExportDeliveryTest {
         }
     }
 
-    private JSONObject command(WebViewProbe probe, String expression) throws Exception {
+    private File[] pendingFiles() {
+        File[] files = app.getCacheDir().listFiles((directory, name) -> name.startsWith("auto-export-") && name.endsWith(".pending"));
+        return files == null ? new File[0] : files;
+    }
+
+    protected JSONObject command(WebViewProbe probe, String expression) throws Exception {
         probe.evaluate("window.backupProbe." + expression);
         probe.awaitTrue("window.backupProbe.ready");
         String raw = probe.evaluate("JSON.stringify(window.backupProbe.result)");
         return new JSONObject(new JSONArray("[" + raw + "]").getString(0));
     }
 
-    private List<Uri> documents() throws Exception {
+    protected List<Uri> documents() throws Exception {
         List<Uri> found = new ArrayList<>();
         Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, "root");
         try (Cursor cursor = resolver.query(children, new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID}, null, null, null)) {
@@ -175,7 +180,7 @@ public class AutoExportDeliveryTest {
         return found;
     }
 
-    private byte[] hash(Uri uri) throws Exception {
+    protected byte[] hash(Uri uri) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         try (InputStream input = resolver.openInputStream(uri)) {
             byte[] buffer = new byte[8192];
@@ -185,7 +190,7 @@ public class AutoExportDeliveryTest {
         return digest.digest();
     }
 
-    private void copyDocument(Uri uri, File target) throws Exception {
+    protected void copyDocument(Uri uri, File target) throws Exception {
         try (InputStream input = resolver.openInputStream(uri); FileOutputStream output = new FileOutputStream(target)) {
             byte[] buffer = new byte[8192];
             int read;
@@ -193,7 +198,7 @@ public class AutoExportDeliveryTest {
         }
     }
 
-    private void copyAssets(String path, File target) throws Exception {
+    protected void copyAssets(String path, File target) throws Exception {
         android.content.res.AssetManager assets = InstrumentationRegistry.getInstrumentation().getContext().getAssets();
         String[] children = assets.list(path);
         if (children.length > 0) {

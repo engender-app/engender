@@ -128,7 +128,7 @@ describe('auto-export scheduler', () => {
   test('overlapping startup and visibility checks write one backup', async () => {
     let release!: () => void;
     status.mockImplementation(() => new Promise((resolve) => {
-      release = () => resolve({ enabled: true });
+      release = () => resolve({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true });
     }));
     startAutoExportScheduler();
     const visible = vi.mocked(document.addEventListener).mock.calls[0][1] as () => void;
@@ -141,13 +141,44 @@ describe('auto-export scheduler', () => {
     expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
   });
 
-  test('does nothing when backup is not due', async () => {
+  test('does not repack an eligible stage before refresh window', async () => {
     vi.mocked(isDue).mockReturnValue(false);
+    status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true, stagedSnapshotAt: nowSeed, nextDueAt: nowSeed + 7 * 86400000 });
 
     startAutoExportScheduler();
     await flush();
 
     expect(runAndroidAutoExport).not.toHaveBeenCalled();
+  });
+
+  test('keeps an eligible due stage without reopening the native retry window', async () => {
+    status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
+      stagedSnapshotAt: nowSeed - 3600000, nextDueAt: nowSeed - 1800000,
+      lastFailureAt: nowSeed - 1000, lastFailureReason: 'destination-unavailable' });
+    startAutoExportScheduler();
+    await flush();
+    expect(snapshot).not.toHaveBeenCalled();
+    expect(runAndroidAutoExport).not.toHaveBeenCalled();
+  });
+
+  test('prepares one stage before due when no encrypted snapshot is available', async () => {
+    vi.mocked(isDue).mockReturnValue(false);
+    runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });
+    startAutoExportScheduler();
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledWith(expect.objectContaining({ snapshotAt: nowSeed }),
+      expect.objectContaining({ scheduled: true }));
+    expect(notifyFailure).not.toHaveBeenCalled();
+  });
+
+  test('refreshes an older stage once during final day before due', async () => {
+    vi.mocked(isDue).mockReturnValue(false);
+    status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
+      stagedSnapshotAt: nowSeed - 2 * 86400000, nextDueAt: nowSeed + 3600000 });
+    runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });
+    startAutoExportScheduler();
+    await flush();
+    expect(snapshot).toHaveBeenCalledTimes(1);
   });
 
   test('shows reselect toast when scheduled run loses destination access', async () => {
