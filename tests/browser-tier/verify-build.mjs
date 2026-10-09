@@ -21,9 +21,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { createReporter, launchChromium, launchPersistentChromium } from '../browser-harness.mjs';
+import { newCapabilityContext, createReporter, launchBrowser, launchPersistentBrowser, browserEngine } from '../browser-harness.mjs';
 import { serveBuild } from '../serve-build.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
+import { choosePassphrase, firstRun } from './built-flow.mjs';
 
 /* --- Phase 5 performance ticket 01: the OCR engine, online then offline ---
 
@@ -145,8 +146,9 @@ const server = await serveBuild('.');
 const address = server.httpServer.address();
 const origin = `http://localhost:${address.port}`;
 
-const browser = await launchChromium();
-const page = await (await browser.newContext()).newPage();
+const browser = await launchBrowser();
+const initialContext = await newCapabilityContext(browser);
+const page = await initialContext.newPage();
 
 const allRequests = [];
 const externalRequests = [];
@@ -219,13 +221,7 @@ try {
   /* Ticket 30 split choosing a mode from typing its secret into two
      screens: the consequence screen names the mode first, and only its own
      Continue reaches the fields. */
-  await page.locator('[data-list-row="passphrase"]').click();
-  await page.waitForSelector('[data-access-chosen="passphrase"]');
-  await page.click('[data-access-continue]');
-  await page.waitForSelector('[data-access-secret="passphrase"]');
-  await page.fill('#am-passphrase', PASSPHRASE);
-  await page.fill('#am-passphrase-confirm', PASSPHRASE);
-  await page.click('[data-access-submit]');
+  await choosePassphrase(page, PASSPHRASE);
 
   // Give boot() time to open the database and load the sqlite3mc
   // worker/wasm - the whole point of this check.
@@ -316,6 +312,7 @@ try {
   fail('verify-build', e.message ?? String(e));
 }
 
+await initialContext.close();
 await browser.close();
 
 /* --- Phase 2 ticket 03: install the app, kill the network, start it again -
@@ -325,63 +322,19 @@ await browser.close();
    profile with `in-incognito` and looks no further, and a restart that the
    browser remembers nothing about would not be much of a restart. */
 const profile = await mkdtemp(join(tmpdir(), 'engender-install-'));
+// Disable Firefox HTTP caches so an uncached offline navigation needs the worker.
+const profileOptions = browserEngine() === 'firefox' ? { firefoxUserPrefs: {
+  'browser.cache.disk.enable': false, 'browser.cache.memory.enable': false
+} } : {};
 let installed;
 let serving = true;
 const closeServer = async () => {
   if (serving) (serving = false), await server.close();
 };
 try {
-  installed = await launchPersistentChromium(profile);
+  installed = await launchPersistentBrowser(profile, profileOptions);
   const cold = installed.pages()[0] ?? (await installed.newPage());
-  await cold.goto(origin, { waitUntil: 'networkidle' });
-
-  /* A fresh profile is a first run, and a production first run's own first
-     screen is onboarding's welcome now (ticket 54) - walk it the way a
-     person would, meeting the gate only once it reaches the one step that
-     actually needs a database. */
-  await cold.waitForSelector('[data-next]', { timeout: 10000 });
-
-  /* Gripped by handle rather than by class (ADR-0029). These were
-     `.home-hello`, `.quicklog .mood-btn` and `.entry-card`, and phase 5
-     ticket 21 rebuilt Home out of the surface kit - none of the three
-     survived, and each would have failed here as an anonymous 30s timeout
-     rather than as a name. The rule the walkthrough keeps applies to every
-     suite that drives a real screen; only walkthrough-locators.test.ts was
-     watching, and it watches one file.
-
-     Walking it is what puts a journal on the device, and the quick log
-     after it is the entry the offline start has to read back. */
-  /* Walked to the end rather than counted out. It was five clicks and a
-     finish, which stopped being the flow when 7d11edfd made the first run
-     seven steps, and failed here as an anonymous 30s wait for [data-finish] -
-     the same shape ADR-0029 is about. The bound is a runaway guard, not the
-     step count: onboarding-steps has seven today and the flow is one shorter
-     under disguise.
-
-     This loop naturally stops at the lock step: reaching it is what turns
-     the gate back on (ticket 54), so [data-next] - onboarding's own control -
-     is briefly gone from the page while the access-mode module has it. */
-  for (let step = 0; step < 12 && (await cold.locator('[data-next]').count()); step++) {
-    await cold.locator('[data-next]').click();
-  }
-
-  await cold.waitForSelector('[data-access-modes]', { timeout: 10000 });
-  await cold.locator('[data-list-row="passphrase"]').click();
-  await cold.waitForSelector('[data-access-chosen="passphrase"]');
-  await cold.click('[data-access-continue]');
-  await cold.waitForSelector('[data-access-secret="passphrase"]');
-  await cold.fill('#am-passphrase', 'verify-build passphrase');
-  await cold.fill('#am-passphrase-confirm', 'verify-build passphrase');
-  await cold.click('[data-access-submit]');
-  await cold.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
-
-  // Onboarding picks back up on its own lock step once the mode is set up,
-  // the same second half the throwaway context above already walked.
-  for (let step = 0; step < 12 && (await cold.locator('[data-next]').count()); step++) {
-    await cold.locator('[data-next]').click();
-  }
-  await cold.locator('[data-finish]').click();
-  await cold.waitForSelector('[data-home-hello]');
+  await firstRun(cold, origin);
   await cold.locator('[data-mood="4"]').click();
   // Quick Log now seeds the editor route; save once to create the entry
   // this offline-start check is meant to read back.
@@ -390,10 +343,13 @@ try {
   await cold.waitForSelector('[data-home-hello]');
   await cold.waitForSelector('[data-home-count]');
 
-  const cdp = await installed.newCDPSession(cold);
-  const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
-  if (installabilityErrors.length === 0) ok('Chromium finds the built app installable: manifest, icons and worker all satisfy it');
-  else fail('Chromium finds the built app installable', JSON.stringify(installabilityErrors));
+  if (browserEngine() === 'chromium') {
+    const cdp = await installed.newCDPSession(cold);
+    const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
+    if (installabilityErrors.length === 0) ok('Chromium finds the built app installable: manifest, icons and worker all satisfy it');
+    else fail('Chromium finds the built app installable', JSON.stringify(installabilityErrors));
+
+  } else console.log('UNSUPPORTED installation audit: Chromium CDP required; offline engine checks continue');
 
   /* The same question with disguise on (ticket 25). Flipped through the real
      Settings control, then waited on the boot mirror the head script reads,
@@ -411,21 +367,31 @@ try {
 
   const disguisedPage = await installed.newPage();
   await disguisedPage.goto(origin, { waitUntil: 'networkidle' });
-  const disguisedCdp = await installed.newCDPSession(disguisedPage);
-  const resolved = await disguisedCdp.send('Page.getAppManifest');
-  const { installabilityErrors: disguisedErrors } = await disguisedCdp.send('Page.getInstallabilityErrors');
-  const identity = resolved.data ? JSON.parse(resolved.data) : {};
-  if (
-    disguisedErrors.length === 0 &&
-    resolved.url.endsWith('/manifest-notes.webmanifest') &&
-    identity.name === 'Notes'
-  )
-    ok('a disguised install is installable too, and Chromium reads it as "Notes"');
-  else
-    fail(
-      'a disguised install is installable too, and Chromium reads it as "Notes"',
-      JSON.stringify({ url: resolved.url, name: identity.name, errors: disguisedErrors })
-    );
+  if (browserEngine() === 'chromium') {
+    const disguisedCdp = await installed.newCDPSession(disguisedPage);
+    const resolved = await disguisedCdp.send('Page.getAppManifest');
+    const { installabilityErrors: disguisedErrors } = await disguisedCdp.send('Page.getInstallabilityErrors');
+    const identity = resolved.data ? JSON.parse(resolved.data) : {};
+    if (
+      disguisedErrors.length === 0 &&
+      resolved.url.endsWith('/manifest-notes.webmanifest') &&
+      identity.name === 'Notes'
+    )
+      ok('a disguised install is installable too, and Chromium reads it as "Notes"');
+    else
+      fail(
+        'a disguised install is installable too, and Chromium reads it as "Notes"',
+        JSON.stringify({ url: resolved.url, name: identity.name, errors: disguisedErrors })
+      );
+  } else {
+    const identity = await disguisedPage.evaluate(async () => {
+      const link = document.querySelector('link[rel=manifest]');
+      return { url: link.href, manifest: await (await fetch(link.href)).json() };
+    });
+    if (identity.url.endsWith('/manifest-notes.webmanifest') && identity.manifest.name === 'Notes')
+      ok('disguised manifest names the app Notes');
+    else fail('disguised manifest identity', JSON.stringify(identity));
+  }
   /* Back to the app's own identity before anything else reloads this origin,
      again through the real preference path rather than by poking only the
      mirror the head script reads. */
@@ -667,12 +633,15 @@ try {
      Nothing below this line can be served by anything but the cache. */
   await installed.close();
   await closeServer();
-  installed = await launchPersistentChromium(profile, { offline: true });
+  // WebKit offline emulation rejects cold navigation before worker dispatch.
+  // The stopped origin remains the real network boundary for that engine.
+  installed = await launchPersistentBrowser(profile, { ...profileOptions, offline: browserEngine() !== 'webkit' });
 
   const restarted = installed.pages()[0] ?? (await installed.newPage());
   const offlineRequests = [];
   restarted.on('request', (request) => offlineRequests.push(request.url()));
-  await restarted.goto(origin);
+  const offlineURL = `${origin}/?offline-proof=${Date.now()}`;
+  const offlineResponse = await restarted.goto(offlineURL);
 
   /* The restart ended the unlocked session, so the journal opens for the
      passphrase again - offline, which is itself worth having: the unlock
@@ -688,14 +657,20 @@ try {
     ok('with the network off the app opens the Journal and reads what is in it');
   else fail('with the network off the app opens the Journal and reads existing entries', `home: ${home}, counts: ${counts}`);
 
-  /* Which the worker did, rather than an HTTP cache that happened to still
-     hold everything: workerStart is only set on a navigation a service
-     worker answered. */
-  const answeredByWorker = await restarted.evaluate(
-    () => navigator.serviceWorker.controller !== null && performance.getEntriesByType('navigation')[0].workerStart > 0
+  // Firefox does not expose Chromium's workerStart timing consistently.
+  // This URL was never served online; the server is stopped and HTTP caches
+  // are disabled in Firefox. A controlled document proves worker delivery.
+  const workerEvidence = await restarted.evaluate(() => ({
+    controller: navigator.serviceWorker.controller?.scriptURL ?? null,
+    workerStart: performance.getEntriesByType('navigation')[0]?.workerStart ?? null,
+    url: location.href
+  }));
+  const answeredByWorker = workerEvidence.controller !== null && (
+    workerEvidence.workerStart > 0 || offlineResponse?.fromServiceWorker() ||
+    browserEngine() === 'firefox' && workerEvidence.url === offlineURL
   );
   if (answeredByWorker) ok('the offline document came from the service worker, not from a browser cache');
-  else fail('the offline document came from the service worker', 'no worker controlled the page or answered the navigation');
+  else fail('the offline document came from the service worker', JSON.stringify(workerEvidence));
 
   /* A deep path, started cold and offline. The worker answers every
      navigation with the one document it precached, so the URLs inside that
@@ -707,9 +682,10 @@ try {
      access handles for as long as its tab lives (ADR-0020's one connection
      per origin) - the deep start below is about a cold start at depth, not
      about two simultaneous tabs, which the driver does not support. */
-  await restarted.close();
-
+  // Keep a blank page alive: closing the final persistent Firefox page
+  // closes its browser window, so that context cannot create another page.
   const deep = await installed.newPage();
+  await restarted.close();
   deep.on('request', (request) => offlineRequests.push(request.url()));
   await deep.goto(`${origin}/entry/new/today`);
   await deep.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});

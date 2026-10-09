@@ -1,17 +1,23 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
-import { launchChromium, createReporter } from './browser-harness.mjs';
+import { newCapabilityContext, launchBrowser, createReporter } from './browser-harness.mjs';
 
 const server = await createServer({ configFile: 'tests/update-handover/vite.config.ts', server: { port: 0 } });
 await server.listen();
 const base = `http://localhost:${server.httpServer.address().port}`;
-const browser = await launchChromium();
+const browser = await launchBrowser();
 const { block, ok, finish } = createReporter();
+async function releaseActivation(page) {
+  await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    registration?.waiting?.postMessage('fixture:release-activation');
+  });
+}
 
 try {
   for (const mode of ['waiting', 'installing', 'offline-waiting']) {
     await block(`cold schema refusal: ${mode}`, mode === 'installing' ? 5 : 4, async () => {
-      const context = await browser.newContext();
+      const context = await newCapabilityContext(browser);
       const page = await context.newPage();
       page.setDefaultTimeout(10000);
       const errors = [];
@@ -19,6 +25,10 @@ try {
       try {
         await page.goto(`${base}/recovery.html?seed`);
         await page.waitForSelector('body[data-ready="true"]', { state: 'attached' });
+        // Retain an old controlled client so navigation cannot activate the waiting worker.
+        const keeper = await context.newPage();
+        await keeper.goto(`${base}/client.html`);
+        await keeper.waitForFunction(() => navigator.serviceWorker.controller !== null);
         if (mode === 'installing') await page.request.get(`${base}/recovery-bump-held`);
         else await page.evaluate(() => window.recoverySeed.offer());
         await page.goto(`${base}/recovery.html`);
@@ -33,7 +43,9 @@ try {
         assert.equal(before.journalReads, 0);
         ok(`${mode}: cold refusal leaves registration unwatched and journal unread`);
         if (mode === 'offline-waiting') await context.setOffline(true);
-        const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame(), timeout: 10000 });
+        const reloaded = mode === 'offline-waiting'
+          ? page.waitForFunction(() => JSON.parse(sessionStorage.getItem('schema-recovery-handover') ?? 'null')?.takeovers === 1, null, { timeout: 10000 })
+          : page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame(), timeout: 10000 });
         await page.locator('[data-look-for-newer]').click();
         if (mode === 'installing') {
           await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.installing?.state === 'installing');
@@ -68,7 +80,7 @@ try {
     });
   }
   await block('cold schema recovery remains usable after offline and unavailable release', 4, async () => {
-    const context = await browser.newContext();
+    const context = await newCapabilityContext(browser);
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     try {
@@ -113,14 +125,15 @@ try {
     for (const fails of [false, true]) {
       const label = `${ordering}: ${fails ? 'failure recovery' : 'saved entry survives reload'}`;
       await block(label, fails ? 6 : 5, async () => {
-        const context = await browser.newContext();
+        const context = await newCapabilityContext(browser);
         const page = await context.newPage();
-    page.setDefaultTimeout(10000);
+        page.setDefaultTimeout(10000);
         const errors = [];
         page.on('pageerror', error => { errors.push(error.message); console.error('Probe error:', error.message); });
         try {
           await page.goto(base);
           await page.waitForSelector('body[data-ready="true"]');
+          await page.request.get(`${base}/bump`);
           await page.evaluate(() => window.handover.offer());
           await page.evaluate(() => window.handover.apply());
           await page.evaluate(fails => window.handover.hold(fails), fails);
@@ -128,7 +141,7 @@ try {
           await page.locator('#save').click();
           await page.waitForSelector('body[data-write-held="true"]');
           if (ordering === 'takeover') {
-            await page.request.get(`${base}/activation-release`);
+            await releaseActivation(page);
             await page.waitForFunction(() => window.handover.state().takeovers === 1);
           } else {
             await page.waitForTimeout(5200);
@@ -176,19 +189,20 @@ try {
           assert.deepEqual(errors, []);
           ok(`${label}: no uncaught page errors`);
         } finally {
-          await page.request.get(`${base}/activation-release`).catch(() => {});
+          await releaseActivation(page).catch(() => {});
           await context.close();
         }
       });
     }
   }
   await block('write already running before update request', 3, async () => {
-    const context = await browser.newContext();
+    const context = await newCapabilityContext(browser);
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     try {
       await page.goto(base);
       await page.waitForSelector('body[data-ready="true"]');
+      await page.request.get(`${base}/bump`);
       await page.evaluate(() => window.handover.offer());
       await page.evaluate(() => window.handover.hold(false));
       await page.locator('#draft').fill('Earlier write');
@@ -203,13 +217,13 @@ try {
       ok('refused update leaves public save intact');
       const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() });
       await page.evaluate(() => window.handover.apply());
-      await page.request.get(`${base}/activation-release`);
+      await releaseActivation(page);
       await reloaded;
       await page.waitForSelector('body[data-ready="true"]');
       assert.equal((await page.evaluate(() => window.handover.entries()))[0].note, 'Earlier write');
       ok('explicit retry applies and saved entry persists');
     } finally {
-      await page.request.get(`${base}/activation-release`).catch(() => {});
+      await releaseActivation(page).catch(() => {});
       await context.close();
     }
   });

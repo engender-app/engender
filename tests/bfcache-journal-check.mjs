@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { launchChromium } from './browser-harness.mjs';
+import { newCapabilityContext, launchBrowser, browserEngine } from './browser-harness.mjs';
 import { buildRequestHandler } from './serve-build.mjs';
 import { INIT_HIDE_DEMO_SCRIPT } from './yank-sweep-core.mjs';
 
@@ -16,14 +16,17 @@ await new Promise((resolve) => awayServer.listen(0, '127.0.0.1', resolve));
 const base = `http://localhost:${server.address().port}`;
 const away = `http://localhost:${awayServer.address().port}/leave`;
 // Playwright disables BFCache by default, even when Chromium supports it.
-const browser = await launchChromium({ ignoreDefaultArgs: ['--disable-back-forward-cache'] });
-const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const browser = await launchBrowser(browserEngine() === 'chromium' ? { ignoreDefaultArgs: ['--disable-back-forward-cache'] } : {});
+const context = await newCapabilityContext(browser, { viewport: { width: 390, height: 844 } });
+const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-const cdp = await page.context().newCDPSession(page);
-await cdp.send('Page.enable');
-cdp.on('Page.backForwardCacheNotUsed', (event) => console.error('BFCache not used', JSON.stringify(event)));
+if (browserEngine() === 'chromium') {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Page.enable');
+  cdp.on('Page.backForwardCacheNotUsed', (event) => console.error('BFCache not used', JSON.stringify(event)));
+}
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
 await page.addInitScript(() => {
   window.historyProof = { token: crypto.randomUUID(), events: [], workers: [], clockOffset: 0 };
@@ -175,6 +178,7 @@ try {
   assert.deepEqual(errors, []);
 } finally {
   if (errors.length) console.error('Browser errors', errors);
+  await context.close();
   await browser.close();
   await new Promise((resolve) => { server.closeAllConnections(); server.close(resolve); });
   await new Promise((resolve) => { awayServer.closeAllConnections(); awayServer.close(resolve); });

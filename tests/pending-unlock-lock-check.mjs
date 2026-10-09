@@ -1,18 +1,21 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
-import { launchChromium } from './browser-harness.mjs';
+import { newCapabilityContext, launchBrowser, browserEngine } from './browser-harness.mjs';
 
 const server = await createServer({ server: { port: 0 } });
 await server.listen();
-const browser = await launchChromium();
-const page = await browser.newPage();
-const cdp = await page.context().newCDPSession(page);
-await cdp.send('WebAuthn.enable');
-await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
-  protocol: 'ctap2', ctap2Version: 'ctap2_1', transport: 'internal',
-  hasResidentKey: true, hasUserVerification: true, isUserVerified: true,
-  automaticPresenceSimulation: true, hasPrf: true
-} });
+const browser = await launchBrowser();
+const context = await newCapabilityContext(browser);
+const page = await context.newPage();
+if (browserEngine() === 'chromium') {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  await cdp.send('WebAuthn.addVirtualAuthenticator', { options: {
+    protocol: 'ctap2', ctap2Version: 'ctap2_1', transport: 'internal',
+    hasResidentKey: true, hasUserVerification: true, isUserVerified: true,
+    automaticPresenceSimulation: true, hasPrf: true
+  } });
+}
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 
@@ -58,7 +61,7 @@ try {
     const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
     prefs.lockAfter = 'immediately';
   });
-  for (const accessMode of ['passphrase', 'pin', 'biometric']) {
+  for (const accessMode of (browserEngine() === 'chromium' ? ['passphrase', 'pin', 'biometric'] : ['passphrase', 'pin'])) {
     mode = accessMode;
     if (mode !== 'passphrase') await page.evaluate(async (mode) => {
       const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
@@ -177,6 +180,7 @@ try {
   }
   assert.deepEqual(errors, [], 'no uncaught browser errors');
 } finally {
+  await context.close();
   await browser.close();
   await server.close();
 }
