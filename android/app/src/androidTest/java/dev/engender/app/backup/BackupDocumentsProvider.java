@@ -51,6 +51,11 @@ public class BackupDocumentsProvider extends DocumentsProvider {
         }
         if ("blocked".equals(method)) { Bundle out = new Bundle(); out.putBoolean("blocked", blocked); return out; }
         if ("release".equals(method)) { release.countDown(); return Bundle.EMPTY; }
+        if ("revoke".equals(method)) {
+            getContext().revokeUriPermission(android.provider.DocumentsContract.buildTreeDocumentUri(AUTHORITY, "root"),
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            return Bundle.EMPTY;
+        }
         if ("reset".equals(method) || "grant".equals(method)) {
             if (extras != null && extras.getString("targetPackage") != null) grantTarget = extras.getString("targetPackage");
             if ("reset".equals(method)) {

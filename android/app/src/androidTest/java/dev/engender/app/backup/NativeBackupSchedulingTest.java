@@ -138,9 +138,8 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
                 assertArrayEquals(previousBytes, hash(previous));
             }
             stageCiphertext(encrypted, digest, snapshotAt);
-            Context provider = InstrumentationRegistry.getInstrumentation().getContext();
             resolver.releasePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            provider.revokeUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "revoke", null, null);
             try {
                 synchronized (BackupWork.OWNER) { PersistentBackup.deliver(app); }
                 fail("revoked destination was reported successful");
