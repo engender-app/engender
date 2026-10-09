@@ -52,32 +52,41 @@ async function pixelAt(blob: Blob, x: number, y: number): Promise<number[]> {
 
 const signature = (bytes: Uint8Array, length: number) => [...bytes.slice(0, length)];
 
-/** The first frame the video actually presents, drawn into a canvas.
-
-    Played rather than seeked: WebM out of MediaRecorder carries no duration
-    in its header - it is written as if it were a live stream - so there is
-    no timestamp to seek to and `duration` reads back as Infinity. And
-    `loadeddata` is too early to draw from; the element reports its size
-    there but the compositor has nothing yet, which is a black frame.
-    requestVideoFrameCallback is the event that means a frame exists. */
-async function firstVideoFrame(blob: Blob): Promise<{ width: number; height: number; centre: number[] }> {
+/** Sample every presented frame. Register before playback so decoding the
+    first frame cannot race the observer. MediaRecorder WebM has no duration
+    header, so play to the end rather than seeking. */
+async function videoFrames(blob: Blob): Promise<{ width: number; height: number; centre: number[] }[]> {
   const video = document.createElement('video');
   video.muted = true;
-  video.src = URL.createObjectURL(blob);
-  await new Promise<void>((resolve, reject) => {
-    video.onloadeddata = () => resolve();
-    video.onerror = () => reject(new Error('the recorded timelapse would not decode'));
-  });
-  await video.play();
-  await new Promise<void>((resolve) => video.requestVideoFrameCallback(() => resolve()));
-  video.pause();
-
-  const canvas = new OffscreenCanvas(video.videoWidth, video.videoHeight);
+  const url = URL.createObjectURL(blob);
+  video.src = url;
+  const canvas = new OffscreenCanvas(TIMELAPSE_EDGE, TIMELAPSE_EDGE);
   const context = canvas.getContext('2d')!;
-  context.drawImage(video, 0, 0);
-  const data = context.getImageData(video.videoWidth / 2, video.videoHeight / 2, 1, 1).data;
-  URL.revokeObjectURL(video.src);
-  return { width: video.videoWidth, height: video.videoHeight, centre: [data[0], data[1], data[2]] };
+  const frames: { width: number; height: number; centre: number[] }[] = [];
+  let callback = 0;
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('timelapse playback timed out')), 10_000);
+      video.onerror = () => reject(new Error('the recorded timelapse would not decode'));
+      video.onended = () => resolve();
+      const sample = () => {
+        context.drawImage(video, 0, 0);
+        const data = context.getImageData(TIMELAPSE_EDGE / 2, TIMELAPSE_EDGE / 2, 1, 1).data;
+        frames.push({ width: video.videoWidth, height: video.videoHeight, centre: [data[0], data[1], data[2]] });
+        callback = video.requestVideoFrameCallback(sample);
+      };
+      callback = video.requestVideoFrameCallback(sample);
+      void video.play().catch(reject);
+    });
+    if (!frames.length) throw new Error('timelapse presented no frames');
+    return frames;
+  } finally {
+    clearTimeout(timer!);
+    video.cancelVideoFrameCallback(callback);
+    video.pause();
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function run() {
@@ -200,7 +209,11 @@ async function run() {
   // --- the timelapse ------------------------------------------------------
   result.timelapseSupported = timelapseSupported();
   const startedAt = performance.now();
-  const timelapse = await recordTimelapse(frames, read);
+  const timelapse = await recordTimelapse(frames, async (name) => {
+    // A read can outlast the 100ms capture interval on a real file store.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return read(name);
+  });
   result.recordingTookMs = Math.round(performance.now() - startedAt);
   const timelapseBytes = new Uint8Array(await timelapse.arrayBuffer());
   result.timelapseType = timelapse.type;
@@ -208,7 +221,9 @@ async function run() {
   result.timelapseSignature = signature(timelapseBytes, 4);
   result.timelapseSize = timelapse.size;
   result.timelapseEdge = TIMELAPSE_EDGE;
-  result.firstFrame = await firstVideoFrame(timelapse);
+  const recordedFrames = await videoFrames(timelapse);
+  result.firstFrame = recordedFrames[0];
+  result.recordedColours = recordedFrames.map((frame) => frame.centre);
 
   /* --- stopping a long one ----------------------------------------------
      A timelapse records in real time, so a long journey is minutes of
