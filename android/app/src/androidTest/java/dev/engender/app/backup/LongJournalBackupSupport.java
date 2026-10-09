@@ -26,6 +26,8 @@ public final class LongJournalBackupSupport {
     private final Uri provider = Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY);
     private final Uri tree = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root");
 
+    private long previousSuccess;
+
     public void configure() throws Exception {
         AutoExportPlugin.wipe(app);
         CountDownLatch granted = new CountDownLatch(1);
@@ -38,10 +40,11 @@ public final class LongJournalBackupSupport {
         app.getContentResolver().takePersistableUriPermission(tree,
             Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         synchronized (BackupWork.OWNER) {
+            previousSuccess = System.currentTimeMillis() - 7 * BackupWork.DAY + 180_000;
             assertTrue(BackupWork.preferences(app).edit().putBoolean("enabled", true).putString("schedule", "weekly")
-                .putString("destinationUri", tree.toString()).putLong("retryNotBeforeAt", System.currentTimeMillis() + BackupWork.DAY).commit());
-            // No previous success means naturally due. Delay delivery, not due identity.
-            assertEquals(0, BackupWork.due(BackupWork.preferences(app)));
+                .putString("destinationUri", tree.toString()).putLong("lastSuccessAt", previousSuccess).commit());
+            // Future natural due keeps scheduled finish staged until the worker is due.
+            assertTrue(BackupWork.due(BackupWork.preferences(app)) > System.currentTimeMillis());
         }
     }
 
@@ -52,7 +55,7 @@ public final class LongJournalBackupSupport {
         String digest;
         synchronized (BackupWork.OWNER) {
             assertTrue("scheduled producer persisted stage", preferences.contains("encryptedStage"));
-            assertFalse("staging must not report success", preferences.contains("lastSuccessAt"));
+            assertEquals("staging must not report success", previousSuccess, preferences.getLong("lastSuccessAt", -1));
             stage = new JSONObject(preferences.getString("encryptedStage", "{}"));
             assertEquals("staged due identity", BackupWork.due(preferences), stage.getLong("due"));
             File staged = new File(PersistentBackup.directory(app), stage.getString("file"));
@@ -60,7 +63,6 @@ public final class LongJournalBackupSupport {
             assertEquals(stage.getLong("length"), bytes);
             try (InputStream input = Files.newInputStream(staged.toPath())) { digest = hash(input); }
             assertEquals(stage.getString("sha256"), digest);
-            assertTrue(preferences.edit().remove("retryNotBeforeAt").commit());
             // The same owner and WorkManager path used after foreground exit.
             BackupWork.schedule(app);
         }
@@ -76,7 +78,7 @@ public final class LongJournalBackupSupport {
         }
         long deliveryMs = SystemClock.elapsedRealtime() - startedAt;
         assertFalse("worker did not finish staged delivery: " + preferences.getString("lastFailureReason", "none"), preferences.contains("encryptedStage"));
-        assertTrue("worker success timestamp", preferences.getLong("lastSuccessAt", 0) > 0);
+        assertTrue("worker success timestamp", preferences.getLong("lastSuccessAt", 0) > previousSuccess);
         assertEquals(stage.getLong("snapshotAt"), preferences.getLong("lastSnapshotAt", -1));
         JSONArray verified = new JSONArray(preferences.getString("verifiedBackups", "[]"));
         assertEquals("one verified destination", 1, verified.length());
@@ -91,9 +93,10 @@ public final class LongJournalBackupSupport {
         assertEquals("delivered Archive length", bytes, delivered.length());
         try (InputStream input = Files.newInputStream(delivered.toPath())) { assertEquals("delivered Archive digest", digest, hash(input)); }
         return new JSONObject().put("bytes", bytes).put("sha256", digest).put("snapshotAt", stage.getLong("snapshotAt"))
-            .put("deliveryMs", deliveryMs).put("processPssBeforeKiB", beforePss).put("processPssAfterKiB", pss())
+            .put("naturalDueAt", stage.getLong("due")).put("deliveredAt", preferences.getLong("lastSuccessAt", 0))
+            .put("scheduledWaitAndDeliveryMs", deliveryMs).put("processPssBeforeKiB", beforePss).put("processPssAfterKiB", pss())
             .put("processPssSampledMaxKiB", maxPss).put("processPssSamples", samples)
-            .put("memoryLimits", "100ms process PSS samples during worker delivery; excludes staging peak and may miss transient allocations; not a heap bound");
+            .put("memoryLimits", "100ms process PSS samples while waiting for natural due and worker delivery; excludes staging peak and may miss transient allocations; not a heap bound");
     }
 
     private static int pss() {
