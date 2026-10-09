@@ -4,8 +4,6 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { listenForSkipWaiting, SKIP_WAITING } from '../../src/lib/pwa/sw-messages';
 
 let generation = 1;
-let activationReleased = false;
-let releaseActivation: (() => void) | undefined;
 let recoveryGeneration = 1;
 let installationReleased = true;
 let releaseInstallation: (() => void) | undefined;
@@ -49,40 +47,32 @@ export default defineConfig({
             `const SKIP_WAITING = ${JSON.stringify(SKIP_WAITING)};`,
             `(${listenForSkipWaiting.toString()})(self);`,
             "self.addEventListener('install', event => event.waitUntil(fetch('/recovery-install-wait')));",
-            "self.addEventListener('fetch', () => {});",
+            "self.addEventListener('fetch', event => event.respondWith(fetch(event.request)));",
             "self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));"
           ].join('\n'));
         } else if (req.url === '/bump') {
           generation++;
-          activationReleased = false;
-          res.end('ok');
-        } else if (req.url === '/activation-wait') {
-          if (activationReleased) res.end('ok');
-          else releaseActivation = () => res.end('ok');
-        } else if (req.url === '/activation-release') {
-          activationReleased = true;
-          releaseActivation?.();
-          releaseActivation = undefined;
           res.end('ok');
         } else if (req.url === '/handover-sw.js') {
           res.setHeader('Content-Type', 'text/javascript');
           res.setHeader('Cache-Control', 'no-store');
           res.end([
-            `import { listenForSkipWaiting } from '/@fs${resolve(import.meta.dirname, '../../src/lib/pwa/sw-messages.ts')}';`,
+            `const SKIP_WAITING = ${JSON.stringify(SKIP_WAITING)};`,
+            `const listenForSkipWaiting = ${listenForSkipWaiting.toString()};`,
             `const GENERATION = ${generation};`,
+            `let releaseActivation;
+            const activationReady = new Promise(resolve => { releaseActivation = resolve; });`,
             `listenForSkipWaiting({
               addEventListener(type, listener) {
-                self.addEventListener(type, event => event.waitUntil((async () => {
-                  await fetch('/activation-wait');
-                  listener(event);
-                })()));
+                self.addEventListener(type, event => {
+                  if (event.data === 'fixture:release-activation') { releaseActivation(); return; }
+                  if (event.data !== SKIP_WAITING) { listener(event); return; }
+                  event.waitUntil(activationReady.then(() => listener(event)));
+                });
               },
               skipWaiting: () => self.skipWaiting()
             });`,
-            "self.addEventListener('fetch', () => {});",
-            `self.addEventListener('activate', event => event.waitUntil((async () => {
-              await self.clients.claim();
-            })()));`
+            "self.addEventListener('fetch', event => event.respondWith(fetch(event.request)));"
           ].join('\n'));
         } else next();
       });

@@ -48,9 +48,13 @@ document.querySelector('#save')!.addEventListener('click', () => {
     .catch((error) => { failed = true; outcome.textContent = error.message; });
 });
 
-const registration = await navigator.serviceWorker.register('/handover-sw.js', { type: 'module', updateViaCache: 'none' });
+const registration = await navigator.serviceWorker.register('/handover-sw.js', { updateViaCache: 'none' });
 await navigator.serviceWorker.ready;
-await waitFor(() => navigator.serviceWorker.controller !== null);
+await waitFor(() => registration.active?.state === 'activated');
+if (!navigator.serviceWorker.controller) {
+  location.reload();
+  await new Promise(() => {});
+}
 watchForUpdates(registration, {
   onControllerChange(listener) {
     const changed = () => { takeovers++; listener(); };
@@ -66,7 +70,6 @@ watchForUpdates(registration, {
 
 Object.assign(window, { handover: {
   async offer() {
-    await fetch('/bump');
     await registration.update();
     await waitFor(() => registration.waiting !== null);
   },

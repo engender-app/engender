@@ -266,15 +266,23 @@ the English and Polish catalogues and prevents the number of untranslated
 literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
-The browser suites use Chromium. Set `CHROMIUM_PATH` if its executable is
-not at the harness's default location. They cover storage contracts, rendered screens, complete user flows and
-offline startup of the production build:
+The screen and walkthrough suites use Chromium. Set `CHROMIUM_PATH` if its
+executable is not at the harness's default location. They cover storage
+contracts, rendered screens, complete user flows and offline startup of the
+production build:
 
 ```sh
 npm run test:browser
 npm run test:walkthrough
 npm run verify:build
 ```
+
+The [browser capability matrix](docs/browser-capabilities.md) also runs
+Firefox and automated WebKit against the built app. Run
+`npm run verify:capabilities` after a production build, then
+`npm run verify:capabilities:lifecycle` against the same build. Automated WebKit
+provides engine evidence; actual Safari and iOS PWA remain unverified.
+
 
 The hosting check needs Docker running and accessible to your user. It tests
 the nginx configuration, security and cache headers, SPA navigation and an
