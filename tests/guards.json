@@ -51,6 +51,14 @@
     "holds": "the voice task chooser's labels fit their segments in both languages"
   },
   {
+    "name": "android-door-motion",
+    "tier": "dev",
+    "holds": "outgoing Android door content fades; warm interruptions keep the intended screen, Back and reduced motion work, and gates remove journal content",
+    "diagnostics": [
+      ".claude/android-door-motion/*"
+    ]
+  },
+  {
     "name": "record-dismissal-check",
     "tier": "dev",
     "holds": "a cancelled dismissal keeps unsaved record edits and the sheet's position",

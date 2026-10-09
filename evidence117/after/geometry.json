@@ -1,0 +1,824 @@
+[
+  {
+    "theme": "light",
+    "width": 195,
+    "key": "theme",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 195,
+        "width": 195,
+        "height": 844,
+        "scrollWidth": 185,
+        "clientWidth": 185,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 0,
+        "right": 185,
+        "width": 185,
+        "height": 118,
+        "scrollWidth": 185,
+        "clientWidth": 185,
+        "text": " Theme  SystemLightDark  "
+      },
+      "title": {
+        "left": 48,
+        "right": 185,
+        "width": 137,
+        "height": 21.25,
+        "scrollWidth": 137,
+        "clientWidth": 137,
+        "text": "Theme"
+      },
+      "group": {
+        "left": 8.484375,
+        "right": 185,
+        "width": 176.515625,
+        "height": 54,
+        "scrollWidth": 177,
+        "clientWidth": 177,
+        "text": " SystemLightDark"
+      },
+      "name": "Theme",
+      "buttons": [
+        {
+          "left": 11.484375,
+          "right": 70,
+          "width": 58.515625,
+          "height": 48,
+          "scrollWidth": 59,
+          "clientWidth": 59,
+          "text": "System"
+        },
+        {
+          "left": 78,
+          "right": 126,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Light"
+        },
+        {
+          "left": 134,
+          "right": 182,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Dark"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "light",
+    "width": 195,
+    "key": "measurement-unit",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 195,
+        "width": 195,
+        "height": 844,
+        "scrollWidth": 185,
+        "clientWidth": 185,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 20,
+        "right": 165,
+        "width": 145,
+        "height": 172.5,
+        "scrollWidth": 145,
+        "clientWidth": 145,
+        "text": " Measurement units  cmin  "
+      },
+      "title": {
+        "left": 20,
+        "right": 165,
+        "width": 145,
+        "height": 42.5,
+        "scrollWidth": 145,
+        "clientWidth": 145,
+        "text": "Measurement units"
+      },
+      "group": {
+        "left": 55,
+        "right": 165,
+        "width": 110,
+        "height": 54,
+        "scrollWidth": 110,
+        "clientWidth": 110,
+        "text": " cmin"
+      },
+      "name": "Measurement units",
+      "buttons": [
+        {
+          "left": 58,
+          "right": 106,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "cm"
+        },
+        {
+          "left": 114,
+          "right": 162,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "in"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "key": "theme",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 380,
+        "clientWidth": 380,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 20,
+        "right": 360,
+        "width": 340,
+        "height": 70,
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "text": " Theme  SystemLightDark  "
+      },
+      "title": {
+        "left": 68,
+        "right": 171.484375,
+        "width": 103.484375,
+        "height": 21.25,
+        "scrollWidth": 103,
+        "clientWidth": 103,
+        "text": "Theme"
+      },
+      "group": {
+        "left": 183.484375,
+        "right": 360,
+        "width": 176.515625,
+        "height": 54,
+        "scrollWidth": 177,
+        "clientWidth": 177,
+        "text": " SystemLightDark"
+      },
+      "name": "Theme",
+      "buttons": [
+        {
+          "left": 186.484375,
+          "right": 245,
+          "width": 58.515625,
+          "height": 48,
+          "scrollWidth": 59,
+          "clientWidth": 59,
+          "text": "System"
+        },
+        {
+          "left": 253,
+          "right": 301,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Light"
+        },
+        {
+          "left": 309,
+          "right": 357,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Dark"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "key": "measurement-unit",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 380,
+        "clientWidth": 380,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 20,
+        "right": 360,
+        "width": 340,
+        "height": 70,
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "text": " Measurement units  cmin  "
+      },
+      "title": {
+        "left": 68,
+        "right": 238,
+        "width": 170,
+        "height": 21.25,
+        "scrollWidth": 170,
+        "clientWidth": 170,
+        "text": "Measurement units"
+      },
+      "group": {
+        "left": 250,
+        "right": 360,
+        "width": 110,
+        "height": 54,
+        "scrollWidth": 110,
+        "clientWidth": 110,
+        "text": " cmin"
+      },
+      "name": "Measurement units",
+      "buttons": [
+        {
+          "left": 253,
+          "right": 301,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "cm"
+        },
+        {
+          "left": 309,
+          "right": 357,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "in"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "key": "theme",
+    "geometry": {
+      "main": {
+        "left": 220,
+        "right": 1280,
+        "width": 1060,
+        "height": 844,
+        "scrollWidth": 1050,
+        "clientWidth": 1050,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 425,
+        "right": 1065,
+        "width": 640,
+        "height": 70,
+        "scrollWidth": 640,
+        "clientWidth": 640,
+        "text": " Theme  SystemLightDark  "
+      },
+      "title": {
+        "left": 473,
+        "right": 876.484375,
+        "width": 403.484375,
+        "height": 21.25,
+        "scrollWidth": 403,
+        "clientWidth": 403,
+        "text": "Theme"
+      },
+      "group": {
+        "left": 888.484375,
+        "right": 1065,
+        "width": 176.515625,
+        "height": 54,
+        "scrollWidth": 177,
+        "clientWidth": 177,
+        "text": " SystemLightDark"
+      },
+      "name": "Theme",
+      "buttons": [
+        {
+          "left": 891.484375,
+          "right": 950,
+          "width": 58.515625,
+          "height": 48,
+          "scrollWidth": 59,
+          "clientWidth": 59,
+          "text": "System"
+        },
+        {
+          "left": 958,
+          "right": 1006,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Light"
+        },
+        {
+          "left": 1014,
+          "right": 1062,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Dark"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "key": "measurement-unit",
+    "geometry": {
+      "main": {
+        "left": 220,
+        "right": 1280,
+        "width": 1060,
+        "height": 844,
+        "scrollWidth": 1050,
+        "clientWidth": 1050,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 425,
+        "right": 1065,
+        "width": 640,
+        "height": 70,
+        "scrollWidth": 640,
+        "clientWidth": 640,
+        "text": " Measurement units  cmin  "
+      },
+      "title": {
+        "left": 473,
+        "right": 943,
+        "width": 470,
+        "height": 21.25,
+        "scrollWidth": 470,
+        "clientWidth": 470,
+        "text": "Measurement units"
+      },
+      "group": {
+        "left": 955,
+        "right": 1065,
+        "width": 110,
+        "height": 54,
+        "scrollWidth": 110,
+        "clientWidth": 110,
+        "text": " cmin"
+      },
+      "name": "Measurement units",
+      "buttons": [
+        {
+          "left": 958,
+          "right": 1006,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "cm"
+        },
+        {
+          "left": 1014,
+          "right": 1062,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "in"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 195,
+    "key": "theme",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 195,
+        "width": 195,
+        "height": 844,
+        "scrollWidth": 185,
+        "clientWidth": 185,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 0,
+        "right": 185,
+        "width": 185,
+        "height": 118,
+        "scrollWidth": 185,
+        "clientWidth": 185,
+        "text": " Theme  SystemLightDark  "
+      },
+      "title": {
+        "left": 48,
+        "right": 185,
+        "width": 137,
+        "height": 21.25,
+        "scrollWidth": 137,
+        "clientWidth": 137,
+        "text": "Theme"
+      },
+      "group": {
+        "left": 8.484375,
+        "right": 185,
+        "width": 176.515625,
+        "height": 54,
+        "scrollWidth": 177,
+        "clientWidth": 177,
+        "text": " SystemLightDark"
+      },
+      "name": "Theme",
+      "buttons": [
+        {
+          "left": 11.484375,
+          "right": 70,
+          "width": 58.515625,
+          "height": 48,
+          "scrollWidth": 59,
+          "clientWidth": 59,
+          "text": "System"
+        },
+        {
+          "left": 78,
+          "right": 126,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Light"
+        },
+        {
+          "left": 134,
+          "right": 182,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Dark"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 195,
+    "key": "measurement-unit",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 195,
+        "width": 195,
+        "height": 844,
+        "scrollWidth": 185,
+        "clientWidth": 185,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 20,
+        "right": 165,
+        "width": 145,
+        "height": 172.5,
+        "scrollWidth": 145,
+        "clientWidth": 145,
+        "text": " Measurement units  cmin  "
+      },
+      "title": {
+        "left": 20,
+        "right": 165,
+        "width": 145,
+        "height": 42.5,
+        "scrollWidth": 145,
+        "clientWidth": 145,
+        "text": "Measurement units"
+      },
+      "group": {
+        "left": 55,
+        "right": 165,
+        "width": 110,
+        "height": 54,
+        "scrollWidth": 110,
+        "clientWidth": 110,
+        "text": " cmin"
+      },
+      "name": "Measurement units",
+      "buttons": [
+        {
+          "left": 58,
+          "right": 106,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "cm"
+        },
+        {
+          "left": 114,
+          "right": 162,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "in"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "key": "theme",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 380,
+        "clientWidth": 380,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 20,
+        "right": 360,
+        "width": 340,
+        "height": 70,
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "text": " Theme  SystemLightDark  "
+      },
+      "title": {
+        "left": 68,
+        "right": 171.484375,
+        "width": 103.484375,
+        "height": 21.25,
+        "scrollWidth": 103,
+        "clientWidth": 103,
+        "text": "Theme"
+      },
+      "group": {
+        "left": 183.484375,
+        "right": 360,
+        "width": 176.515625,
+        "height": 54,
+        "scrollWidth": 177,
+        "clientWidth": 177,
+        "text": " SystemLightDark"
+      },
+      "name": "Theme",
+      "buttons": [
+        {
+          "left": 186.484375,
+          "right": 245,
+          "width": 58.515625,
+          "height": 48,
+          "scrollWidth": 59,
+          "clientWidth": 59,
+          "text": "System"
+        },
+        {
+          "left": 253,
+          "right": 301,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Light"
+        },
+        {
+          "left": 309,
+          "right": 357,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Dark"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "key": "measurement-unit",
+    "geometry": {
+      "main": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 380,
+        "clientWidth": 380,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 20,
+        "right": 360,
+        "width": 340,
+        "height": 70,
+        "scrollWidth": 340,
+        "clientWidth": 340,
+        "text": " Measurement units  cmin  "
+      },
+      "title": {
+        "left": 68,
+        "right": 238,
+        "width": 170,
+        "height": 21.25,
+        "scrollWidth": 170,
+        "clientWidth": 170,
+        "text": "Measurement units"
+      },
+      "group": {
+        "left": 250,
+        "right": 360,
+        "width": 110,
+        "height": 54,
+        "scrollWidth": 110,
+        "clientWidth": 110,
+        "text": " cmin"
+      },
+      "name": "Measurement units",
+      "buttons": [
+        {
+          "left": 253,
+          "right": 301,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "cm"
+        },
+        {
+          "left": 309,
+          "right": 357,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "in"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "key": "theme",
+    "geometry": {
+      "main": {
+        "left": 220,
+        "right": 1280,
+        "width": 1060,
+        "height": 844,
+        "scrollWidth": 1050,
+        "clientWidth": 1050,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 425,
+        "right": 1065,
+        "width": 640,
+        "height": 70,
+        "scrollWidth": 640,
+        "clientWidth": 640,
+        "text": " Theme  SystemLightDark  "
+      },
+      "title": {
+        "left": 473,
+        "right": 876.484375,
+        "width": 403.484375,
+        "height": 21.25,
+        "scrollWidth": 403,
+        "clientWidth": 403,
+        "text": "Theme"
+      },
+      "group": {
+        "left": 888.484375,
+        "right": 1065,
+        "width": 176.515625,
+        "height": 54,
+        "scrollWidth": 177,
+        "clientWidth": 177,
+        "text": " SystemLightDark"
+      },
+      "name": "Theme",
+      "buttons": [
+        {
+          "left": 891.484375,
+          "right": 950,
+          "width": 58.515625,
+          "height": 48,
+          "scrollWidth": 59,
+          "clientWidth": 59,
+          "text": "System"
+        },
+        {
+          "left": 958,
+          "right": 1006,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Light"
+        },
+        {
+          "left": 1014,
+          "right": 1062,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "Dark"
+        }
+      ]
+    }
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "key": "measurement-unit",
+    "geometry": {
+      "main": {
+        "left": 220,
+        "right": 1280,
+        "width": 1060,
+        "height": 844,
+        "scrollWidth": 1050,
+        "clientWidth": 1050,
+        "text": "  Settings     Privacy & data    Lock & recovery Passphrase · locks only when the app restarts     Disguise app Off     Export / import Last backup 34 days ago     Journal book      Permissions      Trash      Delete everything     Appearance     Transgender Nonbinary Genderfluid Bisexual Lesbian Pansexual Rainbow Agender Gay men Genderqueer Intersex Asexual Demiboy Demigirl Trigender Polish XD  Theme  SystemLightDark     Mood colours Teal     Language System     Accessibility Off    Tracking    Gender scales Dysphoria ↔ euphoria, Femininity     Home & calendar colour Coloured by Mood     Tag groups Gender, Emotions, Activities, Imported, Dysphoria type    Features to show Turning a feature off hides its entry points and prompts.  Measurements and sizes   Genital and sexual effects   Cycle tracking Automatic while a testosterone regimen is active until you choose on or off   Measurement units  cmin   Reminders & prompts    Reminders reminders need the Android app     Notices and notifications      Journaling pause      Affirmations     Your lists    Modes      Templates      Body regions      Ignored words      Eras      About      engender · nothing you write is sent anywhere         "
+      },
+      "row": {
+        "left": 425,
+        "right": 1065,
+        "width": 640,
+        "height": 70,
+        "scrollWidth": 640,
+        "clientWidth": 640,
+        "text": " Measurement units  cmin  "
+      },
+      "title": {
+        "left": 473,
+        "right": 943,
+        "width": 470,
+        "height": 21.25,
+        "scrollWidth": 470,
+        "clientWidth": 470,
+        "text": "Measurement units"
+      },
+      "group": {
+        "left": 955,
+        "right": 1065,
+        "width": 110,
+        "height": 54,
+        "scrollWidth": 110,
+        "clientWidth": 110,
+        "text": " cmin"
+      },
+      "name": "Measurement units",
+      "buttons": [
+        {
+          "left": 958,
+          "right": 1006,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "cm"
+        },
+        {
+          "left": 1014,
+          "right": 1062,
+          "width": 48,
+          "height": 48,
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "text": "in"
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,9 @@
+Detected file path, reading file...
+{
+  issues: [ 'Unexpected href link without resolve(). at line 698, column 41' ],
+  suggestions: [
+    "You are calling a function inside an $effect. Please check if the function is reassigning a stateful variable because that's considered malpractice and check if it could use  `$derived` instead. Ignore this suggestion if you are sure this function is not assigning any stateful variable or if you can't check if it does.",
+    "You are calling the function `replaceRoute` inside an $effect. Please check if the function is reassigning a stateful variable because that's considered malpractice and check if it could use  `$derived` instead. Ignore this suggestion if you are sure this function is not assigning any stateful variable or if you can't check if it does."
+  ],
+  require_another_tool_call_after_fixing: true
+}

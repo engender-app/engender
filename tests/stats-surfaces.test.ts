@@ -203,7 +203,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 
   it('says why a span cannot draw, in the words the range view uses', () => {
-    expect(stats).toMatch(/\{:else if enoughEntries\}\s*<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin"[^>]*data-lookback-thin[^>]*>\s*\{m\.wrapped_thin_body\(/);
+    expect(stats).toMatch(/\{:else if enoughEntries\}[\s\S]*?<a class="lookback-read"[\s\S]*?\{:else\}\s*<span class="lookback-thin"[^>]*data-lookback-thin[^>]*>\s*\{m\.wrapped_thin_body\(/);
   });
 
   /* Wrapped's second line is always mood; this one is deliberately not, so
@@ -238,7 +238,7 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toContain("import { readReserve, rememberReserve } from '$lib/data/homeReserve';");
     expect(stats).toContain('let factsAnswered = $derived(!factsQuery.loading && vocabulary.ready);');
     expect(stats).toMatch(/let factsRevealed = \$state\(false\);\s*\$effect\.pre\(\(\) => \{\s*if \(factsAnswered\) factsRevealed = true;\s*\}\);/);
-    expect(stats).toContain('<ReadGroup answered={factsAnswered} count={2}>');
+    expect(stats).toContain('<ReadGroup answered={factsAnswered && factsCurrent} count={2}>');
     expect(stats).toContain("readReserve('lookback-facts')");
     expect(stats).toContain("rememberReserve('lookback-facts'");
     expect(stats).toMatch(/<ReadReserve ready=\{factsRevealed\} estimate=\{factsEstimate\} onrest=\{factsRemember\}>\s*\{#if enoughEntries\}/);

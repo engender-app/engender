@@ -1,0 +1,37 @@
+{
+  "build": {
+    "exit_code": 0,
+    "log": "build.log"
+  },
+  "check": {
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "log": "check.log"
+  },
+  "test": {
+    "exit_code": 0,
+    "passed": 7314,
+    "total": 7314,
+    "log": "node.log"
+  },
+  "check:copy": {
+    "exit_code": 0,
+    "log": "copy.log"
+  },
+  "check:licences": {
+    "exit_code": 0,
+    "log": "licences.log"
+  },
+  "check:screens-classes": {
+    "exit_code": 0,
+    "log": "screens.log"
+  },
+  "check:first-load-budget": {
+    "exit_code": 0,
+    "en_gzip_bytes": 246122,
+    "pl_gzip_bytes": 247711,
+    "files": 103,
+    "log": "budget.log"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "reviewed_source_sha": "7cdb58e0a12ba7a246448336efc193b95957e8a8",
+  "refreshed_merge_sha": "dd72b380f29a5727c40616ee7555daf83184244e",
+  "delivery_tip": "ae1446d847021b8ff120b7574b36d1b813181215",
+  "source_identity": [
+    {
+      "path": "src/lib/styles/screens.css",
+      "reviewed_blob": "bb7f25972d1e5cbc69af02934e4c408f481f9dad",
+      "final_blob": "bb7f25972d1e5cbc69af02934e4c408f481f9dad"
+    },
+    {
+      "path": "src/routes/settings/+page.svelte",
+      "reviewed_blob": "a8bb6070ec2505600bb447b8619c0392e92f975a",
+      "final_blob": "a8bb6070ec2505600bb447b8619c0392e92f975a"
+    },
+    {
+      "path": "src/lib/components/Segmented.svelte",
+      "reviewed_blob": "c04044643bfa3d4a5c6e4f11c869ba504622b6a4",
+      "final_blob": "c04044643bfa3d4a5c6e4f11c869ba504622b6a4"
+    },
+    {
+      "path": "src/lib/components/kit/ListRow.svelte",
+      "reviewed_blob": "c20f417d3afa3a592fba0d5df931c719c9a7ed3e",
+      "final_blob": "c20f417d3afa3a592fba0d5df931c719c9a7ed3e"
+    }
+  ],
+  "final_delivery_delta": [
+    "src/lib/components/TodayEditor.svelte",
+    "tests/PROBES.md",
+    "tests/today-editor-opening-motion.mjs"
+  ],
+  "matrix_log": "../refresh-109/matrix.log",
+  "matrix_cases": 768,
+  "screen_class_red_log": "../refresh-109/screens.log",
+  "screen_class_green_log": "screens.log",
+  "reviews": [
+    "review-standards.md",
+    "review-spec.md"
+  ]
+}

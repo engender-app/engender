@@ -35,7 +35,7 @@
   import { paletteRing } from '$lib/motion/paletteRing';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
-  import { resize } from '$lib/motion/reveal';
+  import { collapse, resize } from '$lib/motion/reveal';
   import { bootState, resetApp } from '$lib/stores/boot.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { lockAfterSub } from '$lib/lock/lock-after-words';
@@ -407,7 +407,7 @@
           <span class="kit-row-text">
             <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
             {#if prefs.cycleTrackingChoice === null}
-              <span class="kit-row-sub">{m.cycle_tracking_toggle_sub()}</span>
+              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
             {/if}
           </span>
           <span class="kit-row-trail">
