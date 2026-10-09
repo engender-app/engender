@@ -27,6 +27,8 @@ async function visit(href) {
 async function choose(id) {
   await page.locator('[data-room-visit]').click();
   await page.locator(`[data-visit-pick="${id}"]`).click();
+  // The answer stays inert until the choice sheet finishes closing.
+  await page.locator('[data-sheet]').waitFor({ state: 'detached' });
   await page.locator('[data-room-answer]').waitFor();
 }
 async function checkDebrief(id, answer, excluded) {

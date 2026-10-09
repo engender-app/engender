@@ -17,12 +17,10 @@
    stops the scroll region moving underneath an overlay that does not cover
    it edge to edge; focus returns to whatever opened it on close.
 
-   `inert` is also what settles the stacking: `.app-main` carries
-   `view-transition-name: screen` and is therefore a stacking context, so an
-   overlay's own z-index is spent inside it and can never beat the floating
-   bar's 30 out in `.app`. `[data-app-root] > [inert]` (components.css) drops
-   the bar behind `.app-main` for exactly as long as the overlay is up, which
-   is the only thing that puts an overlay in front of it.
+   Full-frame overlays mount directly in `.app`: `.app-column` carries
+   `view-transition-name: screen` and is a stacking context, so an overlay
+   left inside it cannot beat the floating bar's 30. The background lock
+   then marks sibling surfaces inert while the overlay covers them.
 
    Queries `data-app-root`/`data-app-scroll-region` rather than
    `.app`/`.app-main` so this stays wired to the shell even if those
@@ -149,6 +147,26 @@ export function overlayIsOpen(): boolean {
   return overlayOwners.length > 0;
 }
 
+/** Put a full-frame overlay beside the screen and chrome it covers. */
+export function hostAppOverlay(node: HTMLElement): () => void {
+  const root = node.closest('[data-app-root]');
+  if (!root) return () => {};
+  /* Child attachments can set scroll positions before this attachment runs.
+     Moving the frame resets those positions in Chromium, including the time
+     picker's drums. Restore them before the frame paints at its new layer. */
+  const scrolled = [node, ...node.querySelectorAll('*')].flatMap((element) => {
+    if (!(element instanceof HTMLElement) || (!element.scrollTop && !element.scrollLeft)) return [];
+    return [{ element, top: element.scrollTop, left: element.scrollLeft }];
+  });
+  root.append(node);
+  for (const { element, top, left } of scrolled) {
+    element.scrollTop = top;
+    element.scrollLeft = left;
+  }
+  /* Svelte's block anchors remain at the original location. */
+  return () => node.remove();
+}
+
 /** Makes everything outside `node` inert and unscrollable. Returns the undo,
     which restores focus to its launcher or the nearest surviving control in
     the launcher's prior keyboard order. The undo's `recede()` starts
@@ -189,8 +207,7 @@ export function lockBackground(
     }
   }
   /* The withdrawal crossfades rather than snapping (ux-carpet 232):
-     components.css fades a pre-blurred `::after` in and delays the z-index
-     drop, both keyed off `.is-withdrawn`, and both need the browser to have
+     components.css fades a pre-blurred `::after` in. It needs the browser to have
      painted the *un*-withdrawn state at least once first or there is
      nothing to crossfade from - an `::after` this selector has never
      matched has no prior frame to animate away from. One
