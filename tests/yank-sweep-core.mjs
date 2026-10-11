@@ -390,7 +390,19 @@ const SCENES = [
   { name: 'today-editor-reorder', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-edit-pinned-row]', order: 'data-edit-pinned-row' }, is: 'moving a pinned row down with keyboard' },
   { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },
   { name: 'tryout-new', at: '/transition/tryouts', act: 'a[href="/transition/tryouts/new"]', after: { route: '/transition/tryouts/new' }, is: 'opening the new tryout editor' },
-  { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' }
+  { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' },
+  { name: 'hair-removal-create', at: '/body/hair-removal', act: '[data-add]', after: { selector: '[data-save-hair-removal-session]' }, is: 'opening a new hair removal session' },
+  { name: 'hair-removal-save', at: '/body/hair-removal', freshEmpty: true, prepare: ['[data-add]'], act: '[data-save-hair-removal-session]', after: { selector: '[data-hair-removal-session]', countIncrease: 1, alsoAbsent: '[data-sheet]' }, is: 'saving a new hair removal session and returning to its list' },
+  { name: 'hair-removal-cancel', at: '/body/hair-removal', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched session editor' },
+  { name: 'hair-removal-scroll', at: '/body/hair-removal', when: 'persona', act: 'scroll', scrollTop: 120, after: { scrollTop: 120 }, is: 'scrolling the populated hair removal screen' },
+  { name: 'hair-removal-return', at: '/body/hair-removal', when: 'persona', startScroll: 120, prepare: [{ act: 'scroll', scrollTop: 120, after: { scrollTop: 120 } }], act: '[data-nav-item="settings"], [data-rail-item="settings"]', after: { route: '/more' }, is: 'returning to Transition from scrolled hair removal' },
+  { name: 'hair-removal-back', at: '/body/hair-removal', act: 'back', after: { route: '/more' }, is: 'backing out of hair removal' },
+  { name: 'letters-save', at: '/transition/letters', freshEmpty: true, prepare: ['[data-add]', { act: '#letter-text', value: 'I wrote this letter during the motion sweep.' }, '#letter-unlock', { act: '[data-date-picker-entry]', dayOffset: 1 }, '[data-date-picker-apply]'], act: '[data-save-letter]', after: { selector: '[data-letter]', countIncrease: 1, alsoAbsent: '[data-sheet]' }, is: 'sealing a new letter and returning to its list' },
+  { name: 'letters-cancel', at: '/transition/letters', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched letter editor' },
+  { name: 'letters-scroll', at: '/transition/letters', when: 'persona', act: 'scroll', scrollTop: 120, after: { scrollTop: 120 }, is: 'scrolling the populated letters screen' },
+  { name: 'letters-return', at: '/transition/letters', when: 'persona', startScroll: 120, prepare: [{ act: 'scroll', scrollTop: 120, after: { scrollTop: 120 } }], act: '[data-nav-item="settings"], [data-rail-item="settings"]', after: { route: '/more' }, is: 'returning to Transition from scrolled letters' },
+  { name: 'letters-back', at: '/transition/letters', act: 'back', after: { route: '/more' }, is: 'backing out of letters' },
+  { name: 'letters-reading-close', at: '/transition/letters', when: 'persona', prepare: ['[data-letter-open]'], act: '[data-letter-close]', after: { selector: '[data-letter-state="reading"]', absent: true }, is: 'returning an open letter to its folded row' }
 
 ];
 
@@ -426,6 +438,11 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
   if (scene.at && location.pathname !== scene.at) throw new Error(`wrong action route: expected ${scene.at}, got ${location.pathname}`);
+  if (scene.startScroll !== undefined) {
+    evidence.beforeScroll = document.querySelector('[data-app-scroll-region]')?.scrollTop;
+    if (Math.abs(evidence.beforeScroll - scene.startScroll) > 1 || evidence.beforeScroll === undefined)
+      throw new Error(`wrong starting scroll: expected ${scene.startScroll}px, got ${evidence.beforeScroll}px`);
+  }
   if (requested === 'scroll') {
     const selector = '[data-app-scroll-region]';
     const region = document.querySelector(selector);
@@ -438,7 +455,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
     env.__sweepAction = { ...proof, dispatched: true };
     return env.__sweepAction;
   }
-  if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
+  if (!prepareOnly && scene.name) evidence.preparation = env.__sweepPreparation;
   if (env.__sweepDocumentProof) evidence.documentProof = env.__sweepDocumentProof;
   if (env.__sweepNavigationProof) evidence.navigationProof = env.__sweepNavigationProof;
   if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
@@ -635,6 +652,15 @@ export async function finishFirstRun(evaluate, options = {}) {
   return waitForReadiness(() => evaluate(BOOT_READINESS_EXPRESSION), options);
 }
 
+/** A creation repeat on the empty profile starts with no saved records. */
+export async function resetSceneProfile(scene, profile, evaluate, options = {}) {
+  if (!scene.freshEmpty || profile !== 'empty') return null;
+  await evaluate(JUMP_FIRST_RUN_EXPRESSION);
+  const ready = await finishFirstRun(evaluate, options);
+  await evaluate(markProfileExpression(profile));
+  return { profile, emptyJournalRestored: true, ready };
+}
+
 export const PROFILE_KEY = 'yank-sweep-prepared-profile';
 export const markProfileExpression = (profile) => `localStorage.setItem(${JSON.stringify(PROFILE_KEY)}, ${JSON.stringify(profile)}); true;`;
 export const profileProofExpression = (profile) => `(() => {
@@ -706,7 +732,16 @@ export function createReportRecorder(outDir, metadata, inventory, profiles, them
       await rename(`${outDir}/report.partial.json.tmp`, `${outDir}/report.partial.json`);
     });
   };
-  report.push = (...rows) => { const count = Array.prototype.push.apply(report, rows); persist(); return count; };
+  report.push = (...rows) => {
+    for (const row of rows) {
+      row.status = row.error ? 'failed' : row.skipped ? 'excluded' : 'measured';
+      const candidates = (row.yanks?.length ?? row.styleYanks?.length ?? 0) + (row.pixelFindings?.length ?? 0);
+      if (candidates) row.findingClassification = row.scene === PROOF.scene ? 'injected-defects' : 'unreviewed-candidates';
+    }
+    const count = Array.prototype.push.apply(report, rows);
+    persist();
+    return count;
+  };
   persist();
   return { report, persist, flush: () => pending };
 }
@@ -849,7 +884,12 @@ export const prepareSceneExpression = (scene) => `(async () => {
     globalThis.__sweepPreparation.error = error;
     throw new Error('target preparation did not become ready: ' + error);
   };
-  const dispatch = async (step) => { await prepare(step); return control(step); };
+  const dispatch = async (step) => {
+    await prepare(step);
+    const action = control(step);
+    globalThis.__sweepPreparation.steps.at(-1).action = action;
+    return action;
+  };
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const appearanceReady = () => document.documentElement.dataset.appearanceTransition === undefined
     && JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === scene.startTheme;

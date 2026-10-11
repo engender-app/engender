@@ -95,7 +95,7 @@
    pixel detector on every sheet that has ever been checked this way
    (tickets 149, 231, phase-12 152), a named false-positive family rather
    than something a real fix could clear. */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, screencast, previewBuild } from './browser-harness.mjs';
@@ -136,6 +136,7 @@ import {
   missingPaintedProof,
   readRenderYanks,
   scenesFor,
+  resetSceneProfile,
   sceneForTheme,
   parseSweepViewport,
   samplerExpression
@@ -188,7 +189,8 @@ const browser = await launchChromium();
 const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
-const recorder = createReportRecorder(outDir, { target: 'desktop', viewport }, SCENES, profiles, themes, passes, errors);
+const runtime = { browser: browser.version(), release: JSON.parse(await readFile(resolve(root, 'build/release.json'), 'utf8')) };
+const recorder = createReportRecorder(outDir, { target: 'desktop', viewport, runtime }, SCENES, profiles, themes, passes, errors);
 const report = recorder.report;
 
 let page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
@@ -241,6 +243,7 @@ for (const profile of profiles) {
         let captureEvidence;
         try {
           await page.evaluate(`globalThis.__sweepAction = null; globalThis.__sweepPreparation = null; true;`);
+          const fixtureReset = await resetSceneProfile(scene, profile, (expression) => page.evaluate(expression));
           if (scene.reseed) {
             await settle('/', theme);
             await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
@@ -281,6 +284,7 @@ for (const profile of profiles) {
             pass,
             is: scene.is,
             action,
+            fixtureReset,
             cleanup,
             profileProof,
             ...(evidence ? { evidence } : {}),
@@ -323,6 +327,7 @@ await writeFile(
     {
       target: 'desktop',
       viewport,
+      runtime,
       complete: true,
       themes,
       passes,

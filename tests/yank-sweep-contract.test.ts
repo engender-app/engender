@@ -50,6 +50,39 @@ it('fills the selected field through its input event and retains the entered val
   expect(field.dispatchEvent.mock.calls[0][0].type).toBe('input');
   expect(field.click).not.toHaveBeenCalled();
 });
+
+it('restores an empty journal for every creation repeat without resetting the persona', async () => {
+  const { resetSceneProfile, JUMP_FIRST_RUN_EXPRESSION, BOOT_READINESS_EXPRESSION } = await import('./yank-sweep-core.mjs');
+  let resets = 0;
+  const evaluate = async (expression) => {
+    if (expression === JUMP_FIRST_RUN_EXPRESSION) resets++;
+    return expression === BOOT_READINESS_EXPRESSION ? { ready: true } : true;
+  };
+  const scene = { freshEmpty: true };
+  expect(await resetSceneProfile(scene, 'empty', evaluate)).toMatchObject({ emptyJournalRestored: true });
+  await resetSceneProfile(scene, 'empty', evaluate);
+  expect(resets).toBe(2);
+  expect(await resetSceneProfile(scene, 'persona', evaluate)).toBeNull();
+  expect(await resetSceneProfile({}, 'empty', evaluate)).toBeNull();
+  expect(resets).toBe(2);
+});
+
+it('persists measured, excluded and failed scenes without classifying candidates as product defects', async () => {
+  const { createReportRecorder } = await import('./yank-sweep-core.mjs');
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const directory = await mkdtemp(join(tmpdir(), 'yank-report-'));
+  try {
+    const recorder = createReportRecorder(directory, {}, [], [], [], 1, []);
+    recorder.report.push({ scene: 'save', yanks: [{ kind: 'teleport' }] }, { scene: 'physical', skipped: 'No connected device' }, { scene: 'missing', error: 'missing target' });
+    await recorder.flush();
+    const saved = JSON.parse(await readFile(join(directory, 'report.partial.json'), 'utf8'));
+    expect(saved.report.map(row => row.status)).toEqual(['measured', 'excluded', 'failed']);
+    expect(saved.report[0].findingClassification).toBe('unreviewed-candidates');
+    expect(saved.complete).toBe(false);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
 it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
   const { preparePinGate } = await import('./yank-sweep-core.mjs');
   let theme = 'dark';
