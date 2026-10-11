@@ -504,7 +504,18 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   }
   if (after?.text) evidence.beforeValue = document.querySelectorAll(after.selector)[0]?.textContent ?? null;
   if (after?.order) evidence.beforeValue = [...document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|');
-  if (scene.key) {
+  if (scene.value !== undefined || scene.dayOffset !== undefined) {
+    if (!['INPUT', 'TEXTAREA'].includes(hit.tagName) || hit.readOnly) throw new Error('target is not an editable field: ' + selector);
+    let value = scene.value;
+    if (scene.dayOffset !== undefined) {
+      const day = new Date();
+      day.setDate(day.getDate() + scene.dayOffset);
+      value = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    }
+    hit.value = value;
+    hit.dispatchEvent(new env.Event('input', { bubbles: true }));
+    evidence.entered = hit.value;
+  } else if (scene.key) {
     if (document.activeElement !== hit) throw new Error('keyboard target lacks prepared focus: ' + selector);
     hit.dispatchEvent(new env.KeyboardEvent('keydown', { key: scene.key, bubbles: true, cancelable: true }));
     evidence.key = scene.key;
@@ -901,8 +912,14 @@ export const prepareSceneExpression = (scene) => `(async () => {
     }
     if (timeline.getAttribute('data-span-start') === before) throw new Error('span prerequisite did not change its start');
   }
-  for (const act of scene.prepare ?? []) {
-    await dispatch({ act });
+  for (const step of scene.prepare ?? []) {
+    const action = await dispatch(typeof step === 'string' ? { act: step } : step);
+    if (step.after) {
+      for (let i = 0; i < 200; i++) {
+        try { (${verifySceneAction})(step, action); break; }
+        catch (error) { if (i === 199) throw error; await sleep(50); }
+      }
+    }
     await sleep(500);
   }
   if (scene.act !== 'inject' && scene.act !== 'none') await prepare(scene);

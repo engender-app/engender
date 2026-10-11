@@ -41,6 +41,15 @@ it('requires one new visible record and a closed editor after saving', () => {
   env.document.querySelectorAll = (selector) => selector === '[data-sheet]' ? [control()] : rows;
   expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition absent');
 });
+
+it('fills the selected field through its input event and retains the entered value', () => {
+  const field = control({ tagName: 'TEXTAREA', value: '', dispatchEvent: vi.fn() });
+  const env = { ...environment([field]), Event: class { constructor(type) { this.type = type; } } };
+  expect(dispatchSceneAction({ act: '#letter-text', value: 'For tomorrow' }, env)).toMatchObject({ entered: 'For tomorrow' });
+  expect(field.value).toBe('For tomorrow');
+  expect(field.dispatchEvent.mock.calls[0][0].type).toBe('input');
+  expect(field.click).not.toHaveBeenCalled();
+});
 it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
   const { preparePinGate } = await import('./yank-sweep-core.mjs');
   let theme = 'dark';
