@@ -65,6 +65,7 @@ import {
   removeDeviceBoundJournal,
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
+import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
 import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
@@ -200,7 +201,8 @@ async function run(effect: BootEffect): Promise<void> {
   try {
     await perform(effect);
   } catch (error) {
-    dispatch({ type: 'boot-failed', message: describeError(error) });
+    if (error instanceof JournalAlreadyExistsError) surveyExistingJournal();
+    else dispatch({ type: 'boot-failed', message: describeError(error) });
   }
 }
 
@@ -567,7 +569,7 @@ export function startBoot() {
   started = true;
   /* What needs no key starts now, beside the survey and the unlock rather
      than after them (ux-carpet ticket 209): the web's database worker, its
-     wasm and its pool, which the Journal's driver takes over once the key
+     wasm, which the Journal's driver takes over once the key
      exists, and - where the unlock will derive one - the argon2id worker
      with hash-wasm compiled. Neither is given a secret here. */
   if (!isAndroid()) prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
@@ -580,8 +582,21 @@ export function startBoot() {
     to ask on top of it (spec: app lock may grant shorter access while an
     unlocked key is available - a key unlocked by hand is the strong case). */
 export async function submitPassphraseSetup(passphrase: string): Promise<void> {
-  const dataKey = await setupJournalPassphrase(passphrase);
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+  await finishSetup(() => setupJournalPassphrase(passphrase), 'passphrase');
+}
+
+function surveyExistingJournal(): void {
+  dispatch({ type: 'setup-stale', platform: isAndroid() ? 'android' : 'web' });
+}
+
+async function finishSetup(create: () => Promise<Uint8Array<ArrayBuffer>>, accessMode: JournalAccessMode): Promise<void> {
+  try {
+    const dataKey = await create();
+    dispatch({ type: 'key-obtained', dataKey, accessMode, unlocked: true });
+  } catch (error) {
+    if (!(error instanceof JournalAlreadyExistsError)) throw error;
+    surveyExistingJournal();
+  }
 }
 
 /** The unlock screen's submit. Throws DecryptionFailedError back to the
@@ -596,8 +611,7 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
 /** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
     this session, the same way a chosen passphrase does. */
 async function submitPinSetup(pin: string): Promise<void> {
-  const dataKey = await setupJournalPin(pin);
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+  await finishSetup(() => setupJournalPin(pin), 'pin');
 }
 
 /** The PIN gate's submit. Throws DecryptionFailedError on a wrong PIN and
@@ -617,8 +631,7 @@ export async function submitPinUnlock(pin: string): Promise<void> {
     at the screen when the authenticator will not answer, which is a
     different sentence from a failed setup. */
 async function submitBiometricSetup(): Promise<void> {
-  const dataKey = await setupJournalBiometric();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+  await finishSetup(() => setupJournalBiometric(), 'biometric');
 }
 
 /** The biometric gate's submit. There is nothing to retype, so every failure
@@ -675,7 +688,7 @@ export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
 async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
     const authRequired = options?.authRequired ?? true;
-    const result = await openAndroidDataKey(
+    const result = await initializeJournal(() => openAndroidDataKey(
       androidKeystore,
       {
         title: '',
@@ -684,7 +697,7 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
         deviceCredential: false
       },
       { authRequired }
-    );
+    ));
     const outcome = deviceBoundSetupOutcome(result);
     /* The one place a refusal is not dispatched: this is an offer on the
        setup module, and turning it down leaves the module exactly where it
@@ -696,8 +709,7 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
   }
 
   try {
-    const dataKey = await setupDeviceBoundJournal();
-    dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: true });
+    await finishSetup(() => setupDeviceBoundJournal(), 'device-bound');
     return 'ok';
   } catch (error) {
     if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
@@ -717,17 +729,18 @@ export async function submitAccessModeSetup(
   chosen: NonNullable<JournalAccessMode>,
   secret: string
 ): Promise<AccessModeSetupResult> {
-  if (chosen === 'device-bound') return submitDeviceBoundSetup({ authRequired: true });
-  if (chosen === 'unlocked') {
-    if (isAndroid()) return submitDeviceBoundSetup({ authRequired: false });
-    return submitDeviceBoundSetup();
-  }
   try {
+    if (chosen === 'device-bound') return await submitDeviceBoundSetup({ authRequired: true });
+    if (chosen === 'unlocked') return await submitDeviceBoundSetup({ authRequired: !isAndroid() });
     if (chosen === 'pin') await submitPinSetup(secret);
     else if (chosen === 'biometric') await submitBiometricSetup();
     else await submitPassphraseSetup(secret);
     return 'ok';
   } catch (error) {
+    if (error instanceof JournalAlreadyExistsError) {
+      surveyExistingJournal();
+      return 'ok';
+    }
     console.error('setting up the access mode failed', error);
     return error instanceof BiometricUnavailableError ? 'biometric-unavailable' : 'setup-failed';
   }

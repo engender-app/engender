@@ -9,6 +9,7 @@
    required again after the browser process ends. */
 
 import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithSecret } from '../crypto/keystore';
+import { initializeJournal } from './journal-initialization';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 
 /** One floor, shared by the setup screen and the change screen, so the two
@@ -21,9 +22,11 @@ export const MIN_PASSPHRASE_LENGTH = 8;
 /** First run: mints the data key, wraps it under the passphrase, persists
     the metadata, hands back the key for this session. */
 export async function setupJournalPassphrase(passphrase: string): Promise<Uint8Array<ArrayBuffer>> {
-  const { metadata, dataKey } = await createKeystore(passphrase);
-  await writeKeystoreFile(metadata);
-  return dataKey;
+  return initializeJournal(async () => {
+    const { metadata, dataKey } = await createKeystore(passphrase);
+    await writeKeystoreFile(metadata);
+    return dataKey;
+  });
 }
 
 export async function addJournalPassphrase(

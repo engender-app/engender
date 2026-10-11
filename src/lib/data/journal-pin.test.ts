@@ -61,6 +61,7 @@ function bothPlatforms() {
 
   let failNextWrite = false;
   const file = {
+    journalExists: async () => keystore !== null,
     readKeystore: async () => keystore,
     writeKeystore: async (metadata: KeystoreMetadata) => {
       if (failNextWrite) {
@@ -379,4 +380,14 @@ test('a keystore bound to a Keystore alias fails by name on a platform with no a
   await w.web.writeKeystore({ ...w.stored()!, pinBinding: 'keystore' });
 
   await expect(unlockJournalPin('1234', w.web)).rejects.toThrow(DeviceBindingUnavailableError);
+});
+
+test('stale PIN setup preserves the original binding and credential', async () => {
+  const world = bothPlatforms();
+  const key = await setupJournalPin('1234', world.phone);
+  const metadata = world.stored();
+  await expect(setupJournalPin('4321', world.phone)).rejects.toThrow('a journal already exists');
+  expect(world.mints()).toBe(1);
+  expect(world.stored()).toEqual(metadata);
+  await expect(unlockJournalPin('1234', world.phone)).resolves.toEqual(key);
 });
