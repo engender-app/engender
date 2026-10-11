@@ -737,8 +737,13 @@ it('enables hidden measurement controls without adding entries and restores feat
     });
     const cm = control({ scrollIntoView: () => { env.document.elementFromPoint = () => cm; } });
     const inches = control({ scrollIntoView: () => { env.document.elementFromPoint = () => inches; } });
+    let managerOpen = false;
+    const manager = control({ scrollIntoView: () => { env.document.elementFromPoint = () => manager; }, click: () => { managerOpen = true; } });
+    const close = control({ scrollIntoView: () => { env.document.elementFromPoint = () => close; }, click: () => { managerOpen = false; } });
     const selector = '[data-measurements-toggle] button.switch';
-    env.document.querySelectorAll = (query) => query === selector ? [toggle]
+    env.document.querySelectorAll = (query) => query === selector && managerOpen ? [toggle]
+      : query === '[data-list-row="features"]' ? [manager]
+      : query === '[data-features-close]' && managerOpen ? [close]
       : enabled && query.includes('[data-segment="cm"]') ? [cm]
       : enabled && query.includes('[data-segment="in"]') ? [inches] : [];
     env.document.querySelector = (query) => env.document.querySelectorAll(query)[0] ?? null;
@@ -750,6 +755,7 @@ it('enables hidden measurement controls without adding entries and restores feat
       expect(() => JSON.stringify(env.__sweepPreparation)).not.toThrow();
       const cleanup = await runInNewContext(cleanupSceneExpression(scene), env);
       expect(enabled).toBe(initiallyEnabled);
+      expect(managerOpen).toBe(false);
       await runInNewContext(cleanupSceneExpression(scene), env);
       expect(enabled).toBe(initiallyEnabled);
       if (!initiallyEnabled) expect(cleanup).toMatchObject({ verified: true, dispatched: true });
@@ -767,7 +773,7 @@ it('restores unit feature on failed scenes and preserves cleanup failure separat
   const toggle = control({ scrollIntoView: () => {},
     getAttribute: (name) => name === 'aria-checked' ? String(enabled) : null, click: () => { enabled = !enabled; } });
   const env = environment([toggle]);
-  env.document.querySelector = () => toggle;
+  env.document.querySelector = (query) => query === '[data-measurements-toggle] button.switch' ? toggle : null;
   env.__sweepPreparation = { measurementsOriginallyEnabled: false };
   env.setTimeout = (resolve) => resolve();
   const evaluate = (expression) => runInNewContext(expression, env);
