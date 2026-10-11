@@ -207,15 +207,11 @@
        4 is carpeting out screen by screen, and a document freshly
        redesigned is not the place to add its fourteenth instance. -->
   {#if range}
-    <SectionHeading text={m.clinician_summary_preview_title()} />
-    <!-- The heading above stays whether or not the dossier below has
-         loaded yet, and so does the print-only heading inside the page:
-         the page is the name plus the frame plus what's on it, and either
-         one arriving after the other would read as the page turning up
-         twice. -->
+    <div class="no-print"><SectionHeading text={m.clinician_summary_preview_title()} /></div>
+    <!-- The document title stays visible while its sections load. -->
     <div class="summary-page" data-summary-page>
-      <div class="print-heading" class:has-demographics={Boolean(dossier?.demographics)}>
-        <PrintLetterhead />
+      <div class="summary-heading" class:has-demographics={Boolean(dossier?.demographics)}>
+        <div class="print-heading"><PrintLetterhead /></div>
         <h1>{m.clinician_summary_title()}</h1>
         <p>{m.clinician_summary_period_range({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
@@ -414,19 +410,34 @@
     margin: 0;
   }
 
+  .summary-heading {
+    margin-bottom: var(--space-4);
+    break-inside: avoid;
+    break-after: avoid;
+  }
+
+  .summary-heading h1 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xl);
+    line-height: 1.2;
+  }
+
+  .summary-heading p {
+    margin: var(--space-1) 0 0;
+  }
+
+  /* The profile already states the period and generation date. */
+  .summary-heading.has-demographics > p {
+    display: none;
+  }
+
   @media print {
     .dossier-output {
       margin-top: 0;
     }
 
-    /* With demographics the profile card below is the header - the name,
-       the period and the generated date are all on it, and printing them
-       twice was the defect this rule fixed. The letterhead is the one part
-       that is not repeated down there, so it stays and only the words of
-       this heading go. */
-    .print-heading.has-demographics h1,
-    .print-heading.has-demographics p {
-      display: none;
+    .summary-heading h1 {
+      font-size: 20pt;
     }
 
 
