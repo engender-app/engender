@@ -306,6 +306,39 @@ describe("the sun across setup's handover", () => {
   });
 });
 
+describe('one sun across Today and Settings', () => {
+  it('hands shared rings over outside the moving curtain and releases them', () => {
+    const beforeRings = [el(), el()];
+    const afterRings = [el(), el()];
+    const { doc, as } = fakeDocument([field({ height: 215, rings: beforeRings })]);
+    const carry = carryBlind(as, { shareSun: true });
+    expect(beforeRings.map(r => r.style.viewTransitionName)).toEqual(['sun-shared-0', 'sun-shared-1']);
+    expect(beforeRings.map(r => r.style['view-transition-group'])).toEqual(['normal', 'normal']);
+    doc.fields = [field({ height: 190, rings: afterRings })];
+    carry.swap();
+    expect(beforeRings.map(r => r.style.viewTransitionName)).toEqual(['', '']);
+    expect(afterRings.map(r => r.style.viewTransitionName)).toEqual(['sun-shared-0', 'sun-shared-1']);
+    carry.release();
+    expect(afterRings.map(r => r.style.viewTransitionName)).toEqual(['', '']);
+    expect(afterRings.map(r => r.style['view-transition-class'])).toEqual([undefined, undefined]);
+    expect(doc.root.style.props.size).toBe(0);
+  });
+
+  it('leaves the successor sun named when an interrupted handover finishes late', () => {
+    const rings = [el(), el()];
+    const { doc, as } = fakeDocument([field({ height: 215, rings })]);
+    const first = carryBlind(as, { shareSun: true });
+    first.swap();
+    const second = carryBlind(as, { shareSun: true });
+    first.release();
+    expect(rings.map(r => r.style.viewTransitionName)).toEqual(['sun-shared-0', 'sun-shared-1']);
+    doc.fields = [field({ height: 190, rings: [el(), el()] })];
+    second.swap();
+    second.release();
+    expect(doc.root.style.props.size).toBe(0);
+  });
+});
+
 /* A navigation that lands on one still running (ticket 285). The DOM is the
    earlier navigation's destination and the earlier transition is skipped the
    instant the new one starts, so the edge, the faded-in type and the opened
