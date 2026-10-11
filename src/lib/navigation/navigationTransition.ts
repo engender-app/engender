@@ -17,6 +17,7 @@ import { isAndroid } from '$lib/platform';
 import { isReducedMotion } from '$lib/motion/tokens';
 
 const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
+let currentTransition: ViewTransition | null = null;
 
 /* Tier 2 (phase 5 ticket 18): one screen becoming another.
 
@@ -140,6 +141,9 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        scale, so it holds still inside the two snapshots while the field
        closes around it rather than closing and opening its own rings. */
     holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding'),
+    shareSun:
+      (navigation.from?.url.pathname === '/' && navigation.to.url.pathname === '/settings') ||
+      (navigation.from?.url.pathname === '/settings' && navigation.to.url.pathname === '/'),
     restoring: savedScroll(navigation.to.url.pathname, navigation.type) > 1
   });
 
@@ -192,6 +196,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
         blind.swap();
       }
     });
+    currentTransition = transition;
     /* `ready` rejects on its own when the browser skips a transition - a
        viewport resize mid-transition is one way - and nothing else here
        reads it, so the rejection reached the window unhandled. */
@@ -199,8 +204,13 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
     void transition.finished
       .catch(() => {})
       .finally(() => {
-        delete document.documentElement.dataset.nav;
-        delete document.documentElement.dataset.blindHold;
+        /* A skipped transition finishes after its successor starts. Only
+           the current capture may clear the flag read by arriving suns. */
+        if (currentTransition === transition) {
+          currentTransition = null;
+          delete document.documentElement.dataset.nav;
+          delete document.documentElement.dataset.blindHold;
+        }
         blind.release();
       });
   });
