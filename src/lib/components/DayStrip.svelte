@@ -118,7 +118,7 @@
     <!-- The words are the only thing that changes place when the page
          does, so they are the only thing that fades. -->
     {#key weekLabel}
-      <span class="day-strip-week" data-strip-week out:crossfade>{weekLabel}</span>
+      <span class="day-strip-week" data-strip-week in:crossfade out:crossfade>{weekLabel}</span>
     {/key}
     <button
       class="icon-btn"
