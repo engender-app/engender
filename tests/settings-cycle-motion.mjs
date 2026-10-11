@@ -25,6 +25,7 @@ try {
         await settlePage(page, base, '/', theme);
         await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
         await settlePage(page, base, '/settings', theme);
+        await page.locator('[data-list-row="features"]').click();
         const button = page.locator('[data-cycle-tracking-toggle] button.switch');
         const explanation = page.locator('[data-cycle-tracking-toggle] .kit-row-sub');
         await explanation.waitFor();
@@ -43,10 +44,10 @@ try {
             const read = (now) => {
               if (!window.__cycleSampling) return;
               const sub = document.querySelector('[data-cycle-tracking-toggle] .kit-row-sub');
-              const unit = document.querySelector('[data-measurement-unit]');
+              const close = document.querySelector('[data-features-close]');
               const reminders = document.querySelector('[data-list-row="reminders"]');
               window.__cycleSamples.push({ ms: Math.round(now - started), height: sub?.getBoundingClientRect().height ?? 0,
-                unitY: unit?.getBoundingClientRect().top, remindersY: reminders?.getBoundingClientRect().top,
+                closeY: close?.getBoundingClientRect().top, remindersY: reminders?.getBoundingClientRect().top,
                 scroll: document.querySelector('.app-main')?.scrollTop ?? window.scrollY });
               requestAnimationFrame(read);
             };
@@ -60,10 +61,10 @@ try {
         });
         const label = `${theme}${reduced ? '-reduced' : ''}`;
         const evidence = await saveSceneCast(cast, out, 'cycle-explanation', label);
-        const maxStep = Math.max(...samples.slice(1).map((sample, index) => Math.abs(sample.unitY - samples[index].unitY)));
+        const maxStep = Math.max(...samples.slice(1).map((sample, index) => Math.abs(sample.closeY - samples[index].closeY)));
         const remindersStep = Math.max(...samples.slice(1).map((sample, index) => Math.abs(sample.remindersY - samples[index].remindersY)));
         const intermediate = samples.filter((sample) => sample.height > 0.5 && sample.height < samples[0].height - 0.5).length;
-        assert.ok(Number.isFinite(maxStep) && Number.isFinite(remindersStep), 'both downstream rows must be measured');
+        assert.ok(Number.isFinite(maxStep) && Number.isFinite(remindersStep), 'manager close and Settings reminders must be measured');
         const result = { theme, reduced, maxStep, remindersStep, intermediate, evidence, samples };
         results.push(result);
         if (!reduced && (intermediate < 3 || maxStep > TELEPORT_PX || remindersStep > TELEPORT_PX)) failures.push(`${label}: explanation cut or downstream jump (${maxStep}px, ${intermediate} intermediate frames)`);
@@ -73,6 +74,7 @@ try {
         assert.equal(await button.evaluate((node) => node === document.activeElement), true);
         await page.reload({ waitUntil: 'networkidle' });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
+        await page.locator('[data-list-row="features"]').click();
         assert.equal(await explanation.count(), 0);
         assert.equal(await button.getAttribute('aria-checked'), checked === 'true' ? 'false' : 'true');
         await button.press('Space');
@@ -87,11 +89,11 @@ try {
             const layout = await button.evaluate((node) => {
               const rect = node.getBoundingClientRect();
               const main = document.querySelector('.app-main');
-              const unit = document.querySelector('[data-measurement-unit]');
+              const close = document.querySelector('[data-features-close]');
               return { width: rect.width, height: rect.height, focused: node === document.activeElement,
-                horizontalOverflow: main.scrollWidth > main.clientWidth,
+                horizontalOverflow: main.scrollWidth > main.clientWidth || node.closest('[data-sheet]').scrollWidth > node.closest('[data-sheet]').clientWidth,
                 mainWidth: main.clientWidth, mainScrollWidth: main.scrollWidth,
-                units: [unit, ...unit.children].map((element) => ({ selector: element.className,
+                controls: [close, ...close.children].map((element) => ({ selector: element.className,
                   width: element.getBoundingClientRect().width, minWidth: getComputedStyle(element).minWidth,
                   left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right })) };
             });

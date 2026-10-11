@@ -188,7 +188,7 @@ To run one on its own, use
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
 | `day-addresses` | malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
-| `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
+| `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: Buy Me a Coffee support link immediately above About; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
 
 ### Written as a guard, not in CI yet
 
@@ -328,6 +328,7 @@ available for the surface or device it measures.
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
 | `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
+| `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
 | `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |

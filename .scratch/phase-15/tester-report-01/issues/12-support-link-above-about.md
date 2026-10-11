@@ -1,6 +1,6 @@
 # 12 - Restore the support link above About
 
-Status: ready-for-agent
+Status: resolved
 Size: S
 Model: gpt-6.1-sol
 Type: bug
@@ -18,3 +18,11 @@ Settings currently omits its support row because its old Ko-fi destination is em
 - [ ] Update existing assertions that intentionally expected the absent Ko-fi row.
 
 Source: 11 October recording at 18:30; destination supplied during intake.
+
+## Integration result, 12 October 2026
+
+Restored Buy Me a Coffee support link immediately above About with English and Polish labels. Updated the erase guard to scroll to Privacy before measuring its row. Independent Standards and Spec reviews found no issues.
+
+Merged-tree build, typecheck, 7,538 Node tests, copy and screen-class checks passed. First-load payload measured 251,286 bytes against a 251,272-byte limit, then 251,254 bytes on one unchanged rebuild. Generated dependency ordering and symbol names varied; both measurements are retained in the delivery evidence. The passing build has 18 bytes of headroom.
+
+Implementation tip: f5ca20b1bc87a81d135857ce71d1fb76b54ae31b.
