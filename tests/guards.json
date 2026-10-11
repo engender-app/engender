@@ -222,6 +222,11 @@
     "holds": "leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open"
   },
   {
+    "name": "milestone-era-handoff-check",
+    "tier": "dev",
+    "holds": "Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
     "holds": "real BFCache Back and Forward restore journal reads and writes without bypassing lock policy or retaining obsolete workers"
@@ -283,11 +288,6 @@
     "name": "settings-scroll-check",
     "tier": "built",
     "holds": "Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content"
-  },
-  {
-    "name": "milestone-era-handoff-check",
-    "tier": "dev",
-    "holds": "Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return"
   },
   {
     "name": "sheet-handoff-scroll-check",
