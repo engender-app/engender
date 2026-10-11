@@ -7,6 +7,7 @@
      and the two old standalone-screen addresses (settings/presentations,
      settings/entry-templates - now redirect stubs handing off which sheet
      to raise) drive. */
+  import { onMount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { ui } from '$lib/stores/ui.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -25,15 +26,17 @@
      adds nothing to wait for; it only holds the true cold path - a raise
      landed on before boot has hydrated the mirror - back the same beat the
      row data itself takes. */
-  let templatesOpen = $derived(ui.raisedManager === 'templates' && vocabulary.ready);
-  let modesOpen = $derived(ui.raisedManager === 'modes' && vocabulary.ready);
+  // Open after mounting so local transitions animate the first opening too.
+  let mounted = $state(false);
+  onMount(() => { mounted = true; });
+  let templatesOpen = $derived(mounted && ui.raisedManager === 'templates' && vocabulary.ready);
+  let modesOpen = $derived(mounted && ui.raisedManager === 'modes' && vocabulary.ready);
 </script>
 
 <Sheet
   open={modesOpen}
   title={m.presentations_title()}
   onClose={() => (ui.raisedManager = null)}
-  globalTransitions
 >
   <PresentationsManager />
 </Sheet>
@@ -42,7 +45,6 @@
   open={templatesOpen}
   title={m.entry_templates_title()}
   onClose={() => (ui.raisedManager = null)}
-  globalTransitions
 >
   <EntryTemplatesManager />
 </Sheet>

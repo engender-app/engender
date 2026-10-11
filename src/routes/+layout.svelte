@@ -165,6 +165,13 @@
       onboardingFirstRun
   );
 
+  // Keep the lazy host between openings so a gate unmount skips sheet outros.
+  let managersRequested = $state(false);
+  $effect(() => {
+    if (replacesApp) ui.raisedManager = null;
+    else if (ui.raisedManager) managersRequested = true;
+  });
+
   /* Those, plus the routes that render without chrome whoever is looking at
      them - which now includes a step the app does navigate to. */
   let chromeless = $derived(replacesApp || chromelessPath(path));
@@ -601,7 +608,7 @@
 
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
     <QuickAdd />
-    {#if ui.raisedManager}
+    {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />
       {/await}
