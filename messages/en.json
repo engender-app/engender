@@ -1391,6 +1391,8 @@
   "hair_photo_delete_q": "Delete this photo?",
   "hair_photo_delete_sheet": "Delete photo",
   "hair_photo_empty_body": "Same head, new episode. Your photos go here.",
+  "hair_photo_exports_required": "Add a photo to make a collage or timelapse.",
+  "hair_photo_compare_required": "Add at least two photos to compare them.",
   "hair_photo_empty_title": "No photos yet",
   "hair_photo_protocol_body": "Try the same framing, lighting and distance for photos you want to compare.",
   "hair_photo_protocol_dismiss_aria": "Hide this guidance",
