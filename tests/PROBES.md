@@ -215,6 +215,8 @@ at 230px. The three screen contract suites run here rather than in Node.
 
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
 
+`clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
+
 ## Galleries and tools
 
 Screenshots, flipbooks and measurements a person reads. None of them fail a

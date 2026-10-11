@@ -8,6 +8,7 @@
   gap: var(--space-4);
   color: var(--text);
   font-family: inherit;
+  line-height: 1.5;
 }
 
 /* Patient profile summary box */
@@ -40,6 +41,7 @@
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 /* Sections */
@@ -84,7 +86,7 @@
 .dossier-table th {
   background: var(--surface-2);
   color: var(--text);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-bold);
   padding: var(--space-2) var(--space-3);
   border-bottom: 2px solid var(--hairline);
   white-space: nowrap;
@@ -322,25 +324,41 @@
     color: #000000 !important;
     background: transparent !important;
     gap: 0;
+    font-size: 10pt;
+    line-height: 1.4;
+    orphans: 3;
+    widows: 3;
   }
 
   .dossier-profile-card,
   .dossier-section {
-    border: 1px solid #333333 !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     margin-bottom: 14pt;
+    box-shadow: none !important;
+  }
+
+  .dossier-profile-card {
+    border: 1px solid #333333 !important;
     padding: 10pt !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    box-shadow: none !important;
+  }
+
+  .dossier-section {
+    border: 0 !important;
+    padding: 0 !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
   .dossier-section-header {
     border-bottom: 1.5pt solid #000000 !important;
     break-after: avoid !important;
     page-break-after: avoid !important;
+    padding-bottom: 5pt;
+    margin-bottom: 8pt;
   }
 
   .dossier-section-title {
@@ -350,7 +368,7 @@
 
   .dossier-profile-label {
     color: #444444 !important;
-    font-size: 8pt !important;
+    font-size: 9pt !important;
   }
 
   .dossier-profile-value {
@@ -359,24 +377,62 @@
   }
 
   .dossier-table {
-    font-size: 9.5pt !important;
-    border: 1px solid #444444 !important;
+    font-size: 10pt !important;
+    border: 0 !important;
+  }
+
+  .dossier-table-wrap {
+    overflow: visible;
+  }
+
+  .dossier-table thead {
+    display: table-header-group;
+    break-after: avoid;
+  }
+
+  .dossier-table th,
+  .dossier-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .dossier-table th {
+    overflow-wrap: normal;
+  }
+
+  .dossier-dose-table td:nth-child(-n + 2),
+  .dossier-dose-table td:last-child {
+    white-space: nowrap;
+  }
+
+  .dossier-lab-table th:nth-child(2) {
+    min-width: 9em;
+  }
+
+  .dossier-lab-table th:nth-child(5) {
+    min-width: 7em;
+  }
+
+  .dossier-lab-table td:nth-child(3) {
+    white-space: nowrap;
+  }
+
+  .dossier-table .small {
+    font-size: 0.9em;
   }
 
   .dossier-table th {
     background: #f0f0f0 !important;
     color: #000000 !important;
     border-bottom: 1.5pt solid #000000 !important;
-    border-right: 1px solid #cccccc !important;
-    font-size: 9pt !important;
-    padding: 4pt 6pt !important;
+    font-size: 9.5pt !important;
+    padding: 6pt 5pt !important;
   }
 
   .dossier-table td {
     color: #000000 !important;
     border-bottom: 1px solid #dddddd !important;
-    border-right: 1px solid #eeeeee !important;
-    padding: 4pt 6pt !important;
+    padding: 6pt 5pt !important;
   }
 
   .dossier-table tr {
@@ -407,15 +463,24 @@
     background: #ffffff !important;
     border: 1px solid #444444 !important;
     color: #000000 !important;
-    font-size: 8.5pt !important;
+    font-size: 9pt !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .dossier-footnote,
+  .dossier-empty-note {
+    color: #444444 !important;
+    font-size: 9pt !important;
   }
 
   .dossier-disclaimer {
     color: #444444 !important;
     border-top: 1px solid #000000 !important;
-    font-size: 8pt !important;
+    font-size: 9pt !important;
     margin-top: 12pt;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    break-before: avoid;
   }
 }
