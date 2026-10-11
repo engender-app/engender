@@ -4,6 +4,10 @@
   import PhotoViewer from '$lib/components/PhotoViewer.svelte';
   import SectionJump from '$lib/components/kit/SectionJump.svelte';
   import { page } from '$app/state';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import { timelapseSupported } from '$lib/data/photos/journey-render';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* Staging against a published scale, and fixed-position photos, on the
@@ -203,6 +207,19 @@
      the widest comparison the list holds, and the reading an area owes
      when it opens (DIRECTION.md rule 16). */
   let comparing = $state<string[]>([]);
+  let restoredComparison = $state(false);
+  export const snapshot = {
+    capture: () => [...comparing],
+    restore: (ids: string[]) => { comparing = ids; restoredComparison = true; }
+  };
+  const canRecord = timelapseSupported();
+  let comparisonHeading = $state<HTMLHeadingElement>();
+
+  function openComparison() {
+    comparisonHeading?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+    comparisonHeading?.focus({ preventScroll: true });
+  }
+
   let wipePair = $derived(toComparePair(comparing, photos) ?? openingPair(photos.length));
 
   function setWipePair(next: ComparePair) {
@@ -221,7 +238,7 @@
   $effect(() => {
     if (typeof window === 'undefined') return;
     if (dosesQuery.loading) return;
-    if (window.location.hash === '#hair-photos') {
+    if (!restoredComparison && window.location.hash === '#hair-photos') {
       jumper?.jump('photos');
     }
   });
@@ -316,6 +333,23 @@
       {/snippet}
     </SectionHeading>
 
+    {#if !photosQuery.loading && !photosQuery.failed}
+      <div class="hair-photo-actions" role="group" aria-label={m.hair_photo_section_title()}>
+        <button class="btn btn-soft press" data-hair-compare disabled={!wipePair} onclick={openComparison}>{m.ph_compare()}</button>
+        <button class="btn btn-soft press" data-hair-collage disabled={!photos.length} onclick={() => goto(resolve('/media/photos/export?source=hair&output=collage&from=hair-progress'))}>{m.pj_output_collage()}</button>
+        <button class="btn btn-soft press" data-hair-timelapse disabled={!photos.length || !canRecord} onclick={() => goto(resolve('/media/photos/export?source=hair&output=timelapse&from=hair-progress'))}>{m.pj_output_timelapse()}</button>
+      </div>
+      {#if photos.length === 0}
+        <p class="muted small">{m.hair_photo_exports_required()}</p>
+      {/if}
+      {#if photos.length < 2}
+        <p class="muted small">{m.hair_photo_compare_required()}</p>
+      {/if}
+      {#if !canRecord}
+        <p class="muted small">{m.pj_timelapse_unavailable()}</p>
+      {/if}
+    {/if}
+
     {#if photoDue}
       <div data-photo-due>
         <Notice
@@ -345,6 +379,7 @@
            `disclose` because the pair only exists once the query answers,
            and a frame this size arriving in one frame is a yank. -->
       <div class="disclosed" transition:disclose>
+        <h3 bind:this={comparisonHeading} tabindex="-1" data-hair-comparison>{m.ph_compare()}</h3>
         <PhotoWipe
           {photos}
           pair={wipePair}
@@ -497,6 +532,17 @@
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
+  }
+
+  .hair-photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .hair-photo-actions .btn {
+    flex: 1;
   }
 
   .jump-up {
