@@ -8,6 +8,7 @@ import { launchChromium, fillDate, dateValue } from './browser-harness.mjs';
 const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
 const browser = await launchChromium();
+console.log('Browser:', browser.version());
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 page.setDefaultTimeout(15000);
 const errors = [];
@@ -61,6 +62,17 @@ try {
     await page.locator('[data-generate]').click();
     await page.locator('[data-share]').waitFor();
     console.log('Preview ready', output);
+    if (output === 'timelapse') {
+      await page.waitForFunction(() => document.querySelector('.video-note-player')?.readyState >= 2);
+      const metadata = await page.locator('.video-note-player').evaluate((video) => ({
+        duration: video.duration, width: video.videoWidth, height: video.videoHeight
+      }));
+      console.log('Timelapse metadata:', metadata);
+      assert.ok(Number.isFinite(metadata.duration) && metadata.duration > 0, `preview duration: ${metadata.duration}`);
+      await page.locator('[data-transport-toggle]').click();
+      await page.waitForFunction(() => document.querySelector('.video-note-player').currentTime > 0);
+      await page.locator('[data-transport-toggle]').click();
+    }
     const result = await page.evaluate(async (output) => {
       const mime = output === 'collage' ? 'image/jpeg' : 'video/webm';
       const blob = window.exportBlobs.findLast((blob) => blob.type.startsWith(mime));
@@ -94,6 +106,17 @@ try {
     assert.match(page.url(), /source=hair/);
     assert.equal(await page.getByRole('radio', { name: output === 'collage' ? 'Collage' : 'Timelapse', exact: true }).getAttribute('aria-checked'), 'true');
   }
+  await page.locator('.photo-cell[aria-pressed="false"]').click();
+  await page.getByRole('radio', { name: 'Timelapse', exact: true }).click();
+  await page.locator('[data-generate]').click();
+  await page.locator('[data-share]').waitFor();
+  await page.waitForFunction(() => document.querySelector('.video-note-player')?.readyState >= 2);
+  const twoPhotoDuration = await page.locator('.video-note-player').evaluate((video) => video.duration);
+  console.log('Two-photo duration:', twoPhotoDuration);
+  assert.ok(Number.isFinite(twoPhotoDuration) && twoPhotoDuration >= 1, `two-photo duration: ${twoPhotoDuration}`);
+  assert.notEqual(await page.locator('.transport-of').innerText(), '0:00');
+  await page.locator('[data-again]').click();
+  await page.locator('.photo-cell').first().click();
   await page.locator('.photo-cell[aria-pressed="true"]').click();
   assert.equal(await page.locator('[data-generate]').isDisabled(), true);
   assert.match(await page.locator('.screen').innerText(), /Select at least one photo/);
