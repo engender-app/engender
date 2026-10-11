@@ -6,7 +6,7 @@
    to seed and no table to migrate when a pack gains an item. It is
    compiled into the bundle and read synchronously, which is also the whole
    of what "fully offline" means here - a pack is inert data, so a screen
-   showing one cannot reach for the network. Only the ticks are stored, and
+   showing one cannot reach for the network. Only personal status and visibility are stored, and
    journal/roadmap.ts owns those.
 
    Keys only, no text, the same rule builtins.ts follows and for the same

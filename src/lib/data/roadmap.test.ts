@@ -158,7 +158,7 @@ test('the roadmap screen draws its tracks through the fold rather than from its 
     'utf8'
   );
 
-  expect(screen).toContain('roadmapSections(pack, customGoals, dismissedTracks)');
+  expect(screen).toContain('roadmapSections(pack, customGoals, dismissedTracks, hiddenGoals)');
   expect(screen).toContain('{#each sections as section');
   expect(screen).not.toMatch(/\{#each ROADMAP_TRACKS/);
   // And it must not re-derive a track's goals beside the fold that just did.
