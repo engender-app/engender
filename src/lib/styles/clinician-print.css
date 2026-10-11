@@ -332,16 +332,16 @@
 
   .dossier-profile-card,
   .dossier-section {
-    border: 1px solid #333333 !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     margin-bottom: 14pt;
-    padding: 10pt !important;
     box-shadow: none !important;
   }
 
   .dossier-profile-card {
+    border: 1px solid #333333 !important;
+    padding: 10pt !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
