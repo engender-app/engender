@@ -27,6 +27,20 @@ describe('scroll scene outcomes', () => {
     expect(() => dispatchSceneAction({ act: 'scroll', scrollTop: 240 }, env)).toThrow('insufficient scroll range');
   });
 });
+
+it('requires one new visible record and a closed editor after saving', () => {
+  let rows = [control()];
+  const save = control();
+  const env = environment([save]);
+  env.document.querySelectorAll = (selector) => selector === '[data-letter]' ? rows : selector === '[data-sheet]' ? [] : [save];
+  const scene = { act: '[data-save-letter]', after: { selector: '[data-letter]', countIncrease: 1, alsoAbsent: '[data-sheet]' } };
+  const action = dispatchSceneAction(scene, env);
+  expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition count');
+  rows.push(control());
+  expect(verifySceneAction(scene, action, env)).toMatchObject({ verified: true, afterCount: 2 });
+  env.document.querySelectorAll = (selector) => selector === '[data-sheet]' ? [control()] : rows;
+  expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition absent');
+});
 it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
   const { preparePinGate } = await import('./yank-sweep-core.mjs');
   let theme = 'dark';
