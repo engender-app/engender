@@ -331,6 +331,7 @@ const SCENES = [
     after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'flag',
+    actionAt: '/onboarding',
     act: '[data-next]',
     is: "the field's edge pulled down to the next step, with the question riding it"
   },
@@ -340,6 +341,7 @@ const SCENES = [
     after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'scales',
+    actionAt: '/onboarding',
     act: '[data-back]',
     is: 'the same edge pulled up, which is the direction that must not overshoot'
   },
@@ -349,6 +351,7 @@ const SCENES = [
     after: {"selector": "html", "attribute": "data-palette", "value": "agender"},
     at: '/',
     firstRun: 'flag',
+    actionAt: '/onboarding',
     act: '[data-palette-pick="agender"]',
     is: 'a flag picked: the frame landing, the field wiping, the sun redrawing over the old one'
   },
@@ -358,6 +361,7 @@ const SCENES = [
     after: {"route": "/"},
     at: '/',
     firstRun: 'done',
+    actionAt: '/onboarding',
     act: '[data-finish]',
     nav: true,
     is: "setup's field closing to Home's, as one object"
@@ -595,7 +599,7 @@ export function verifySceneAction(scene, action, env = globalThis) {
   const route = env.location.pathname;
   if (after.scrollTop !== undefined) {
     const afterScroll = env.document.querySelector(action.scrollSelector)?.scrollTop;
-    if (route !== action.beforeRoute || Math.abs(afterScroll - after.scrollTop) > 1 || afterScroll === action.beforeScroll)
+    if (!Number.isFinite(afterScroll) || route !== action.beforeRoute || Math.abs(afterScroll - after.scrollTop) > 1 || afterScroll === action.beforeScroll)
       throw new Error(`postcondition scroll: expected ${after.scrollTop}px on ${action.beforeRoute}, got ${afterScroll}px on ${route}`);
     return { ...action, verified: true, afterRoute: route, afterScroll, postcondition: after };
   }
