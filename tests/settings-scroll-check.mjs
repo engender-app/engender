@@ -82,6 +82,7 @@ try {
     const historyLength = await page.evaluate(() => history.length);
     await row.click();
     await page.locator('[role="dialog"]').waitFor();
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAnimations().length > 0);
     if (serial) adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
     else await page.keyboard.press('Escape');
     await page.locator('[role="dialog"]').waitFor({ state: 'detached' });
@@ -117,6 +118,45 @@ try {
       await page.waitForTimeout(500);
       await rows.screenshot({ path: `${out}/${palette}-${theme}.png` });
     }
+    await page.locator('[data-list-row="disguise"]').click();
+    await page.getByRole('switch', { name: 'Disguise app' }).click();
+    await page.keyboard.press('Escape');
+    await page.locator('[role="dialog"]').waitFor({ state: 'detached' });
+    for (const theme of ['light', 'dark']) {
+      await page.locator(`[data-segment="${theme}"]`).click();
+      const rows = page.locator('[data-list-row="presentations"]').locator('..');
+      await rows.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(500);
+      await rows.screenshot({ path: `${out}/disguise-${theme}.png` });
+    }
+  }
+  if (!serial) {
+    await navigate('/settings/security');
+    await page.locator('a[href="/settings/access-mode"]').click();
+    await page.locator('[data-lock-after-choice="immediately"]').click();
+    await navigate('/settings');
+    await page.locator('[data-list-row="presentations"]').click();
+    await page.locator('[role="dialog"]').waitFor();
+    const gateLeaks = await page.evaluate(() => new Promise((resolve) => {
+      let leaks = 0;
+      const observe = () => {
+        if (document.querySelector('[data-applock]') && document.querySelector('[data-list-row="presentations"], [role="dialog"]')) leaks++;
+      };
+      const observer = new MutationObserver(observe);
+      observer.observe(document.body, { childList: true, subtree: true });
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.visibilityState;
+      requestAnimationFrame(() => { observe(); observer.disconnect(); resolve(leaks); });
+    }));
+    await page.locator('[data-applock]').waitFor();
+    assert.equal(gateLeaks, 0, 'Gate must show no Settings or manager content, including first frame');
+    await page.locator('#session-passphrase').fill('demo');
+    await page.locator('[data-applock] button[type="submit"]').click();
+    await page.locator('[data-applock]').waitFor({ state: 'detached' });
+    await page.locator('[data-list-row="presentations"]').waitFor();
+    assert.equal(await page.locator('[role="dialog"]').count(), 0, 'Unlock must not reopen the manager');
+    console.log('PASS lock gate hides Settings and open manager');
   }
   assert.deepEqual(errors, [], 'No uncaught page errors');
 } finally {
