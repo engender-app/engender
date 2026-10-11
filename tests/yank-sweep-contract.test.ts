@@ -18,6 +18,8 @@ describe('scroll scene outcomes', () => {
     expect(verifySceneAction(scene, action, env)).toMatchObject({ verified: true, afterScroll: 240 });
     region.scrollTop = 0;
     expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition scroll');
+    env.document.querySelector = () => null;
+    expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition scroll');
     env.location.pathname = '/more';
     expect(() => dispatchSceneAction(scene, env)).toThrow('wrong action route');
   });
@@ -26,6 +28,14 @@ describe('scroll scene outcomes', () => {
     region.scrollHeight = 650;
     expect(() => dispatchSceneAction({ act: 'scroll', scrollTop: 240 }, env)).toThrow('insufficient scroll range');
   });
+});
+
+it('checks the mounted onboarding route when dispatching a first-run scene', async () => {
+  const { scenesFor } = await import('./yank-sweep-core.mjs');
+  const scene = scenesFor({ only: ['setup-step-forward'] })[0];
+  const env = environment([control()]);
+  env.location.pathname = '/onboarding';
+  expect(dispatchSceneAction(scene, env)).toMatchObject({ dispatched: true, beforeRoute: '/onboarding' });
 });
 
 it('requires one new visible record and a closed editor after saving', () => {
