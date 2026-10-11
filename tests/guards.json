@@ -280,6 +280,11 @@
     "holds": "a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one"
   },
   {
+    "name": "settings-scroll-check",
+    "tier": "built",
+    "holds": "Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content"
+  },
+  {
     "name": "sheet-handoff-scroll-check",
     "tier": "built",
     "holds": "a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close"
