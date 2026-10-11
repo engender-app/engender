@@ -1,5 +1,6 @@
 {
   "releaseVersion": "1.0.0",
+  "candidateRevision": "",
   "stages": {
     "stage1": {
       "passedAt": "",

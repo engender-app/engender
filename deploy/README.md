@@ -293,3 +293,39 @@ exact config snippets, serves the build through it and checks:
 
 If you keep a machine-specific runbook, store it in
 `.scratch/ticket-05-hosting-checklist.md` so it stays local and untracked.
+
+
+## Candidate evidence before publication
+
+Development CI accepts the pending record in
+`scripts/progressive-release-record.json`. A signed tag does not. Before the
+release workflow builds or publishes artifacts, it checks the record against
+that tag's exact version and the tested source revision. Stable tags require
+`stable`; prerelease tags require `stage2`, the prerequisite for the signed
+GitHub APK in stage3. Stage3's publication claims are recorded after that APK
+and Play open testing exist. Prereleases never deploy the production web app.
+
+Commit the candidate source, including release notes, before running its release
+matrix. Record that commit's full SHA in `candidateRevision` and the intended
+version, including any `-rc.N` suffix, in `releaseVersion`. Run and record every
+required stage's matrix against that candidate. A matrix timestamp before the
+candidate commit is rejected. Evidence booleans must describe completed checks;
+do not mark a channel live before its gate passes.
+
+Commit the evidence record afterwards. The tested revision must be an ancestor
+of the tagged commit, and only `scripts/progressive-release-record.json` may
+differ between them. Any other source change requires testing the new candidate
+and updating its revision. This lets the record name a real commit without
+requiring it to contain its own hash.
+
+Check the publication gate locally after committing the evidence:
+
+```bash
+node scripts/check-progressive-release.mjs --target stage2 --publication-version 1.0.0-rc.1
+node scripts/check-progressive-release.mjs --target stable --publication-version 1.0.0
+```
+
+Use the command for the version being released. Ordinary
+`npm run check:progressive-release` only validates the record's current claims;
+it does not authorize publication. The existing tag workflow still checks the
+signature's presence and main ancestry. No evidence is filled in automatically.
