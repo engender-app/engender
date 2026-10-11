@@ -280,7 +280,7 @@ const SCENES = [
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
-  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
+  { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
      open under it. New movement, and the one on this screen most likely to
@@ -331,6 +331,7 @@ const SCENES = [
     after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'flag',
+    actionAt: '/onboarding',
     act: '[data-next]',
     is: "the field's edge pulled down to the next step, with the question riding it"
   },
@@ -340,6 +341,7 @@ const SCENES = [
     after: {"selector": "[data-setup-question]", "text": true},
     at: '/',
     firstRun: 'scales',
+    actionAt: '/onboarding',
     act: '[data-back]',
     is: 'the same edge pulled up, which is the direction that must not overshoot'
   },
@@ -349,6 +351,7 @@ const SCENES = [
     after: {"selector": "html", "attribute": "data-palette", "value": "agender"},
     at: '/',
     firstRun: 'flag',
+    actionAt: '/onboarding',
     act: '[data-palette-pick="agender"]',
     is: 'a flag picked: the frame landing, the field wiping, the sun redrawing over the old one'
   },
@@ -358,6 +361,7 @@ const SCENES = [
     after: {"route": "/"},
     at: '/',
     firstRun: 'done',
+    actionAt: '/onboarding',
     act: '[data-finish]',
     nav: true,
     is: "setup's field closing to Home's, as one object"
@@ -390,7 +394,21 @@ const SCENES = [
   { name: 'today-editor-reorder', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-edit-pinned-row]', order: 'data-edit-pinned-row' }, is: 'moving a pinned row down with keyboard' },
   { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },
   { name: 'tryout-new', at: '/transition/tryouts', act: 'a[href="/transition/tryouts/new"]', after: { route: '/transition/tryouts/new' }, is: 'opening the new tryout editor' },
-  { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' }
+  { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' },
+  { name: 'hair-removal-create', freshEmpty: true, at: '/body/hair-removal', act: '[data-add]', after: { selector: '[data-save-hair-removal-session]' }, is: 'opening a new hair removal session' },
+  { name: 'hair-removal-save', at: '/body/hair-removal', freshEmpty: true, prepare: ['[data-add]'], act: '[data-save-hair-removal-session]', after: { selector: '[data-hair-removal-session]', countIncrease: 1, alsoAbsent: '[data-sheet]' }, is: 'saving a new hair removal session and returning to its list' },
+  { name: 'hair-removal-cancel', freshEmpty: true, at: '/body/hair-removal', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched session editor' },
+  { name: 'hair-removal-scroll', at: '/body/hair-removal', when: 'persona', act: 'scroll', scrollTop: 120, after: { scrollTop: 120 }, is: 'scrolling the populated hair removal screen' },
+  { name: 'hair-removal-return', at: '/body/hair-removal', when: 'persona', startScroll: 120, prepare: [{ act: 'scroll', scrollTop: 120, after: { scrollTop: 120 } }], act: '[data-nav-item="settings"], [data-rail-item="settings"]', after: { route: '/more' }, is: 'returning to Transition from scrolled hair removal' },
+  { name: 'hair-removal-back', freshEmpty: true, at: '/body/hair-removal', act: 'back', after: { route: '/more' }, is: 'backing out of hair removal' },
+  { name: 'letters-save', at: '/transition/letters', freshEmpty: true, prepare: ['[data-add]', { act: '#letter-text', value: 'I wrote this letter during the motion sweep.' }, '#letter-unlock', { act: '[data-date-picker-entry]', dayOffset: 1 }, '[data-date-picker-apply]'], act: '[data-save-letter]', after: { selector: '[data-letter]', countIncrease: 1, alsoAbsent: '[data-sheet]' }, is: 'sealing a new letter and returning to its list' },
+  { name: 'letters-cancel', freshEmpty: true, at: '/transition/letters', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched letter editor' },
+  { name: 'letters-scroll', at: '/transition/letters', when: 'persona', act: 'scroll', scrollTop: 120, after: { scrollTop: 120 }, is: 'scrolling the populated letters screen' },
+  { name: 'letters-return', at: '/transition/letters', when: 'persona', startScroll: 120, prepare: [{ act: 'scroll', scrollTop: 120, after: { scrollTop: 120 } }], act: '[data-nav-item="settings"], [data-rail-item="settings"]', after: { route: '/more' }, is: 'returning to Transition from scrolled letters' },
+  { name: 'letters-back', freshEmpty: true, at: '/transition/letters', act: 'back', after: { route: '/more' }, is: 'backing out of letters' },
+  { name: 'letters-reading-close', at: '/transition/letters', when: 'persona', prepare: ['[data-letter-open]'], act: '[data-letter-close]', after: { selector: '[data-letter-state="reading"]', absent: true }, is: 'returning an open letter to its folded row' },
+  { name: 'transition-letters-scrolled-entry', freshEmpty: true, at: '/more', startScrollMinimum: 1, prepare: [{ act: 'scroll', scrollTop: 0 }, { act: 'scroll', scrollTop: 320, after: { scrollTop: 320 } }], act: '[data-list-row="letters"]', after: { route: '/transition/letters' }, is: 'opening Letters from scrolled Transition' },
+  { name: 'letters-back-to-scrolled-transition', freshEmpty: true, at: '/more', actionAt: '/transition/letters', prepare: [{ act: 'scroll', scrollTop: 0 }, { act: 'scroll', scrollTop: 320, after: { scrollTop: 320 } }, { act: '[data-list-row="letters"]', startScrollMinimum: 1, after: { route: '/transition/letters' } }], act: 'back', after: { route: '/more', restoreScroll: true }, is: 'backing out of Letters to its scrolled Transition origin' }
 
 ];
 
@@ -425,7 +443,29 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const { document, location } = env;
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
-  if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
+  const actionRoute = scene.actionAt ?? scene.at;
+  if (actionRoute && location.pathname !== actionRoute) throw new Error(`wrong action route: expected ${actionRoute}, got ${location.pathname}`);
+  evidence.beforeScroll = document.querySelector?.('[data-app-scroll-region]')?.scrollTop;
+  if (scene.startScrollMinimum !== undefined && !(evidence.beforeScroll >= scene.startScrollMinimum))
+    throw new Error(`starting scroll below ${scene.startScrollMinimum}px: ${evidence.beforeScroll}px`);
+  if (scene.startScroll !== undefined) {
+    evidence.beforeScroll = document.querySelector('[data-app-scroll-region]')?.scrollTop;
+    if (Math.abs(evidence.beforeScroll - scene.startScroll) > 1 || evidence.beforeScroll === undefined)
+      throw new Error(`wrong starting scroll: expected ${scene.startScroll}px, got ${evidence.beforeScroll}px`);
+  }
+  if (requested === 'scroll') {
+    const selector = '[data-app-scroll-region]';
+    const region = document.querySelector(selector);
+    if (!region) throw new Error('missing scroll region: ' + selector);
+    const maximum = region.scrollHeight - region.clientHeight;
+    if (maximum < scene.scrollTop) throw new Error(`insufficient scroll range: ${maximum}px for ${scene.scrollTop}px`);
+    const proof = { ...evidence, beforeScroll: region.scrollTop, maximumScroll: maximum, scrollSelector: selector };
+    if (prepareOnly) return { ...proof, prepared: true };
+    region.scrollTo({ top: scene.scrollTop, behavior: 'smooth' });
+    env.__sweepAction = { ...proof, dispatched: true };
+    return env.__sweepAction;
+  }
+  if (!prepareOnly && scene.name) evidence.preparation = env.__sweepPreparation;
   if (env.__sweepDocumentProof) evidence.documentProof = env.__sweepDocumentProof;
   if (env.__sweepNavigationProof) evidence.navigationProof = env.__sweepNavigationProof;
   if (requested === 'none') return { ...evidence, programmatic: 'cold-load', dispatched: true };
@@ -484,13 +524,25 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   if (prepareOnly) return { ...evidence, prepared: true };
   const after = scene.after;
   if (after?.selector) evidence.beforePresent = !!document.querySelectorAll(after.selector)[0];
+  if (after?.countIncrease !== undefined) evidence.beforeCount = document.querySelectorAll(after.selector).length;
   if (after?.attribute) {
     const subject = after.selector ? document.querySelectorAll(after.selector)[0] : hit;
     evidence.beforeValue = subject?.getAttribute(after.attribute) ?? null;
   }
   if (after?.text) evidence.beforeValue = document.querySelectorAll(after.selector)[0]?.textContent ?? null;
   if (after?.order) evidence.beforeValue = [...document.querySelectorAll(after.selector)].map((el) => el.getAttribute(after.order)).join('|');
-  if (scene.key) {
+  if (scene.value !== undefined || scene.dayOffset !== undefined) {
+    if (!['INPUT', 'TEXTAREA'].includes(hit.tagName) || hit.readOnly) throw new Error('target is not an editable field: ' + selector);
+    let value = scene.value;
+    if (scene.dayOffset !== undefined) {
+      const day = new Date();
+      day.setDate(day.getDate() + scene.dayOffset);
+      value = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    }
+    hit.value = value;
+    hit.dispatchEvent(new env.Event('input', { bubbles: true }));
+    evidence.entered = hit.value;
+  } else if (scene.key) {
     if (document.activeElement !== hit) throw new Error('keyboard target lacks prepared focus: ' + selector);
     hit.dispatchEvent(new env.KeyboardEvent('keydown', { key: scene.key, bubbles: true, cancelable: true }));
     evidence.key = scene.key;
@@ -545,6 +597,19 @@ export function verifySceneAction(scene, action, env = globalThis) {
   const after = scene.after;
   if (!after) throw new Error(`missing action postcondition: ${scene.name ?? scene.act}`);
   const route = env.location.pathname;
+  if (after.scrollTop !== undefined) {
+    const afterScroll = env.document.querySelector(action.scrollSelector)?.scrollTop;
+    if (!Number.isFinite(afterScroll) || route !== action.beforeRoute || Math.abs(afterScroll - after.scrollTop) > 1 || afterScroll === action.beforeScroll)
+      throw new Error(`postcondition scroll: expected ${after.scrollTop}px on ${action.beforeRoute}, got ${afterScroll}px on ${route}`);
+    return { ...action, verified: true, afterRoute: route, afterScroll, postcondition: after };
+  }
+  if (after.countIncrease !== undefined) {
+    const afterCount = env.document.querySelectorAll(after.selector).length;
+    if (route !== action.beforeRoute || afterCount !== action.beforeCount + after.countIncrease)
+      throw new Error(`postcondition count: expected ${action.beforeCount + after.countIncrease}, got ${afterCount} on ${route}`);
+    if (after.alsoAbsent && env.document.querySelectorAll(after.alsoAbsent).length) throw new Error('postcondition absent: ' + after.alsoAbsent);
+    return { ...action, verified: true, afterRoute: route, afterCount, postcondition: after };
+  }
   if (after.route) {
     const expected = after.route === 'chosen-href' ? action.chosen?.href?.split(/[?#]/)[0] : after.route;
     if (route !== expected) throw new Error(`postcondition route: expected ${expected}, got ${route}`);
@@ -562,7 +627,17 @@ export function verifySceneAction(scene, action, env = globalThis) {
       if (after.value !== undefined ? value !== after.value || value === action.beforeValue : value === action.beforeValue) throw new Error(`postcondition attribute unchanged or wrong: ${after.attribute}=${value}`);
     }
   }
-  return { ...action, verified: true, afterRoute: route, afterTheme: env.document.documentElement?.dataset.theme, postcondition: after };
+  let scrollRestoration;
+  if (after.restoreScroll) {
+    const source = action.preparation?.steps.map(step => step.action).findLast(step => step?.beforeRoute === route
+      && step.chosen?.href?.split(/[?#]/)[0] === action.beforeRoute);
+    if (!Number.isFinite(source?.beforeScroll)) throw new Error('missing source scroll proof');
+    const actual = env.document.querySelector('[data-app-scroll-region]')?.scrollTop;
+    if (!Number.isFinite(actual)) throw new Error('missing returned scroll region');
+    scrollRestoration = { expected: source.beforeScroll, actual, restored: Math.abs(actual - source.beforeScroll) <= 1 };
+  }
+  return { ...action, verified: true, afterRoute: route, afterTheme: env.document.documentElement?.dataset.theme, postcondition: after,
+    ...(scrollRestoration ? { scrollRestoration } : {}) };
 }
 
 export const actionPostconditionExpression = (scene, action) => `(${verifySceneAction})(${JSON.stringify(scene)}, ${JSON.stringify(action)})`;
@@ -595,6 +670,15 @@ export const BOOT_READINESS_EXPRESSION = `(() => ({
 export async function finishFirstRun(evaluate, options = {}) {
   if (!(await evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION))) throw new Error('first-run finish was not dispatched');
   return waitForReadiness(() => evaluate(BOOT_READINESS_EXPRESSION), options);
+}
+
+/** Empty-profile flows start each repeat with no saved records. */
+export async function resetSceneProfile(scene, profile, evaluate, options = {}) {
+  if (!scene.freshEmpty || profile !== 'empty') return null;
+  await evaluate(JUMP_FIRST_RUN_EXPRESSION);
+  const ready = await finishFirstRun(evaluate, options);
+  await evaluate(markProfileExpression(profile));
+  return { profile, emptyJournalRestored: true, ready };
 }
 
 export const PROFILE_KEY = 'yank-sweep-prepared-profile';
@@ -668,7 +752,16 @@ export function createReportRecorder(outDir, metadata, inventory, profiles, them
       await rename(`${outDir}/report.partial.json.tmp`, `${outDir}/report.partial.json`);
     });
   };
-  report.push = (...rows) => { const count = Array.prototype.push.apply(report, rows); persist(); return count; };
+  report.push = (...rows) => {
+    for (const row of rows) {
+      row.status = row.error ? 'failed' : row.skipped ? 'excluded' : 'measured';
+      const candidates = (row.yanks?.length ?? row.styleYanks?.length ?? 0) + (row.pixelFindings?.length ?? 0);
+      if (candidates) row.findingClassification = row.scene === PROOF.scene ? 'injected-defects' : 'unreviewed-candidates';
+    }
+    const count = Array.prototype.push.apply(report, rows);
+    persist();
+    return count;
+  };
   persist();
   return { report, persist, flush: () => pending };
 }
@@ -811,7 +904,12 @@ export const prepareSceneExpression = (scene) => `(async () => {
     globalThis.__sweepPreparation.error = error;
     throw new Error('target preparation did not become ready: ' + error);
   };
-  const dispatch = async (step) => { await prepare(step); return control(step); };
+  const dispatch = async (step) => {
+    await prepare(step);
+    const action = control(step);
+    globalThis.__sweepPreparation.steps.at(-1).action = action;
+    return action;
+  };
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const appearanceReady = () => document.documentElement.dataset.appearanceTransition === undefined
     && JSON.parse(localStorage.getItem('engender-boot-prefs') ?? '{}').theme === scene.startTheme;
@@ -874,8 +972,14 @@ export const prepareSceneExpression = (scene) => `(async () => {
     }
     if (timeline.getAttribute('data-span-start') === before) throw new Error('span prerequisite did not change its start');
   }
-  for (const act of scene.prepare ?? []) {
-    await dispatch({ act });
+  for (const step of scene.prepare ?? []) {
+    const action = await dispatch(typeof step === 'string' ? { act: step } : step);
+    if (step.after) {
+      for (let i = 0; i < 200; i++) {
+        try { (${verifySceneAction})(step, action); break; }
+        catch (error) { if (i === 199) throw error; await sleep(50); }
+      }
+    }
     await sleep(500);
   }
   if (scene.act !== 'inject' && scene.act !== 'none') await prepare(scene);
