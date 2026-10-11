@@ -361,10 +361,10 @@ export async function readCounterevidenceSnapshots({ driver }: SectionRead): Pro
 }
 
 export async function readRoadmapChecks({ driver }: SectionRead): Promise<ArchiveRoadmapCheck[]> {
-  const rows = await driver.query<{ pack_key: string; goal_key: string; status: string }>(
-    'SELECT pack_key, goal_key, status FROM roadmap_check ORDER BY pack_key, goal_key'
+  const rows = await driver.query<{ pack_key: string; goal_key: string; status: string; hidden: number }>(
+    'SELECT pack_key, goal_key, status, hidden FROM roadmap_check ORDER BY pack_key, goal_key'
   );
-  return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key, status: r.status }));
+  return rows.map((r) => ({ packKey: r.pack_key, goalKey: r.goal_key, status: r.status, ...(r.hidden ? { hidden: true } : {}) }));
 }
 
 export async function readChecklists({ driver }: SectionRead): Promise<ArchiveChecklist[]> {
