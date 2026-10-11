@@ -329,8 +329,8 @@ function laneDays(lane: LaneFacts): MarkEntry[] {
 /** The rail, or null where there is nothing to put on one.
 
     Today alone is not a rail: a line with a single tick in the middle of it
-    is a decoration, and the screen has an empty state for that case which
-    says what would fill it. A lane with no mark of its own is the same
+    is a decoration, so the screen omits the timeline in that case.
+    A lane with no mark of its own is the same
     silence one drug at a time - a running regimen nothing has been logged
     against yet - so it draws no line either, and its block below still names
     the regimen.
