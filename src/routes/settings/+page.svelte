@@ -172,12 +172,6 @@
   const SOURCE_URL = 'https://github.com/engender-app/engender';
   let privacyUrl = $derived(`${SITE_URL}${getLocale() === 'pl' ? 'pl' : 'en'}/privacy/`);
 
-  /* Ticket ux/06: ships disabled. While this is empty the row is not drawn
-     at all (phase 14 ticket 15, V05): a "coming soon" row that looked like
-     a link read as unfinished. Setting the real Ko-fi URL is the whole
-     follow-up; the row appears with it. */
-  const KOFI_URL = '';
-
   /* The modes/entry-templates sheets raise from here (audit item 6):
      `?raise=` is what their old standalone-screen addresses' redirects
      hand off (settings/presentations, settings/entry-templates), since
@@ -484,16 +478,14 @@
     </ListRow>
   </ListCard>
 
-  <!-- No heading: the rows about the app rather than a setting of it. Ko-fi
-       stays its own row, not folded into the About sheet (ticket ux/06),
-       once it has somewhere to go. -->
+  <!-- No heading: these rows are about the app rather than a setting. -->
   <ListCard>
+    <ListRow key="support" icon="heart" title={m.support_row()} href="https://buymeacoffee.com/engender" target="_blank" rel="noreferrer" chevron={false}>
+      {#snippet trailing()}<Icon name="external" size={20} />{/snippet}
+    </ListRow>
     <ListRow key="about" icon="info" title={m.about()} chevron={false} onclick={() => (aboutSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    {#if KOFI_URL}
-      <ListRow key="kofi" icon="heart" title={m.kofi_row()} subtitle={m.kofi_row_sub()} href={KOFI_URL} target="_blank" rel="noreferrer" />
-    {/if}
   </ListCard>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
