@@ -35,7 +35,7 @@
    Android's lock is out of scope and does not come through here: its
    database lives behind a native plugin with a lock path of its own. */
 
-import { unlockAttempts } from '../lock/unlock-attempt.ts';
+import { unlockAttempts, UnlockCancelledError } from '../lock/unlock-attempt.ts';
 import { sessionGate, type SessionGate } from '../data/live/sessionGate.ts';
 
 interface Closable {
@@ -45,8 +45,9 @@ interface Closable {
 
 export interface JournalSessionPorts<Key, Driver extends Closable> {
   suspend(): Promise<void>;
-  /** Check ownership after waits, before publishing journal access. */
-  open(key: Key, current: () => void, dispose: (driver: Driver) => Promise<void>): Promise<Driver>;
+  /** Register the private driver before any wait. Check ownership after
+      waits, before publishing access. The session owns failure cleanup. */
+  open(key: Key, current: () => void, own: (driver: Driver) => void): Promise<Driver>;
   release(retainContent: boolean): void;
   prewarm(): void;
 }
@@ -105,6 +106,7 @@ export function journalSession<Key, Driver extends Closable>(
      still finishes first: the drain of `connection` is not cut short. */
   let unlockWaiting = false;
   let stopWaiting: (() => void) | null = null;
+  let cancelOpening: (() => void) | null = null;
   /* One at a time, in the order asked. Someone who comes straight back
      unlocks while the lock is still waiting for a save, and someone who
      leaves again under `immediately` locks while the unlock is reopening;
@@ -179,6 +181,7 @@ export function journalSession<Key, Driver extends Closable>(
     },
     lock: () => {
       attempts.lock();
+      cancelOpening?.();
       navigationKey = null;
       // Revoke new key access immediately; existing saves keep their key.
       void key.close();
@@ -191,16 +194,20 @@ export function journalSession<Key, Driver extends Closable>(
     suspendForNavigation(retainKey) {
       navigationSuspended = true;
       attempts.lock();
+      cancelOpening?.();
       if (retainKey) navigationKey ??= key.current;
       else navigationKey = null;
       // Stop handing out handles in the pagehide turn, before freezing.
-      const suspended = ports.suspend();
+      const suspended = ports.suspend().catch((error) => {
+        console.warn('the journal did not settle cleanly before retained navigation', error);
+      });
       void connection.close();
       void key.close();
       return inTurn(async () => {
         const closing = driver;
         if (closing !== null) await close(closing, false, suspended);
-        else await suspended;
+        // A cancelled private open has already completed bounded disposal.
+        // Its remaining saves may need the next unlock, so do not drain again.
       });
     },
     async resumeAfterNavigation(current) {
@@ -227,19 +234,33 @@ export function journalSession<Key, Driver extends Closable>(
         unlockWaiting = false;
         check();
         if (!locked) return;
-        const opened = await ports.open(derived, check, (opening) => close(opening, false));
+        let opening: Driver | null = null;
+        let cancel!: () => void;
+        const cancelled = new Promise<never>((_resolve, reject) => {
+          cancel = () => reject(new UnlockCancelledError());
+        });
+        cancelOpening = cancel;
         try {
+          const opened = await Promise.race([
+            ports.open(derived, check, (privateDriver) => { opening = privateDriver; }),
+            cancelled
+          ]);
           check();
+          driver = opened;
+          connection.open(driver);
+          locked = false;
+          key.open(derived);
+          navigationSuspended = false;
+          navigationKey = null;
         } catch (error) {
-          await close(opened, false);
+          // Disposal cannot wait for preparation to return its driver.
+          // Late preparation has only its ownership check, not a cleanup
+          // callback that could clear a subsequently opened session.
+          if (opening !== null) await close(opening, false);
           throw error;
+        } finally {
+          if (cancelOpening === cancel) cancelOpening = null;
         }
-        driver = opened;
-        connection.open(driver);
-        locked = false;
-        key.open(derived);
-        navigationSuspended = false;
-        navigationKey = null;
       });
     }
   };

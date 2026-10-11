@@ -44,6 +44,12 @@ lock/unlock, rejects overlapping changes and resets from both pages, then
 restarts and verifies the original entries and encrypted attachment bytes.
 The dev app supplies synthetic demo data; credential storage and UI paths are real.
 
+`stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with
+`npm run test:browser`. It withholds real preference and reference-read replies
+during unlock, then verifies bounded worker disposal, a usable retry without
+reload, preserved journal content and harmless late replies. Visibility events
+are synthetic; the application, encrypted worker and OPFS are real.
+
 ## Walkthrough groups
 
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's

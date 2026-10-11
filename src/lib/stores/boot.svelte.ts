@@ -388,36 +388,29 @@ let reopeningCurrent: () => void = () => {};
 async function reopenJournal(
   dataKey: Uint8Array<ArrayBuffer>,
   current: () => void,
-  dispose: (driver: SqliteDriver) => Promise<void>
+  own: (driver: SqliteDriver) => void
 ): Promise<SqliteDriver> {
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
-  try {
-    const preparing = openJournal(sqlite.driver, photoFiles);
-    const preferences = await openPreferences(sqlite.driver, bootCache);
-    current();
-    /* Reopen reads use the private driver. The shared connection stays
-       closed until every preparation step has finished under this lock. */
-    await hydrateReference(preparing, current);
-    current();
-    await attachPreferences(preferences);
-    current();
-    const journal = attachJournal(openJournal(journalDriver, photoFiles));
-    openDriver = sqlite.driver;
-    openFileOps = sqlite.fileOps;
-    setActiveDriver(sqlite.driver);
-    useJournalFiles(photoFiles);
-    session.connection.open(sqlite.driver);
-    journalIsOpen();
-    dispatch({ type: 'journal-reopened', journal });
-    return sqlite.driver;
-  } catch (error) {
-    /* Preparation can have attached preferences before losing ownership.
-       The session drains those writes within the same bound as a lock,
-       closes this private driver, and releases every partially filled store. */
-    await dispose(sqlite.driver);
-    throw error;
-  }
+  own(sqlite.driver);
+  const preparing = openJournal(sqlite.driver, photoFiles);
+  const preferences = await openPreferences(sqlite.driver, bootCache);
+  current();
+  /* Reopen reads use the private driver. The shared connection stays
+     closed until every preparation step has finished under this lock. */
+  await hydrateReference(preparing, current);
+  current();
+  await attachPreferences(preferences);
+  current();
+  const journal = attachJournal(openJournal(journalDriver, photoFiles));
+  openDriver = sqlite.driver;
+  openFileOps = sqlite.fileOps;
+  setActiveDriver(sqlite.driver);
+  useJournalFiles(photoFiles);
+  session.connection.open(sqlite.driver);
+  journalIsOpen();
+  dispatch({ type: 'journal-reopened', journal });
+  return sqlite.driver;
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
