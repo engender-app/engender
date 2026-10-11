@@ -38,10 +38,9 @@
      whole point for a person who is not in a state to read. Same screen
      every time.
 
-     This screen reads nothing. No live query runs on arrival, which is what
-     lets a cold Android launch paint the breath as soon as the shell is up
-     rather than after SQLite has answered seven of them. Each way down owns
-     its own reads. */
+     The breath paints without waiting for SQLite. One bounded pool read
+     decides whether Good moments has anything to open; until it answers,
+     that optional row stays absent. Each way down owns its full reads. */
   import { m } from '$lib/paraglide/messages';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -50,6 +49,12 @@
   import { SAFE_SPACE_WAYS, type SafeSpaceWayKey } from '$lib/data/safeSpaceWays';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { liveList } from '$lib/data/live/journal.svelte';
+  import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
+  import { disclose } from '$lib/motion/reveal';
+  import { navigating } from '$app/state';
+
+  const evidenceQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 1));
 
   /* The words for each way, beside the list rather than in it: the order is
      a fact about the product and lives in the module (ADR-0016 keeps
@@ -80,14 +85,18 @@
 
   <ListCard role={roleAt(activeFlag.roles, 1)}>
     {#each SAFE_SPACE_WAYS as way, i (way.key)}
-      <ListRow
-        key={way.key}
-        icon={way.icon}
-        href={way.href}
-        title={WAY_COPY[way.key].title()}
-        subtitle={WAY_COPY[way.key].sub?.()}
-        style="--row-index:{i}"
-      />
+      {#if way.key !== 'evidence' || evidenceQuery.rows.length}
+        <div class="rows-divide" transition:disclose={{ skip: way.key !== 'evidence' || navigating.to !== null }}>
+          <ListRow
+            key={way.key}
+            icon={way.icon}
+            href={way.href}
+            title={WAY_COPY[way.key].title()}
+            subtitle={WAY_COPY[way.key].sub?.()}
+            style="--row-index:{i}"
+          />
+        </div>
+      {/if}
     {/each}
   </ListCard>
 </div>
