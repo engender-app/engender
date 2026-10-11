@@ -52,6 +52,7 @@
   import { liveList } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { disclose } from '$lib/motion/reveal';
+  import { navigating } from '$app/state';
 
   const evidenceQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 1));
 
@@ -85,7 +86,7 @@
   <ListCard role={roleAt(activeFlag.roles, 1)}>
     {#each SAFE_SPACE_WAYS as way, i (way.key)}
       {#if way.key !== 'evidence' || evidenceQuery.rows.length}
-        <div class="rows-divide" transition:disclose={{ skip: way.key !== 'evidence' }}>
+        <div class="rows-divide" transition:disclose={{ skip: way.key !== 'evidence' || navigating.to !== null }}>
           <ListRow
             key={way.key}
             icon={way.icon}

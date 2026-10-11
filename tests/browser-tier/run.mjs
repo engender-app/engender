@@ -120,7 +120,7 @@ await block('rendered screen contracts', 171, async () => {
   }
 });
 
-await block('Safe space optional Good moments', 9, async () => {
+await block('Safe space optional Good moments', 10, async () => {
   const result = await load('/screen-mount.html?safe-space=1', 'screen-mount');
   if (!Array.isArray(result.safeSpace)) throw new Error(result.error ?? 'missing Safe space results');
   for (const item of result.safeSpace) {

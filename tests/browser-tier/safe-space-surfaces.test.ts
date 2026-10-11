@@ -2,6 +2,7 @@ import { flushSync } from 'svelte';
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, heldReads, today, type Result } from './screen-contracts/fixture';
 import { journal } from '$lib/data/live/journal.svelte';
+import { navigating } from './screen-router.svelte';
 
 export async function safeSpaceContracts(): Promise<Result[]> {
   const results: Result[] = [];
@@ -59,7 +60,28 @@ export async function safeSpaceContracts(): Promise<Result[]> {
   const taggedId = await journal.entries.upsertEntry({ epochDay: today - 1, mood: 4, tags: ['g-body-eu'], note: 'Felt right' });
   await until(evidence, 'good-tagged row');
   await check('a saved euphoria capture also reveals Good moments', () => evidence());
-  await screen.remove();
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  await check('leaving Safe space does not collapse the Good moments row', async () => {
+    const row = evidence()!.parentElement!;
+    const fullHeight = row.getBoundingClientRect().height;
+    const heights = [fullHeight];
+    let frame = 0;
+    const sample = () => {
+      if (row.isConnected) heights.push(row.getBoundingClientRect().height);
+      frame = requestAnimationFrame(sample);
+    };
+    Object.assign(navigating, { to: { url: new URL('/calendar', location.origin) } });
+    frame = requestAnimationFrame(sample);
+    try {
+      await journal.entries.deleteEntry(taggedId);
+      await until(() => !row.isConnected, 'departing evidence row');
+      await screen.remove(true);
+      return heights.every((height) => Math.abs(height - fullHeight) < 1);
+    } finally {
+      cancelAnimationFrame(frame);
+      Object.assign(navigating, { to: null });
+    }
+  });
 
   await journal.entries.deleteEntry(id);
   await journal.entries.deleteEntry(taggedId);

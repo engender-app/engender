@@ -13,7 +13,7 @@ try {
   await page.goto(`${server.resolvedUrls.local[0]}screen-mount.html?safe-space=1`);
   await page.waitForSelector(`body[${readyAttr('screen-mount')}]`, { state: 'attached', timeout: 60000 });
   const result = await page.evaluate((key) => window[key], resultGlobal('screen-mount'));
-  assert.equal(result.safeSpace?.length, 9, JSON.stringify(result));
+  assert.equal(result.safeSpace?.length, 10, JSON.stringify(result));
   for (const check of result.safeSpace) {
     console.log(`${check.passed ? 'PASS' : 'FAIL'} ${check.name}`);
     assert.ok(check.passed, check.error);
