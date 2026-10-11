@@ -75,6 +75,7 @@ try {
     assert.deepEqual(await page.locator('[data-wipe-date]').allTextContents(), pair, 'chosen comparison survives return');
     const expectedScroll = await page.evaluate(() => window.hairDepartureScroll);
     await page.waitForFunction((top) => Math.abs(document.querySelector('[data-app-scroll-region]').scrollTop - top) < 5, expectedScroll);
+    await page.waitForFunction(() => !document.querySelector('[data-generate], [data-journey-done]') && !!document.querySelector('[data-hair-collage]'));
   }
   await page.locator('[data-screen-back]').click();
   await returned();
@@ -118,11 +119,11 @@ try {
   const gallery = process.argv.includes('--gallery');
   if (gallery) {
     await mkdir(out, { recursive: true });
-    await page.evaluate(() => { document.querySelector('.demo-bar')?.remove(); document.body.classList.remove('has-demo-bar'); });
+    if (await page.locator('[data-hide-demo-bar]').count()) await page.locator('[data-hide-demo-bar]').click();
     for (const palette of PALETTES) for (const theme of ['light', 'dark']) {
       await page.evaluate(async ({ palette, theme }) => {
         const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts'); prefs.palette = palette; prefs.theme = theme;
-        document.querySelector('[data-hair-collage]').scrollIntoView({ block: 'start', behavior: 'instant' });
+        document.getElementById('hair-photos').scrollIntoView({ block: 'start', behavior: 'instant' });
       }, { palette, theme });
       await page.screenshot({ path: `${out}/${palette}-${theme}.png` });
     }
@@ -131,7 +132,7 @@ try {
     await page.evaluate((locale) => localStorage.setItem('PARAGLIDE_LOCALE', locale), locale);
     await page.reload({ waitUntil: 'networkidle' });
     await page.locator('[data-hair-collage]').waitFor();
-    await page.evaluate(() => { document.querySelector('.demo-bar')?.remove(); document.body.classList.remove('has-demo-bar'); });
+    if (await page.locator('[data-hide-demo-bar]').count()) await page.locator('[data-hide-demo-bar]').click();
     for (const width of [195, 320, 390, 1280]) {
       await page.setViewportSize({ width, height: 844 });
       await page.locator('[data-hair-collage]').scrollIntoViewIfNeeded();
