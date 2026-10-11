@@ -8,6 +8,7 @@
    drops them, which is exactly ADR-0018's session rule: the passphrase is
    required again after the browser process ends. */
 
+import { changeCredentials } from './credential-ownership';
 import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithSecret } from '../crypto/keystore';
 import { initializeJournal } from './journal-initialization';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
@@ -29,6 +30,7 @@ export async function setupJournalPassphrase(passphrase: string): Promise<Uint8A
   });
 }
 
+/** The access-mode operation owns credential mutation through cleanup. */
 export async function addJournalPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
   passphrase: string
@@ -49,7 +51,9 @@ export async function unlockJournalPassphrase(passphrase: string): Promise<Uint8
     DecryptionFailedError when the current passphrase is wrong, before
     anything is written. */
 export async function changeJournalPassphrase(current: string, next: string): Promise<void> {
-  const metadata = await readKeystoreFile();
-  if (metadata === null) throw new Error('no keystore to rewrap');
-  await writeKeystoreFile(await rewrapKeystore(metadata, current, next));
+  return changeCredentials(async () => {
+    const metadata = await readKeystoreFile();
+    if (metadata === null) throw new Error('no keystore to rewrap');
+    await writeKeystoreFile(await rewrapKeystore(metadata, current, next));
+  });
 }

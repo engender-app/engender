@@ -36,7 +36,8 @@ test('a first run mints a key without asking anyone to authenticate', async () =
       status: async () => ({ hasKey: false }),
       create: async () => ({ outcome: 'created', hexKey: HEX })
     }),
-    COPY
+    COPY,
+    { create: true }
   );
 
   assert.equal(result.kind, 'key');
@@ -185,7 +186,8 @@ test('the app-lock prompt asks for no key, and only a success unlocks', async ()
 test('a device with no lock screen cannot be given a key, and is told so', async () => {
   const result = await openAndroidDataKey(
     bridge({ status: async () => ({ hasKey: false }), create: async () => ({ outcome: 'noDeviceCredential' }) }),
-    COPY
+    COPY,
+    { create: true }
   );
 
   assert.equal(result.kind, 'refused');
@@ -203,9 +205,14 @@ test('first run passes the requested authRequired option to create', async () =>
       }
     }),
     COPY,
-    { authRequired: false }
+    { authRequired: false, create: true }
   );
 
   assert.equal(result.kind, 'key');
   assert.deepEqual(passedOptions, { authRequired: false });
+});
+
+test('an ordinary unlock never creates a replacement for a missing key', async () => {
+  const result = await openAndroidDataKey(bridge({ status: async () => ({ hasKey: false }) }), COPY);
+  assert.deepEqual(result, { kind: 'invalidated' });
 });

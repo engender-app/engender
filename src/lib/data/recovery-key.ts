@@ -13,6 +13,7 @@
    secret, so unlike PIN mode's binding there is nothing platform-specific
    to choose between. */
 
+import { changeCredentials } from './credential-ownership';
 import {
   RecoveryWrapUnreadableError,
   parseRecoveryWrap,
@@ -60,13 +61,15 @@ export async function mintRecoveryKey(
   dataKey: Uint8Array<ArrayBuffer>,
   ports: RecoveryKeyPorts = filePorts
 ): Promise<string> {
-  const display = generateRecoveryKey();
-  /* Minted through the parser rather than beside it: a generator that
-     produced something the gate would reject is a journal nobody can
-     recover, and this makes that impossible rather than unlikely. */
-  const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(display));
-  await ports.write(wrap);
-  return display;
+  return changeCredentials(async () => {
+    const display = generateRecoveryKey();
+    /* Minted through the parser rather than beside it: a generator that
+       produced something the gate would reject is a journal nobody can
+       recover, and this makes that impossible rather than unlikely. */
+    const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(display));
+    await ports.write(wrap);
+    return display;
+  });
 }
 
 /** Opens the journal's data key with whatever somebody typed.
@@ -114,7 +117,9 @@ export async function recoveryKeyExists(ports: RecoveryKeyPorts = filePorts): Pr
     again - which is a different sentence, and not the one somebody deciding
     whether to revoke is asking. */
 export async function revokeRecoveryKey(ports: RecoveryKeyPorts = filePorts): Promise<void> {
-  await ports.remove();
+  return changeCredentials(async () => {
+    await ports.remove();
+  });
 }
 
 /** An in-memory store, for tests and for the Node tier where OPFS does not

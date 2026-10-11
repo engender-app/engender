@@ -38,6 +38,12 @@ checks encrypted persistence after reload, and preserves failed-write draft
 recovery followed by an explicit update retry. Fixture and platform limits are
 in [update-handover/README.md](update-handover/README.md).
 
+`credential-change-check` (`tests/credential-change-check.mjs`) runs with
+`npm run test:browser`. It holds credential publication across a real Settings
+lock/unlock, rejects overlapping changes and resets from both pages, then
+restarts and verifies the original entries and encrypted attachment bytes.
+The dev app supplies synthetic demo data; credential storage and UI paths are real.
+
 ## Walkthrough groups
 
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
