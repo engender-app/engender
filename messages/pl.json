@@ -2458,6 +2458,7 @@
   "pj_share": "Udostępnij lub zapisz",
   "pj_shared": "Udostępniono.",
   "pj_stays_here": "Ten podgląd zostaje na tym urządzeniu. Udostępnienie lub zapis utworzy niezaszyfrowany plik, który może obejrzeć każdy, kto go dostanie.",
+  "pj_timelapse_failed": "Nie udało się utworzyć filmu, który można odtworzyć. Spróbuj ponownie lub utwórz kolaż.",
   "pj_timelapse_hint": "Film, który pokazuje zdjęcia po jednym. Powstaje tak długo, jak trwa jego odtwarzanie.",
   "pj_timelapse_length": [
     {

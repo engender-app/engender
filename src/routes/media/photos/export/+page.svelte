@@ -222,6 +222,7 @@
       // Before the preview replaces the picker, so the bar is not cut off
       // mid-thought by the thing it was counting down to (ADR-0070).
       await progress.finish();
+      if (controller.signal.aborted) return;
       made = { blob, from };
     } catch (error) {
       progress.abandon();
@@ -229,7 +230,7 @@
       // stop and the screen going back to the picker says so by itself.
       if (!controller.signal.aborted) {
         console.error(`the ${output} export failed`, error);
-        toast(m.pj_failed());
+        toast(output === 'timelapse' ? m.pj_timelapse_failed() : m.pj_failed(), { kind: 'failed' });
       }
     } finally {
       running = false;

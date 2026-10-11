@@ -96,6 +96,31 @@ finding can be compared with the frames that painted it. A mark's node
 identity stays fixed while its semantic class or text changes. A replacement
 node receives another identity even when its class and text match.
 
+Hair removal and letters include creation, save, cancel and back scenes in
+both profiles. Each empty-profile repeat restores the empty journal through
+first run before mounting its route. Saves require exactly one new list
+record and a closed editor. Letters uses the visible date picker to seal the
+letter until tomorrow; this avoids replacing the list with today's arrival.
+The preparation record keeps each input event, entered value and selected
+control. Populated scroll scenes require at least 120px of scroll range and
+prove the requested position was reached. Their return scenes check that
+position again when dispatching the Transition tab or rail control.
+
+`transition-letters-scrolled-entry` opens Letters through its actual
+Transition row after scrolling Transition. `letters-back-to-scrolled-transition`
+prepares that same entry, then measures the screen's Back control. Its action
+record compares the returned scroll position with the position where the
+source row was pressed. A mismatch remains a measured product outcome for
+review; a missing control, wrong route or missing scroll proof fails the run.
+These two scenes run against empty and populated journals.
+
+Report rows carry `status: measured|excluded|failed`. Detector findings are
+labelled `unreviewed-candidates`; proof findings are `injected-defects`.
+Candidate counts do not establish product defects. Reports also identify the
+browser and app release, or the physical device model, Android version, SDK,
+WebView user agent, dimensions and app release. A device run still requires
+connected hardware; shared contracts alone provide no Android measurement.
+
 ## Boundaries
 
 These runs measure the supported scene table, not every possible user
@@ -110,9 +135,9 @@ The following paths require separate fixtures or platform control:
   permission and external surfaces. The browser sweep cannot measure them.
 - A real midnight change needs a controlled clock spanning the boundary.
   Navigating to a different day does not reproduce that event.
-- Confirmed deletion and save paths need disposable records restored per
-  repeat. Opening their confirmation is covered where listed; it does not
-  claim coverage of the confirmed write or every row-removal animation.
+- Confirmed deletion and save paths outside the named Hair removal and
+  letters flows need disposable records restored per repeat. Opening their
+  confirmation does not prove the confirmed write or row-removal animation.
 - Chart drags and body-region switching need gesture fixtures beyond the
   selector-click contract. Cold mounting their routes does not claim those
   interactions were measured.
