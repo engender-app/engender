@@ -29,6 +29,19 @@ function replayPublish(version: string): string[] {
 }
 
 describe('release publication contract', () => {
+  it('requires explicit candidate evidence before building or publishing either release kind', () => {
+    const gate = workflow.indexOf('- name: Require evidence for this candidate before publication');
+    expect(gate).toBeGreaterThan(workflow.indexOf('ENGENDER_VERSION=$version'));
+    expect(gate).toBeLessThan(workflow.indexOf('- name: Build unsigned Android release artifacts'));
+    const step = workflow.slice(gate).split('\n      # Before anything')[0];
+    expect(step).toContain('target=stable');
+    expect(step).toContain('if [[ "$ENGENDER_VERSION" == *-* ]]; then');
+    expect(step).toContain('target=stage2');
+    expect(step).toContain('node scripts/check-progressive-release.mjs --target "$target" --publication-version "$ENGENDER_VERSION"');
+    expect(step).not.toContain('continue-on-error:');
+    expect(step).not.toContain('if:');
+  });
+
   it('deploys stable web releases only after publication, with isolated credentials and serialized switches', () => {
     const deploy = workflow.slice(workflow.indexOf('\n  deploy-web:'));
     expect(deploy).toContain('needs: publish');
