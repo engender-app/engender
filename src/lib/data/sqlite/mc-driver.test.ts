@@ -62,7 +62,7 @@ afterEach(async () => {
 const key = new Uint8Array([1, 2, 3]);
 
 describe('the database worker started ahead of the key', () => {
-  it('attaches the pool and holds no key', () => {
+  it('prewarms the module without sending a key', () => {
     void prewarmJournalWorker('journal.sqlite3');
     const [worker] = FakeWorker.made;
     expect(worker.posted.map((m) => m.op)).toEqual(['attach']);
@@ -241,7 +241,7 @@ describe('a connection made while a recovery worker is running', () => {
    kill outright, which can race the next boot's own `attach()`. Posting a
    `close` on this tab's own `pagehide` ahead of that is what narrows it. */
 describe('releasing every live connection on pagehide', () => {
-  it('posts close before retiring a worker still holding the pool', async () => {
+  it('posts close before retiring an unused prewarm worker', async () => {
     void prewarmJournalWorker('journal.sqlite3');
     const [worker] = FakeWorker.made;
 

@@ -63,6 +63,7 @@ export type BootEvent =
       nativeDeviceKeyAuthRequired?: boolean;
       plaintextJournalPresent: boolean;
     }
+  | { type: 'setup-stale'; platform: BootPlatform }
   | { type: 'demo-unlock-failed' }
   | { type: 'device-key-unavailable' }
   /** What Android Keystore answered, whole. Which of the two destinations it
@@ -199,6 +200,11 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         /* Before anything async: a gate is about to render, and it should do
            so in the person's theme and palette rather than the defaults. */
         { type: 'apply-cached-preferences' },
+        { type: event.platform === 'android' ? 'survey-android' : 'survey-web' }
+      ]);
+
+    case 'setup-stale':
+      return step(machine, bootTransitions.toBooting(machine.boot), [
         { type: event.platform === 'android' ? 'survey-android' : 'survey-web' }
       ]);
 

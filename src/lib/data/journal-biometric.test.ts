@@ -46,6 +46,7 @@ function ports(authenticator: PrfAuthenticator): BiometricPorts & { stored(): Ke
   let file: string | null = null;
   return {
     authenticator,
+    journalExists: async () => file !== null,
     readKeystore: async () => (file === null ? null : parseKeystore(file)),
     writeKeystore: async (metadata) => {
       file = serializeKeystore(metadata);
@@ -149,4 +150,15 @@ test('a biometric keystore with no handle is refused before it can overwrite a g
   const { metadata } = await createKeystore('anything', undefined, 'biometric');
 
   expect(() => serializeKeystore(metadata)).toThrow(KeystoreUnreadableError);
+});
+
+test('stale biometric setup does not enrol another credential', async () => {
+  const authenticator = device();
+  const world = ports(authenticator);
+  const key = await setupJournalBiometric(world);
+  const original = world.stored();
+  authenticator.enrol = async () => { throw new Error('must not enrol'); };
+  await expect(setupJournalBiometric(world)).rejects.toThrow('a journal already exists');
+  expect(world.stored()).toEqual(original);
+  await expect(unlockJournalBiometric(world)).resolves.toEqual(key);
 });

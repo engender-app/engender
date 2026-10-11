@@ -29,6 +29,7 @@ import {
   type BiometricHandle,
   type KeystoreMetadata
 } from '../crypto/keystore';
+import { initializeJournal, journalAccessExists } from './journal-initialization';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 import { browserAuthenticator, randomPrfSalt, type PrfAuthenticator } from './webauthn-prf';
 
@@ -38,12 +39,14 @@ import { browserAuthenticator, randomPrfSalt, type PrfAuthenticator } from './we
 /* BiometricPorts stays exported only for its own test (AU-09 test-only
    review). */
 export interface BiometricPorts {
+  journalExists(): Promise<boolean>;
   authenticator: PrfAuthenticator;
   readKeystore(): Promise<KeystoreMetadata | null>;
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
 }
 
 const browserPorts = (): BiometricPorts => ({
+  journalExists: journalAccessExists,
   authenticator: browserAuthenticator(),
   readKeystore: readKeystoreFile,
   writeKeystore: writeKeystoreFile
@@ -53,11 +56,13 @@ const browserPorts = (): BiometricPorts => ({
     fresh data key under it, and records both public values beside the wrap
     so a later cold start needs nothing else. */
 export async function setupJournalBiometric(ports: BiometricPorts = browserPorts()): Promise<Uint8Array<ArrayBuffer>> {
-  const prfSalt = randomPrfSalt();
-  const { credentialId, secret } = await ports.authenticator.enrol(prfSalt);
-  const { metadata, dataKey } = await createKeystore(secret, undefined, 'biometric');
-  await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } });
-  return dataKey;
+  return initializeJournal(async () => {
+    const prfSalt = randomPrfSalt();
+    const { credentialId, secret } = await ports.authenticator.enrol(prfSalt);
+    const { metadata, dataKey } = await createKeystore(secret, undefined, 'biometric');
+    await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } });
+    return dataKey;
+  }, () => ports.journalExists());
 }
 
 /** Moves a journal that is already open into biometric mode - the Settings

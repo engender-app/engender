@@ -82,7 +82,8 @@ async function workerFailure() {
       contender.post('open', args),
       contender.post('query', { sql: 'SELECT value FROM marker', params: [] })
     ]);
-    const latched = replies.every((reply) => !reply.ok && reply.error === replies[0].error && reply.acquisitions === replies[0].acquisitions);
+    const latched = replies[0].ok && replies[0].acquisitions === 0 &&
+      replies.slice(1).every((reply) => !reply.ok && reply.error === replies[1].error && reply.acquisitions === replies[1].acquisitions);
     await contender.post('close');
     const live = await owner.post('query', { sql: 'SELECT value FROM marker', params: [] });
     await owner.post('close');
