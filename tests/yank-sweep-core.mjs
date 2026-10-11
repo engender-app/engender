@@ -280,7 +280,7 @@ const SCENES = [
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
   { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
-  { name: 'letters-compose', at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
+  { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
   /* Phase 11 ticket 15: the good-moments list opens on six and discloses
      the rest in place, so the control collapses while fourteen cards clip
      open under it. New movement, and the one on this screen most likely to
@@ -391,18 +391,20 @@ const SCENES = [
   { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },
   { name: 'tryout-new', at: '/transition/tryouts', act: 'a[href="/transition/tryouts/new"]', after: { route: '/transition/tryouts/new' }, is: 'opening the new tryout editor' },
   { name: 'milestone-delete-ask', at: '/transition/milestones', prepare: ['[data-ms-log-toggle]'], act: '[data-milestone] .kit-row-act', when: 'persona', after: { selector: '[data-sheet] .btn-danger' }, is: 'asking to remove a recorded milestone without confirming it' },
-  { name: 'hair-removal-create', at: '/body/hair-removal', act: '[data-add]', after: { selector: '[data-save-hair-removal-session]' }, is: 'opening a new hair removal session' },
+  { name: 'hair-removal-create', freshEmpty: true, at: '/body/hair-removal', act: '[data-add]', after: { selector: '[data-save-hair-removal-session]' }, is: 'opening a new hair removal session' },
   { name: 'hair-removal-save', at: '/body/hair-removal', freshEmpty: true, prepare: ['[data-add]'], act: '[data-save-hair-removal-session]', after: { selector: '[data-hair-removal-session]', countIncrease: 1, alsoAbsent: '[data-sheet]' }, is: 'saving a new hair removal session and returning to its list' },
-  { name: 'hair-removal-cancel', at: '/body/hair-removal', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched session editor' },
+  { name: 'hair-removal-cancel', freshEmpty: true, at: '/body/hair-removal', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched session editor' },
   { name: 'hair-removal-scroll', at: '/body/hair-removal', when: 'persona', act: 'scroll', scrollTop: 120, after: { scrollTop: 120 }, is: 'scrolling the populated hair removal screen' },
   { name: 'hair-removal-return', at: '/body/hair-removal', when: 'persona', startScroll: 120, prepare: [{ act: 'scroll', scrollTop: 120, after: { scrollTop: 120 } }], act: '[data-nav-item="settings"], [data-rail-item="settings"]', after: { route: '/more' }, is: 'returning to Transition from scrolled hair removal' },
-  { name: 'hair-removal-back', at: '/body/hair-removal', act: 'back', after: { route: '/more' }, is: 'backing out of hair removal' },
+  { name: 'hair-removal-back', freshEmpty: true, at: '/body/hair-removal', act: 'back', after: { route: '/more' }, is: 'backing out of hair removal' },
   { name: 'letters-save', at: '/transition/letters', freshEmpty: true, prepare: ['[data-add]', { act: '#letter-text', value: 'I wrote this letter during the motion sweep.' }, '#letter-unlock', { act: '[data-date-picker-entry]', dayOffset: 1 }, '[data-date-picker-apply]'], act: '[data-save-letter]', after: { selector: '[data-letter]', countIncrease: 1, alsoAbsent: '[data-sheet]' }, is: 'sealing a new letter and returning to its list' },
-  { name: 'letters-cancel', at: '/transition/letters', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched letter editor' },
+  { name: 'letters-cancel', freshEmpty: true, at: '/transition/letters', prepare: ['[data-add]'], act: '[data-close-record]', after: { selector: '[data-sheet]', absent: true }, is: 'backing out of an untouched letter editor' },
   { name: 'letters-scroll', at: '/transition/letters', when: 'persona', act: 'scroll', scrollTop: 120, after: { scrollTop: 120 }, is: 'scrolling the populated letters screen' },
   { name: 'letters-return', at: '/transition/letters', when: 'persona', startScroll: 120, prepare: [{ act: 'scroll', scrollTop: 120, after: { scrollTop: 120 } }], act: '[data-nav-item="settings"], [data-rail-item="settings"]', after: { route: '/more' }, is: 'returning to Transition from scrolled letters' },
-  { name: 'letters-back', at: '/transition/letters', act: 'back', after: { route: '/more' }, is: 'backing out of letters' },
-  { name: 'letters-reading-close', at: '/transition/letters', when: 'persona', prepare: ['[data-letter-open]'], act: '[data-letter-close]', after: { selector: '[data-letter-state="reading"]', absent: true }, is: 'returning an open letter to its folded row' }
+  { name: 'letters-back', freshEmpty: true, at: '/transition/letters', act: 'back', after: { route: '/more' }, is: 'backing out of letters' },
+  { name: 'letters-reading-close', at: '/transition/letters', when: 'persona', prepare: ['[data-letter-open]'], act: '[data-letter-close]', after: { selector: '[data-letter-state="reading"]', absent: true }, is: 'returning an open letter to its folded row' },
+  { name: 'transition-letters-scrolled-entry', freshEmpty: true, at: '/more', startScrollMinimum: 1, prepare: [{ act: 'scroll', scrollTop: 0 }, { act: 'scroll', scrollTop: 320, after: { scrollTop: 320 } }], act: '[data-list-row="letters"]', after: { route: '/transition/letters' }, is: 'opening Letters from scrolled Transition' },
+  { name: 'letters-back-to-scrolled-transition', freshEmpty: true, at: '/more', actionAt: '/transition/letters', prepare: [{ act: 'scroll', scrollTop: 0 }, { act: 'scroll', scrollTop: 320, after: { scrollTop: 320 } }, { act: '[data-list-row="letters"]', startScrollMinimum: 1, after: { route: '/transition/letters' } }], act: 'back', after: { route: '/more', restoreScroll: true }, is: 'backing out of Letters to its scrolled Transition origin' }
 
 ];
 
@@ -437,7 +439,11 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const { document, location } = env;
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
-  if (scene.at && location.pathname !== scene.at) throw new Error(`wrong action route: expected ${scene.at}, got ${location.pathname}`);
+  const actionRoute = scene.actionAt ?? scene.at;
+  if (actionRoute && location.pathname !== actionRoute) throw new Error(`wrong action route: expected ${actionRoute}, got ${location.pathname}`);
+  evidence.beforeScroll = document.querySelector?.('[data-app-scroll-region]')?.scrollTop;
+  if (scene.startScrollMinimum !== undefined && !(evidence.beforeScroll >= scene.startScrollMinimum))
+    throw new Error(`starting scroll below ${scene.startScrollMinimum}px: ${evidence.beforeScroll}px`);
   if (scene.startScroll !== undefined) {
     evidence.beforeScroll = document.querySelector('[data-app-scroll-region]')?.scrollTop;
     if (Math.abs(evidence.beforeScroll - scene.startScroll) > 1 || evidence.beforeScroll === undefined)
@@ -617,7 +623,17 @@ export function verifySceneAction(scene, action, env = globalThis) {
       if (after.value !== undefined ? value !== after.value || value === action.beforeValue : value === action.beforeValue) throw new Error(`postcondition attribute unchanged or wrong: ${after.attribute}=${value}`);
     }
   }
-  return { ...action, verified: true, afterRoute: route, afterTheme: env.document.documentElement?.dataset.theme, postcondition: after };
+  let scrollRestoration;
+  if (after.restoreScroll) {
+    const source = action.preparation?.steps.map(step => step.action).findLast(step => step?.beforeRoute === route
+      && step.chosen?.href?.split(/[?#]/)[0] === action.beforeRoute);
+    if (!Number.isFinite(source?.beforeScroll)) throw new Error('missing source scroll proof');
+    const actual = env.document.querySelector('[data-app-scroll-region]')?.scrollTop;
+    if (!Number.isFinite(actual)) throw new Error('missing returned scroll region');
+    scrollRestoration = { expected: source.beforeScroll, actual, restored: Math.abs(actual - source.beforeScroll) <= 1 };
+  }
+  return { ...action, verified: true, afterRoute: route, afterTheme: env.document.documentElement?.dataset.theme, postcondition: after,
+    ...(scrollRestoration ? { scrollRestoration } : {}) };
 }
 
 export const actionPostconditionExpression = (scene, action) => `(${verifySceneAction})(${JSON.stringify(scene)}, ${JSON.stringify(action)})`;
@@ -652,7 +668,7 @@ export async function finishFirstRun(evaluate, options = {}) {
   return waitForReadiness(() => evaluate(BOOT_READINESS_EXPRESSION), options);
 }
 
-/** A creation repeat on the empty profile starts with no saved records. */
+/** Empty-profile flows start each repeat with no saved records. */
 export async function resetSceneProfile(scene, profile, evaluate, options = {}) {
   if (!scene.freshEmpty || profile !== 'empty') return null;
   await evaluate(JUMP_FIRST_RUN_EXPRESSION);
