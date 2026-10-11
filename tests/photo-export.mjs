@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { PALETTES } from './palettes.mjs';
 import { launchChromium, fillDate, dateValue } from './browser-harness.mjs';
@@ -12,6 +12,9 @@ console.log('Browser:', browser.version());
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 page.setDefaultTimeout(15000);
 const errors = [];
+const gallery = process.argv.includes('--gallery');
+const out = '.claude/photo-export-shots';
+if (gallery) await mkdir(out, { recursive: true });
 page.on('pageerror', (error) => errors.push(error.message));
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
@@ -53,7 +56,7 @@ try {
     window.deliveries = 0;
     const create = URL.createObjectURL.bind(URL);
     URL.createObjectURL = (blob) => { window.exportBlobs.push(blob); return create(blob); };
-    navigator.share = async () => { window.deliveries++; };
+    navigator.share = async ({ files }) => { window.deliveries++; window.sharedFile = files[0]; };
     navigator.canShare = () => true;
   });
   for (const output of ['collage', 'timelapse']) {
@@ -113,9 +116,80 @@ try {
   await page.waitForFunction(() => document.querySelector('.video-note-player')?.readyState >= 2);
   const twoPhotoDuration = await page.locator('.video-note-player').evaluate((video) => video.duration);
   console.log('Two-photo duration:', twoPhotoDuration);
-  assert.ok(Number.isFinite(twoPhotoDuration) && twoPhotoDuration >= 1, `two-photo duration: ${twoPhotoDuration}`);
+  assert.ok(Number.isFinite(twoPhotoDuration) && twoPhotoDuration >= 1.2, `two-photo duration: ${twoPhotoDuration}`);
   assert.notEqual(await page.locator('.transport-of').innerText(), '0:00');
+  await page.locator('[data-transport-toggle]').click();
+  await page.waitForFunction(() => document.querySelector('.video-note-player').currentTime > 0.2);
+  await page.locator('[data-transport-toggle]').click();
+  if (gallery) await page.screenshot({ path: `${out}/timelapse-preview.png` });
+  await page.locator('[data-share]').click();
+  const shared = await page.evaluate(async () => {
+    const file = window.sharedFile;
+    const video = document.createElement('video');
+    video.muted = true;
+    const url = URL.createObjectURL(file);
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d');
+    const colours = [];
+    let timer;
+    let callback;
+    try {
+      await new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Shared file playback timed out')), 10000);
+        video.onerror = () => reject(new Error('Shared file did not decode'));
+        video.onended = resolve;
+        const sample = () => {
+          context.drawImage(video, video.videoWidth / 2, video.videoHeight / 2, 1, 1, 0, 0, 1, 1);
+          const [r, g] = context.getImageData(0, 0, 1, 1).data;
+          const colour = r > 200 && g < 40 ? 'red' : g > 200 && r < 40 ? 'green' : 'other';
+          if (colours.at(-1) !== colour) colours.push(colour);
+          callback = video.requestVideoFrameCallback(sample);
+        };
+        callback = video.requestVideoFrameCallback(sample);
+        video.src = url;
+        void video.play().catch(reject);
+      });
+      return { colours, duration: video.duration, name: file.name, bytes: [...new Uint8Array(await file.arrayBuffer())] };
+    } finally {
+      clearTimeout(timer);
+      video.cancelVideoFrameCallback(callback);
+      video.pause(); URL.revokeObjectURL(url);
+    }
+  });
+  assert.deepEqual(shared.colours, ['red', 'green'], 'shared file preserves photo order');
+  assert.ok(Number.isFinite(shared.duration) && shared.duration >= 1.2, 'shared file has duration outside preview');
+  assert.match(shared.name, /\.webm$/);
+  if (process.env.PHOTO_EXPORT_FILE) await writeFile(process.env.PHOTO_EXPORT_FILE, new Uint8Array(shared.bytes));
+  console.log('PASS shared file playback, duration and photo order');
   await page.locator('[data-again]').click();
+  for (const mode of ['error', 'corrupt']) {
+    await page.evaluate((mode) => {
+      window.realRecorder = window.MediaRecorder;
+      window.MediaRecorder = class {
+        static isTypeSupported(type) { return window.realRecorder.isTypeSupported(type); }
+        state = 'inactive';
+        start() {
+          this.state = 'recording';
+          if (mode === 'error') queueMicrotask(() => this.onerror?.(new Event('error')));
+        }
+        stop() {
+          this.state = 'inactive';
+          if (mode === 'corrupt') this.ondataavailable?.({ data: new Blob(['not a video']) });
+          this.onstop?.();
+        }
+      };
+    }, mode);
+    await page.locator('[data-generate]').click();
+    await page.getByText("Couldn't make a playable timelapse. Try again or make a collage.").last().waitFor();
+    await page.waitForFunction(() => !document.querySelector('[data-generate]').disabled);
+    assert.equal(await page.locator('[data-share]').count(), 0, 'failed encode never offers sharing');
+    if (gallery && mode === 'corrupt') await page.screenshot({ path: `${out}/timelapse-failed.png` });
+    await page.evaluate(() => { window.MediaRecorder = window.realRecorder; });
+  }
+  await page.locator('[data-generate]').click();
+  await page.locator('[data-share]').waitFor();
+  await page.locator('[data-again]').click();
+  console.log('PASS encoder error, corrupt output and generation after failure');
   await page.locator('.photo-cell').first().click();
   await page.locator('.photo-cell[aria-pressed="true"]').click();
   assert.equal(await page.locator('[data-generate]').isDisabled(), true);
@@ -125,7 +199,7 @@ try {
   await page.getByRole('radio', { name: 'Collage', exact: true }).click();
   await page.locator('[data-generate]').click();
   await page.locator('[data-share]').click();
-  assert.equal(await page.evaluate(() => window.deliveries), 1, 'only explicit sharing delivers');
+  assert.equal(await page.evaluate(() => window.deliveries), 2, 'only explicit sharing delivers');
   await page.locator('[data-again]').click();
   console.log('PASS formats, selected output pixels, exclusions, preview return, zero selection, explicit sharing');
   await page.evaluate(() => {
@@ -149,9 +223,6 @@ try {
   await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
   console.log('PASS format, generate and preview return at 200% page scale');
   await page.locator('.photo-cell[aria-pressed="false"]').click();
-  const gallery = process.argv.includes('--gallery');
-  const out = '.claude/photo-export-shots';
-  if (gallery) await mkdir(out, { recursive: true });
   for (const count of [36, 200]) {
     await page.evaluate(async (count) => {
       const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
