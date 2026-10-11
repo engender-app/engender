@@ -47,3 +47,13 @@ The native empty-state sweep measured all 12 requested actions, six per theme, w
 The populated native lifecycle proof is still pending at this review checkpoint. Its first attempt saved a session, then timed out in the WebView's `Page.captureScreenshot` call. That attempt and its successful save cast are retained. The evidence driver now captures stationary screenshots through the same compositor screencast transport used by the shared native sweep.
 
 Integration `d249dce69619e11125bee27872a76d7567151657` was merged after building the APK. It adds the shared visually hidden save status. The installed native build is labeled with its earlier source; no claim is made that its binary includes that later change.
+
+## Final gate results and remaining native scope
+
+The reviewed implementation checkpoint is `9a2b238e49275797616e34bcbfc04bd38efaf7ae`. Standards and Spec reviews reported no code findings. Its production build passed. Svelte check reported zero errors and warnings. All 7,541 Node tests passed across 580 files. Copy, licence and screen-class checks passed. The first-load payload was 104 files and 251,066B gzip, within the 251,272B budget.
+
+Integration `4796a6030195a37fdadb557f0e63570d7c46fde8` was then merged. Both the hair-removal lifecycle guard and the hair-progress photo-action guard remain registered with their own timing sources. The only merge conflict was those two additions to the timing source map. The affected roster, screen-contract and reveal tests passed again, 114 tests in total. The reviewed production changes did not change during this refresh.
+
+Native populated-session and lifecycle acceptance remains open. A read-only foreground check found `dev.engender.app.ticket08` active while the tester10 fixture was backgrounded. The user had resumed that separate profiling task. Its activity explains why the fixture's screenshot call and later Save attempt did not complete. Those attempts are preserved and excluded from measured acceptance. Device retries stopped at the parent's request; the original journal was not touched. The tester10 package remains installed for a later exclusive-device run.
+
+The completed native empty sweep is still valid evidence for its 12 measured actions. Its initial saved-footer movement and departing sheet controls were inspected in painted captures. Other native pixel candidates remain available for final visual review, as recorded in `native-empty/classification.json`. No claim is made that all Android acceptance is complete.
