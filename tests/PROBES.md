@@ -151,6 +151,7 @@ To run one on its own, use
 | `dose-editor-copy-check` | dose editor labels and field order in English and Polish, without duplicate prompts |
 | `dose-save-check` | Dose saves close and confirm through Care, Quick add and Today, preserving navigation and single-row confirmation |
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
+| `settings-scroll-check` | Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content |
 | `sheet-handoff-scroll-check` | a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close |
 | `sheet-touch-drag-check` | a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies) |
 | `yank-sweep` (`--scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate`) (ticket 244) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |

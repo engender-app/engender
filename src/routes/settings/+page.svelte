@@ -476,10 +476,14 @@
   <!-- The reference areas (ADR-0084): each is spent on other screens - the
        entry editor's chips, the body map, Look back's reading, the bands
        behind the milestone rail - and created only here. Modes and entry
-       templates raise as sheets over this screen through their redirects. -->
+       templates raise as sheets without navigating away from this list. -->
   <ListCard>
-    <ListRow key="presentations" icon="palette" title={m.presentations_title()} href="/settings/presentations" />
-    <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} href="/settings/entry-templates" />
+    <ListRow key="presentations" icon="palette" title={m.presentations_title()} chevron={false} onclick={() => (ui.raisedManager = 'modes')}>
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+    <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
     <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} href="/settings/body-regions" />
     <ListRow key="words" icon="note" title={m.words_ignored_title()} href="/settings/words" />
     <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
