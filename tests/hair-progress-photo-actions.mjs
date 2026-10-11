@@ -1,11 +1,24 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { PALETTES } from './palettes.mjs';
 import { launchChromium } from './browser-harness.mjs';
 
-const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
+const server = await createServer({ plugins: [{
+  name: 'held-hair-completion',
+  enforce: 'pre',
+  async load(id) {
+    if (!id.endsWith('/src/lib/components/progress.svelte.ts')) return;
+    // Hold completion after real rendering so Stop does not race a timer.
+    return (await readFile(id, 'utf8'))
+      .replace('if (options?.immediate) show();', 'if (options?.immediate || window.hairHoldFinish) show();')
+      .replace('if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));', `
+        if (window.hairHoldFinish) await new Promise((resolve) => { window.hairReleaseFinish = resolve; });
+        else if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      `);
+  }
+}], server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -90,6 +103,19 @@ try {
   await page.locator('[data-hair-collage]').scrollIntoViewIfNeeded();
   await page.locator('[data-hair-collage]').click();
   await page.waitForURL('**/media/photos/export?**');
+  await page.evaluate(() => { window.hairHoldFinish = true; });
+  await page.locator('[data-generate]').click();
+  await page.waitForFunction(() => typeof window.hairReleaseFinish === 'function');
+  assert.equal(await page.locator('[data-progress="journey"] [role="progressbar"]').getAttribute('aria-valuenow'), '100');
+  assert.equal(await page.locator('[data-progress-stop]').isEnabled(), true, 'Stop remains available during completion hold');
+  await page.locator('[data-progress-stop]').click();
+  await page.evaluate(() => { window.hairHoldFinish = false; window.hairReleaseFinish(); });
+  await returned();
+  console.log('PASS Stop during completion hold returns to Hair with scroll and comparison');
+
+  await page.locator('[data-hair-collage]').scrollIntoViewIfNeeded();
+  await page.locator('[data-hair-collage]').click();
+  await page.waitForURL('**/media/photos/export?**');
   await page.locator('[data-generate]').click();
   await page.locator('[data-journey-done]').click();
   await returned();
@@ -113,6 +139,19 @@ try {
   await page.locator('[data-share]').click();
   await returned();
   assert.equal(new URL(page.url()).hash, '#hair-photos', 'return keeps original Hair route');
+  await visit('/media/photos/export?source=hair');
+  await page.evaluate(() => { window.hairHoldFinish = true; window.hairReleaseFinish = undefined; });
+  await page.locator('[data-generate]').click();
+  await page.waitForFunction(() => typeof window.hairReleaseFinish === 'function');
+  await page.locator('[data-progress-stop]').click();
+  await page.evaluate(() => { window.hairHoldFinish = false; window.hairReleaseFinish(); });
+  await page.waitForFunction(() => document.querySelector('[data-generate]')?.disabled === false);
+  assert.equal(new URL(page.url()).pathname, '/media/photos/export', 'library Stop keeps the picker');
+  assert.equal(await page.locator('[data-journey-done]').count(), 0, 'cancelled library export has no preview');
+  await page.goBack();
+  await page.waitForURL((url) => url.pathname === '/body/hair-progress');
+  await page.locator('[data-hair-collage]').waitFor();
+  console.log('PASS Stop during completion hold preserves the library picker');
   console.log('PASS source excludes hair-removal, requested formats, compare focus, picker/encoding cancel, Done, successful delivery, scroll and pair return');
 
   const out = '.claude/hair-progress-photo-actions-shots';
