@@ -174,8 +174,10 @@ async function check(mode) {
       await page.locator('[data-home-hello]').waitFor();
     }
 
-    /* The row is on the first screen at 390, above the tab bar. */
+    /* Privacy sits near the end of Settings; scrolling must expose the row
+       above the tab bar at 390px. */
     await page.locator('[data-home-gear]').click();
+    await page.locator('[data-list-row="erase"]').scrollIntoViewIfNeeded();
     const row = await page.locator('[data-list-row="erase"]').boundingBox();
     const nav = await page.locator('[data-nav-item="home"]').first().boundingBox();
     assert.ok(row && nav && row.y + row.height <= nav.y, `${mode}: the erase row sits above the tab bar (${row?.y}+${row?.height} vs ${nav?.y})`);
