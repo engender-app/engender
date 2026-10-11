@@ -1,35 +1,40 @@
-engender is a transition tracker for trans people, made by one trans person. Keep your journal alongside HRT doses, photos, voice practice and the steps you want to take. Use the parts that fit your life, whether you are questioning, planning a change or looking back on years of transition.
+Keep a record of your transition you can return to. Write down how a new name feels or what's changed since starting HRT, with photos and care records alongside your notes.
 
-Your day, in your words
+engender is made by trans people for other trans people. Use whichever parts fit your life, whether you're questioning, planning your next step or years into transition. It's free, no ads, subscriptions or accounts to create.
 
-Write a note, record your mood or add a photo. An entry can be one small thing, and you can write several in a day. Track dysphoria, euphoria and other feelings with scales you name yourself. Add tags, voice recordings or feelings about different parts of your body.
+Room for how you feel
 
-Care and changes
+A mood is enough for an entry. When you have more to say, add a note, photo or voice recording. Or record how your gender feels using gender scales. You can write several times a day and use tags to find things later. Give dysphoria, euphoria and other feelings their own scales, with names and endpoints you choose. You can also record how you feel about different parts of your body.
 
-Keep medication schedules and dose records together, with reminders at times you choose. Record lab results and body measurements, track hair changes and cycle events, and keep surgery plans and recovery notes. Prepare for appointments and export a clinician summary when you want to share your records.
+Keep your care records together
 
-engender records what you enter. It does not diagnose conditions, recommend doses or replace medical advice. Ask a qualified healthcare professional about treatment decisions.
+Track HRT and other medication with dose logs, schedules and reminders. Keep lab results alongside body measurements and changes you notice, including hair changes and cycle tracking if you use it. For surgery, keep your plans and recovery notes together. Before an appointment, gather your questions and prepare a clinician summary to take with you.
 
-The rest of your transition
+engender does not diagnose conditions, interpret lab results, recommend doses or replace medical advice. Consult a qualified healthcare professional about treatment decisions.
 
-Try out names, pronouns or a new look and note how they feel. Keep milestones and a roadmap of your plans. Record voice practice and compare voice benchmarks with earlier takes. Track hair removal or binder and tucking wear time. Write a letter to open on a date you choose.
+The things you want to try and remember
 
-Looking back
+Trying a name, different pronouns or a new look? Note how it feels over time. Record voice practice and compare it with your earlier recordings. Keep track of hair removal and time spent binding or tucking. Mark your milestones, plan your next steps, or write yourself a letter to open on a date you choose.
 
-Browse your calendar, search notes and tags, or follow your scales on charts. Compare photos and revisit earlier entries with weekly, monthly and yearly recaps. Days without entries stay empty. Safe Space keeps your comfort list and entries you want to return to within reach.
+See what has changed
 
-On your device
+Put photos side by side, follow your scales on charts or revisit a week, month or year. Browse your calendar whenever you want; days without entries stay empty. Search your notes and tags when you want to find a particular moment. Safe Space keeps favourite entries and your own list of things that help within reach on harder days.
 
-The Android app works offline and has no internet permission. There is no engender account, advertising or telemetry. Your journal stays on your device unless you choose to export or share it.
+Your journal stays with you
 
-The journal database and saved media are encrypted. Startup preferences, such as theme and language, and key-management metadata stay outside that encryption. Taking a photo can leave a temporary unencrypted camera file before import. The privacy policy explains these limits.
+The Android app works offline and has no internet permission. It sends no journal data or usage statistics to a server. You decide when to export or share anything.
 
-Choose a passphrase, PIN or your phone's biometric or screen lock to unlock your journal. Optional disguise gives the app a plain name and icon.
+Your stored journal and media are encrypted. Some startup settings and key-management metadata remain outside that encryption, and taking a photo can leave a temporary unencrypted camera file before import. The privacy policy explains these limits.
 
-Backups and exports
+You can unlock with a passphrase, PIN or your phone's biometric or screen lock. Optional disguise mode gives the app a neutral name and icon.
 
-Save a password-encrypted backup yourself or schedule backups to a folder you choose. Import a backup to move your journal between Android and the web app. Import entries from Daylio CSV, too. CSV, JSON, printable journal books and other readable exports are not encrypted; choose carefully where you save or share them.
+Keep a copy, take it with you
 
-Make it yours
+Save a password-encrypted backup or schedule backups to a folder you choose. An archive lets you move your journal to another device or the web app. You can bring in entries from Daylio CSV, too.
 
-Choose flag palettes in light or dark, set up your own scales and pin the areas you use to Today. engender is available in English and Polish. It is free, with no subscription, and its source code is public under the GPLv3 licence.
+CSV, JSON, printable journal books and other readable exports are not encrypted. Anyone with those files can read them. Keep a backup off your device if you want to be able to restore your journal after losing it.
+
+Choose your flag colours, switch between light and dark, and pin the areas you use to Today. 
+
+engender is available in English and Polish, with public source code under the GPLv3 licence.
+

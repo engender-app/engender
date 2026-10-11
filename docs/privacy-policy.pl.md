@@ -3,7 +3,7 @@
 Ostatnia aktualizacja: 7 października 2026
 
 engender to dziennik tranzycji. Tworzy go i publikuje Alicja Barankiewicz
-z Warszawy. Ta polityka dotyczy aplikacji w przeglądarce i na Androida,
+w Warszawie. Ta polityka dotyczy aplikacji w przeglądarce i na Androida,
 strony internetowej, przewodnika, korespondencji w sprawie pomocy oraz
 plików, które eksportujesz lub udostępniasz.
 
@@ -15,29 +15,26 @@ Pytania o tę politykę albo o twoje dane:
 - błędy i ogólne pytania: https://github.com/engender-app/engender/issues
 - problemy z bezpieczeństwem: https://github.com/engender-app/engender/blob/main/SECURITY.md
 
-Żeby dostać pomoc, nigdy nie trzeba wysyłać treści dziennika, kopii
-zapasowej ani klucza.
+Żeby otrzymać pomoc, nigdy nie trzeba wysyłać treści dziennika, kopii
+zapasowej ani kluczy.
 
 ## W skrócie
 
 engender nie ma kont ani serwera z kopiami dzienników. Dziennik zostaje na
-twoim urządzeniu, dopóki go nie wyeksportujesz lub nie udostępnisz. Jego
+twoim urządzeniu tak długo, dopóki go nie wyeksportujesz lub nie udostępnisz. Jego
 baza i media są zaszyfrowane na urządzeniu. Autorka nie może odzyskać ich
 za ciebie.
 
-Strona i aplikacja w przeglądarce zliczają otwarcia przy połączeniu z siecią,
-bez profili odwiedzających. Liczniki nie zawierają danych z dziennika.
-Android nie wysyła takich zgłoszeń. Osobno opisujemy poniżej wiadomości,
-które dobrowolnie wysyłasz, prosząc o pomoc.
+Strona w przeglądarce zlicza otwarcia przy połączeniu z siecią bez profilowania odwiedzających. Liczniki nie zawierają danych z dziennika.
+Android nie wysyła takich zgłoszeń - jest w 100% lokalna. 
 
 ## Co aplikacja przechowuje i gdzie
 
-Wszystko, co wpisujesz, zostaje w pamięci aplikacji na twoim urządzeniu:
+Wszystko, co wpiszesz w aplikacji, zostaje w pamięci lokalnej na twoim urządzeniu:
 wpisy, notatki i nastroje, skale, dawki i schematy dawkowania, wyniki badań,
 pomiary, wizyty, kamienie milowe, listy, zdjęcia, nagrania głosowe i wideo,
 zaimportowane dokumenty, przypomnienia i ustawienia. Baza dziennika i zdjęcia
-są zaszyfrowane na urządzeniu. Nic z tego nie trafia do autorki aplikacji ani
-do nikogo innego.
+są zaszyfrowane na urządzeniu. Ani strona, ani aplikacja nie wysyłają tych danych NIGDZIE.
 
 Część ustawień potrzebnych przed odblokowaniem, w tym motyw, paleta, język,
 kamuflaż i czas blokady, pozostaje poza zaszyfrowanym dziennikiem. Na
@@ -48,33 +45,33 @@ tymczasowego.
 
 Aplikacja w przeglądarce i aplikacja na Androida mają osobne dzienniki. Żeby
 przenieść dziennik z jednej do drugiej, eksportujesz zaszyfrowaną kopię
-zapasową i ją importujesz.
+zapasową i ją importujesz na drugim urządzeniu.
+W planach jest funkcjonalność polegająca na synchronizacji dziennika pomiędzy dwoma urządzeniami w tej samej sieci LAN. Niestety to wymagałoby pozwolenia INTERNET w aplikacji Android - system jest tak skonstruowany, że nawet otwarcie lokalnego połączenia wymaga tego samego pozwolenia, co połączenie z Internetem.
 
 ## Aplikacja w przeglądarce
 
 Aplikacja działa pod adresem `app.engender.barankiewicz.dev`. Kiedy
-przeglądarka ją wczytuje albo sprawdza aktualizacje, serwer widzi zwykłe dane
+przeglądarka ją wczytuje albo sprawdza aktualizacje, serwer widzi standardowe dane
 każdego żądania:
 
 - adres IP,
-- czas żądania,
+- timestamp żądania,
 - żądany adres URL wraz z parametrami oraz rozmiar odpowiedzi,
 - nagłówki User-Agent i Referer wysłane przez przeglądarkę.
 
-Aplikację udostępnia serwer VPS w OVH. Zwykłe dzienniki dostępu są wyłączone.
+Aplikację udostępnia serwer VPS w OVH. Standardowe dzienniki dostępu są wyłączone.
 Dzienniki błędów mogą zawierać adres IP i żądany URL; serwer przechowuje je
 najwyżej przez siedem dni. Żądania licznika otwarć nie trafiają do logów.
 
 Aplikacja nie wysyła dziennika i nie zakłada konta ani profilu odwiedzającej
-osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu aplikacja pobiera
-z tego samego serwera i nie łączy się z żadną inną stroną. Przy pierwszym
+osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu aplikacja pobiera z tego samego serwera i nie łączy się z żadną inną stroną. Przy pierwszym
 skanowaniu zdjęcia wyników przeglądarka pobiera z tego serwera silnik OCR
 (około 21 MB). Samo rozpoznawanie tekstu odbywa się na twoim urządzeniu.
 
 W przeglądarce lokalny dziennik otwiera się na jeden z czterech sposobów:
 
-- hasłem do dziennika, z którego Argon2id wyprowadza klucz,
-- czterocyfrowym kodem PIN, połączonym z kluczem przypisanym do tego profilu
+- hasłem do dziennika, które zmieniane jest w klucz Argon2id,
+- czterocyfrowym kodem PIN, połączonym z kluczem przypisanym do profilu
   przeglądarki,
 - biometrią w przeglądarkach, które obsługują rozszerzenie WebAuthn PRF
   (Touch ID, Windows Hello albo blokada urządzenia),
@@ -91,7 +88,7 @@ hasło, PIN albo biometria przestaną działać. Nie przeniesie danych na nowe
 urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz i przechowuje
 tylko zaszyfrowaną kopię klucza dziennika. Trzymaj klucz odzyskiwania na
 papierze albo w menedżerze haseł na innym urządzeniu: każdy, kto ma ten klucz
-i dane dziennika, może dziennik odczytać. Klucz nie przywróci usuniętych
+i dane dziennika, może odczytać dziennik. Klucz nie przywróci usuniętych
 danych.
 
 Gdy kopiujesz klucz odzyskiwania w przeglądarce, aplikacja po minucie
@@ -119,8 +116,8 @@ na później.
 Żądanie trafia pod stały adres. Nie zawiera danych dziennika, nazwy otwartej
 strony, parametrów adresu, strony odsyłającej ani ciasteczek. Serwer, który
 je odbiera, widzi adres IP połączenia i zwykłe nagłówki przeglądarki. Usuwa
-te dane przed przekazaniem stałej etykiety, aplikacja albo strona, do własnej
-instancji GoatCounter. Znane boty są odfiltrowywane, gdy można je rozpoznać.
+te dane przed przekazaniem informacji o zdarzeniu do własnej
+instancji GoatCounter. Znane boty są odfiltrowywane.
 
 GoatCounter zachowuje sumy godzinowe dla tych dwóch etykiet. Można je oglądać
 w podziale na dni. Są dostępne tylko dla autorki i pozostają bezterminowo.
@@ -133,10 +130,10 @@ tego ciasteczka osobom odwiedzającym.
 
 ## Aplikacja na Androida
 
-Wydawanie aplikacji na Androida zaczyna się od plików APK na GitHubie.
+Dystrybucja aplikacji na Androida zaczyna się od plików APK na GitHubie.
 Google Play i F-Droid mają osobne procesy publikacji. Sklep lub serwis
-pobierania widzi kierowane do niego żądania i obsługuje je według własnych
-zasad.
+pobierania widzi kierowane do niego żądania i obsługuje je na własnych
+zasadach.
 
 Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. Nie otwiera
 połączeń sieciowych i niczego nie wysyła na żaden serwer. Wyłącza też kopię
@@ -198,7 +195,7 @@ i dzienniki dostępu do twojego konta.
 
 ### Zaszyfrowane kopie zapasowe
 
-Zaszyfrowana kopia zapasowa (`.ttbackup`), eksportowana ręcznie albo
+Zaszyfrowana kopia zapasowa (`.ngndr`), eksportowana ręcznie albo
 zapisywana przez Androida według harmonogramu w wybranym folderze, jest
 szyfrowana algorytmem AES-GCM hasłem, które ustalasz. Bez tego hasła nikt jej
 nie odczyta.
@@ -231,11 +228,11 @@ inna strona. Strony na GitHubie podlegają jego własnej polityce prywatności.
 
 ## Usuwanie danych
 
-Aplikacja nie wysyła dziennika do autorki. Możesz samodzielnie usunąć jego
+Aplikacja nie wysyła dziennika do autorki ani nikogo innego. Możesz samodzielnie usunąć jego
 lokalną kopię. Wiadomości z prośbą o pomoc i logi hostingu mają osobne
 okresy przechowywania, opisane w tej polityce:
 
-- **W aplikacji.** Ustawienia, potem Prywatność i dane, potem Usuń wszystko.
+- **W aplikacji.** Ustawienia -> Prywatność i dane -> Usuń wszystko.
   To usuwa dziennik, zdjęcia i nagrania, ustawienia, zaplanowane
   przypomnienia i klucze, które otwierają dziennik. Tego nie da się cofnąć.
   Jeśli w przeglądarce używasz odblokowania biometrycznego, utworzony dla
@@ -259,16 +256,15 @@ klucza odzyskiwania.
 
 ## Dla kogo jest aplikacja
 
-engender jest dla każdej osoby trans, także nastoletniej. Korzystanie z
-dziennika nie ma dolnej granicy wieku ani procesu jego weryfikacji.
-Deklaracje odbiorców i treści w sklepach mają opisywać aplikację zgodnie z
-prawdą. Nie zmieniają sposobu przechowywania lokalnego dziennika.
+engender jest dla każdej osoby trans. Korzystanie z
+dziennika nie ma dolnej ani górnej granicy wieku ani procesu jego weryfikacji.  
+
 
 ## Wiadomości z prośbą o pomoc
 
 Gdy piszesz na engender-app@pm.me, autorka otrzymuje twój adres e-mail,
-wiadomość i załączniki przez Proton Mail. Używa ich do odpowiedzi na
-zgłoszenie. Nie wysyłaj prawdziwego dziennika, kopii zapasowej, hasła,
+wiadomość i załączniki. Używa ich do odpowiedzi na
+zgłoszenie. Nie wysyłaj swojego dziennika, kopii zapasowej, hasła,
 klucza odzyskiwania ani zrzutu ekranu z osobistymi danymi. Do pomocy
 wystarczają wersje aplikacji i urządzenia, kroki odtworzenia problemu oraz
 wymyślone przykłady.

@@ -6,6 +6,21 @@ its own, and refuses a section that leaves one of the four call-outs
 unanswered. Those four are what a person needs to know before installing an
 update, and "none" is a perfectly good answer to any of them.
 
+## 1.0.0-rc.1
+
+This first release candidate includes the current app and the updated English
+and Polish wording, Android widget labels, store descriptions and privacy
+policies. It is intended for testing before the stable 1.0.0 release.
+
+The journal stays on your device. Export an encrypted archive before replacing
+an existing installation. Earlier development builds do not establish a
+supported update path.
+
+- Schema changes: this candidate establishes schema 88. Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.
+- Archive format changes: this candidate establishes archive format 2. Archives from development builds are not a supported restore path.
+- Security migrations: none for this first candidate.
+- Minimum supported version: 1.0.0-rc.1 is the first release candidate; there is no earlier supported version to update from.
+
 ## 1.0.0
 
 engender is a private journal for tracking a gender transition. Keep daily

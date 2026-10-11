@@ -24,9 +24,7 @@ stays on your device unless you export or share it. Its database and media
 are encrypted at rest. The developer cannot recover it for you.
 
 The website and hosted web app count online page openings without visitor
-profiles. These counts contain no journal data. Android sends no counts.
-Information you choose to send in a support message is handled separately,
-as described below.
+profiles. These counts contain no journal data. Android sends no counts - it is 100% local.
 
 ## What the app stores, and where
 
@@ -34,7 +32,7 @@ Everything you enter stays in the app's storage on your device: entries,
 notes and moods, scales, doses and regimens, lab results, measurements,
 appointments, milestones, letters, photos, voice and video recordings,
 documents you import, reminders and your settings. The journal database and
-your photos are encrypted at rest. None of it is sent to the developer or to
+your photos are encrypted at rest. NONE of it is sent to the developer or to
 anyone else.
 
 Some preferences needed before unlocking, including theme, palette,
@@ -45,6 +43,7 @@ not mean that every temporary file or preference is encrypted.
 
 The web app and the Android app keep separate journals. To move a journal
 from one to the other, you export an encrypted backup and import it.
+A functionality that would allow for synchronizing a journal between 2 devices over LAN (PC and or Android). Unfortunately, that would mean asking the user for INTERNET permission on Android because that is the permission required even for local connections on Android.
 
 ## Hosted web app
 
@@ -62,8 +61,7 @@ logs can contain an IP address and requested URL; the live server keeps
 them for at most seven days. Page-count requests are not logged.
 
 The app does not upload your journal or create an account or visitor profile.
-Page-opening counts are described below. The app loads its fonts and its text recognition files from the
-same server and asks nothing of any other site. The first time you scan a
+Page-opening counts are described below. The app loads its fonts and its text recognition files from the same server and asks nothing of any other site. The first time you scan a
 lab photo, the browser downloads the text recognition engine (about 21 MB)
 from that server; scanning itself happens on your device.
 
@@ -185,7 +183,7 @@ name, time, size and the access logs of your account there.
 
 ### Encrypted backups
 
-An encrypted backup (`.ttbackup`), whether you export it yourself or Android
+An encrypted backup (`.ngndr`), whether you export it yourself or Android
 writes it on a schedule to a folder you picked, is encrypted with AES-GCM
 under a backup password you choose. Nobody can read it without that
 password.
@@ -218,16 +216,12 @@ statement applies to pages on GitHub.
 
 ## Deleting your data
 
-The app does not send your journal to the developer. You can delete the
+The app does not send your journal to the developer. or anyone else You can delete the
 local journal yourself. Support messages and hosting logs have the separate
 retention periods described in this policy:
 
-- **In the app.** Settings, then Privacy & data, then Delete everything. This
-  removes the journal, photos and recordings, your settings, scheduled
-  reminders and the keys that open the journal, and cannot be undone. If you
-  used biometric unlock on the web, the passkey it created stays in your
-  browser's or device's passkey list until you remove it there. It opens
-  nothing once the journal is gone. On Android, an interrupted photo capture can leave an unencrypted file in the app’s cache. Clearing the app’s storage removes it.
+- **In the app.** Settings -> Privacy & data -> Delete everything. This
+  deletes, well, everything. If you used biometric unlock on the web, the passkey it created stays in your browser's or device's passkey list until you remove it there. It opens nothing once the journal is gone. On Android, an interrupted photo capture can leave an unencrypted file in the app’s cache. Clearing the app’s storage removes it.
 - **On Android.** Uninstalling the app, or clearing its storage in the
   system settings, removes everything the app stored on the phone.
 - **On the web.** Clearing the site data for `app.engender.barankiewicz.dev`
@@ -243,15 +237,13 @@ or a lost device key or recovery key.
 
 ## Who the app is for
 
-engender is for any trans person, including teenagers. There is no minimum
-age for using the journal and no age-verification process. Store audience
-and content declarations describe the app honestly; they do not change how
-its local journal handles data.
+engender is for any trans person. There is no minimum nor maximum
+age for using the journal and no age-verification process.
 
 ## Support messages
 
 If you contact engender-app@pm.me, the maintainer receives your email address,
-message and any attachments through Proton Mail. These are used to answer
+message and any attachments. These are used to answer
 your request. Never send a real journal, backup, password, recovery key or
 screenshot containing personal journal content. Support uses app and device
 versions, reproduction steps and invented examples instead.
