@@ -193,8 +193,11 @@
 
   let restoredId = $state<string | null>(null);
   export const snapshot = {
-    capture: () => record.editor?.id ?? null,
-    restore: (id: string | null) => { restoredId = id; }
+    capture: () => ({ editorId: record.editor?.id ?? null, milestoneListOpen }),
+    restore: (state: { editorId: string | null; milestoneListOpen: boolean }) => {
+      restoredId = state.editorId;
+      milestoneListOpen = state.milestoneListOpen;
+    }
   };
   afterNavigate(({ type }) => { if (type !== 'popstate') restoredId = null; });
   let sourceId = $derived(restoredId ?? page.url.searchParams.get('edit'));
@@ -361,6 +364,10 @@
       </button>
     {/snippet}
   </ScreenHeader>
+  <a class="btn btn-ghost press" data-manage-eras href="/settings/eras">
+    <Icon name="columns" size={20} />
+    <span>{m.eras_manage()}</span>
+  </a>
   <SourceRecordHandoff id={sourceId} ready={bootState.status === 'ready'} found={!!sourceMilestone} onOpen={() => openEditor(sourceMilestone!, null)} />
 
 

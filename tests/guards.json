@@ -285,6 +285,11 @@
     "holds": "Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content"
   },
   {
+    "name": "milestone-era-handoff-check",
+    "tier": "dev",
+    "holds": "Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return"
+  },
+  {
     "name": "sheet-handoff-scroll-check",
     "tier": "built",
     "holds": "a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close"
