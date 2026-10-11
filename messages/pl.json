@@ -1407,6 +1407,8 @@
   "hair_photo_delete_q": "Usunąć to zdjęcie?",
   "hair_photo_delete_sheet": "Usuń zdjęcie",
   "hair_photo_empty_body": "Ta sama głowa, kolejny odcinek. Tu jest miejsce na zdjęcia.",
+  "hair_photo_exports_required": "Dodaj zdjęcie, żeby utworzyć kolaż lub film.",
+  "hair_photo_compare_required": "Dodaj co najmniej dwa zdjęcia, żeby je porównać.",
   "hair_photo_empty_title": "Nie ma jeszcze zdjęć",
   "hair_photo_protocol_body": "Jeśli chcesz porównać zdjęcia, zachowaj ten sam kadr, światło i odległość.",
   "hair_photo_protocol_dismiss_aria": "Ukryj tę wskazówkę",
