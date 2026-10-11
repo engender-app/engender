@@ -157,6 +157,18 @@ describe('what Settings is built from', () => {
     expect(withoutScript).toMatch(/<div class="kit-row" data-cycle-tracking-toggle>/);
   });
 
+  it('opens feature visibility in one named manager without duplicating switches', () => {
+    expect(outsideSheets.match(/key="features"/g)).toHaveLength(1);
+    const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    expect(manager).toContain('title={m.features_to_show()}');
+    expect(manager).toContain('m.features_to_show_sub()');
+    expect(manager).toContain('data-features-close');
+    for (const handle of ['data-measurements-toggle', 'data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
+      expect(outsideSheets).not.toContain(handle);
+      expect(manager.match(new RegExp(handle, 'g'))).toHaveLength(1);
+    }
+  });
+
   it('keeps no switch for a prompt the notifications screen now carries', () => {
     /* Phase 11 ticket 04. Entry nudges, guided prompts, the binder duration
        cue and roadmap milestone prompts floated here under no heading of
