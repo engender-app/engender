@@ -600,6 +600,8 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     roadmap: deferredArea<RoadmapArea>(async () =>
       (await import('./roadmap')).makeRoadmapArea(driver)
     )([
+      'getHiddenGoals',
+      'setGoalHidden',
       'getGoalStatuses',
       'setGoalStatus',
       'getCustomGoals',
