@@ -497,6 +497,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   if (prepareOnly) return { ...evidence, prepared: true };
   const after = scene.after;
   if (after?.selector) evidence.beforePresent = !!document.querySelectorAll(after.selector)[0];
+  if (after?.countIncrease !== undefined) evidence.beforeCount = document.querySelectorAll(after.selector).length;
   if (after?.attribute) {
     const subject = after.selector ? document.querySelectorAll(after.selector)[0] : hit;
     evidence.beforeValue = subject?.getAttribute(after.attribute) ?? null;
@@ -563,6 +564,13 @@ export function verifySceneAction(scene, action, env = globalThis) {
     if (route !== action.beforeRoute || Math.abs(afterScroll - after.scrollTop) > 1 || afterScroll === action.beforeScroll)
       throw new Error(`postcondition scroll: expected ${after.scrollTop}px on ${action.beforeRoute}, got ${afterScroll}px on ${route}`);
     return { ...action, verified: true, afterRoute: route, afterScroll, postcondition: after };
+  }
+  if (after.countIncrease !== undefined) {
+    const afterCount = env.document.querySelectorAll(after.selector).length;
+    if (route !== action.beforeRoute || afterCount !== action.beforeCount + after.countIncrease)
+      throw new Error(`postcondition count: expected ${action.beforeCount + after.countIncrease}, got ${afterCount} on ${route}`);
+    if (after.alsoAbsent && env.document.querySelectorAll(after.alsoAbsent).length) throw new Error('postcondition absent: ' + after.alsoAbsent);
+    return { ...action, verified: true, afterRoute: route, afterCount, postcondition: after };
   }
   if (after.route) {
     const expected = after.route === 'chosen-href' ? action.chosen?.href?.split(/[?#]/)[0] : after.route;
