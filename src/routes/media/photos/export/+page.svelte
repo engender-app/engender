@@ -12,7 +12,7 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { replaceRoute } from '$lib/navigation/smart-back';
+  import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -78,14 +78,19 @@
      the grid below reads every photograph the journal holds - hair,
      tryouts, surgery recovery included - and the chip row narrows it, but
      Video is never one of the chips here. */
+  let fromHair = $derived(page.url.searchParams.get('from') === 'hair-progress');
+  let returnTo = $derived(fromHair ? '/body/hair-progress' : '/media/photos');
+  // Recording support does not change while this screen is open.
+  const canRecord = timelapseSupported();
+
   let libraryQuery = liveList((j) => j.photoLibrary.inJournal());
-  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video'));
+  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video' && (!fromHair || photo.source === 'hair')));
   let bounds = $derived(journeyRangeBounds(photos));
 
   let startInput = $state('');
   let endInput = $state('');
   let excluded = $state<string[]>([]);
-  let output = $state<JourneyOutput>('collage');
+  let output = $state<JourneyOutput>(canRecord && page.url.searchParams.get('output') === 'timelapse' ? 'timelapse' : 'collage');
 
   /** The same query parameter the library reads, so a chip survives the
       trip between the two screens (library.ts, media/photos/+page.svelte). */
@@ -122,10 +127,6 @@
   const progress = createProgress();
   let made = $state.raw<{ blob: Blob; from: string } | null>(null);
   let previewUrl = $state<string | null>(null);
-
-  // MediaRecorder is missing on Safari, which has no WebM encoder. Read once
-  // rather than per render: it cannot change while the screen is open.
-  const canRecord = timelapseSupported();
 
   /* The picker opens on the whole journey, once there is a journey to open
      on. Guarded on the inputs being empty so it seeds rather than resets:
@@ -222,13 +223,18 @@
       // Before the preview replaces the picker, so the bar is not cut off
       // mid-thought by the thing it was counting down to (ADR-0070).
       await progress.finish();
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        if (fromHair) await smartBackSettled(returnTo);
+        return;
+      }
       made = { blob, from };
     } catch (error) {
       progress.abandon();
-      // A cancelled export is an answer, not a failure: the person pressed
-      // stop and the screen going back to the picker says so by itself.
-      if (!controller.signal.aborted) {
+      // Stop returns to Hair progress when it opened the export, or to
+      // the picker for an export opened from the library.
+      if (controller.signal.aborted && fromHair) {
+        await smartBackSettled(returnTo);
+      } else if (!controller.signal.aborted) {
         console.error(`the ${output} export failed`, error);
         toast(output === 'timelapse' ? m.pj_timelapse_failed() : m.pj_failed(), { kind: 'failed' });
       }
@@ -247,8 +253,10 @@
       const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, prefs.disguise), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
+        if (fromHair) await smartBackSettled(returnTo);
         return;
       }
+      if (fromHair) await smartBackSettled(returnTo);
       toast(delivery === 'shared' ? m.pj_shared() : m.pj_downloaded());
     } catch (error) {
       console.error('sharing the journey export failed', error);
@@ -258,7 +266,7 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.pj_title()} back="/media/photos" />
+  <ScreenHeader title={m.pj_title()} back={returnTo} />
 
   {#snippet picker()}
       <div class="screen-part">
@@ -314,6 +322,7 @@
             </div>
           {/each}
         </div>
+        {#if fromHair}<p class="muted small" data-journey-origin>{m.hair_progress()}</p>{/if}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
         <!-- The count is said once, in the bar with the button it counts
@@ -376,6 +385,9 @@
                 <span>{m.pj_again()}</span>
               </button>
             </div>
+            {#if fromHair}
+              <button class="btn btn-ghost press" data-journey-done onclick={() => smartBackSettled(returnTo)}>{m.done()}</button>
+            {/if}
           </div>
         {:else}
           <SaveBar arrange="stack">
