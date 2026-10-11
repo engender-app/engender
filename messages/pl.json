@@ -350,7 +350,6 @@
   "care_mark_run_out": "Koniec zapasu",
   "care_mark_today": "Dzisiaj",
   "care_next_dose": "Następna dawka {when}",
-  "care_rail_empty": "Oś zacznie się od dawki, wyniku badania albo stanu zapasu.",
   "care_rail_heading": "Dawki, badania i zapas",
   "care_regimen_dose": "{dose} {unit}",
   "care_regimen_dose_route": "{dose} {unit}, {route}",
