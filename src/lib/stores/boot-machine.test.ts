@@ -603,3 +603,12 @@ test('a reopen that failed can be asked for again, and one that landed cannot', 
   expect(reduce(landed.machine, { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true }).effects)
     .toEqual([]);
 });
+
+
+test.each(['passphrase', 'pin', 'biometric'] as const)('stale setup returns to the existing %s gate', (mode) => {
+  const result = walk(started('web'), surveyedWeb(), { type: 'setup-stale', platform: 'web' },
+    surveyedWeb({ keystoreSecretSource: mode }));
+  expect(result.machine.boot.status).toBe('needs-unlock');
+  expect(result.machine.boot.accessMode).toBe(mode);
+  expect(result.effects).toEqual([]);
+});

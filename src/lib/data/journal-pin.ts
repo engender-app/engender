@@ -36,6 +36,7 @@ import {
 } from '../crypto/keystore';
 import { PIN_LENGTH } from '../crypto/params';
 import { isAndroid } from '../platform';
+import { initializeJournal, journalAccessExists } from './journal-initialization';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
 import { browserKeySlot } from './device-bound-journal';
 import {
@@ -52,6 +53,7 @@ import { androidPinBinding } from './pin-binding-bridge';
     the tests hand in memory. */
 /* PinPorts stays exported only for its own test (AU-09 test-only review). */
 export interface PinPorts {
+  journalExists(): Promise<boolean>;
   /** The key store a wrap written now binds to. */
   binding: DeviceBinding;
   /** Its name, which goes into the keystore beside the wrap so a later
@@ -66,7 +68,7 @@ export interface PinPorts {
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
 }
 
-const keystoreFile = { readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
+const keystoreFile = { journalExists: journalAccessExists, readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
 
 const platformPorts = (): PinPorts =>
   isAndroid()
@@ -107,10 +109,12 @@ function requireValidPin(pin: string): string {
     other plus the PIN, persists the metadata, hands back the key for this
     session. */
 export async function setupJournalPin(pin: string, ports: PinPorts = platformPorts()): Promise<Uint8Array<ArrayBuffer>> {
-  const secret = combinePinWithDevice(requireValidPin(pin), await ports.binding.create());
-  const { metadata, dataKey } = await createKeystore(secret, undefined, 'pin');
-  await ports.writeKeystore(bindingNamed(metadata, ports));
-  return dataKey;
+  return initializeJournal(async () => {
+    const secret = combinePinWithDevice(requireValidPin(pin), await ports.binding.create());
+    const { metadata, dataKey } = await createKeystore(secret, undefined, 'pin');
+    await ports.writeKeystore(bindingNamed(metadata, ports));
+    return dataKey;
+  }, () => ports.journalExists());
 }
 
 /** Moves a journal that is already open into PIN mode - the Settings change,
