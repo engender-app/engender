@@ -16,6 +16,7 @@
    generated picture only leaves the device when a person does something
    about it. */
 
+import { fixWebmDuration } from '@fix-webm-duration/fix';
 import {
   collageLayout,
   fitContain,
@@ -168,6 +169,40 @@ export async function renderCollage(
 
 const VP8 = `${JOURNEY_MIME.timelapse};codecs=vp8`;
 
+/** Decode the first frame before offering the file for sharing. */
+async function checkTimelapse(blob: Blob, signal?: AbortSignal): Promise<void> {
+  stopIfAsked(signal);
+  const video = document.createElement('video');
+  const url = URL.createObjectURL(blob);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const done = (error?: Error) => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
+        video.onloadeddata = null;
+        video.onerror = null;
+        if (error) reject(error);
+        else resolve();
+      };
+      const abort = () => done(new DOMException('the journey export was stopped', 'AbortError'));
+      const timer = setTimeout(() => done(new Error('the timelapse did not decode')), 10_000);
+      video.onloadeddata = () => done(
+        video.videoWidth > 0 && video.videoHeight > 0 && Number.isFinite(video.duration) && video.duration > 0
+          ? undefined : new Error('the timelapse is not playable')
+      );
+      video.onerror = () => done(new Error('the timelapse is not playable'));
+      signal?.addEventListener('abort', abort, { once: true });
+      video.preload = 'auto';
+      video.src = url;
+    });
+  } finally {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Whether this browser can record a timelapse at all, so the screen can
     offer only the collage instead of failing after a long wait. Chromium
     and the Android WebView can; Safari has no WebM encoder. */
@@ -217,6 +252,7 @@ export async function recordTimelapse(
   const stream = canvas.captureStream(TIMELAPSE_FPS);
   let recorder: MediaRecorder | undefined;
   let repaint: ReturnType<typeof setInterval> | undefined;
+  let duration = 0;
   const chunks: Blob[] = [];
 
   try {
@@ -231,16 +267,17 @@ export async function recordTimelapse(
       recorder!.onerror = () => reject(new Error('the timelapse encoder failed'));
       recorder!.onstop = () => stopping ? resolve() : reject(new Error('the timelapse encoder stopped early'));
     });
-    const wait = async (ms: number, stopping = false) => {
+    const wait = async (ms: number, finishing = false) => {
       let timer: ReturnType<typeof setTimeout>;
       try {
         await Promise.race([finished, new Promise<void>((resolve, reject) => {
-          timer = setTimeout(() => stopping ? reject(new Error('the timelapse encoder did not finish')) : resolve(), ms);
+          timer = setTimeout(() => finishing ? reject(new Error('the timelapse encoder did not finish')) : resolve(), ms);
         })]);
       } finally {
         clearTimeout(timer!);
       }
     };
+    const started = performance.now();
     recorder.start();
     // Canvas capture emits only when painted. Keep still photos in the
     // stream for their full hold, including the last photo.
@@ -255,6 +292,7 @@ export async function recordTimelapse(
       options.onProgress?.(index + 1, frames.length);
     }
     stopping = true;
+    duration = performance.now() - started;
     recorder.stop();
     await wait(5000, true);
   } finally {
@@ -265,6 +303,7 @@ export async function recordTimelapse(
     if (recorder) {
       recorder.onerror = null;
       recorder.onstop = null;
+      recorder.ondataavailable = null;
       if (recorder.state !== 'inactive') recorder.stop();
     }
     for (const track of stream.getTracks()) track.stop();
@@ -272,5 +311,10 @@ export async function recordTimelapse(
 
   const blob = new Blob(chunks, { type: JOURNEY_MIME.timelapse });
   if (!blob.size) throw new Error('the timelapse encoder produced no video');
-  return blob;
+  stopIfAsked(options.signal);
+  // Older WebM muxers omit duration. Write it into the file so the preview
+  // and other players can show its length before playback.
+  const timed = await fixWebmDuration(blob, duration, { logger: false });
+  await checkTimelapse(timed, options.signal);
+  return timed;
 }

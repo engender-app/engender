@@ -98,6 +98,7 @@
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.0",
     "@evolu/sqlite-wasm": "^2.2.4",
+    "@fix-webm-duration/fix": "^1.0.1",
     "@tesseract.js-data/eng": "^1.0.0",
     "@tesseract.js-data/pol": "^1.0.0",
     "d3-scale": "^4.0.2",
