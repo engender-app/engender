@@ -57,8 +57,10 @@
 
   @media print {
     .book-photo {
-      /* Keeps a photo and the day it belongs to on the same sheet. */
       break-inside: avoid;
+      width: auto;
+      max-width: 100%;
+      max-height: 170mm;
       border-radius: 0;
     }
   }
