@@ -207,6 +207,10 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 `care-spine-links`, `read-failures`, `source-record-links`,
 `timeline-fact-selection`, `pin-progress-status`, `gates-say-what-happened`), so they run in the browser job with
 `npm run test:browser`. Three of them take `--gallery` as well.
+`care-read` also checks empty timeline visibility, regimen-only schedules,
+nonprojectable stock, first and last record motion, and route departures.
+Its gallery includes empty Care in both languages, every palette and theme,
+200% zoom and disguise.
 
 `screen-mount.html` renders Home, Calendar, Settings and related routes over
 seeded encrypted journals. The browser runner checks their DOM, computed
