@@ -173,15 +173,17 @@ export interface RoadmapSection<K extends string, C> {
 export function roadmapSections<K extends string, C extends { readonly track: string }>(
   pack: RoadmapPack<K>,
   customGoals: readonly C[],
-  dismissedTracks: readonly string[]
+  dismissedTracks: readonly string[],
+  hiddenGoals: readonly string[] = []
 ): RoadmapSection<K, C>[] {
   const dismissed = new Set(dismissedTracks);
+  const hidden = new Set(hiddenGoals);
   return ROADMAP_TRACKS.map((track) => {
     const isDismissed = dismissed.has(track);
     return {
       track,
       dismissed: isDismissed,
-      goals: isDismissed ? [] : goalsInTrack(pack, track),
+      goals: isDismissed ? [] : goalsInTrack(pack, track).filter((goal) => !hidden.has(goal.key)),
       customGoals: isDismissed ? [] : customGoals.filter((goal) => goal.track === track)
     };
   });

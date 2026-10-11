@@ -281,3 +281,17 @@ test('an unchecked custom goal keeps its track current, same as a bundled one', 
 
   expect(here).toEqual({ track: 'social', stepsLeft: 1 });
 });
+
+
+test('hidden built-in goals leave the normal list and remaining count without dismissing their track', () => {
+  const key = 'pl-social-tell-one-person';
+  const before = roadmapSections(POLISH_PACK, CUSTOM, []);
+  const after = roadmapSections(POLISH_PACK, CUSTOM, [], [key]);
+  const social = after.find((section) => section.track === 'social')!;
+  expect(social.dismissed).toBe(false);
+  expect(social.goals.some((goal) => goal.key === key)).toBe(false);
+  expect(social.customGoals).toEqual(before.find((section) => section.track === 'social')!.customGoals);
+  expect(roadmapStepsLeft(social, () => 'unchecked')).toBe(roadmapStepsLeft(before[0], () => 'unchecked') - 1);
+  expect(after.slice(1)).toEqual(before.slice(1));
+  expect(POLISH_PACK.goals.some((goal) => goal.key === key)).toBe(true);
+});
