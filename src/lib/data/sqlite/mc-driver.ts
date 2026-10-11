@@ -286,9 +286,10 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     }),
 
     async close() {
-      await post('close');
-      terminate();
-    }
+      try { await post('close'); }
+      finally { terminate(); }
+    },
+    dispose: terminate
   });
 
   /* The copy check and the restore, which are what a failed boot does next
