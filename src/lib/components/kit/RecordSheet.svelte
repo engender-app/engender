@@ -169,6 +169,7 @@
           </button>
         </div>
       </fieldset>
+      <span class="visually-hidden" role="status" data-save-status>{record.saving ? m.entry_saving() : ''}</span>
     {/if}
   </Sheet>
 {/if}
