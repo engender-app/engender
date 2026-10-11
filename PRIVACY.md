@@ -264,7 +264,7 @@ systems, provider backups or copies held by someone else.
 
 When this policy changes, the date at the top changes with it. Every
 earlier version is kept in the history of
-https://github.com/engender-app/engender/blob/main/docs/privacy-policy.en.md.
+https://github.com/engender-app/engender/blob/main/PRIVACY.md.
 
 This policy is also available in
-[Polish](https://github.com/engender-app/engender/blob/main/docs/privacy-policy.pl.md).
+[Polish](https://github.com/engender-app/engender/blob/main/PRIVACY.pl.md).
