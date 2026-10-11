@@ -40,6 +40,7 @@ import { sessionGate, type SessionGate } from '../data/live/sessionGate.ts';
 
 interface Closable {
   close(): Promise<void>;
+  dispose?(): void;
 }
 
 export interface JournalSessionPorts<Key, Driver extends Closable> {
@@ -142,15 +143,21 @@ export function journalSession<Key, Driver extends Closable>(
        to the database from here wait for the reopen. The ones already
        in the worker get the rest of the same limit to answer. */
     await Promise.race([connection.close(), outOfTime]);
-    clearTimeout(limit);
     /* A worker that already died has nothing left to close, and the
        key still has to go. */
-    await closing.close().catch((error) => {
+    const closed = closing.close().catch((error) => {
       console.warn('the journal database was already closed at the lock', error);
     });
+    // Only platforms that own synchronous disposal can bound their close.
+    // Android uses its native lock path, not this web session lifecycle.
+    if (closing.dispose) {
+      await Promise.race([closed, outOfTime]);
+      closing.dispose();
+    } else await closed;
+    clearTimeout(limit);
     driver = null;
     locked = true;
-    await key.close();
+    void key.close();
     ports.release(navigationKey !== null);
     if (!suspended && !navigationSuspended) ports.prewarm();
   }
@@ -173,6 +180,8 @@ export function journalSession<Key, Driver extends Closable>(
     lock: () => {
       attempts.lock();
       navigationKey = null;
+      // Revoke new key access immediately; existing saves keep their key.
+      void key.close();
       return inTurn(async () => {
         const closing = driver;
         if (closing === null) return;
