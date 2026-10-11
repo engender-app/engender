@@ -66,6 +66,7 @@ import {
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
 import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
+import { changeCredentials } from '../data/credential-ownership';
 import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
@@ -441,6 +442,10 @@ const RESET_DESTINATION = {
     gate (phase 14 ticket 15): setup's welcome then says what happened,
     since nobody there forgot anything and the result cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  return changeCredentials(() => resetAppOwned(next));
+}
+
+async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -696,7 +701,7 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
         cancel: '',
         deviceCredential: false
       },
-      { authRequired }
+      { authRequired, create: true }
     ));
     const outcome = deviceBoundSetupOutcome(result);
     /* The one place a refusal is not dispatched: this is an offer on the
@@ -757,6 +762,10 @@ export async function submitAccessModeSetup(
     device-bound material - so an interruption anywhere in here leaves a
     journal that still opens, under one mode or the other, never neither. */
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
+  return changeCredentials(() => changeAccessModeOwned(target, secret));
+}
+
+async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
   const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 

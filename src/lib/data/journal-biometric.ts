@@ -73,7 +73,8 @@ export async function setupJournalBiometric(ports: BiometricPorts = browserPorts
     Nothing is destroyed before the new keystore lands: enrolling adds a
     credential rather than replacing one, so an interruption between the
     prompt and the write leaves the journal opening exactly as it did. That
-    is the difference from PIN mode, which has to refuse this direction. */
+    is the difference from PIN mode, which has to refuse this direction.
+    The caller owns credential mutation through old-mode cleanup. */
 export async function addJournalBiometric(
   dataKey: Uint8Array<ArrayBuffer>,
   ports: BiometricPorts = browserPorts()

@@ -2,6 +2,7 @@ import { isAndroid } from '../platform';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { KEYSTORE_FILE } from './keystore-file';
 import { legacyStoragePresent } from './legacy-journal';
+import { initializeCredentials } from './credential-ownership';
 
 export const DEVICE_BOUND_FILE = 'device-key.json';
 
@@ -30,8 +31,6 @@ export async function journalAccessExists(): Promise<boolean> {
   return legacyStoragePresent(root);
 }
 
-let nativeSetup: Promise<unknown> = Promise.resolve();
-
 /** The lock spans the durable check and publication. A stale or simultaneous
     setup cannot replace credentials, even when it chose a different mode.
     Database opening follows publication and may be retried with this key;
@@ -44,11 +43,5 @@ export async function initializeJournal<T>(
     if (await exists()) throw new JournalAlreadyExistsError();
     return create();
   };
-  // The native shell has one WebView; old Android WebViews need no Web Locks.
-  if (isAndroid()) {
-    const pending = nativeSetup.then(initialize);
-    nativeSetup = pending.catch(() => {});
-    return pending;
-  }
-  return navigator.locks.request('engender-journal-initialization', initialize);
+  return initializeCredentials(initialize);
 }
