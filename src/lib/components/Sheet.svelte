@@ -4,39 +4,8 @@
   import { isReducedMotion } from '$lib/motion/tokens';
   import { firstFocusable, hostAppOverlay, lockBackground, registerOverlay } from './overlayLock';
 
-  /* Ticket 242: `|global` is a compile-time modifier, so it cannot be
-     parametrised on the directive itself - the two branches below (where
-     `globalTransitions` is read) are otherwise identical. Local (default)
-     is right for the ~36 ordinary call sites: a sheet's own {#if open}
-     block is what triggers its transitions, exactly as it should, and
-     navigating away no longer replays a 380ms outro over the next screen
-     because that removal is caused by the *page* unmounting, not by this
-     block, and a local transition only fires for the latter.
-
-     `globalTransitions` stays true only for VocabularyManagerSheets, which
-     raises Sheet from behind `{#if ui.raisedManager}{#await import(...)}`
-     in +layout.svelte (ticket 231) - there the entrance is itself caused by
-     an ancestor block being created, so only `|global` plays it. That one
-     sheet still holds its outro across a navigation away from it; ticket
-     231's fix takes priority there and nothing in 242 asked for both at
-     once.
-
-     Ticket 244: a local transition plays only when its own nearest block
-     is the one being created/destroyed. `{#if globalTransitions}` split
-     *inside* `{#if open}` (242's first shape) put that inner block, not
-     `{#if open}`, in the way for every ordinary sheet - opening created
-     `{#if open}` first and the inner block as a side effect, so the local
-     intro never fired, and closing was the mirror. The split has to sit
-     outside `{#if open}` instead, so each branch's own `{#if open}` is
-     still the nearest block its local directives see.
-
-     The scrim/drag wrapper (attachments, drag handlers, the click-to-close
-     scrim) is identical either way and lives once in the `sheetBody`
-     snippet below; only the two transition-bearing elements - the tint
-     and the sheet panel itself - stay duplicated per branch, since
-     `{@render}` isn't a control-flow block and so doesn't touch a local
-     transition's nearest-block search the way nesting another `{#if}`
-     around either element would. */
+  /* Local transitions animate opening and closing, but skip a parent
+     unmount. Gates must remove a sheet with its private content immediately. */
   let {
     open = $bindable(false),
     title = '',
@@ -44,7 +13,6 @@
     onRequestClose,
     onClosed,
     children,
-    globalTransitions = false,
     busy = false,
   }: {
     open?: boolean;
@@ -59,7 +27,6 @@
         that acts on it should only do so for a close it asked for. */
     onClosed?: () => void;
     children: Snippet;
-    globalTransitions?: boolean;
     /** A write the sheet is waiting on (after-release 06). The scrim, a drag,
         Escape and Back leave it up until the write lands, so a sheet never
         closes over a write that may yet fail and need what is in it, and its
@@ -312,58 +279,30 @@
   </div>
 {/snippet}
 
-{#if globalTransitions}
-  {#if open}
-    {#snippet tintGlobal()}
-      <div class="sheet-scrim-tint scrim-withdraw" data-sheet-tint transition:scrimFade|global></div>
-    {/snippet}
-    {#snippet panelGlobal()}
-      <div
-        class="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabindex="-1"
-        data-sheet
-        in:sheetRise|global
-        out:sheetRise|global
-        onoutrostart={() => recedeBackground?.()}
-        {@attach focusInitial}
-        {@attach ownSheet}
-        {@attach freezeWhileBusy}
-      >
-        <div class="sheet-handle"></div>
-        {@render children()}
-      </div>
-    {/snippet}
-    {@render sheetBody(tintGlobal, panelGlobal)}
-  {/if}
-{:else}
-  {#if open}
-    {#snippet tintLocal()}
-      <div class="sheet-scrim-tint scrim-withdraw" data-sheet-tint transition:scrimFade></div>
-    {/snippet}
-    {#snippet panelLocal()}
-      <div
-        class="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabindex="-1"
-        data-sheet
-        in:sheetRise
-        out:sheetRise
-        onoutrostart={() => recedeBackground?.()}
-        {@attach focusInitial}
-        {@attach ownSheet}
-        {@attach freezeWhileBusy}
-      >
-        <div class="sheet-handle"></div>
-        {@render children()}
-      </div>
-    {/snippet}
-    {@render sheetBody(tintLocal, panelLocal)}
-  {/if}
+{#if open}
+  {#snippet tintLocal()}
+    <div class="sheet-scrim-tint scrim-withdraw" data-sheet-tint transition:scrimFade></div>
+  {/snippet}
+  {#snippet panelLocal()}
+    <div
+      class="sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      tabindex="-1"
+      data-sheet
+      in:sheetRise
+      out:sheetRise
+      onoutrostart={() => recedeBackground?.()}
+      {@attach focusInitial}
+      {@attach ownSheet}
+      {@attach freezeWhileBusy}
+    >
+      <div class="sheet-handle"></div>
+      {@render children()}
+    </div>
+  {/snippet}
+  {@render sheetBody(tintLocal, panelLocal)}
 {/if}
 
 <style>
