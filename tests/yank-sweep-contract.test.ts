@@ -1,6 +1,32 @@
 // @ts-nocheck
 import { describe, expect, it, vi } from 'vitest';
 import { dispatchSceneAction, verifySceneAction, waitForReadiness, coverageSummary } from './yank-sweep-core.mjs';
+
+describe('scroll scene outcomes', () => {
+  const fixture = () => {
+    const region = { scrollTop: 0, scrollHeight: 1200, clientHeight: 600,
+      scrollTo({ top }) { this.scrollTop = top; } };
+    const env = { location: { pathname: '/transition/letters', search: '' },
+      document: { documentElement: { dataset: {} }, querySelector: () => region } };
+    return { region, env };
+  };
+  it('records scroll distance and rejects an unchanged scroll or wrong route', () => {
+    const { region, env } = fixture();
+    const scene = { at: '/transition/letters', act: 'scroll', scrollTop: 240, after: { scrollTop: 240 } };
+    const action = dispatchSceneAction(scene, env);
+    expect(action).toMatchObject({ beforeScroll: 0, dispatched: true });
+    expect(verifySceneAction(scene, action, env)).toMatchObject({ verified: true, afterScroll: 240 });
+    region.scrollTop = 0;
+    expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition scroll');
+    env.location.pathname = '/more';
+    expect(() => dispatchSceneAction(scene, env)).toThrow('wrong action route');
+  });
+  it('rejects a populated screen that cannot scroll to the requested distance', () => {
+    const { region, env } = fixture();
+    region.scrollHeight = 650;
+    expect(() => dispatchSceneAction({ act: 'scroll', scrollTop: 240 }, env)).toThrow('insufficient scroll range');
+  });
+});
 it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
   const { preparePinGate } = await import('./yank-sweep-core.mjs');
   let theme = 'dark';

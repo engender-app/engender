@@ -425,6 +425,19 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   const { document, location } = env;
   const requested = scene.act;
   const evidence = { requested, dispatched: false, beforeRoute: location.pathname, beforeSearch: location.search, beforeTheme: document.documentElement?.dataset.theme, themeProof: env.__sweepThemeProof };
+  if (scene.at && location.pathname !== scene.at) throw new Error(`wrong action route: expected ${scene.at}, got ${location.pathname}`);
+  if (requested === 'scroll') {
+    const selector = '[data-app-scroll-region]';
+    const region = document.querySelector(selector);
+    if (!region) throw new Error('missing scroll region: ' + selector);
+    const maximum = region.scrollHeight - region.clientHeight;
+    if (maximum < scene.scrollTop) throw new Error(`insufficient scroll range: ${maximum}px for ${scene.scrollTop}px`);
+    const proof = { ...evidence, beforeScroll: region.scrollTop, maximumScroll: maximum, scrollSelector: selector };
+    if (prepareOnly) return { ...proof, prepared: true };
+    region.scrollTo({ top: scene.scrollTop, behavior: 'smooth' });
+    env.__sweepAction = { ...proof, dispatched: true };
+    return env.__sweepAction;
+  }
   if (!prepareOnly && scene.name === 'settings-unit-switcher') evidence.preparation = env.__sweepPreparation;
   if (env.__sweepDocumentProof) evidence.documentProof = env.__sweepDocumentProof;
   if (env.__sweepNavigationProof) evidence.navigationProof = env.__sweepNavigationProof;
@@ -545,6 +558,12 @@ export function verifySceneAction(scene, action, env = globalThis) {
   const after = scene.after;
   if (!after) throw new Error(`missing action postcondition: ${scene.name ?? scene.act}`);
   const route = env.location.pathname;
+  if (after.scrollTop !== undefined) {
+    const afterScroll = env.document.querySelector(action.scrollSelector)?.scrollTop;
+    if (route !== action.beforeRoute || Math.abs(afterScroll - after.scrollTop) > 1 || afterScroll === action.beforeScroll)
+      throw new Error(`postcondition scroll: expected ${after.scrollTop}px on ${action.beforeRoute}, got ${afterScroll}px on ${route}`);
+    return { ...action, verified: true, afterRoute: route, afterScroll, postcondition: after };
+  }
   if (after.route) {
     const expected = after.route === 'chosen-href' ? action.chosen?.href?.split(/[?#]/)[0] : after.route;
     if (route !== expected) throw new Error(`postcondition route: expected ${expected}, got ${route}`);
