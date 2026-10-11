@@ -6,7 +6,8 @@
       "headRevision": "47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa"
     },
     "android-door-motion": "Local Fedora run on 2026-10-09, excluding build; tests/android-door-motion.mjs",
-    "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/settings-scroll-check.mjs"
+    "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/settings-scroll-check.mjs",
+    "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -107,7 +108,8 @@
     "save-and-failure-check": 30,
     "pending-unlock-lock-check": 60,
     "bfcache-journal-check": 60,
-    "android-door-motion": 24.61
+    "android-door-motion": 24.61,
+    "milestone-era-handoff-check": 9.72
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -353,6 +355,9 @@
     ],
     "android-door-motion": [
       24.61
+    ],
+    "milestone-era-handoff-check": [
+      9.72
     ]
   }
 }

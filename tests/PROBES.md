@@ -137,6 +137,7 @@ To run one on its own, use
 | `lab-entry-check` | lab result field order, saved values, draft dismissal, failures and privacy in English and Polish |
 | `measurements-entry-check` | measurement field order, saved values, draft dismissal, failures and privacy in English and Polish |
 | `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
+| `milestone-era-handoff-check` | Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
