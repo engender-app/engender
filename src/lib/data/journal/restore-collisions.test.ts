@@ -98,7 +98,43 @@ for (const mode of ['merge', 'replace'] as const) {
       assert.deepEqual(await made.disk.read(name), made.ciphertext.get(name));
       assert.deepEqual(await made.files.read(name), data);
     }
+    // A rejected transaction leaves unpublished files for ownership-based cleanup.
+    await sweepOrphanPhotos(made.db, made.files);
     assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
+  });
+
+  test(`${mode} retains newly committed photos when the transaction acknowledgement rejects`, async () => {
+    const made = await device();
+    const uncertain = openJournal({
+      ...made.db,
+      async transaction(work) {
+        await made.db.transaction(work);
+        throw new Error('transaction acknowledgement lost');
+      }
+    }, made.files);
+    const contents = made.contents();
+    contents.journal = {
+      ...contents.journal,
+      entries: contents.journal.entries.map((entry) => ({
+        ...entry, uuid: 'imported-entry', epochDay: 20_001,
+        photos: entry.photos.map((photo) => ({ ...photo, id: 'imported-photo' }))
+      }))
+    };
+
+    await assert.rejects(uncertain.archive[mode](contents), /transaction acknowledgement lost/);
+
+    const reopened = openJournal(made.db, made.files);
+    const saved = await reopened.entries.entriesForDay(20_001);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].photos[0].id, 'imported-photo');
+    await sweepOrphanPhotos(made.db, made.files);
+    const snapshot = await reopened.archive.snapshot();
+    assert.equal(snapshot.files.length, mode === 'merge' ? 4 : 2);
+    for (const { name } of snapshot.files) {
+      const text = new TextDecoder().decode(await snapshot.readFile(name));
+      assert.ok(text === 'original photo' || text === 'original thumbnail');
+    }
+    assert.deepEqual(made.disk.names(), snapshot.files.map(({ name }) => name).sort());
   });
 
   test(`${mode} re-imports the same encrypted archive with readable photos and thumbnails`, async () => {
