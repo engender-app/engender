@@ -2483,12 +2483,12 @@ try {
     await scaleRows.evaluateAll((els) => els.map((el) => el.dataset.listRow.replace(/^scale-/, '')))
   );
   const expectedScales = [
-    ['Dysphoria \u2194 euphoria', 'dysphoria and euphoria'],
+    ['dysphoria - euphoria', 'dysphoria and euphoria'],
     ['Femininity', 'not at all to very'],
     ['Masculinity', 'not at all to very'],
-    ['Binary \u2194 nonbinary', 'binary and nonbinary'],
-    ['Agender \u2194 gendered', 'strong sense of gender'],
-    ['Steady \u2194 shifting', 'steady sense of gender']
+    ['binary - nonbinary', 'binary and nonbinary'],
+    ['agender - genderful', 'agender and genderful'],
+    ['Steady - shifting', 'steady sense of gender']
   ];
   const builtInKeys = [
     'euphoria_dysphoria',
@@ -3381,12 +3381,12 @@ try {
      be gripping structure (ADR-0029, walkthrough-locators.test.ts). */
   const rowTexts = await rows.allTextContents();
   const expected = [
-    ['euphoria_dysphoria', 'Dysphoria \u2194 euphoria'],
+    ['euphoria_dysphoria', 'dysphoria - euphoria'],
     ['femininity', 'Femininity'],
     ['masculinity', 'Masculinity'],
-    ['binary_nonbinary', 'Binary \u2194 nonbinary'],
-    ['agender_gendered', 'Agender \u2194 gendered'],
-    ['gender_stability', 'Steady \u2194 shifting']
+    ['binary_nonbinary', 'binary - nonbinary'],
+    ['agender_gendered', 'agender - genderful'],
+    ['gender_stability', 'Steady - shifting']
   ];
   expected.forEach(([, label], i) => {
     if (!rowTexts[i]?.trim().startsWith(label)) {
