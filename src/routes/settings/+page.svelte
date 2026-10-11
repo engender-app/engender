@@ -221,48 +221,6 @@
        a reading - a value, a count, a state - and anything that is more
        than one control opens as a sheet from a row of its own, so the hub
        is a list of names and what each is set to. -->
-  <!-- First since phase 14 ticket 15 (V04): it sat fifth, 2251px down at
-       390, behind every flag and tracking option, and these are the rows
-       somebody comes to Settings in a hurry for. The lock says "Lock" in
-       its title, and erasing the journal comes last, the way the delete
-       row closes a list. -->
-  <SectionHeading text={m.settings_privacy()} />
-  <ListCard>
-    <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
-    <ListRow
-      key="disguise"
-      icon="eyeOff"
-      title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
-      chevron={false}
-      onclick={() => (disguiseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow
-      key="export"
-      icon="download"
-      title={m.export_import()}
-      subtitle={backupLine}
-      href="/settings/export"
-    />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
-    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
-         no-network claim made concrete, and setup's step promises this row
-         is here. -->
-    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
-    <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
-    <ListRow
-      key="erase"
-      icon="alert"
-      title={m.erase_row()}
-      chevron={false}
-      onclick={() => (eraseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-  </ListCard>
-
   <SectionHeading text={m.settings_appearance()} />
   <!-- On the page rather than in a card, and with no dropdown in front of
        it: a flag is a block of its own (rule 13), the grid is the one setup
@@ -487,6 +445,43 @@
     <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} href="/settings/body-regions" />
     <ListRow key="words" icon="note" title={m.words_ignored_title()} href="/settings/words" />
     <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
+  </ListCard>
+
+  <SectionHeading text={m.settings_privacy()} />
+  <ListCard>
+    <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
+    <ListRow
+      key="disguise"
+      icon="eyeOff"
+      title={m.disguise_row()}
+      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
+      chevron={false}
+      onclick={() => (disguiseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+    <ListRow
+      key="export"
+      icon="download"
+      title={m.export_import()}
+      subtitle={backupLine}
+      href="/settings/export"
+    />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
+    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
+         no-network claim made concrete, and setup's step promises this row
+         is here. -->
+    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
+    <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
+    <ListRow
+      key="erase"
+      icon="alert"
+      title={m.erase_row()}
+      chevron={false}
+      onclick={() => (eraseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
   </ListCard>
 
   <!-- No heading: the rows about the app rather than a setting of it. Ko-fi

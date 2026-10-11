@@ -75,14 +75,18 @@ describe('what Settings is built from', () => {
     }
   });
 
-  /* Phase 14 ticket 15 (V04). Privacy and data sat fifth, at 2251px on a
-     390px phone, behind sixteen flags and every tracking option. It leads
-     now, so the lock, disguise, backup, trash and the way to erase the
-     journal are on the first screen. */
-  it('opens on Privacy & data, ahead of Appearance', () => {
-    const headings = [...withoutScript.matchAll(/<SectionHeading text=\{m\.(\w+)\(\)\} \/>/g)].map((mm) => mm[1]);
-    expect(headings[0]).toBe('settings_privacy');
-    expect(headings).toContain('settings_appearance');
+  it('places Privacy & data after Your lists and before About', () => {
+    const headings = [...outsideSheets.matchAll(/<SectionHeading text=\{m\.(\w+)\(\)\} \/>/g)].map((mm) => mm[1]);
+    expect(headings).toEqual([
+      'settings_appearance',
+      'settings_tracking',
+      'settings_reminders',
+      'settings_lists',
+      'settings_privacy',
+    ]);
+    expect(outsideSheets.indexOf('key="about"')).toBeGreaterThan(
+      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
+    );
   });
 
   it('names the lock in its row and gives disguise an icon of its own', () => {
@@ -96,13 +100,12 @@ describe('what Settings is built from', () => {
 
   it('ends the privacy rows with erasing everything, behind a confirmation', () => {
     const privacy = outsideSheets.slice(
-      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />'),
-      outsideSheets.indexOf('<SectionHeading text={m.settings_appearance()} />')
-    );
-    const order = ['key="security"', 'key="disguise"', 'key="export"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
+      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
+    ).match(/<ListCard>[\s\S]*?<\/ListCard>/)?.[0] ?? '';
+    const order = ['key="security"', 'key="disguise"', 'key="export"', 'key="journal-book"', 'key="permissions"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[4]);
+    expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[6]);
     /* The same deliberate step the unlock gates take before resetApp: a
        sheet stating the loss, then one danger button with the gates' own
        words on it. */
