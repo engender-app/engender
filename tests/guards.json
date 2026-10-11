@@ -133,6 +133,14 @@
     ]
   },
   {
+    "name": "hair-progress-photo-actions",
+    "tier": "dev",
+    "holds": "Hair progress opens its own photos in shared collage/timelapse export and preserves comparison and scroll after completion or cancellation",
+    "diagnostics": [
+      ".claude/hair-progress-photo-actions-shots/*"
+    ]
+  },
+  {
     "name": "hair-removal-entry-check",
     "tier": "dev",
     "holds": "session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom"
