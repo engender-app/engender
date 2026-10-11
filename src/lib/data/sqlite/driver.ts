@@ -30,6 +30,9 @@ export interface SqliteDriver extends MigrationDb, SqliteReader {
   run(sql: string, params?: unknown[]): Promise<{ changes: number; lastInsertRowid: number }>;
   /** Disconnects from the database and releases its resources. */
   close(): Promise<void>;
+  /** Emergency synchronous disposal, where the platform can terminate its
+      connection. Rejects pending calls without waiting for callbacks or IO. */
+  dispose?(): void;
 }
 
 export interface WebSqlite {
