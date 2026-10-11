@@ -1014,6 +1014,16 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    ring passing behind a title that is on its way out reads as the drawing
    being interrupted (Alicja, 2026-09-09, on Transition to Today). */
 ::view-transition-group(*.sun-ring) { z-index: 5; }
+/* Today and Settings share the same sun. One incoming image fills the
+   shared box; the outgoing image cannot form a second set of seams. */
+::view-transition-group(*.sun-shared-ring) {
+  z-index: 5;
+  animation-duration: var(--blind-dur, var(--dur-slow));
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-old(*.sun-shared-ring) { opacity: 0; animation: none; }
+::view-transition-new(*.sun-shared-ring) { opacity: 1; animation: none; }
+
 /* The field, named only so the blind - nested under it via
    view-transition-group: nearest (fieldBlind.ts) - inherits an ancestor
    to be clipped by. A promoted element's capture ignores ancestor
