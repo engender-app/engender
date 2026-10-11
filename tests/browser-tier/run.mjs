@@ -120,6 +120,15 @@ await block('rendered screen contracts', 171, async () => {
   }
 });
 
+await block('Safe space optional Good moments', 10, async () => {
+  const result = await load('/screen-mount.html?safe-space=1', 'screen-mount');
+  if (!Array.isArray(result.safeSpace)) throw new Error(result.error ?? 'missing Safe space results');
+  for (const item of result.safeSpace) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'rendered Safe space contract failed');
+  }
+});
+
 await block('rendered screen contracts at 230px', 2, async () => {
   const previous = page.viewportSize();
   try {
