@@ -855,6 +855,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   roadmap: classify<Journal['roadmap']>()({
     writes: {
+      setGoalHidden: ['roadmapCheck'],
       setGoalStatus: ['roadmapCheck'],
       setTrackDismissed: ['roadmapCheck'],
       addCustomGoal: ['roadmapGoal'],
@@ -863,6 +864,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteCustomGoal: ['roadmapGoal', 'document']
     },
     reads: {
+      getHiddenGoals: ['roadmapCheck'],
       getGoalStatuses: ['roadmapCheck'],
       getDismissedTracks: ['roadmapCheck'],
       getCustomGoals: ['roadmapGoal']

@@ -674,8 +674,8 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
   const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
   await insertRows(
     driver,
-    'INSERT INTO roadmap_check (pack_key, goal_key, status, updated_at)',
-    inserting.map((check) => [check.packKey, check.goalKey, check.status, ts])
+    'INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at)',
+    inserting.map((check) => [check.packKey, check.goalKey, check.status, check.hidden ? 1 : 0, ts])
   );
 }
 
