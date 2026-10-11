@@ -1,6 +1,7 @@
+import { DEVICE_BOUND_FILE, initializeJournal } from './journal-initialization';
+
 const DEVICE_BOUND_VERSION = 1;
 const DATA_KEY_LENGTH = 32;
-const DEVICE_BOUND_FILE = 'device-key.json';
 const DEVICE_BOUND_DB = 'engender-device-key';
 const DEVICE_BOUND_STORE = 'keys';
 const DEVICE_BOUND_SLOT = 'journal-device-key';
@@ -115,10 +116,12 @@ async function generateWrappingKey(): Promise<CryptoKey> {
 }
 
 export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>> {
-  const slot = browserDeviceKeySlot();
-  const { dataKey, metadata } = await createDeviceBoundMetadata(slot);
-  await writeDeviceBoundMetadata(metadata);
-  return dataKey;
+  return initializeJournal(async () => {
+    const slot = browserDeviceKeySlot();
+    const { dataKey, metadata } = await createDeviceBoundMetadata(slot);
+    await writeDeviceBoundMetadata(metadata);
+    return dataKey;
+  });
 }
 
 /** Moves an already-open journal to device-bound mode from Settings: the

@@ -94,25 +94,30 @@ function keyAndVerify(target: Database, key: string): void {
   target.exec('PRAGMA foreign_keys = ON');
 }
 
-/** Brings up the wasm module, the pool and the encryption shim, without
-    opening anything. The pool can be prewarmed before a key arrives, and
-    `sqlite3mc_vfs_create` may only wrap the pool once. */
-async function attach(seedPath: string, wasmBinary?: ArrayBuffer): Promise<Sqlite3Static> {
-  if (sqlite3 && poolUtil) return sqlite3;
+/** Compilation is safe to share in time with setup in another tab. OPFS
+    ownership starts only when an actual open or recovery needs the pool. */
+async function warmModule(wasmBinary?: ArrayBuffer): Promise<Sqlite3Static> {
+  if (sqlite3) return sqlite3;
   const options: Parameters<typeof sqlite3InitModule>[0] & { wasmBinary?: ArrayBuffer } = {};
   if (__DEMO__ && wasmBinary) options.wasmBinary = wasmBinary;
   sqlite3 = await (__DEMO__ && wasmBinary ? sqlite3InitModule(options) : sqlite3InitModule());
+  return sqlite3;
+}
+
+async function attach(seedPath: string): Promise<Sqlite3Static> {
+  if (sqlite3 && poolUtil) return sqlite3;
+  const api = await warmModule();
   /* Slots, not files: the pool holds main database + rollback journal +
      the pre-migration copy + its journal, and does not grow on demand.
      Eight leaves headroom over that worst case. */
-  poolUtil = await sqlite3.installOpfsSAHPoolVfs({
+  poolUtil = await api.installOpfsSAHPoolVfs({
     initialCapacity: 8,
     directory: poolDirectory(seedPath)
   });
-  const namePtr = sqlite3.wasm.allocCString('opfs-sahpool', false);
-  const rc = sqlite3.wasm.exports.sqlite3mc_vfs_create(namePtr, 0) as number;
+  const namePtr = api.wasm.allocCString('opfs-sahpool', false);
+  const rc = api.wasm.exports.sqlite3mc_vfs_create(namePtr, 0) as number;
   if (rc !== 0) throw new Error(`sqlite3mc_vfs_create failed: rc=${rc}`);
-  return sqlite3;
+  return api;
 }
 
 // SAHPool stores every name with a leading slash; matching it keeps
@@ -130,11 +135,9 @@ const demoSeedModules = __DEMO__ ? Promise.all([
 void demoSeedModules?.catch(() => {});
 
 const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
-  /* The module, the pool and the shim, ahead of the key (ux-carpet ticket
-     209): no database is opened and no key is taken. `open` below calls
-     the same attach and finds it done. */
+  // Idle setup and unlock tabs must not reserve another tab's pool.
   async attach(args: { path: string; wasmBinary?: ArrayBuffer }) {
-    await attach(args.path, args.wasmBinary);
+    await warmModule(args.wasmBinary);
   },
 
   /* The files and the key without the live database (ux-carpet 219): what
