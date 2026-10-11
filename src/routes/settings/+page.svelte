@@ -761,6 +761,11 @@
 </div>
 
 <style>
+  /* Keep the full breathing sun clear of Settings' bottom edge. */
+  :global(.screen > .settings-sun-header:has(.sun) > .screen-field) {
+    min-height: calc(175px * var(--sun-scale, 1) * var(--sun-breathe-scale));
+  }
+
   /* The one row on the hub that destroys something says so in its type,
      the way .btn-danger does. The disc keeps its role fill and the ink
      proven on it. */
