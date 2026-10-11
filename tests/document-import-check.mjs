@@ -47,15 +47,18 @@ async function stored() {
     return bootState.journal.documents.getDocuments();
   });
 }
-async function installFault() {
-  await page.evaluate(async () => {
+async function installFault(mode = 'fail') {
+  await page.evaluate(async (mode) => {
     const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
     const original = bootState.journal.documents.addDocument.bind(bootState.journal.documents);
-    window.documentFault = { mode: 'fail', calls: 0 };
+    window.documentFault = { mode, calls: 0 };
     bootState.journal.documents.addDocument = async (draft, content) => {
       window.documentFault.calls++;
       if (window.documentFault.mode === 'fail') throw new Error('injected document save failure');
-      if (window.documentFault.mode === 'pending') await new Promise((resolve) => { window.documentFault.resolve = resolve; });
+      if (window.documentFault.mode.startsWith('pending')) await new Promise((resolve, reject) => {
+        window.documentFault.resolve = resolve;
+        window.documentFault.reject = () => reject(new Error('injected document save failure'));
+      });
       const id = await original(draft, content);
       window.documentFault.id = id;
       return id;
@@ -63,7 +66,7 @@ async function installFault() {
     const { attachJournal, journalIsOpen } = await import('/src/lib/data/live/journal.svelte.ts');
     attachJournal(bootState.journal);
     journalIsOpen();
-  });
+  }, mode);
 }
 async function capture(name) {
   if (!gallery) return;
@@ -80,10 +83,42 @@ try {
   const baseline = await stored();
   const cancelled = page.waitForEvent('filechooser');
   await page.locator('[data-add]').click();
+  assert.equal(await page.locator('[data-add]').isDisabled(), true);
+  assert.equal(await page.locator('[data-document-import-progress]').innerText(), 'Importing…');
+  assert.equal(await page.locator('[data-document-import-status]').innerText(), 'Importing…');
   await (await cancelled).element().dispatchEvent('cancel');
+  await page.waitForFunction(() => document.querySelector('[data-document-import-status]').textContent === '');
+  assert.equal(await page.locator('[data-add]').isDisabled(), false);
   assert.equal(await page.locator('#document-title').count(), 0);
   assert.deepEqual(await stored(), baseline);
-  console.log('PASS picker cancellation opens no editor and creates no document');
+  console.log('PASS picker immediately reports progress; cancellation clears it without creating a document');
+
+  await page.evaluate(() => {
+    const original = File.prototype.arrayBuffer;
+    File.prototype.arrayBuffer = async function () {
+      File.prototype.arrayBuffer = original;
+      await new Promise((resolve) => { window.releaseDocumentRead = resolve; });
+      const bytes = await original.call(this);
+      window.documentReadFinished = true;
+      return bytes;
+    };
+  });
+  const latePick = page.waitForEvent('filechooser');
+  await page.locator('[data-add]').click();
+  await (await latePick).setFiles({ name: 'late.pdf', mimeType: 'application/pdf', buffer: bytes });
+  await page.waitForFunction(() => window.releaseDocumentRead);
+  await navigate('/more');
+  await page.waitForURL('**/more');
+  await navigate('/media/documents');
+  await page.waitForURL('**/media/documents');
+  await page.evaluate(() => window.releaseDocumentRead());
+  await page.waitForFunction(() => window.documentReadFinished);
+  await page.waitForTimeout(500);
+  assert.equal(await page.locator('#document-title').count(), 0);
+  assert.equal(await page.locator('[data-document-import-status]').innerText(), '');
+  assert.equal(await page.locator('[data-add]').isDisabled(), false);
+  assert.deepEqual(await stored(), baseline);
+  console.log('PASS a delayed picker cannot reopen its editor after leaving and returning');
   await pick();
   const originalDay = await dateValue(page.locator('#document-day'));
   await page.keyboard.press('Escape');
@@ -141,11 +176,17 @@ try {
   await navigate('/media/documents');
   await page.waitForURL('**/media/documents');
   await pick();
-  await installFault();
+  await installFault('pending-fail');
   await page.locator('#document-title').fill('Retained document');
   await fillDate(page, '#document-day', '2024-03-11');
   await page.locator('[data-save-document]').click();
+  await page.waitForFunction(() => window.documentFault.reject);
+  assert.equal(await page.locator('[data-save-document]').innerText(), 'Saving…');
+  await page.evaluate(() => window.documentFault.reject());
   await page.getByRole('alert').filter({ hasText: 'Could not save' }).waitFor();
+  assert.equal(await page.locator('[data-save-document]').isDisabled(), false);
+  assert.equal(await page.locator('[data-save-document]').innerText(), 'Save');
+  assert.equal(await page.locator('[data-sheet] [data-save-status]').innerText(), '');
   assert.equal(await page.locator('#document-title').inputValue(), 'Retained document');
   assert.equal(await dateValue(page.locator('#document-day')), '2024-03-11');
   assert.deepEqual(await stored(), baseline);
@@ -218,6 +259,12 @@ try {
   assert.equal(await page.locator('#document-title').isDisabled(), true);
   assert.equal(await page.locator('#document-day').isDisabled(), true);
   assert.equal(await page.locator('fieldset').getAttribute('aria-busy'), 'true');
+  const savingWord = gallery ? 'Zapisywanie…' : 'Saving…';
+  assert.equal(await page.locator('[data-save-document]').innerText(), savingWord);
+  const savingStatus = page.locator('[data-sheet] [data-save-status]');
+  assert.equal(await savingStatus.innerText(), savingWord);
+  assert.equal(await savingStatus.getAttribute('role'), 'status');
+  assert.equal(await savingStatus.evaluate((el) => el.closest('[inert], [aria-busy="true"]') === null), true);
   await page.keyboard.press('Escape');
   await page.locator('[data-sheet-scrim]').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => history.back());
@@ -226,9 +273,20 @@ try {
   assert.equal(await page.locator('#document-title').inputValue(), 'Retained document');
   assert.equal(new URL(page.url()).pathname, '/media/documents');
   await capture('saving');
+  if (gallery) {
+    for (const palette of PALETTES) for (const theme of ['light', 'dark']) {
+      await page.evaluate(async ({ palette, theme }) => {
+        const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+        prefs.palette = palette; prefs.theme = theme;
+      }, { palette, theme });
+      await capture(`pl-${palette}-${theme}-saving`);
+    }
+  }
   await page.evaluate(() => window.documentFault.resolve());
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
   await page.getByRole('link', { name: /Retained document/ }).waitFor();
+  assert.equal(await page.locator('[data-sheet] [data-save-status]').count(), 0);
+  assert.equal(await page.locator('[data-document-import-status]').innerText(), '');
   assert.equal(await page.evaluate(() => window.documentFault.calls), 2);
   assert.equal((await stored()).length, baseline.length + 1);
   await page.getByRole('link', { name: /Retained document/ }).click();
@@ -241,6 +299,19 @@ try {
 
   await navigate('/media/documents');
   await page.waitForURL('**/media/documents');
+  await pick();
+  await page.locator('#document-title').fill('Fast document');
+  await page.evaluate(() => { window.documentFault.mode = 'fast'; });
+  await page.locator('[data-save-document]').click();
+  await page.getByRole('link', { name: /Fast document/ }).waitFor();
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator('[data-sheet] [data-save-status]').count(), 0);
+  assert.equal(await page.locator('[data-document-import-progress]').count(), 0);
+  assert.equal(await page.locator('[data-document-import-status]').innerText(), '');
+  assert.equal(await page.locator('[data-add]').isDisabled(), false);
+  assert.equal((await stored()).length, baseline.length + 2);
+  console.log('PASS fast save leaves no obsolete progress or duplicate document');
+
   await pick();
   await page.locator('#document-title').fill('Private lock document');
   await page.keyboard.press('Escape');
@@ -260,7 +331,7 @@ try {
     bootState.accessMode = window.previousAccessMode;
     markUnlocked();
   });
-  assert.equal((await stored()).length, baseline.length + 1);
+  assert.equal((await stored()).length, baseline.length + 2);
   console.log('PASS lock conceals import and confirmation immediately');
 
   await page.evaluate(async () => {
