@@ -314,6 +314,7 @@ available for the surface or device it measures.
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
+| `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
 | `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
