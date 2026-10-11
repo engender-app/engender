@@ -141,6 +141,9 @@ export interface CarryOptions {
       crossfade with it, and two identical images crossfading is a sun
       standing still while the field closes around it. */
   holdSun?: boolean;
+
+  /** Today and Settings keep one sun above the moving curtain. */
+  shareSun?: boolean;
 }
 
 export interface BlindCarry {
@@ -437,9 +440,15 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
          below the blue until the transition let go and cut it in one frame
          (ticket 285). The cut travels in the ring's own clip, which is in its
          capture and rides with it. */
-      const cut = Math.round((el.getBoundingClientRect?.().bottom ?? 0) - box.bottom);
-      if (cut > 0) el.style.clipPath = `inset(50% 50% ${cut}px 0)`;
-      take(el, `sun-${side}-${i}`, true);
+      if (options.shareSun) {
+        take(el, `sun-shared-${i}`);
+        el.style.setProperty('view-transition-group', 'normal');
+        el.style.setProperty('view-transition-class', 'sun-shared-ring');
+      } else {
+        const cut = Math.round((el.getBoundingClientRect?.().bottom ?? 0) - box.bottom);
+        if (cut > 0) el.style.clipPath = `inset(50% 50% ${cut}px 0)`;
+        take(el, `sun-${side}-${i}`, true);
+      }
     });
   }
 
@@ -450,6 +459,7 @@ function release(side: Side) {
   for (const el of side.named) {
     el.style.viewTransitionName = '';
     el.style.removeProperty('view-transition-group');
+    el.style.removeProperty('view-transition-class');
     if (el.style.clipPath) el.style.clipPath = '';
   }
 }
