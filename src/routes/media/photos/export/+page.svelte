@@ -223,7 +223,10 @@
       // Before the preview replaces the picker, so the bar is not cut off
       // mid-thought by the thing it was counting down to (ADR-0070).
       await progress.finish();
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        if (fromHair) await smartBackSettled(returnTo);
+        return;
+      }
       made = { blob, from };
     } catch (error) {
       progress.abandon();
