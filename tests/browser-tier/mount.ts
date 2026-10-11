@@ -29,9 +29,9 @@ export function mountInto<Props extends Record<string, unknown>>(
   component: Component<Props>,
   props: Props,
   target: Element
-): { remove: () => Promise<void> } {
+): { remove: (outro?: boolean) => Promise<void> } {
   const instance = mount(component, { target, props });
-  return { remove: () => unmount(instance, { outro: false }) };
+  return { remove: (outro = false) => unmount(instance, { outro }) };
 }
 
 /** Runs `work` and publishes its answer under `name`, which `run.mjs`'s
