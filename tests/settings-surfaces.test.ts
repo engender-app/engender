@@ -116,13 +116,23 @@ describe('what Settings is built from', () => {
     expect(settings).toContain("resetApp('erased')");
   });
 
-  it('draws no Ko-fi row until the link is live (V05)', () => {
-    expect(settings).not.toContain('kofi_coming_soon');
-    /* The release value: empty, so the guard below draws nothing. The
-       production-build check (settings-erase-check.mjs) counts the row on
-       the rendered screen. */
-    expect(settings).toMatch(/const KOFI_URL = '';/);
-    expect(withoutScript).toMatch(/\{#if KOFI_URL\}\s*<ListRow[\s\S]*?key="kofi"/);
+  it('links to Buy Me a Coffee immediately above About', () => {
+    const support = /<ListRow\s+key="support"[\s\S]*?<\/ListRow>/.exec(outsideSheets)?.[0] ?? '';
+    expect(support).toContain('href="https://buymeacoffee.com/engender"');
+    expect(support).toContain('title={m.support_row()}');
+    expect(support).toContain('target="_blank"');
+    expect(support).toContain('rel="noreferrer"');
+    expect(support).toContain('chevron={false}');
+    expect(support).toContain('name="external"');
+    expect(outsideSheets).toMatch(/<\/ListRow>\s*<ListRow key="about"/);
+    expect(outsideSheets.indexOf('key="support"')).toBeLessThan(outsideSheets.indexOf('key="about"'));
+    expect(settings).not.toMatch(/kofi|coming_soon/i);
+    for (const locale of ['en', 'pl']) {
+      const messages = JSON.parse(read(`messages/${locale}.json`));
+      expect(messages.support_row).toContain('Buy Me a Coffee');
+      expect(messages).not.toHaveProperty('kofi_row');
+      expect(messages).not.toHaveProperty('kofi_row_sub');
+    }
   });
 
   it('draws the flag picker inline, not behind a dropdown or a sheet', () => {
@@ -155,6 +165,18 @@ describe('what Settings is built from', () => {
        holds all of them to the same rule. Cycle tracking is the switch row
        this screen has left. */
     expect(withoutScript).toMatch(/<div class="kit-row" data-cycle-tracking-toggle>/);
+  });
+
+  it('opens feature visibility in one named manager without duplicating switches', () => {
+    expect(outsideSheets.match(/key="features"/g)).toHaveLength(1);
+    const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    expect(manager).toContain('title={m.features_to_show()}');
+    expect(manager).toContain('m.features_to_show_sub()');
+    expect(manager).toContain('data-features-close');
+    for (const handle of ['data-measurements-toggle', 'data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
+      expect(outsideSheets).not.toContain(handle);
+      expect(manager.match(new RegExp(handle, 'g'))).toHaveLength(1);
+    }
   });
 
   it('keeps no switch for a prompt the notifications screen now carries', () => {
