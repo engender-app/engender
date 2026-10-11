@@ -62,18 +62,15 @@ async function run() {
   }
   const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
     suspend: () => journalIsClosing(),
-    async open(key) {
+    async open(key, current, own) {
       const sqlite = createEncryptedWebSqlite(DATABASE, key);
-      try {
-        const reopened = attachJournal(openJournal(journalDriver, opfsPhotoFiles()));
-        session.connection.open(sqlite.driver);
-        await hydrateReference(reopened);
-        journalIsOpen();
-        return sqlite.driver;
-      } catch (error) {
-        await sqlite.driver.close().catch(() => {});
-        throw error;
-      }
+      own(sqlite.driver);
+      await hydrateReference(openJournal(sqlite.driver, opfsPhotoFiles()), current);
+      current();
+      attachJournal(openJournal(journalDriver, opfsPhotoFiles()));
+      session.connection.open(sqlite.driver);
+      journalIsOpen();
+      return sqlite.driver;
     },
     release: () => forgetReference(),
     prewarm: () => {
