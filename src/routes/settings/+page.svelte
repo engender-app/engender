@@ -87,6 +87,7 @@
   });
 
   let scalesSheet = $state(false);
+  let featuresSheet = $state(false);
 
   /* Written straight through rather than held and applied on close: the
      sheet has no confirm and never has, so a tick is the change. Assigned
@@ -326,55 +327,10 @@
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.settings_row_off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
+      <ListRow key="features" icon="eye" title={m.features_to_show()} chevron={false} onclick={() => (featuresSheet = true)}>
+        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+      </ListRow>
     </ListCard>
-    <h3 class="field-label" id="settings-features-title">{m.features_to_show()}</h3>
-    <p class="muted small">{m.features_to_show_sub()}</p>
-    <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
-      <ListCard>
-        <div class="kit-row" data-measurements-toggle>
-          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={measurementsOn}
-              disabled={measurementStates.value === undefined}
-              label={m.measurements_and_sizes()}
-              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
-            />
-          </span>
-        </div>
-        <div class="kit-row" data-genital-effects-toggle>
-          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={genitalEffectsOn}
-              label={m.feature_genital_effects()}
-              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
-            />
-          </span>
-        </div>
-        <div class="kit-row" data-cycle-tracking-toggle>
-          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
-            {#if prefs.cycleTrackingChoice === null}
-              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
-            {/if}
-          </span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={cycleShown}
-              disabled={prefs.cycleTrackingChoice === null && cycleEpisodes.value === undefined}
-              label={m.cycle_tracking_toggle_title()}
-              onChange={(v) => {
-                prefs.cycleTrackingChoice = v;
-              }}
-            />
-          </span>
-        </div>
-      </ListCard>
-    </div>
     {#if measurementsOn}
       <ListCard>
         <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
@@ -499,6 +455,58 @@
          way to a custom scale, because Settings is a place somebody can be
          sent away from and come back to. -->
     <ScaleChecklist ticked={prefs.activeScales} onToggle={toggleScale} addHref="/settings/dimension" />
+  </Sheet>
+
+  <Sheet bind:open={featuresSheet} title={m.features_to_show()}>
+    <h3 id="settings-features-title">{m.features_to_show()}</h3>
+    <p class="muted small">{m.features_to_show_sub()}</p>
+    <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
+      <ListCard>
+        <div class="kit-row" data-measurements-toggle>
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={measurementsOn}
+              disabled={measurementStates.value === undefined}
+              label={m.measurements_and_sizes()}
+              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-genital-effects-toggle>
+          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={genitalEffectsOn}
+              label={m.feature_genital_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            {#if prefs.cycleTrackingChoice === null}
+              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
+            {/if}
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={cycleShown}
+              disabled={prefs.cycleTrackingChoice === null && cycleEpisodes.value === undefined}
+              label={m.cycle_tracking_toggle_title()}
+              onChange={(v) => {
+                prefs.cycleTrackingChoice = v;
+              }}
+            />
+          </span>
+        </div>
+      </ListCard>
+    </div>
+    <button class="btn btn-ghost" data-features-close onclick={() => (featuresSheet = false)}>{m.close()}</button>
   </Sheet>
 
   <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
@@ -748,6 +756,12 @@
 </div>
 
 <style>
+  @container app (max-width: 239px) {
+    [data-feature-visibility] .kit-row-ico {
+      display: none;
+    }
+  }
+
   /* Keep the full breathing sun clear of Settings' bottom edge. */
   :global(.screen > .settings-sun-header:has(.sun) > .screen-field) {
     min-height: calc(175px * var(--sun-scale, 1) * var(--sun-breathe-scale));

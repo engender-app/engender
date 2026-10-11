@@ -327,6 +327,7 @@ available for the surface or device it measures.
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
 | `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
+| `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
 | `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
