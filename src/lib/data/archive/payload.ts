@@ -363,6 +363,8 @@ export interface ArchiveRoadmapCheck {
   packKey: string;
   goalKey: string;
   status: string;
+  /** Absent in archives written before individual goal visibility. */
+  hidden?: boolean;
 }
 
 /** A roadmap track the person has said is not their path (phase 8 features

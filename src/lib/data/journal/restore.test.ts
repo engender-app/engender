@@ -1281,3 +1281,37 @@ test('an archive from before auto-logging reads its doses as the person\'s own, 
   assert.equal(dose.source, 'person');
   assert.equal((await target.journal.doses.getSchedules())[0].autoLogFromEpochDay, null);
 });
+
+
+test.each(['replace', 'merge'] as const)('hidden goal visibility and linked records survive archive %s', async (mode) => {
+  const source = await device();
+  const keys = ['pl-legal-id-card', 'pl-legal-appeal', 'pl-legal-passport'];
+  await source.journal.roadmap.setGoalStatus('pl', keys[0], 'checked');
+  await source.journal.roadmap.setGoalStatus('pl', keys[1], 'not-my-path');
+  for (const key of keys) await source.journal.roadmap.setGoalHidden('pl', key, true);
+  const milestone = await source.journal.milestones.upsertMilestone({ name: 'ID card', epochDay: 20500, roadmapGoalKey: keys[0] });
+  const document = await source.journal.documents.addDocument({ title: 'Receipt', epochDay: 20500 }, { full: bytes('receipt'), thumb: bytes('thumb') });
+  await source.journal.documents.setDocumentTarget(document, { kind: 'goal', id: keys[0] });
+  const target = await device();
+  await target.journal.archive[mode](await exported(source.journal));
+
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), [...keys].sort());
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { [keys[0]]: 'checked', [keys[1]]: 'not-my-path' });
+  assert.equal((await target.journal.documents.getDocument(document))?.targetId, keys[0]);
+  assert.equal((await target.journal.milestones.getMilestones()).find((one) => one.id === milestone)?.roadmapGoalKey, keys[0]);
+  for (const key of keys) await target.journal.roadmap.setGoalHidden('pl', key, false);
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), []);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { [keys[0]]: 'checked', [keys[1]]: 'not-my-path' });
+});
+
+test('merging hidden goals preserves local visibility and status while legacy checks restore visible', async () => {
+  const source = await device();
+  await source.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', true);
+  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
+  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-passport', 'checked');
+  const target = await device();
+  await target.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'checked');
+  await target.journal.archive.merge(await exported(source.journal));
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), []);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'checked', 'pl-legal-passport': 'checked' });
+});
