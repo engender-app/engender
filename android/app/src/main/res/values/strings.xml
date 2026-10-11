@@ -22,7 +22,7 @@
     </string-array>
 
     <string name="widget_tally_title">Log the moment</string>
-    <string name="widget_tally_description">Record one of two quick options.</string>
+    <string name="widget_tally_description">Record one of two options.</string>
     <string-array name="widget_tally_labels">
         <item>Misgendered</item>
         <item>Correctly gendered</item>

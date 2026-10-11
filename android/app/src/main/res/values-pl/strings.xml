@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name_disguised">Notatki</string>
     <string name="widget_quick_log_title">Jak się czujesz?</string>
-    <string name="widget_quick_log_description">Otwiera wpis z już zaznaczoną jedną z pięciu ocen.</string>
+    <string name="widget_quick_log_description">Otwiera wpis z zaznaczoną oceną.</string>
     <string-array name="widget_mood_names">
         <item>Okropnie</item>
         <item>Źle</item>
@@ -11,10 +11,10 @@
         <item>Świetnie</item>
     </string-array>
     <string name="widget_tally_title">Zapisz chwilę</string>
-    <string name="widget_tally_description">Zapisuje jedną z dwóch szybkich opcji.</string>
+    <string name="widget_tally_description">Zapisuje jedną z dwóch opcji.</string>
     <string-array name="widget_tally_labels">
         <item>Misgenderowanie</item>
-        <item>Dobre zaimki</item>
+        <item>Poprawne genderowanie</item>
     </string-array>
     <string name="widget_doubt_title">Zapisz wątpliwość</string>
     <string name="widget_doubt_description">Otwiera miejsce do pisania.</string>
