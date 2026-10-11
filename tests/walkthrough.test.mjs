@@ -7500,7 +7500,7 @@ try {
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
     if (shown) {
-      const chipNames = locale === 'pl' ? ['Miesiączka', 'Plamienie', 'Czysto'] : ['Period', 'Spotting', 'Clear'];
+      const chipNames = locale === 'pl' ? ['Okres', 'Plamienie', 'Czysto'] : ['Period', 'Spotting', 'Clear'];
       for (const name of chipNames) {
         if (await cyclePanel.getByRole('button', { name, pressed: false }).count() !== 1) {
           throw new Error(`${locale} entry cycle control ${name} lost its announced name or state`);
