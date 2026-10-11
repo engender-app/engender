@@ -249,7 +249,7 @@ for (const profile of profiles) {
             await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
             await page.evaluate(markProfileExpression(profile));
           }
-          await settle(scene.at, theme, scene.act === 'back' ? scene.after.route : null);
+          await settle(scene.at, theme, scene.act === 'back' && !scene.actionAt ? scene.after.route : null);
           if (scene.firstRun) {
             await firstRunTo(page, scene.firstRun);
             await page.evaluate(DEMO_THEME_EXPRESSION(theme));

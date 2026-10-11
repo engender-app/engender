@@ -83,6 +83,19 @@ it('persists measured, excluded and failed scenes without classifying candidates
     expect(saved.complete).toBe(false);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+it('records whether back restored the scroll position where its source link was pressed', () => {
+  const env = environment();
+  env.location.pathname = '/more';
+  env.document.querySelector = () => ({ scrollTop: 0 });
+  const scene = { after: { route: '/more', restoreScroll: true } };
+  const action = { dispatched: true, beforeRoute: '/transition/letters', preparation: { steps: [{ action: {
+    beforeRoute: '/more', beforeScroll: 640, chosen: { href: '/transition/letters' }
+  } }] } };
+  expect(verifySceneAction(scene, action, env)).toMatchObject({ scrollRestoration: { expected: 640, actual: 0, restored: false } });
+  env.document.querySelector = () => ({ scrollTop: 640 });
+  expect(verifySceneAction(scene, action, env)).toMatchObject({ scrollRestoration: { expected: 640, actual: 640, restored: true } });
+});
 it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
   const { preparePinGate } = await import('./yank-sweep-core.mjs');
   let theme = 'dark';
