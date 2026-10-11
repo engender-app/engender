@@ -211,7 +211,10 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 `screen-mount.html` renders Home, Calendar, Settings and related routes over
 seeded encrypted journals. The browser runner checks their DOM, computed
 styles, interactions and loading gates, then repeats the narrow layout checks
-at 230px. The three screen contract suites run here rather than in Node.
+at 230px. The screen contract suites run here rather than in Node. Safe space
+checks held reads, pool visibility, row motion and navigation departures.
+Run `node tests/safe-space-row-check.mjs` for its ten checks alone; the full
+browser tier runs the same suite.
 
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
 
