@@ -3,9 +3,11 @@ import { freshOrigin } from './fresh-origin';
 import { homeContracts } from './home-surfaces.test';
 import { calendarContracts } from './calendar-surfaces.test';
 import { directionContracts, directionNarrowContracts } from './direction-contract.test';
+import { safeSpaceContracts } from './safe-space-surfaces.test';
 
 publishFixture('screen-mount', async () => {
   await freshOrigin();
+  if (location.search.includes('safe-space')) return { safeSpace: await safeSpaceContracts() };
   if (location.search.includes('narrow')) return { narrow: await directionNarrowContracts() };
   const result: Record<string, unknown> = {};
   for (const [name, run] of Object.entries({
