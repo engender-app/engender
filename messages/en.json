@@ -348,7 +348,6 @@
   "care_mark_run_out": "Runs out",
   "care_mark_today": "Today",
   "care_next_dose": "Next dose {when}",
-  "care_rail_empty": "Your care line starts with a dose, lab result or stock count.",
   "care_rail_heading": "Doses, draws and stock",
   "care_regimen_dose": "{dose} {unit}",
   "care_regimen_dose_route": "{dose} {unit}, {route}",
