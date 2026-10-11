@@ -41,6 +41,14 @@ const LICENCE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i;
 
     @type {Record<string, { file: string, read: string }>} */
 export const LICENCE_TEXT_BY_HAND = {
+  '@fix-webm-duration/fix': {
+    file: 'scripts/licence-texts/fix-webm-duration.txt',
+    read: 'The 1.0.1 tarball omits LICENSE. Copied the repository licence from github.com/yusitnikov/fix-webm-duration/blob/v1.0.1/LICENSE.'
+  },
+  '@fix-webm-duration/parser': {
+    file: 'scripts/licence-texts/fix-webm-duration.txt',
+    read: 'Same 1.0.1 repository and licence as @fix-webm-duration/fix.'
+  },
   '@evolu/sqlite-wasm': {
     file: APACHE,
     read: 'package.json says Apache-2.0 and the tarball has no LICENSE; the Apache text itself is what the licence asks to pass on.'
