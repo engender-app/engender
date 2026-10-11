@@ -163,10 +163,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
       }
     }));
     return writing.then(async (value) => {
-      for (const cleanup of cleanups) {
-        try { await cleanup(); }
-        catch (error) { console.warn('Could not finish post-commit cleanup', error); }
-      }
+      for (const cleanup of cleanups) await finishCleanup(cleanup);
       return value;
     });
   }
@@ -200,8 +197,15 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   };
 }
 
+/** Cleanup cannot change a committed write's result. The boot orphan sweep
+    retries files left behind by a failed removal. */
+async function finishCleanup(cleanup: () => Promise<void>): Promise<void> {
+  try { await cleanup(); }
+  catch (error) { console.warn('Could not finish post-commit cleanup', error); }
+}
+
 /** A scoped caller must keep bytes until its outer transaction commits. */
 export async function afterCommit(driver: SqliteDriver, cleanup: () => Promise<void>): Promise<void> {
   if (driver.deferUntilCommit) driver.deferUntilCommit(cleanup);
-  else await cleanup();
+  else await finishCleanup(cleanup);
 }
