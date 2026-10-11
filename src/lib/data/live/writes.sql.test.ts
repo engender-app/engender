@@ -990,6 +990,7 @@ beforeAll(async () => {
   await drive('letters', 'deleteLetter', () => journal.letters.deleteLetter(secondLetterId));
 
   // --- roadmap --------------------------------------------------------
+  await drive('roadmap', 'setGoalHidden', () => journal.roadmap.setGoalHidden('pl', 'pl-legal-court-file', true));
   await drive('roadmap', 'setGoalStatus', () => journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked'));
   const customGoal = (await drive('roadmap', 'addCustomGoal', () =>
     journal.roadmap.addCustomGoal('social', 'Tell my sister')
@@ -1212,6 +1213,7 @@ beforeAll(async () => {
   await driveRead('letters', 'getLetter', () => journal.letters.getLetter(letterId));
   await driveRead('letters', 'hasAny', () => journal.letters.hasAny());
   await driveRead('letters', 'getUnlockDaysInRange', () => journal.letters.getUnlockDaysInRange(20000, 30000));
+  await driveRead('roadmap', 'getHiddenGoals', () => journal.roadmap.getHiddenGoals('pl'));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
   await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
