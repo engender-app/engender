@@ -34,9 +34,9 @@
    as permission to announce the tables (live/writes.ts).
 
    Nothing here deletes an existing file (ADR-0011). Unpublished replacements
-   are removed after failure or commit; interrupted cleanup leaves them for
-   the boot sweep. Other new files also wait for that sweep. Deleting existing
-   files up front would mean a failure part way leaves the
+   are removed when proven unowned; an uncertain transaction or interrupted
+   cleanup leaves them for the boot sweep. Other new files also wait for that
+   sweep. Deleting existing files up front would mean a failure part way leaves the
    user with neither their old photos nor the new ones, on a device that by
    design has no other copy.
 
@@ -288,6 +288,9 @@ async function restoreWithin(
   let added: Record<string, number> = {};
   try {
     await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
+    // Once rows can own these files, a rejection cannot prove rollback.
+    // Keep replacements until ownership is known or the boot sweep runs.
+    unpublished = new Set();
     await driver.transaction(async (driver) => {
       // Seeding first, unconditionally, and inside this transaction with
       // everything else (reconcile.ts explains the second entry point).
@@ -313,9 +316,6 @@ async function restoreWithin(
         unpublished = new Set([...staged].filter((name) => !owned.has(name)));
       }
     });
-  } catch (error) {
-    unpublished = staged;
-    throw error;
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
     await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));

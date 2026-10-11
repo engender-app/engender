@@ -50,6 +50,13 @@ during unlock, then verifies bounded worker disposal, a usable retry without
 reload, preserved journal content and harmless late replies. Visibility events
 are synthetic; the application, encrypted worker and OPFS are real.
 
+`restore-commit-check` (`tests/restore-commit-check.mjs`) runs with
+`npm run test:browser` and in its own CI browser job. It holds a successful
+COMMIT response or injects a worker error after COMMIT, then reopens the
+encrypted journal and checks rows and attachment bytes before and after the
+orphan sweep. It also checks confirmed rollback and graceful lock disposal.
+Faults are synthetic; SQLite, OPFS, encrypted files and session disposal are real.
+
 ## Walkthrough groups
 
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
