@@ -215,6 +215,14 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: Table
   return query(null, run, seed ?? null, callSite());
 }
 
+/** `liveQuery` for a read that should not run until `when` is true. It waits
+    the way every query waits for the journal to open, and runs once `when`
+    turns true; a write while `when` is false waits with it. The curve's
+    model is the first: it waits for the screen to stop arriving (ticket 09). */
+export function liveQueryWhen<T>(when: () => boolean, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
+  return query(null, run, null, callSite(), when);
+}
+
 /** `liveQuery` for a read that answers with a list: the same query, seen
     through `rows`/`loading`/`empty`/`failed` (readState.ts). What ReadGate
     takes, and what a screen holding rows of its own should ask for.
@@ -323,7 +331,8 @@ function query<T>(
   narrowedTo: TableName[] | null,
   run: (journal: Journal) => Promise<T>,
   seed: TableName[] | null,
-  site: string | null
+  site: string | null,
+  when: () => boolean = () => true
 ): LiveQuery<T> {
   /* A warm revisit paints the answer this query gave last time, if nothing
      it read has been written since (lastResults.ts, ux-carpet 201). Asked
@@ -383,6 +392,7 @@ function query<T>(
     for (const table of dependencies) void versionOf(table);
     const ready = open.journal;
     if (!ready) return; // still booting; this re-runs when the database opens
+    if (!when()) return;
 
     const mine = ++latest;
     inFlight = true;

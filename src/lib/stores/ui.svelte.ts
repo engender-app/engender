@@ -19,6 +19,11 @@ export const ui = $state({
   appOpening: false,
   /** The Android tab field is moving; nested month entrances ride it. */
   tabMoving: false,
+  /** A view transition between two screens is running (ticket 09). A read
+      too heavy to run under one waits for it to end: the hormone curve's
+      model is about 100 ms of arithmetic on the phone, and run while its
+      screen arrived it stalled the transition for as long. */
+  screenMoving: false,
   /* Whether the pointer that opened the fan is still down. The add control
      sets it and quick add clears it, because the press-and-slide gesture
      starts on one component and finishes on another: the button opens the
@@ -49,6 +54,9 @@ export const ui = $state({
       Settings, before raising it the same way. */
   raisedManager: null as 'modes' | 'templates' | null
 });
+
+/** Neither a view transition nor an Android tab arrival is moving. */
+export const screenStill = () => !ui.screenMoving && !ui.tabMoving;
 
 /* How many bars the frame is holding (carpet 26). */
 export const saveBar = $state({ count: 0 });
