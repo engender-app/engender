@@ -352,6 +352,19 @@ try {
     'Look back revisit kept facts disclosed');
   assert.deepEqual(await page.locator(`${activeRetained} [data-span-timeline]`).evaluate((rail) =>
     [rail.dataset.spanStart, rail.dataset.spanEnd]), rememberedSpan, 'Look back revisit forgot selected span');
+  // A key move still waiting for its 300 ms commit survives leaving the door.
+  await page.evaluate(() => {
+    const handle = document.querySelector('[data-retained-active] [data-span-handle="start"]');
+    handle.focus();
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    document.querySelector('[data-nav-item="home"]').click();
+  });
+  await settled();
+  await door('stats');
+  const keyedSpan = await page.locator(`${activeRetained} [data-span-timeline]`).evaluate((rail) =>
+    [rail.dataset.spanStart, rail.dataset.spanEnd]);
+  assert.notDeepEqual(keyedSpan, rememberedSpan, 'a key move made just before leaving Look back was lost');
+  results.push({ keyedSpanOnLeave: keyedSpan });
 
   await page.evaluate(async () => {
     const { browserSession } = await import('/src/lib/stores/boot.svelte.ts');
@@ -494,7 +507,7 @@ try {
   assert.equal(durableValue, saving.value, 'departed dimensions save was lost after reload');
   results.push({ departedDimensionsSave: saving, durableValue });
   assert.equal(errors.length, 0, errors.join('\n'));
-  console.log('PASS idle preload identity, cached revisits, rapid door/deep, Back, reduced motion, departed sheets, revisit resets, month-end revisit, recovery, configured passphrase gate/unlock, departed dimensions save durability');
+  console.log('PASS idle preload identity, cached revisits, rapid door/deep, Back, reduced motion, departed sheets, revisit resets, key move on leave, month-end revisit, recovery, configured passphrase gate/unlock, departed dimensions save durability');
 } finally {
   await writeFile(`${out}/lifecycle.json`, JSON.stringify({ results, errors }, null, 2));
   await browser.close();
