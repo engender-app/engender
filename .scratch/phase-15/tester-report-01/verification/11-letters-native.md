@@ -6,6 +6,11 @@ these captures. The original reproduction acceptance item is not satisfied.
 Current web and physical Android navigation support closing this ticket
 without a product patch, subject to evidence review.
 
+Paths beginning `.claude/` below refer to the archived ticket worktree at
+`.claude/phase-15-tester-report-01-delivery/archive/tester-parallel-11/` in
+the primary checkout. Native capture directories are under its
+`.claude/ticket-11-motion/` directory.
+
 Web evidence remains in `.claude/ticket-11-motion/REPORT.md`: 46 captures and
 1344 painted frames on `4796a6030195a37fdadb557f0e63570d7c46fde8`. The native
 APK contains `c7a16eb799d691477a483da7ed7dae383b8ec403`, release build ID
