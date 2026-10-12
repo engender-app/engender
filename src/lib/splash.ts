@@ -34,8 +34,10 @@ const REMOVE_AFTER_MS = 800;
    280 ms fade. With html[data-splash-warm] set (app.html stamps it from a
    storage key), the screen paints beneath the still mark at a nil opacity
    and the fade waits for frames to come back quick. Variant "a" waits for
-   that alone; "b" also waits for the screen's held reads to answer. The cap
-   covers a device that never settles and a hidden tab with no frames. */
+   that alone; "b" also waits for the screen's held reads to answer and for
+   the arrivals they start to finish, since a body fading in from 0 first
+   reaches the GPU when its fade starts. The cap covers a device that never
+   settles and a hidden tab with no frames. */
 const WARM_QUICK_FRAME_MS = 25;
 const WARM_QUICK_FRAMES = 3;
 const WARM_CAP_MS: Record<string, number> = { a: 1000, b: 2500 };
@@ -85,7 +87,7 @@ function whenWarm(doc: Document, view: Window, variant: string, go: () => void):
   let wasHeld = false;
   const frame = (now: number) => {
     if (done) return;
-    const held = variant === 'b' && doc.querySelector(HELD_READS) !== null;
+    const held = variant === 'b' && stillArriving(doc);
     quick = !held && !wasHeld && last !== undefined && now - last < WARM_QUICK_FRAME_MS ? quick + 1 : 0;
     wasHeld = held;
     last = now;
@@ -93,4 +95,14 @@ function whenWarm(doc: Document, view: Window, variant: string, go: () => void):
     else view.requestAnimationFrame(frame);
   };
   view.requestAnimationFrame(frame);
+}
+
+/** A held read, or a finite animation still running on the screen; loops
+    such as a skeleton's sweep never end, so they do not count. */
+function stillArriving(doc: Document): boolean {
+  if (doc.querySelector(HELD_READS)) return true;
+  const root = doc.querySelector('[data-app-root]');
+  return !!root
+    ?.getAnimations({ subtree: true })
+    .some((animation) => animation.playState === 'running' && animation.effect?.getComputedTiming().endTime !== Infinity);
 }
