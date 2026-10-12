@@ -60,6 +60,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { hubRowsMatching, hubSectionRoleIndex, hubSections } from '$lib/data/hubRows';
@@ -70,6 +71,7 @@
   import { hubGroupHeading, hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { collapse, disclose } from '$lib/motion/reveal';
 
+  const doorActive = useDoorActivity();
   const today = $derived(currentDay());
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
@@ -122,7 +124,7 @@
   let running = $derived(reading.forward.wear?.kind === 'running');
   let nowMs = $state(Date.now());
   $effect(() => {
-    if (!running) return;
+    if (!doorActive() || !running) return;
     nowMs = Date.now();
     const id = setInterval(() => (nowMs = Date.now()), 1000);
     return () => clearInterval(id);
@@ -145,6 +147,11 @@
 
   let query = $state('');
   let debouncedQuery = $state('');
+  $effect.pre(() => {
+    if (doorActive()) return;
+    query = '';
+    debouncedQuery = '';
+  });
   /** The box itself, so clearing it can put the cursor back in it. */
   let box = $state<HTMLInputElement | undefined>(undefined);
 
@@ -158,6 +165,7 @@
      drops the pending timer and lands at once, so clearing clears the
      results without the wait (the search screen's own rule). */
   $effect(() => {
+    if (!doorActive()) return;
     if (!typed) {
       debouncedQuery = '';
       return;
@@ -216,7 +224,7 @@
      navigation, and this module cannot see a SvelteKit navigation (reveal.ts
      says why), so the screen says so: leaving the door should not collapse
      the list on the way out. */
-  let leaving = $derived(navigating.to !== null);
+  let leaving = $derived(navigating.to !== null || !doorActive());
 </script>
 
 <div class="screen">

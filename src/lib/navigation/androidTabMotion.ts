@@ -1,4 +1,5 @@
 import type { OnNavigate } from '@sveltejs/kit';
+import { ACTIVE_DOOR_CONTENT } from './doorActivity';
 
 import { blindSettle } from '$lib/motion/blindSettle';
 import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
@@ -7,8 +8,8 @@ import { restoreScroll } from './scroll-region';
 import { ui } from '$lib/stores/ui.svelte';
 import { beginTabArrival, endTabArrival, playAfterPaint } from '$lib/motion/screenArrival';
 
-const FIELD = '[data-screen-field], [data-home-field]';
-const SCREEN = '[data-app-scroll-region] .screen';
+const FIELD = `:is([data-screen-field], [data-home-field])${ACTIVE_DOOR_CONTENT}`;
+const SCREEN = `[data-app-scroll-region] .screen${ACTIVE_DOOR_CONTENT}`;
 let finishCurrent: (complete?: Promise<void>) => () => void = () => () => {};
 
 export function finishAndroidTab(complete?: Promise<void>): () => void {

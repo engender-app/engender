@@ -18,6 +18,7 @@
    It leaves focus alone when something else already has a claim on it: a
    control inside the new screen (an autofocused field, a filter that
    navigated in place) or an overlay that owns the keyboard. */
+import { ACTIVE_DOOR_CONTENT } from './doorActivity';
 import { overlayIsOpen } from '$lib/components/overlayLock';
 
 export const ARRIVAL_FOCUS_ATTR = 'data-arrival-focus';
@@ -26,7 +27,7 @@ export function focusArrivedScreen(region: HTMLElement | null): void {
   if (!region || overlayIsOpen()) return;
   const active = document.activeElement;
   if (active && active !== document.body && region.contains(active)) return;
-  const heading = region.querySelector<HTMLElement>('h1');
+  const heading = region.querySelector<HTMLElement>(`h1${ACTIVE_DOOR_CONTENT}`);
   const target = heading ?? region;
   if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
   target.setAttribute(ARRIVAL_FOCUS_ATTR, '');

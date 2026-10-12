@@ -27,6 +27,7 @@
    touches a Svelte transition. */
 
 import type { Action } from 'svelte/action';
+import { isDoorActive } from '../navigation/doorActivity';
 import type { TransitionConfig } from 'svelte/transition';
 
 import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from './tokens';
@@ -1082,7 +1083,9 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
   if (isReducedMotion() || typeof ResizeObserver === 'undefined') return;
 
   let lastHeight = node.getBoundingClientRect().height;
+  let hidden = !isDoorActive(node);
   let animating = false;
+  let destroyed = false;
   let current: Animation | undefined;
   /* A height the box reached before it was ever painted is where it starts,
      not a change: nobody saw the height it was mounted at. A warm revisit
@@ -1091,12 +1094,17 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
      moved every tile under the reading grid 850px across the tab's first
      170ms. */
   let painted = typeof requestAnimationFrame !== 'function';
-  if (!painted) requestAnimationFrame(() => setTimeout(() => {
-    // The first observer notification can arrive after this paint. Start
-    // from the visible height, not the box measured during its mount.
-    lastHeight = node.getBoundingClientRect().height;
-    painted = true;
-  }));
+  if (!painted) requestAnimationFrame(() => {
+    if (destroyed) return;
+    setTimeout(() => {
+      // The first observer notification can arrive after this paint. Start
+      // from the visible height, not the box measured during its mount.
+      if (destroyed) return;
+      if (!isDoorActive(node)) { hidden = true; return; }
+      lastHeight = node.getBoundingClientRect().height;
+      painted = true;
+    });
+  });
 
   /* The tallest the box can be with its bottom edge still in the viewport.
      A travel is only worth watching while its edge is on screen, and the
@@ -1158,6 +1166,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
         node.style.overflow = restoreOverflow;
         animating = false;
         current = undefined;
+        if (destroyed) return;
         // With the held height and animation released, measure the content
         // again: a resize arriving mid-travel was ignored, not measured.
         // It may have changed the real height beyond this animation's target. A second block settling inside
@@ -1167,7 +1176,9 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
         // grid) hits that far more than the single skeleton-to-content swap
         // this was written for, so the snap is chased as its own animation
         // instead of accepted.
+        if (!isDoorActive(node)) { hidden = true; return; }
         const settled = node.getBoundingClientRect().height;
+        if (hidden) { hidden = false; lastHeight = settled; return; }
         if (Math.abs(settled - newHeight) >= 1) {
           animateTo(newHeight, settled);
         } else {
@@ -1177,6 +1188,12 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
   };
 
   const changed = () => {
+    if (destroyed) return;
+    if (!isDoorActive(node)) {
+      hidden = true;
+      current?.cancel();
+      return;
+    }
     // The animation's own frames are themselves resizes; ignored rather than
     // measured, or the box would chase its own tail mid-travel. One that
     // lands while an animation is already running is picked up once that
@@ -1186,6 +1203,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     const newHeight = node.getBoundingClientRect().height;
     const oldHeight = lastHeight;
     lastHeight = newHeight;
+    if (hidden) { hidden = false; painted = true; return; }
     if (!painted) return;
     // Under a pixel is a rounding wobble, not a resize - animating one would
     // run a 240ms transition over nothing to look at.
@@ -1201,6 +1219,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     // its new height. The observer still owns later content changes.
     update: changed,
     destroy() {
+      destroyed = true;
       observer.disconnect();
       current?.cancel();
     }

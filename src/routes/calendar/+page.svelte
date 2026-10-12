@@ -77,6 +77,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { entryDayGroups, entryMarks, recentDayMonths } from '$lib/data/recentEntries';
   import type { Era } from '$lib/data/types';
   import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
@@ -97,6 +98,9 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation, presentationRole } from '$lib/data/vocabulary/entryPresentation';
+
+  const doorActive = useDoorActivity();
+  let visit = 0;
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -128,6 +132,7 @@
   let cachedHasEntries = $state<boolean | null>(readCachedHasEntries());
 
   $effect(() => {
+    if (!doorActive()) return;
     if (entryCountQuery.value != null) {
       const has = entryCountQuery.value > 0;
       cachedHasEntries = has;
@@ -154,7 +159,7 @@
   const RECENT_DAYS_STEP = 5;
   let recentDaysLimit = $state(RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
-  let dayGroups = $derived(entryDayGroups(recent.rows));
+  let dayGroups = $derived(entryDayGroups(recent.rows).slice(0, recentDaysLimit));
   let recentMonths = $derived(recentDayMonths(dayGroups));
 
   /* How many more days exist to grow into, read off the journal's own
@@ -228,6 +233,7 @@
   const LEAVE = () => motionDuration('--dur-fast');
 
   function labelIn(_node: Element) {
+    if (!doorActive()) return { duration: 0 };
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     return {
       delay: LEAVE(),
@@ -243,6 +249,7 @@
      constant-speed version reads as a jerk rather than as momentum, and the
      whole swap wants one curve rather than two. */
   function labelOut(_node: Element) {
+    if (!doorActive()) return { duration: 0 };
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     return {
       duration: LEAVE(),
@@ -266,6 +273,8 @@
      the focus ring off the chips and the grid's own today outline. */
   let monthOpen = $state(false);
   let monthBody = $state<HTMLElement | undefined>();
+  let monthMotion: AbortController | undefined;
+  const monthAnimations = new Set<Animation>();
 
   function boxesOf(attr: string): CellBox[] {
     if (!monthBody) return [];
@@ -314,10 +323,12 @@
       { duration, easing: EASE_OUT_SOFT_CSS, fill: 'forwards' }
     );
     const settle = () => {
+      monthAnimations.delete(run);
       el.style.transform = '';
       el.style.transformOrigin = '';
       run.cancel();
     };
+    monthAnimations.add(run);
     run.finished.then(settle, settle);
   }
 
@@ -346,10 +357,13 @@
         fill: 'forwards'
       })
     );
+    for (const fade of fades) monthAnimations.add(fade);
     return Promise.all(fades.map((fade) => fade.finished)).then(() => fades, () => fades);
   }
 
   async function toggleMonth() {
+    if (!doorActive()) return;
+    const foldingVisit = visit;
     const body = monthBody;
     if (!body || isReducedMotion()) {
       monthOpen = !monthOpen;
@@ -360,9 +374,12 @@
     if (monthOpen) {
       folding = true;
       faded = await fadeWhatSitsOut(body);
-      folding = false;
       // Left the screen during the fade: nothing is left to fold.
-      if (!body.isConnected) return;
+      if (!body.isConnected || !doorActive() || foldingVisit !== visit) {
+        for (const fade of faded) { fade.cancel(); monthAnimations.delete(fade); }
+        return;
+      }
+      folding = false;
     }
     const swatches = boxesOf('data-cal-cell');
     const dates = boxesOf('data-cal-date');
@@ -370,7 +387,7 @@
     monthOpen = !monthOpen;
     flushSync();
     // The strip holds them at 0 on its own now, with no transition to run.
-    for (const fade of faded) fade.cancel();
+    for (const fade of faded) { fade.cancel(); monthAnimations.delete(fade); }
     const duration = motionDuration('--dur-slow');
     /* The panel gives or takes its own height while the cells travel inside
        it, so nothing under the month arrives at its new place in the frame
@@ -383,7 +400,7 @@
        from its bar on a 390px phone, covered 19% of that, 81px, in its first
        frame: continuous, but a lurch. Soft it is 4%, 18px, and no frame
        moves it more than 46px. */
-    maskHeight(body, from, duration, { easing: EASE_OUT_SOFT_CSS });
+    maskHeight(body, from, duration, { signal: monthMotion?.signal, easing: EASE_OUT_SOFT_CSS });
     for (const box of regroupSteps(swatches, boxesOf('data-cal-cell'))) {
       travel(box, 'data-cal-cell', duration, true);
     }
@@ -402,6 +419,26 @@
      the way it went. A pick closes the sheet in the same step, so the label
      slides while the sheet is on its way down. */
   let jumpOpen = $state(false);
+  $effect.pre(() => {
+    const current = new Date();
+    year = current.getFullYear();
+    month = current.getMonth();
+    if (doorActive()) {
+      monthMotion = new AbortController();
+      return () => {
+        monthMotion?.abort();
+        for (const animation of monthAnimations) animation.cancel();
+        monthAnimations.clear();
+      };
+    }
+    visit++;
+    jumpOpen = false;
+    monthOpen = false;
+    folding = false;
+    selectedPresentation = null;
+    recentDaysLimit = RECENT_DAYS_STEP;
+    dir = 1;
+  });
 
   function move(deltaMonths: number, close: boolean) {
     const total = year * 12 + month + deltaMonths;
@@ -607,9 +644,11 @@
   </div>
 </div>
 
+{#if doorActive()}
 <Sheet bind:open={jumpOpen} title={m.cal_jump_month()}>
   <MonthJump {year} {month} onYear={(delta) => move(delta * 12, false)} onPick={jumpTo} />
 </Sheet>
+{/if}
 
 <style>
   /* The calendar's own classes, in the calendar's own file: every one of
