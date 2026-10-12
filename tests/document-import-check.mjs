@@ -109,6 +109,7 @@ try {
   await page.waitForFunction(() => window.releaseDocumentRead);
   await navigate('/more');
   await page.waitForURL('**/more');
+  await page.locator('[data-hub-search]').waitFor();
   await navigate('/media/documents');
   await page.waitForURL('**/media/documents');
   await page.evaluate(() => window.releaseDocumentRead());
