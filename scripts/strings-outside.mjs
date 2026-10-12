@@ -143,7 +143,7 @@ const SOURCES = [
       }));
     } },
   { prefix: 'privacy', theme: 'Privacy policy', format: paragraphs, pairedByPosition: true,
-    files: pair('docs/privacy-policy.en.md', 'docs/privacy-policy.pl.md') }
+    files: pair('PRIVACY.md', 'PRIVACY.pl.md') }
 ];
 
 /** @param {string} root @param {string} file @param {string | null} ref */

@@ -15,8 +15,7 @@ function fixture() {
   roots.push(root);
   mkdirSync(join(root, 'messages'));
   mkdirSync(join(root, 'src'));
-  mkdirSync(join(root, 'docs/agents'), { recursive: true });
-  writeFileSync(join(root, 'docs/agents/copy-coverage-50.json'), JSON.stringify({
+  writeFileSync(join(root, 'messages/copy-coverage-50.json'), JSON.stringify({
     greeting: { owner: 38 }, readings: { owner: 39 }
   }));
   const en = {
@@ -330,8 +329,8 @@ describe('copy outside the catalogues', () => {
     'fastlane/metadata/android/pl-PL/title.txt': 'engender: dziennik tranzycji\n',
     'fastlane/metadata/android/en-US/changelogs/7.txt': 'First release.\n',
     'fastlane/metadata/android/pl-PL/changelogs/7.txt': 'Pierwsza wersja.\n',
-    'docs/privacy-policy.en.md': '# Privacy policy\n\nNothing leaves the device.\nNot even crash reports.\n\n## Contact\n',
-    'docs/privacy-policy.pl.md': '# Polityka prywatności\n\nNic nie opuszcza urządzenia.\nNawet raporty awarii.\n\n## Kontakt\n'
+    'PRIVACY.md': '# Privacy policy\n\nNothing leaves the device.\nNot even crash reports.\n\n## Contact\n',
+    'PRIVACY.pl.md': '# Polityka prywatności\n\nNic nie opuszcza urządzenia.\nNawet raporty awarii.\n\n## Kontakt\n'
   };
 
   function sources() {
@@ -369,8 +368,8 @@ describe('copy outside the catalogues', () => {
     ]);
     expect(rows.every((row) => row.change === null && !row.reviewed && row.findings.length === 0)).toBe(true);
     expect(rows.find((row) => row.key === 'privacy:02')!.sites).toEqual([
-      { file: 'docs/privacy-policy.en.md', line: 3, href: `vscode://file${root}/docs/privacy-policy.en.md:3` },
-      { file: 'docs/privacy-policy.pl.md', line: 3, href: `vscode://file${root}/docs/privacy-policy.pl.md:3` }
+      { file: 'PRIVACY.md', line: 3, href: `vscode://file${root}/PRIVACY.md:3` },
+      { file: 'PRIVACY.pl.md', line: 3, href: `vscode://file${root}/PRIVACY.pl.md:3` }
     ]);
   });
 
@@ -387,7 +386,7 @@ describe('copy outside the catalogues', () => {
     expect(read('static/manifest-pl.webmanifest')).toBe(files['static/manifest-pl.webmanifest']
       .replace('"name": "Nowy wpis"', '"name": "Dodaj „wpis”"'));
     expect(read('fastlane/metadata/android/en-US/title.txt')).toBe('engender: transition journal\n');
-    expect(read('docs/privacy-policy.pl.md')).toBe(files['docs/privacy-policy.pl.md']
+    expect(read('PRIVACY.pl.md')).toBe(files['PRIVACY.pl.md']
       .replace('Nic nie opuszcza urządzenia.\nNawet raporty awarii.', 'Nic nie wychodzi poza urządzenie.'));
     const title = outside(root).find((row) => row.key === 'android:widget_title')!;
     expect(title.pl).toBe("Zapisz chwilę & to, co 'ważne'");
@@ -453,7 +452,7 @@ describe('copy outside the catalogues', () => {
     const root = sources();
     writeFileSync(join(root, 'fastlane/metadata/android/en-US/changelogs/8.txt'), 'Second release.\n');
     writeFileSync(join(root, 'fastlane/metadata/android/pl-PL/title.txt'), 'engender: dziennik tranzycji i więcej\n');
-    writeFileSync(join(root, 'docs/privacy-policy.en.md'), files['docs/privacy-policy.en.md'] + '\nA new paragraph.\n');
+    writeFileSync(join(root, 'PRIVACY.md'), files['PRIVACY.md'] + '\nA new paragraph.\n');
     const rows = outside(root);
     expect(rows.find((row) => row.key === 'store:changelogs/8')).toMatchObject({
       en: 'Second release.', pl: null,
@@ -463,16 +462,16 @@ describe('copy outside the catalogues', () => {
       'store:title is 37 characters in fastlane/metadata/android/pl-PL/title.txt; Play allows 30'
     ]);
     expect(rows.find((row) => row.key === 'privacy:01')!.findings).toEqual([
-      'docs/privacy-policy.en.md has 4 paragraphs and docs/privacy-policy.pl.md has 3, so pairs after the difference are off'
+      'PRIVACY.md has 4 paragraphs and PRIVACY.pl.md has 3, so pairs after the difference are off'
     ]);
   });
 
   it('treats a whitespace-only line as a paragraph break', () => {
     const root = sources();
-    writeFileSync(join(root, 'docs/privacy-policy.pl.md'), '# Polityka\n   \nAkapit.\n');
+    writeFileSync(join(root, 'PRIVACY.pl.md'), '# Polityka\n   \nAkapit.\n');
     expect(outside(root).filter((row) => row.key.startsWith('privacy:')).map((row) => row.pl)).toEqual(['# Polityka', 'Akapit.', null]);
     writeString(root, edit('privacy:02', 'pl', 'Akapit.', 'Inny akapit.'));
-    expect(readFileSync(join(root, 'docs/privacy-policy.pl.md'), 'utf8')).toBe('# Polityka\n   \nInny akapit.\n');
+    expect(readFileSync(join(root, 'PRIVACY.pl.md'), 'utf8')).toBe('# Polityka\n   \nInny akapit.\n');
   });
 
   it('remembers a review of outside copy and reopens it when the text changes', () => {
