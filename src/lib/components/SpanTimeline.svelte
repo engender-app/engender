@@ -93,7 +93,9 @@
      changes by something other than a finger, which is the same rule the
      rest of this component follows and the same primitive a live tile's
      value uses. */
+  import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { localDateFromEpochDay } from '$lib/data/epochDay';
   import {
@@ -165,6 +167,7 @@
     onLive?: (span: Span) => void;
     onHintSeen?: () => void;
   } = $props();
+  const doorActive = useDoorActivity();
 
   /* How close a finger has to be to a milestone or an era's edge for the
      handle to land on it rather than on the grain. */
@@ -178,7 +181,11 @@
   $effect(() => {
     if (!rail) return;
     const el = rail;
-    const measure = () => (railWidth = el.getBoundingClientRect().width);
+    const measure = () => {
+      if (!doorActive()) return;
+      const width = el.getBoundingClientRect().width;
+      if (width > 0) railWidth = width;
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
@@ -277,13 +284,13 @@
      nothing under it moves either way. */
   let root = $state<HTMLElement | undefined>();
   let active = $state(false);
-  const raise = () => (active = true);
+  const raise = () => { if (doorActive()) active = true; };
   function onFocusOut(event: FocusEvent) {
     if (root && event.relatedTarget instanceof Node && root.contains(event.relatedTarget)) return;
     active = false;
   }
   $effect(() => {
-    if (!active) return;
+    if (!doorActive() || !active) return;
     const lower = (event: PointerEvent) => {
       if (root && event.target instanceof Node && root.contains(event.target)) return;
       /* A control that leaves the screen with the span - the way into its
@@ -314,6 +321,7 @@
      flips `hintSeen`) fades the words without taking the line away. */
   let hintDrawn = $state(false);
   $effect.pre(() => {
+    if (!doorActive()) { hintDrawn = false; return; }
     if (!hintSeen) hintDrawn = true;
   });
   /* Crossfade date and day count together. The leaving text leaves flow so
@@ -327,7 +335,7 @@
     node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: motionDuration('--dur-fast'), easing: EASE_OUT_CSS });
   };
   function answerHint() {
-    if (hintGone || hintSeen) return;
+    if (!doorActive() || hintGone || hintSeen) return;
     hintGone = true;
     onHintSeen?.();
   }
@@ -405,6 +413,7 @@
   /* A tap moves the span without dragging a handle. Dismiss the hint here
      too, before the handles move. */
   const commit = (next: Span) => {
+    if (!doorActive()) return;
     answerHint();
     settle(next);
     onChange(next);
@@ -416,17 +425,21 @@
      transitions see. `touch-action: none` on the rail is what keeps the
      page from scrolling under a finger that is dragging sideways. */
   function onHandleDown(event: PointerEvent, handle: SpanHandle) {
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    if (!doorActive()) return;
+    const node = event.currentTarget as HTMLElement;
+    node.setPointerCapture(event.pointerId);
+    capture = { node, id: event.pointerId };
     dragging = handle;
   }
   function onHandleMove(event: PointerEvent, handle: SpanHandle) {
-    if (dragging !== handle) return;
+    if (!doorActive() || dragging !== handle) return;
     moving = true;
     answerHint();
     settle(moveHandle(live, handle, rawDayAtClientX(event.clientX)));
   }
   function onHandleUp(handle: SpanHandle) {
-    if (dragging !== handle) return;
+    if (!doorActive() || dragging !== handle) return;
+    capture = undefined;
     dragging = null;
     moving = false;
     commit(moveHandle(live, handle, snapTo(handle === 'start' ? live.start : live.end)));
@@ -436,7 +449,20 @@
      rail's ends with Home and End. The charts re-read a beat after the
      last key rather than on every press. */
   let keyTimer: ReturnType<typeof setTimeout> | undefined;
+  let capture: { node: HTMLElement; id: number } | undefined;
+  $effect.pre(() => {
+    if (doorActive()) return () => clearTimeout(keyTimer);
+    clearTimeout(keyTimer);
+    active = false;
+    dragging = null;
+    moving = false;
+    live = { ...untrack(() => span) };
+    hintGone = false;
+    if (capture?.node.hasPointerCapture(capture.id)) capture.node.releasePointerCapture(capture.id);
+    capture = undefined;
+  });
   function onHandleKey(event: KeyboardEvent, handle: SpanHandle) {
+    if (!doorActive()) return;
     const current = handle === 'start' ? live.start : live.end;
     const step = grainFor(current) * (event.shiftKey ? 10 : 1);
     let next: number | null = null;
@@ -507,7 +533,7 @@
       lastShown = n;
       shownDays = n;
     };
-    if (held) {
+    if (!doorActive() || held) {
       show(days);
       return;
     }

@@ -926,9 +926,11 @@ describe('tier 3, a box resizing under its own content', () => {
     const calls: Array<[number, number]> = [];
     const margins: Array<[number, number]> = [];
     let settle: (() => void) | undefined;
+    let cancelPending: (() => void) | undefined;
+    let measurements = 0;
     const node = {
       style: { overflow: '' },
-      getBoundingClientRect: () => ({ height, top }) as DOMRect,
+      getBoundingClientRect: () => { measurements++; return { height, top } as DOMRect; },
       animate: (keyframes: Keyframe[]) => {
         if (keyframes[0].marginTop !== undefined) {
           margins.push([parseFloat(String(keyframes[0].marginTop)), parseFloat(String(keyframes[1].marginTop))]);
@@ -936,10 +938,11 @@ describe('tier 3, a box resizing under its own content', () => {
         }
         calls.push([parseFloat(String(keyframes[0].height)), parseFloat(String(keyframes[1].height))]);
         return {
-          finished: new Promise<void>((resolve) => {
+          finished: new Promise<void>((resolve, reject) => {
             settle = resolve;
+            cancelPending = () => reject(new Error('Animation cancelled'));
           }),
-          cancel: () => {}
+          cancel: () => cancelPending?.()
         };
       }
     } as unknown as HTMLElement;
@@ -947,6 +950,7 @@ describe('tier 3, a box resizing under its own content', () => {
       node,
       calls,
       margins,
+      measurements: () => measurements,
       setHeight: (h: number) => (height = h),
       trigger: () => notify(),
       finish: async () => {
@@ -1065,6 +1069,67 @@ describe('tier 3, a box resizing under its own content', () => {
         [240, 390]
       ]);
     } finally {
+      restore();
+    }
+  });
+
+  it('does not measure or chase detached content after destroy cancels its animation', async () => {
+    stubDocument(false);
+    const { node, calls, measurements, setHeight, trigger, finish, restore } = resizingNode(100);
+    try {
+      const action = resize(node);
+      setHeight(240);
+      trigger();
+      action?.destroy?.();
+      setHeight(0);
+      const before = measurements();
+      await finish();
+      expect(calls).toEqual([[100, 240]]);
+      expect(measurements()).toBe(before);
+    } finally {
+      restore();
+    }
+  });
+
+  it('rebases a rapid return before a hidden resize cancellation settles', async () => {
+    stubDocument(false);
+    const { node, calls, setHeight, trigger, finish, restore } = resizingNode(100);
+    let active = true;
+    node.closest = (() => ({ hasAttribute: () => active })) as typeof node.closest;
+    try {
+      resize(node);
+      setHeight(240);
+      trigger();
+      active = false;
+      trigger();
+      active = true;
+      setHeight(390);
+      trigger();
+      await finish();
+      expect(calls).toEqual([[100, 240]]);
+      setHeight(420);
+      trigger();
+      expect(calls).toEqual([[100, 240], [390, 420]]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('ignores a first-paint callback delivered after destroy', async () => {
+    stubDocument(false);
+    const g = globalThis as Record<string, unknown>;
+    let frame: (() => void) | undefined;
+    g.requestAnimationFrame = (callback: () => void) => { frame = callback; };
+    const { node, measurements, restore } = resizingNode(100);
+    try {
+      const action = resize(node);
+      action?.destroy?.();
+      const before = measurements();
+      frame?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(measurements()).toBe(before);
+    } finally {
+      delete g.requestAnimationFrame;
       restore();
     }
   });
