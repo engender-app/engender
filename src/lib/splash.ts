@@ -38,14 +38,12 @@
    tab that is hidden or a person who asked the system to remove
    animations. */
 
+import { afterQuickFrames } from './motion/quickFrames';
+
 /** Longer than the slowest handover in app.html. */
 const REMOVE_AFTER_MS = 800;
-/** A frame that took longer than this was still paying for new work, on a
-    display at 60 Hz or faster. A slower display gets one and a half of its
-    own shortest frame, up to the second bound, so a 30 Hz screen settles
-    too and a stall is never quick. */
-const QUICK_FRAME_MS = 25;
-const SLOWEST_QUICK_FRAME_MS = 50;
+/** Three, because Home kept compiling pipelines over several frames after
+    its reads answered (motion/quickFrames.ts says what counts as quick). */
 const QUICK_FRAMES = 3;
 const HOLD_CAP_MS = 2500;
 const HELD_READS = '[data-app-root] [data-read-reserve-hold], [data-app-root] [data-gate-skeleton]';
@@ -80,32 +78,7 @@ function leave(doc: Document, splash: HTMLElement): void {
 }
 
 function whenSettled(doc: Document, view: Window, go: () => void): void {
-  let done = false;
-  const finish = () => {
-    if (done) return;
-    done = true;
-    go();
-  };
-  setTimeout(finish, HOLD_CAP_MS);
-  let last: number | undefined;
-  let shortest = Infinity;
-  let quick = 0;
-  /* A frame callback runs before that frame paints, so the frame after the
-     screen stopped arriving is the first that can show what it cost. */
-  let wasArriving = false;
-  const frame = (now: number) => {
-    if (done) return;
-    const arriving = stillArriving(doc);
-    const took = last === undefined ? Infinity : now - last;
-    shortest = Math.min(shortest, took);
-    const quickMs = Math.max(QUICK_FRAME_MS, Math.min(SLOWEST_QUICK_FRAME_MS, 1.5 * shortest));
-    quick = !arriving && !wasArriving && took < quickMs ? quick + 1 : 0;
-    wasArriving = arriving;
-    last = now;
-    if (quick >= QUICK_FRAMES) finish();
-    else view.requestAnimationFrame(frame);
-  };
-  view.requestAnimationFrame(frame);
+  afterQuickFrames(view, go, { count: QUICK_FRAMES, capMs: HOLD_CAP_MS, busy: () => stillArriving(doc) });
 }
 
 /** A held read, or a finite animation still running on the screen; loops
