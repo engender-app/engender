@@ -19,6 +19,8 @@ android/app/src/androidTest/assets/
 # otherwise turn the build it is packaging into a development build.
 dist/
 ci-logs/
+evidence110/
+evidence117/
 
 # AI/agent-local files - session state, trackers and agent config stay out of the repo
 .scratch/
