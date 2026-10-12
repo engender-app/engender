@@ -92,5 +92,17 @@ export async function safeSpaceContracts(): Promise<Result[]> {
     root().querySelector('[data-notice="no-counterevidence"]')?.textContent?.trim() &&
     root().querySelector('a[href="/calendar"]') && root().querySelector('a[href="/doubt/comfort"]'));
   await screen.remove();
+  const snapshotId = await journal.doubtJournal.saveSnapshot(today, [
+    { epochDay: today, mood: 2, note: 'Quiet afternoon' }
+  ]);
+  screen = await mountScreen('/doubt', f);
+  await check('saved Good moments remain reachable after source entries disappear', async () => {
+    await until(evidence, 'saved Good moments link');
+    return evidence()?.getAttribute('href') === '/doubt/evidence';
+  });
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  await check('deleting the last snapshot collapses Good moments through several frames', () =>
+    movement(() => journal.doubtJournal.deleteSnapshot(snapshotId), false));
+  await screen.remove();
   return results;
 }
