@@ -154,6 +154,14 @@
     ]
   },
   {
+    "name": "hair-removal-interaction-check",
+    "tier": "dev",
+    "holds": "saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures",
+    "diagnostics": [
+      ".claude/hair-removal-interaction-shots/*"
+    ]
+  },
+  {
     "name": "measurements-sizes-jump-check",
     "tier": "dev",
     "holds": "the Measurements/Sizes jump moves focus and keeps an open editor's input",
