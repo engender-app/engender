@@ -67,6 +67,15 @@ describe('afterQuickFrames', () => {
     expect(never).not.toHaveBeenCalled();
   });
 
+  it('on a 60 Hz display, keeps one and a half of the shortest frame as the bound, so 40 ms frames never count', () => {
+    vi.useFakeTimers();
+    const { view, play } = frameWindow();
+    const go = vi.fn();
+    afterQuickFrames(view, go, { count: 2, capMs: 1000 });
+    play(0, 16, 56, 96, 136, 176);
+    expect(go).not.toHaveBeenCalled();
+  });
+
   it('goes at the cap when no run of quick frames comes, and only once', () => {
     vi.useFakeTimers();
     const { view, play } = frameWindow();
