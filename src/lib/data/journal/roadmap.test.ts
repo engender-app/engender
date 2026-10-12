@@ -353,3 +353,43 @@ test('deleting a linked milestone leaves the roadmap goal checked (graceful unli
   const statuses = await journal.roadmap.getGoalStatuses('pl');
   assert.equal(statuses['pl-legal-name-usc'], 'checked');
 });
+
+
+test('hiding one bundled goal preserves statuses, links and other goals', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const key = 'pl-legal-id-card';
+  await journal.roadmap.setGoalStatus('pl', key, 'checked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
+  const milestone = await journal.milestones.upsertMilestone({ name: 'ID card', epochDay: 20500, roadmapGoalKey: key });
+  const document = await journal.documents.addDocument({ epochDay: 20500, title: 'Receipt' }, {
+    full: new Uint8Array([1]), thumb: new Uint8Array([2])
+  });
+  await journal.documents.setDocumentTarget(document, { kind: 'goal', id: key });
+
+  await journal.roadmap.setGoalHidden('pl', key, true);
+  await journal.roadmap.setGoalHidden('pl', key, true);
+  assert.deepEqual(await journal.roadmap.getHiddenGoals('pl'), [key]);
+  assert.deepEqual(await journal.roadmap.getHiddenGoals('another-pack'), []);
+  assert.deepEqual(await journal.roadmap.getDismissedTracks(), []);
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { [key]: 'checked', 'pl-legal-appeal': 'not-my-path' });
+  assert.equal((await journal.documents.getDocument(document))?.targetId, key);
+  assert.equal((await journal.milestones.getMilestones()).find((one) => one.id === milestone)?.roadmapGoalKey, key);
+
+  await journal.roadmap.setGoalHidden('pl', key, false);
+  assert.deepEqual(await journal.roadmap.getHiddenGoals('pl'), []);
+  assert.equal((await journal.roadmap.getGoalStatuses('pl'))[key], 'checked');
+  assert.equal((await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM document'))[0].n, 1);
+});
+
+test('hidden unchecked goals survive status changes and restore to sparse storage', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const key = 'pl-legal-appeal';
+  await journal.roadmap.setGoalHidden('pl', key, true);
+  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), {});
+  await journal.roadmap.setGoalStatus('pl', key, 'not-my-path');
+  await journal.roadmap.setGoalStatus('pl', key, 'unchecked');
+  assert.deepEqual(await journal.roadmap.getHiddenGoals('pl'), [key]);
+  await journal.roadmap.setGoalHidden('pl', key, false);
+  await journal.roadmap.setGoalHidden('pl', key, false);
+  assert.equal((await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check'))[0].n, 0);
+});

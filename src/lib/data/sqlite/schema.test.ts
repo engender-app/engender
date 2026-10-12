@@ -204,7 +204,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 88);
+  assert.equal(db.getUserVersion(), 89);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1100,5 +1100,17 @@ test('a saved question is not starred unless it says so', async () => {
   assert.deepEqual(rows.map((row) => ({ ...row })), [
     { uuid: 'plain', starred: 0 },
     { uuid: 'starred', starred: 1 }
+  ]);
+});
+
+
+test('visibility migration preserves existing checked and not-my-path goals as visible', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), upToBaseline);
+  await db.run("INSERT INTO roadmap_check (pack_key, goal_key, status, updated_at) VALUES ('pl', 'checked', 'checked', 1), ('pl', 'skipped', 'not-my-path', 1)");
+  await runMigrations(db, noopFileOps(), migrations);
+  assert.deepEqual(await db.query('SELECT goal_key, status, hidden FROM roadmap_check ORDER BY goal_key'), [
+    { goal_key: 'checked', status: 'checked', hidden: 0 },
+    { goal_key: 'skipped', status: 'not-my-path', hidden: 0 }
   ]);
 });

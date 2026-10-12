@@ -16,6 +16,8 @@ import NewEntry from '../../src/routes/entry/new/[day]/+page.svelte';
 import More from '../../src/routes/more/+page.svelte';
 import Stats from '../../src/routes/stats/+page.svelte';
 import Milestones from '../../src/routes/transition/milestones/+page.svelte';
+import SafeSpace from '../../src/routes/doubt/+page.svelte';
+import GoodMoments from '../../src/routes/doubt/evidence/+page.svelte';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
 import '$lib/theme/palettes.css';
@@ -43,6 +45,8 @@ function componentFor(route: string): Component {
     '/search': Search,
     '/more': More,
     '/stats': Stats,
+    '/doubt': SafeSpace,
+    '/doubt/evidence': GoodMoments,
     '/transition/milestones': Milestones
   };
   if (routes[path]) return routes[path];

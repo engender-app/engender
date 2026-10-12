@@ -347,6 +347,24 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).toContain('flex: 0 0 160px');
   });
 
+  it.each(['absolute', 'fixed'])('keeps vertical travel beside a %s overlay', (position) => {
+    const node = panel({ beside: [[0, 100]] });
+    const overlay = node.parentElement!.children[1];
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as () => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => el === overlay ? { ...shared(), position } : shared();
+    const { css } = collapse(node);
+    expect(frame(css!, 0)).toContain('height: 0px');
+    expect(frame(css!, 1)).toContain('height: 100px');
+    expect(frame(css!, 1)).not.toContain('flex:');
+  });
+
+  it('keeps horizontal travel beside a leaving sibling still in the flow', () => {
+    const node = panel({ beside: [[0, 100]] });
+    Object.assign(node.parentElement!.children[1], { dataset: { leaving: '' } });
+    expect(frame(collapse(node).css!, 1)).toContain('flex: 0 0 160px');
+  });
+
   /* The gap goes with it. A row still holding 8px of gap around a zero-width
      child leaves the survivor 8px short of the full width it lands on the
      frame the node is removed, which is the same snap one step smaller. */

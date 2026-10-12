@@ -357,12 +357,14 @@ interface ArchiveRevisit {
     (phase 4 ticket 23, widened phase 5 ticket 20 for the tri-state), named
     by its pack and its goal key rather than a uuid - both strings mean the
     same thing on every device, so two installs that recorded the same
-    goal recorded the same goal (ADR-0002). An unchecked goal travels as
-    absence: there is no row for one, here or in the journal. */
+    goal recorded the same goal (ADR-0002). An unchecked visible goal travels as absence. A hidden unchecked goal
+    carries a row so its visibility survives restore. */
 export interface ArchiveRoadmapCheck {
   packKey: string;
   goalKey: string;
   status: string;
+  /** Absent in archives written before individual goal visibility. */
+  hidden?: boolean;
 }
 
 /** A roadmap track the person has said is not their path (phase 8 features

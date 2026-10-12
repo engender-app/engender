@@ -953,7 +953,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // name. No uuid: a tick is named by its pack and goal keys, which mean
   // the same thing on every device, the way a built-in tag travels as its
   // key (ADR-0002).
-  roadmap_check: ['pack_key', 'goal_key', 'status'],
+  roadmap_check: ['pack_key', 'goal_key', 'status', 'hidden'],
   // Owns a child (tryout_photo) below.
   tryout: ['uuid', 'kind', 'label', 'description', 'start_epoch_day', 'end_epoch_day'],
   // Exactly one of tryout_id/milestone_id travels, each as that owner's own

@@ -165,6 +165,13 @@
       onboardingFirstRun
   );
 
+  // Keep the lazy host between openings so a gate unmount skips sheet outros.
+  let managersRequested = $state(false);
+  $effect(() => {
+    if (replacesApp) ui.raisedManager = null;
+    else if (ui.raisedManager) managersRequested = true;
+  });
+
   /* Those, plus the routes that render without chrome whoever is looking at
      them - which now includes a step the app does navigate to. */
   let chromeless = $derived(replacesApp || chromelessPath(path));
@@ -516,6 +523,8 @@
        for the bar, its float gap and the system inset, and on a screen with
        no bar that is room held for nothing: it pushed a vertically-centred
        gate up by most of a bar's height. -->
+  <!-- Recovery keeps forms mounted, so conceal portalled sheets with the app.
+       Root opacity never transitions, including under the reduced-motion 1ms clamp. -->
   <div
     class="app"
     data-app-root
@@ -523,6 +532,9 @@
     class:disguised={prefs.disguise}
     class:is-chromeless={chromeless}
     data-boot={bootState.status}
+    inert={browserSession.recovering}
+    style:opacity={browserSession.recovering ? '0' : undefined}
+    style:transition-property="none"
   >
     {#if isErrorState(bootState)}
       <!-- What happened, in the person's words, and the doors that failure
@@ -601,7 +613,7 @@
 
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
     <QuickAdd />
-    {#if ui.raisedManager}
+    {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />
       {/await}

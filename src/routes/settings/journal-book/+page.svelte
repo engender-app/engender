@@ -419,14 +419,19 @@
         <div class="section-block">
           {#each visibleEntries as entry (entry.id)}
             <article class="book-entry" data-book-entry transition:entryFade>
-              <h3 class="book-day">{dayLong(entry.epochDay)}, {fmtTime(entry.timestamp)}</h3>
-              {#if entry.mood !== null}<p class="muted small">{moodName(entry.mood)}</p>{/if}
+              <header class="book-entry-heading">
+                <h3 class="book-day">{dayLong(entry.epochDay)}</h3>
+                <p class="book-entry-meta">
+                  <span>{fmtTime(entry.timestamp)}</span>
+                  {#if entry.mood !== null}<span>{moodName(entry.mood)}</span>{/if}
+                </p>
+              </header>
               {#if entry.note.trim()}<p class="book-note">{entry.note}</p>{/if}
               {#each entry.photos as photo (photo.id)}
                 <JournalBookPhoto {photo} />
               {/each}
               {#if entry.tags.length}
-                <p class="muted small">{entry.tags.map(tagName).join(' · ')}</p>
+                <p class="book-tags">{entry.tags.map(tagName).join(' · ')}</p>
               {/if}
             </article>
           {/each}
@@ -515,17 +520,44 @@
   }
 
   .book-entry {
-    margin-bottom: var(--space-4);
+    border-top: 1px solid var(--outline);
+    padding: var(--space-4) 0 var(--space-5);
+  }
+
+  .book-entry-heading {
+    margin-bottom: var(--space-3);
   }
 
   .book-day {
-    font-size: var(--text-sm);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-display);
+    line-height: 1.25;
+    margin: 0 0 var(--space-1);
+  }
+
+  .book-entry-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    margin: 0;
     color: var(--text-2);
-    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+  }
+
+  .book-tags {
+    margin: var(--space-3) 0 0;
+    color: var(--text-2);
+    font-size: var(--text-sm);
   }
 
   .book-note {
+    max-width: 65ch;
+    margin: 0 0 var(--space-3);
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.7;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   @media print {
@@ -536,6 +568,29 @@
     }
     .book-entry {
       break-inside: avoid;
+      padding: 5mm 0 7mm;
+      box-decoration-break: slice;
+    }
+    .book-entry-heading {
+      break-inside: avoid;
+      break-after: avoid;
+      margin-bottom: 3mm;
+    }
+    .book-day {
+      font-size: 16pt;
+    }
+    .book-entry-meta,
+    .book-tags {
+      font-size: 9pt;
+    }
+    .book-note {
+      font-size: 11pt;
+      line-height: 1.6;
+      orphans: 3;
+      widows: 3;
+    }
+    .book-tags {
+      break-before: avoid;
     }
   }
 </style>

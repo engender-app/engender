@@ -121,6 +121,7 @@ import {
   pushHydrationRun,
   replySlices,
   scenesFor,
+  resetSceneProfile,
   sceneForTheme,
   samplerExpression,
   scrapeIdExpression,
@@ -289,7 +290,13 @@ function connect(url) {
 
 let client = null;
 const errors = [];
-const recorder = createReportRecorder(outDir, { target: 'device' }, SCENES, profiles, themes, hydration ? 1 : passes, errors);
+const runtime = {
+  serial,
+  model: adb('shell', 'getprop', 'ro.product.model').trim(),
+  androidVersion: adb('shell', 'getprop', 'ro.build.version.release').trim(),
+  sdk: adb('shell', 'getprop', 'ro.build.version.sdk').trim()
+};
+const recorder = createReportRecorder(outDir, { target: 'device', runtime }, SCENES, profiles, themes, hydration ? 1 : passes, errors);
 const report = recorder.report;
 
 async function initClient(c) {
@@ -574,6 +581,8 @@ adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1')
 await sleep(5000);
 client = await attach();
 await initClient(client);
+Object.assign(runtime, await ev(`(async () => ({ userAgent: navigator.userAgent, viewport: { width: innerWidth, height: innerHeight }, release: await fetch('/release.json').then(response => { if (!response.ok) throw new Error('release metadata unavailable'); return response.json(); }) }))()`));
+recorder.persist();
 console.log(`attached to pid ${pid()} on ${serial}`);
 
 /* A known floor for every run: the demo build's own state, so a phone that
@@ -968,12 +977,13 @@ if (hydration) {
           let captureEvidence;
           try {
             await ev(`globalThis.__sweepAction = null; globalThis.__sweepPreparation = null; true;`);
+            const fixtureReset = await resetSceneProfile(scene, profile, (expression) => ev(expression, 150000));
             if (scene.reseed) {
               await settle('/', theme);
               await ev(FILL_EVERY_FEATURE_EXPRESSION, 2_700_000);
               await markProfile(profile);
             }
-            await settle(scene.at, theme, scene.act === 'back' ? scene.after.route : null);
+            await settle(scene.at, theme, scene.act === 'back' && !scene.actionAt ? scene.after.route : null);
             if (scene.firstRun) {
               await ev(firstRunExpression(scene.firstRun));
               await ev(DEMO_THEME_EXPRESSION(theme));
@@ -1056,6 +1066,7 @@ if (hydration) {
               pass,
               is: scene.is,
               action,
+              fixtureReset,
             cleanup,
               profileProof,
               ...(evidence ? { evidence } : {}),
@@ -1099,6 +1110,7 @@ await writeFile(
   JSON.stringify(
     {
       target: 'device',
+      runtime,
       complete: true,
       serial,
       ...(hydration ? { mode: 'hydration', profiles } : {}),

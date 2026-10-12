@@ -42,6 +42,7 @@
      no other handle - search matches it and nothing else - and there is no
      honest default: a scan is called `scan_0142.jpg` and "Document 3" is
      worse than asking. */
+  import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import DocumentThumb from '$lib/components/DocumentThumb.svelte';
@@ -72,6 +73,8 @@
 
   type ImportDraft = { id?: string; title: string; day: string; content: DocumentFile | null };
   let picking = $state(false);
+  let active = true;
+  onDestroy(() => { active = false; });
 
   const record = recordEditor<JournalDocument, ImportDraft>({
     blank: () => ({ title: '', day: dateInputValueFromEpochDay(todayEpochDay()), content: null }),
@@ -91,7 +94,7 @@
     picking = true;
     try {
       const content = await pickDocument();
-      if (!content) return;
+      if (!content || !active) return;
       // Acquire before metadata, but compare against a draft without a file:
       // selected bytes are pending work even when every field is unchanged.
       record.openEditor(null);
@@ -190,13 +193,17 @@
         class="icon-btn press"
         data-add
         aria-label={m.document_add_aria()}
-        disabled={picking}
+        disabled={picking || record.editor !== null || record.saving}
+        aria-busy={picking}
         onclick={startImport}
       >
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
+
+  <span class="visually-hidden" role="status" data-document-import-status>{picking ? m.imp_running() : ''}</span>
+  {#if picking}<p class="muted small" aria-hidden="true" data-document-import-progress>{m.imp_running()}</p>{/if}
 
   <ReadGate read={documentsRead} count={3}>
     {#snippet rows(documents)}
@@ -249,7 +256,7 @@
         role={roleAt(activeFlag.roles, 0)}
         title={m.documents_empty_title()}
         text={m.documents_empty_body()}
-        action={{ label: m.documents_empty_action(), primary: true, onclick: startImport }}
+        action={{ label: picking ? m.imp_running() : m.documents_empty_action(), primary: true, onclick: startImport }}
       />
     {/snippet}
   </ReadGate>
@@ -258,7 +265,7 @@
     {record}
     handle="document"
     newTitle={m.document_new_sheet()}
-    saveLabel={m.document_save()}
+    saveLabel={record.saving ? m.entry_saving() : m.document_save()}
     canSave={(draft) => !!draft.content && !!draft.title.trim()}
     {fields}
     confirm={{
