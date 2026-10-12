@@ -23,6 +23,21 @@ export function arrivalArm(): ArrivalArm {
   return arm;
 }
 
+let premount: boolean | undefined;
+
+/** Whether Android mounts unvisited doors hidden while idle
+    (`ticket09-premount` = `on`, premountDoors.ts). */
+export function premountArm(): boolean {
+  if (premount === undefined) {
+    try {
+      premount = localStorage.getItem('ticket09-premount') === 'on';
+    } catch {
+      premount = false;
+    }
+  }
+  return premount;
+}
+
 let curveNow: boolean | undefined;
 
 /** Whether the curve's read waits for the screen to be still on this run. */
