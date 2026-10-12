@@ -177,7 +177,7 @@ describe('the handover', () => {
    beneath the still mark, so the WebView compiles its GPU pipelines there
    rather than inside the fade, and the fade waits for quick frames. */
 describe('the warm handover (ticket 08 experiment)', () => {
-  function warmDoc(variant: string, held: { reads: boolean } = { reads: false }) {
+  function warmDoc(variant: string, held: { reads: boolean; arriving?: number } = { reads: false }) {
     const classes = new Set<string>();
     const splash = {
       classList: {
@@ -188,9 +188,15 @@ describe('the warm handover (ticket 08 experiment)', () => {
     };
     const frames: ((now: number) => void)[] = [];
     const documentElement = { dataset: { splash: '', splashWarm: variant } as Record<string, string> };
+    const animation = (endTime: number) => ({ playState: 'running', effect: { getComputedTiming: () => ({ endTime }) } });
+    /* A sweep that loops for good never counts as arriving. */
+    const root = {
+      getAnimations: () => [animation(Infinity), ...(held.arriving ? [animation(held.arriving)] : [])]
+    };
     const doc = {
       getElementById: () => splash,
-      querySelector: (selector: string) => (held.reads && selector.includes('data-read-reserve-hold') ? {} : null),
+      querySelector: (selector: string) =>
+        selector === '[data-app-root]' ? root : held.reads && selector.includes('data-read-reserve-hold') ? {} : null,
       documentElement,
       defaultView: { requestAnimationFrame: (cb: (now: number) => void) => frames.push(cb) }
     } as unknown as Document;
@@ -240,6 +246,36 @@ describe('the warm handover (ticket 08 experiment)', () => {
     play(133);
     expect(classes.has('is-leaving')).toBe(true);
     vi.advanceTimersByTime(2500);
+    vi.useRealTimers();
+  });
+
+  /* A read's body fades in from 0, so it first reaches the GPU when that
+     fade starts: the pipelines it needs compile then, not when the hold
+     left (warm-trace-b-1: 33 pipelines, a 158 ms stall 38 ms into the
+     handover). */
+  it('variant b also waits for the arrivals that answered reads start, then for quick frames', () => {
+    vi.useFakeTimers();
+    const held = { reads: false, arriving: 280 };
+    const { doc, classes, play } = warmDoc('b', held);
+    answerSplash(doc);
+    play(0, 16, 33, 50, 66);
+    expect(classes.has('is-leaving')).toBe(false);
+    held.arriving = 0;
+    play(83, 100, 116);
+    expect(classes.has('is-leaving')).toBe(false);
+    play(133);
+    expect(classes.has('is-leaving')).toBe(true);
+    vi.advanceTimersByTime(2500);
+    vi.useRealTimers();
+  });
+
+  it('variant a does not wait for arrivals', () => {
+    vi.useFakeTimers();
+    const { doc, classes, play } = warmDoc('a', { reads: true, arriving: 280 });
+    answerSplash(doc);
+    play(0, 16, 33, 50);
+    expect(classes.has('is-leaving')).toBe(true);
+    vi.advanceTimersByTime(1000);
     vi.useRealTimers();
   });
 
