@@ -31,10 +31,10 @@ export async function safeSpaceContracts(): Promise<Result[]> {
 
   async function movement(change: () => Promise<unknown>, visible: boolean) {
     const heights: number[] = [];
-    let sampling = true;
+    let frame = 0;
     const sample = () => {
       heights.push(root().querySelector('[data-list-card]')!.getBoundingClientRect().height);
-      if (sampling) requestAnimationFrame(sample);
+      frame = requestAnimationFrame(sample);
     };
     sample();
     try {
@@ -42,7 +42,7 @@ export async function safeSpaceContracts(): Promise<Result[]> {
       await until(() => Boolean(evidence()) === visible, 'Good moments visibility');
       await new Promise((resolve) => setTimeout(resolve, 650));
     } finally {
-      sampling = false;
+      cancelAnimationFrame(frame);
     }
     const delta = heights.at(-1)! - heights[0];
     const increments = heights.slice(1).map((height, i) => Math.abs(height - heights[i]));
