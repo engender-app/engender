@@ -38,7 +38,7 @@
      whole point for a person who is not in a state to read. Same screen
      every time.
 
-     The breath paints without waiting for SQLite. One bounded pool read
+     The breath paints without waiting for SQLite. Bounded pool and snapshot reads
      decides whether Good moments has anything to open; until it answers,
      that optional row stays absent. Each way down owns its full reads. */
   import { m } from '$lib/paraglide/messages';
@@ -55,6 +55,7 @@
   import { navigating } from '$app/state';
 
   const evidenceQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 1));
+  const snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(1));
 
   /* The words for each way, beside the list rather than in it: the order is
      a fact about the product and lives in the module (ADR-0016 keeps
@@ -85,7 +86,7 @@
 
   <ListCard role={roleAt(activeFlag.roles, 1)}>
     {#each SAFE_SPACE_WAYS as way, i (way.key)}
-      {#if way.key !== 'evidence' || evidenceQuery.rows.length}
+      {#if way.key !== 'evidence' || evidenceQuery.rows.length || snapshotsQuery.rows.length}
         <div class="rows-divide" transition:disclose={{ skip: way.key !== 'evidence' || navigating.to !== null }}>
           <ListRow
             key={way.key}
