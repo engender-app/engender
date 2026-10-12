@@ -36,6 +36,7 @@
    stacking context, and a field that stayed one would trap every z-index
    inside its screen. */
 
+import { ACTIVE_DOOR_CONTENT } from '../navigation/doorActivity';
 import { blindSettle, EASE_OUT_SOFT_VAR } from './blindSettle';
 
 /* Every box that measures a field, so the blind is one object across every
@@ -52,7 +53,7 @@ import { blindSettle, EASE_OUT_SOFT_VAR } from './blindSettle';
    need is not only this line: a gate is not a route, so there is no
    navigation for the layout to catch. $lib/motion/appOpening is what runs
    this carry when the secret is accepted. */
-const FIELD = '[data-screen-field], [data-home-field], [data-setup-field], [data-gate-field]';
+const FIELD = `:is([data-screen-field], [data-home-field], [data-setup-field], [data-gate-field])${ACTIVE_DOOR_CONTENT}`;
 const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
 const PART = '[data-field-part]';

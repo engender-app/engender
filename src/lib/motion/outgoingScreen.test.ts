@@ -86,3 +86,65 @@ describe('the outgoing screen at the new capture', () => {
     expect(inner.removed).toBe(false);
   });
 });
+
+function retainedScreen(active: boolean) {
+  const el = screen();
+  el.parentElement.closest = (selector?: string) => {
+    if (selector === '[data-retained-door]') return {};
+    if (selector === '[data-retained-active]' && active) return {};
+    return null;
+  };
+  return el;
+}
+
+it('keeps active and inactive retained screens when changing doors', () => {
+  const active = retainedScreen(true);
+  const hidden = retainedScreen(false);
+  expect(dropOutgoingScreens(doc([active, hidden]))).toBe(0);
+  expect(active.removed).toBe(false);
+  expect(hidden.removed).toBe(false);
+});
+
+it('removes an ordinary outgoing screen when a retained door arrives', () => {
+  const active = retainedScreen(true);
+  const hidden = retainedScreen(false);
+  const outgoing = screen();
+  expect(dropOutgoingScreens(doc([active, hidden, outgoing]))).toBe(1);
+  expect(outgoing.removed).toBe(true);
+  expect(active.removed).toBe(false);
+  expect(hidden.removed).toBe(false);
+});
+
+it('keeps the ordinary destination while cached doors stay hidden', () => {
+  const hidden = retainedScreen(false);
+  const outgoing = screen();
+  const incoming = screen();
+  expect(dropOutgoingScreens(doc([hidden, outgoing, incoming]))).toBe(1);
+  expect(hidden.removed).toBe(false);
+  expect(outgoing.removed).toBe(true);
+  expect(incoming.removed).toBe(false);
+});
+
+it('drops retained and ordinary journal roots at a gate without removing the gate', async () => {
+  const cached = screen();
+  const ordinary = screen();
+  const nested = screen(true);
+  const leaving = foot();
+  const gate = screen();
+  const queried: string[] = [];
+  const gated = {
+    querySelectorAll(selector: string) {
+      queried.push(selector);
+      if (selector.includes('savebar')) return [leaving];
+      return [cached, ordinary, nested];
+    }
+  } as unknown as Document;
+  const { dropJournalScreens } = await import('./outgoingScreen');
+  expect(dropJournalScreens(gated)).toBe(3);
+  expect(cached.removed).toBe(true);
+  expect(ordinary.removed).toBe(true);
+  expect(nested.removed).toBe(false);
+  expect(gate.removed).toBe(false);
+  expect(queried[0]).toContain('.screen:not([data-gate-frame])');
+  expect(queried[0]).toContain('[data-retained-door]');
+});

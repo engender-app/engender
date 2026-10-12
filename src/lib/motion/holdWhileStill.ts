@@ -30,6 +30,7 @@
    any that appear later, and runs one of these per face. */
 
 import type { Attachment } from 'svelte/attachments';
+import { isDoorActive } from '../navigation/doorActivity';
 import { isMoving, movingWindows, untilNextWindow, untilWindowEnds, type MovingWindow } from './stillHolds';
 
 const NAMES = new Set(['face-glance', 'face-blink']);
@@ -71,6 +72,7 @@ const now = () => performance.now();
 function holdFaceWhileStill(face: SVGSVGElement): () => void {
   const tracked = new Map<CSSAnimation, Tracked>();
   let stopped = false;
+  let frame: number | null = null;
 
   const live = (animation: CSSAnimation) =>
     animation.playState !== 'idle' && face.getAnimations({ subtree: true }).includes(animation);
@@ -120,7 +122,7 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
   }
 
   async function track(animation: CSSAnimation) {
-    if (tracked.has(animation)) return;
+    if (stopped || tracked.has(animation)) return;
     await animation.ready.catch(() => undefined);
     if (stopped || tracked.has(animation) || !live(animation) || animation.startTime === null) return;
     const entry: Tracked = {
@@ -135,9 +137,17 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
   }
 
   const scan = () => {
+    if (stopped) return;
     for (const animation of face.getAnimations({ subtree: true })) {
       if (animation instanceof CSSAnimation && NAMES.has(animation.animationName)) void track(animation);
     }
+  };
+  const scheduleScan = () => {
+    if (stopped || frame !== null) return;
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      scan();
+    });
   };
 
   /* The gaze: `is-held` comes and goes with the row. */
@@ -161,17 +171,18 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
   classes.observe(face, { attributes: true, attributeFilter: ['class'] });
 
   /* Motion preference changes add or remove the animations themselves. */
-  const motion = new MutationObserver(() => requestAnimationFrame(scan));
+  const motion = new MutationObserver(scheduleScan);
   motion.observe(document.documentElement, { attributes: true, attributeFilter: ['data-a11y-motion'] });
   const media = matchMedia('(prefers-reduced-motion: reduce)');
-  const onMedia = () => requestAnimationFrame(scan);
+  const onMedia = scheduleScan;
   media.addEventListener('change', onMedia);
 
   /* The CSS animations exist once the face's style has been computed. */
-  requestAnimationFrame(scan);
+  scheduleScan();
 
   return () => {
     stopped = true;
+    if (frame !== null) cancelAnimationFrame(frame);
     classes.disconnect();
     motion.disconnect();
     media.removeEventListener('change', onMedia);
@@ -189,7 +200,7 @@ const FACE = 'svg.mood-face.is-alive';
 export const holdFacesWhileStill: Attachment<HTMLElement> = (row) => {
   const faces = new Map<SVGSVGElement, () => void>();
   const sync = () => {
-    const present = new Set(row.querySelectorAll<SVGSVGElement>(FACE));
+    const present = new Set(isDoorActive(row) ? row.querySelectorAll<SVGSVGElement>(FACE) : []);
     for (const face of present) if (!faces.has(face)) faces.set(face, holdFaceWhileStill(face));
     for (const [face, stop] of faces) {
       if (!present.has(face)) {
@@ -201,8 +212,12 @@ export const holdFacesWhileStill: Attachment<HTMLElement> = (row) => {
   sync();
   const children = new MutationObserver(sync);
   children.observe(row, { childList: true, subtree: true });
+  const door = row.closest('[data-retained-door]');
+  const activity = door ? new MutationObserver(sync) : null;
+  if (door) activity?.observe(door, { attributes: true, attributeFilter: ['data-retained-active'] });
   return () => {
     children.disconnect();
+    activity?.disconnect();
     for (const stop of faces.values()) stop();
     faces.clear();
   };
