@@ -15,6 +15,8 @@ import { rememberScroll, restoreScroll, savedScroll } from './scroll-region';
 import { animateAndroidTab, finishAndroidTab } from './androidTabMotion';
 import { isAndroid } from '$lib/platform';
 import { isReducedMotion } from '$lib/motion/tokens';
+import { holdUntilPainted } from '$lib/motion/paintHold';
+import { arrivalArm } from '$lib/motion/arrivalExperiment';
 
 const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
 let currentTransition: ViewTransition | null = null;
@@ -200,7 +202,9 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
     /* `ready` rejects on its own when the browser skips a transition - a
        viewport resize mid-transition is one way - and nothing else here
        reads it, so the rejection reached the window unhandled. */
-    void transition.ready.catch(() => {});
+    void transition.ready.then(() => {
+      if (arrivalArm() === 'hold' && isAndroid()) holdUntilPainted(document);
+    }, () => {});
     void transition.finished
       .catch(() => {})
       .finally(() => {

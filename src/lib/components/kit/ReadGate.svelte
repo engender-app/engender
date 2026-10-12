@@ -9,6 +9,7 @@
   import { EASE_OUT_CSS } from '$lib/motion/tokens';
   import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
+  import { arrivalFadeFrom } from '$lib/motion/arrivalExperiment';
 
   let {
     read,
@@ -80,7 +81,7 @@
         const animations: Animation[] = [];
         for (const child of part.children) {
           if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
-          animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS, fill: 'forwards' }));
+          animations.push(child.animate([{ opacity: arrivalFadeFrom() }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS, fill: 'forwards' }));
         }
         playAfterPaint(part, animations, { fitArrival: true });
         void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
