@@ -19,6 +19,20 @@
    arrived whole, in one frame, at +687 ms. Waiting for the answer means
    the first frame dissolves into a screen that is there.
 
+   Then it waits for that screen to be finished and painted (ticket 08).
+   The screen paints under the still mark at a nil opacity (app.html), and
+   the first time the WebView draws something it compiles the GPU pipelines
+   for it. On the Pixel 10a that is about 120 pipelines and 450 ms for
+   Home, and it used to land inside the fade: stalls of 150-240 ms, three
+   to six frames for a 280 ms fade. So the fade waits until the screen's
+   held reads have answered, the arrivals they start have played out, and
+   three frames in a row come back quick. A body fading in from 0 first
+   reaches the GPU when its fade starts, which is why the arrivals count.
+   Measured over three cold launches each, the fade went from 3-6 frames
+   to 34, with no stall over 50 ms after it began; the mark holds about a
+   second longer. The cap covers a device that never settles and a hidden
+   tab with no frames.
+
    `answerSplash` ends the handover and takes the element out when it has
    run, on a timer rather than on `transitionend`, which never fires for a
    tab that is hidden or a person who asked the system to remove
@@ -26,21 +40,10 @@
 
 /** Longer than the slowest handover in app.html. */
 const REMOVE_AFTER_MS = 800;
-
-/* Ticket 08 experiment, removed once a variant is chosen. The screen under
-   the first frame stays unpainted until the crossfade begins, so on the
-   Pixel 10a the WebView compiled every GPU pipeline the screen needs inside
-   the fade: 48 Vulkan pipeline creations and stalls of 192 and 175 ms in a
-   280 ms fade. With html[data-splash-warm] set (app.html stamps it from a
-   storage key), the screen paints beneath the still mark at a nil opacity
-   and the fade waits for frames to come back quick. Variant "a" waits for
-   that alone; "b" also waits for the screen's held reads to answer and for
-   the arrivals they start to finish, since a body fading in from 0 first
-   reaches the GPU when its fade starts. The cap covers a device that never
-   settles and a hidden tab with no frames. */
-const WARM_QUICK_FRAME_MS = 25;
-const WARM_QUICK_FRAMES = 3;
-const WARM_CAP_MS: Record<string, number> = { a: 1000, b: 2500 };
+/** A frame that took longer than this was still paying for new work. */
+const QUICK_FRAME_MS = 25;
+const QUICK_FRAMES = 3;
+const HOLD_CAP_MS = 2500;
 const HELD_READS = '[data-app-root] [data-read-reserve-hold], [data-app-root] [data-gate-skeleton]';
 
 /** Whether the first frame may hand over: boot has answered, and the
@@ -51,15 +54,15 @@ export function splashMayLeave(bootStatus: string, redirecting: boolean): boolea
 
 export function answerSplash(doc: Document = document): void {
   const splash = doc.getElementById('splash');
-  /* No first frame to cross with: the screen must not stay held at 0. */
+  /* No first frame to cross with: the screen must not stay held under it. */
   if (!splash) {
     delete doc.documentElement.dataset.splash;
     return;
   }
   if (splash.classList.contains('is-answered')) return;
   splash.classList.add('is-answered');
-  const warm = doc.documentElement.dataset.splashWarm;
-  if (warm && doc.defaultView) whenWarm(doc, doc.defaultView, warm, () => leave(doc, splash));
+  const view = doc.defaultView;
+  if (view) whenSettled(doc, view, () => leave(doc, splash));
   else leave(doc, splash);
 }
 
@@ -72,26 +75,26 @@ function leave(doc: Document, splash: HTMLElement): void {
   }, REMOVE_AFTER_MS);
 }
 
-function whenWarm(doc: Document, view: Window, variant: string, go: () => void): void {
+function whenSettled(doc: Document, view: Window, go: () => void): void {
   let done = false;
   const finish = () => {
     if (done) return;
     done = true;
     go();
   };
-  setTimeout(finish, WARM_CAP_MS[variant] ?? WARM_CAP_MS.a);
+  setTimeout(finish, HOLD_CAP_MS);
   let last: number | undefined;
   let quick = 0;
   /* A frame callback runs before that frame paints, so the frame after the
-     reads answered is the first that can show their cost. */
-  let wasHeld = false;
+     screen stopped arriving is the first that can show what it cost. */
+  let wasArriving = false;
   const frame = (now: number) => {
     if (done) return;
-    const held = variant === 'b' && stillArriving(doc);
-    quick = !held && !wasHeld && last !== undefined && now - last < WARM_QUICK_FRAME_MS ? quick + 1 : 0;
-    wasHeld = held;
+    const arriving = stillArriving(doc);
+    quick = !arriving && !wasArriving && last !== undefined && now - last < QUICK_FRAME_MS ? quick + 1 : 0;
+    wasArriving = arriving;
     last = now;
-    if (quick >= WARM_QUICK_FRAMES) finish();
+    if (quick >= QUICK_FRAMES) finish();
     else view.requestAnimationFrame(frame);
   };
   view.requestAnimationFrame(frame);
