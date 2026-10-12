@@ -6,11 +6,10 @@
 
    Two storage shapes for two identities, the same split ADR-0002 draws
    between a built-in and a custom row. A bundled goal is named by its
-   pack and goal key and its row exists only because it has a status at
-   all - no row means unchecked, and clearing a status back to unchecked
-   deletes the row rather than storing the value, the way it always did
-   before this had three states instead of two. A custom goal is the
-   opposite: it is the user's own free text, so its row exists the moment
+   pack and goal key and its row exists only because it has a status
+   or visibility recorded. No row means unchecked and visible. Clearing
+   either choice deletes the row only when neither choice remains. A custom
+   goal is the opposite: it is the user's own free text, so its row exists the moment
    it is added regardless of its tick, and 'unchecked' is an ordinary
    value of that same row's `status` column.
 
@@ -28,10 +27,13 @@ export interface RoadmapArea {
   /** Every bundled goal in one pack that has a status recorded at all, by
       goal key. A key absent from the result is unchecked. */
   getGoalStatuses(packKey: string): Promise<Record<string, RoadmapGoalStatus>>;
-  /** Idempotent: setting a goal to the status it already holds changes
-      nothing, and setting 'unchecked' deletes its row rather than storing
-      the value. */
+  /** Clearing a status preserves a hidden goal's visibility record. */
   setGoalStatus(packKey: string, goalKey: string, status: RoadmapGoalStatus): Promise<void>;
+
+  /** Hidden built-in goal keys in one pack, sorted for stable reads. */
+  getHiddenGoals(packKey: string): Promise<string[]>;
+  /** Visibility only: never changes status, milestones or documents. */
+  setGoalHidden(packKey: string, goalKey: string, hidden: boolean): Promise<void>;
 
   /** Every custom goal across every track, in the order they were added -
       the order a screen appends them in after a track's bundled goals. */
@@ -73,7 +75,7 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
   return {
     async getGoalStatuses(packKey) {
       const rows = await driver.query<{ goal_key: string; status: RoadmapGoalStatus }>(
-        'SELECT goal_key, status FROM roadmap_check WHERE pack_key = ?',
+        "SELECT goal_key, status FROM roadmap_check WHERE pack_key = ? AND status != 'unchecked'",
         [packKey]
       );
       return Object.fromEntries(rows.map((row) => [row.goal_key, row.status]));
@@ -81,13 +83,45 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
 
     async setGoalStatus(packKey, goalKey, status) {
       if (status === 'unchecked') {
-        await driver.run('DELETE FROM roadmap_check WHERE pack_key = ? AND goal_key = ?', [packKey, goalKey]);
+        await driver.transaction(async (driver) => {
+          await driver.run(
+            "UPDATE roadmap_check SET status = 'unchecked', updated_at = ? WHERE pack_key = ? AND goal_key = ? AND hidden = 1",
+            [now(), packKey, goalKey]
+          );
+          await driver.run('DELETE FROM roadmap_check WHERE pack_key = ? AND goal_key = ? AND hidden = 0', [packKey, goalKey]);
+        });
         return;
       }
       await driver.run(
         `INSERT INTO roadmap_check (pack_key, goal_key, status, updated_at) VALUES (?, ?, ?, ?)
            ON CONFLICT (pack_key, goal_key) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at`,
         [packKey, goalKey, status, now()]
+      );
+    },
+
+    async getHiddenGoals(packKey) {
+      const rows = await driver.query<{ goal_key: string }>(
+        'SELECT goal_key FROM roadmap_check WHERE pack_key = ? AND hidden = 1 ORDER BY goal_key',
+        [packKey]
+      );
+      return rows.map((row) => row.goal_key);
+    },
+
+    async setGoalHidden(packKey, goalKey, hidden) {
+      if (!hidden) {
+        await driver.transaction(async (driver) => {
+          await driver.run(
+            'UPDATE roadmap_check SET hidden = 0, updated_at = ? WHERE pack_key = ? AND goal_key = ?',
+            [now(), packKey, goalKey]
+          );
+          await driver.run("DELETE FROM roadmap_check WHERE pack_key = ? AND goal_key = ? AND status = 'unchecked'", [packKey, goalKey]);
+        });
+        return;
+      }
+      await driver.run(
+        `INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at) VALUES (?, ?, 'unchecked', 1, ?)
+           ON CONFLICT (pack_key, goal_key) DO UPDATE SET hidden = 1, updated_at = excluded.updated_at`,
+        [packKey, goalKey, now()]
       );
     },
 

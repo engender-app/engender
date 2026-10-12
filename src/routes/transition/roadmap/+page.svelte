@@ -119,7 +119,11 @@
      un-foldable. */
   let dismissedQuery = liveQuery((j) => j.roadmap.getDismissedTracks());
   let dismissedTracks = $derived(dismissedQuery.value ?? []);
-  let sections = $derived(roadmapSections(pack, customGoals, dismissedTracks));
+  let hiddenQuery = liveQuery((j) => j.roadmap.getHiddenGoals(pack.key));
+  let hiddenGoals = $derived(hiddenQuery.value ?? []);
+  let hiddenBuiltIns = $derived(pack.goals.filter((goal) => hiddenGoals.includes(goal.key)));
+  let hiddenGoalsOpen = $state(false);
+  let sections = $derived(roadmapSections(pack, customGoals, dismissedTracks, hiddenGoals));
 
   /* Ticket 54: where the header points, and which track's panel starts
      open. `whereYouAre` stays live the whole time - it is what the header
@@ -129,7 +133,7 @@
      resolved it, would move the ground while they were still reading it. */
   let whereYouAre = $derived(whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked'));
   let activeTrack = $state<RoadmapTrack | null>(null);
-  let loaded = $derived(!statusQuery.loading && !customQuery.loading && !dismissedQuery.loading);
+  let loaded = $derived(!statusQuery.loading && !customQuery.loading && !dismissedQuery.loading && !hiddenQuery.loading);
   $effect(() => {
     if (loaded && activeTrack === null && whereYouAre) activeTrack = whereYouAre.track;
   });
@@ -281,6 +285,17 @@
      without gripping the plural copy that carries it (ADR-0029). */
   let unfiledByDelete = $derived(goalDocuments.rows.length);
 
+  const visibilityWrite = writer();
+  let selectedHidden = $derived(!!selectedGoal?.builtin && hiddenGoals.includes(selectedGoal.key));
+  const toggleGoalVisibility = async () => {
+    if (!selectedGoal?.builtin) return;
+    const key = selectedGoal.key;
+    const hidden = !selectedHidden;
+    if (await visibilityWrite.run(() => journal.roadmap.setGoalHidden(pack.key, key, hidden), m.write_failed())) {
+      closeGoalSheet();
+    }
+  };
+
   const goalWrite = writer();
   const saveGoalText = async () => {
     if (!canSaveGoal) return;
@@ -391,6 +406,12 @@
       onChange={(v) => (activeTrack = v as RoadmapTrack)}
     />
 
+    {#if hiddenBuiltIns.length > 0}
+      <button class="btn btn-ghost press" data-show-hidden-goals onclick={() => (hiddenGoalsOpen = true)} transition:disclose>
+        <span>{m.roadmap_hidden_goals_count({ n: hiddenBuiltIns.length })}</span>
+      </button>
+    {/if}
+
     <div class="roadmap-track-slot" use:resize>
     {#each sections as section, i (section.track)}
       {@const track = section.track}
@@ -461,7 +482,7 @@
              three reads as though it were all of it. -->
         {#each rankByLean(section.goals, lean) as goal (goal.key)}
           {@const status = statuses[goal.key] ?? 'unchecked'}
-          <div class="kit-row is-split" data-goal={goal.key} data-status={status}>
+          <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose>
             <button
               type="button"
               class="kit-row-main"
@@ -603,7 +624,7 @@
      milestone it minted - and nothing a person wrote, because a built-in
      goal has nowhere to write it and a custom one's own text editing is
      ticket 69's. -->
-<Sheet busy={goalWrite.busy} open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
+<Sheet busy={goalWrite.busy || visibilityWrite.busy} open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
   {#if selectedGoal}
     <h3>{selectedTitle}</h3>
     <div class="kit-row is-static" data-goal-sheet-status={selectedGoal.key}>
@@ -638,7 +659,14 @@
          the paper filed against it, and a delete button at the top of a
          sheet is a delete button somebody meets before what it would
          delete. -->
-    {#if !selectedGoal.builtin}
+    {#if selectedGoal.builtin}
+      <div class="goal-edit">
+        <p class="small">{selectedHidden ? m.roadmap_goal_hidden_hint() : m.roadmap_goal_hide_hint()}</p>
+        <button class="btn btn-ghost press" data-goal-visibility={selectedGoal.key} data-hidden={selectedHidden} disabled={visibilityWrite.busy} onclick={toggleGoalVisibility}>
+          <span>{selectedHidden ? m.roadmap_goal_restore() : m.roadmap_goal_hide()}</span>
+        </button>
+      </div>
+    {:else}
       <div class="goal-edit">
         <Field label={m.roadmap_goal_text_label()} id="goal-text">
           {#snippet children(id)}
@@ -665,6 +693,22 @@
       </div>
     {/if}
   {/if}
+</Sheet>
+
+<Sheet open={hiddenGoalsOpen} title={m.roadmap_hidden_goals()} onClose={() => (hiddenGoalsOpen = false)}>
+  <h3>{m.roadmap_hidden_goals()}</h3>
+  <p class="small">{m.roadmap_hidden_goals_hint()}</p>
+  <ListCard>
+    {#each hiddenBuiltIns as goal (goal.key)}
+      <ListRow
+        key={goal.key}
+        data-hidden-goal={goal.key}
+        title={roadmapGoalTitle(goal.key)}
+        subtitle={stateLabel(statuses[goal.key] ?? 'unchecked')}
+        onclick={() => { hiddenGoalsOpen = false; openBuiltInGoal(goal.key); }}
+      />
+    {/each}
+  </ListCard>
 </Sheet>
 
 <!-- Outside the goal sheet rather than inside it: two sheets nested in the

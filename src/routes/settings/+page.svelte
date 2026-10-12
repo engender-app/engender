@@ -87,6 +87,7 @@
   });
 
   let scalesSheet = $state(false);
+  let featuresSheet = $state(false);
 
   /* Written straight through rather than held and applied on close: the
      sheet has no confirm and never has, so a tick is the change. Assigned
@@ -172,12 +173,6 @@
   const SOURCE_URL = 'https://github.com/engender-app/engender';
   let privacyUrl = $derived(`${SITE_URL}${getLocale() === 'pl' ? 'pl' : 'en'}/privacy/`);
 
-  /* Ticket ux/06: ships disabled. While this is empty the row is not drawn
-     at all (phase 14 ticket 15, V05): a "coming soon" row that looked like
-     a link read as unfinished. Setting the real Ko-fi URL is the whole
-     follow-up; the row appears with it. */
-  const KOFI_URL = '';
-
   /* The modes/entry-templates sheets raise from here (audit item 6):
      `?raise=` is what their old standalone-screen addresses' redirects
      hand off (settings/presentations, settings/entry-templates), since
@@ -221,48 +216,6 @@
        a reading - a value, a count, a state - and anything that is more
        than one control opens as a sheet from a row of its own, so the hub
        is a list of names and what each is set to. -->
-  <!-- First since phase 14 ticket 15 (V04): it sat fifth, 2251px down at
-       390, behind every flag and tracking option, and these are the rows
-       somebody comes to Settings in a hurry for. The lock says "Lock" in
-       its title, and erasing the journal comes last, the way the delete
-       row closes a list. -->
-  <SectionHeading text={m.settings_privacy()} />
-  <ListCard>
-    <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
-    <ListRow
-      key="disguise"
-      icon="eyeOff"
-      title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
-      chevron={false}
-      onclick={() => (disguiseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow
-      key="export"
-      icon="download"
-      title={m.export_import()}
-      subtitle={backupLine}
-      href="/settings/export"
-    />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
-    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
-         no-network claim made concrete, and setup's step promises this row
-         is here. -->
-    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
-    <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
-    <ListRow
-      key="erase"
-      icon="alert"
-      title={m.erase_row()}
-      chevron={false}
-      onclick={() => (eraseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-  </ListCard>
-
   <SectionHeading text={m.settings_appearance()} />
   <!-- On the page rather than in a card, and with no dropdown in front of
        it: a flag is a block of its own (rule 13), the grid is the one setup
@@ -374,55 +327,10 @@
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.settings_row_off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
+      <ListRow key="features" icon="eye" title={m.features_to_show()} chevron={false} onclick={() => (featuresSheet = true)}>
+        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+      </ListRow>
     </ListCard>
-    <h3 class="field-label" id="settings-features-title">{m.features_to_show()}</h3>
-    <p class="muted small">{m.features_to_show_sub()}</p>
-    <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
-      <ListCard>
-        <div class="kit-row" data-measurements-toggle>
-          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={measurementsOn}
-              disabled={measurementStates.value === undefined}
-              label={m.measurements_and_sizes()}
-              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
-            />
-          </span>
-        </div>
-        <div class="kit-row" data-genital-effects-toggle>
-          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={genitalEffectsOn}
-              label={m.feature_genital_effects()}
-              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
-            />
-          </span>
-        </div>
-        <div class="kit-row" data-cycle-tracking-toggle>
-          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
-            {#if prefs.cycleTrackingChoice === null}
-              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
-            {/if}
-          </span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={cycleShown}
-              disabled={prefs.cycleTrackingChoice === null && cycleEpisodes.value === undefined}
-              label={m.cycle_tracking_toggle_title()}
-              onChange={(v) => {
-                prefs.cycleTrackingChoice = v;
-              }}
-            />
-          </span>
-        </div>
-      </ListCard>
-    </div>
     {#if measurementsOn}
       <ListCard>
         <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
@@ -476,25 +384,64 @@
   <!-- The reference areas (ADR-0084): each is spent on other screens - the
        entry editor's chips, the body map, Look back's reading, the bands
        behind the milestone rail - and created only here. Modes and entry
-       templates raise as sheets over this screen through their redirects. -->
+       templates raise as sheets without navigating away from this list. -->
   <ListCard>
-    <ListRow key="presentations" icon="palette" title={m.presentations_title()} href="/settings/presentations" />
-    <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} href="/settings/entry-templates" />
+    <ListRow key="presentations" icon="palette" title={m.presentations_title()} chevron={false} onclick={() => (ui.raisedManager = 'modes')}>
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+    <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
     <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} href="/settings/body-regions" />
     <ListRow key="words" icon="note" title={m.words_ignored_title()} href="/settings/words" />
     <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
   </ListCard>
 
-  <!-- No heading: the rows about the app rather than a setting of it. Ko-fi
-       stays its own row, not folded into the About sheet (ticket ux/06),
-       once it has somewhere to go. -->
+  <SectionHeading text={m.settings_privacy()} />
   <ListCard>
+    <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
+    <ListRow
+      key="disguise"
+      icon="eyeOff"
+      title={m.disguise_row()}
+      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
+      chevron={false}
+      onclick={() => (disguiseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+    <ListRow
+      key="export"
+      icon="download"
+      title={m.export_import()}
+      subtitle={backupLine}
+      href="/settings/export"
+    />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
+    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
+         no-network claim made concrete, and setup's step promises this row
+         is here. -->
+    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
+    <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
+    <ListRow
+      key="erase"
+      icon="alert"
+      title={m.erase_row()}
+      chevron={false}
+      onclick={() => (eraseSheet = true)}
+    >
+      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
+    </ListRow>
+  </ListCard>
+
+  <!-- No heading: these rows are about the app rather than a setting. -->
+  <ListCard>
+    <ListRow key="support" icon="heart" title={m.support_row()} href="https://buymeacoffee.com/engender" target="_blank" rel="noreferrer" chevron={false}>
+      {#snippet trailing()}<Icon name="external" size={20} />{/snippet}
+    </ListRow>
     <ListRow key="about" icon="info" title={m.about()} chevron={false} onclick={() => (aboutSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    {#if KOFI_URL}
-      <ListRow key="kofi" icon="heart" title={m.kofi_row()} subtitle={m.kofi_row_sub()} href={KOFI_URL} target="_blank" rel="noreferrer" />
-    {/if}
   </ListCard>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
@@ -508,6 +455,58 @@
          way to a custom scale, because Settings is a place somebody can be
          sent away from and come back to. -->
     <ScaleChecklist ticked={prefs.activeScales} onToggle={toggleScale} addHref="/settings/dimension" />
+  </Sheet>
+
+  <Sheet bind:open={featuresSheet} title={m.features_to_show()}>
+    <h3 id="settings-features-title">{m.features_to_show()}</h3>
+    <p class="muted small">{m.features_to_show_sub()}</p>
+    <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
+      <ListCard>
+        <div class="kit-row" data-measurements-toggle>
+          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={measurementsOn}
+              disabled={measurementStates.value === undefined}
+              label={m.measurements_and_sizes()}
+              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-genital-effects-toggle>
+          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
+          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={genitalEffectsOn}
+              label={m.feature_genital_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+            />
+          </span>
+        </div>
+        <div class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            {#if prefs.cycleTrackingChoice === null}
+              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
+            {/if}
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={cycleShown}
+              disabled={prefs.cycleTrackingChoice === null && cycleEpisodes.value === undefined}
+              label={m.cycle_tracking_toggle_title()}
+              onChange={(v) => {
+                prefs.cycleTrackingChoice = v;
+              }}
+            />
+          </span>
+        </div>
+      </ListCard>
+    </div>
+    <button class="btn btn-ghost" data-features-close onclick={() => (featuresSheet = false)}>{m.close()}</button>
   </Sheet>
 
   <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
@@ -757,6 +756,17 @@
 </div>
 
 <style>
+  @container app (max-width: 239px) {
+    [data-feature-visibility] .kit-row-ico {
+      display: none;
+    }
+  }
+
+  /* Keep the full breathing sun clear of Settings' bottom edge. */
+  :global(.screen > .settings-sun-header:has(.sun) > .screen-field) {
+    min-height: calc(175px * var(--sun-scale, 1) * var(--sun-breathe-scale));
+  }
+
   /* The one row on the hub that destroys something says so in its type,
      the way .btn-danger does. The disc keeps its role fill and the ink
      proven on it. */

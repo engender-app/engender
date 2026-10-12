@@ -23,4 +23,7 @@
 import type { Migration } from './migration-runner.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 
-export const migrations: Migration[] = [{ version: 88, sql: BASELINE_SCHEMA, baseline: true }];
+export const migrations: Migration[] = [
+  { version: 88, sql: BASELINE_SCHEMA, baseline: true },
+  { version: 89, sql: 'ALTER TABLE roadmap_check ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;' }
+];

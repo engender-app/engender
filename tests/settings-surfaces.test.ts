@@ -75,14 +75,18 @@ describe('what Settings is built from', () => {
     }
   });
 
-  /* Phase 14 ticket 15 (V04). Privacy and data sat fifth, at 2251px on a
-     390px phone, behind sixteen flags and every tracking option. It leads
-     now, so the lock, disguise, backup, trash and the way to erase the
-     journal are on the first screen. */
-  it('opens on Privacy & data, ahead of Appearance', () => {
-    const headings = [...withoutScript.matchAll(/<SectionHeading text=\{m\.(\w+)\(\)\} \/>/g)].map((mm) => mm[1]);
-    expect(headings[0]).toBe('settings_privacy');
-    expect(headings).toContain('settings_appearance');
+  it('places Privacy & data after Your lists and before About', () => {
+    const headings = [...outsideSheets.matchAll(/<SectionHeading text=\{m\.(\w+)\(\)\} \/>/g)].map((mm) => mm[1]);
+    expect(headings).toEqual([
+      'settings_appearance',
+      'settings_tracking',
+      'settings_reminders',
+      'settings_lists',
+      'settings_privacy',
+    ]);
+    expect(outsideSheets.indexOf('key="about"')).toBeGreaterThan(
+      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
+    );
   });
 
   it('names the lock in its row and gives disguise an icon of its own', () => {
@@ -96,13 +100,12 @@ describe('what Settings is built from', () => {
 
   it('ends the privacy rows with erasing everything, behind a confirmation', () => {
     const privacy = outsideSheets.slice(
-      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />'),
-      outsideSheets.indexOf('<SectionHeading text={m.settings_appearance()} />')
-    );
-    const order = ['key="security"', 'key="disguise"', 'key="export"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
+      outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
+    ).match(/<ListCard>[\s\S]*?<\/ListCard>/)?.[0] ?? '';
+    const order = ['key="security"', 'key="disguise"', 'key="export"', 'key="journal-book"', 'key="permissions"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[4]);
+    expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[6]);
     /* The same deliberate step the unlock gates take before resetApp: a
        sheet stating the loss, then one danger button with the gates' own
        words on it. */
@@ -113,13 +116,23 @@ describe('what Settings is built from', () => {
     expect(settings).toContain("resetApp('erased')");
   });
 
-  it('draws no Ko-fi row until the link is live (V05)', () => {
-    expect(settings).not.toContain('kofi_coming_soon');
-    /* The release value: empty, so the guard below draws nothing. The
-       production-build check (settings-erase-check.mjs) counts the row on
-       the rendered screen. */
-    expect(settings).toMatch(/const KOFI_URL = '';/);
-    expect(withoutScript).toMatch(/\{#if KOFI_URL\}\s*<ListRow[\s\S]*?key="kofi"/);
+  it('links to Buy Me a Coffee immediately above About', () => {
+    const support = /<ListRow\s+key="support"[\s\S]*?<\/ListRow>/.exec(outsideSheets)?.[0] ?? '';
+    expect(support).toContain('href="https://buymeacoffee.com/engender"');
+    expect(support).toContain('title={m.support_row()}');
+    expect(support).toContain('target="_blank"');
+    expect(support).toContain('rel="noreferrer"');
+    expect(support).toContain('chevron={false}');
+    expect(support).toContain('name="external"');
+    expect(outsideSheets).toMatch(/<\/ListRow>\s*<ListRow key="about"/);
+    expect(outsideSheets.indexOf('key="support"')).toBeLessThan(outsideSheets.indexOf('key="about"'));
+    expect(settings).not.toMatch(/kofi|coming_soon/i);
+    for (const locale of ['en', 'pl']) {
+      const messages = JSON.parse(read(`messages/${locale}.json`));
+      expect(messages.support_row).toContain('Buy Me a Coffee');
+      expect(messages).not.toHaveProperty('kofi_row');
+      expect(messages).not.toHaveProperty('kofi_row_sub');
+    }
   });
 
   it('draws the flag picker inline, not behind a dropdown or a sheet', () => {
@@ -152,6 +165,18 @@ describe('what Settings is built from', () => {
        holds all of them to the same rule. Cycle tracking is the switch row
        this screen has left. */
     expect(withoutScript).toMatch(/<div class="kit-row" data-cycle-tracking-toggle>/);
+  });
+
+  it('opens feature visibility in one named manager without duplicating switches', () => {
+    expect(outsideSheets.match(/key="features"/g)).toHaveLength(1);
+    const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
+    expect(manager).toContain('title={m.features_to_show()}');
+    expect(manager).toContain('m.features_to_show_sub()');
+    expect(manager).toContain('data-features-close');
+    for (const handle of ['data-measurements-toggle', 'data-genital-effects-toggle', 'data-cycle-tracking-toggle']) {
+      expect(outsideSheets).not.toContain(handle);
+      expect(manager.match(new RegExp(handle, 'g'))).toHaveLength(1);
+    }
   });
 
   it('keeps no switch for a prompt the notifications screen now carries', () => {

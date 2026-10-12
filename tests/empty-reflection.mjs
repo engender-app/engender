@@ -33,7 +33,15 @@ try {
       document.querySelector('.demo-bar')?.style.setProperty('display', 'none');
       document.querySelectorAll('*').forEach((element) => { element.scrollTop = 0; });
     });
-    await page.screenshot({ path: `.claude/ui14-shots/${name}.png` });
+    const path = `.claude/ui14-shots/${name}.png`;
+    if (name.includes('support') && !name.endsWith('support-short')) {
+      await page.waitForTimeout(850);
+      await page.locator('.app-nav').evaluate((nav) => { nav.style.opacity = '0'; });
+      await page.locator('.screen-safe-space [data-list-card]').screenshot({ path });
+      await page.locator('.app-nav').evaluate((nav) => { nav.style.removeProperty('opacity'); });
+    } else {
+      await page.screenshot({ path });
+    }
   }
   for (const locale of ['en', 'pl']) {
     await page.evaluate(async (locale) => {
@@ -43,6 +51,9 @@ try {
       const { clearJournal } = await import('/src/lib/data/demo/journal-seed.ts');
       await clearJournal(journal);
     }, locale);
+    await visit('/doubt');
+    assert.equal(await page.locator('[data-list-row="evidence"]').count(), 0);
+    await capture(`${locale}-empty-support`);
     const browseName = locale === 'en' ? 'Browse entries' : 'Przeglądaj wpisy';
     const comfortName = locale === 'en' ? 'Things that help' : 'Co pomaga';
     await visit('/stats');
@@ -119,6 +130,8 @@ try {
     await page.getByText('My quiet playlist', { exact: true }).waitFor();
     await capture(`${locale}-populated-comfort`);
     await visit('/doubt');
+    await page.locator('[data-list-row="evidence"]').waitFor();
+    await capture(`${locale}-populated-support`);
     await page.locator('[data-breathing-toggle]').click();
     await page.locator('[data-breathing-phase]').waitFor();
     await page.locator('[data-breathing-toggle]').click();
