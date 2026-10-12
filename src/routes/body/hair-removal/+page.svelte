@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
      ticket 25). Two lists on the screen and a third inside the editor,
@@ -9,6 +9,7 @@
      they stay static rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
+  import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
@@ -40,6 +41,7 @@
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
+  import { crossfade } from '$lib/motion/reveal';
 
   /* The strip's fill shares the chromatic role with the recency figures
      (ticket 56, following ticket 44's own rule for dilation and wear):
@@ -100,14 +102,6 @@
     return onDay && onDay.length ? onDay.map((session) => hairRemovalAreaName(session.area)).join(' · ') : null;
   };
 
-  let weeksBack = $state(0);
-  let shownWeek = $derived(stripWindow(today, weeksBack));
-  let weekSessions = $derived(
-    [...sessions]
-      .filter((session) => session.epochDay >= shownWeek.first && session.epochDay <= shownWeek.last)
-      .sort((a, b) => b.epochDay - a.epochDay)
-  );
-
   /* Hair removal's present reading (ticket 56): the recovery state the Home
      tile already computes (liveTiles.ts), not a next-session due date -
      hairRemovalSchedule.ts refuses that framing on purpose. Read with
@@ -121,6 +115,17 @@
       return latest;
     }, null)
   );
+  // Start on the latest logged week until the person chooses another week.
+  let weeksBack = $state<number | null>(null);
+  let shownWeeksBack = $derived(weeksBack ?? (latestSession ? Math.floor((today - latestSession.epochDay) / 7) : 0));
+  let shownWeek = $derived(stripWindow(today, shownWeeksBack));
+  let areasOpen = $state(false);
+  let weekSessions = $derived(
+    [...sessions]
+      .filter((session) => session.epochDay >= shownWeek.first && session.epochDay <= shownWeek.last)
+      .sort((a, b) => b.epochDay - a.epochDay)
+  );
+
   let recovery = $derived(
     shouldShowHairRemovalRecovery({ latestSession, todayEpochDay: today, enabled: true, snoozed: false })
   );
@@ -201,6 +206,25 @@
   });
 </script>
 
+{#snippet areaControls()}
+  <Disclosure label={m.hair_removal_areas_title()} id="hair-removal-areas" bind:open={areasOpen} data-hair-removal-areas strong>
+    <SectionHeading text={m.hair_removal_recency_title()} />
+    <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
+      {#each HAIR_REMOVAL_AREAS as area (area)}
+        {@const days = recency[area]}
+        <ListRow
+          data-recency={area}
+          title={hairRemovalAreaName(area)}
+          subtitle={days === null
+            ? m.hair_removal_area_never_used()
+            : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+          onclick={() => openSessionForArea(area)}
+        />
+      {/each}
+    </ListCard>
+  </Disclosure>
+{/snippet}
+
 <div class="screen">
   <ScreenHeader title={m.hair_removal()} back="/more">
     {#snippet actions()}
@@ -224,14 +248,6 @@
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
     {#snippet rows()}
-      <!-- What is true now, before what was true before (rule 16). Two
-         readings, freshest first: the recovery notice while a session is
-         still close enough to say something about, then the per-area
-         recency that is true on every other visit - sessions land 7 to
-         300+ days apart per area (hairRemovalSchedule.ts), so unlike
-         dilation and wear's daily cadence, the week the strip draws is
-         usually empty and cannot carry the opening reading on its own.
-         The strip stays as the log's own shape, under both. -->
       {#if recovery}
         <Notice
           icon="shuffle"
@@ -241,22 +257,7 @@
           text={m.tile_hair_removal_guidance()}
         />
       {/if}
-      <SectionHeading text={m.hair_removal_recency_title()} />
-      <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.recency)}>
-        {#each HAIR_REMOVAL_AREAS as area (area)}
-          {@const days = recency[area]}
-          <ListRow
-            data-recency={area}
-            title={hairRemovalAreaName(area)}
-            subtitle={days === null
-              ? m.hair_removal_area_never_used()
-              : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
-            onclick={() => openSessionForArea(area)}
-          />
-        {/each}
-      </ListCard>
-
-      <SectionHeading text={m.hair_removal()} />
+      <SectionHeading text={m.hair_removal_sessions_title()} />
       {#if earliest !== null}
         <DayStrip
           {today}
@@ -266,40 +267,55 @@
           {earliest}
           onPick={openSessionFor}
           role={roleAt(activeFlag.roles, SECTION_ROLE.strip)}
-          bind:weeksBack
+          bind:weeksBack={() => shownWeeksBack, (value) => (weeksBack = value)}
         />
       {/if}
-      {#if weekSessions.length === 0}
-        <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-      {:else}
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-          {#each weekSessions as session (session.id)}
-            <ListRow
-              key={session.id}
-              data-hair-removal-session={session.id}
-              icon="shuffle"
-              title={hairRemovalAreaName(session.area)}
-              subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
-              chevron={false}
-              onclick={() => record.openEditor(session)}
-            />
-          {/each}
-        </ListCard>
-      {/if}
-      <AreaFinish group="hair-removal" />
+      <!-- A week swaps in one slot; the read gate travels its changed height. -->
+      <div class="hair-removal-week">
+        {#key `${shownWeek.first}:${weekSessions.map((session) => session.id).join(',')}`}
+          <div transition:crossfade={{ instant: navigating.to !== null }}>
+            {#if weekSessions.length === 0}
+              <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+            {:else}
+              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+                {#each weekSessions as session (session.id)}
+                  <ListRow
+                    key={session.id}
+                    data-hair-removal-session={session.id}
+                    icon="shuffle"
+                    title={hairRemovalAreaName(session.area)}
+                    subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+                    chevron={false}
+                    onclick={() => record.openEditor(session)}
+                  />
+                {/each}
+              </ListCard>
+            {/if}
+          </div>
+        {/key}
+      </div>
     {/snippet}
     {#snippet empty()}
-      <Notice
-        icon="shuffle"
-        key="hair-removal-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-        title={m.hair_removal_empty_title()}
-        text={m.hair_removal_empty_body()}
-        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-      <AreaFinish group="hair-removal" />
+      <div out:crossfade|global={{ instant: navigating.to !== null }}>
+        <Notice
+          icon="shuffle"
+          key="hair-removal-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          title={m.hair_removal_empty_title()}
+          text={m.hair_removal_empty_body()}
+          action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
     {/snippet}
   </ReadGate>
+
+  <!-- Region controls and area state share one lifetime across empty and populated answers. -->
+  {#if !sessionsQuery.loading && (!sessionsQuery.failed || (sessionsQuery.stale && sessions.length > 0))}
+    <div class="screen-part">
+      {@render areaControls()}
+      <AreaFinish group="hair-removal" />
+    </div>
+  {/if}
 
   <RecordSheet
     {record}
@@ -405,3 +421,9 @@
     {/snippet}
   </RecordSheet>
 </div>
+
+<style>
+  .hair-removal-week {
+    position: relative;
+  }
+</style>

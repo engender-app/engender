@@ -16,7 +16,7 @@ await server.listen();
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 page.setDefaultTimeout(10000);
-await page.clock.setFixedTime('2024-03-14T12:00:00Z');
+await page.clock.setSystemTime('2024-03-14T12:00:00Z');
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 const sheet = () => page.locator('[data-sheet]');
@@ -76,7 +76,10 @@ async function order(flow) {
 }
 async function reopen(flow) {
   await settlePage(page, server.resolvedUrls.local[0], flow.path, 'light');
-  if (flow.handle === 'milestone') await page.locator('[data-ms-log-toggle]').click();
+  if (flow.handle === 'milestone') {
+    const toggle = page.locator('[data-ms-log-toggle]');
+    if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+  }
   await page.locator(`${flow.row.slice(0, -1)}="${flow.id}"]`).click();
 }
 async function valuesMatch(flow) {

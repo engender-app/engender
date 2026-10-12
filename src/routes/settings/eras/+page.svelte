@@ -33,7 +33,7 @@
      asserts the same rule on the way to the table (journal/eras.ts), which
      is the backstop and not this screen's error path. */
   import { replaceRoute } from '$lib/navigation/smart-back';
-  import { page } from '$app/state';
+  import { page, navigating } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -190,7 +190,8 @@
   let requestedEdit = $derived(page.url.searchParams.get('edit'));
   $effect(() => {
     const id = requestedEdit;
-    if (!id) return;
+    // Let the shell count the arriving navigation before replacing its query.
+    if (navigating.to || !id) return;
     const existing = eras.find((era) => era.id === id);
     if (!existing) return;
     record.openEditor(existing);

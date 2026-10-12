@@ -664,6 +664,8 @@ function sharesItsLine(node: Element): boolean {
   if (!parent || box.height <= 0) return false;
   for (const sibling of parent.children) {
     if (sibling === node) continue;
+    const position = getComputedStyle(sibling).position;
+    if (position === 'absolute' || position === 'fixed') continue;
     const other = sibling.getBoundingClientRect();
     const overlap = Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top);
     if (overlap > box.height / 2) return true;

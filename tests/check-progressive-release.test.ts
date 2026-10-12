@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-import { progressiveReleaseProblems } from '../scripts/check-progressive-release.mjs';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { progressiveReleaseProblems, publicationReleaseProblems } from '../scripts/check-progressive-release.mjs';
 import {
   CHANNEL_STAGE_GATE,
   RELEASE_MATRIX_CHECKS,
@@ -237,5 +237,93 @@ describe('progressiveReleaseProblems', () => {
 
   it('accepts the template as valid through stable', () => {
     expect(progressiveReleaseProblems(progressiveTemplate(), 'stable')).toEqual([]);
+  });
+});
+
+
+describe('candidate publication evidence', () => {
+  let root: string;
+  let revision: string;
+  const git = (...args: string[]) => execFileSync('git', args, {
+    cwd: root, encoding: 'utf8',
+    env: { ...process.env, GIT_AUTHOR_DATE: '2020-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2020-01-01T00:00:00Z' }
+  }).trim();
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'candidate-evidence-'));
+    git('init', '-q');
+    git('config', 'user.name', 'Release test');
+    git('config', 'user.email', 'release@example.invalid');
+    git('config', 'commit.gpgsign', 'false');
+    writeFileSync(join(root, 'source.txt'), 'tested application');
+    git('add', '.');
+    git('commit', '-qm', 'Candidate');
+    revision = git('rev-parse', 'HEAD');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  function record() {
+    return { ...fullRecord(), candidateRevision: revision };
+  }
+  function check(value: unknown, target: 'stable' | 'stage2' = 'stable', version = '2.2.0') {
+    return publicationReleaseProblems(value, target, version, root);
+  }
+
+  it('accepts matching evidence committed after the tested source revision', () => {
+    const evidence = record();
+    mkdirSync(join(root, 'scripts'));
+    writeFileSync(join(root, 'scripts/progressive-release-record.json'), JSON.stringify(evidence));
+    git('add', '.');
+    git('commit', '-qm', 'Record evidence');
+    expect(git('rev-parse', 'HEAD')).not.toBe(revision);
+    expect(check(evidence)).toEqual([]);
+  });
+
+  it('rejects source changes after the tested revision', () => {
+    writeFileSync(join(root, 'source.txt'), 'untested application');
+    git('add', '.');
+    git('commit', '-qm', 'Change candidate');
+    expect(check(record())).toContain('Publication source differs from candidateRevision: source.txt.');
+  });
+
+  it('rejects another release version and missing or unrelated revisions', () => {
+    expect(check({ ...record(), releaseVersion: '2.1.0' })).toContain('releaseVersion must match publication version 2.2.0.');
+    expect(check(fullRecord())).toContain('candidateRevision must be the full tested commit SHA.');
+    const orphan = git('commit-tree', 'HEAD^{tree}', '-m', 'Other history');
+    expect(check({ ...record(), candidateRevision: orphan })).toContain('candidateRevision must be an available ancestor of the publication commit.');
+  });
+
+  it('rejects matrices copied from before the tested commit', () => {
+    const evidence = record();
+    evidence.stages.stage2.releaseMatrix.ranAt = '2019-12-31T23:59:59Z';
+    expect(check(evidence)).toContain('stage2.releaseMatrix.ranAt predates candidateRevision; rerun the matrix on this candidate.');
+  });
+
+  it('requires stable evidence for stable publication even when a lower target is requested', () => {
+    expect(check(record(), 'stage2')).toContain('Publication of 2.2.0 requires at least stable.');
+    expect(check({ ...pendingRecord(), candidateRevision: revision })).toContain('stable.evidence.rollback must be true.');
+  });
+
+  it('requires completed stage2 for prereleases without requiring already-published stage3 artifacts', () => {
+    const evidence = { ...pendingRecord(), releaseVersion: '2.2.0-rc.1', candidateRevision: revision };
+    evidence.stages.stage1 = fullRecord().stages.stage1;
+    evidence.channels.web = fullRecord().channels.web;
+    expect(check(evidence, 'stage2', '2.2.0-rc.1')).toContain('stage2.evidence.androidApi26 must be true.');
+    evidence.stages.stage2 = fullRecord().stages.stage2;
+    expect(check(evidence, 'stage2', '2.2.0-rc.1')).toEqual([]);
+    evidence.stages.stage2.releaseMatrix.checks.rollback = false;
+    expect(check(evidence, 'stage2', '2.2.0-rc.1')).toContain('stage2.releaseMatrix.checks.rollback must be true.');
+  });
+
+  it('fails the publication CLI for pending evidence and refuses inferred publication targets', () => {
+    mkdirSync(join(root, 'scripts'));
+    writeFileSync(join(root, 'scripts/progressive-release-record.json'), JSON.stringify({ ...pendingRecord(), candidateRevision: revision }));
+    const script = fileURLToPath(new URL('../scripts/check-progressive-release.mjs', import.meta.url));
+    const result = spawnSync(process.execPath, [script, '--target', 'stable', '--publication-version', '2.2.0'], { cwd: root, encoding: 'utf8' });
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('stable.evidence.rollback must be true.');
+    const inferred = spawnSync(process.execPath, [script, '--publication-version', '2.2.0'], { cwd: root, encoding: 'utf8' });
+    expect(inferred.status).toBe(1);
+    expect(inferred.stderr).toContain('Publication requires an explicit --target.');
   });
 });

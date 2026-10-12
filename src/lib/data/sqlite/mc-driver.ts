@@ -187,18 +187,11 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => { void releaseOnPageHide(); });
 }
 
-/* A worker started at boot start, before any key exists (ux-carpet ticket
-   209). Worker start, the wasm compile and the pool install took 65-70ms
-   and began only once the key was ready, though none of them needs it. So
-   the boot starts one at once, with the survey and the key derivation, and
-   the driver that opens the Journal takes it over.
-
-   `attach` brings up the module, the pool and the encryption shim and opens
-   nothing: there is no database handle in the worker until `open` arrives
-   with the key (ADR-0018), and nothing here or in the worker holds a key
-   before then. A failure to start is kept on the promise, and the worker's
-   own `stopped` makes the `open` behind it fail with the same cause, which
-   boot() reports as the journal failing to open. */
+/* Start the worker and compile WASM beside the survey and key derivation.
+   `attach` holds no key and acquires no OPFS handles: an idle setup tab must
+   not prevent another tab from creating its journal. The driver takes this
+   worker over, and `open` acquires the pool with the actual data key.
+   Initialization failures remain latched for the later open to report. */
 let prewarmed: { path: string; connection: Connection; attached: Promise<void> } | null = null;
 
 export function prewarmJournalWorker(databasePath: string, wasmBinary?: Promise<ArrayBuffer>): Promise<void> {
@@ -220,9 +213,8 @@ export function prewarmJournalWorker(databasePath: string, wasmBinary?: Promise<
   return prewarmed.attached;
 }
 
-/** Lets go of a worker started ahead of the key without it ever opening
-    anything. The pool's access handles belong to one worker at a time, so
-    a reset deleting the Journal's files has to have this worker gone first. */
+/** Retires an unused prewarm worker during reset. It holds the compiled
+    module, but no journal key or OPFS pool. */
 export async function releasePrewarmedJournalWorker(): Promise<void> {
   const held = prewarmed;
   prewarmed = null;
@@ -286,9 +278,10 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     }),
 
     async close() {
-      await post('close');
-      terminate();
-    }
+      try { await post('close'); }
+      finally { terminate(); }
+    },
+    dispose: terminate
   });
 
   /* The copy check and the restore, which are what a failed boot does next

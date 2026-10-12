@@ -3,6 +3,8 @@
    A green build says code compiles. This check proves each release stage has the
    exercises recorded before a channel is marked live on the landing site.
 */
+import { execFileSync } from 'node:child_process';
+import { RELEASE_VERSION_RE } from './cut-release-tag.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -176,12 +178,63 @@ export function progressiveReleaseProblems(record, target = highestClaimedStage(
 }
 
 /**
+ * Publication checks use the tested commit, allowing only the evidence record to
+ * change afterwards. Keeping the commit outside its own record avoids a hash
+ * that would change whenever the evidence is committed.
+ * @param {unknown} record
+ * @param {StageName} target
+ * @param {string} version
+ * @param {string} [cwd]
+ */
+export function publicationReleaseProblems(record, target, version, cwd = process.cwd()) {
+  const problems = progressiveReleaseProblems(record, target);
+  if (RELEASE_VERSION_RE.exec(version)?.[1] !== version) problems.push('Publication requires a release version.');
+  const minimum = version.includes('-') ? 'stage2' : 'stable';
+  if (stageIndex(target) < stageIndex(minimum)) {
+    problems.push(`Publication of ${version} requires at least ${minimum}.`);
+  }
+  if (!record || typeof record !== 'object') return problems;
+  const candidate = /** @type {{releaseVersion?: unknown, candidateRevision?: unknown, stages?: Record<string, {releaseMatrix?: {ranAt?: unknown}}>}} */ (record);
+  if (candidate.releaseVersion !== version) {
+    problems.push(`releaseVersion must match publication version ${version}.`);
+  }
+  const revision = candidate.candidateRevision;
+  if (typeof revision !== 'string' || !/^[a-f0-9]{40}$/.test(revision)) {
+    problems.push('candidateRevision must be the full tested commit SHA.');
+    return problems;
+  }
+  /** @param {string[]} args */
+  const git = (args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  try {
+    if (git(['rev-parse', `${revision}^{commit}`]) !== revision) {
+      problems.push('candidateRevision must name a commit.');
+      return problems;
+    }
+    git(['merge-base', '--is-ancestor', revision, 'HEAD']);
+    const changed = git(['diff', '--name-only', revision, 'HEAD', '--', '.', ':(exclude)scripts/progressive-release-record.json']);
+    if (changed) problems.push(`Publication source differs from candidateRevision: ${changed.split('\n').join(', ')}.`);
+    const committedAt = Number(git(['show', '-s', '--format=%ct', revision])) * 1000;
+    for (const stage of STAGE_ORDER.slice(0, stageIndex(target) + 1)) {
+      const ranAt = parseIsoDate(candidate.stages?.[stage]?.releaseMatrix?.ranAt);
+      if (ranAt !== null && ranAt < committedAt) {
+        problems.push(`${stage}.releaseMatrix.ranAt predates candidateRevision; rerun the matrix on this candidate.`);
+      }
+    }
+  } catch {
+    problems.push('candidateRevision must be an available ancestor of the publication commit.');
+  }
+  return problems;
+}
+
+/**
  * @param {string[]} argv
  */
 function parseArgs(argv) {
   let filePath = 'scripts/progressive-release-record.json';
   /** @type {string | undefined} */
   let target;
+  /** @type {string | undefined} */
+  let publicationVersion;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -195,22 +248,29 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
+    if (arg === '--publication-version' && argv[i + 1]) {
+      publicationVersion = argv[++i];
+      continue;
+    }
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  return { filePath, target };
+  if (publicationVersion !== undefined && target === undefined) throw new Error('Publication requires an explicit --target.');
+  return { filePath, target, publicationVersion };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
-    const { filePath, target } = parseArgs(process.argv.slice(2));
+    const { filePath, target, publicationVersion } = parseArgs(process.argv.slice(2));
     if (!existsSync(filePath)) {
       throw new Error(`Missing progressive release record: ${filePath}`);
     }
 
     const record = JSON.parse(readFileSync(filePath, 'utf8'));
     const resolvedTarget = target === undefined ? highestClaimedStage(record) : /** @type {StageName} */ (target);
-    const problems = progressiveReleaseProblems(record, resolvedTarget);
+    const problems = publicationVersion === undefined
+      ? progressiveReleaseProblems(record, resolvedTarget)
+      : publicationReleaseProblems(record, /** @type {StageName} */ (resolvedTarget), publicationVersion);
 
     for (const problem of problems) console.log(`FAIL ${problem}`);
     if (problems.length) {

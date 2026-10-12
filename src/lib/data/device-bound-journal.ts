@@ -1,6 +1,7 @@
+import { DEVICE_BOUND_FILE, initializeJournal } from './journal-initialization';
+
 const DEVICE_BOUND_VERSION = 1;
 const DATA_KEY_LENGTH = 32;
-const DEVICE_BOUND_FILE = 'device-key.json';
 const DEVICE_BOUND_DB = 'engender-device-key';
 const DEVICE_BOUND_STORE = 'keys';
 const DEVICE_BOUND_SLOT = 'journal-device-key';
@@ -115,10 +116,12 @@ async function generateWrappingKey(): Promise<CryptoKey> {
 }
 
 export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>> {
-  const slot = browserDeviceKeySlot();
-  const { dataKey, metadata } = await createDeviceBoundMetadata(slot);
-  await writeDeviceBoundMetadata(metadata);
-  return dataKey;
+  return initializeJournal(async () => {
+    const slot = browserDeviceKeySlot();
+    const { dataKey, metadata } = await createDeviceBoundMetadata(slot);
+    await writeDeviceBoundMetadata(metadata);
+    return dataKey;
+  });
 }
 
 /** Moves an already-open journal to device-bound mode from Settings: the
@@ -128,7 +131,8 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
     that mints its own data key (`create()`) and cannot be asked to wrap
     one - so on a phone this direction would mean re-encrypting the whole
     journal, and the module does not offer it there. Ticket 53's notes carry
-    that as the follow-up it is. */
+    that as the follow-up it is. The caller owns credential mutation through
+    old-mode cleanup. */
 export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
   const slot = browserDeviceKeySlot();
   const wrappingKey = await wrappingKeyFor(slot);
@@ -149,6 +153,7 @@ export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer
   return unlockDeviceBoundMetadata(metadata, browserDeviceKeySlot());
 }
 
+/** Called inside the access-mode operation's credential ownership. */
 export async function removeDeviceBoundJournal(): Promise<void> {
   await browserDeviceKeySlot().remove().catch(() => {});
   await removeDeviceBoundMetadata().catch(() => {});

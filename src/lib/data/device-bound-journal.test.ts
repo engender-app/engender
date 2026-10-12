@@ -157,8 +157,9 @@ function browserStorage() {
     }
   };
   vi.stubGlobal('indexedDB', indexedDB);
-  vi.stubGlobal('navigator', { storage: { async getDirectory() {
-    return { async getFileHandle() {
+  vi.stubGlobal('navigator', { locks: navigator.locks, storage: { async getDirectory() {
+    return { async getFileHandle(name: string, options?: { create?: boolean }) {
+      if (!options?.create && (name !== 'device-key.json' || !metadata)) throw new DOMException('missing', 'NotFoundError');
       return {
         async getFile() { return { async text() { return metadata; } }; },
         async createWritable() {

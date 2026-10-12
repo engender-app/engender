@@ -58,6 +58,21 @@ function readOnlyQuery(sql: string): boolean {
 export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   const reads = new Map<string, Promise<Record<string, unknown>[]>>();
   const invalidate = () => reads.clear();
+  let disposed: Error | null = null;
+  const pending = new Set<(error: Error) => void>();
+
+  function available() {
+    if (disposed) throw disposed;
+  }
+
+  function untilDisposed<T>(work: Promise<T>): Promise<T> {
+    if (!driver.dispose) return work;
+    return new Promise<T>((resolve, reject) => {
+      pending.add(reject);
+      work.then(resolve, reject).finally(() => pending.delete(reject));
+      if (disposed) reject(disposed);
+    });
+  }
 
   function copyRows<Row extends Record<string, unknown>>(rows: Row[]): Row[] {
     return rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) =>
@@ -66,7 +81,8 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   }
 
   function query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]> {
-    if (blocked) return blocked.then(() => query<Row>(sql, params));
+    if (disposed) return Promise.reject(disposed);
+    if (blocked) return untilDisposed(blocked.then(() => query<Row>(sql, params)));
     // SQLite bindings outside scalar values keep their own identity.
     const readOnly = readOnlyQuery(sql);
     if (!readOnly) invalidate();
@@ -106,11 +122,12 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   }
 
   function call<T>(work: () => T | Promise<T>): T | Promise<T> {
-    if (blocked) return blocked.then(() => call(work));
+    available();
+    if (blocked) return untilDisposed(blocked.then(() => call(work)));
     active++;
     try {
       const result = work();
-      if (result instanceof Promise) return result.finally(finished);
+      if (result instanceof Promise) return untilDisposed(result.finally(finished));
       finished();
       return result;
     } catch (error) {
@@ -120,13 +137,16 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
   }
 
   function reserve<T>(work: () => T | Promise<T>): Promise<T> {
+    if (disposed) return Promise.reject(disposed);
     let release!: () => void;
     const barrier = new Promise<void>((resolve) => { release = resolve; });
     blocked = barrier;
-    const result = reservations.then(async () => {
+    const result = untilDisposed(reservations.then(async () => {
+      available();
       while (active > 0) await new Promise<void>((resolve) => idle.push(resolve));
+      available();
       return work();
-    }).finally(() => {
+    })).finally(() => {
       invalidate();
       if (blocked === barrier) blocked = null;
       release();
@@ -141,6 +161,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
     const writing = reserve(() => driver.transaction(async () => {
       let valid = true;
       function use<Result>(operation: () => Result): Result {
+        available();
         if (!valid) throw new Error('transaction scope has expired');
         return operation();
       }
@@ -163,10 +184,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
       }
     }));
     return writing.then(async (value) => {
-      for (const cleanup of cleanups) {
-        try { await cleanup(); }
-        catch (error) { console.warn('Could not finish post-commit cleanup', error); }
-      }
+      for (const cleanup of cleanups) await finishCleanup(cleanup);
       return value;
     });
   }
@@ -176,6 +194,7 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
       let valid = true;
       const reader: SqliteReader = {
         async query<Row extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+          available();
           if (!valid) throw new Error('snapshot scope has expired');
           return driver.query<Row>(sql, params);
         }
@@ -196,12 +215,27 @@ export function withReadSnapshots(driver: RawSqliteDriver): SqliteDriver {
     setUserVersion: (version) => call(() => { invalidate(); return driver.setUserVersion(version); }),
     transaction,
     close: () => Promise.resolve(call(() => { invalidate(); return driver.close(); })),
-    readSnapshot
+    readSnapshot,
+    ...(driver.dispose ? { dispose() {
+      if (disposed) return;
+      disposed = new Error('the database connection was disposed');
+      invalidate();
+      for (const reject of pending) reject(disposed);
+      pending.clear();
+      driver.dispose!();
+    } } : {})
   };
+}
+
+/** Cleanup cannot change a committed write's result. The boot orphan sweep
+    retries files left behind by a failed removal. */
+async function finishCleanup(cleanup: () => Promise<void>): Promise<void> {
+  try { await cleanup(); }
+  catch (error) { console.warn('Could not finish post-commit cleanup', error); }
 }
 
 /** A scoped caller must keep bytes until its outer transaction commits. */
 export async function afterCommit(driver: SqliteDriver, cleanup: () => Promise<void>): Promise<void> {
   if (driver.deferUntilCommit) driver.deferUntilCommit(cleanup);
-  else await cleanup();
+  else await finishCleanup(cleanup);
 }

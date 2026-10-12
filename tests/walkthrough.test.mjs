@@ -86,6 +86,13 @@ if (ONLY) {
   console.log('!! the flows that did not run. Not merge proof.\n');
 }
 
+async function openFeatures() {
+  if (!(await page.locator('[data-feature-visibility]').count())) {
+    await page.locator('[data-list-row="features"]').click();
+    await page.locator('[data-feature-visibility]').waitFor();
+  }
+}
+
 /** Run selected flows in their original order, retaining journal writes. */
 async function flow(name, body) {
   if (!PICKED.includes(name)) return;
@@ -2058,6 +2065,7 @@ try {
   await page.locator('[data-list-row="language"]').click(); // a sheet since ticket 277
   await page.locator('[data-segment="pl"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Dzisiaj', null, { timeout: 8000 });
+  await openFeatures();
   const cycleSwitch = page.getByRole('switch', { name: 'Śledzenie cyklu' });
   await cycleSwitch.waitFor();
   if (!['true', 'false'].includes(await cycleSwitch.getAttribute('aria-checked'))) {
@@ -2669,6 +2677,7 @@ try {
   };
   await visit('/settings');
   const toggle = page.locator('[data-measurements-toggle] [role="switch"]');
+  await openFeatures();
   await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
   if ((await toggle.getAttribute('aria-checked')) !== 'false') {
     throw new Error('measurements is on after skipping setup');
@@ -2685,9 +2694,12 @@ try {
   if (await page.evaluate(() => window.measurementsRowSeen)) throw new Error('hidden measurements flashed on More during load');
 
   await visit('/settings');
+  await openFeatures();
   await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
   await toggle.click();
   await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
+  await page.locator('[data-features-close]').click();
+  await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
   await page.waitForSelector('[data-measurement-unit]');
   await visit('/more');
   await page.waitForSelector('[data-list-row="measurements"]');
@@ -2697,12 +2709,14 @@ try {
   }
 
   await visit('/settings');
+  await openFeatures();
   await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
   await toggle.click();
   await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false');
   await visit('/body/measurements');
   if (!page.url().endsWith('/body/measurements')) throw new Error('the direct link stopped working while hidden');
   await visit('/settings');
+  await openFeatures();
   await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
   if ((await toggle.getAttribute('aria-checked')) !== 'false') throw new Error('the off state did not survive navigation');
 
@@ -2968,6 +2982,7 @@ try {
   await waitingFor('the flag turning lesbian before the export', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'lesbian')
   );
+  await openFeatures();
   await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
   await page.locator('[data-measurements-toggle] [role="switch"]').click();
   await page.waitForFunction(() => document.querySelector('[data-measurements-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true');
@@ -3180,10 +3195,13 @@ try {
      rule 13b0 above already follows. */
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  await openFeatures();
   await page.waitForFunction(() => !document.querySelector('[data-measurements-toggle] [role="switch"]')?.disabled);
   if ((await page.locator('[data-measurements-toggle] [role="switch"]').getAttribute('aria-checked')) !== 'true') {
     throw new Error('setup draft replaced archived measurements visibility');
   }
+  await page.locator('[data-features-close]').click();
+  await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
   await page.locator('[data-palette-pick="trans"]').click();
   await waitingFor('the flag going back to trans after the restore', () =>
     page.waitForFunction(() => document.documentElement.dataset.palette === 'trans')
@@ -3528,9 +3546,12 @@ try {
 
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  await openFeatures();
   if (await page.getByRole('switch', { name: 'Cycle tracking' }).getAttribute('aria-checked') !== 'false') {
     throw new Error('skipping feature choices did not leave cycle tracking off');
   }
+  await page.locator('[data-features-close]').click();
+  await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: /Gender scales/i }).click();
   for (const key of ['euphoria_dysphoria', 'femininity', 'masculinity']) {
     await page.waitForSelector(`[data-list-row="scale-${key}"][aria-checked="true"]`);
@@ -3563,10 +3584,13 @@ try {
   await page.waitForSelector('[data-home-hello]');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await booted();
+  await openFeatures();
   const cycleSwitch = page.getByRole('switch', { name: 'Śledzenie cyklu' });
   if (await cycleSwitch.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not reach Settings');
   await cycleSwitch.focus();
   await cycleSwitch.press('Space');
+  await page.locator('[data-features-close]').click();
+  await page.locator('[data-feature-visibility]').waitFor({ state: 'detached' });
   await page.locator('[data-list-row="language"]').click();
   await page.locator('[data-segment="en"]').click();
   await page.waitForFunction(() => document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === 'Today');
@@ -7430,6 +7454,7 @@ try {
 
   // Way in one: the explicit opt-in, for someone no regimen speaks for.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await openFeatures();
   await page.locator('[data-cycle-tracking-toggle] [role="switch"]').click();
   await page.waitForFunction(
     () => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'true',
@@ -7441,6 +7466,7 @@ try {
 
   // Explicit off stays off, including during the testosterone episode below.
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await openFeatures();
   await page.locator('[data-cycle-tracking-toggle] [role="switch"]').click();
   await page.waitForFunction(
     () => document.querySelector('[data-cycle-tracking-toggle] [role="switch"]')?.getAttribute('aria-checked') === 'false',
@@ -7463,6 +7489,11 @@ try {
     await page.waitForFunction((language) =>
       document.querySelector('[data-nav-item="home"] [data-nav-label]')?.textContent === (language === 'pl' ? 'Dzisiaj' : 'Today'), locale);
     await booted();
+    if (await page.locator('[data-sheet]').count()) {
+      await page.keyboard.press('Escape');
+      await page.locator('[data-sheet]').waitFor({ state: 'detached' });
+    }
+    await openFeatures();
     const switchName = locale === 'pl' ? 'Śledzenie cyklu' : 'Cycle tracking';
     const cycleSwitch = page.getByRole('switch', { name: switchName });
     await cycleSwitch.waitFor();
@@ -7522,6 +7553,7 @@ try {
   }
 
   await fresh('/settings');
+  await openFeatures();
   const initialSwitch = page.locator('[data-cycle-tracking-toggle] [role="switch"]');
   await initialSwitch.waitFor();
   if (await initialSwitch.getAttribute('aria-checked') === 'false') {
@@ -7545,6 +7577,7 @@ try {
   await checkCycleOffers(false, 'en');
   await checkCycleOffers(false, 'pl');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await openFeatures();
   const cycleSwitch = page.locator('[data-cycle-tracking-toggle] [role="switch"]');
   await cycleSwitch.waitFor();
   if (await cycleSwitch.getAttribute('aria-checked') !== 'false') {
@@ -7560,6 +7593,7 @@ try {
   await page.waitForTimeout(300);
   await page.reload({ waitUntil: 'networkidle' });
   await booted();
+  await openFeatures();
   if (await page.locator('[data-cycle-tracking-toggle] [role="switch"]').getAttribute('aria-checked') !== 'true') {
     throw new Error('cycle choice did not survive reload');
   }

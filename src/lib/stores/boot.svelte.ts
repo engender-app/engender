@@ -65,6 +65,8 @@ import {
   removeDeviceBoundJournal,
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
+import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
+import { changeCredentials } from '../data/credential-ownership';
 import { removeKeystoreFile } from '../data/keystore-file';
 import { openWithRecoveryKey } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
@@ -200,7 +202,8 @@ async function run(effect: BootEffect): Promise<void> {
   try {
     await perform(effect);
   } catch (error) {
-    dispatch({ type: 'boot-failed', message: describeError(error) });
+    if (error instanceof JournalAlreadyExistsError) surveyExistingJournal();
+    else dispatch({ type: 'boot-failed', message: describeError(error) });
   }
 }
 
@@ -385,36 +388,29 @@ let reopeningCurrent: () => void = () => {};
 async function reopenJournal(
   dataKey: Uint8Array<ArrayBuffer>,
   current: () => void,
-  dispose: (driver: SqliteDriver) => Promise<void>
+  own: (driver: SqliteDriver) => void
 ): Promise<SqliteDriver> {
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
-  try {
-    const preparing = openJournal(sqlite.driver, photoFiles);
-    const preferences = await openPreferences(sqlite.driver, bootCache);
-    current();
-    /* Reopen reads use the private driver. The shared connection stays
-       closed until every preparation step has finished under this lock. */
-    await hydrateReference(preparing, current);
-    current();
-    await attachPreferences(preferences);
-    current();
-    const journal = attachJournal(openJournal(journalDriver, photoFiles));
-    openDriver = sqlite.driver;
-    openFileOps = sqlite.fileOps;
-    setActiveDriver(sqlite.driver);
-    useJournalFiles(photoFiles);
-    session.connection.open(sqlite.driver);
-    journalIsOpen();
-    dispatch({ type: 'journal-reopened', journal });
-    return sqlite.driver;
-  } catch (error) {
-    /* Preparation can have attached preferences before losing ownership.
-       The session drains those writes within the same bound as a lock,
-       closes this private driver, and releases every partially filled store. */
-    await dispose(sqlite.driver);
-    throw error;
-  }
+  own(sqlite.driver);
+  const preparing = openJournal(sqlite.driver, photoFiles);
+  const preferences = await openPreferences(sqlite.driver, bootCache);
+  current();
+  /* Reopen reads use the private driver. The shared connection stays
+     closed until every preparation step has finished under this lock. */
+  await hydrateReference(preparing, current);
+  current();
+  await attachPreferences(preferences);
+  current();
+  const journal = attachJournal(openJournal(journalDriver, photoFiles));
+  openDriver = sqlite.driver;
+  openFileOps = sqlite.fileOps;
+  setActiveDriver(sqlite.driver);
+  useJournalFiles(photoFiles);
+  session.connection.open(sqlite.driver);
+  journalIsOpen();
+  dispatch({ type: 'journal-reopened', journal });
+  return sqlite.driver;
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
@@ -439,6 +435,10 @@ const RESET_DESTINATION = {
     gate (phase 14 ticket 15): setup's welcome then says what happened,
     since nobody there forgot anything and the result cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  return changeCredentials(() => resetAppOwned(next));
+}
+
+async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -567,7 +567,7 @@ export function startBoot() {
   started = true;
   /* What needs no key starts now, beside the survey and the unlock rather
      than after them (ux-carpet ticket 209): the web's database worker, its
-     wasm and its pool, which the Journal's driver takes over once the key
+     wasm, which the Journal's driver takes over once the key
      exists, and - where the unlock will derive one - the argon2id worker
      with hash-wasm compiled. Neither is given a secret here. */
   if (!isAndroid()) prewarmJournalWorker(JOURNAL_DATABASE).catch(() => {});
@@ -580,8 +580,21 @@ export function startBoot() {
     to ask on top of it (spec: app lock may grant shorter access while an
     unlocked key is available - a key unlocked by hand is the strong case). */
 export async function submitPassphraseSetup(passphrase: string): Promise<void> {
-  const dataKey = await setupJournalPassphrase(passphrase);
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+  await finishSetup(() => setupJournalPassphrase(passphrase), 'passphrase');
+}
+
+function surveyExistingJournal(): void {
+  dispatch({ type: 'setup-stale', platform: isAndroid() ? 'android' : 'web' });
+}
+
+async function finishSetup(create: () => Promise<Uint8Array<ArrayBuffer>>, accessMode: JournalAccessMode): Promise<void> {
+  try {
+    const dataKey = await create();
+    dispatch({ type: 'key-obtained', dataKey, accessMode, unlocked: true });
+  } catch (error) {
+    if (!(error instanceof JournalAlreadyExistsError)) throw error;
+    surveyExistingJournal();
+  }
 }
 
 /** The unlock screen's submit. Throws DecryptionFailedError back to the
@@ -596,8 +609,7 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
 /** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
     this session, the same way a chosen passphrase does. */
 async function submitPinSetup(pin: string): Promise<void> {
-  const dataKey = await setupJournalPin(pin);
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+  await finishSetup(() => setupJournalPin(pin), 'pin');
 }
 
 /** The PIN gate's submit. Throws DecryptionFailedError on a wrong PIN and
@@ -617,8 +629,7 @@ export async function submitPinUnlock(pin: string): Promise<void> {
     at the screen when the authenticator will not answer, which is a
     different sentence from a failed setup. */
 async function submitBiometricSetup(): Promise<void> {
-  const dataKey = await setupJournalBiometric();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+  await finishSetup(() => setupJournalBiometric(), 'biometric');
 }
 
 /** The biometric gate's submit. There is nothing to retype, so every failure
@@ -675,7 +686,7 @@ export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
 async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
     const authRequired = options?.authRequired ?? true;
-    const result = await openAndroidDataKey(
+    const result = await initializeJournal(() => openAndroidDataKey(
       androidKeystore,
       {
         title: '',
@@ -683,8 +694,8 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
         cancel: '',
         deviceCredential: false
       },
-      { authRequired }
-    );
+      { authRequired, create: true }
+    ));
     const outcome = deviceBoundSetupOutcome(result);
     /* The one place a refusal is not dispatched: this is an offer on the
        setup module, and turning it down leaves the module exactly where it
@@ -696,8 +707,7 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
   }
 
   try {
-    const dataKey = await setupDeviceBoundJournal();
-    dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: true });
+    await finishSetup(() => setupDeviceBoundJournal(), 'device-bound');
     return 'ok';
   } catch (error) {
     if (error instanceof DeviceBoundKeyUnavailableError) return 'device-bound-unavailable';
@@ -717,17 +727,18 @@ export async function submitAccessModeSetup(
   chosen: NonNullable<JournalAccessMode>,
   secret: string
 ): Promise<AccessModeSetupResult> {
-  if (chosen === 'device-bound') return submitDeviceBoundSetup({ authRequired: true });
-  if (chosen === 'unlocked') {
-    if (isAndroid()) return submitDeviceBoundSetup({ authRequired: false });
-    return submitDeviceBoundSetup();
-  }
   try {
+    if (chosen === 'device-bound') return await submitDeviceBoundSetup({ authRequired: true });
+    if (chosen === 'unlocked') return await submitDeviceBoundSetup({ authRequired: !isAndroid() });
     if (chosen === 'pin') await submitPinSetup(secret);
     else if (chosen === 'biometric') await submitBiometricSetup();
     else await submitPassphraseSetup(secret);
     return 'ok';
   } catch (error) {
+    if (error instanceof JournalAlreadyExistsError) {
+      surveyExistingJournal();
+      return 'ok';
+    }
     console.error('setting up the access mode failed', error);
     return error instanceof BiometricUnavailableError ? 'biometric-unavailable' : 'setup-failed';
   }
@@ -744,6 +755,10 @@ export async function submitAccessModeSetup(
     device-bound material - so an interruption anywhere in here leaves a
     journal that still opens, under one mode or the other, never neither. */
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
+  return changeCredentials(() => changeAccessModeOwned(target, secret));
+}
+
+async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
   const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 

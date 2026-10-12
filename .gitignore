@@ -19,6 +19,9 @@ android/app/src/androidTest/assets/
 # otherwise turn the build it is packaging into a development build.
 dist/
 ci-logs/
+evidence110/
+evidence117/
+tests/*-20??-??-??.md
 
 # AI/agent-local files - session state, trackers and agent config stay out of the repo
 .scratch/
@@ -47,6 +50,10 @@ GEMINI.md
 .codex/
 .opencode/
 .mcp.json
+copilot-instructions.md
+.github/instructions/
+.github/prompts/
+.github/agents/
 
 # The provisioning wizard and the test that exercises it. Operator tooling, not
 # product: it walks one person through DNS, deployment access, a store account

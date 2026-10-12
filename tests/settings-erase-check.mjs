@@ -9,7 +9,7 @@
    written with a photo, the row's sheet is opened and cancelled (nothing
    goes), then confirmed. The app has to come back at first run saying what
    happened, with no keystore left to open, and a fresh setup has to find no entry.
-   Being a release build, it also holds that no Ko-fi row renders.
+   The release build also exposes the Buy Me a Coffee support link above About.
 
      npm run build && node tests/settings-erase-check.mjs */
 import assert from 'node:assert/strict';
@@ -174,13 +174,17 @@ async function check(mode) {
       await page.locator('[data-home-hello]').waitFor();
     }
 
-    /* The row is on the first screen at 390, above the tab bar. */
+    /* Privacy sits near the end of Settings; scrolling must expose the row
+       above the tab bar at 390px. */
     await page.locator('[data-home-gear]').click();
+    await page.locator('[data-list-row="erase"]').scrollIntoViewIfNeeded();
     const row = await page.locator('[data-list-row="erase"]').boundingBox();
     const nav = await page.locator('[data-nav-item="home"]').first().boundingBox();
     assert.ok(row && nav && row.y + row.height <= nav.y, `${mode}: the erase row sits above the tab bar (${row?.y}+${row?.height} vs ${nav?.y})`);
-    /* A release build, so KOFI_URL is empty and no Ko-fi row may render. */
-    assert.equal(await page.locator('[data-list-row="kofi"]').count(), 0, `${mode}: no Ko-fi row in a release build`);
+    const support = page.getByRole('link', { name: 'Support on Buy Me a Coffee', exact: true });
+    assert.equal(await support.getAttribute('href'), 'https://buymeacoffee.com/engender', `${mode}: support has its external destination`);
+    assert.equal(await support.getAttribute('target'), '_blank', `${mode}: support opens externally`);
+    assert.equal(await support.evaluate((link) => link.nextElementSibling?.getAttribute('data-list-row')), 'about', `${mode}: support sits immediately above About`);
     await page.locator('[data-nav-item="home"]').first().click();
     await page.locator('[data-home-hello]').waitFor();
 

@@ -38,6 +38,25 @@ checks encrypted persistence after reload, and preserves failed-write draft
 recovery followed by an explicit update retry. Fixture and platform limits are
 in [update-handover/README.md](update-handover/README.md).
 
+`credential-change-check` (`tests/credential-change-check.mjs`) runs with
+`npm run test:browser`. It holds credential publication across a real Settings
+lock/unlock, rejects overlapping changes and resets from both pages, then
+restarts and verifies the original entries and encrypted attachment bytes.
+The dev app supplies synthetic demo data; credential storage and UI paths are real.
+
+`stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with
+`npm run test:browser`. It withholds real preference and reference-read replies
+during unlock, then verifies bounded worker disposal, a usable retry without
+reload, preserved journal content and harmless late replies. Visibility events
+are synthetic; the application, encrypted worker and OPFS are real.
+
+`restore-commit-check` (`tests/restore-commit-check.mjs`) runs with
+`npm run test:browser` and in its own CI browser job. It holds a successful
+COMMIT response or injects a worker error after COMMIT, then reopens the
+encrypted journal and checks rows and attachment bytes before and after the
+orphan sweep. It also checks confirmed rollback and graceful lock disposal.
+Faults are synthetic; SQLite, OPFS, encrypted files and session disposal are real.
+
 ## Walkthrough groups
 
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
@@ -121,8 +140,10 @@ To run one on its own, use
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |
 | `hair-progress-photo-jump-check` | the hair progress jump reaches its photo and keeps its context |
+| `hair-progress-photo-actions` | Hair progress opens its own photos in shared collage/timelapse export and preserves comparison and scroll after completion or cancellation |
 | `hair-removal-entry-check` | session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom |
 | `hair-removal-recency-handoff-check` | the recency rows open their own area prefilled, and nothing saves before Save |
+| `hair-removal-interaction-check` | saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures |
 | `measurements-sizes-jump-check` | the Measurements/Sizes jump moves focus and keeps an open editor's input |
 | `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
 | `search-filter-scope` | search says what its filter covers and what a saved question holds |
@@ -137,6 +158,7 @@ To run one on its own, use
 | `lab-entry-check` | lab result field order, saved values, draft dismissal, failures and privacy in English and Polish |
 | `measurements-entry-check` | measurement field order, saved values, draft dismissal, failures and privacy in English and Polish |
 | `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
+| `milestone-era-handoff-check` | Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
@@ -151,6 +173,7 @@ To run one on its own, use
 | `dose-editor-copy-check` | dose editor labels and field order in English and Polish, without duplicate prompts |
 | `dose-save-check` | Dose saves close and confirm through Care, Quick add and Today, preserving navigation and single-row confirmation |
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
+| `settings-scroll-check` | Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content |
 | `sheet-handoff-scroll-check` | a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close |
 | `sheet-touch-drag-check` | a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies) |
 | `yank-sweep` (`--scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate`) (ticket 244) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |
@@ -184,7 +207,7 @@ To run one on its own, use
 | `restore-previous-journal` | after a migration fails past its copy, the failure screen offers the journal from before the update and restoring it boots, on the web (a control retry of the stamped live file must fail); an interrupted restore finishes by itself on the next boot; "Try opening again" pressed the frame it appears boots like a slow retry, 5 of 5 |
 | `day-addresses` | malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter |
 | `device-recovery-check` | recovery after real key loss, against a production build, where the first run is real |
-| `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
+| `settings-erase-check` | Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: Buy Me a Coffee support link immediately above About; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first) |
 
 ### Written as a guard, not in CI yet
 
@@ -195,6 +218,7 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 | Probe | Why not |
 | --- | --- |
 | `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |
+| `roadmap-goal-visibility` | Demo-build hide, reload, goal source link and restore guard. `--polish --zoom` checks Polish at 195px width; `--gallery` captures hidden goals across all palettes and both themes. |
 | `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |
 | `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
@@ -205,13 +229,22 @@ URLs show the muted notice, and unmuting restores the offers and sharing.
 `care-spine-links`, `read-failures`, `source-record-links`,
 `timeline-fact-selection`, `pin-progress-status`, `gates-say-what-happened`), so they run in the browser job with
 `npm run test:browser`. Three of them take `--gallery` as well.
+`care-read` also checks empty timeline visibility, regimen-only schedules,
+nonprojectable stock, first and last record motion, and route departures.
+Its gallery includes empty Care in both languages, every palette and theme,
+200% zoom and disguise.
 
 `screen-mount.html` renders Home, Calendar, Settings and related routes over
 seeded encrypted journals. The browser runner checks their DOM, computed
 styles, interactions and loading gates, then repeats the narrow layout checks
-at 230px. The three screen contract suites run here rather than in Node.
+at 230px. The screen contract suites run here rather than in Node. Safe space
+checks held reads, pool visibility, row motion and navigation departures.
+Run `node tests/safe-space-row-check.mjs` for its ten checks alone; the full
+browser tier runs the same suite.
 
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
+
+`clinician-summary-print-layout` checks English and Polish summary previews and PDFs, long lab tables, printed values and caveats, and range, section and drug selections. Run after a demo build with Poppler installed: `node tests/clinician-summary-print-layout.mjs`; `--out` chooses the evidence directory.
 
 ## Galleries and tools
 
@@ -276,7 +309,7 @@ on this page ran green on 2026-09-23.
 | `transition-summary-overlap` (`--paint`, `--matrix`) | Transition summaries stay inside Care while replacing text; painted probe compares outgoing red ink against Surgery title blue ink in the same PNG. Matrix covers shrinking/growing summaries at 230, 430 and 1024px in light/dark and reduced motion. |
 | `probe:field-text` | (ticket 285) nothing on a field paints past its painted edge or teleports against it, on every frame of every change that moves a field: doors both ways from top, middle and bottom, interrupted and reversed, deep push and back, gear, Polish, reduced motion, resize, setup's steps and handover, and the door field's height on a cold load, at 390 and 1440; `--only`, `--runs`, `--report`, `--frames`, `--json`, and `--device <serial>` to drive the Pixel WebView over its own forwarded port (`--port`, default 9341, `--package`, default the separate probe build and never the real app, `--rate` to slow the animations for reading the edge on pixels (`field-text-edge-series.mjs` reads the frames); the PIN gate opening is a scene there). Timing-dependent: run it several times |
 | `day-strip-fill-motion` (demo build, `--out <dir>`) | Records shared week-cell fill transitions on Wear, Cycle, dilation and hair removal in both themes. Fails when a changed fill has no intermediate painted colour; saves full casts and timestamped samples. |
-| `day-strip-week-motion` (demo build, `--out <dir>`) | Outgoing week labels stay anchored on Cycle, dilation, wear and hair removal in light and dark; paging, date selection, focus transfer and reduced motion retain their behavior. Saves full painted casts and frame geometry. |
+| `day-strip-week-motion` (demo build, `--out <dir>`) | Incoming week labels fade and outgoing labels stay anchored on Cycle, dilation, wear and hair removal in light and dark; paging, date selection, focus transfer and reduced motion retain their behavior. Saves full painted casts and frame geometry. |
 | `cycle-week-motion` (demo build, `--out <dir>`) | Weekly events withdraw and reveal while history travels between heights in light and dark. Checks event editors, date range retention, interrupted paging and reduced motion; saves full painted casts and frame geometry. |
 | `tab-bar-withdraw-crossfade` | the floating bar's withdrawal crossfade across three sheet scenes, per frame, for blur snaps and dropouts (ticket 232) |
 
@@ -312,7 +345,9 @@ available for the surface or device it measures.
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
+| `journal-book-entry-gallery` | check range and photo selection, capture entries across palettes and themes, and verify long English/Polish notes and photos in A4 PDFs; run `node tests/journal-book-entry-gallery.mjs` after a demo build; requires Poppler |
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
+| `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
 | `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
@@ -333,3 +368,7 @@ recovery proof workflow uploads both attempts for seven days, including on succe
 `lookback-span-content-motion` (`tests/lookback-span-content-motion.mjs`) captures a one-day span changing to a populated history band in light and dark. Timestamped compositor frames and computed layout styles check reading tiles, summary facts, the thin-span explanation, Wrapped link, naming offer and resurfacing cards for overlap. The check accounts for inset clipping and bottom-navigation occlusion. Recorded transition keyframes reject height animation on the reading grid. Run after a demo build: `node tests/lookback-span-content-motion.mjs [output-directory] [built-root]`. Add `--matrix` for Polish, reduced motion, disguise, 195px layout and all 16 palettes.
 
 `stock-sheet-motion` (`tests/stock-sheet-motion.mjs`) checks Add stock against a demo build. Light and dark casts retain frame numbers, milliseconds, sheet and background geometry, scroll position and theme proof. It checks continuous size changes, reduced motion, keyboard focus, creation, editing and deletion confirmation. Run `node tests/stock-sheet-motion.mjs [output-directory]`; `--baseline` records the unfixed path without requiring smooth travel.
+
+`procedure-collapse-motion` (`tests/procedure-collapse-motion.mjs`) records procedure logs closing in light and dark, with descendant paint bounds beside timestamped compositor frames. It checks shared clipping and fading, reopening, rapid selection changes, saved data, unsaved notes, disclosure state and both reduced-motion settings. Run after a demo build: `node tests/procedure-collapse-motion.mjs [output-directory]`; `--baseline` records the unfixed behavior.
+
+`today-settings-sun-motion` captures both navigation directions at 195px, 390px and 1280px in both themes. Painted stripe probes check sun continuity; the recorder also checks interrupted navigation, reduced motion, disguise, lock replacement and all 16 palettes. Run after a demo build: `node tests/today-settings-sun-motion.mjs [output-directory]`. `--baseline` records without assertions; `--gate-only` limits capture to lock replacement.

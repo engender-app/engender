@@ -26,8 +26,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const manifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');
-const privacyPolicyEn = readFileSync(new URL('../docs/privacy-policy.en.md', import.meta.url), 'utf8');
-const privacyPolicyPl = readFileSync(new URL('../docs/privacy-policy.pl.md', import.meta.url), 'utf8');
+const privacyPolicyEn = readFileSync(new URL('../PRIVACY.md', import.meta.url), 'utf8');
+const privacyPolicyPl = readFileSync(new URL('../PRIVACY.pl.md', import.meta.url), 'utf8');
 
 const declared = (): string[] =>
   [...manifest.matchAll(/<uses-permission\s+android:name="android\.permission\.([A-Z_]+)"/g)].map(

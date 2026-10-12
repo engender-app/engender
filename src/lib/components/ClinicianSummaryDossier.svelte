@@ -283,7 +283,7 @@
       <h3 class="sub-heading" style="margin-top: var(--space-3);">{m.clinician_summary_dose_history()}</h3>
       {#if dossier.regimen.doses.length}
         <DossierTable label={m.clinician_summary_dose_history()}>
-          <table class="dossier-table">
+          <table class="dossier-table dossier-dose-table">
             <thead>
               <tr>
                 <th>{m.dose_day_label()}</th>
@@ -452,7 +452,7 @@
 
       {#if dossier.labs.length}
         <DossierTable label={m.clinician_summary_section_labs()}>
-          <table class="dossier-table">
+          <table class="dossier-table dossier-lab-table">
             <thead>
               <tr>
                 <th>{m.labs_date_label()}</th>
@@ -744,9 +744,17 @@
   }
 
   .sub-heading {
-    margin: var(--space-3) 0 var(--space-1);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+    break-after: avoid;
+  }
+
+  @media print {
+    .sub-heading {
+      margin: 10pt 0 5pt;
+      font-size: 11pt;
+    }
   }
 </style>

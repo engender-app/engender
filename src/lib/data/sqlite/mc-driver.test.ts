@@ -9,6 +9,9 @@ import {
   releasePrewarmedJournalWorker
 } from './mc-driver';
 import { InterruptedRestoreError, SchemaTooNewError } from './migration-runner';
+import { journalSession } from '../../stores/journal-session';
+import { sessionDriver } from '../live/sessionDriver';
+import type { SqliteDriver } from './driver';
 
 type Posted = { id: number; op: string; args: Record<string, unknown> };
 
@@ -59,7 +62,7 @@ afterEach(async () => {
 const key = new Uint8Array([1, 2, 3]);
 
 describe('the database worker started ahead of the key', () => {
-  it('attaches the pool and holds no key', () => {
+  it('prewarms the module without sending a key', () => {
     void prewarmJournalWorker('journal.sqlite3');
     const [worker] = FakeWorker.made;
     expect(worker.posted.map((m) => m.op)).toEqual(['attach']);
@@ -238,7 +241,7 @@ describe('a connection made while a recovery worker is running', () => {
    kill outright, which can race the next boot's own `attach()`. Posting a
    `close` on this tab's own `pagehide` ahead of that is what narrows it. */
 describe('releasing every live connection on pagehide', () => {
-  it('posts close before retiring a worker still holding the pool', async () => {
+  it('posts close before retiring an unused prewarm worker', async () => {
     void prewarmJournalWorker('journal.sqlite3');
     const [worker] = FakeWorker.made;
 
@@ -322,4 +325,88 @@ describe('demo preparation migration errors', () => {
     const { prepareDemoPersona } = createEncryptedWebSqlite('journal.sqlite3', key);
     await expect(prepareDemoPersona!({} as never)).rejects.toBeInstanceOf(InterruptedRestoreError);
   });
+});
+
+
+describe('locking a stalled web database', () => {
+  for (const stalled of ['transaction', 'snapshot', 'worker close', 'worker query', 'key user']) {
+    it(`retires the worker within the lock deadline despite a stalled ${stalled}`, async () => {
+      vi.useFakeTimers();
+      const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      let resume!: () => void;
+      let entered!: () => void;
+      const held = new Promise<void>((resolve) => { resume = resolve; });
+      const started = new Promise<void>((resolve) => { entered = resolve; });
+      const session = journalSession<Uint8Array, SqliteDriver>({
+        suspend: async () => {},
+        open: async (derived) => createEncryptedWebSqlite('journal.sqlite3', derived).driver,
+        release() {}, prewarm() {}
+      }, { suspendLimitMs: 20 });
+      const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+      const [worker] = FakeWorker.made;
+      session.adopt(key, driver);
+      const live = sessionDriver(session.connection);
+      const outcome = (work: Promise<unknown>) => work.then(() => null, (error: unknown) => error);
+      let waiting: Promise<unknown>[] = [];
+      try {
+        if (stalled === 'transaction' || stalled === 'snapshot') {
+          const running = stalled === 'transaction'
+            ? live.transaction(async (scope) => {
+              entered();
+              await held;
+              await scope.run('INSERT INTO proof VALUES (1)');
+            })
+            : live.readSnapshot(async (scope) => {
+              entered();
+              await held;
+              await scope.query('SELECT 1');
+            });
+          waiting = [outcome(running)];
+          await started;
+          waiting.push(outcome(driver.run('INSERT INTO proof VALUES (2)')));
+          waiting.push(outcome(driver.transaction(async () => {})));
+        } else {
+          await driver.exec('SELECT 1');
+          if (stalled === 'key user') void session.key.run(() => held);
+          else FakeWorker.silent = true;
+          if (stalled === 'worker query') {
+            waiting = [outcome(live.query('SELECT 1'))];
+          }
+        }
+        const locking = session.lock();
+        const revokedImmediately = session.key.current === null;
+        let receivedKey = false;
+        const nextKey = session.key.next().then(() => { receivedKey = true; });
+        await vi.advanceTimersByTimeAsync(25);
+        expect(worker.terminated).toBe(true);
+        expect(revokedImmediately).toBe(true);
+        await locking;
+        for (const error of await Promise.all(waiting)) {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toMatch(/disposed|closed/);
+        }
+        expect(receivedKey).toBe(false);
+        expect(session.driver).toBeNull();
+        expect(session.connection.current).toBeNull();
+        expect(worker.terminated).toBe(true);
+        expect(session.locked).toBe(true);
+        if (stalled === 'worker close') expect(worker.posted.at(-1)?.op).toBe('close');
+        const sent = worker.posted.length;
+        FakeWorker.silent = false;
+        await session.unlock(key);
+        await nextKey;
+        await live.exec('SELECT 1');
+        resume();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(worker.posted).toHaveLength(sent);
+        expect(FakeWorker.made).toHaveLength(2);
+        expect(session.locked).toBe(false);
+        await session.lock();
+      } finally {
+        resume();
+        warned.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+  }
 });

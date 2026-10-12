@@ -1,6 +1,6 @@
 <script lang="ts">
   import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
      surface, so it lives in the More hub rather than under /settings).
 
@@ -30,7 +30,7 @@
      anything (PRODUCT.md:109, and labTiming.ts and /care/curve as the worked
      precedents). */
   import { m } from '$lib/paraglide/messages';
-  import { maskHeight } from '$lib/motion/reveal';
+  import { disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
@@ -102,6 +102,7 @@
   let latestLab = $derived(careQuery.value?.latestLab ?? null);
   let stock = $derived(careQuery.value?.stock ?? []);
   let stockExcludedDoses = $derived(careQuery.value?.stockExcludedDoses ?? 0);
+  let hasTimelineRecord = $derived(latestLab !== null || stock.length > 0 || lanes.some((lane) => lane.lastDoseEpochDay !== null));
   const runOutFor = (drug: string) => lanes.find((lane) => sameDrug(lane.episode.drug, drug))?.runOut ?? null;
 
   /* The stock editor (Recorded, Opened, window), off Care rather than its
@@ -599,7 +600,8 @@
   <ReadGate read={careRead} variant="block" count={1}>
     {#snippet empty()}{/snippet}
     {#snippet rows()}
-  {#if spine}
+  {#if spine && hasTimelineRecord}
+    <div transition:disclose={{ skip: !!navigating.to }}>
     <ChartCard level={2} heading={m.care_rail_heading()} kind="care-spine" role={roleAt(activeFlag.roles, AREA_ROLE.rail)}>
       <div class="care-rail" data-care-rail>
         <!-- Today and the draw head the rail, once, and their guides run
@@ -743,8 +745,7 @@
         </div>
       </div>
     </ChartCard>
-  {:else}
-    <Notice icon="info" key="care-empty" text={m.care_rail_empty()} />
+    </div>
   {/if}
 
   <!-- One block per running regimen, in the lanes' own order. Outside the
