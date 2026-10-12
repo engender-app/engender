@@ -320,14 +320,20 @@
       }
     };
   };
+  /* A hidden door still takes a span committed as it left (the rail's key
+     move that was waiting for its beat); only what the change shows waits
+     for the next visit. */
   const pickSpan = (next: Span) => {
-    if (!isDoorActive()) return;
-    captureReadingSpace();
-    readingsReplaced = true;
-    if (enoughEntries) factsExited = false;
+    const shown = isDoorActive();
+    if (shown) {
+      captureReadingSpace();
+      readingsReplaced = true;
+      if (enoughEntries) factsExited = false;
+    }
     span = next;
     live = next;
     setLastLookBackSpan(next);
+    if (!shown) return;
     const isExistingEra = existingEraSpans.some((era) => era.start === next.start && era.end === next.end);
     const nextOffer = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
     if (!nextOffer || eraOfferSpan?.start !== nextOffer.start || eraOfferSpan.end !== nextOffer.end) offerOpened = false;

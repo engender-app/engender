@@ -449,10 +449,22 @@
      rail's ends with Home and End. The charts re-read a beat after the
      last key rather than on every press. */
   let keyTimer: ReturnType<typeof setTimeout> | undefined;
+  let keyPending = false;
+  const commitKeys = () => {
+    keyPending = false;
+    onChange(live);
+  };
   let capture: { node: HTMLElement; id: number } | undefined;
+  /* A hidden retained door holds still: a drag or a raised rail ends and
+     the rail goes back to the committed span. A key move still waiting for
+     its beat is committed first, not dropped, the same as when a door that
+     unmounts lets the timer fire behind it. */
   $effect.pre(() => {
-    if (doorActive()) return () => clearTimeout(keyTimer);
-    clearTimeout(keyTimer);
+    if (doorActive()) return;
+    if (keyPending) {
+      clearTimeout(keyTimer);
+      commitKeys();
+    }
     active = false;
     dragging = null;
     moving = false;
@@ -475,7 +487,8 @@
     answerHint();
     settle(moveHandle(live, handle, Math.min(today, Math.max(railStart, next))));
     clearTimeout(keyTimer);
-    keyTimer = setTimeout(() => onChange(live), 300);
+    keyPending = true;
+    keyTimer = setTimeout(commitKeys, 300);
   }
 
   /* A tap on the rail itself brings the nearer handle to the day under

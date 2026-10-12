@@ -377,6 +377,8 @@
       // Left the screen during the fade: nothing is left to fold.
       if (!body.isConnected || !doorActive() || foldingVisit !== visit) {
         for (const fade of faded) { fade.cancel(); monthAnimations.delete(fade); }
+        // A fresh visit has reset its own fold already; this one ends here.
+        if (foldingVisit === visit) folding = false;
         return;
       }
       folding = false;

@@ -184,10 +184,14 @@
          opacity 0 and nothing under an opaque layer is rastered, so the
          WebView met every GPU pipeline the screen needs on the fade's
          first frame and stalled through it. This way the screen paints
-         while the mark holds still. */
+         while the mark holds still. Until the fade starts it takes no taps:
+         a control nobody can see yet must not open under the mark. */
       html[data-splash] [data-app-root] {
         opacity: 0.004;
         will-change: opacity;
+      }
+      html[data-splash=''] [data-app-root] {
+        pointer-events: none;
       }
       html[data-splash='leaving'] [data-app-root] {
         opacity: 1;

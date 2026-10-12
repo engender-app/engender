@@ -40,8 +40,12 @@
 
 /** Longer than the slowest handover in app.html. */
 const REMOVE_AFTER_MS = 800;
-/** A frame that took longer than this was still paying for new work. */
+/** A frame that took longer than this was still paying for new work, on a
+    display at 60 Hz or faster. A slower display gets one and a half of its
+    own shortest frame, up to the second bound, so a 30 Hz screen settles
+    too and a stall is never quick. */
 const QUICK_FRAME_MS = 25;
+const SLOWEST_QUICK_FRAME_MS = 50;
 const QUICK_FRAMES = 3;
 const HOLD_CAP_MS = 2500;
 const HELD_READS = '[data-app-root] [data-read-reserve-hold], [data-app-root] [data-gate-skeleton]';
@@ -84,6 +88,7 @@ function whenSettled(doc: Document, view: Window, go: () => void): void {
   };
   setTimeout(finish, HOLD_CAP_MS);
   let last: number | undefined;
+  let shortest = Infinity;
   let quick = 0;
   /* A frame callback runs before that frame paints, so the frame after the
      screen stopped arriving is the first that can show what it cost. */
@@ -91,7 +96,10 @@ function whenSettled(doc: Document, view: Window, go: () => void): void {
   const frame = (now: number) => {
     if (done) return;
     const arriving = stillArriving(doc);
-    quick = !arriving && !wasArriving && last !== undefined && now - last < QUICK_FRAME_MS ? quick + 1 : 0;
+    const took = last === undefined ? Infinity : now - last;
+    shortest = Math.min(shortest, took);
+    const quickMs = Math.max(QUICK_FRAME_MS, Math.min(SLOWEST_QUICK_FRAME_MS, 1.5 * shortest));
+    quick = !arriving && !wasArriving && took < quickMs ? quick + 1 : 0;
     wasArriving = arriving;
     last = now;
     if (quick >= QUICK_FRAMES) finish();

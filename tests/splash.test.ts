@@ -242,6 +242,34 @@ describe('the handover', () => {
     vi.useRealTimers();
   });
 
+  /* A display slower than 60 Hz never draws a frame under 25 ms, so the
+     bound follows the shortest frame it has seen, up to 50 ms. */
+  it('settles on a 30 Hz display without waiting for the cap', () => {
+    vi.useFakeTimers();
+    const { doc, classes, play } = handoverDoc();
+    answerSplash(doc);
+    play(0, 33, 66);
+    expect(classes.has('is-leaving')).toBe(false);
+    play(100);
+    expect(classes.has('is-leaving')).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('never counts a stall as quick, however long the stalls before it', () => {
+    vi.useFakeTimers();
+    const { doc, classes, play } = handoverDoc();
+    answerSplash(doc);
+    play(0, 192, 367, 542, 717);
+    expect(classes.has('is-leaving')).toBe(false);
+    vi.useRealTimers();
+  });
+
+  /* The screen is there to be painted, not used: a control nobody can see
+     yet must not open under the mark. */
+  it('takes no taps while the mark holds, and takes them again once the fade starts', () => {
+    expect(handwritten).toMatch(/html\[data-splash=''\] \[data-app-root\] \{\s*pointer-events: none;\s*\}/);
+  });
+
   it('stops asking for frames once it has crossed', () => {
     vi.useFakeTimers();
     const { doc, frames, play } = handoverDoc();
