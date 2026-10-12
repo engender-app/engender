@@ -21,6 +21,7 @@ dist/
 ci-logs/
 evidence110/
 evidence117/
+tests/*-20??-??-??.md
 
 # AI/agent-local files - session state, trackers and agent config stay out of the repo
 .scratch/
