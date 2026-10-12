@@ -101,6 +101,7 @@
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
+  import { arrivalFadeFrom } from '$lib/motion/arrivalExperiment';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
 
   const isDoorActive = useDoorActivity();
@@ -529,7 +530,7 @@
     if (duration > 0) {
       const animations: Animation[] = [];
       for (const child of screen.children) {
-        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
+        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: arrivalFadeFrom() }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
       }
       playAfterPaint(screen, animations, { fitArrival: true });
     }
