@@ -32,7 +32,7 @@
 import { Unzip, UnzipInflate, UnzipPassThrough, unzipSync } from 'fflate';
 
 /** 1536 MiB allows headroom above the 851.2 MiB ten-year import estimate
-    documented in docs/architecture.md. This bounds allocations; it does
+    documented in ARCHITECTURE.md. This bounds allocations; it does
     not guarantee the device has enough memory for every accepted import.
     Keep `dlb_too_large` in sync in both message catalogues. */
 const ZIP_INFLATED_CEILING_BYTES = 1536 * 1024 * 1024;

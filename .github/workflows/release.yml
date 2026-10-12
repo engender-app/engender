@@ -76,6 +76,16 @@ jobs:
           # Every later step, and every artifact, is handed this same string.
           echo "ENGENDER_VERSION=$version" >> "$GITHUB_ENV"
 
+      - name: Require evidence for this candidate before publication
+        run: |
+          target=stable
+          if [[ "$ENGENDER_VERSION" == *-* ]]; then
+            # The signed GitHub APK starts stage3. Require its stage2
+            # prerequisites without claiming the APK is already published.
+            target=stage2
+          fi
+          node scripts/check-progressive-release.mjs --target "$target" --publication-version "$ENGENDER_VERSION"
+
       # Before anything is built, so a tag cut without notes fails while
       # nothing has been published.
       - name: Release notes

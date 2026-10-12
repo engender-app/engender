@@ -1,6 +1,111 @@
 // @ts-nocheck
 import { describe, expect, it, vi } from 'vitest';
 import { dispatchSceneAction, verifySceneAction, waitForReadiness, coverageSummary } from './yank-sweep-core.mjs';
+
+describe('scroll scene outcomes', () => {
+  const fixture = () => {
+    const region = { scrollTop: 0, scrollHeight: 1200, clientHeight: 600,
+      scrollTo({ top }) { this.scrollTop = top; } };
+    const env = { location: { pathname: '/transition/letters', search: '' },
+      document: { documentElement: { dataset: {} }, querySelector: () => region } };
+    return { region, env };
+  };
+  it('records scroll distance and rejects an unchanged scroll or wrong route', () => {
+    const { region, env } = fixture();
+    const scene = { at: '/transition/letters', act: 'scroll', scrollTop: 240, after: { scrollTop: 240 } };
+    const action = dispatchSceneAction(scene, env);
+    expect(action).toMatchObject({ beforeScroll: 0, dispatched: true });
+    expect(verifySceneAction(scene, action, env)).toMatchObject({ verified: true, afterScroll: 240 });
+    region.scrollTop = 0;
+    expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition scroll');
+    env.document.querySelector = () => null;
+    expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition scroll');
+    env.location.pathname = '/more';
+    expect(() => dispatchSceneAction(scene, env)).toThrow('wrong action route');
+  });
+  it('rejects a populated screen that cannot scroll to the requested distance', () => {
+    const { region, env } = fixture();
+    region.scrollHeight = 650;
+    expect(() => dispatchSceneAction({ act: 'scroll', scrollTop: 240 }, env)).toThrow('insufficient scroll range');
+  });
+});
+
+it('checks the mounted onboarding route when dispatching a first-run scene', async () => {
+  const { scenesFor } = await import('./yank-sweep-core.mjs');
+  const scene = scenesFor({ only: ['setup-step-forward'] })[0];
+  const env = environment([control()]);
+  env.location.pathname = '/onboarding';
+  expect(dispatchSceneAction(scene, env)).toMatchObject({ dispatched: true, beforeRoute: '/onboarding' });
+});
+
+it('requires one new visible record and a closed editor after saving', () => {
+  let rows = [control()];
+  const save = control();
+  const env = environment([save]);
+  env.document.querySelectorAll = (selector) => selector === '[data-letter]' ? rows : selector === '[data-sheet]' ? [] : [save];
+  const scene = { act: '[data-save-letter]', after: { selector: '[data-letter]', countIncrease: 1, alsoAbsent: '[data-sheet]' } };
+  const action = dispatchSceneAction(scene, env);
+  expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition count');
+  rows.push(control());
+  expect(verifySceneAction(scene, action, env)).toMatchObject({ verified: true, afterCount: 2 });
+  env.document.querySelectorAll = (selector) => selector === '[data-sheet]' ? [control()] : rows;
+  expect(() => verifySceneAction(scene, action, env)).toThrow('postcondition absent');
+});
+
+it('fills the selected field through its input event and retains the entered value', () => {
+  const field = control({ tagName: 'TEXTAREA', value: '', dispatchEvent: vi.fn() });
+  const env = { ...environment([field]), Event: class { constructor(type) { this.type = type; } } };
+  expect(dispatchSceneAction({ act: '#letter-text', value: 'For tomorrow' }, env)).toMatchObject({ entered: 'For tomorrow' });
+  expect(field.value).toBe('For tomorrow');
+  expect(field.dispatchEvent.mock.calls[0][0].type).toBe('input');
+  expect(field.click).not.toHaveBeenCalled();
+});
+
+it('restores an empty journal for every creation repeat without resetting the persona', async () => {
+  const { resetSceneProfile, JUMP_FIRST_RUN_EXPRESSION, BOOT_READINESS_EXPRESSION } = await import('./yank-sweep-core.mjs');
+  let resets = 0;
+  const evaluate = async (expression) => {
+    if (expression === JUMP_FIRST_RUN_EXPRESSION) resets++;
+    return expression === BOOT_READINESS_EXPRESSION ? { ready: true } : true;
+  };
+  const scene = { freshEmpty: true };
+  expect(await resetSceneProfile(scene, 'empty', evaluate)).toMatchObject({ emptyJournalRestored: true });
+  await resetSceneProfile(scene, 'empty', evaluate);
+  expect(resets).toBe(2);
+  expect(await resetSceneProfile(scene, 'persona', evaluate)).toBeNull();
+  expect(await resetSceneProfile({}, 'empty', evaluate)).toBeNull();
+  expect(resets).toBe(2);
+});
+
+it('persists measured, excluded and failed scenes without classifying candidates as product defects', async () => {
+  const { createReportRecorder } = await import('./yank-sweep-core.mjs');
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const directory = await mkdtemp(join(tmpdir(), 'yank-report-'));
+  try {
+    const recorder = createReportRecorder(directory, {}, [], [], [], 1, []);
+    recorder.report.push({ scene: 'save', yanks: [{ kind: 'teleport' }] }, { scene: 'physical', skipped: 'No connected device' }, { scene: 'missing', error: 'missing target' });
+    await recorder.flush();
+    const saved = JSON.parse(await readFile(join(directory, 'report.partial.json'), 'utf8'));
+    expect(saved.report.map(row => row.status)).toEqual(['measured', 'excluded', 'failed']);
+    expect(saved.report[0].findingClassification).toBe('unreviewed-candidates');
+    expect(saved.complete).toBe(false);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+it('records whether back restored the scroll position where its source link was pressed', () => {
+  const env = environment();
+  env.location.pathname = '/more';
+  env.document.querySelector = () => ({ scrollTop: 0 });
+  const scene = { after: { route: '/more', restoreScroll: true } };
+  const action = { dispatched: true, beforeRoute: '/transition/letters', preparation: { steps: [{ action: {
+    beforeRoute: '/more', beforeScroll: 640, chosen: { href: '/transition/letters' }
+  } }] } };
+  expect(verifySceneAction(scene, action, env)).toMatchObject({ scrollRestoration: { expected: 640, actual: 0, restored: false } });
+  env.document.querySelector = () => ({ scrollTop: 640 });
+  expect(verifySceneAction(scene, action, env)).toMatchObject({ scrollRestoration: { expected: 640, actual: 640, restored: true } });
+});
 it('applies the PIN fixture theme after preparation can replace cached preferences', async () => {
   const { preparePinGate } = await import('./yank-sweep-core.mjs');
   let theme = 'dark';
@@ -632,8 +737,13 @@ it('enables hidden measurement controls without adding entries and restores feat
     });
     const cm = control({ scrollIntoView: () => { env.document.elementFromPoint = () => cm; } });
     const inches = control({ scrollIntoView: () => { env.document.elementFromPoint = () => inches; } });
+    let managerOpen = false;
+    const manager = control({ scrollIntoView: () => { env.document.elementFromPoint = () => manager; }, click: () => { managerOpen = true; } });
+    const close = control({ scrollIntoView: () => { env.document.elementFromPoint = () => close; }, click: () => { managerOpen = false; } });
     const selector = '[data-measurements-toggle] button.switch';
-    env.document.querySelectorAll = (query) => query === selector ? [toggle]
+    env.document.querySelectorAll = (query) => query === selector && managerOpen ? [toggle]
+      : query === '[data-list-row="features"]' ? [manager]
+      : query === '[data-features-close]' && managerOpen ? [close]
       : enabled && query.includes('[data-segment="cm"]') ? [cm]
       : enabled && query.includes('[data-segment="in"]') ? [inches] : [];
     env.document.querySelector = (query) => env.document.querySelectorAll(query)[0] ?? null;
@@ -645,6 +755,7 @@ it('enables hidden measurement controls without adding entries and restores feat
       expect(() => JSON.stringify(env.__sweepPreparation)).not.toThrow();
       const cleanup = await runInNewContext(cleanupSceneExpression(scene), env);
       expect(enabled).toBe(initiallyEnabled);
+      expect(managerOpen).toBe(false);
       await runInNewContext(cleanupSceneExpression(scene), env);
       expect(enabled).toBe(initiallyEnabled);
       if (!initiallyEnabled) expect(cleanup).toMatchObject({ verified: true, dispatched: true });
@@ -662,7 +773,7 @@ it('restores unit feature on failed scenes and preserves cleanup failure separat
   const toggle = control({ scrollIntoView: () => {},
     getAttribute: (name) => name === 'aria-checked' ? String(enabled) : null, click: () => { enabled = !enabled; } });
   const env = environment([toggle]);
-  env.document.querySelector = () => toggle;
+  env.document.querySelector = (query) => query === '[data-measurements-toggle] button.switch' ? toggle : null;
   env.__sweepPreparation = { measurementsOriginallyEnabled: false };
   env.setTimeout = (resolve) => resolve();
   const evaluate = (expression) => runInNewContext(expression, env);

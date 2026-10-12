@@ -84,12 +84,15 @@ const KEY_HEX = /^[0-9a-f]{64}$/i;
 export async function openAndroidDataKey(
   bridge: KeystoreBridge,
   request: UnlockRequest,
-  options?: { authRequired?: boolean; hasKey?: boolean }
+  options?: { authRequired?: boolean; hasKey?: boolean; create?: boolean }
 ): Promise<AndroidKeyResult> {
   const hasKey = options?.hasKey ?? (await bridge.status()).hasKey;
 
   if (!hasKey) {
-    const created = await bridge.create(options);
+    // Only explicit setup owns credential creation. A stale unlock must
+    // not mint a different data key during a mode change or reset.
+    if (!options?.create) return { kind: 'invalidated' };
+    const created = await bridge.create({ authRequired: options.authRequired });
     return created.outcome === 'created'
       ? keyOrRefusal(created.hexKey)
       : { kind: 'refused', authentication: interpretAuthentication('noDeviceCredential') };

@@ -517,7 +517,7 @@
   .settings-sun-header { --sun-scale: 0.82; }
 }
 @container app (max-width: 239px) {
-  .settings-sun-header { --sun-scale: 0.45; }
+  .settings-sun-header { --sun-scale: 0.6; }
   .settings-unit-row:has([data-segmented="theme"]) {
     width: calc(100% + 2 * var(--space-5));
     margin-inline: calc(-1 * var(--space-5));

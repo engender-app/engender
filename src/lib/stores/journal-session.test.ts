@@ -340,7 +340,7 @@ test('a later lock closes a driver whose reopen was already running', async () =
   const reopened = fakeDriver('reopened', log);
   const session = journalSession<Key, FakeDriver>({
     suspend: async () => {}, release() {}, prewarm() {},
-    async open() { reached(); await held; return reopened; }
+    async open(_key, _current, own) { own(reopened); reached(); await held; return reopened; }
   });
   session.adopt(keyOf(1), first);
   await session.lock();
@@ -375,8 +375,9 @@ for (const stalled of ['suspend', 'connection', 'rejected suspend']) {
         return stalled === 'suspend' ? never : Promise.reject(new Error('suspend refused'));
       },
       release() { log.push('released'); }, prewarm() {},
-      async open() {
-        if (opens++) return fresh;
+      async open(_key, _current, own) {
+        if (opens++) { own(fresh); return fresh; }
+        own(reopened);
         session.connection.open(reopened);
         if (stalled === 'connection') void session.connection.run(() => never);
         reached();
@@ -413,6 +414,64 @@ function settledWithin<T>(promise: Promise<T>, ms: number): Promise<boolean> {
   ]);
 }
 
+for (const drain of ['lock', 'navigation', 'held navigation', 'rejected navigation']) {
+  test(`cancellation disposes a private open without its acknowledgement (${drain})`, async () => {
+    const log: string[] = [];
+    let releaseOld!: () => void;
+    let entered!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const oldReply = new Promise<void>(resolve => { releaseOld = resolve; });
+    const preparing = {
+      ...fakeDriver('preparing', log),
+      close: () => new Promise<void>(() => {}),
+      dispose() { this.closed = true; log.push('disposed preparing'); }
+    };
+    const fresh = fakeDriver('fresh', log);
+    let opens = 0;
+    let suspending = false;
+    const session = journalSession<Key, FakeDriver>({
+      suspend: async () => {
+        if (suspending && drain === 'held navigation') await new Promise<void>(() => {});
+        if (suspending && drain === 'rejected navigation') throw new Error('navigation drain failed');
+      },
+      release() { log.push('released'); },
+      prewarm() {},
+      async open(_key, current, own) {
+        if (opens++) { own(fresh); return fresh; }
+        own(preparing);
+        entered();
+        await oldReply;
+        current();
+        return preparing;
+      }
+    }, { suspendLimitMs: 20 });
+    session.adopt(keyOf(1), fakeDriver('first', log));
+    await session.lock();
+    const opening = session.unlock(keyOf(1));
+    const cancelled = assert.rejects(opening, /cancelled by a newer lock/);
+    await started;
+    suspending = true;
+    const closing = drain !== 'lock' ? session.suspendForNavigation(false) : session.lock();
+    void closing.catch(() => {});
+    assert.equal(await settledWithin(opening, 200), true, 'cancellation must not wait for the missing reply');
+    await cancelled;
+    assert.equal(await settledWithin(closing, 200), true, 'navigation must not wait for a save that needs unlock');
+    await closing;
+    assert.equal(preparing.closed, true);
+    assert.equal(session.key.current, null);
+    assert.equal(session.connection.current, null);
+    await session.unlock(keyOf(2));
+    const releases = log.filter(value => value === 'released').length;
+    releaseOld();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(session.driver, fresh, 'late old preparation cannot dispose the new session');
+    assert.equal(fresh.closed, false);
+    assert.equal(session.key.current?.[0], 2);
+    assert.equal(log.filter(value => value === 'released').length, releases);
+    assert.equal(log.filter(value => value === 'disposed preparing').length, 1);
+  });
+}
+
 test('a failed preparation uses bounded session disposal before a fresh reopen', async () => {
   const log: string[] = [];
   const first = fakeDriver('first', log);
@@ -423,10 +482,10 @@ test('a failed preparation uses bounded session disposal before a fresh reopen',
   const session = journalSession<Key, FakeDriver>({
     suspend: () => failed ? new Promise<void>(() => {}) : Promise.resolve(),
     release() { log.push('released'); }, prewarm() {},
-    async open(_key, _current, dispose) {
-      if (opens++) return fresh;
+    async open(_key, _current, own) {
+      if (opens++) { own(fresh); return fresh; }
+      own(preparing);
       failed = true;
-      await dispose(preparing);
       throw new Error('preparation failed');
     }
   }, { suspendLimitMs: 20 });
@@ -506,10 +565,11 @@ test('a newer lock cancels retained recovery before it publishes its private dri
   const privateDriver = fakeDriver('private', log);
   const session = journalSession<Key, FakeDriver>({
     async suspend() {},
-    async open(_key, current, dispose) {
+    async open(_key, current, own) {
+      own(privateDriver);
       reached();
       await new Promise<void>((resolve) => { finish = resolve; });
-      try { current(); } catch (error) { await dispose(privateDriver); throw error; }
+      current();
       return privateDriver;
     },
     release() {}, prewarm() {}

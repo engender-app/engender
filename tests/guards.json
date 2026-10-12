@@ -133,6 +133,14 @@
     ]
   },
   {
+    "name": "hair-progress-photo-actions",
+    "tier": "dev",
+    "holds": "Hair progress opens its own photos in shared collage/timelapse export and preserves comparison and scroll after completion or cancellation",
+    "diagnostics": [
+      ".claude/hair-progress-photo-actions-shots/*"
+    ]
+  },
+  {
     "name": "hair-removal-entry-check",
     "tier": "dev",
     "holds": "session field order, failed save and retry, duplicate taps, saved-owner photo continuation, library day, editing, deletion and privacy; English and Polish at 390px and 200% zoom"
@@ -143,6 +151,14 @@
     "holds": "the recency rows open their own area prefilled, and nothing saves before Save",
     "diagnostics": [
       ".claude/hair-removal-recency-shots/*"
+    ]
+  },
+  {
+    "name": "hair-removal-interaction-check",
+    "tier": "dev",
+    "holds": "saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures",
+    "diagnostics": [
+      ".claude/hair-removal-interaction-shots/*"
     ]
   },
   {
@@ -222,6 +238,11 @@
     "holds": "leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open"
   },
   {
+    "name": "milestone-era-handoff-check",
+    "tier": "dev",
+    "holds": "Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
     "holds": "real BFCache Back and Forward restore journal reads and writes without bypassing lock policy or retaining obsolete workers"
@@ -278,6 +299,11 @@
     "name": "sheet-navigation-leftover-check",
     "tier": "built",
     "holds": "a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one"
+  },
+  {
+    "name": "settings-scroll-check",
+    "tier": "built",
+    "holds": "Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content"
   },
   {
     "name": "sheet-handoff-scroll-check",
@@ -500,7 +526,7 @@
   {
     "name": "settings-erase-check",
     "tier": "built",
-    "holds": "Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: no Ko-fi row; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first)",
+    "holds": "Settings' Delete everything in passphrase, PIN, biometric (virtual authenticator with PRF) and device-bound (the web's Unlocked) mode, against a production build: Buy Me a Coffee support link immediately above About; a saved photo makes the OPFS fixture independent of deferred housekeeping; cancelling preserves every root entry and photo byte; confirming lands at first run saying so once (a reload does not repeat it) with no device key left; a new journal finds nothing from before (a control search finds the entry first)",
     "build": "production",
     "diagnostics": [
       "/tmp/settings-erase-*-failure.png"

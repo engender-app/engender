@@ -15,8 +15,9 @@ import {
   type PinBindingBridge
 } from './device-secret.ts';
 import { DecryptionFailedError } from '../crypto/aesGcm.ts';
-import { KeystoreUnreadableError, type KeystoreMetadata } from '../crypto/keystore.ts';
+import { KeystoreUnreadableError, wrapDataKeyWithSecret, unlockKeystore, type KeystoreMetadata } from '../crypto/keystore.ts';
 import type { DeviceKeySlot } from './device-bound-journal.ts';
+import { changeCredentials, CredentialsBusyError } from './credential-ownership';
 
 /* Both halves of PIN mode in memory: the keystore file and the two key
    stores a PIN can be bound to. The Argon2id derivations are real at the
@@ -61,6 +62,7 @@ function bothPlatforms() {
 
   let failNextWrite = false;
   const file = {
+    journalExists: async () => keystore !== null,
     readKeystore: async () => keystore,
     writeKeystore: async (metadata: KeystoreMetadata) => {
       if (failNextWrite) {
@@ -148,6 +150,43 @@ test('wrapping an already-open journal under a PIN keeps the same data key', asy
   const dataKey = crypto.getRandomValues(new Uint8Array(32));
   await addJournalPin(dataKey, '1234', world);
 
+  expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
+});
+
+test('a rejected PIN publication keeps the old credential and releases mutation ownership', async () => {
+  const world = bothPlatforms();
+  const dataKey = crypto.getRandomValues(new Uint8Array(32));
+  await world.web.writeKeystore(await wrapDataKeyWithSecret(dataKey, 'original passphrase'));
+  world.failNextWrite();
+  await expect(changeCredentials(() => addJournalPin(dataKey, '1234', world.web))).rejects.toThrow('process died');
+  expect(await unlockKeystore(world.stored()!, 'original passphrase')).toEqual(dataKey);
+  await changeCredentials(() => addJournalPin(dataKey, '5678', world.web));
+  expect(await unlockJournalPin('5678', world.web)).toEqual(dataKey);
+});
+
+test('a competing mode change cannot replace a PIN binding while publication is held', async () => {
+  const world = ports();
+  const dataKey = crypto.getRandomValues(new Uint8Array(32));
+  await world.writeKeystore(await wrapDataKeyWithSecret(dataKey, 'original passphrase'));
+  let entered!: () => void;
+  let release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const first = changeCredentials(() => addJournalPin(dataKey, '1234', {
+    ...world,
+    writeKeystore: async metadata => {
+      entered();
+      await new Promise<void>(resolve => { release = resolve; });
+      await world.writeKeystore(metadata);
+    }
+  }));
+  await started;
+  try {
+    await expect(changeCredentials(() => addJournalPin(dataKey, '5678', world))).rejects.toThrow(CredentialsBusyError);
+    await expect(changeCredentials(async () => {
+      await world.writeKeystore(await wrapDataKeyWithSecret(dataKey, 'new passphrase'));
+      await world.binding.remove();
+    })).rejects.toThrow(CredentialsBusyError);
+  } finally { release(); await first; }
   expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
 });
 
@@ -379,4 +418,14 @@ test('a keystore bound to a Keystore alias fails by name on a platform with no a
   await w.web.writeKeystore({ ...w.stored()!, pinBinding: 'keystore' });
 
   await expect(unlockJournalPin('1234', w.web)).rejects.toThrow(DeviceBindingUnavailableError);
+});
+
+test('stale PIN setup preserves the original binding and credential', async () => {
+  const world = bothPlatforms();
+  const key = await setupJournalPin('1234', world.phone);
+  const metadata = world.stored();
+  await expect(setupJournalPin('4321', world.phone)).rejects.toThrow('a journal already exists');
+  expect(world.mints()).toBe(1);
+  expect(world.stored()).toEqual(metadata);
+  await expect(unlockJournalPin('1234', world.phone)).resolves.toEqual(key);
 });

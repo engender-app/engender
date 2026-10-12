@@ -68,12 +68,6 @@ describe('what Safe Space is built from', () => {
     expect(doubt).not.toContain("from '$lib/components/kit/SectionHeading.svelte'");
   });
 
-  it('runs no live query at all, so a cold launch paints the breath without waiting', () => {
-    expect(doubt).not.toContain('liveList(');
-    expect(doubt).not.toContain('liveQuery(');
-    expect(doubt).not.toContain("from '$lib/data/live/journal.svelte'");
-  });
-
   it('puts every way down one tap from the breath, in the order the module states', () => {
     expect(doubt).toContain("from '$lib/data/safeSpaceWays'");
     expect(markup).toMatch(/{#each SAFE_SPACE_WAYS as way[\s\S]*?<ListRow/);

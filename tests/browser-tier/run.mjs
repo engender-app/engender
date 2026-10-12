@@ -18,6 +18,8 @@ import { builtArchiveRecovery } from './archive-built-recovery.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
 import { coldUnlock } from './cold-unlock.mjs';
+import { firstRunSetup } from './first-run-setup.mjs';
+import { firstRunBuiltSetup } from './first-run-built-setup.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
     element under it is stroked in the role's edge, over the same geometry,
@@ -81,6 +83,13 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('first-run credentials survive stale and simultaneous tabs', 8, async () => {
+  for (const result of await firstRunSetup(browser, `http://localhost:${port}`)) {
+    ok(`first-run ownership: ${JSON.stringify(result)}`);
+  }
+  ok(`compiled first-run flow: ${JSON.stringify(await firstRunBuiltSetup(browser))}`);
+});
+
 await block('cold authentication respects newer locks', 5, async () => {
   for (const mode of await coldUnlock(browser, `http://localhost:${port}`)) {
     ok(`${mode} cold authentication cancels after a newer lock and accepts a fresh attempt`);
@@ -108,6 +117,15 @@ await block('rendered screen contracts', 171, async () => {
       if (item.passed) ok(`${suite}: ${item.name}`);
       else fail(`${suite}: ${item.name}`, item.error ?? 'rendered contract failed');
     }
+  }
+});
+
+await block('Safe space optional Good moments', 12, async () => {
+  const result = await load('/screen-mount.html?safe-space=1', 'screen-mount');
+  if (!Array.isArray(result.safeSpace)) throw new Error(result.error ?? 'missing Safe space results');
+  for (const item of result.safeSpace) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'rendered Safe space contract failed');
   }
 });
 
@@ -178,7 +196,7 @@ await block('failed encrypted pool initialization preserves journal data', 8, as
   check(r.late.result.preserved, 'partial handle acquisition preserves the encrypted journal');
   check([r.teardown, r.late].every((scenario) => scenario.result.reopened && scenario.result.liveHandles === 0), 'preserved journals survive successful close and reopen without leaked handles');
   check([r.teardown, r.late].every((scenario) => scenario.result.wrongKeyRejected), 'preserved journals still reject another data key');
-  check(r.driver.latched, 'the production worker keeps an attach failure through queued open and query messages');
+  check(r.driver.latched, 'the production worker warms without acquiring handles and keeps an open failure through queued queries');
   check(r.driver.preserved, 'the production worker leaves the old owner journal readable and persistent');
 });
 
