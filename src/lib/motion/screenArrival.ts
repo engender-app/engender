@@ -3,6 +3,7 @@
    without dragging in the full reveal transition machinery. */
 
 import { motionDuration } from './tokens';
+import { isDoorActive } from '../navigation/doorActivity';
 
 let tabRevealBy: number | undefined;
 
@@ -80,10 +81,11 @@ export function playAfterPaint(
     animation.currentTime = 0;
   }
   requestAnimationFrame(() => requestAnimationFrame(() => {
+    const active = owner.isConnected && isDoorActive(owner);
     // Paint preparation spends part of the field's remaining arrival.
-    if (deadline !== undefined && owner.isConnected) fitBefore(animations, deadline);
+    if (deadline !== undefined && active) fitBefore(animations, deadline);
     for (const animation of animations) {
-      if (owner.isConnected) {
+      if (active) {
         if (animation.playState !== 'finished' && animation.playState !== 'idle') animation.play();
       }
       else animation.cancel();
