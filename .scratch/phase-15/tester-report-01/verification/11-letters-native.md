@@ -83,10 +83,13 @@ locked gate. A calendar-predecessor retry also timed out under that gate.
 `native-harness-inspection/` records the locked DOM. The final diagnostic
 runner unlocks the existing synthetic fixture and skips repeated PIN setup;
 it does not change production navigation. Each evidence directory retains
-`runner-used.mjs` and its SHA-256. Both final native reports have zero
-runtime exceptions and `complete: true`; ordinary matrix assertions passed
-before the first preparation failure. The four earlier extras are excluded
-from the 38 accepted captures.
+`runner-used.mjs` and its SHA-256. `native-resumed-ready/report.json` records
+the preparation timeout and has no `complete: true`; its first 32 ordinary
+scenes passed their assertions before that failure. Only
+`native-extras-complete/report.json` and
+`.claude/ticket-01-native-final/report.json` have `complete: true`. All three
+reports record zero runtime exceptions, independently of the preparation
+failure. The four earlier extras are excluded from the 38 accepted captures.
 
 The Android work used the orchestration memory gate. After Settings
 verification the phone was released, forwarding port 9334 was removed, and
