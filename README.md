@@ -18,18 +18,18 @@ keep private hourly page-opening totals, without individual visit records. Both 
 rest and work offline. You choose what to record, which parts of the app to
 use, and when to export or share anything.
 
-Read [How engender is built](docs/architecture.md) for the architecture,
+Read [How engender is built](ARCHITECTURE.md) for the architecture,
 data flow and encryption model, with diagrams and links to the code.
 
 ## Documentation
 
 | Guide | Start here to... |
 |---|---|
-| [Architecture](docs/architecture.md) | Understand the codebase and find where a change belongs |
+| [Architecture](ARCHITECTURE.md) | Understand the codebase and find where a change belongs |
 | [Contributing](CONTRIBUTING.md) | Prepare a change for review and integration |
 | [Self-hosting](deploy/SELF-HOSTING.md) | Run your own web app |
 | [Security](SECURITY.md) | Report a vulnerability privately |
-| Privacy: [English](docs/privacy-policy.en.md), [Polish](docs/privacy-policy.pl.md) | Understand what stays on your device and what you can share |
+| Privacy: [English](PRIVACY.md), [Polish](PRIVACY.pl.md) | Understand what stays on your device and what you can share |
 
 ## Inside the app
 
@@ -127,8 +127,8 @@ and files you share open through other apps, which have their own network
 and privacy behaviour.
 
 The full policies are available in
-[English](docs/privacy-policy.en.md) and
-[Polish](docs/privacy-policy.pl.md).
+[English](PRIVACY.md) and
+[Polish](PRIVACY.pl.md).
 
 ### Backups, recovery and moving devices
 
@@ -277,7 +277,7 @@ npm run test:walkthrough
 npm run verify:build
 ```
 
-The [browser capability matrix](docs/browser-capabilities.md) also runs
+The browser capability matrix also runs
 Firefox and automated WebKit against the built app. Run
 `npm run verify:capabilities` after a production build, then
 `npm run verify:capabilities:lifecycle` against the same build. Automated WebKit

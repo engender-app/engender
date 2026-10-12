@@ -286,7 +286,7 @@ posiadanych przez inne osoby.
 
 Gdy polityka się zmienia, zmienia się też data na górze. Wszystkie
 wcześniejsze wersje są w historii pliku
-https://github.com/engender-app/engender/blob/main/docs/privacy-policy.pl.md.
+https://github.com/engender-app/engender/blob/main/PRIVACY.pl.md.
 
 Ta polityka jest dostępna również
-[po angielsku](https://github.com/engender-app/engender/blob/main/docs/privacy-policy.en.md).
+[po angielsku](https://github.com/engender-app/engender/blob/main/PRIVACY.md).
