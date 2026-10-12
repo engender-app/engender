@@ -199,6 +199,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
       }
     });
     currentTransition = transition;
+    ui.screenMoving = true;
     /* `ready` rejects on its own when the browser skips a transition - a
        viewport resize mid-transition is one way - and nothing else here
        reads it, so the rejection reached the window unhandled. */
@@ -212,6 +213,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
            the current capture may clear the flag read by arriving suns. */
         if (currentTransition === transition) {
           currentTransition = null;
+          ui.screenMoving = false;
           delete document.documentElement.dataset.nav;
           delete document.documentElement.dataset.blindHold;
         }
