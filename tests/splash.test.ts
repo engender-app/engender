@@ -172,3 +172,114 @@ describe('the handover', () => {
     expect('splash' in doc.documentElement.dataset).toBe(false);
   });
 });
+
+/* Ticket 08 experiment. Under html[data-splash-warm] the screen paints
+   beneath the still mark, so the WebView compiles its GPU pipelines there
+   rather than inside the fade, and the fade waits for quick frames. */
+describe('the warm handover (ticket 08 experiment)', () => {
+  function warmDoc(variant: string, held: { reads: boolean } = { reads: false }) {
+    const classes = new Set<string>();
+    const splash = {
+      classList: {
+        add: (...names: string[]) => names.forEach((name) => classes.add(name)),
+        contains: (name: string) => classes.has(name)
+      },
+      remove() {}
+    };
+    const frames: ((now: number) => void)[] = [];
+    const documentElement = { dataset: { splash: '', splashWarm: variant } as Record<string, string> };
+    const doc = {
+      getElementById: () => splash,
+      querySelector: (selector: string) => (held.reads && selector.includes('data-read-reserve-hold') ? {} : null),
+      documentElement,
+      defaultView: { requestAnimationFrame: (cb: (now: number) => void) => frames.push(cb) }
+    } as unknown as Document;
+    /* Runs the frames queued so far, one per timestamp. */
+    const play = (...times: number[]) => {
+      for (const now of times) frames.splice(0).forEach((cb) => cb(now));
+    };
+    return { doc, classes, documentElement, frames, play };
+  }
+
+  it('holds the mark through slow frames and crosses after three quick ones', () => {
+    vi.useFakeTimers();
+    const { doc, classes, documentElement, play } = warmDoc('a');
+    answerSplash(doc);
+    expect(classes.has('is-answered')).toBe(true);
+    expect(classes.has('is-leaving')).toBe(false);
+    expect(documentElement.dataset.splash).toBe('');
+    play(0, 192, 367, 383, 400);
+    expect(classes.has('is-leaving')).toBe(false);
+    play(416);
+    expect(classes.has('is-leaving')).toBe(true);
+    expect(documentElement.dataset.splash).toBe('leaving');
+    vi.useRealTimers();
+  });
+
+  it('crosses at the cap when frames never come back quick', () => {
+    vi.useFakeTimers();
+    const { doc, classes } = warmDoc('a');
+    answerSplash(doc);
+    vi.advanceTimersByTime(999);
+    expect(classes.has('is-leaving')).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(classes.has('is-leaving')).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('variant b also waits for the held reads to answer, then for quick frames', () => {
+    vi.useFakeTimers();
+    const held = { reads: true };
+    const { doc, classes, play } = warmDoc('b', held);
+    answerSplash(doc);
+    play(0, 16, 33, 50, 66);
+    expect(classes.has('is-leaving')).toBe(false);
+    held.reads = false;
+    play(83, 100, 116);
+    expect(classes.has('is-leaving')).toBe(false);
+    play(133);
+    expect(classes.has('is-leaving')).toBe(true);
+    vi.advanceTimersByTime(2500);
+    vi.useRealTimers();
+  });
+
+  it('a second answer while warming queues nothing more', () => {
+    vi.useFakeTimers();
+    const { doc, frames } = warmDoc('a');
+    answerSplash(doc);
+    const timers = vi.getTimerCount();
+    const queued = frames.length;
+    answerSplash(doc);
+    expect(vi.getTimerCount()).toBe(timers);
+    expect(frames.length).toBe(queued);
+    vi.useRealTimers();
+  });
+
+  it('stops asking for frames once it has crossed', () => {
+    vi.useFakeTimers();
+    const { doc, frames, play } = warmDoc('a');
+    answerSplash(doc);
+    play(0, 16, 33, 50);
+    expect(frames.length).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('paints the screen under the mark at a nil opacity Blink still paints, only before the fade', () => {
+    const warmRoot = handwritten.match(/html\[data-splash=''\]\[data-splash-warm\] \[data-app-root\] \{\s*opacity: ([\d.]+);\s*\}/);
+    expect(warmRoot).not.toBeNull();
+    const rootOpacity = Number(warmRoot![1]);
+    /* Blink skips painting below 0.0004; one 8-bit level is 1/255. */
+    expect(rootOpacity).toBeGreaterThan(0.0004);
+    const warmMark = handwritten.match(/html\[data-splash=''\]\[data-splash-warm\] #splash \{\s*opacity: ([\d.]+);\s*\}/);
+    expect(warmMark).not.toBeNull();
+    const markOpacity = Number(warmMark![1]);
+    expect(markOpacity).toBeLessThan(1);
+    expect(rootOpacity * (1 - markOpacity) * 255).toBeLessThan(0.5);
+    expect(handwritten).toMatch(/html\[data-splash\]\[data-splash-warm\] \[data-app-root\] \{\s*will-change: opacity;\s*\}/);
+  });
+
+  it('is stamped from the experiment key only for the two variants', () => {
+    expect(html).toContain("localStorage.getItem('ticket08-splash-warm')");
+    expect(html).toMatch(/warm === 'a' \|\| warm === 'b'\) root\.dataset\.splashWarm = warm/);
+  });
+});

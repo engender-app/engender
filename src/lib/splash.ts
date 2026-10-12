@@ -27,6 +27,20 @@
 /** Longer than the slowest handover in app.html. */
 const REMOVE_AFTER_MS = 800;
 
+/* Ticket 08 experiment, removed once a variant is chosen. The screen under
+   the first frame stays unpainted until the crossfade begins, so on the
+   Pixel 10a the WebView compiled every GPU pipeline the screen needs inside
+   the fade: 48 Vulkan pipeline creations and stalls of 192 and 175 ms in a
+   280 ms fade. With html[data-splash-warm] set (app.html stamps it from a
+   storage key), the screen paints beneath the still mark at a nil opacity
+   and the fade waits for frames to come back quick. Variant "a" waits for
+   that alone; "b" also waits for the screen's held reads to answer. The cap
+   covers a device that never settles and a hidden tab with no frames. */
+const WARM_QUICK_FRAME_MS = 25;
+const WARM_QUICK_FRAMES = 3;
+const WARM_CAP_MS: Record<string, number> = { a: 1000, b: 2500 };
+const HELD_READS = '[data-app-root] [data-read-reserve-hold], [data-app-root] [data-gate-skeleton]';
+
 /** Whether the first frame may hand over: boot has answered, and the
     layout is not between screens on the way to onboarding. */
 export function splashMayLeave(bootStatus: string, redirecting: boolean): boolean {
@@ -41,10 +55,42 @@ export function answerSplash(doc: Document = document): void {
     return;
   }
   if (splash.classList.contains('is-answered')) return;
-  splash.classList.add('is-leaving', 'is-answered');
+  splash.classList.add('is-answered');
+  const warm = doc.documentElement.dataset.splashWarm;
+  if (warm && doc.defaultView) whenWarm(doc, doc.defaultView, warm, () => leave(doc, splash));
+  else leave(doc, splash);
+}
+
+function leave(doc: Document, splash: HTMLElement): void {
+  splash.classList.add('is-leaving');
   doc.documentElement.dataset.splash = 'leaving';
   setTimeout(() => {
     splash.remove();
     delete doc.documentElement.dataset.splash;
   }, REMOVE_AFTER_MS);
+}
+
+function whenWarm(doc: Document, view: Window, variant: string, go: () => void): void {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    go();
+  };
+  setTimeout(finish, WARM_CAP_MS[variant] ?? WARM_CAP_MS.a);
+  let last: number | undefined;
+  let quick = 0;
+  /* A frame callback runs before that frame paints, so the frame after the
+     reads answered is the first that can show their cost. */
+  let wasHeld = false;
+  const frame = (now: number) => {
+    if (done) return;
+    const held = variant === 'b' && doc.querySelector(HELD_READS) !== null;
+    quick = !held && !wasHeld && last !== undefined && now - last < WARM_QUICK_FRAME_MS ? quick + 1 : 0;
+    wasHeld = held;
+    last = now;
+    if (quick >= WARM_QUICK_FRAMES) finish();
+    else view.requestAnimationFrame(frame);
+  };
+  view.requestAnimationFrame(frame);
 }
