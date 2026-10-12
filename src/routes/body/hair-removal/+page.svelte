@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
      ticket 25). Two lists on the screen and a third inside the editor,
@@ -41,6 +41,7 @@
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
+  import { crossfade } from '$lib/motion/reveal';
 
   /* The strip's fill shares the chromatic role with the recency figures
      (ticket 56, following ticket 44's own rule for dilation and wear):
@@ -269,39 +270,52 @@
           bind:weeksBack={() => shownWeeksBack, (value) => (weeksBack = value)}
         />
       {/if}
-      {#if weekSessions.length === 0}
-        <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
-      {:else}
-        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-          {#each weekSessions as session (session.id)}
-            <ListRow
-              key={session.id}
-              data-hair-removal-session={session.id}
-              icon="shuffle"
-              title={hairRemovalAreaName(session.area)}
-              subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
-              chevron={false}
-              onclick={() => record.openEditor(session)}
-            />
-          {/each}
-        </ListCard>
-      {/if}
-      {@render areaControls()}
-      <AreaFinish group="hair-removal" />
+      <!-- A week swaps in one slot; the read gate travels its changed height. -->
+      <div class="hair-removal-week">
+        {#key `${shownWeek.first}:${weekSessions.map((session) => session.id).join(',')}`}
+          <div transition:crossfade={{ instant: navigating.to !== null }}>
+            {#if weekSessions.length === 0}
+              <p class="muted small" data-strip-week-empty>{m.strip_week_nothing()}</p>
+            {:else}
+              <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
+                {#each weekSessions as session (session.id)}
+                  <ListRow
+                    key={session.id}
+                    data-hair-removal-session={session.id}
+                    icon="shuffle"
+                    title={hairRemovalAreaName(session.area)}
+                    subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+                    chevron={false}
+                    onclick={() => record.openEditor(session)}
+                  />
+                {/each}
+              </ListCard>
+            {/if}
+          </div>
+        {/key}
+      </div>
     {/snippet}
     {#snippet empty()}
-      <Notice
-        icon="shuffle"
-        key="hair-removal-empty"
-        role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-        title={m.hair_removal_empty_title()}
-        text={m.hair_removal_empty_body()}
-        action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
-      />
-      {@render areaControls()}
-      <AreaFinish group="hair-removal" />
+      <div out:crossfade|global={{ instant: navigating.to !== null }}>
+        <Notice
+          icon="shuffle"
+          key="hair-removal-empty"
+          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
+          title={m.hair_removal_empty_title()}
+          text={m.hair_removal_empty_body()}
+          action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        />
+      </div>
     {/snippet}
   </ReadGate>
+
+  <!-- Region controls and area state share one lifetime across empty and populated answers. -->
+  {#if !sessionsQuery.loading && (!sessionsQuery.failed || (sessionsQuery.stale && sessions.length > 0))}
+    <div class="screen-part">
+      {@render areaControls()}
+      <AreaFinish group="hair-removal" />
+    </div>
+  {/if}
 
   <RecordSheet
     {record}
@@ -407,3 +421,9 @@
     {/snippet}
   </RecordSheet>
 </div>
+
+<style>
+  .hair-removal-week {
+    position: relative;
+  }
+</style>

@@ -32,6 +32,7 @@ try {
       await page.locator('[data-strip-earlier]').waitFor();
       await page.waitForTimeout(1400);
       const initialCells = await page.locator('[data-week-cell]').evaluateAll((nodes) => nodes.map((node) => Number(node.dataset.weekCell)));
+      const initialLaterDisabled = await page.locator('[data-strip-later]').isDisabled();
       const { samples, cast } = await screencast(page, async (cast) => {
         const samples = await page.evaluate(async () => {
           const old = document.querySelector('[data-strip-week]');
@@ -59,6 +60,8 @@ try {
       });
       await saveSceneCast(cast, out, `${surface}-week-earlier`, `persona-${theme}-p1`);
       await writeFile(`${out}/${surface}-${theme}.json`, JSON.stringify(samples, null, 2));
+      assert.ok(samples.some((sample) => sample.labels?.some((label) => label.text !== sample.original.text
+        && label.opacity > 0 && label.opacity < 1)), `${surface}/${theme}: incoming week label has no faded frame`);
       assert.ok(samples.some((sample) => sample.frame > 0 && sample.old && sample.old.opacity > 0.05), `${surface}/${theme}: no visible outgoing frame captured`);
       assert.equal(samples.at(-1).old, null, `${surface}/${theme}: outgoing label remains after the fade`);
       const shifted = samples.filter((s) => s.old && s.old.opacity > 0.05 &&
@@ -71,8 +74,9 @@ try {
       await page.keyboard.press('Enter');
       await page.waitForTimeout(350);
       assert.deepEqual(await cells(), initialCells);
-      assert.equal(await page.locator('[data-strip-later]').isDisabled(), true);
-      assert.equal(await page.locator('[data-strip-earlier]').evaluate((node) => node === document.activeElement), true);
+      assert.equal(await page.locator('[data-strip-later]').isDisabled(), initialLaterDisabled);
+      const focusedControl = initialLaterDisabled ? '[data-strip-earlier]' : '[data-strip-later]';
+      assert.equal(await page.locator(focusedControl).evaluate((node) => node === document.activeElement), true);
       await page.locator('[data-strip-earlier]').click();
       await page.waitForTimeout(350);
       const pickedDay = (await cells())[0];

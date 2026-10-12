@@ -8,6 +8,7 @@
     "android-door-motion": "Local Fedora run on 2026-10-09, excluding build; tests/android-door-motion.mjs",
     "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/settings-scroll-check.mjs",
     "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs",
+    "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
     "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
@@ -111,7 +112,8 @@
     "pending-unlock-lock-check": 60,
     "bfcache-journal-check": 60,
     "android-door-motion": 24.61,
-    "milestone-era-handoff-check": 9.72
+    "milestone-era-handoff-check": 9.72,
+    "hair-removal-interaction-check": 90.71
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -363,6 +365,10 @@
     ],
     "milestone-era-handoff-check": [
       9.72
+    ],
+    "hair-removal-interaction-check": [
+      58.47,
+      32.24
     ]
   }
 }
