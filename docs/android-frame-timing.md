@@ -1,6 +1,6 @@
 # Android startup and cold transitions, ticket 08
 
-Investigation date: 2026-10-12. The cold-start handover stall is fixed: the splash mark now holds until the screen under it has painted and settled, and the crossfade runs at full frame rate. Visited doors stay mounted on Android, which makes revisits smoother. First visits still stall, so ticket 08 remains open.
+Investigation date: 2026-10-12. The cold-start handover stall is fixed: the splash mark now holds until the screen under it has painted and settled, and the crossfade runs at full frame rate. Visited doors stay mounted on Android, which makes revisits smoother. First visits still stall; ticket 09 tracks them, along with other screens that mount a lot at once.
 
 The device is a Pixel 10a running Android 17 and Vanadium WebView 155.0.8059.39.0. The baseline is integration commit `9581741c0eac266718140c17b47c54e44b89c077`. Production builds run in the disposable package `dev.engender.app.ticket08`. The installed personal journal, `dev.engender.app`, has schema 89; this branch has schema 88 and must not replace it.
 
@@ -39,7 +39,7 @@ Preload: once the splash has gone and the app is idle, the four doors' code is i
 
 Retention: after the next route commit, a lazily loaded host keeps each visited door mounted. The active door is `display: contents`; the others are `display: none` and inert. Revisits reset each page's transient state (folds, prompts, search, disclosures) while committed values such as the Stats span stay. Lock and recovery remove the journal roots before the gate paints, and the retained session key changes so a one-frame unlock cannot revive the old instances.
 
-On the diagnostic build that could switch retention off (`frozen-retention-summary.json`, same APK), the median worst warm gap fell from 83.4 / 87.5 / 58.4 / 66.7 ms to 50.1 / 58.4 / 41.8 / 50.0 ms for Journal / Look back / Transition / Home. All 60 settled geometry snapshots matched. Stats' field readiness barely changed. First visits are not faster, which is part of why ticket 08 stays open.
+On the diagnostic build that could switch retention off (`frozen-retention-summary.json`, same APK), the median worst warm gap fell from 83.4 / 87.5 / 58.4 / 66.7 ms to 50.1 / 58.4 / 41.8 / 50.0 ms for Journal / Look back / Transition / Home. All 60 settled geometry snapshots matched. Stats' field readiness barely changed. First visits are not faster; ticket 09 tracks them.
 
 The production candidate with both changes and the handover fix (`final-hold.apk`, `final-hold-retained-1`, one run, every settled snapshot correct) gives first-visit worst gaps of 125 / 67 / 67 / 67 ms for Journal / Look back / Transition (`/more`) / Home, and warm ones of 50-58 / 58-67 / 42-50 / 42 ms. That is in line with the previous candidate (`final-timeout-1`).
 
@@ -49,7 +49,7 @@ The browser lifecycle harness (`tests/android-door-motion.mjs`) covers identity 
 
 ## Still open
 
-- First visits. They are not faster: in the final run, first-visit worst gaps are 67 to 125 ms and the incoming field is ready 311 to 496 ms after the tap. Warm Look back's 74 ms Svelte callback (below) is unchanged. Ticket 08 stays open for this.
+- First visits. They are not faster: in the final run, first-visit worst gaps are 67 to 125 ms and the incoming field is ready 311 to 496 ms after the tap. Warm Look back's 74 ms Svelte callback (below) is unchanged. Ticket 09 tracks this and other heavy screens.
 - Android's starting window. Recordings of every arm show the launcher icon large in the starting window, fading out, about 200 ms of bare ground, then the web mark appearing in one frame at a smaller size. The handover fix does not touch it. Making the starting window and the first web frame agree has to respect disguise, because the starting window shows the launched alias's icon.
 - A navigation desync, seen once. Right after an access-mode change landed on Lock & recovery, a link to `/settings/access-mode` committed its URL while Lock & recovery stayed on screen until the next navigation. Repeating that flow 18 times (`race-final-hold`, `race2-final-hold-b`) did not reproduce it. The path it took, a view transition between two routes outside the four doors, behaves as it did before retention. It is not attributed.
 - Access mode after a quick kill, seen once. A change from passphrase to unlocked that the screen had confirmed was gone after a force-stop about six seconds later, at the end of a run that had switched modes back and forth six times, and the next start asked for the passphrase. Three deliberate repeats on the reviewed build, force-stopping 5, 2 and 0 seconds after the confirmation, all kept the change (`durability-final-{5s,2s,0s}-1`). It is not attributed. If it comes back, the thing to check is what `changeAccessMode` has written to disk by the time it reports success.
