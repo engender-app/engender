@@ -25,7 +25,10 @@ const QUICK_FRAMES = 2;
     that a device which never settles still answers the tap promptly. */
 const HOLD_CAP_MS = 300;
 
-export function holdUntilPainted(doc: Document): void {
+export function holdUntilPainted(
+  doc: Document,
+  { count = QUICK_FRAMES, patience = count }: { count?: number; patience?: number } = {}
+): void {
   const view = doc.defaultView;
   if (!view) return;
   const held = doc.getAnimations().filter(
@@ -37,6 +40,6 @@ export function holdUntilPainted(doc: Document): void {
     () => {
       for (const animation of held) if (animation.playState === 'paused') animation.play();
     },
-    { count: QUICK_FRAMES, capMs: HOLD_CAP_MS }
+    { count, patience, capMs: HOLD_CAP_MS }
   );
 }

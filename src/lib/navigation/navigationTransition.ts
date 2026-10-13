@@ -16,7 +16,7 @@ import { animateAndroidTab, finishAndroidTab } from './androidTabMotion';
 import { isAndroid } from '$lib/platform';
 import { isReducedMotion } from '$lib/motion/tokens';
 import { holdUntilPainted } from '$lib/motion/paintHold';
-import { arrivalArm } from '$lib/motion/arrivalExperiment';
+import { arrivalArm, holdFrames } from '$lib/motion/arrivalExperiment';
 
 const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
 let currentTransition: ViewTransition | null = null;
@@ -204,7 +204,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        viewport resize mid-transition is one way - and nothing else here
        reads it, so the rejection reached the window unhandled. */
     void transition.ready.then(() => {
-      if (arrivalArm() === 'hold' && isAndroid()) holdUntilPainted(document);
+      if (arrivalArm() === 'hold' && isAndroid()) holdUntilPainted(document, holdFrames());
     }, () => {});
     void transition.finished
       .catch(() => {})
