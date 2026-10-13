@@ -17,8 +17,10 @@
   import '$lib/motion/press.css';
   import '$lib/motion/materials.css';
 
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
+  import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
   import { onMount } from 'svelte';
+  import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
   import { afterNavigate, goto, onNavigate } from '$app/navigation';
@@ -64,16 +66,23 @@
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import QuickAdd from '$lib/components/QuickAdd.svelte';
-  import DeviceBoundRecovery from '$lib/components/DeviceBoundRecovery.svelte';
   import { isAndroid } from '$lib/platform';
   import AndroidKeyGate from '$lib/components/AndroidKeyGate.svelte';
   import BootFailureNotice from '$lib/components/BootFailureNotice.svelte';
   import SessionUnlock from '$lib/components/SessionUnlock.svelte';
   import JournalGate from '$lib/components/JournalGate.svelte';
-  import PostRecoveryAccessMode from '$lib/components/PostRecoveryAccessMode.svelte';
   import Toasts from '$lib/components/Toasts.svelte';
 
   let { children } = $props();
+
+  let RetainedDoors = $state<typeof import('$lib/navigation/RetainedDoors.svelte').default | null>(null);
+  let retainedFrom = $state<string | null>(null);
+  let retaining = $state(false);
+  let retainedSession = $state(Symbol());
+
+  function isMainDoor(path: string): path is DoorPath {
+    return path === '/' || path === '/calendar' || path === '/stats' || path === '/more';
+  }
 
   onMount(countPageLoad);
 
@@ -116,6 +125,11 @@
   let gate = $derived(bootGate(bootState));
 
   let path = $derived(page.url.pathname);
+  let retainedPath = $derived(isMainDoor(path) ? path : null);
+  // Start at the next route commit, without remounting a screen someone is using.
+  $effect.pre(() => {
+    if (RetainedDoors && path !== retainedFrom) retaining = true;
+  });
 
   /* A brand new install (ticket 54); routeGates.ts says why onboarding
      renders over this one gate state instead of meeting it. */
@@ -170,6 +184,14 @@
   $effect(() => {
     if (replacesApp) ui.raisedManager = null;
     else if (ui.raisedManager) managersRequested = true;
+  });
+
+  $effect.pre(() => {
+    if (locked || browserSession.recovering) retainedSession = Symbol();
+  });
+  $effect(() => {
+    if (locked) dropJournalScreens();
+    else if (browserSession.recovering) dropRetainedDoors();
   });
 
   /* Those, plus the routes that render without chrome whoever is looking at
@@ -369,6 +391,21 @@
      Android journal is open and unlocked (backgroundSchedulers.ts). */
   $effect(() => {
     if (isReadyState(bootState) && !locked && isAndroid()) return startBackgroundSchedulers();
+  });
+
+  $effect(() => {
+    if (!isReadyState(bootState) || chromeless || ui.appOpening ||
+        ui.tabMoving || navigating.to || !isAndroid()) return;
+    const controller = new AbortController();
+    void import('$lib/navigation/preloadDoors').then(async ({ preloadDoors, loadRetainedDoors }) => {
+      await preloadDoors(controller.signal);
+      if (controller.signal.aborted || RetainedDoors) return;
+      const module = await loadRetainedDoors();
+      if (controller.signal.aborted) return;
+      retainedFrom = page.url.pathname;
+      RetainedDoors = module.default;
+    }).catch(() => {});
+    return () => controller.abort();
   });
 
   /* Every Android-only effect that used to live here one at a time -
@@ -591,12 +628,16 @@
         {:else if needsAuthentication}
           <AndroidKeyGate />
         {:else if needsDeviceRecovery}
-          <DeviceBoundRecovery />
+          {#await import('$lib/components/DeviceBoundRecovery.svelte') then { default: DeviceBoundRecovery }}
+            <DeviceBoundRecovery />
+          {/await}
         {:else if needsAccessModeAfterRecovery}
           <!-- Before the lock rather than after it: a session that has just
                been recovered has nothing for a re-entry screen to ask, since
                the secret it would ask for is the one that failed. -->
-          <PostRecoveryAccessMode />
+          {#await import('$lib/components/PostRecoveryAccessMode.svelte') then { default: PostRecoveryAccessMode }}
+            <PostRecoveryAccessMode />
+          {/await}
         {:else if locked}
           <!-- The locked route unmounts, so its reads stop and unlocking
                returns to the same URL at the top of the screen. -->
@@ -605,6 +646,18 @@
           <!-- The effect above is already navigating here; nothing renders
                for the frame that takes, so a brand new install's first paint
                is never whatever route the URL happened to be (ticket 54). -->
+        {:else if retaining && RetainedDoors && (!chromeless || browserSession.recovering)}
+          <!-- Recovery keeps the route someone is using mounted, hidden and
+               inert above, so an unsaved draft survives a BFCache restore.
+               The retained doors are cached instances instead: they go
+               until the journal has reopened, and come back as a new
+               session, and a door being shown goes with them. Recovery
+               counts as chromeless (replacesApp), so it is named here, or a
+               door's page would mount afresh behind the hidden main. -->
+          {#if !browserSession.recovering}
+            {#key retainedSession}<RetainedDoors path={retainedPath} />{/key}
+          {/if}
+          {#if !retainedPath}{@render children()}{/if}
         {:else}
           {@render children()}
         {/if}

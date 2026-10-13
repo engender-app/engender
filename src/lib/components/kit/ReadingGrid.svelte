@@ -18,6 +18,9 @@
   import { roleAttrs } from './role';
   import { settleCells } from './readingGrid';
   import type { Role } from '$lib/theme/roles';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
+
+  const isDoorActive = useDoorActivity();
 
   let {
     label,
@@ -33,7 +36,7 @@
   } = $props();
 </script>
 
-<nav class="kit-readings" use:settleCells data-kit-surface data-reading-grid aria-label={label} {...roleAttrs(role)} {...rest}>
+<nav class="kit-readings" use:settleCells={isDoorActive()} data-kit-surface data-reading-grid aria-label={label} {...roleAttrs(role)} {...rest}>
   {@render children()}
 </nav>
 

@@ -21,11 +21,11 @@ const previousAssets = process.env.ENGENDER_PREVIOUS_ASSETS
   : [];
 
 
-function demoWorkerPrewarm(): Plugin {
+function layoutStartupChunks(): Plugin {
   let client = false;
   let entry: string | undefined;
   return {
-    name: 'engender:demo-worker-prewarm',
+    name: 'engender:layout-startup-chunks',
     configResolved(config) {
       client = config.build.outDir.endsWith('/client');
     },
@@ -35,11 +35,14 @@ function demoWorkerPrewarm(): Plugin {
       }
     },
     outputOptions(options) {
-      if (!client || process.env.VITE_DEMO !== '1') return;
+      if (!client) return;
+      const demo = process.env.VITE_DEMO === '1';
       const reachable = (roots: string[]) => {
         const modules = new Set<string>();
         const visit = (id: string) => {
           if (modules.has(id)) return;
+          if (!demo && (!id.startsWith(resolve('src') + '/') || id.includes('/src/lib/paraglide/') ||
+              id.endsWith('/src/routes/+layout.ts') || !this.getModuleInfo(id)?.isIncluded)) return;
           modules.add(id);
           for (const dependency of this.getModuleInfo(id)?.importedIds ?? []) visit(dependency);
         };
@@ -53,8 +56,9 @@ function demoWorkerPrewarm(): Plugin {
         if (!startup) {
           const ids = [...this.getModuleIds()];
           startup = reachable(ids.filter((module) =>
-            module.endsWith('/src/routes/+layout.svelte') || module.endsWith('/src/routes/+page.svelte')
+            module.endsWith('/src/routes/+layout.svelte') || (demo && module.endsWith('/src/routes/+page.svelte'))
           ));
+          if (!demo) return startup.has(id) ? 'layout-startup' : undefined;
           // Keep the early worker owner small while the screen bundle loads.
           bootstrap = reachable(ids.filter((module) =>
             module.endsWith('/src/lib/data/demo/prewarm.ts') ||
@@ -71,9 +75,39 @@ function demoWorkerPrewarm(): Plugin {
             if (module.includes('/src/lib/paraglide/')) startup.delete(module);
           }
         }
+        if (!demo) return startup.has(id) ? 'layout-startup' : undefined;
         if (bootstrap!.has(id)) return 'demo-worker-bootstrap';
         return startup.has(id) ? 'demo-startup' : undefined;
       };
+    },
+    generateBundle(_options, bundle) {
+      if (!client || process.env.VITE_DEMO === '1') return;
+      const chunks = Object.values(bundle).filter((item) => item.type === 'chunk');
+      const startup = chunks.find((chunk) => chunk.name === 'layout-startup');
+      if (!startup) this.error('The production layout startup chunk is missing');
+      for (const id of Object.keys(startup.modules)) {
+        const source = id.split('?')[0];
+        if (!source.startsWith(resolve('src') + '/') || source.includes('/src/lib/paraglide/') ||
+            (source.includes('/src/routes/') && !source.endsWith('/src/routes/+layout.svelte')) ||
+            source.endsWith('/src/lib/components/VocabularyManagerSheets.svelte') ||
+            source.endsWith('/src/lib/navigation/RetainedDoors.svelte') ||
+            source.endsWith('/src/lib/data/vocabulary/vocabulary.ts')) {
+          this.error(`Layout startup grouping crosses a lazy or bootstrap boundary: ${id}`);
+        }
+      }
+      // Check the rendered chunk graph: source imports do not establish this.
+      const complete = new Set<string>();
+      const active = new Set<string>();
+      const visit = (file: string) => {
+        if (active.has(file)) this.error(`Layout startup grouping creates a static chunk cycle: ${file}`);
+        if (complete.has(file)) return;
+        active.add(file);
+        const chunk = bundle[file];
+        if (chunk?.type === 'chunk') for (const imported of chunk.imports) visit(imported);
+        active.delete(file);
+        complete.add(file);
+      };
+      for (const chunk of chunks) visit(chunk.fileName);
     },
     writeBundle() {
       if (entry) writeFileSync('.svelte-kit/demo-prewarm.json', JSON.stringify(this.getFileName(entry)));
@@ -337,7 +371,7 @@ export default defineConfig(({ command }) => ({
     exclude: ['@evolu/sqlite-wasm']
   },
   plugins: [
-    demoWorkerPrewarm(),
+    layoutStartupChunks(),
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/lib/paraglide',
