@@ -150,6 +150,7 @@
         place-items: center;
         pointer-events: none;
         background: var(--splash-ground, #f4f8fb);
+        opacity: 0.996;
         transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
       }
       #splash i {
@@ -170,15 +171,27 @@
       #splash.is-leaving { opacity: 0; }
       html[data-disguised] #splash i { display: none; }
       /* The other half of the crossfade (Alicja, after-release ticket 31:
-         "splash with crossfade"). The app's screen waits at opacity 0 under
-         the first frame and fades in on the same curve and length as the
-         first frame fades out, so no part of it sits at full opacity under
-         a half-transparent mark. The layer that fades is the app root, not
+         "splash with crossfade"). The app's screen waits under the first
+         frame and fades in on the same curve and length as the first frame
+         fades out, so no part of it sits at full opacity under a
+         half-transparent mark. The layer that fades is the app root, not
          the body: the body carries the ground, so the ground never dims.
          lib/splash.ts sets "leaving" with the answer and takes the
-         attribute off with the element. */
+         attribute off with the element.
+
+         It waits at 0.004 under a mark at 0.996, not 0 under 1, which no
+         eye can tell apart (ticket 08). Blink does not paint a subtree at
+         opacity 0 and nothing under an opaque layer is rastered, so the
+         WebView met every GPU pipeline the screen needs on the fade's
+         first frame and stalled through it. This way the screen paints
+         while the mark holds still. Until the fade starts it takes no taps:
+         a control nobody can see yet must not open under the mark. */
       html[data-splash] [data-app-root] {
-        opacity: 0;
+        opacity: 0.004;
+        will-change: opacity;
+      }
+      html[data-splash=''] [data-app-root] {
+        pointer-events: none;
       }
       html[data-splash='leaving'] [data-app-root] {
         opacity: 1;

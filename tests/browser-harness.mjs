@@ -138,6 +138,18 @@ export async function fillTime(page, selector, hhmm) {
   await picker.waitFor({ state: 'detached' });
 }
 
+/** Until the splash mark lets go of input. The mark holds after boot until
+    the screen under it has painted and settled (ticket 08), about 350 ms in
+    headless Chromium, and until it starts to fade the app takes no pointer
+    input, so a press or a wheel given at boot-ready lands on nothing. */
+/** @param {import('playwright-core').Page} page */
+export async function untilSplashLets(page) {
+  await page.waitForFunction(() => {
+    const splash = document.documentElement.dataset.splash;
+    return splash === undefined || splash === 'leaving';
+  }, null, { timeout: 30000 });
+}
+
 /** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
  *  the hydration sweep, ticket 108, needed the same one for its sheet
  *  scenes and profile prologues): the page navigated, boot waited ready,
@@ -160,6 +172,7 @@ export async function settlePage(page, base, path, theme) {
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
+  await untilSplashLets(page);
   /* The demo bar is hidden rather than removed since redesign ticket 33:
      setup's own scenes reach the flow through the demo's first-run control,
      and a removed bar takes the control with it. Nothing measures the bar

@@ -142,3 +142,28 @@ it('does not restart a nested reveal that finished before its queued paint', () 
   frames.shift()!(396);
   expect(animation.play).not.toHaveBeenCalled();
 });
+
+it('cancels queued paint motion when its retained owner becomes hidden', () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+  vi.spyOn(performance, 'now').mockReturnValue(0);
+  let active = true;
+  const owner = {
+    isConnected: true,
+    closest: () => ({ hasAttribute: () => active })
+  } as unknown as HTMLElement;
+  const getComputedTiming = vi.fn(() => ({ iterations: 1, duration: 150, endTime: 150 }));
+  const animation = {
+    playState: 'paused', currentTime: 0, playbackRate: 1,
+    effect: { getComputedTiming },
+    pause: vi.fn(), play: vi.fn(), cancel: vi.fn()
+  };
+  beginTabArrival();
+  playAfterPaint(owner, [animation as unknown as Animation], { fitArrival: true });
+  frames.shift()!(16);
+  active = false;
+  frames.shift()!(32);
+  expect(animation.play).not.toHaveBeenCalled();
+  expect(animation.cancel).toHaveBeenCalledOnce();
+  expect(getComputedTiming).not.toHaveBeenCalled();
+});

@@ -46,7 +46,29 @@ export function dropOutgoingScreens(doc: Document = document): number {
     (el) => !el.parentElement?.closest('.screen')
   );
   const feet = [...doc.querySelectorAll<HTMLElement>(FEET)];
-  const outgoing = [...screens.slice(0, -1), ...feet];
+  const ordinary = screens.filter((el) => !el.parentElement?.closest('[data-retained-door]'));
+  const retainedIncoming = screens.some((el) => el.parentElement?.closest('[data-retained-active]'));
+  const outgoing = [...(retainedIncoming ? ordinary : ordinary.slice(0, -1)), ...feet];
+  for (const el of outgoing) el.remove();
+  return outgoing.length;
+}
+
+/** Recovery keeps the route in use, hidden, so an unsaved draft survives a
+    BFCache restore, but not the doors cached beside it: they go before
+    paint, without waiting for outros, and come back as a new session. */
+export function dropRetainedDoors(doc: Document = document): number {
+  const doors = [...doc.querySelectorAll<HTMLElement>('[data-app-scroll-region] [data-retained-door]')]
+    .filter((el) => !el.parentElement?.closest('.screen, [data-retained-door]'));
+  for (const el of doors) el.remove();
+  return doors.length;
+}
+
+/** A lock removes journal nodes before paint, without waiting for outros. */
+export function dropJournalScreens(doc: Document = document): number {
+  const roots = [...doc.querySelectorAll<HTMLElement>(
+    '[data-app-scroll-region] :is([data-retained-door], .screen:not([data-gate-frame]))'
+  )].filter((el) => !el.parentElement?.closest('.screen, [data-retained-door]'));
+  const outgoing = [...roots, ...doc.querySelectorAll<HTMLElement>(FEET)];
   for (const el of outgoing) el.remove();
   return outgoing.length;
 }

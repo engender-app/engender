@@ -33,9 +33,12 @@
   import type { Snippet } from 'svelte';
   import Skeleton from '../Skeleton.svelte';
   import { crossfade, maskHeight } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, isReducedMotion } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, NIL_OPACITY, isReducedMotion } from '$lib/motion/tokens';
   import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
+
+  const isDoorActive = useDoorActivity();
 
   let {
     ready: answered,
@@ -72,6 +75,7 @@
   const SKELETON_BLOCK_PX = 166;
 
   function fadeIn(node: HTMLElement) {
+    if (!isDoorActive()) return;
     if (!painted) {
       for (const animation of node.getAnimations({ subtree: true })) {
         if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
@@ -81,15 +85,18 @@
     fitReadArrival(node.getAnimations({ subtree: true }));
     const duration = readRevealDuration('--dur-fast');
     if (duration === 0) return;
-    const animation = node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+    const animation = node.animate([{ opacity: NIL_OPACITY }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
     playAfterPaint(node, [animation], { fitArrival: true });
     return { destroy: () => animation.cancel() };
   }
 
   let wrapper: HTMLElement;
-  let restingHeight = $state(0);
+  let restingHeight = $state<number>();
+  const rememberHeight = (height: number) => {
+    if (isDoorActive()) restingHeight = height;
+  };
   $effect(() => {
-    if (ready) onrest?.(restingHeight);
+    if (isDoorActive() && ready && restingHeight !== undefined) onrest?.(restingHeight);
   });
 
   /* The height on screen the moment before the swap, read before the DOM
@@ -125,6 +132,10 @@
   };
   let beforeMargin = 0;
   $effect.pre(() => {
+    if (!isDoorActive()) {
+      before = ready ? -1 : null;
+      return;
+    }
     if (ready && before === null && wrapper) {
       const box = wrapper.getBoundingClientRect();
       before = box.height;
@@ -133,6 +144,7 @@
     }
   });
   $effect(() => {
+    if (!isDoorActive()) return;
     if (!ready || before === null || before < 0) return;
     const from = before;
     before = -1;
@@ -255,7 +267,7 @@
       <Skeleton variant="block" count={Math.max(1, Math.ceil(estimate / SKELETON_BLOCK_PX))} />
     </div>
   {:else if ready}
-    <div class="read-reserve-body" use:fadeIn bind:clientHeight={restingHeight} data-read-reserve-body>
+    <div class="read-reserve-body" use:fadeIn bind:clientHeight={null, rememberHeight} data-read-reserve-body>
       {@render children()}
     </div>
   {/if}
