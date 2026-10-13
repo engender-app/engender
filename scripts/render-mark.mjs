@@ -26,7 +26,7 @@ import { chromium } from 'playwright-core';
 import { copyFileSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MARK_MONO_RINGS, MARK_R, MARK_SAFE_TILE, MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS, ROUND_SUN_CENTER, ROUND_SUN_R, markSvg } from '../src/lib/components/mark.ts';
+import { MARK_MONO_RINGS, MARK_R, MARK_SAFE_TILE, MARK_SEAM, MARK_SUN_R, MARK_SUN_X, MARK_SUN_Y, MARK_TILE, MARK_TILE_RADIUS, ROUND_SUN_CENTER, ROUND_SUN_R, markSvg } from '../src/lib/components/mark.ts';
 import { ringRadii } from '../src/lib/motion/flagSun.ts';
 
 /* Resolved off this file rather than the working directory, so the script
@@ -87,7 +87,7 @@ function roundedRectPath(x, y, size, r) {
 }
 
 function adaptiveForeground(stripes, round = false) {
-  const rings = ringRadii(stripes.length, round ? ROUND_SUN_R : MARK_R)
+  const rings = ringRadii(stripes.length, round ? ROUND_SUN_R : MARK_SUN_R)
     .map((radius, i) => {
       /* A circle as two half-turn arcs from its top point: a vector
          drawable has no <circle> either. Same centre and same half-seam
@@ -95,7 +95,7 @@ function adaptiveForeground(stripes, round = false) {
       const r = radius - MARK_SEAM / 2;
       return (
         `        <path\n`
-        + `            android:pathData="M${round ? ROUND_SUN_CENTER : MARK_R},${n2((round ? MARK_R - ROUND_SUN_CENTER : 0) - r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)}`
+        + `            android:pathData="M${round ? ROUND_SUN_CENTER : MARK_SUN_X},${n2((round ? MARK_R - ROUND_SUN_CENTER : MARK_SUN_Y) - r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)}`
         + ` a${n2(r)},${n2(r)} 0 1,0 0,${n2(-r * 2)} Z"\n`
         + `            android:fillColor="${stripes[i]}"\n`
         + `            android:strokeColor="#000000"\n`
@@ -153,9 +153,9 @@ function adaptiveForeground(stripes, round = false) {
 function notificationMark() {
   const inset = MARK_SEAM / 2;
   const edge = roundedRectPath(inset, inset, MARK_R - MARK_SEAM, MARK_TILE_RADIUS - inset);
-  const paths = ringRadii(MARK_MONO_RINGS, MARK_R).map((radius) => {
+  const paths = ringRadii(MARK_MONO_RINGS, MARK_SUN_R).map((radius) => {
     const r = radius - inset;
-    return `M${MARK_R},${n2(-r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(-r * 2)} Z`;
+    return `M${MARK_SUN_X},${n2(MARK_SUN_Y - r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(-r * 2)} Z`;
   });
   const stroke = (path) => `        <path android:pathData="${path}" android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="${MARK_SEAM}" />`;
   return `<?xml version="1.0" encoding="utf-8"?>
