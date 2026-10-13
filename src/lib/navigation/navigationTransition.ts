@@ -15,6 +15,7 @@ import { rememberScroll, restoreScroll, savedScroll } from './scroll-region';
 import { animateAndroidTab, finishAndroidTab } from './androidTabMotion';
 import { isAndroid } from '$lib/platform';
 import { isReducedMotion } from '$lib/motion/tokens';
+import { holdUntilPainted } from '$lib/motion/paintHold';
 
 const TAB_ROOTS = new Set(['/', '/calendar', '/stats', '/more']);
 let currentTransition: ViewTransition | null = null;
@@ -197,10 +198,16 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
       }
     });
     currentTransition = transition;
+    ui.screenMoving = true;
     /* `ready` rejects on its own when the browser skips a transition - a
        viewport resize mid-transition is one way - and nothing else here
        reads it, so the rejection reached the window unhandled. */
-    void transition.ready.catch(() => {});
+    void transition.ready.then(() => {
+      /* Reduced motion's crossfade waits out --dur-crossfade before it
+         starts, which already draws the incoming screen at the nil opacity
+         while nothing moves; a hold would only add to the wait. */
+      if (isAndroid() && !isReducedMotion()) holdUntilPainted(document);
+    }, () => {});
     void transition.finished
       .catch(() => {})
       .finally(() => {
@@ -208,6 +215,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
            the current capture may clear the flag read by arriving suns. */
         if (currentTransition === transition) {
           currentTransition = null;
+          ui.screenMoving = false;
           delete document.documentElement.dataset.nav;
           delete document.documentElement.dataset.blindHold;
         }

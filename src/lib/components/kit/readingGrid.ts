@@ -102,13 +102,14 @@ export function gridCell(
 
 /** On the grid: keeps each live tile's column marks current and carries
     every tile that changes cell to its new one. */
-export const settleCells: Action<HTMLElement> = (grid) => {
+export const settleCells: Action<HTMLElement, boolean | undefined> = (grid, active = true) => {
   const last = lastPlace;
 
-  const settle = () => {
+  const settle = (rebase = false) => {
+    if (!active) return;
     const cells = ([...grid.children] as HTMLElement[]).filter((cell) => !leaving(cell));
     const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
-    const animate = !isReducedMotion() && !stillArriving();
+    const animate = !rebase && !isReducedMotion() && !stillArriving();
     const duration = motionDuration('--dur-med');
     grid.dataset.cols = String(cols);
     cellPlaces(cells.length, cols).forEach((place, i) => {
@@ -154,6 +155,14 @@ export const settleCells: Action<HTMLElement> = (grid) => {
     }
   };
 
+  const cancelMotion = () => {
+    for (const cell of [...grid.children]) {
+      for (const animation of cell.getAnimations()) {
+        if (animation.id === 'cell-travel' || animation.id === 'cell-rule') animation.cancel();
+      }
+    }
+  };
+
   settle();
   /* Subtree, because a tile lifting out marks itself and that mark is an
      attribute on a child; but only the grid's own children coming and
@@ -166,9 +175,15 @@ export const settleCells: Action<HTMLElement> = (grid) => {
           if (records.some((record) => record.type === 'attributes' || record.target === grid)) settle();
         });
   mutations?.observe(grid, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-leaving'] });
-  const resizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(settle);
+  const resizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => settle());
   resizes?.observe(grid);
   return {
+    update(next = true) {
+      if (active === next) return;
+      active = next;
+      if (active) settle(true);
+      else cancelMotion();
+    },
     destroy() {
       mutations?.disconnect();
       resizes?.disconnect();

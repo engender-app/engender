@@ -16,7 +16,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
-import { createReporter, launchChromium, fillDate, fillTime, dateValue } from './browser-harness.mjs';
+import { createReporter, launchChromium, fillDate, fillTime, dateValue, untilSplashLets } from './browser-harness.mjs';
 import { makePdf, makeUnreadablePdf } from './pdf-fixture.mjs';
 import { tinyPhoto } from './photo-fixture.mjs';
 import { WALKTHROUGH_GROUPS, groupFlows } from './walkthrough-groups.mjs';
@@ -209,6 +209,7 @@ async function recentEntryEvidence(signal) {
    missing was the recent data the stats and calendar flows assert on. */
 async function booted() {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
+  await untilSplashLets(page);
 }
 
 async function fresh(path = '/') {
