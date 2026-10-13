@@ -1,38 +1,37 @@
-Jak ci z nowym imieniem? Co się zmienia po kilku miesiącach HRT? W engender możesz to zapisać i wrócić do tego kiedykolwiek zechcesz. Notatki, zdjęcia i informacje o lekach masz w jednym miejscu.
+Jak ci z nowym imieniem? Co się zmienia po kilku miesiącach HRT? Zapisz to w engender i wracaj do tego, kiedy tylko zechcesz. Notatki, zdjęcia i dawki leków masz w jednym miejscu.
 
-To dziennik tranzycji od osoby trans dla innych osób trans. Wybierz te części aplikacji, które ci się przydadzą. Możesz dopiero zastanawiać się nad swoim genderem, planować kolejne kroki albo mieć za sobą lata tranzycji. Aplikacja jest darmowa, bez reklam i subskrypcji. Nie trzeba, a wręcz nie można założyć konta.
+To dziennik tranzycji od osoby trans dla innych osób trans. Wybierz te części aplikacji, które ci się przydadzą, niezależnie od tego, czy dopiero zastanawiasz się nad swoim genderem, planujesz kolejne kroki, czy masz za sobą lata tranzycji. Aplikacja jest darmowa, bez reklam i subskrypcji. Konta nie trzeba zakładać, a nawet się nie da.
 
 Miejsce na to, co czujesz
 
-Czasem wystarczy zaznaczyć nastrój. Jeśli chcesz zapisać więcej, dodaj notatkę, zdjęcie lub nagranie głosu. Albo wypełnij skale genderowe, które pozwalają uchwycić Twój gender w czasie. Wpisów może być kilka dziennie. Oznaczaj je tagami, żeby później łatwiej je znaleźć, a dysforię, euforię i inne odczucia zapisuj na osobnych skalach, których nazwy i opisy obu końców wybierasz samodzielnie. Możesz też notować, jak czujesz się z poszczególnymi częściami ciała.
+Czasem wystarczy zaznaczyć nastrój. Jeśli chcesz zapisać więcej, dodaj notatkę, zdjęcie albo nagranie głosu. Albo wypełnij skale genderowe i zobacz, jak twój gender wygląda z perspektywy czasu. Dysforię, euforię i inne odczucia zapisujesz na osobnych skalach. Nazywasz je po swojemu, tak samo jak oba ich końce. Wpisów może być kilka dziennie, a tagi pomogą ci je później znaleźć. Możesz też notować, jak się czujesz z poszczególnymi częściami ciała.
 
-HRT i zdrowie w jednym miejscu
+HRT i zdrowie
 
-Zapisuj dawki HRT i innych leków, ustaw harmonogram i przypomnienia. Trzymaj w jednym miejscu wyniki badań, wymiary ciała i notatki o zmianach, które zauważasz na HRT. Możesz też śledzić zmiany owłosienia i cyklu, jeśli cię to dotyczy. Jeśli planujesz operację, jest też dla Ciebie moduł na przygotowania i późniejsze notatki z rekonwalescencji. Przed wizytą spiszesz pytania i przygotujesz podsumowanie, które zabierzesz ze sobą do gabinetu.
+Zapisuj dawki HRT i innych leków, ustaw harmonogram i przypomnienia. Notuj wyniki badań, wymiary ciała i zmiany, które zauważasz na HRT. Jeśli cię to dotyczy, śledź zmiany owłosienia i cykl. Jest też miejsce na przygotowania do operacji i późniejsze notatki z rekonwalescencji. Przed wizytą spiszesz pytania i przygotujesz podsumowanie, które zabierzesz do gabinetu.
 
 engender nie stawia diagnoz, nie interpretuje wyników badań, nie dobiera dawek ani nie zastępuje porady medycznej. Decyzje o leczeniu konsultuj z lekarzem.
 
-Co chcesz wypróbować, co zapamiętać
+Próby i kamienie milowe
 
-Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas noszenia bindera lub tuckingu. Zaznaczaj kamienie milowe i planuj następne kroki. Możesz też napisać do siebie list i zamknąć go w kapsule, do której wrócisz dopiero w wybranym dniu.
+Sprawdzasz nowe imię, inne zaimki albo styl? Zapisuj, jak się z nimi czujesz. Nagrywaj ćwiczenia głosu i porównuj kolejne nagrania. Notuj zabiegi depilacji oraz czas bindowania i tuckingu. Zaznaczaj kamienie milowe i planuj następne kroki. Możesz też napisać list do siebie i zamknąć go w kapsule czasu. Otworzy się w dniu, który wybierzesz.
 
 Zobacz, co się zmieniło
 
-Obejrzyj porównanie zdjęć obok siebie, przejrzyj wykresy albo przejrzyj podsumowanie tygodnia, miesiąca czy roku. W kalendarzu zobaczysz dni z wpisami. Pozostałe zostają puste. Konkretny moment znajdziesz po treści notatki lub tagach. Na trudniejsze dni jest Bezpieczna przestrzeń: kojąca przestrzeń zawierająca ulubione wpisy i twoja lista rzeczy, które pomagają.
+Zestaw zdjęcia obok siebie, przejrzyj wykresy albo wróć do podsumowania tygodnia, miesiąca czy roku. W kalendarzu widać dni z wpisami, a te bez wpisów zostają puste. Żeby znaleźć konkretny moment, przeszukaj notatki i tagi. Na trudniejsze dni jest Bezpieczna przestrzeń, gdzie masz pod ręką ulubione wpisy i własną listę rzeczy, które pomagają.
 
 Dziennik zostaje u ciebie
 
-Aplikacja na Androida działa offline i nie ma uprawnienia do korzystania z internetu. Nie wysyła na serwer ani dziennika, ani statystyk użycia. To ty decydujesz, kiedy coś wyeksportować lub udostępnić. Jedynie na własny użytek.
+Aplikacja na Androida działa offline i nie ma nawet uprawnienia do internetu. Nie wysyła na serwer ani dziennika, ani statystyk użycia. To ty decydujesz, czy i kiedy coś wyeksportować albo komuś udostępnić.
 
-Zapisany dziennik i media są zaszyfrowane. Poza szyfrowaniem pozostają niektóre ustawienia startowe i metadane kluczy. Przy robieniu zdjęcia aparat może utworzyć tymczasowy niezaszyfrowany plik przed importem. Szczegóły opisuje polityka prywatności.
+Zapisany dziennik i media są zaszyfrowane. Bez szyfrowania zostają tylko niektóre ustawienia potrzebne przy uruchamianiu i metadane kluczy. Gdy robisz zdjęcie, aparat może przed importem zapisać tymczasowy, niezaszyfrowany plik. Szczegóły są w polityce prywatności.
 
-Dziennik możesz otwierać hasłem, PIN-em, odciskiem palca lub inną metodą blokady ekranu telefonu. Jeśli chcesz, włącz kamuflaż, który zmienia nazwę i ikonę aplikacji na neutralne.
+Dziennik otworzysz hasłem, PIN-em, odciskiem palca albo inną blokadą ekranu telefonu. Możesz też włączyć kamuflaż, który zmienia nazwę i ikonę aplikacji na neutralne.
 
-Kopia na później lub na nowy telefon
+Kopia na później albo na nowy telefon
 
-Zapisz kopię zaszyfrowaną hasłem albo ustaw automatyczne kopie w wybranym folderze. Archiwum pozwala przenieść dziennik na inne urządzenie lub do wersji przeglądarkowej. Możesz też wczytać wpisy z pliku CSV z Daylio.
+Zrób kopię zapasową zaszyfrowaną hasłem albo ustaw automatyczne kopie do wybranego folderu. Z archiwum przeniesiesz dziennik na inne urządzenie albo do wersji w przeglądarce. Wpisy z Daylio zaimportujesz z pliku CSV.
 
-Wybierz barwy swojej flagi, jasny lub ciemny motyw i przypnij używane części aplikacji do ekranu Dzień dzisiejszy. 
+Wybierz barwy swojej flagi i jasny albo ciemny motyw. Części aplikacji, z których korzystasz, przypniesz do ekranu Dziś.
 
-engender działa po polsku i po angielsku. Kod źródłowy jest publiczny na licencji GPLv3.
-
+Aplikacja ma wersję polską i angielską. Kod źródłowy jest publiczny, na licencji GPLv3.
