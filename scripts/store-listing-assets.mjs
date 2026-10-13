@@ -10,8 +10,8 @@ import { launchChromium } from '../tests/browser-harness.mjs';
 const output = resolve(process.argv[2] ?? 'fastlane/metadata/android');
 const fixedTime = new Date('2026-10-05T10:00:00Z');
 const locales = [
-  { code: 'en-US', language: 'en', claim: 'Track your transition.', note: 'The barista called out my new name today and it sounded right.' },
-  { code: 'pl-PL', language: 'pl', claim: 'Zapisuj tranzycję.', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
+  { code: 'en-US', language: 'en', claim: 'Your transition, in one place', note: 'The barista called out my new name today and it sounded right.' },
+  { code: 'pl-PL', language: 'pl', claim: 'Twoja tranzycja w jednym miejscu', note: 'W kawiarni zawołali mnie nowym imieniem. Dobrze to brzmiało.' }
 ];
 // Store order: the transition areas the listing describes, HRT first after Today.
 const screens = [
@@ -58,10 +58,6 @@ try {
     await artwork.screenshot({ path: `static/icons/icon-notes${suffix}.png`, omitBackground: false });
   }
   await copyFile('static/icons/icon-notes-192.png', 'static/apple-touch-icon-notes.png');
-  for (const [target, source] of [['icon-192', 'trans-tile-192'], ['icon-512', 'trans-tile-512'], ['icon-maskable', 'trans-maskable-512']]) {
-    await copyFile(`brand/mark/png/${source}.png`, `static/icons/${target}.png`);
-  }
-  await copyFile('brand/mark/png/trans-tile-192.png', 'static/apple-touch-icon.png');
   // The graphic sets type the way the app does (src/lib/theme/base.css,
   // fonts.css): Outfit and Nunito are variable fonts, so each face declares
   // its weight range or the browser fakes the weight from the 400 master.
@@ -77,7 +73,7 @@ try {
     // A shot dropped from the list must not linger in the upload folder.
     await rm(resolve(dir, 'phoneScreenshots'), { recursive: true, force: true });
     await mkdir(resolve(dir, 'phoneScreenshots'), { recursive: true });
-    await copyFile('brand/mark/png/trans-tile-512.png', resolve(dir, 'icon.png'));
+    await copyFile('brand/mark/png/trans-store-512.png', resolve(dir, 'icon.png'));
     await artwork.setViewportSize({ width: 1024, height: 500 });
     // Lockup in app.css's .lockup proportions (mark 1.23em, gap 0.5em, track
     // -0.03em, word lifted 0.23em, Outfit at --weight-display 800). The line
@@ -92,7 +88,7 @@ try {
       p{font:600 40px/1.35 Nunito;margin:0;white-space:nowrap}
       footer{position:absolute;inset:auto 0 0;height:40px;background:linear-gradient(to right,#5BCEFA 0% 20%,#F5A9B8 20% 40%,#FFFFFF 40% 60%,#F5A9B8 60% 80%,#5BCEFA 80% 100%)}
       </style><h1>${mark}<span>engender</span></h1><p>${locale.claim}</p><footer></footer></html>`);
-    await artwork.evaluate(async () => { await Promise.all(['800 92px Outfit', '600 40px Nunito'].map((f) => document.fonts.load(f, 'engender Track your transition. Zapisuj tranzycję.'))); await document.fonts.ready; });
+    await artwork.evaluate(async () => { await Promise.all(['800 92px Outfit', '600 40px Nunito'].map((f) => document.fonts.load(f, 'engender Your transition, in one place Twoja tranzycja w jednym miejscu'))); await document.fonts.ready; });
     if (!await artwork.locator('p').evaluate((node) => node.scrollWidth <= node.clientWidth)) throw new Error(`Feature graphic text exceeds margins: ${locale.code}`);
     await artwork.screenshot({ path: resolve(dir, 'featureGraphic.png'), omitBackground: false });
   }
