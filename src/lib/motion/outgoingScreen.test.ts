@@ -148,3 +148,20 @@ it('drops retained and ordinary journal roots at a gate without removing the gat
   expect(queried[0]).toContain('.screen:not([data-gate-frame])');
   expect(queried[0]).toContain('[data-retained-door]');
 });
+
+it('drops the retained doors at a recovery and asks for nothing else, so the route in use stays', async () => {
+  const door = screen();
+  const nested = screen(true);
+  const queried: string[] = [];
+  const recovering = {
+    querySelectorAll(selector: string) {
+      queried.push(selector);
+      return [door, nested];
+    }
+  } as unknown as Document;
+  const { dropRetainedDoors } = await import('./outgoingScreen');
+  expect(dropRetainedDoors(recovering)).toBe(1);
+  expect(door.removed).toBe(true);
+  expect(nested.removed).toBe(false);
+  expect(queried).toEqual(['[data-app-scroll-region] [data-retained-door]']);
+});
