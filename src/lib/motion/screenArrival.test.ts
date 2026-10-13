@@ -167,25 +167,3 @@ it('cancels queued paint motion when its retained owner becomes hidden', () => {
   expect(animation.cancel).toHaveBeenCalledOnce();
   expect(getComputedTiming).not.toHaveBeenCalled();
 });
-
-/* Ticket 09: on Android the frame that rasters a late reveal comes a few
-   quick frames after it is mounted, and two frames let the fade go just
-   before it. There it waits as the arrival hold does (paintHold.ts). */
-it('on Android, waits past the quick frames before the paint, then lets the reveal go', () => {
-  const frames: FrameRequestCallback[] = [];
-  const requestAnimationFrame = (callback: FrameRequestCallback) => frames.push(callback);
-  vi.stubGlobal('requestAnimationFrame', requestAnimationFrame);
-  vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' }, requestAnimationFrame });
-  vi.spyOn(performance, 'now').mockReturnValue(0);
-  const animation = {
-    playState: 'paused', currentTime: 0, playbackRate: 1,
-    effect: { getComputedTiming: () => ({ iterations: 1, duration: 150, endTime: 150 }) },
-    pause: vi.fn(), play: vi.fn(), cancel: vi.fn()
-  };
-  playAfterPaint({ isConnected: true } as HTMLElement, [animation as unknown as Animation]);
-  const play = (...times: number[]) => { for (const now of times) frames.splice(0).forEach((callback) => callback(now)); };
-  play(0, 8, 16, 24);
-  expect(animation.play).not.toHaveBeenCalled();
-  play(132, 140, 148);
-  expect(animation.play).toHaveBeenCalledOnce();
-});

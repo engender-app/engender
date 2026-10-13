@@ -29,13 +29,6 @@ const QUICK_FRAMES = 2;
     that a device which never settles still answers the tap promptly. */
 const HOLD_CAP_MS = 300;
 
-/** Calls `go` once the frame that first draws newly arrived content has
-    passed, by the rule above, or at the cap. The hold below and the late
-    reveals (screenArrival.ts' playAfterPaint) both wait this way. */
-export function afterPaint(view: Window, go: () => void): void {
-  afterQuickFrames(view, go, { count: QUICK_FRAMES, patience: PATIENCE, capMs: HOLD_CAP_MS });
-}
-
 export function holdUntilPainted(doc: Document): void {
   const view = doc.defaultView;
   if (!view) return;
@@ -43,7 +36,11 @@ export function holdUntilPainted(doc: Document): void {
     (animation) => animation.playState === 'running' && animation.effect?.getComputedTiming().endTime !== Infinity
   );
   for (const animation of held) animation.pause();
-  afterPaint(view, () => {
-    for (const animation of held) if (animation.playState === 'paused') animation.play();
-  });
+  afterQuickFrames(
+    view,
+    () => {
+      for (const animation of held) if (animation.playState === 'paused') animation.play();
+    },
+    { count: QUICK_FRAMES, patience: PATIENCE, capMs: HOLD_CAP_MS }
+  );
 }
