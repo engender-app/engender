@@ -4,8 +4,9 @@
 
    The numbers are pinned rather than derived, because they are a decision
    and not a calculation: Alicja moved the sliders on 2026-09-21 and said
-   keep this one. Nothing computes 3 or 15 from anything else, so the only
-   thing that can stop them drifting is a test that fails when they move and
+   keep this one. Ticket 38 of the last UI audit changes the tile radius to
+   30 so Play's corner mask keeps the outline. Nothing computes these values,
+   so a test fails when they move and
    makes whoever moved them come here and mean it.
 
    The stillness is read off the source text of this module and of
@@ -21,6 +22,9 @@ import { describe, expect, it } from 'vitest';
 import {
   MARK_MONO_RINGS,
   MARK_R,
+  MARK_SUN_R,
+  MARK_SUN_X,
+  MARK_SUN_Y,
   MARK_SEAM,
   MARK_TILE,
   MARK_SAFE_TILE,
@@ -62,20 +66,16 @@ describe('round launcher artwork', () => {
 });
 
 describe("the mark's signed-off numbers", () => {
-  it('is the geometry Alicja picked: R 100, centre 0, seam 3, tile radius 15', () => {
-    expect([MARK_R, MARK_SEAM, MARK_TILE_RADIUS]).toEqual([100, 3, 15]);
+  it('keeps R 100 and seam 3, with tile radius 30 for Play corner masking', () => {
+    expect([MARK_R, MARK_SEAM, MARK_TILE_RADIUS]).toEqual([100, 3, 30]);
     expect(MARK_TILE).toBe('#FFFFFF');
   });
 
-  it('centres the sun exactly on the tile\'s top right corner', () => {
-    /* Centre 0 means the sun's centre is the corner itself, which is where
-       Home's sun is centred too (ticket 38, settled 2026-09-21). A launcher
-       mask used to cut that corner off, because the tile bled to the canvas
-       edge; it no longer reaches the mask at all, since the tile sits inside
-       the circle every mask keeps (MARK_SAFE_TILE). */
+  it('uses the reviewed X 95, Y 5 and scale 96.75% on the 100-unit tile', () => {
+    expect([MARK_SUN_X, MARK_SUN_Y, MARK_SUN_R]).toEqual([95, 5, 96.75]);
     for (const circle of circles(markSvg(flags.trans, 'tile', 512))) {
-      expect(circle).toContain('cx="100"');
-      expect(circle).toContain('cy="0"');
+      expect(circle).toContain('cx="95"');
+      expect(circle).toContain('cy="5"');
     }
   });
 
@@ -83,7 +83,7 @@ describe("the mark's signed-off numbers", () => {
     for (const [name, stripes] of Object.entries(flags)) {
       const drawn = circles(markSvg(stripes, 'tile', 512));
       expect(drawn, name).toHaveLength(stripes.length);
-      const expected = ringRadii(stripes.length, MARK_R).map((r) => (r - MARK_SEAM / 2).toFixed(2));
+      const expected = ringRadii(stripes.length, MARK_SUN_R).map((r) => (r - MARK_SEAM / 2).toFixed(2));
       expect(drawn.map((c) => /r="([\d.]+)"/.exec(c)![1]), name).toEqual(expected);
     }
   });
@@ -185,8 +185,8 @@ describe('the tile belongs to the icon, not to the app', () => {
 
   it('draws its tile inside the circle every launcher mask keeps', () => {
     /* Android guarantees the central 72dp of 108, radius 33.33 in these
-       units. A rounded square of half-side a with corner radius 0.3a reaches
-       1.29a from the middle, so the whole outline is inside the guarantee
+       units. A rounded square of half-side a and corner radius r reaches
+       sqrt(2)(a - r) + r from the middle, so the outline is inside the guarantee
        only while that is under 33.33. This is the arithmetic, not a
        restatement of the constant. */
     const a = MARK_SAFE_TILE / 2;

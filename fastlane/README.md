@@ -13,6 +13,7 @@ this checkout:
 
 ```sh
 VITE_DEMO=1 npm run build
+npm run render:mark
 node scripts/store-listing-assets.mjs
 ```
 
@@ -31,9 +32,10 @@ note, with the first scale and the mood bar under it. Each capture waits
 until finite animations are done and every box has held still for 600ms,
 then keeps a shot only when two taken 500ms apart match. The script empties
 `phoneScreenshots/` first, so a shot dropped from its list does not stay
-behind. Feature graphics are 1024 × 500 PNGs. The script also copies the
-existing brand icons into the PWA assets and rasterizes the neutral disguise
-icons from their existing SVGs.
+behind. Feature graphics are 1024 × 500 PNGs. The script also rasterizes neutral disguise
+icons from their existing SVGs. Store icons use the opaque square export from
+`render:mark`; its shared 30% tile radius keeps the black outline inside Play's
+corner mask. `render:mark` also updates the PWA and Apple touch icons.
 
 Review the screenshots and feature graphics before committing regenerated
 images. Text validation runs with `npm test -- tests/store-listing-assets.test.ts`.
