@@ -45,6 +45,31 @@ describe('holdUntilPainted', () => {
     expect(part.play).toHaveBeenCalledTimes(1);
   });
 
+  it('holds through the quick frames that come before the slow one, which is what used to end it too early', () => {
+    vi.useFakeTimers();
+    const screen = animation('running');
+    const { doc, play } = documentWith([screen]);
+    holdUntilPainted(doc);
+    /* As measured after a transition's ready: quick frames, then the raster. */
+    play(0, 8, 16, 24, 32);
+    expect(screen.play).not.toHaveBeenCalled();
+    play(132, 140);
+    expect(screen.play).not.toHaveBeenCalled();
+    play(148);
+    expect(screen.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets go after six quick frames when no slow frame comes', () => {
+    vi.useFakeTimers();
+    const screen = animation('running');
+    const { doc, play } = documentWith([screen]);
+    holdUntilPainted(doc);
+    play(0, 8, 16, 24, 32, 40);
+    expect(screen.play).not.toHaveBeenCalled();
+    play(48);
+    expect(screen.play).toHaveBeenCalledTimes(1);
+  });
+
   it('leaves loops and animations that are not running alone', () => {
     vi.useFakeTimers();
     const sweep = animation('running', Infinity);

@@ -45,7 +45,6 @@
   } from '$lib/stores/boot-state';
   import { registerServiceWorkerAfterBoot } from '$lib/pwa/register';
   import { answerSplash, splashMayLeave } from '$lib/splash';
-  import { stampArrivalArm } from '$lib/motion/arrivalExperiment';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
@@ -98,7 +97,6 @@
      effect below stamps them on <html>. From an effect it would land one
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
-  stampArrivalArm();
 
   /* The gate (F13). It is asked here rather than in a route guard because
      a guard runs after navigation: `locked` has to decide what renders,

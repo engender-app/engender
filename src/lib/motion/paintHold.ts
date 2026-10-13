@@ -2,9 +2,10 @@
    (ticket 09).
 
    A view transition's incoming screen is mounted while rendering is paused
-   and first drawn on the frame its animations start. On the Pixel 10a that
-   frame rasters the whole screen and builds the transition's render passes:
-   50 to 130 ms on a first visit, which used to be the first frame of the
+   and first drawn once its animations start. On the Pixel 10a the frame
+   that rasters it and builds the transition's render passes takes 80 to
+   130 ms on a first visit, and it is not the first: three to five quick
+   frames come before it. Unheld, it landed in the first 50 ms of the
    motion. Held here, the animations stay on their first frame while that
    frame is drawn, so what the person sees is the frozen frame lasting a
    little longer and then a motion with no gap in it. The incoming screen
@@ -18,17 +19,17 @@
    was cancelled while held. */
 import { afterQuickFrames } from './quickFrames';
 
-/** Two quick frames: the arriving screen's cost is one or two frames, not
-    the several a cold start keeps compiling for. */
+/** Until the slow frame has shown, six quick frames: the frames before it
+    are quick, and two of them ended the hold before it in 10 of 16 holds
+    measured. Once it has, two quick frames after it mean it is paid for. A
+    screen that never has a slow frame waits out the six, 50 ms at 120 Hz. */
+const PATIENCE = 6;
 const QUICK_FRAMES = 2;
 /** Longer than the slowest first frame measured (131.8 ms), short enough
     that a device which never settles still answers the tap promptly. */
 const HOLD_CAP_MS = 300;
 
-export function holdUntilPainted(
-  doc: Document,
-  { count = QUICK_FRAMES, patience = count }: { count?: number; patience?: number } = {}
-): void {
+export function holdUntilPainted(doc: Document): void {
   const view = doc.defaultView;
   if (!view) return;
   const held = doc.getAnimations().filter(
@@ -40,6 +41,6 @@ export function holdUntilPainted(
     () => {
       for (const animation of held) if (animation.playState === 'paused') animation.play();
     },
-    { count, patience, capMs: HOLD_CAP_MS }
+    { count: QUICK_FRAMES, patience: PATIENCE, capMs: HOLD_CAP_MS }
   );
 }

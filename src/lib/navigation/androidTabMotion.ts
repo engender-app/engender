@@ -2,12 +2,11 @@ import type { OnNavigate } from '@sveltejs/kit';
 import { ACTIVE_DOOR_CONTENT } from './doorActivity';
 
 import { blindSettle } from '$lib/motion/blindSettle';
-import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
+import { EASE_OUT_CSS, NIL_OPACITY, motionDuration } from '$lib/motion/tokens';
 import { dropOutgoingScreens } from '$lib/motion/outgoingScreen';
 import { restoreScroll } from './scroll-region';
 import { ui } from '$lib/stores/ui.svelte';
 import { beginTabArrival, endTabArrival, playAfterPaint } from '$lib/motion/screenArrival';
-import { arrivalFadeFrom } from '../motion/arrivalExperiment';
 
 const FIELD = `:is([data-screen-field], [data-home-field])${ACTIVE_DOOR_CONTENT}`;
 const SCREEN = `[data-app-scroll-region] .screen${ACTIVE_DOOR_CONTENT}`;
@@ -72,7 +71,7 @@ function animateIn(fromHeight: number, toPath: string, type: string): Promise<vo
   );
 
   for (const part of field.querySelectorAll<HTMLElement>('[data-field-part]')) {
-    animate(part, [{ opacity: arrivalFadeFrom() }, { opacity: 1 }], {
+    animate(part, [{ opacity: NIL_OPACITY }, { opacity: 1 }], {
       duration: motionDuration('--dur-fast'),
       delay: motionDuration('--dur-fast'),
       fill: 'backwards'

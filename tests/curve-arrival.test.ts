@@ -49,7 +49,6 @@ describe('a query can wait for a condition before it runs', () => {
 
 describe('the curve waits for the screen to be still', () => {
   it('asks for the curves only once the screen has stopped arriving', () => {
-    /* curveWhen is the ticket 09 measurement switch; back to screenStill before merge. */
-    expect(curve).toMatch(/let curveQuery = liveQueryWhen\((screenStill|curveWhen), \(j\) =>\s+j\.hormoneCurve\.getCurves\(/);
+    expect(curve).toMatch(/let curveQuery = liveQueryWhen\(screenStill, \(j\) =>\s+j\.hormoneCurve\.getCurves\(/);
   });
 });
