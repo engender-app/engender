@@ -6,7 +6,7 @@
   import { gateBranch } from './readGate';
   import type { LiveList } from '$lib/data/live/journal.svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, NIL_OPACITY } from '$lib/motion/tokens';
   import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
 
@@ -80,7 +80,7 @@
         const animations: Animation[] = [];
         for (const child of part.children) {
           if ((child as HTMLElement).dataset.gateSkeleton !== undefined) continue;
-          animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS, fill: 'forwards' }));
+          animations.push(child.animate([{ opacity: NIL_OPACITY }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS, fill: 'forwards' }));
         }
         playAfterPaint(part, animations, { fitArrival: true });
         void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
