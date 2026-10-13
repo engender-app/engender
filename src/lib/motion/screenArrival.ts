@@ -4,6 +4,8 @@
 
 import { motionDuration } from './tokens';
 import { isDoorActive } from '../navigation/doorActivity';
+import { afterQuickFrames } from './quickFrames';
+import { revealWaits } from './revealExperiment';
 
 let tabRevealBy: number | undefined;
 
@@ -80,7 +82,7 @@ export function playAfterPaint(
     animation.pause();
     animation.currentTime = 0;
   }
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  const go = () => {
     const active = owner.isConnected && isDoorActive(owner);
     // Paint preparation spends part of the field's remaining arrival.
     if (deadline !== undefined && active) fitBefore(animations, deadline);
@@ -90,7 +92,9 @@ export function playAfterPaint(
       }
       else animation.cancel();
     }
-  }));
+  };
+  if (revealWaits()) afterQuickFrames(window, go, { count: 2, patience: 6, capMs: 300 });
+  else requestAnimationFrame(() => requestAnimationFrame(go));
 }
 
 /* When the screen under the panels last changed, as a `performance.now()`
