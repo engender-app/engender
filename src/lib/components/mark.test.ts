@@ -4,8 +4,9 @@
 
    The numbers are pinned rather than derived, because they are a decision
    and not a calculation: Alicja moved the sliders on 2026-09-21 and said
-   keep this one. Nothing computes 3 or 15 from anything else, so the only
-   thing that can stop them drifting is a test that fails when they move and
+   keep this one. Ticket 38 of the last UI audit changes the tile radius to
+   30 so Play's corner mask keeps the outline. Nothing computes these values,
+   so a test fails when they move and
    makes whoever moved them come here and mean it.
 
    The stillness is read off the source text of this module and of
@@ -62,8 +63,8 @@ describe('round launcher artwork', () => {
 });
 
 describe("the mark's signed-off numbers", () => {
-  it('is the geometry Alicja picked: R 100, centre 0, seam 3, tile radius 15', () => {
-    expect([MARK_R, MARK_SEAM, MARK_TILE_RADIUS]).toEqual([100, 3, 15]);
+  it('keeps R 100 and seam 3, with tile radius 30 for Play corner masking', () => {
+    expect([MARK_R, MARK_SEAM, MARK_TILE_RADIUS]).toEqual([100, 3, 30]);
     expect(MARK_TILE).toBe('#FFFFFF');
   });
 
@@ -185,8 +186,8 @@ describe('the tile belongs to the icon, not to the app', () => {
 
   it('draws its tile inside the circle every launcher mask keeps', () => {
     /* Android guarantees the central 72dp of 108, radius 33.33 in these
-       units. A rounded square of half-side a with corner radius 0.3a reaches
-       1.29a from the middle, so the whole outline is inside the guarantee
+       units. A rounded square of half-side a and corner radius r reaches
+       sqrt(2)(a - r) + r from the middle, so the outline is inside the guarantee
        only while that is under 33.33. This is the arithmetic, not a
        restatement of the constant. */
     const a = MARK_SAFE_TILE / 2;

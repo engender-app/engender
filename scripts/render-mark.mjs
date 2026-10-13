@@ -23,7 +23,7 @@
    Stripes are read out of src/lib/theme/palettes.css rather than copied, so
    a new palette needs nothing taught here. */
 import { chromium } from 'playwright-core';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MARK_MONO_RINGS, MARK_R, MARK_SAFE_TILE, MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS, ROUND_SUN_CENTER, ROUND_SUN_R, markSvg } from '../src/lib/components/mark.ts';
@@ -267,6 +267,16 @@ async function main() {
   write(join(STATIC, 'icons', 'icon.svg'), markSvg(PAL[DEFAULT_FLAG], 'tile', 512, named));
   write(join(STATIC, 'icons', 'icon-maskable.svg'), markSvg(PAL[DEFAULT_FLAG], 'bleed', 512, named));
 
+  /* Play masks the square canvas at radius 30%. The shared tile keeps its
+     outline inside that curve; an opaque ground fills the upload's corners. */
+  jobs.push({
+    svg: markSvg(PAL[DEFAULT_FLAG], 'tile', 512, named),
+    size: 512,
+    file: join(OUT, 'png', `${DEFAULT_FLAG}-store-512.png`),
+    type: 'png',
+    ground: MARK_TILE
+  });
+
   for (const [name, ink] of MONO_INKS) {
     /* The tile, in one ink: the square is part of the mark and there is no
        variant without it. No ground, so paper or the reversed ground below
@@ -303,6 +313,10 @@ async function main() {
   }
   await lockups(page, PAL[DEFAULT_FLAG]);
   await browser.close();
+  for (const [target, source] of [['icon-192', 'trans-tile-192'], ['icon-512', 'trans-tile-512'], ['icon-maskable', 'trans-maskable-512']]) {
+    copyFileSync(join(OUT, 'png', `${source}.png`), join(STATIC, 'icons', `${target}.png`));
+  }
+  copyFileSync(join(OUT, 'png', 'trans-tile-192.png'), join(STATIC, 'apple-touch-icon.png'));
   const flags = Object.keys(PAL).length;
   console.log(
     `wrote ${flags * 3 + MONO_INKS.length} svg and ${jobs.length} raster files into ${OUT}, `
