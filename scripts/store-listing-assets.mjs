@@ -58,10 +58,6 @@ try {
     await artwork.screenshot({ path: `static/icons/icon-notes${suffix}.png`, omitBackground: false });
   }
   await copyFile('static/icons/icon-notes-192.png', 'static/apple-touch-icon-notes.png');
-  for (const [target, source] of [['icon-192', 'trans-tile-192'], ['icon-512', 'trans-tile-512'], ['icon-maskable', 'trans-maskable-512']]) {
-    await copyFile(`brand/mark/png/${source}.png`, `static/icons/${target}.png`);
-  }
-  await copyFile('brand/mark/png/trans-tile-192.png', 'static/apple-touch-icon.png');
   // The graphic sets type the way the app does (src/lib/theme/base.css,
   // fonts.css): Outfit and Nunito are variable fonts, so each face declares
   // its weight range or the browser fakes the weight from the 400 master.
@@ -77,7 +73,7 @@ try {
     // A shot dropped from the list must not linger in the upload folder.
     await rm(resolve(dir, 'phoneScreenshots'), { recursive: true, force: true });
     await mkdir(resolve(dir, 'phoneScreenshots'), { recursive: true });
-    await copyFile('brand/mark/png/trans-tile-512.png', resolve(dir, 'icon.png'));
+    await copyFile('brand/mark/png/trans-store-512.png', resolve(dir, 'icon.png'));
     await artwork.setViewportSize({ width: 1024, height: 500 });
     // Lockup in app.css's .lockup proportions (mark 1.23em, gap 0.5em, track
     // -0.03em, word lifted 0.23em, Outfit at --weight-display 800). The line

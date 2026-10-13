@@ -23,10 +23,10 @@
    Stripes are read out of src/lib/theme/palettes.css rather than copied, so
    a new palette needs nothing taught here. */
 import { chromium } from 'playwright-core';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MARK_MONO_RINGS, MARK_R, MARK_SAFE_TILE, MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS, ROUND_SUN_CENTER, ROUND_SUN_R, markSvg } from '../src/lib/components/mark.ts';
+import { MARK_MONO_RINGS, MARK_R, MARK_SAFE_TILE, MARK_SEAM, MARK_SUN_R, MARK_SUN_X, MARK_SUN_Y, MARK_TILE, MARK_TILE_RADIUS, ROUND_SUN_CENTER, ROUND_SUN_R, markSvg } from '../src/lib/components/mark.ts';
 import { ringRadii } from '../src/lib/motion/flagSun.ts';
 
 /* Resolved off this file rather than the working directory, so the script
@@ -87,7 +87,7 @@ function roundedRectPath(x, y, size, r) {
 }
 
 function adaptiveForeground(stripes, round = false) {
-  const rings = ringRadii(stripes.length, round ? ROUND_SUN_R : MARK_R)
+  const rings = ringRadii(stripes.length, round ? ROUND_SUN_R : MARK_SUN_R)
     .map((radius, i) => {
       /* A circle as two half-turn arcs from its top point: a vector
          drawable has no <circle> either. Same centre and same half-seam
@@ -95,7 +95,7 @@ function adaptiveForeground(stripes, round = false) {
       const r = radius - MARK_SEAM / 2;
       return (
         `        <path\n`
-        + `            android:pathData="M${round ? ROUND_SUN_CENTER : MARK_R},${n2((round ? MARK_R - ROUND_SUN_CENTER : 0) - r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)}`
+        + `            android:pathData="M${round ? ROUND_SUN_CENTER : MARK_SUN_X},${n2((round ? MARK_R - ROUND_SUN_CENTER : MARK_SUN_Y) - r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)}`
         + ` a${n2(r)},${n2(r)} 0 1,0 0,${n2(-r * 2)} Z"\n`
         + `            android:fillColor="${stripes[i]}"\n`
         + `            android:strokeColor="#000000"\n`
@@ -153,9 +153,9 @@ function adaptiveForeground(stripes, round = false) {
 function notificationMark() {
   const inset = MARK_SEAM / 2;
   const edge = roundedRectPath(inset, inset, MARK_R - MARK_SEAM, MARK_TILE_RADIUS - inset);
-  const paths = ringRadii(MARK_MONO_RINGS, MARK_R).map((radius) => {
+  const paths = ringRadii(MARK_MONO_RINGS, MARK_SUN_R).map((radius) => {
     const r = radius - inset;
-    return `M${MARK_R},${n2(-r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(-r * 2)} Z`;
+    return `M${MARK_SUN_X},${n2(MARK_SUN_Y - r)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(r * 2)} a${n2(r)},${n2(r)} 0 1,0 0,${n2(-r * 2)} Z`;
   });
   const stroke = (path) => `        <path android:pathData="${path}" android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="${MARK_SEAM}" />`;
   return `<?xml version="1.0" encoding="utf-8"?>
@@ -267,6 +267,16 @@ async function main() {
   write(join(STATIC, 'icons', 'icon.svg'), markSvg(PAL[DEFAULT_FLAG], 'tile', 512, named));
   write(join(STATIC, 'icons', 'icon-maskable.svg'), markSvg(PAL[DEFAULT_FLAG], 'bleed', 512, named));
 
+  /* Play masks the square canvas at radius 30%. The shared tile keeps its
+     outline inside that curve; an opaque ground fills the upload's corners. */
+  jobs.push({
+    svg: markSvg(PAL[DEFAULT_FLAG], 'tile', 512, named),
+    size: 512,
+    file: join(OUT, 'png', `${DEFAULT_FLAG}-store-512.png`),
+    type: 'png',
+    ground: MARK_TILE
+  });
+
   for (const [name, ink] of MONO_INKS) {
     /* The tile, in one ink: the square is part of the mark and there is no
        variant without it. No ground, so paper or the reversed ground below
@@ -303,6 +313,10 @@ async function main() {
   }
   await lockups(page, PAL[DEFAULT_FLAG]);
   await browser.close();
+  for (const [target, source] of [['icon-192', 'trans-tile-192'], ['icon-512', 'trans-tile-512'], ['icon-maskable', 'trans-maskable-512']]) {
+    copyFileSync(join(OUT, 'png', `${source}.png`), join(STATIC, 'icons', `${target}.png`));
+  }
+  copyFileSync(join(OUT, 'png', 'trans-tile-192.png'), join(STATIC, 'apple-touch-icon.png'));
   const flags = Object.keys(PAL).length;
   console.log(
     `wrote ${flags * 3 + MONO_INKS.length} svg and ${jobs.length} raster files into ${OUT}, `
