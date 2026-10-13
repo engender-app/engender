@@ -8,11 +8,12 @@
    rule itself is not here: `ringRadii` in $lib/motion/flagSun.ts owns it and
    both drawings call it, so there is one rule and two croppings of it.
 
-     corner sun: R 100, centre 0, seam 3, tile radius 15, small all-seam
+     corner sun: R 100, centre 0, seam 3, tile radius 30, small all-seam
 
    in a 100 unit tile. Alicja moved the sliders to these numbers on
-   2026-09-21 and said keep this one; mark.test.ts pins them so a
-   later edit has to mean it.
+   2026-09-21 and said keep this one. Last-audit UI ticket 38 changes the
+   radius from 15 to 30 to match Play's corner mask on every logo surface;
+   mark.test.ts pins the geometry.
 
    The seam is the app's own, not a new one: black, on the outer side of
    every ring, every boundary including the sun's outside, which is what
@@ -37,7 +38,7 @@ import { ringRadii } from '../motion/flagSun.ts';
 /** In a 100 unit tile. */
 export const MARK_R = 100;
 export const MARK_SEAM = 3;
-export const MARK_TILE_RADIUS = 15;
+export const MARK_TILE_RADIUS = 30;
 export const MARK_TILE = '#FFFFFF';
 
 /** The monochrome mark's ring count, fixed whatever the flag is: one colour
@@ -55,8 +56,8 @@ export const MARK_MONO_RINGS = 4;
 
     Android guarantees the central 72dp circle of the 108dp canvas, which is
     radius 33.33 in these 100 units. A rounded square of half-side `a` with
-    corner radius `0.3a` reaches `sqrt(2)(a - 0.3a) + 0.3a`, or `1.29a`, from
-    the middle, so `a` has to be at most 25.8. 25 clears it, and a 50 unit
+    corner radius `0.6a` reaches `sqrt(2)(a - 0.6a) + 0.6a`, or `1.17a`, from
+    the middle, so `a` has to be at most 28.6. 25 clears it, and a 50 unit
     tile is a round number to hold. The web's maskable safe zone is the
     central 80%, which this is well inside, so one drawing serves both.
 
