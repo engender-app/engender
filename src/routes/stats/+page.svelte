@@ -94,7 +94,7 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
-  import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, NIL_OPACITY, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
@@ -529,7 +529,7 @@
     if (duration > 0) {
       const animations: Animation[] = [];
       for (const child of screen.children) {
-        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
+        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: NIL_OPACITY }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
       }
       playAfterPaint(screen, animations, { fitArrival: true });
     }

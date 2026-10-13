@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { DISTANCE_FALLBACK, DURATION_FALLBACK, isReducedMotion, motionDistance, motionDuration } from './tokens';
+import { DISTANCE_FALLBACK, DURATION_FALLBACK, NIL_OPACITY, isReducedMotion, motionDistance, motionDuration } from './tokens';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -50,5 +50,32 @@ describe('the fallback table agrees with what base.css authors', () => {
       expect(match, `${token} should be authored in px in base.css`).not.toBeNull();
       expect(Number(match![1]), token).toBe(fallback);
     }
+  });
+});
+
+/* Ticket 09: content fading in from 0 is not drawn until its fade's first
+   frame, and on the Pixel that frame stalled the motion. Every arrival
+   starts at the nil opacity instead, the stylesheet's as well as the
+   script's. */
+describe('arrivals start at the nil opacity', () => {
+  const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
+  const app = readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8');
+
+  it('base.css publishes the same value as NIL_OPACITY', () => {
+    expect(base).toContain(`--nil-opacity: ${NIL_OPACITY};`);
+  });
+
+  it.each(['screen-fade-in', 'screen-axis-in', 'screen-axis-back-in', 'screen-crossfade', 'field-part-in'])(
+    '%s starts at it, not at 0',
+    (name) => {
+      const frames = new RegExp(`@keyframes ${name} \\{\\s*from \\{ ([^}]*)\\}`).exec(app);
+      expect(frames, `@keyframes ${name}`).not.toBeNull();
+      expect(frames![1]).toContain('opacity: var(--nil-opacity)');
+    }
+  );
+
+  it('no arrival keyframe in the app stylesheet starts from opacity 0', () => {
+    const fromZero = [...app.matchAll(/@keyframes ([\w-]+-in) \{\s*from \{[^}]*opacity: 0[;\s}]/g)].map((m) => m[1]);
+    expect(fromZero).toEqual([]);
   });
 });
