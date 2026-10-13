@@ -202,6 +202,10 @@ try {
     results.push({ returned });
   }
   await home();
+  /* Home's own arrival ran with normal motion; its entrances finish before
+     motion is reduced, or one still running would be counted below. */
+  await page.waitForFunction(() => document.getAnimations().every((animation) =>
+    animation.playState !== 'running' || animation.effect?.getComputedTiming().endTime === Infinity));
   await page.evaluate(() => { document.documentElement.dataset.a11yMotion = 'reduce'; });
   await page.evaluate(() => document.querySelector('[data-nav-item="calendar"]').click());
   await page.waitForFunction(() =>
