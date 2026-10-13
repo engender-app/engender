@@ -16,17 +16,17 @@
             android:pathData="M30.00,1.50h40.00a28.50,28.50 0 0 1 28.50,28.50v40.00a28.50,28.50 0 0 1 -28.50,28.50h-40.00a28.50,28.50 0 0 1 -28.50,-28.50v-40.00a28.50,28.50 0 0 1 28.50,-28.50z"
             android:fillColor="#FFFFFF" />
         <path
-            android:pathData="M100,-98.50 a98.50,98.50 0 1,0 0,197.00 a98.50,98.50 0 1,0 0,-197.00 Z"
+            android:pathData="M95,-90.25 a95.25,95.25 0 1,0 0,190.50 a95.25,95.25 0 1,0 0,-190.50 Z"
             android:fillColor="#FF218C"
             android:strokeColor="#000000"
             android:strokeWidth="3" />
         <path
-            android:pathData="M100,-65.17 a65.17,65.17 0 1,0 0,130.33 a65.17,65.17 0 1,0 0,-130.33 Z"
+            android:pathData="M95,-58.00 a63.00,63.00 0 1,0 0,126.00 a63.00,63.00 0 1,0 0,-126.00 Z"
             android:fillColor="#FFD800"
             android:strokeColor="#000000"
             android:strokeWidth="3" />
         <path
-            android:pathData="M100,-31.83 a31.83,31.83 0 1,0 0,63.67 a31.83,31.83 0 1,0 0,-63.67 Z"
+            android:pathData="M95,-25.75 a30.75,30.75 0 1,0 0,61.50 a30.75,30.75 0 1,0 0,-61.50 Z"
             android:fillColor="#21B1FF"
             android:strokeColor="#000000"
             android:strokeWidth="3" />

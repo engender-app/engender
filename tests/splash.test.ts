@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { SPLASH_INK, SPLASH_BEGIN, SPLASH_END, readSplashPalettes, splashBlock, sunStops } from '../src/lib/theme/splash.ts';
-import { MARK_SEAM, MARK_TILE, MARK_TILE_RADIUS } from '../src/lib/components/mark.ts';
+import { MARK_SEAM, MARK_SUN_X, MARK_SUN_Y, MARK_TILE, MARK_TILE_RADIUS } from '../src/lib/components/mark.ts';
 import { holdModulePreloads } from '../src/lib/document/holdModulePreloads.ts';
 import { answerSplash, splashMayLeave } from '../src/lib/splash.ts';
 
@@ -33,7 +33,7 @@ describe('the generated block', () => {
   it('draws one ring and one seam per stripe, innermost first, ending on the outer edge and the white tile beyond it', () => {
     const stops = sunStops(['#111111', '#222222', '#333333']);
     expect(stops).toBe(
-      '#333333 0% 30.33%,#000 30.33% 33.33%,#222222 33.33% 63.67%,#000 63.67% 66.67%,#111111 66.67% 97%,#000 97% 100%,#FFFFFF 100%'
+      '#333333 0% 29.25%,#000 29.25% 32.25%,#222222 32.25% 61.5%,#000 61.5% 64.5%,#111111 64.5% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%'
     );
   });
 });
@@ -51,7 +51,8 @@ describe("the first frame is the mark's own numbers", () => {
   });
 
   it('takes the tile colour and radius from the generated block, not from literals', () => {
-    expect(shipped).toContain(`--splash-tile:${MARK_TILE};--splash-ink:${SPLASH_INK};--splash-radius:${MARK_TILE_RADIUS}%`);
+    expect(shipped).toContain(`--splash-tile:${MARK_TILE};--splash-ink:${SPLASH_INK};--splash-radius:${MARK_TILE_RADIUS}%;--splash-sun-x:${MARK_SUN_X}%;--splash-sun-y:${MARK_SUN_Y}%`);
+    expect(handwritten).toContain('at var(--splash-sun-x) var(--splash-sun-y)');
     expect(handwritten).not.toMatch(/#fff\b|#000\b/i);
   });
 });

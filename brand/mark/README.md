@@ -4,8 +4,9 @@ Every file here comes out of `scripts/render-mark.mjs`, which draws the geometry
 Alicja signed off on 2026-09-21 (ticket 38, round three) and reads the stripes
 from `src/lib/theme/palettes.css` rather than keeping a second copy of them.
 
-`corner sun: R 100, centre 0, seam 3, tile radius 30, small all-seam`, white
-tile, black stroke on the tile's own edge, no motion anywhere.
+The 100-unit tile has a sun at X = 95, Y = 5, with radius 96.75 (96.75% of
+its original size). Black seams stay 3 units wide; the tile radius stays 30.
+These sun values come from Alicja's review on 2026-10-13. The mark stays still.
 
 Last-audit UI ticket 38 changes the radius from 15 to 30 across app and landing
 logos so Google Play's corner mask preserves the black outline. The store PNG
@@ -18,7 +19,7 @@ Regenerate with:
 ## What is here
 
 - `svg/<flag>-tile.svg` - the mark. White rounded square, black edge, the sun
-  anchored to the top right corner. This is the icon.
+  at the reviewed position and scale. This is the icon.
 - `svg/<flag>-round.svg` - the same drawing under a circle crop, with the edge
   following the circle. What a round launcher shows.
 - `svg/<flag>-maskable.svg` - full bleed white square with the stroked tile
