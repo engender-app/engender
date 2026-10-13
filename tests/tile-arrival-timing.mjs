@@ -281,7 +281,8 @@ async function androidArrival(to) {
     };
     return new Promise((done) => {
       const tick = () => {
-        const screen = [...document.querySelectorAll('[data-app-scroll-region] .screen')].at(-1);
+        /* A retained door that is hidden is not the arrival (ticket 08). */
+        const screen = [...document.querySelectorAll('[data-app-scroll-region] .screen:not([data-retained-door]:not([data-retained-active]) *)')].at(-1);
         const field = screen?.querySelector('[data-home-field], [data-screen-field]');
         const bodies = [...(screen?.querySelectorAll('.cal-days, [data-read-reserve-body], .read-group-members:not(.is-held), [data-hub-index]') ?? [])];
         const gate = screen?.querySelector('.cal-days')?.parentElement;

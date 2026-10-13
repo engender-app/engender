@@ -20,9 +20,33 @@
   let { path, active }: { path: DoorPath; active: boolean } = $props();
   provideDoorActivity(() => active);
   const Page = untrack(() => pages[path]);
+
+  /* Shown again, the door's CSS animations start over: display none cancels
+     them and display contents starts them from their first frame, so a
+     revisit replayed every tile's entrance into the tab's arrival. They
+     played on the first visit, and a warm revisit shows what it showed
+     before in its first frame (ReadGroup does the same for a remounted
+     one), so they are finished before it paints. Loops go on, and script
+     animations never restarted. */
+  let node: HTMLDivElement;
+  let hidden = false;
+  $effect(() => {
+    if (!active) {
+      hidden = true;
+      return;
+    }
+    if (!hidden) return;
+    hidden = false;
+    for (const animation of node.getAnimations({ subtree: true })) {
+      if (animation instanceof CSSAnimation && animation.effect?.getComputedTiming().iterations !== Infinity) {
+        animation.finish();
+      }
+    }
+  });
 </script>
 
 <div
+  bind:this={node}
   data-retained-door={path}
   data-retained-active={active ? '' : undefined}
   inert={!active}

@@ -20,7 +20,7 @@
   import { navigating, page } from '$app/state';
   import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
   import { onMount } from 'svelte';
-  import { dropJournalScreens } from '$lib/motion/outgoingScreen';
+  import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
   import { afterNavigate, goto, onNavigate } from '$app/navigation';
@@ -190,7 +190,8 @@
     if (locked || browserSession.recovering) retainedSession = Symbol();
   });
   $effect(() => {
-    if (locked || browserSession.recovering) dropJournalScreens();
+    if (locked) dropJournalScreens();
+    else if (browserSession.recovering) dropRetainedDoors();
   });
 
   /* Those, plus the routes that render without chrome whoever is looking at
@@ -616,9 +617,7 @@
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter
         inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : undefined}>
-        {#if browserSession.recovering}
-          <!-- Recovery disposes route owners before reopening the journal. -->
-        {:else if schemaTooNew}
+        {#if schemaTooNew}
           {#await import('$lib/components/SchemaTooNew.svelte') then { default: SchemaTooNew }}
             <SchemaTooNew />
           {/await}
@@ -647,8 +646,17 @@
           <!-- The effect above is already navigating here; nothing renders
                for the frame that takes, so a brand new install's first paint
                is never whatever route the URL happened to be (ticket 54). -->
-        {:else if retaining && RetainedDoors && !chromeless}
-          {#key retainedSession}<RetainedDoors path={retainedPath} />{/key}
+        {:else if retaining && RetainedDoors && (!chromeless || browserSession.recovering)}
+          <!-- Recovery keeps the route someone is using mounted, hidden and
+               inert above, so an unsaved draft survives a BFCache restore.
+               The retained doors are cached instances instead: they go
+               until the journal has reopened, and come back as a new
+               session, and a door being shown goes with them. Recovery
+               counts as chromeless (replacesApp), so it is named here, or a
+               door's page would mount afresh behind the hidden main. -->
+          {#if !browserSession.recovering}
+            {#key retainedSession}<RetainedDoors path={retainedPath} />{/key}
+          {/if}
           {#if !retainedPath}{@render children()}{/if}
         {:else}
           {@render children()}
