@@ -87,7 +87,8 @@ export function homeTiles(
     /** Home's own surface: the sheet offering a 24h snooze or a permanent
         off for the ready-letter tile. */
     onLetterDismiss: () => void;
-  }
+  },
+  active: () => boolean = () => true
 ): HomeTileGrid {
   const todayEpochDay = $derived(today());
   let nowTick = $state(Date.now());
@@ -95,6 +96,8 @@ export function homeTiles(
   const snoozeMinute = $derived(Math.floor(nowTick / 60_000));
   const runningWear = liveQuery((j) => j.wearSessions.getRunningSession());
   $effect(() => {
+    if (!active()) return;
+    nowTick = Date.now();
     const interval = runningWear.value ? 1000 : 60_000;
     const id = setInterval(() => (nowTick = Date.now()), interval);
     return () => clearInterval(id);

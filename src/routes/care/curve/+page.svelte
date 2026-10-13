@@ -43,7 +43,8 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveQuery, liveQueryWhen } from '$lib/data/live/journal.svelte';
+  import { screenStill } from '$lib/stores/ui.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { CURVE_ANALYTE, CURVE_UNIT, latestBandPoint, type EsterCurve } from '$lib/data/hormoneCurve';
   import type { CurveLabPoint, QualitativeChart, QualitativeSection } from '$lib/data/journal/hormoneCurve';
@@ -84,8 +85,14 @@
   /* One read for the whole screen: both evidence classes, both hormones, the
      results placed against each, and the axes they are drawn on
      (journal/hormoneCurve.ts). It used to be three queries which read the
-     dose log three times between them. */
-  let curveQuery = liveQuery((j) =>
+     dose log three times between them.
+
+     It waits for the screen to stop arriving (ticket 09). The model holds
+     up a frame for 140 to 190 ms on the phone, and asked for as the screen
+     arrived it landed about 200 ms into the transition. Waiting shows the
+     curve about 375 ms later and leaves the slide whole; the reserve below
+     holds the curve's room in the meantime. */
+  let curveQuery = liveQueryWhen(screenStill, (j) =>
     j.hormoneCurve.getCurves({
       fromEpochDay: today - windowDays + 1,
       toEpochDay: today,

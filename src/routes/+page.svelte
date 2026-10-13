@@ -101,19 +101,22 @@
      two labels stack in one grid cell so the button keeps its width while
      they cross, and the fade is --dur-fast, which the clamp takes to zero. */
   const labelFade = (_node: Element) =>
-    stillArriving() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
+    !doorActive() || stillArriving() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { homeTiles } from '$lib/data/liveTiles.svelte';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { splitHomeTiles, type HomeTile } from '$lib/data/liveTiles';
   import Icon from '$lib/components/Icon.svelte';
 
+  const doorActive = useDoorActivity();
+  let visit = 0;
   const today = $derived(currentDay());
 
   /* Every block on this screen that appears and disappears takes the same
      `skip` (phase 9 carpet ticket 04): a screen leaving should not spend
      240ms folding its own panels up on the way out, and Svelte cannot tell
      "this block's condition went false" from "the page unmounted it". */
-  let panel = $derived({ skip: navigating.to !== null });
+  let panel = $derived({ skip: navigating.to !== null || !doorActive() });
 
   /* The live tiles, as one read (deepening ticket 07). Home used to hold
      thirteen queries, eleven predicates and an eleven-ternary count for
@@ -123,7 +126,7 @@
   let letterDismissSheetOpen = $state(false);
   const liveTiles = homeTiles(() => today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
-  });
+  }, doorActive);
 
   /* Three at a time, the rest folded in place (phase 8 UX ticket 01,
      ADR-0055). Expanding raises the cap rather than appending the folded
@@ -160,6 +163,7 @@
   let shownKeys: HomeTile['key'][] = [];
   let tileCount = 0;
   $effect.pre(() => {
+    if (!doorActive()) { shownKeys = []; tileCount = 0; return; }
     const keys = shownTiles.map((tile) => tile.key);
     const total = liveTiles.tiles.length;
     const grew = total > tileCount;
@@ -260,6 +264,7 @@
   const countFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
   $effect(() => {
+    if (!doorActive()) return;
     if (entryCountQuery.value != null && typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem('engender-has-entries', entryCountQuery.value > 0 ? '1' : '0');
@@ -458,7 +463,7 @@
   let arrived = false;
   const decided = new Set<string>();
   $effect(() => {
-    if (!gettingStartedReady) return;
+    if (!doorActive() || !gettingStartedReady) return;
     const now = doneKeys;
     const crossing = [...now].filter((key) => !decided.has(key) && (arrived || crossesOnArrival(key)));
     for (const key of [...decided]) if (!now.has(key)) decided.delete(key);
@@ -466,9 +471,11 @@
     arrived = true;
     rememberCrossed(now);
     if (crossing.length === 0) return;
+    const crossingVisit = visit;
     held = new Set([...untrack(() => held), ...crossing]);
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
+        if (!doorActive() || crossingVisit !== visit) return;
         held = new Set([...held].filter((key) => !crossing.includes(key)));
       })
     );
@@ -483,6 +490,7 @@
      row into or out of a list nobody is looking at as it changes. */
   let startOffers = $state<typeof GETTING_STARTED | null>(null);
   $effect.pre(() => {
+    if (!doorActive()) { startOffers = null; return; }
     if (!gettingStartedReady || startOffers) return;
     const pinnedAreas = new Set(untrack(() => pinned).map((row) => row.spec.key));
     startOffers = GETTING_STARTED.filter((offer) => offer.area === null || !pinnedAreas.has(offer.area));
@@ -577,7 +585,7 @@
      also play its own entrance: the fade is theirs. */
   let foldRevealed = $state(false);
   $effect.pre(() => {
-    if (foldRevealed || !foldReadsAgree) return;
+    if (!doorActive() || foldRevealed || !foldReadsAgree) return;
     markScreenArrival();
     foldRevealed = true;
   });
@@ -643,6 +651,7 @@
      further screen. The param is cleared the same way quickLogDims is
      below, so reloading or going back never re-logs it. */
   $effect(() => {
+    if (!doorActive() || page.url.pathname !== '/') return;
     const raw = page.url.searchParams.get('tally');
     if (!raw) return;
     const kind: TallyKind | null = raw === 'misgendered' || raw === 'correctly_gendered' ? raw : null;
@@ -662,6 +671,7 @@
   let dimInputs = $state<Record<string, number | undefined>>({});
 
   $effect(() => {
+    if (!doorActive() || page.url.pathname !== '/') return;
     const raw = page.url.searchParams.get('quickLogDims');
     if (!raw) return;
     const id = Number(raw);
@@ -672,10 +682,29 @@
     void replaceRoute('/', { noScroll: true, keepFocus: true });
   });
 
+  $effect.pre(() => {
+    if (doorActive()) {
+      isStockNoticeSnoozedState = isStockNoticeSnoozed();
+      return;
+    }
+    visit++;
+    tilesExpanded = false;
+    agendaExpanded = false;
+    dimsPromptEntryId = null;
+    dimInputs = {};
+    letterDismissSheetOpen = false;
+    stockDismissSheetOpen = false;
+    editing = false;
+    arrived = false;
+    decided.clear();
+    held = new Set();
+  });
+
   const dimsWrite = writer();
   async function saveQuickLogDims() {
     const id = dimsPromptEntryId;
     if (id == null) return;
+    const savingVisit = visit;
     const dims: Record<string, number> = {};
     for (const dim of vocabulary.activeDimensions) {
       const n = dimInputs[dim.key];
@@ -685,7 +714,7 @@
     const any = Object.keys(dims).length > 0;
     // The sheet stays up with the numbers in it when the write fails.
     if (any && !(await dimsWrite.run(() => journal.entries.upsertEntry({ id, dims }), m.write_failed()))) return;
-    dimsPromptEntryId = null;
+    if (doorActive() && savingVisit === visit) dimsPromptEntryId = null;
     if (any) toast(m.saved(), { kind: 'record-saved' });
   }
 </script>
@@ -1179,7 +1208,7 @@
   <div data-home-pinned>
     {#if editing}
       <div transition:collapse={panel} data-home-editing>
-        {#if editorReadsReady}
+        {#if editorReadsReady && doorActive()}
           <TodayEditor
             {pinned}
             {reading}
@@ -1286,6 +1315,7 @@
     </div>
   {/if}
 
+  {#if doorActive()}
   <Sheet busy={dimsWrite.busy}
     open={dimsPromptEntryId !== null}
     title={m.quick_log_dims_title()}
@@ -1395,6 +1425,7 @@
       </div>
     </div>
   </Sheet>
+  {/if}
 </div>
 
 <style>

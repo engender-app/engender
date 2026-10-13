@@ -36,6 +36,15 @@ export const EASE_OUT_SOFT_POINTS = [0.38, 0.32, 0.2, 1] as const;
     two cannot drift apart. */
 export const EASE_OUT_SOFT_CSS = `cubic-bezier(${EASE_OUT_SOFT_POINTS.join(', ')})`;
 
+/** The opacity an arrival fades in from, instead of 0 (ticket 09). Blink
+    does not draw a layer at opacity 0, so content fading in from 0 was first
+    rastered, and its GPU pipelines first built, on the first frame of its
+    own fade, and on the Pixel 10a that frame stalled for 50 to 130 ms. At
+    this value it is drawn while it waits, and no eye can tell it from 0: it
+    moves a pixel at most one level in 255 over whatever lies under it. The
+    splash hold in app.html waits at the same value. */
+export const NIL_OPACITY = 0.004;
+
 /** Opacity alone over `duration`, which two different jobs both need: tier
     2's reduced-motion substitute, and tier 3's fallback where the runtime has
     no clip-path. Shared from here rather than written out in both, since the

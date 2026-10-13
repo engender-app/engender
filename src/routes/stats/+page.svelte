@@ -94,13 +94,16 @@
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
-  import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, NIL_OPACITY, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
+  import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
+
+  const isDoorActive = useDoorActivity();
 
   /* Which stripe each area of the screen takes (DIRECTION.md, "flag colour
      reaches the whole app, categorically"). Every drawing on the door
@@ -189,6 +192,7 @@
   let live = $state<Span | null>(getLastLookBackSpan());
 
   $effect(() => {
+    if (!isDoorActive()) return;
     const start = railStart;
     if (start === null) return;
     if (span !== null) {
@@ -217,15 +221,38 @@
     delay: readingsReplaced && !isReducedMotion() ? motionDuration('--dur-fast') : 0
   });
   let captureReadingSpace = () => {};
-  const settleReadingSpace = (node: HTMLElement) => {
+  const settleReadingSpace = (node: HTMLElement, active: boolean) => {
     if (isReducedMotion()) return;
-    let previousTop = node.getBoundingClientRect().top;
+    let previousTop = active ? node.getBoundingClientRect().top : 0;
     const restTransform = node.style.transform;
     const restClip = node.style.clipPath;
     let painted = false;
     let current: Animation | undefined;
     let clippingFrame = 0;
+    let paintFrame = 0;
+    let paintTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopMotion = () => {
+      current?.cancel();
+      current = undefined;
+      cancelAnimationFrame(clippingFrame);
+      node.style.transform = restTransform;
+      node.style.clipPath = restClip;
+    };
+    const rebase = () => {
+      painted = false;
+      cancelAnimationFrame(paintFrame);
+      clearTimeout(paintTimer);
+      if (!active) return;
+      paintFrame = requestAnimationFrame(() => {
+        paintTimer = setTimeout(() => {
+          if (!active) return;
+          previousTop = node.getBoundingClientRect().top;
+          painted = true;
+        });
+      });
+    };
     const clipReadingSpace = () => {
+      if (!active) return;
       const readingSpace = node.previousElementSibling!;
       let boundary = readingSpace.getBoundingClientRect().top;
       for (const slot of readingSpace.querySelectorAll('.lookback-reading-slot')) {
@@ -236,22 +263,16 @@
       node.style.clipPath = `inset(${top}px 0 0)`;
     };
     captureReadingSpace = () => {
+      if (!active) return;
       const translation = current ? new DOMMatrixReadOnly(getComputedStyle(node).transform).m42 : 0;
       previousTop = node.getBoundingClientRect().top - translation;
     };
-    requestAnimationFrame(() => setTimeout(() => {
-      previousTop = node.getBoundingClientRect().top;
-      painted = true;
-    }));
+    rebase();
     const observer = new ResizeObserver(() => {
-      if (!painted) return;
+      if (!active || !painted) return;
       const translation = current ? new DOMMatrixReadOnly(getComputedStyle(node).transform).m42 : 0;
       const from = previousTop + translation;
-      current?.cancel();
-      cancelAnimationFrame(clippingFrame);
-      current = undefined;
-      node.style.transform = restTransform;
-      node.style.clipPath = restClip;
+      stopMotion();
       const top = node.getBoundingClientRect().top;
       previousTop = top;
       if (from >= innerHeight || Math.abs(top - from) < 1) return;
@@ -264,13 +285,13 @@
       current = animation;
       clipReadingSpace();
       const clipFrame = () => {
-        if (current !== animation) return;
+        if (!active || current !== animation) return;
         clipReadingSpace();
         clippingFrame = requestAnimationFrame(clipFrame);
       };
       clippingFrame = requestAnimationFrame(clipFrame);
       animation.finished.then(() => {
-        if (current !== animation) return;
+        if (!active || current !== animation) return;
         cancelAnimationFrame(clippingFrame);
         node.style.transform = restTransform;
         node.style.clipPath = restClip;
@@ -283,15 +304,36 @@
     for (const sibling of node.parentElement!.children) {
       if (sibling !== node) observer.observe(sibling);
     }
-    return { destroy() { captureReadingSpace = () => {}; observer.disconnect(); cancelAnimationFrame(clippingFrame); node.style.transform = restTransform; node.style.clipPath = restClip; current?.cancel(); } };
+    return {
+      update(next: boolean) {
+        if (active === next) return;
+        active = next;
+        stopMotion();
+        rebase();
+      },
+      destroy() {
+        captureReadingSpace = () => {};
+        observer.disconnect();
+        cancelAnimationFrame(paintFrame);
+        clearTimeout(paintTimer);
+        stopMotion();
+      }
+    };
   };
+  /* A hidden door still takes a span committed as it left (the rail's key
+     move that was waiting for its beat); only what the change shows waits
+     for the next visit. */
   const pickSpan = (next: Span) => {
-    captureReadingSpace();
-    readingsReplaced = true;
-    if (enoughEntries) factsExited = false;
+    const shown = isDoorActive();
+    if (shown) {
+      captureReadingSpace();
+      readingsReplaced = true;
+      if (enoughEntries) factsExited = false;
+    }
     span = next;
     live = next;
     setLastLookBackSpan(next);
+    if (!shown) return;
     const isExistingEra = existingEraSpans.some((era) => era.start === next.start && era.end === next.end);
     const nextOffer = !isExistingEra && eraOfferDue(next, handledEraOfferSpans) ? next : null;
     if (!nextOffer || eraOfferSpan?.start !== nextOffer.start || eraOfferSpan.end !== nextOffer.end) offerOpened = false;
@@ -312,14 +354,14 @@
 
   /* The offer moves several rows below it. The softer existing curve keeps
      its first frame from moving those rows 43px at once. */
-  const discloseOffer = (node: Element) => ({ ...disclose(node), easing: bezier(EASE_OUT_SOFT_POINTS) });
+  const discloseOffer = (node: Element) => ({ ...disclose(node, { skip: !isDoorActive() }), easing: bezier(EASE_OUT_SOFT_POINTS) });
 
   /* Facts and offer move together. For a thin span, wait for old facts to
      leave; for a full span, facts stay. Words wait for the room in both. */
   const markOfferOpened = (node: HTMLElement, selected: Span) => {
     let fallback: ReturnType<typeof setTimeout> | undefined;
     const opened = () => {
-      if (eraOfferSpan !== selected || offerOpened) return;
+      if (!isDoorActive() || eraOfferSpan !== selected || offerOpened) return;
       offerOpened = true;
       if (fallback) clearTimeout(fallback);
     };
@@ -447,6 +489,16 @@
      500px of nothing. The block discloses under the pair; the tile's own
      href still points at the route, which a notification deep-links to. */
   let dayOpen = $state(false);
+  $effect.pre(() => {
+    if (isDoorActive()) return;
+    dayOpen = false;
+    eraOfferSpan = null;
+    offerOpened = false;
+    handledEraOfferSpans = [];
+    factsExited = true;
+    readingsReplaced = false;
+    live = span;
+  });
 
   /* What replaces the rail's skeleton fades in over it (ticket 157), the
      way ReadGate's answer does (ticket 184): the skeleton's `out:crossfade`
@@ -463,7 +515,7 @@
      answers. */
   let railPending = $derived(!railRevealed || (railStart !== null && span === null));
   $effect(() => {
-    if (!screen) return;
+    if (!isDoorActive() || !screen) return;
     if (railPending) {
       whileLoading = new Set(screen.children);
       return;
@@ -477,7 +529,7 @@
     if (duration > 0) {
       const animations: Animation[] = [];
       for (const child of screen.children) {
-        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
+        if (!whileLoading.has(child)) animations.push(child.animate([{ opacity: NIL_OPACITY }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS }));
       }
       playAfterPaint(screen, animations, { fitArrival: true });
     }
@@ -525,7 +577,7 @@
          tryout or a milestone that does not depend on hitting an 8px band,
          with every fact's exact dates written out. It sets the same span
          the band on the rail sets, so the two never disagree. -->
-    {#if facts.length}
+    {#if facts.length && isDoorActive()}
       <SpanFacts
         {facts}
         {railStart}
@@ -709,7 +761,7 @@
          on its own, whichever card answered first stood full width for a
          frame before the other halved it. No fade: each tile's own clip
          from the left, on the grid's stagger, is the arrival. -->
-    <div class="screen-part" use:resize use:settleReadingSpace>
+    <div class="screen-part" use:resize use:settleReadingSpace={isDoorActive()}>
     <ReadGroup fade={false}>
     <TileGrid
       role={tileRoleAt(activeFlag.roles, AREA_ROLE.lookBack)}
@@ -732,7 +784,7 @@
     </ReadGroup>
     </div>
     {#if dayOpen && prefs.onThisDayEnabled}
-      <div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose>
+      <div class="lookback-day" id="lookback-day" data-lookback-day transition:disclose={{ skip: !isDoorActive() }}>
         <OnThisDayBlock />
       </div>
     {/if}
