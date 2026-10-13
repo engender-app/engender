@@ -33,10 +33,9 @@
   import type { Snippet } from 'svelte';
   import Skeleton from '../Skeleton.svelte';
   import { crossfade, maskHeight } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, isReducedMotion } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, NIL_OPACITY, isReducedMotion } from '$lib/motion/tokens';
   import { fitReadArrival, playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
   import { holdForArrival } from '$lib/motion/arrivalHold.svelte';
-  import { arrivalFadeFrom } from '$lib/motion/arrivalExperiment';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
 
   const isDoorActive = useDoorActivity();
@@ -86,7 +85,7 @@
     fitReadArrival(node.getAnimations({ subtree: true }));
     const duration = readRevealDuration('--dur-fast');
     if (duration === 0) return;
-    const animation = node.animate([{ opacity: arrivalFadeFrom() }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
+    const animation = node.animate([{ opacity: NIL_OPACITY }, { opacity: 1 }], { duration, easing: EASE_OUT_CSS });
     playAfterPaint(node, [animation], { fitArrival: true });
     return { destroy: () => animation.cancel() };
   }

@@ -962,7 +962,7 @@ html[data-nav='fade-through']::view-transition-new(screen) {
   animation-name: screen-fade-in, blind-follow;
 }
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
-@keyframes screen-fade-in { from { opacity: var(--arrive-from, 0); transform: scale(1.03); } }
+@keyframes screen-fade-in { from { opacity: var(--nil-opacity); transform: scale(1.03); } }
 
 /* The field is a blind over the content (redesign ticket 28, which amends
    rule 10 and ADR-0078's field paragraph).
@@ -1194,7 +1194,7 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
 ::view-transition-old(fp-a-10) { --fp-from: var(--fp-o-10, 1); }
 ::view-transition-old(fp-a-11) { --fp-from: var(--fp-o-11, 1); }
 @keyframes field-part-in {
-  from { opacity: var(--arrive-from, 0); transform: translateY(calc(-1 * var(--part-travel, 12px))); }
+  from { opacity: var(--nil-opacity); transform: translateY(calc(-1 * var(--part-travel, 12px))); }
 }
 
 /* Home → Entry (mood-pick) is the one departure whose field-part hold lands
@@ -1310,9 +1310,9 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
   animation-name: screen-axis-back-in, blind-follow;
 }
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
-@keyframes screen-axis-in { from { opacity: var(--arrive-from, 0); transform: translateX(var(--motion-distance-md)); } }
+@keyframes screen-axis-in { from { opacity: var(--nil-opacity); transform: translateX(var(--motion-distance-md)); } }
 @keyframes screen-axis-back-out { to { opacity: 0; transform: translateX(var(--motion-distance-md)); } }
-@keyframes screen-axis-back-in { from { opacity: var(--arrive-from, 0); transform: translateX(calc(-1 * var(--motion-distance-md))); } }
+@keyframes screen-axis-back-in { from { opacity: var(--nil-opacity); transform: translateX(calc(-1 * var(--motion-distance-md))); } }
 
 /* Into the entry editor: container transform, the one place in the app
    where the thing tapped becomes the thing that opens (DIRECTION.md tier 2,
@@ -1455,9 +1455,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     animation-timing-function: linear, linear;
   }
 }
-@keyframes screen-crossfade { from { opacity: var(--arrive-from, 0); } }
-/* Ticket 09 measurement arms (arrivalExperiment.ts), removed before merge. */
-html[data-arrival-arm] { --arrive-from: 0.004; }
+@keyframes screen-crossfade { from { opacity: var(--nil-opacity); } }
 @keyframes screen-fade-away { to { opacity: 0; } }
 
 /* ---------- desktop: left rail + centred column ---------- */
