@@ -50,9 +50,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { journal, liveList, liveListIn, liveQuery, liveQueryWhen } from '$lib/data/live/journal.svelte';
-  import { screenStill } from '$lib/stores/ui.svelte';
-  import { careWaits } from '$lib/motion/revealExperiment';
+  import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import {
     careSpine,
     type SpineMark,
@@ -97,7 +95,7 @@
      mark and have no room for more. */
   const dayWithWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
 
-  let careQuery = liveQueryWhen(careWaits() ? screenStill : () => true, (j) => readCare(j, today));
+  let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
   let careRead = liveListIn(careQuery, (care) => [care]);
   let lanes = $derived(careQuery.value?.lanes ?? []);

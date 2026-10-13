@@ -4,8 +4,8 @@
 
 import { motionDuration } from './tokens';
 import { isDoorActive } from '../navigation/doorActivity';
-import { afterQuickFrames } from './quickFrames';
-import { revealWaits } from './revealExperiment';
+import { afterPaint } from './paintHold';
+import { isAndroid } from '../platform';
 
 let tabRevealBy: number | undefined;
 
@@ -71,7 +71,15 @@ function fitBefore(animations: Animation[], deadline: number): void {
 }
 
 /** Keep new layers at their first position while Android prepares their paint.
-    Read fades can share the field's deadline; the field keeps its authored speed. */
+    Read fades can share the field's deadline; the field keeps its authored speed.
+
+    On Android that is the arrival hold's wait (paintHold.ts' afterPaint): the
+    frame that rasters a new layer comes a few quick frames after it is
+    mounted, and two frames let it go just before that frame, so the stall
+    landed in its fade (ticket 09; with the wait, transitions with a gap over
+    50 ms went from 8 of 36 runs to 5, at 37 ms more before the fade). Other
+    platforms keep the two frames: there the six-frame wait would be 100 ms
+    at 60 Hz, and the stall it avoids was measured only on the phone. */
 export function playAfterPaint(
   owner: HTMLElement,
   animations: Animation[],
@@ -93,7 +101,7 @@ export function playAfterPaint(
       else animation.cancel();
     }
   };
-  if (revealWaits()) afterQuickFrames(window, go, { count: 2, patience: 6, capMs: 300 });
+  if (isAndroid()) afterPaint(window, go);
   else requestAnimationFrame(() => requestAnimationFrame(go));
 }
 
