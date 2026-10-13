@@ -1,19 +1,19 @@
 /* The app's mark, as one drawing (ticket 38 round three, ticket 50).
 
    The corner sun: one ring per stripe of the active flag, outermost stripe
-   outermost, equal radial thickness, centred exactly on the tile's top right
-   corner, each ring carrying a black edge on its outer side. It is Home's sun
+   outermost, equal radial thickness, centred at X 95, Y 5 on the tile,
+   each ring carrying a black edge on its outer side. It is Home's sun
    cropped to a tile rather than a second idea, which is the point of it -
    opening the app completes the drawing the launcher icon started. The ring
    rule itself is not here: `ringRadii` in $lib/motion/flagSun.ts owns it and
    both drawings call it, so there is one rule and two croppings of it.
 
-     corner sun: R 100, centre 0, seam 3, tile radius 30, small all-seam
+     tile 100, sun radius 96.75, centre 95/5, seam 3, tile radius 30
 
-   in a 100 unit tile. Alicja moved the sliders to these numbers on
-   2026-09-21 and said keep this one. Last-audit UI ticket 38 changes the
-   radius from 15 to 30 to match Play's corner mask on every logo surface;
-   mark.test.ts pins the geometry.
+   Alicja selected the sun's position and scale in the review dashboard on
+   2026-10-13. Last-audit UI ticket 38 also changes the tile radius from 15
+   to 30 so Play's corner mask preserves the outline. mark.test.ts pins
+   the geometry.
 
    The seam is the app's own, not a new one: black, on the outer side of
    every ring, every boundary including the sun's outside, which is what
@@ -37,6 +37,9 @@ import { ringRadii } from '../motion/flagSun.ts';
 
 /** In a 100 unit tile. */
 export const MARK_R = 100;
+export const MARK_SUN_X = 95;
+export const MARK_SUN_Y = 5;
+export const MARK_SUN_R = 96.75;
 export const MARK_SEAM = 3;
 export const MARK_TILE_RADIUS = 30;
 export const MARK_TILE = '#FFFFFF';
@@ -134,14 +137,14 @@ function escapeAttr(value: string): string {
     edge lands exactly on the sun's outside rather than half outside it. */
 function ringMarkup(stripes: string[], ink: string | undefined, launcherRound = false): string {
   const n = ink ? MARK_MONO_RINGS : stripes.length;
-  return ringRadii(n, launcherRound ? ROUND_SUN_R : MARK_R)
+  return ringRadii(n, launcherRound ? ROUND_SUN_R : MARK_SUN_R)
     .map((radius, i) => {
       const r = (radius - MARK_SEAM / 2).toFixed(2);
       const paint = ink
         ? `fill="none" stroke="${ink}"`
         : `fill="${hexColor(stripes[i])}" stroke="#000"`;
-      const x = launcherRound ? ROUND_SUN_CENTER : MARK_R;
-      const y = launcherRound ? MARK_R - ROUND_SUN_CENTER : 0;
+      const x = launcherRound ? ROUND_SUN_CENTER : MARK_SUN_X;
+      const y = launcherRound ? MARK_R - ROUND_SUN_CENTER : MARK_SUN_Y;
       return `<circle cx="${x}" cy="${y}" r="${r}" ${paint} stroke-width="${MARK_SEAM}"/>`;
     })
     .join('');
