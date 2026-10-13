@@ -45,7 +45,7 @@
   } from '$lib/stores/boot-state';
   import { registerServiceWorkerAfterBoot } from '$lib/pwa/register';
   import { answerSplash, splashMayLeave } from '$lib/splash';
-  import { premountArm, stampArrivalArm } from '$lib/motion/arrivalExperiment';
+  import { stampArrivalArm } from '$lib/motion/arrivalExperiment';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
   import { hoverHints } from '$lib/a11y/hoverHint';
@@ -128,7 +128,6 @@
 
   let path = $derived(page.url.pathname);
   let retainedPath = $derived(isMainDoor(path) ? path : null);
-  let premounting = $derived(!!RetainedDoors && premountArm());
   // Start at the next route commit, without remounting a screen someone is using.
   $effect.pre(() => {
     if (RetainedDoors && path !== retainedFrom) retaining = true;
@@ -650,14 +649,11 @@
           <!-- The effect above is already navigating here; nothing renders
                for the frame that takes, so a brand new install's first paint
                is never whatever route the URL happened to be (ticket 54). -->
+        {:else if retaining && RetainedDoors && !chromeless}
+          {#key retainedSession}<RetainedDoors path={retainedPath} />{/key}
+          {#if !retainedPath}{@render children()}{/if}
         {:else}
-          <!-- One block for the route either way, so the host arriving
-               beside it (ticket 09's premount) never remounts the screen
-               on show. -->
-          {#if RetainedDoors && !chromeless && (retaining || premounting)}
-            {#key retainedSession}<RetainedDoors path={retaining ? retainedPath : null} premount={premounting} current={path} />{/key}
-          {/if}
-          {#if !(retaining && RetainedDoors && !chromeless && retainedPath)}{@render children()}{/if}
+          {@render children()}
         {/if}
       </div>
     </main>
