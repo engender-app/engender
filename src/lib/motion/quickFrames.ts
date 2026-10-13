@@ -22,11 +22,14 @@ const SLOWEST_QUICK_FRAME_MS = 50;
 
 /** Calls `go` once, after `count` quick frames in a row or at `capMs`,
     whichever comes first; `busy` keeps frames from counting while it is
-    true. Returns a function that calls the wait off. */
+    true. With `patience`, it waits for that many quick frames until the
+    first slow one has shown, and `count` only after it: a cost that lands a
+    few frames late is seen rather than run into. Returns a function that
+    calls the wait off. */
 export function afterQuickFrames(
   view: Window,
   go: () => void,
-  { count, capMs, busy = () => false }: { count: number; capMs: number; busy?: () => boolean }
+  { count, patience = count, capMs, busy = () => false }: { count: number; patience?: number; capMs: number; busy?: () => boolean }
 ): () => void {
   let done = false;
   const timer = setTimeout(() => finish(), capMs);
@@ -40,16 +43,19 @@ export function afterQuickFrames(
   let shortest = Infinity;
   let quick = 0;
   let wasBusy = false;
+  let sawSlow = false;
   const frame = (now: number) => {
     if (done) return;
     const isBusy = busy();
     const took = last === undefined ? Infinity : now - last;
     shortest = Math.min(shortest, took);
     const quickMs = Math.max(QUICK_FRAME_MS, Math.min(SLOWEST_QUICK_FRAME_MS, 1.5 * shortest));
-    quick = !isBusy && !wasBusy && took < quickMs ? quick + 1 : 0;
+    const counts = !isBusy && !wasBusy && last !== undefined;
+    quick = counts && took < quickMs ? quick + 1 : 0;
+    if (counts && took >= quickMs) sawSlow = true;
     wasBusy = isBusy;
     last = now;
-    if (quick >= count) finish();
+    if (quick >= (sawSlow ? count : patience)) finish();
     else view.requestAnimationFrame(frame);
   };
   view.requestAnimationFrame(frame);

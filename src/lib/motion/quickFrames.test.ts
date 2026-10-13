@@ -76,6 +76,25 @@ describe('afterQuickFrames', () => {
     expect(go).not.toHaveBeenCalled();
   });
 
+  it('with patience, waits that many quick frames until a slow one shows, then only the count after it', () => {
+    vi.useFakeTimers();
+    const quiet = frameWindow();
+    const early = vi.fn();
+    afterQuickFrames(quiet.view, early, { count: 2, patience: 6, capMs: 1000 });
+    quiet.play(0, 8, 16, 24, 32, 40);
+    expect(early).not.toHaveBeenCalled();
+    quiet.play(48);
+    expect(early).toHaveBeenCalledTimes(1);
+
+    const stall = frameWindow();
+    const late = vi.fn();
+    afterQuickFrames(stall.view, late, { count: 2, patience: 6, capMs: 1000 });
+    stall.play(0, 8, 16, 24, 132, 140);
+    expect(late).not.toHaveBeenCalled();
+    stall.play(148);
+    expect(late).toHaveBeenCalledTimes(1);
+  });
+
   it('goes at the cap when no run of quick frames comes, and only once', () => {
     vi.useFakeTimers();
     const { view, play } = frameWindow();
