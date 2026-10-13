@@ -4,8 +4,12 @@ Every file here comes out of `scripts/render-mark.mjs`, which draws the geometry
 Alicja signed off on 2026-09-21 (ticket 38, round three) and reads the stripes
 from `src/lib/theme/palettes.css` rather than keeping a second copy of them.
 
-`corner sun: R 100, centre 0, seam 3, tile radius 15, small all-seam`, white
+`corner sun: R 100, centre 0, seam 3, tile radius 30, small all-seam`, white
 tile, black stroke on the tile's own edge, no motion anywhere.
+
+Last-audit UI ticket 38 changes the radius from 15 to 30 across app and landing
+logos so Google Play's corner mask preserves the black outline. The store PNG
+has an opaque square background; Play applies the outside mask and shadow.
 
 Regenerate with:
 
@@ -17,12 +21,14 @@ Regenerate with:
   anchored to the top right corner. This is the icon.
 - `svg/<flag>-round.svg` - the same drawing under a circle crop, with the edge
   following the circle. What a round launcher shows.
-- `svg/<flag>-maskable.svg` - full bleed square, no edge, because a launcher
-  mask crops the edge off anyway. The maskable and adaptive-icon source.
+- `svg/<flag>-maskable.svg` - full bleed white square with the stroked tile
+  inside the launcher's safe circle. The maskable and adaptive-icon source.
 - `svg/mark-mono.svg`, `svg/mark-mono-reversed.svg` - one ink, four rings, no
   tile and no ground. The printed surfaces and any single-colour reproduction.
-- `png/<flag>-tile-{512,192,96,48,32,16}.png` - the sizes the manifest, the
-  store listing and a favicon ask for.
+- `png/<flag>-tile-{512,192,96,48,32,16}.png` - the sizes the manifest and
+  a favicon ask for.
+- `png/trans-store-512.png` - the default tile on an opaque square ground,
+  copied into both store locales by `scripts/store-listing-assets.mjs`.
 - `png/lockup-{light,dark}.png` - the mark beside the word, in the rail's proportions
   (ticket 37), for the README. Transparent, dark ink on light and light on dark.
 - `png/<flag>-{round,maskable}-512.png`, `png/mark-mono{,-reversed}-512.png`.
@@ -35,7 +41,7 @@ demiboy, demigirl, trigender and Polish. Trans is the default install icon.
 
 These files are the source of the mark, not a copy of it: nothing here is
 drawn by hand, and editing one of them is the wrong move. Change the numbers in
-the generator instead.
+`src/lib/components/mark.ts` instead.
 
 They are tracked but not shipped. Everything under `static/` goes into the web
 build and into the APK's assets, so the same run writes the subset the app
