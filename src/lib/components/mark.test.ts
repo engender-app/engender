@@ -22,6 +22,9 @@ import { describe, expect, it } from 'vitest';
 import {
   MARK_MONO_RINGS,
   MARK_R,
+  MARK_SUN_R,
+  MARK_SUN_X,
+  MARK_SUN_Y,
   MARK_SEAM,
   MARK_TILE,
   MARK_SAFE_TILE,
@@ -68,15 +71,11 @@ describe("the mark's signed-off numbers", () => {
     expect(MARK_TILE).toBe('#FFFFFF');
   });
 
-  it('centres the sun exactly on the tile\'s top right corner', () => {
-    /* Centre 0 means the sun's centre is the corner itself, which is where
-       Home's sun is centred too (ticket 38, settled 2026-09-21). A launcher
-       mask used to cut that corner off, because the tile bled to the canvas
-       edge; it no longer reaches the mask at all, since the tile sits inside
-       the circle every mask keeps (MARK_SAFE_TILE). */
+  it('uses the reviewed X 95, Y 5 and scale 96.75% on the 100-unit tile', () => {
+    expect([MARK_SUN_X, MARK_SUN_Y, MARK_SUN_R]).toEqual([95, 5, 96.75]);
     for (const circle of circles(markSvg(flags.trans, 'tile', 512))) {
-      expect(circle).toContain('cx="100"');
-      expect(circle).toContain('cy="0"');
+      expect(circle).toContain('cx="95"');
+      expect(circle).toContain('cy="5"');
     }
   });
 
@@ -84,7 +83,7 @@ describe("the mark's signed-off numbers", () => {
     for (const [name, stripes] of Object.entries(flags)) {
       const drawn = circles(markSvg(stripes, 'tile', 512));
       expect(drawn, name).toHaveLength(stripes.length);
-      const expected = ringRadii(stripes.length, MARK_R).map((r) => (r - MARK_SEAM / 2).toFixed(2));
+      const expected = ringRadii(stripes.length, MARK_SUN_R).map((r) => (r - MARK_SEAM / 2).toFixed(2));
       expect(drawn.map((c) => /r="([\d.]+)"/.exec(c)![1]), name).toEqual(expected);
     }
   });
