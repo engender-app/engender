@@ -5,7 +5,9 @@
    view transition on its first frame until it has painted. Anything else
    is the baseline. `ticket09-curve` = `now` lets the curve's read run while
    its screen arrives, as it did before. Read once per process, so every
-   arrival in a run is on the same arm. */
+   arrival in a run is on the same arm. `ticket09-hold-frames` = `6/2`
+   makes the hold wait for 6 quick frames until a slow one shows and 2
+   after it; unset, it waits for 2. */
 import { NIL_OPACITY } from './tokens';
 
 export type ArrivalArm = 'base' | 'nil' | 'hold';
@@ -60,4 +62,19 @@ export function arrivalFadeFrom(): number {
 /** Puts the arm on <html> for the stylesheet's view-transition keyframes. */
 export function stampArrivalArm(doc: Document = document): void {
   if (arrivalArm() !== 'base') doc.documentElement.dataset.arrivalArm = arrivalArm();
+}
+
+let frames: { count: number; patience: number } | undefined;
+
+/** The hold's quick-frame rule on this run. */
+export function holdFrames(): { count: number; patience: number } {
+  if (frames) return frames;
+  frames = { count: 2, patience: 2 };
+  try {
+    const match = /^(\d+)\/(\d+)$/.exec(localStorage.getItem('ticket09-hold-frames') ?? '');
+    if (match) frames = { patience: Number(match[1]), count: Number(match[2]) };
+  } catch {
+    /* keeps the default */
+  }
+  return frames;
 }
