@@ -203,7 +203,10 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
        viewport resize mid-transition is one way - and nothing else here
        reads it, so the rejection reached the window unhandled. */
     void transition.ready.then(() => {
-      if (isAndroid()) holdUntilPainted(document);
+      /* Reduced motion's crossfade waits out --dur-crossfade before it
+         starts, which already draws the incoming screen at the nil opacity
+         while nothing moves; a hold would only add to the wait. */
+      if (isAndroid() && !isReducedMotion()) holdUntilPainted(document);
     }, () => {});
     void transition.finished
       .catch(() => {})
