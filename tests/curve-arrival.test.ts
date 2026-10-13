@@ -1,8 +1,9 @@
 /* The hormone curve's model waits for the screen to stop arriving
-   (ticket 09). On the Pixel 10a it is about 100 ms of arithmetic, and run
-   while /care/curve arrived it stalled the view transition for as long:
+   (ticket 09). On the Pixel 10a it holds up a frame for 140 to 190 ms, and
+   run while /care/curve arrived it stalled the view transition for as long:
    158 ms gaps at 306 ms after the tap, with `singleDose` and `bandFor` at the
-   top of the profile.
+   top of the profile. The arrival hold is wired here too, since it waits on
+   the same transition.
 
    Greps by design, like care-surfaces.test.ts: a query's run, a store's
    rune and a transition's lifetime are Svelte runtime facts, and the Node
@@ -41,14 +42,28 @@ describe('a query can wait for a condition before it runs', () => {
        the run it eventually makes is still its first-ever attempt and keeps
        that attempt's retry (ticket 161). */
     const opened = live.indexOf('if (!ready) return;');
-    const waits = live.indexOf('if (!when()) return;');
+    const waits = live.indexOf('if (!started && !when()) return;');
     expect(waits).toBeGreaterThan(opened);
-    expect(waits).toBeLessThan(live.indexOf('const mine = ++latest;'));
+    expect(waits).toBeLessThan(live.indexOf('started = true;'));
+    expect(live.indexOf('started = true;')).toBeLessThan(live.indexOf('const mine = ++latest;'));
+  });
+
+  /* Asked on every run, a flip of `when` after the first answer re-ran the
+     read, and the effect's cleanup dropped an answer still in flight. */
+  it('asks `when` only until the first run has started', () => {
+    expect(live).toMatch(/if \(!started && !when\(\)\) return;\s+started = true;/);
+    expect(live.match(/when\(\)/g)).toHaveLength(1);
   });
 });
 
 describe('the curve waits for the screen to be still', () => {
   it('asks for the curves only once the screen has stopped arriving', () => {
     expect(curve).toMatch(/let curveQuery = liveQueryWhen\(screenStill, \(j\) =>\s+j\.hormoneCurve\.getCurves\(/);
+  });
+});
+
+describe('the arrival hold', () => {
+  it('holds a view transition on Android, at ready, unless motion is reduced', () => {
+    expect(transition).toMatch(/transition\.ready\.then\(\(\) => \{[\s\S]{0,400}?if \(isAndroid\(\) && !isReducedMotion\(\)\) holdUntilPainted\(document\);/);
   });
 });

@@ -215,10 +215,11 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: Table
   return query(null, run, seed ?? null, callSite());
 }
 
-/** `liveQuery` for a read that should not run until `when` is true. It waits
-    the way every query waits for the journal to open, and runs once `when`
-    turns true; a write while `when` is false waits with it. The curve's
-    model is the first: it waits for the screen to stop arriving (ticket 09). */
+/** `liveQuery` for a read whose first run should wait until `when` is true.
+    It waits the way every query waits for the journal to open, and a write
+    in the meantime waits with it. From its first run on it is an ordinary
+    liveQuery: `when` is not asked again. The curve's model is the first: it
+    waits for the screen to stop arriving (ticket 09). */
 export function liveQueryWhen<T>(when: () => boolean, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
   return query(null, run, null, callSite(), when);
 }
@@ -354,6 +355,8 @@ function query<T>(
      overtakes a slow one - a search where "co" outruns "c" - would leave the
      older answer on screen for good. */
   let latest = 0;
+  /* Whether the first run has started: `when` is asked only before it. */
+  let started = false;
   let retries = $state(0);
 
   /* Every table this query has been seen to read. Filled by the recorder
@@ -392,7 +395,11 @@ function query<T>(
     for (const table of dependencies) void versionOf(table);
     const ready = open.journal;
     if (!ready) return; // still booting; this re-runs when the database opens
-    if (!when()) return;
+    /* Read only until the first run starts. After that a flip of `when` must
+       neither run the read again nor drop, through the cleanup below, an
+       answer still in flight. */
+    if (!started && !when()) return;
+    started = true;
 
     const mine = ++latest;
     inFlight = true;
