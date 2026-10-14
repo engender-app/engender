@@ -572,6 +572,11 @@ names. Both checks run inside the restore transaction and use the same column
 descriptor and defaults as Archive reads and row validation. Replace clears
 stock before applying the Archive's counts.
 
+Bundled roadmap goals keep status and visibility separately during Merge. A
+local unchecked row records only visibility, so an incoming status fills it
+without changing the local hidden flag. A local checked or not-my-path status
+still wins; a missing incoming goal leaves both choices alone.
+
 **External importers** sit in [data/archive/sources.ts](src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](src/lib/data/archive/plain.ts)) are readable files, not backups.
 
 Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.

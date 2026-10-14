@@ -662,25 +662,28 @@ export async function applyCounterevidenceSnapshots({ driver, journal, ts }: Res
   await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
 }
 
-/* Matched on the pack/goal pair rather than a uuid, the way applyDimensions
-   matches a built-in on its key: a status names a bundled goal, so the
-   same pair on two devices is the same status and a merge has nothing to
-   reconcile. A goal missing from the archive is left alone rather than
-   reset to unchecked - Replace already emptied the table before this ran,
-   and a merge must not undo a status this device recorded. For the same
-   reason a pair already present locally keeps its own status rather than
-   taking the archive's: two devices that recorded different statuses for
-   one goal resolve to whichever one is not overwritten, the same rule
-   that already governed a plain checked/unchecked disagreement before
-   this had a third state to disagree about. */
+/* Bundled goals match by pack/goal rather than uuid. A missing incoming
+   goal leaves local choices alone, and a locally recorded status wins.
+   An unchecked row exists only to hold visibility, so it can take the
+   Archive's status while keeping this device's hidden flag. Replace has
+   already emptied the table before this runs. */
 export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Promise<void> {
-  /* Two columns, so the present-set is built here rather than through
+  /* Two identity columns, so the present map is built here rather than through
      presentIds, which reads a single id column. A newline joins the pair
      because neither key can hold one. */
-  const rows = await driver.query<{ pack_key: string; goal_key: string }>(
-    'SELECT pack_key, goal_key FROM roadmap_check'
+  const rows = await driver.query<{ pack_key: string; goal_key: string; status: string }>(
+    'SELECT pack_key, goal_key, status FROM roadmap_check'
   );
-  const present = new Set(rows.map((row) => `${row.pack_key}\n${row.goal_key}`));
+  const present = new Map(rows.map((row) => [`${row.pack_key}\n${row.goal_key}`, row.status]));
+
+  for (const check of journal.roadmapChecks) {
+    if (check.status !== 'unchecked' && present.get(`${check.packKey}\n${check.goalKey}`) === 'unchecked') {
+      await driver.run(
+        'UPDATE roadmap_check SET status = ?, updated_at = ? WHERE pack_key = ? AND goal_key = ?',
+        [check.status, ts, check.packKey, check.goalKey]
+      );
+    }
+  }
 
   const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
   await insertRows(

@@ -1,5 +1,10 @@
 # The probes in tests/*.mjs
 
+`src/lib/data/journal/restore.test.ts` uses real SQLite to guard roadmap Merge
+status separately from visibility. A hidden unchecked goal accepts the incoming
+status, keeps the local hidden flag through repeated Merge, and retains the
+status after unhiding and export/Replace. A locally recorded status still wins.
+
 `tests/ai-directories.test.ts` plants synthetic root evidence in an isolated
 Git repository. It requires index refusal and verifies that an archive of the
 commit excludes evidence while retaining source, build inputs and intentional
