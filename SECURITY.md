@@ -48,6 +48,43 @@ can request at most 64 MiB of Argon2id memory, six iterations, one lane and a
 the released 64 MiB, three-iteration profile; the import ceiling allows twice
 its combined cost without increasing the memory request.
 
+## Accepted authentication policy, implementation pending
+
+On 14 October 2026, the owner approved fresh authentication for each recovery
+key mint, recovery key replacement and access-mode change. This decision does
+not add those checks to the app. The current recovery and access-mode flows
+can use an already unlocked session; the implementation remains separate work.
+Recovery replacement already asks for confirmation and warns that the old key
+will stop opening the journal. Credential serialization prevents conflicting
+changes, but does not authenticate the person making them.
+
+The follow-up must verify the current PIN in PIN mode, the current passphrase
+in passphrase mode, or require a new successful biometric authentication in
+biometric mode. An earlier unlock or a proposed new credential is insufficient.
+Failed or cancelled authentication must not fall back to session authority.
+Android device-lock fallback is not an approved substitute for biometrics.
+
+Approval must authorize only one operation in the current journal and session.
+Cancellation leaves the current recovery wrap and access mode unchanged. Lock,
+reset, session replacement or credential changes invalidate approval, including
+late successful authentication callbacks. The operation must recheck ownership
+before publishing any change.
+
+Web device-bound mode is the explicit exception for both recovery changes and
+access-mode changes: it has no current secret, so an unlocked session is
+sufficient. The flow must explain this exception. Someone holding an unlocked
+web journal can create lasting access or replace its protection; choosing a new
+secret during that flow is not authentication of the current owner. This
+exception does not extend to Android or create another access mode.
+
+Implementation must preserve PIN throttling, existing failure behavior, durable
+credential publication, and the recovery replacement confirmation and old-key
+warning. Synthetic-journal tests must cover successful operations, wrong
+credentials, biometric failure and cancellation, single-operation approval,
+and invalidation races, as well as the web device-bound exception. The separate
+recovery replacement protocol decision remains outside this authentication
+policy; this decision does not settle interrupted replacement behavior.
+
 ## Report a vulnerability
 
 Use GitHub private vulnerability reporting for this repository:
