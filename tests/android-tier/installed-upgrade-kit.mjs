@@ -45,7 +45,7 @@ function build(worktree, name, sourceRevision, patch = null) {
     if (!migrations.includes(statement)) throw new Error('Retained testing-06 failure recipe no longer applies');
     writeFileSync(migrationsPath, migrations.replace(statement, `${statement} DELETE FROM ${table} WHERE id = (SELECT MIN(id) FROM ${table});`));
   }
-  const env = { ...process.env, ANDROID_HOME: sdk, ANDROID_SDK_ROOT: sdk, ENGENDER_VERSION: versionName, ENGENDER_VERSION_CODE: String(versionCode) };
+  const env = { ...process.env, NODE_ENV: 'production', ANDROID_HOME: sdk, ANDROID_SDK_ROOT: sdk, ENGENDER_VERSION: versionName, ENGENDER_VERSION_CODE: String(versionCode) };
   let log = '';
   try {
     log += run('npm', ['run', 'build'], { cwd: worktree, env });
