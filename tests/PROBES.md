@@ -1,5 +1,23 @@
 # The probes in tests/*.mjs
 
+`KeystorePromptLifecycleTest` calls the real Android unlock and confirmation
+paths with saved fragment state. Both must answer without a key; an invalid
+modern prompt must reject instead of leaving its call pending. These checks
+run in the Android tier, including its native-only emulator selection.
+
+`node tests/android-tier/key-gate/run.mjs --resources <owned-emulator.json>
+--output <evidence-directory>` requires an isolated test package, an owned
+emulator with synthetic PIN 1234 and enrolled fingerprint 1, and the built
+`key-gate` probe and APKs. It seeds a real encrypted journal, cold-launches
+its production boot and gate, presses Home, and mounts the gate only after
+native fragment state is saved. The existing cancelled state must enable
+retry; a real fingerprint then reopens the saved entry. Ordinary cancel and
+fingerprint lockout must also release busy. The runner captures the gate
+in trans light and dark. Only mount timing is controlled; the native bridge,
+Keystore, journal and gate remain production code. Resources name `serial`,
+`avd`, emulator `pid`, isolated `package` and an owned `cdpPort`. The runner
+clears only that package and removes its own forward when finished.
+
 `node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
 6501 through 6530, within 160 ms of the reset action. Erased cuts must return
