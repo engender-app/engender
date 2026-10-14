@@ -682,14 +682,22 @@ Web PIN binding prevents guessing from `keystore.json` alone. Copying the whole 
 
 Journal text inputs and textareas use `journalTextAutocomplete()` in
 [platform.ts](src/lib/platform.ts): web fields receive `autocomplete="off"`,
-while Android receives no new attribute so its existing keyboard behavior
-stays. Existing explicit attributes, including password-manager hints, remain
+while Android receives no autocomplete attribute so suggestions remain
+available. Existing explicit attributes, including password-manager hints, remain
 unchanged. [journal-field-policy.test.ts](tests/journal-field-policy.test.ts)
 checks every editable text control through the Svelte AST; the retained
 [journal-field-profile probe](tests/journal-field-profile.mjs) types into the
 real entry, tag and document fields, closes Chromium and Firefox, and scans
 their profiles, including decoded Firefox session files. Earlier profile
 copies and keyboard storage remain outside this control.
+
+Android's [JournalWebView](android/app/src/main/java/dev/engender/app/webview/JournalWebView.java)
+extends CapacitorWebView and adds `IME_FLAG_NO_PERSONALIZED_LEARNING` after
+the superclass creates each input connection. The bridge layout uses this
+subclass, preserving Capacitor's bridge, input types and existing IME options.
+The request is always on, with no setting. It asks the keyboard not to learn;
+the keyboard can ignore it, and earlier learned words remain outside the app's
+control.
 
 Report vulnerabilities as [SECURITY.md](SECURITY.md) describes.
 
