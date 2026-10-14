@@ -57,6 +57,14 @@ encrypted journal and checks rows and attachment bytes before and after the
 orphan sweep. It also checks confirmed rollback and graceful lock disposal.
 Faults are synthetic; SQLite, OPFS, encrypted files and session disposal are real.
 
+`browser-tier/hot-journal.html` runs in `npm run test:browser`. It terminates the
+production SQLite worker with an uncommitted transaction after cache spill,
+checks that a hot journal and changed database remain, then reopens and verifies
+the original rows, byte count and integrity. A separate worker calls the actual
+VFS reserved-lock method at each lock level. Another production worker must fail
+to acquire the live writer's pool. Worker termination proves recovery from that
+interruption; it does not model a storage power cut.
+
 ## Walkthrough groups
 
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's

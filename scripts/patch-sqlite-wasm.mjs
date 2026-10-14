@@ -1,16 +1,16 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 
-// Failed SAHPool initialization must not remove an existing database.
+// Preserve pool files on failed initialization and recover interrupted writes.
 // Pin this patch to the browser entry shipped by @evolu/sqlite-wasm 2.2.4.
 const file = new URL('../node_modules/@evolu/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-bundler-friendly.mjs', import.meta.url);
 const source = await readFile(file, 'utf8');
 const hash = (text) => createHash('sha256').update(text).digest('hex');
 const originalHash = '1d1cea8bbf10d173ab29d003e1197db2aca7f29a23a7a4320f5cfe77ce4e3243';
-const patchedHash = '6bf90aa1ae7d8c670d8cd6a32de514927d86578fb04fb72aa8c83bccb7ff8947';
+const patchedHash = '441f4808510dbd443b5f18991459a6d1c7cdfd28410eae60483fa9ff5aa6fd1a';
 if (hash(source) !== patchedHash) {
   if (hash(source) !== originalHash) {
-    throw new Error('The SQLite WASM browser entry changed; review its failed pool initialization before updating the patch');
+    throw new Error('The SQLite WASM browser entry changed; review its pool initialization and reserved locks before updating the patch');
   }
   const start = source.indexOf('          async acquireAccessHandles(clearFiles = false) {');
   const end = source.indexOf('          getAssociatedPath(sah) {', start);
@@ -48,7 +48,21 @@ if (hash(source) !== patchedHash) {
                   const vfs = thePool.getVfs();
                   capi.sqlite3_vfs_unregister(vfs.pointer);
                   vfs.dispose();`
+  ).replace(
+    `            pool.storeErr();
+            wasm.poke32(pOut, 1);
+            return 0;
+          },
+          xClose: function (pFile)`,
+    `            pool.storeErr();
+            // Engender modification: exclusive pool handles exclude other workers.
+            // The production driver opens one connection per database path.
+            const file = pool.getOFileForS3File(pFile);
+            wasm.poke32(pOut, file.lockType > capi.SQLITE_LOCK_SHARED ? 1 : 0);
+            return 0;
+          },
+          xClose: function (pFile)`
   );
-  if (hash(patched) !== patchedHash) throw new Error('The SQLite WASM preservation patch did not produce its reviewed output');
+  if (hash(patched) !== patchedHash) throw new Error('The SQLite WASM pool patch did not produce its reviewed output');
   await writeFile(file, patched);
 }

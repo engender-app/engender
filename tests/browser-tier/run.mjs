@@ -200,6 +200,22 @@ await block('failed encrypted pool initialization preserves journal data', 8, as
   check(r.driver.preserved, 'the production worker leaves the old owner journal readable and persistent');
 });
 
+await block('interrupted encrypted writes recover their hot journal', 7, async () => {
+  const r = await load('/hot-journal.html', 'hot-journal');
+  if (r.error || r.locks.error) throw new Error(r.error ?? r.locks.error);
+  const recovery = r.recovery;
+  const path = '/hot-journal-synthetic.sqlite3';
+  const file = (slots, name) => slots.find((slot) => slot.name === name);
+  const check = (condition, label) => condition ? ok(label) : fail(label, JSON.stringify(r));
+  check(JSON.stringify(r.locks.locks) === '[0,0,1,1,0]', 'SAHPool reserved-lock answers follow idle, shared, reserved, spilled and rolled-back ownership');
+  check(recovery.contention, 'another worker cannot acquire the live writer pool');
+  check(recovery.inside[0].n === 512 && recovery.inside[0].bytes > 1000000, 'the interrupted transaction changes every synthetic row');
+  check(file(recovery.interrupted, `${path}-journal`)?.bytes > 4096 && file(recovery.interrupted, path)?.bytes > file(recovery.before, path)?.bytes && file(recovery.before, path)?.hash !== file(recovery.interrupted, path)?.hash, 'worker termination leaves a hot journal beside a database changed by cache spill');
+  check(recovery.after[0].n === 512 && recovery.after[0].bytes === 5012 && recovery.marked[0].n === 0, 'reopening restores all rows and bytes from before the interrupted transaction');
+  check(JSON.stringify(recovery.integrity) === '[{"integrity_check":"ok"}]', 'the recovered encrypted database passes integrity_check');
+  check(!file(recovery.recovered, `${path}-journal`) && file(recovery.before, path)?.bytes === file(recovery.recovered, path)?.bytes, 'SQLite removes the recovered journal and restores the database size');
+});
+
 // --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
 await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');

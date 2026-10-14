@@ -92,6 +92,14 @@ The hosted origin serves only static files: the app shell, chunks, fonts, icons,
 | Background work | None | Reminders (AlarmManager), scheduled backups, retrospective notifications, widgets |
 | Minimum runtime | Secure context with OPFS | WebView 87 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
 
+The browser's SAHPool holds exclusive access handles, and the production driver
+opens one connection per database path. `scripts/patch-sqlite-wasm.mjs` pins two
+corrections to the installed 2.2.4 bundle: failed initialization preserves pool
+files, and the reserved-lock answer follows the file's current SQLite lock.
+On reopen, SQLite can then roll back a hot journal left by an interrupted write.
+The browser tier checks recovery after cache spill and contention with another
+worker. This does not prove durability through a power cut.
+
 ## 2. Tech stack
 
 Versions are the ones the lockfile installs ([package-lock.json](package-lock.json)) and the Gradle files ([android/variables.gradle](android/variables.gradle), [android/build.gradle](android/build.gradle)) declare.
