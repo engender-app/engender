@@ -49,7 +49,7 @@ export function safeScreenBounds(dump, width, height, keyboard) {
   assert.ok(cutout, 'The native cutout insets must be present');
   const [left, top, right, bottom] = cutout.slice(1).map(Number);
   const safe = { left, top, right: width - right, bottom: height - bottom };
-  const sources = [...state.matchAll(/InsetsSource[^\n]*?type=(statusBars|navigationBars|ime) frame=\[(\d+),(\d+)\]\[(\d+),(\d+)\] visible=(true|false)/g)]
+  const sources = [...state.matchAll(/InsetsSource[^\n]*?type=(statusBars|navigationBars|ime) frame=\[(\d+),(\d+)\]\[(\d+),(\d+)\](?: visibleFrame=\[\d+,\d+\]\[\d+,\d+\])? visible=(true|false)/g)]
     .map((match) => ({ type: match[1], left: Number(match[2]), top: Number(match[3]),
       right: Number(match[4]), bottom: Number(match[5]), visible: match[6] === 'true' }));
   for (const type of ['statusBars', 'navigationBars', 'ime']) {
@@ -58,11 +58,11 @@ export function safeScreenBounds(dump, width, height, keyboard) {
   assert.equal(sources.find((source) => source.type === 'ime')?.visible, keyboard, 'Native IME inset visibility agrees');
   for (const source of sources.filter((source) => source.visible)) {
     assert.ok(source.right > source.left && source.bottom > source.top, `${source.type} inset has positive area`);
-    if (source.left === 0 && source.right === width) {
+    if (source.left <= safe.left && source.right >= safe.right) {
       if (source.top === 0) safe.top = Math.max(safe.top, source.bottom);
       else if (source.bottom === height) safe.bottom = Math.min(safe.bottom, source.top);
       else assert.fail(`Unsupported floating ${source.type} inset`);
-    } else if (source.top === 0 && source.bottom === height) {
+    } else if (source.top <= safe.top && source.bottom >= safe.bottom) {
       if (source.left === 0) safe.left = Math.max(safe.left, source.right);
       else if (source.right === width) safe.right = Math.min(safe.right, source.left);
       else assert.fail(`Unsupported floating ${source.type} inset`);

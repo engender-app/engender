@@ -81,7 +81,8 @@ async function capture(name, selectors, keyboard = false) {
       const hit = document.elementFromPoint(x, y);
       return { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
         actionable: el.matches('button,a,input,textarea'),
-        hit: !!hit && (el.contains(hit) || hit.contains(el)) };
+        hit: !!hit && (el.contains(hit) || hit.contains(el)),
+        hitTarget: hit ? { tag: hit.tagName, className: hit.getAttribute('class') } : null };
     };
     return {
       width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
@@ -123,18 +124,22 @@ async function capture(name, selectors, keyboard = false) {
     assertInside(physical, native, `${name}: ${control.selector} in WebView`);
     assertInside(physical, result.insets.safe, `${name}: ${control.selector} clear of system bars, cutout and IME`);
     if (control.actionable) assert.equal(control.hit, true, `${name}: ${control.selector} receives pointer input`);
+    if (control.selector.startsWith('[data-save')) {
+      assert.ok(control.right - control.left >= 48 && control.bottom - control.top >= 48,
+        `${name}: ${control.selector} keeps a 48px touch target`);
+    }
   }
   result.status = 'pass';
   await writeFile(`${out}/result.json`, JSON.stringify(metadata, null, 2) + '\n');
   console.log(`${name}: PASS native inset and control geometry`);
 }
 
-try {
-  const activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', pkg).trim().split('\n').at(-1);
-  assert.ok(activity.includes(pkg), 'The isolated package must be installed');
-  const installedPath = adb('shell', 'pm', 'path', pkg).trim().replace(/^package:/, '');
-  metadata.installedApkSha256 = adb('shell', 'sha256sum', installedPath).trim().split(/\s+/)[0];
-  assert.equal(metadata.installedApkSha256, metadata.apkSha256, 'Installed APK must match the current local artifact');
+async function startApp(activity) {
+  if (browser) await browser.close();
+  if (port) adb('forward', '--remove', `tcp:${port}`);
+  browser = undefined;
+  port = undefined;
+  adb('shell', 'am', 'force-stop', pkg);
   adb('shell', 'am', 'start', '-W', '-n', activity);
   await pause(1500);
   const pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0];
@@ -160,6 +165,14 @@ try {
     web.click();
     if (document.querySelector('[aria-label="Safe area"] button')?.getAttribute('aria-pressed') === 'true') throw new Error('Synthetic CSS insets must be disabled');
   });
+}
+
+try {
+  const activity = adb('shell', 'cmd', 'package', 'resolve-activity', '--brief', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', pkg).trim().split('\n').at(-1);
+  assert.ok(activity.includes(pkg), 'The isolated package must be installed');
+  const installedPath = adb('shell', 'pm', 'path', pkg).trim().replace(/^package:/, '');
+  metadata.installedApkSha256 = adb('shell', 'sha256sum', installedPath).trim().split(/\s+/)[0];
+  assert.equal(metadata.installedApkSha256, metadata.apkSha256, 'Installed APK must match the current local artifact');
   for (const navigation of ['gesture', 'buttons']) {
     adb('shell', 'cmd', 'overlay', 'enable-exclusive', '--category', navigationOverlays[navigation]);
     assert.equal(Number(adb('shell', 'settings', 'get', 'secure', 'navigation_mode').trim()), navigation === 'gesture' ? 2 : 0);
@@ -168,6 +181,7 @@ try {
       adb('shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0');
       adb('shell', 'settings', 'put', 'system', 'user_rotation', profile === 'cutout-landscape' ? '1' : '0');
       await pause(1200);
+      await startApp(activity);
       for (const theme of ['light', 'dark']) {
         await page.evaluate((theme) => {
           const button = [...document.querySelectorAll('.demo-bar button')].find((el) => el.textContent.trim() === (theme === 'dark' ? 'Dark' : 'Light'));

@@ -29,6 +29,20 @@ describe('Android inset proof geometry', () => {
       .toThrow('native ime source');
   });
 
+  it('reads the visible IME frame emitted by API33', () => {
+    const keyboard = readFileSync(new URL('./api33-ime-insets.txt', import.meta.url), 'utf8');
+    expect(safeScreenBounds(keyboard, 1080, 2400, true).safe)
+      .toEqual({ left: 0, top: 128, right: 1080, bottom: 1517 });
+  });
+
+  it('accepts an IME spanning the cutout-safe width but rejects a narrower source', () => {
+    const keyboard = readFileSync(new URL('./api33-landscape-ime-insets.txt', import.meta.url), 'utf8');
+    expect(safeScreenBounds(keyboard, 2400, 1080, true).safe)
+      .toEqual({ left: 126, top: 63, right: 2400, bottom: 394 });
+    expect(() => safeScreenBounds(keyboard.replace('frame=[126,394]', 'frame=[127,394]'), 2400, 1080, true))
+      .toThrow('Unsupported partial ime inset');
+  });
+
   it('reads only the isolated application WebView', () => {
     const hierarchy = '<node class="android.webkit.WebView" package="other" bounds="[0,0][900,900]" />'
       + '<node class="android.webkit.WebView" package="proof" bounds="[30,90][1110,2100]" />';

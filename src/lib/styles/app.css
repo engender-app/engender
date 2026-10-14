@@ -246,6 +246,15 @@ body {
   gap: var(--space-2);
 }
 
+/* A landscape keyboard can leave 127px above it. Keep the editor's
+   single control row and navigation within that space. */
+@container app (min-width: 640px) and (max-width: 1023px) {
+  .app-savebar:has(.editor-save-row) {
+    padding-top: var(--space-1);
+    padding-bottom: calc(var(--nav-clearance) - var(--space-5));
+  }
+}
+
 /* What the floating bar occupies, measured from the bottom of the window:
    its own height, the gap it floats above the edge by, the system inset
    under that, and a breath so the last row of content does not stop dead

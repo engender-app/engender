@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+The entry editor keeps Save, star and mood controls above the Android keyboard
+in landscape. Wide layouts use one footer row without shrinking touch targets.
+
 Recovery-key creation, replacement and access-mode changes now require fresh
 current-protection approval. Web device-bound mode explains its unlocked-session
 exception; Android unlocked mode requires biometrics or an existing recovery key.
