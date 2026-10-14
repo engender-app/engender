@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Web unlock and retained navigation now check journal compatibility before
+reopening access. Older pages refuse a journal upgraded by newer code and
+offer the same update recovery as cold boot. Supported older journals use
+the existing migration path.
+
 Boot housekeeping waits for pending journal writes before purging expired
 Trash and sweeping orphaned media. Android stock-reminder reconciliation no
 longer makes those passes give up before they start.
