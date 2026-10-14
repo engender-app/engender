@@ -23,15 +23,15 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { photoFileName } from '../photos/names';
 import { contentUuid } from '../journal/support';
 import type { ArchiveEntry, ArchiveJournal, ArchiveMilestone, ArchivePhoto } from './payload';
-import { openZip, type ZipReader } from './zipReader';
+import { openZip, ZipFormatError, type ZipReader } from './zipReader';
 
 const KNOWN_TOP_LEVEL_KEYS = ['settings', 'photos', 'milestones'] as const;
 
 /* TransTracksBackupError stays exported only for its own test (AU-09 test-only
    review). */
 export class TransTracksBackupError extends Error {
-  constructor(message: string) {
-    super(`TransTracks backup ${message}`);
+  constructor(message: string, options?: ErrorOptions) {
+    super(`TransTracks backup ${message}`, options);
     this.name = 'TransTracksBackupError';
   }
 }
@@ -104,11 +104,13 @@ export function detectTransTracks(bytes: Uint8Array): boolean {
 function readDataJson(reader: ZipReader): RawPayload {
   const raw = reader.read('data.json');
   if (!raw) throw new TransTracksBackupError('does not contain a data.json');
+  const json = strFromU8(raw);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(strFromU8(raw));
-  } catch {
-    throw new TransTracksBackupError('data.json is not valid JSON');
+    parsed = JSON.parse(json);
+  } catch (cause) {
+    if (cause instanceof SyntaxError) throw new TransTracksBackupError('data.json is not valid JSON', { cause });
+    throw cause;
   }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new TransTracksBackupError('data.json is not an object');
@@ -122,6 +124,9 @@ function requireString(value: unknown, field: string, index: number, kind: strin
   }
   return value;
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 function requireEpochDay(value: unknown, index: number, kind: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
@@ -145,99 +150,114 @@ async function resolvePhotoId(rawId: string): Promise<string> {
 }
 
 export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJournal): Promise<TransTracksPreview> {
-  const reader = openZip(bytes);
-  const payload = readDataJson(reader);
+  try {
+    const reader = openZip(bytes);
+    const payload = readDataJson(reader);
 
-  const unknownTopLevelKeys = Object.keys(payload).filter(
-    (key) => !(KNOWN_TOP_LEVEL_KEYS as readonly string[]).includes(key)
-  );
+    const unknownTopLevelKeys = Object.keys(payload).filter(
+      (key) => !(KNOWN_TOP_LEVEL_KEYS as readonly string[]).includes(key)
+    );
 
-  const rawMilestones = Array.isArray(payload.milestones) ? (payload.milestones as RawMilestone[]) : [];
-  const rawPhotos = Array.isArray(payload.photos) ? (payload.photos as RawPhoto[]) : [];
+    if (payload.milestones !== undefined && !Array.isArray(payload.milestones)) throw new TransTracksBackupError('milestones is not an array');
+    if (payload.photos !== undefined && !Array.isArray(payload.photos)) throw new TransTracksBackupError('photos is not an array');
+    const rawMilestones = Array.isArray(payload.milestones) ? (payload.milestones as RawMilestone[]) : [];
+    const rawPhotos = Array.isArray(payload.photos) ? (payload.photos as RawPhoto[]) : [];
 
-  const existingMilestones = new Set(existing.milestones.map((milestone) => milestone.id));
-  const existingEntries = new Set(existing.entries.map((entry) => entry.uuid));
+    const existingMilestones = new Set(existing.milestones.map((milestone) => milestone.id));
+    const existingEntries = new Set(existing.entries.map((entry) => entry.uuid));
+    const incomingMilestones = new Set<string>();
+    const incomingEntries = new Set<string>();
 
-  const milestones: ArchiveMilestone[] = [];
-  rawMilestones.forEach((raw, index) => {
-    const id = requireString(raw.id, 'id', index, 'milestone');
-    const epochDay = requireEpochDay(raw.epochDay, index, 'milestone');
-    const title = requireString(raw.title, 'title', index, 'milestone');
-    const description = typeof raw.description === 'string' ? raw.description : '';
-    if (existingMilestones.has(id)) return;
+    const milestones: ArchiveMilestone[] = [];
+    rawMilestones.forEach((raw, index) => {
+      if (!isRecord(raw)) throw new TransTracksBackupError(`milestone ${index} is not an object`);
+      const id = requireString(raw.id, 'id', index, 'milestone');
+      const epochDay = requireEpochDay(raw.epochDay, index, 'milestone');
+      const title = requireString(raw.title, 'title', index, 'milestone');
+      const description = typeof raw.description === 'string' ? raw.description : '';
+      if (existingMilestones.has(id)) return;
+      if (incomingMilestones.has(id)) throw new TransTracksBackupError(`milestone ${index} repeats id ${id}`);
+      incomingMilestones.add(id);
 
-    milestones.push({
-      id,
-      name: title,
-      epochDay,
-      description,
-      templateKey: null,
-      roadmapGoalKey: null,
-      procedureId: null,
-      tryoutId: null,
-      photo: null
+      milestones.push({
+        id,
+        name: title,
+        epochDay,
+        description,
+        templateKey: null,
+        roadmapGoalKey: null,
+        procedureId: null,
+        tryoutId: null,
+        photo: null
+      });
     });
-  });
 
-  // TransTracks photos are a standalone dated array with a face/body flag;
-  // ArchiveMilestone.photo holds at most one photo nested under a
-  // milestone, so a photo becomes its own dated entry instead (spec's
-  // "likely answer"). The entry's uuid is the photo's own uuid - one
-  // TransTracks photo, one synthetic entry, one identity - which is what
-  // makes a repeated import skip it in both tables at once.
-  const entries: ArchiveEntry[] = [];
-  const newRawPhotos = new Map<string, Uint8Array>();
-  let referencedFileNames = 0;
+    // TransTracks photos are a standalone dated array with a face/body flag;
+    // ArchiveMilestone.photo holds at most one photo nested under a
+    // milestone, so a photo becomes its own dated entry instead (spec's
+    // "likely answer"). The entry's uuid is the photo's own uuid - one
+    // TransTracks photo, one synthetic entry, one identity - which is what
+    // makes a repeated import skip it in both tables at once.
+    const entries: ArchiveEntry[] = [];
+    const newRawPhotos = new Map<string, Uint8Array>();
+    let referencedFileNames = 0;
 
-  for (const [index, raw] of rawPhotos.entries()) {
-    const rawId = requireString(raw.id, 'id', index, 'photo');
-    const epochDay = requireEpochDay(raw.epochDay, index, 'photo');
-    const sourceFileName = requireString(raw.fileName, 'fileName', index, 'photo');
-    referencedFileNames += 1;
+    for (const [index, raw] of rawPhotos.entries()) {
+      if (!isRecord(raw)) throw new TransTracksBackupError(`photo ${index} is not an object`);
+      const rawId = requireString(raw.id, 'id', index, 'photo');
+      const epochDay = requireEpochDay(raw.epochDay, index, 'photo');
+      const sourceFileName = requireString(raw.fileName, 'fileName', index, 'photo');
+      referencedFileNames += 1;
 
-    const zipBytes = reader.read(`photos/${sourceFileName}`);
-    if (!zipBytes || zipBytes.length === 0) {
-      throw new TransTracksBackupError(`photo ${index} names ${sourceFileName}, which is missing from the zip`);
+      const zipBytes = reader.read(`photos/${sourceFileName}`);
+      if (!zipBytes || zipBytes.length === 0) {
+        throw new TransTracksBackupError(`photo ${index} names ${sourceFileName}, which is missing from the zip`);
+      }
+
+      const id = await resolvePhotoId(rawId);
+      if (existingEntries.has(id)) continue;
+      if (incomingEntries.has(id)) throw new TransTracksBackupError(`photo ${index} repeats id ${rawId}`);
+      incomingEntries.add(id);
+
+      const fileName = photoFileName(id);
+      const photo: ArchivePhoto = { id, fileName, starred: false, epochDayOverride: null };
+      entries.push({
+        uuid: id,
+        epochDay,
+        timestamp: startOfDayTimestamp(epochDay),
+        mood: null,
+        note: '',
+        dims: {},
+        tags: [],
+        photos: [photo],
+        recordings: [],
+        videos: [],
+        bodyRegions: {},
+        starred: false,
+        presentationId: null
+      });
+      newRawPhotos.set(fileName, zipBytes);
     }
 
-    const id = await resolvePhotoId(rawId);
-    if (existingEntries.has(id)) continue;
+    const orphanedPhotoCount = reader.names().filter((name) => {
+      if (!name.startsWith('photos/') || name.endsWith('/')) return false;
+      const fileName = name.slice('photos/'.length);
+      return !rawPhotos.some((raw) => raw.fileName === fileName);
+    }).length;
 
-    const fileName = photoFileName(id);
-    const photo: ArchivePhoto = { id, fileName, starred: false, epochDayOverride: null };
-    entries.push({
-      uuid: id,
-      epochDay,
-      timestamp: startOfDayTimestamp(epochDay),
-      mood: null,
-      note: '',
-      dims: {},
-      tags: [],
-      photos: [photo],
-      recordings: [],
-      videos: [],
-      bodyRegions: {},
-      starred: false,
-      presentationId: null
-    });
-    newRawPhotos.set(fileName, zipBytes);
+    const journal: ArchiveJournal = { ...emptyArchiveJournal(), milestones, entries };
+
+    return {
+      milestoneCount: milestones.length,
+      photoCount: entries.length,
+      orphanedPhotoCount,
+      ignoredFields: referencedFileNames > 0 ? ['type (face or body)'] : [],
+      unknownTopLevelKeys,
+      journal,
+      rawPhotos: newRawPhotos
+    };
+  } catch (cause) {
+    if (cause instanceof ZipFormatError) throw new TransTracksBackupError('has a damaged ZIP container', { cause });
+    throw cause;
   }
-
-  const orphanedPhotoCount = reader.names().filter((name) => {
-    if (!name.startsWith('photos/') || name.endsWith('/')) return false;
-    const fileName = name.slice('photos/'.length);
-    return !rawPhotos.some((raw) => raw.fileName === fileName);
-  }).length;
-
-  const journal: ArchiveJournal = { ...emptyArchiveJournal(), milestones, entries };
-
-  return {
-    milestoneCount: milestones.length,
-    photoCount: entries.length,
-    orphanedPhotoCount,
-    ignoredFields: referencedFileNames > 0 ? ['type (face or body)'] : [],
-    unknownTopLevelKeys,
-    journal,
-    rawPhotos: newRawPhotos
-  };
 }

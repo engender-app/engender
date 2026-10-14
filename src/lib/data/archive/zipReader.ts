@@ -29,7 +29,7 @@
    the running total either, or the ceiling would refuse a backup for less
    than it actually holds. */
 
-import { UnzipInflate, unzipSync } from 'fflate';
+import { FlateErrorCode, UnzipInflate, unzipSync, type UnzipOptions } from 'fflate';
 
 /** 1536 MiB allows headroom above the 851.2 MiB ten-year import estimate
     documented in ARCHITECTURE.md. This bounds allocations; it does
@@ -51,6 +51,42 @@ export class ZipTooLargeError extends Error {
   constructor(ceilingBytes: number) {
     super(`declares more data, once decompressed, than the ${ceilingBytes}-byte ceiling allows`);
     this.name = 'ZipTooLargeError';
+  }
+}
+
+/** Invalid container bytes, distinct from allocation or caller failures. */
+export class ZipFormatError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ZipFormatError';
+  }
+}
+
+const FORMAT_CODES = new Set<number>([
+  FlateErrorCode.UnexpectedEOF, FlateErrorCode.InvalidBlockType,
+  FlateErrorCode.InvalidLengthLiteral, FlateErrorCode.InvalidDistance,
+  FlateErrorCode.InvalidHeader, FlateErrorCode.InvalidUTF8,
+  FlateErrorCode.InvalidZipData, FlateErrorCode.UnknownCompressionMethod
+]);
+
+function zipFailure(cause: unknown): never {
+  if (cause instanceof Error && 'code' in cause && typeof cause.code === 'number' && FORMAT_CODES.has(cause.code)) {
+    throw new ZipFormatError(cause.message, { cause });
+  }
+  throw cause;
+}
+
+function readZip(bytes: Uint8Array, options: UnzipOptions) {
+  try {
+    return unzipSync(bytes, options);
+  } catch (cause) {
+    zipFailure(cause);
+  }
+}
+
+function requireRange(view: DataView, offset: number, length: number): void {
+  if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 || offset + length > view.byteLength) {
+    throw new ZipFormatError('truncated ZIP structure');
   }
 }
 
@@ -78,6 +114,7 @@ function centralDirectory(view: DataView): { offset: number; zip64: boolean } {
     if (view.getUint32(end, true) === 0x06054b50) {
       if (end >= 20 && view.getUint32(end - 20, true) === 0x07064b50) {
         const record = view.getUint32(end - 12, true);
+        requireRange(view, record, 56);
         if (view.getUint32(record, true) === 0x06064b50) {
           return { offset: view.getUint32(record + 48, true), zip64: true };
         }
@@ -86,7 +123,7 @@ function centralDirectory(view: DataView): { offset: number; zip64: boolean } {
     }
     --end;
   }
-  throw new Error('invalid ZIP end record');
+  throw new ZipFormatError('invalid ZIP end record');
 }
 
 function localOffset(view: DataView, central: number, extraStart: number, extraEnd: number, zip64: boolean): number {
@@ -102,7 +139,7 @@ function localOffset(view: DataView, central: number, extraStart: number, extraE
     if (!Number.isSafeInteger(value)) break;
     return value;
   }
-  throw new Error('invalid ZIP64 member offset');
+  throw new ZipFormatError('invalid ZIP64 member offset');
 }
 
 /** A reader over one zip's bytes, bounding the total it will ever
@@ -114,19 +151,22 @@ export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_C
   const directory = centralDirectory(view);
   let central = directory.offset;
   const members = new Map<string, { offset: number; size: number; originalSize: number; compression: number }>();
-  unzipSync(bytes, {
+  readZip(bytes, {
     filter: (entry) => {
-      if (members.has(entry.name)) throw new Error('duplicate ZIP member name');
-      if (view.getUint32(central, true) !== 0x02014b50) throw new Error('invalid ZIP central record');
+      if (members.has(entry.name)) throw new ZipFormatError('duplicate ZIP member name');
+      requireRange(view, central, 46);
+      if (view.getUint32(central, true) !== 0x02014b50) throw new ZipFormatError('invalid ZIP central record');
       const extraStart = central + 46 + view.getUint16(central + 28, true);
       const extraEnd = extraStart + view.getUint16(central + 30, true);
+      const next = extraEnd + view.getUint16(central + 32, true);
+      requireRange(view, central, next - central);
       members.set(entry.name, {
         offset: localOffset(view, central, extraStart, extraEnd, directory.zip64),
         size: entry.size,
         originalSize: entry.originalSize,
         compression: entry.compression
       });
-      central = extraEnd + view.getUint16(central + 32, true);
+      central = next;
       return false;
     }
   });
@@ -152,7 +192,7 @@ export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_C
       if (cache.has(name)) return cache.get(name)!;
 
       accept(name);
-      const found = unzipSync(bytes, { filter: entry => entry.name === name });
+      const found = readZip(bytes, { filter: entry => entry.name === name });
       const value = Object.values(found)[0] ?? null;
       cache.set(name, value);
       return value;
@@ -162,21 +202,22 @@ export function openZip(bytes: Uint8Array, ceilingBytes: number = ZIP_INFLATED_C
       const member = members.get(name);
       if (!member) return null;
       accept(name);
-      if (view.getUint32(member.offset, true) !== 0x04034b50) throw new Error('invalid ZIP local record');
+      requireRange(view, member.offset, 30);
+      if (view.getUint32(member.offset, true) !== 0x04034b50) throw new ZipFormatError('invalid ZIP local record');
       const start = member.offset + 30 + view.getUint16(member.offset + 26, true) + view.getUint16(member.offset + 28, true);
       const end = start + member.size;
-      if (end > bytes.length || start > end) throw new Error('truncated ZIP member');
+      if (end > bytes.length || start > end) throw new ZipFormatError('truncated ZIP member');
       const prefix = new Uint8Array(Math.min(length, member.originalSize));
       if (member.compression === 0) {
         prefix.set(bytes.subarray(start, Math.min(end, start + prefix.length)));
         return prefix.subarray(0, Math.min(prefix.length, member.size));
       }
-      if (member.compression !== 8) throw new Error('unknown compression type ' + member.compression);
+      if (member.compression !== 8) throw new ZipFormatError('unknown compression type ' + member.compression);
       let written = 0;
       let finished = prefix.length === 0;
       const stream = new UnzipInflate();
       stream.ondata = (error, chunk, final) => {
-        if (error) throw error;
+        if (error) zipFailure(error);
         const taking = Math.min(chunk.length, prefix.length - written);
         prefix.set(chunk.subarray(0, taking), written);
         written += taking;

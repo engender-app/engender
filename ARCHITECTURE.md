@@ -582,6 +582,21 @@ still wins; a missing incoming goal leaves both choices alone.
 
 Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.
 
+The ZIP reader reports malformed container bytes through `ZipFormatError`.
+Daylio backup, Day One and TransTracks translate that error into their own
+import failure types, including attachment reads deferred until commit.
+Consumed JSON fields are checked before string and collection operations.
+Day One permits omitted optional text/collection fields, as in its recorded
+export shape, and refuses explicit null.
+Absent optional TransTracks collections remain empty; present collections
+must be arrays.
+Preview refuses incoming identity collisions before they can reach SQLite
+uniqueness checks or attachment writes.
+Known JSON and encoding refusals receive the same importer classification;
+unexpected parser, allocation and platform failures propagate to the caller.
+Source detection keeps its existing non-throwing sniff contract.
+Daylio JSON refusals omit parser diagnostics that can echo a cleartext PIN.
+
 The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
 The shared [ZIP reader](src/lib/data/archive/zipReader.ts) allows at most
 1536 MiB of declared decompressed content across the members it reads, including
