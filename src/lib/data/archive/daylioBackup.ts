@@ -34,10 +34,10 @@
 
    Unzipping goes through fflate rather than the platform's own
    DecompressionStream, for the reason transtracks.ts found first: this
-   app's WebView floor is Chrome 87 (capacitor.config.ts) and the
-   'deflate-raw' format only arrived in Chrome 103, so the platform
-   decoder would fail on the devices this app supports. One zip reader in
-   the repo, and it is that one.
+   former WebView 87 floor preceded 'deflate-raw' support in Chrome 103.
+   WebView 104 now supports it, but fflate remains the shared ZIP owner
+   across the browser targets. One zip reader in the repo, and it is that
+   one.
 
    Identity is derived from content (ADR-0002), because Daylio's ids are
    per-collection integers unique only inside one backup. One limit worth

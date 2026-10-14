@@ -2757,7 +2757,7 @@ button.kit-strip-day .kit-strip-cell {
    positions and two days on the same reading draw the same length. Each row
    is its own grid - a pressable row is a button, and a button cannot be
    `display: contents` without losing its box and its press wash - and
-   subgrid is out at the WebView 87 floor, so a shared geometry has to be a
+   subgrid is out at the WebView 104 floor, so a shared geometry has to be a
    fixed width rather than a shared track. 3.5em holds four tabular figures,
    and the column gap absorbs a fifth before anything touches the bar. */
 .kit-bars.is-inline {

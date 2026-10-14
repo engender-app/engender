@@ -90,7 +90,7 @@ The hosted origin serves only static files: the app shell, chunks, fonts, icons,
 | Offline | Service worker, one cache per release (ADR-0021) | Bundle is local |
 | Updates | New release waits until the journal is idle | App update |
 | Background work | None | Reminders (AlarmManager), scheduled backups, retrospective notifications, widgets |
-| Minimum runtime | Secure context with OPFS | WebView 87 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
+| Minimum runtime | Secure context with OPFS | WebView 104 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
 
 The browser's SAHPool holds exclusive access handles, and the production driver
 opens one connection per database path. `scripts/patch-sqlite-wasm.mjs` pins two
