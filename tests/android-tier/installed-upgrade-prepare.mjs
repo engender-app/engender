@@ -38,7 +38,7 @@ if (!metadata || metadata[1] !== packageId || Number(metadata[2]) !== previous.v
 if (execFileSync(adb, ['forward', '--list'], { encoding: 'utf8' }).split('\n').some((line) => line.split(/\s+/)[1] === `tcp:${port}`)) {
   throw new Error('Installed-upgrade CDP port is already forwarded');
 }
-const packages = device('shell', 'pm', 'list', 'packages', packageId);
+const packages = device('shell', 'pm', 'list', 'packages', '-u', packageId);
 if (packages.split(/\r?\n/).includes(`package:${packageId}`)) throw new Error('Synthetic upgrade package already exists; use a fresh isolated emulator');
 device('install', apk);
 let browser;

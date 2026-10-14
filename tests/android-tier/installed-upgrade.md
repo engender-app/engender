@@ -38,7 +38,8 @@ npm run test:android:upgrade:prepare -- emulator-5590 upgrade40 .claude/android-
 npm run test:android:upgrade -- emulator-5590 upgrade40 .claude/android-upgrade-kit/candidate/manifest.json 9340
 ```
 
-Preparation refuses an existing synthetic package. It creates PIN `2468`, feeds
+Preparation refuses an existing synthetic package, including retained data from
+an uninstalled copy. It creates PIN `2468`, feeds
 the synthetic Archive to the normal file input, imports through the released
 reader and encrypted stores, and enables daily check-in and medication alarms.
 The file-input hook is fixture setup; it is not proof of the native picker.
