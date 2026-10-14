@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+The Node test suite runs 480 seeded importer and sniffer fuzz cases. A
+24,000-case run is available with `FUZZ_LONG=1 FUZZ_SEED=7`. Failures retain
+their exact inputs and seed/index receipts for replay.
+
 Recovery-key creation, replacement and access-mode changes now require fresh
 current-protection approval. Web device-bound mode explains its unlocked-session
 exception; Android unlocked mode requires biometrics or an existing recovery key.
