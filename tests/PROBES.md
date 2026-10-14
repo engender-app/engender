@@ -1,8 +1,8 @@
 # The probes in tests/*.mjs
 
 `src/lib/data/archive/importer-refusals.test.ts` checks damaged ZIP containers,
-malformed consumed JSON fields and deferred Daylio attachment refusals through
-the production importers. `importer-infrastructure.test.ts` injects failures
+malformed consumed JSON fields, Daylio PIN diagnostics and deferred attachment
+refusals through the production importers. `importer-infrastructure.test.ts` injects failures
 at decoder, parser and calendar boundaries and requires the original error to
 reach the caller. Both run in the Node tier.
 
