@@ -1,8 +1,10 @@
 /* `.at()` for the WebView the app promises to run on (phase 8 features
    ticket 55, ADR-0023).
 
-   The floor is Chrome 87 and `Array.prototype.at` arrived in 92. pdf.js's
-   legacy build compiles its own syntax down and carries core-js for
+   The former Android floor was Chrome 87; `Array.prototype.at` arrived
+   in 92. Android now requires WebView 104, while the other browser targets
+   still need this compatibility patch. pdf.js's legacy build compiles its
+   own syntax down and carries core-js for
    `Promise.withResolvers` and `Object.hasOwn`, but not for this one - a
    `pattern.at(-1)` sits in the worker's operator-list machinery, so a
    WebView between 87 and 92 would fail on the first page of the first

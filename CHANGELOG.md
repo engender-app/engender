@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android requires WebView 104 or newer. The declared floor now covers the
+computed CSS transforms and door selectors used during navigation. The
+source guard checks those features alongside JavaScript API calls.
+
 Medication stock treats trimmed drug-name case variants as one count, including
 Unicode names. A refill updates the existing row and its run-out reminder.
 Schema 91 keeps the latest updated complete stock row when older journals

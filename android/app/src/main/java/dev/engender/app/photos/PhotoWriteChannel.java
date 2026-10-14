@@ -48,7 +48,7 @@ import java.util.Collections;
  *
  * <p>{@link #registerIfSupported} is a no-op below the WebView versions that
  * carry {@code WEB_MESSAGE_LISTENER} and {@code WEB_MESSAGE_ARRAY_BUFFER}.
- * The app's floor is WebView 87, below both, so
+ * The app's floor is WebView 104, below array-buffer support in 105, so
  * {@code window.androidPhotoWriteChannel} is not always there - exactly the
  * gap {@code Object.hasOwn} and {@code crypto.randomUUID} left, closed the
  * same way: {@code android-file-store.ts} falls back to the base64 bridge

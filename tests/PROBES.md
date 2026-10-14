@@ -1,5 +1,11 @@
 # The probes in tests/*.mjs
 
+`webview-floor.test.ts` checks source JavaScript APIs, computed CSS transform
+properties and selector syntax against `minWebViewVersion`. Its controls
+cover direct and aliased style reads, bracket notation, shared selector
+constants, and DOM `querySelector` and `matches` calls. It checks source
+requirements rather than claiming to run a historical WebView engine.
+
 `src/lib/data/journal/restore.test.ts` uses real SQLite to guard roadmap Merge
 status separately from visibility. A hidden unchecked goal accepts the incoming
 status, keeps the local hidden flag through repeated Merge, and retains the

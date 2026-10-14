@@ -1227,8 +1227,8 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      directly, and opacity because the dimming does. */
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
 }
-/* Standalone scale/translate shipped in Chrome 104; the WebView floor is
-   Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
+/* Standalone scale/translate shipped in Chrome 104; the former WebView floor
+   was Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
    gap) - seventeen versions short, so the whole magnifier silently did
    nothing there. No hover/press growth on any device at or under that
    floor is ticket 99 items 1 and 2's report, round two of the same "phase 5
