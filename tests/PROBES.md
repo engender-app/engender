@@ -883,3 +883,39 @@ This Node test needs a JDK (`jar`, `keytool`, `jarsigner` on PATH) and an Androi
 SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
 `android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
 device is used. Temporary keys and artifacts are removed after the tests.
+
+`manual-export` is an opt-in physical-device probe, outside default Android
+instrumentation discovery. Build the ordinary web bundle and sync Capacitor,
+then compile isolated APKs with:
+
+```sh
+npm run build
+npx cap sync android
+android/gradlew -p android -I "$PWD/tests/manual-export/isolate.gradle" --no-daemon --max-workers=2 :app:assembleDebug :app:assembleDebugAndroidTest
+ANDROID_SERIAL=<owned-phone-serial> python3 tests/manual-export/run.py
+```
+
+The runner takes the shared phone lease and uses only
+`dev.engender.app.test.picker77`, its test package and forward9377. It requires
+an unlocked phone with English Developer options and DocumentsUI already
+pointing at local Download/Downloads. It changes the actual Don't keep
+activities switch, records the caller's DESTROYED state, saves through the real
+picker and verifies exact bytes and SHA-256. The payload is an Archive packed
+with the released KDF profile; the pulled file must decrypt and restore its
+entry, preferences and photo bytes. Both APK package IDs are checked before
+installation. An instrumentation case separately
+counts one restored Capacitor result. Provider cases assert saved, cancelled,
+truncated and refused-write outcomes, exact owned-target deletion, unrelated
+file preservation, and a denied cleanup record surviving until access returns.
+The host kills the app after the provider records its first partial write;
+restart must remove that target without removing the unrelated file. The
+runner restores the switch and setting, removes its UUID document, packages
+and forward, and releases the lease. It records both APK hashes. No emulator
+or provider-cloud durability claim follows from these checks.
+
+`restored-file-delivery.test.ts` keeps restored results behind journal gates,
+rejects old process/reset identities and held status replies crossing journal
+replacement, and deduplicates each transfer. Native `FileResetOwnershipTest`
+checks that retained staging contains no Activity or plugin owner and that
+reset closes its in-memory key. Existing reset and scheduled-backup tests
+remain unchanged.

@@ -35,7 +35,7 @@
   import { tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { announce, speech } from '$lib/stores/announcer.svelte';
-  import { clearToasts } from '$lib/stores/toasts.svelte';
+  import { clearToasts, toast } from '$lib/stores/toasts.svelte';
   import { bootState, browserSession, closeJournalForLock, recoveryUnlock, startBoot, watchBrowserSession } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -200,6 +200,43 @@
 
   /* Those, plus the routes that render without chrome whoever is looking at
      them - which now includes a step the app does navigate to. */
+  let restoredDeliveryReporter = $state<ReturnType<typeof import('$lib/data/archive/restored-file-delivery').restoredFileDelivery> | null>(null);
+  onMount(() => {
+    if (!isAndroid()) return;
+    let stopped = false;
+    let removeListener: (() => Promise<void>) | undefined;
+    void Promise.all([
+      import('@capacitor/app'),
+      import('$lib/data/archive/android-file-delivery-bridge'),
+      import('$lib/data/archive/restored-file-delivery')
+    ]).then(async ([{ App }, { androidFileDelivery }, { restoredFileDelivery }]) => {
+      if (stopped) return;
+      const reporter = restoredFileDelivery(androidFileDelivery,
+        () => isReadyState(bootState) && !replacesApp,
+        (result) => {
+          if (result.backupAt !== undefined) {
+            prefs.lastBackupAt = Math.max(prefs.lastBackupAt ?? 0, result.backupAt);
+            prefs.backupNoticeDismissed = false;
+          }
+          toast(result.outcome === 'saved' ? m.exp_file_saved()
+            : result.outcome === 'cancelled' ? m.exp_cancelled()
+            : result.outcome === 'cleanup-pending' ? m.exp_cleanup_pending() : m.exp_failed());
+        }, () => bootState.journal);
+      restoredDeliveryReporter = reporter;
+      const listener = await App.addListener('appRestoredResult', reporter.accept);
+      if (stopped) { reporter.stop(); await listener.remove(); }
+      else removeListener = () => listener.remove();
+    });
+    return () => {
+      stopped = true;
+      restoredDeliveryReporter?.stop();
+      void removeListener?.();
+    };
+  });
+  $effect(() => {
+    if (isReadyState(bootState) && !replacesApp) void restoredDeliveryReporter?.flush();
+  });
+
   let chromeless = $derived(replacesApp || chromelessPath(path));
 
   /* How deep the app is in its own history, for the back controls that ask

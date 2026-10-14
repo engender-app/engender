@@ -44,6 +44,7 @@ export function exportFileName(name: string, extension: string, epochDay: number
 export async function deliverFile(file: {
   fileName: string;
   type: string;
+  recordBackup?: boolean;
   body: AsyncIterable<Uint8Array>;
 }): Promise<Delivery> {
   if (isAndroid()) return (await import('./android-file-delivery')).deliverAndroidFile(file);
