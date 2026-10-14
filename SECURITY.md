@@ -85,6 +85,42 @@ and invalidation races, as well as the web device-bound exception. The separate
 recovery replacement protocol decision remains outside this authentication
 policy; this decision does not settle interrupted replacement behavior.
 
+## Android signing certificates
+
+The release verifier checks certificate SHA-256 fingerprints as well as
+cryptographic signature validity. It requires one signer per artifact and
+rejects a valid signature from any other certificate. These public fingerprints
+were verified on 14 October 2026 against the
+[v1.0.0-rc.1 artifacts](https://github.com/engender-app/engender/releases/tag/v1.0.0-rc.1)
+and the Play Console certificate records:
+
+| Certificate role | SHA-256 fingerprint |
+| --- | --- |
+| GitHub / Obtainium APK signer | `093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86` |
+| AAB upload signer | `093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86` |
+| Current Play app-signing certificate | `8fa369eb5555ade56c58622738f4f3f6f79b74926ac042340374dc73c86f0f05` |
+
+For a downloaded or installed APK, run `apksigner verify --print-certs app.apk`
+and compare `Signer #1 certificate SHA-256 digest` with the APK's channel above.
+Use the GitHub APK fingerprint in tools that verify Obtainium downloads. For
+an APK delivered by Play, use the current Play app-signing fingerprint and
+inspect the actual installed APK. Google signs Play-delivered APKs with a
+separate app-signing key; the AAB upload certificate does not establish their
+installed signer or update compatibility.
+
+For an AAB, run `jarsigner -verify app.aab` to check integrity, then
+`keytool -printcert -jarfile app.aab` to inspect the upload certificate. Compare
+the certificate's SHA-256 fingerprint, not the file checksum or public-key hash.
+The release gate pins the GitHub APK and AAB upload roles separately in
+`scripts/check-release-artifacts.mjs`; it does not accept the Play app-signing
+certificate for either release artifact.
+
+The current GitHub and Play certificates differ. Direct channel switching is
+not established, and a matching fingerprint alone would not prove that an
+installed update works. Before uninstalling to change an incompatible channel,
+export an Archive and verify its restore on a separate disposable installation.
+F-Droid uses its own signing key; its certificate is not recorded here.
+
 ## Report a vulnerability
 
 Use GitHub private vulnerability reporting for this repository:

@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Release verification rejects APKs and App Bundles signed by an unexpected
+certificate, even when the signature itself is valid.
+
 Archive import identifies non-object JSON headers as corrupt files before
 key derivation, including a header containing only `null`.
 

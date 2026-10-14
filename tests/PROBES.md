@@ -869,3 +869,17 @@ and dirty warm revisit settlement have separate boundaries. The disposable
 activity gate changes only the probe build; it is not production scheduling.
 Actual-shell captures retain the existing paint hold, last-result DOM, opacity
 floor, reduced-motion and lock-concealment assertions.
+
+## Release signing certificates
+
+`tests/check-release-artifacts.test.ts` generates disposable signing keys and
+signed APK/AAB fixtures. It runs `apksigner`, `jarsigner` and `keytool` through
+the release verifier, checks the expected certificate for each role, and rejects
+valid signatures from other certificates or an extra AAB signer. Existing
+unsigned, partially signed and tampered AAB checks remain active. Production
+pins come from the public record in [SECURITY.md](../SECURITY.md#android-signing-certificates).
+
+This Node test needs a JDK (`jar`, `keytool`, `jarsigner` on PATH) and an Android
+SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
+`android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
+device is used. Temporary keys and artifacts are removed after the tests.

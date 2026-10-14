@@ -369,6 +369,9 @@ The script requires a clean main branch and notes for the version in
 [CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
+The release gate rejects signatures from unexpected certificates.
+[Android signing guidance](SECURITY.md#android-signing-certificates) records
+the GitHub APK, AAB upload and Play app-signing fingerprints.
 Release notes state schema changes, Archive format changes, security
 migrations and the minimum supported version. The stable section uses
 `{{schema}}`, resolved from the candidate migration list by the notes generator
