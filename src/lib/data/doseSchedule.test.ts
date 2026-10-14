@@ -13,6 +13,9 @@ import {
   expectedAmountOn,
   expectedSlots,
   isDailySchedule,
+  isInjectionDose,
+  isTopicalDose,
+  mostRecentPassedSlot,
   lastInjectionBefore,
   matchDoseRoute,
   nearestOpenSlotDistance,
@@ -21,7 +24,7 @@ import {
   slotToleranceDays
 } from './doseSchedule.ts';
 import type { InjectionSiteKey, RouteOption } from './doseSchedule.ts';
-import { epochDayFromLocalDate, startOfDayTimestamp } from './epochDay.ts';
+import { epochDayFromLocalDate, startOfDayTimestamp, weekdayOfEpochDay } from './epochDay.ts';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types.ts';
 
 const schedule = (
@@ -775,4 +778,124 @@ test('autoLogSlots keeps a four-a-day slot at its minute rather than rounding th
       [20, 0]
     ]
   );
+});
+
+test('weekday amounts stay in phase hundreds of days after the anchor', () => {
+  const anchor = 20000;
+  const amounts = [{ dose: 1, doseUnit: 'mg' }, { dose: 2, doseUnit: 'mg' }, { dose: 3, doseUnit: 'mg' }];
+  for (const weekdays of [[1, 4], [0], [2, 3, 6]]) {
+    for (const perDay of [1, 2]) {
+      for (const from of [anchor, anchor + 3, anchor + 20, anchor + 400]) {
+        const wanted = [];
+        let occurrence = 0;
+        for (let day = anchor; day <= from + 30; day++) {
+          if (!weekdays.includes(weekdayOfEpochDay(day))) continue;
+          if (day >= from) {
+            for (let indexInDay = 0; indexInDay < perDay; indexInDay++) {
+              wanted.push({ epochDay: day, indexInDay, amount: amounts[(occurrence * perDay + indexInDay) % amounts.length] });
+            }
+          }
+          occurrence++;
+        }
+        assert.deepEqual(expectedSlots(weekdaySchedule(weekdays, perDay, amounts), anchor, from, from + 30), wanted);
+      }
+    }
+  }
+});
+
+test('an empty amount cycle leaves slot amounts null', () => {
+  assert.deepEqual(expectedSlots(schedule(1, 1, []), 100, 100, 101).map(slot => slot.amount), [null, null]);
+});
+
+test('weekday tolerance sorts and deduplicates days before comparing the wrap gap', () => {
+  for (const [weekdays, tolerance] of [[[4, 1], 1], [[2, 1], 0], [[0, 6], 0], [[4, 1, 4], 1]] as const) {
+    assert.equal(slotToleranceDays(weekdaySchedule([...weekdays])), tolerance);
+  }
+});
+
+test('route aliases classify subcutaneous injections and topical doses without catalogue labels', () => {
+  for (const [alias, route] of [['sl', 'sublingual'], ['subcut', 'sc'], ['subcutaneous', 'sc'], ['patch', 'patch'], ['gel', 'gel']] as const) {
+    assert.equal(matchDoseRoute(alias, []), route);
+  }
+  assert.equal(matchDoseRoute('patch, gel when travelling', []), null);
+  for (const route of ['oral', 'sublingual', 'im', 'sc', 'patch', 'gel'] as const) {
+    const event = dose(100, 8, { route } as Partial<DoseEvent>);
+    assert.equal(isInjectionDose(event), route === 'im' || route === 'sc');
+    assert.equal(isTopicalDose(event), route === 'patch' || route === 'gel');
+  }
+});
+
+test('last injection excludes the timestamp boundary and keeps the first equal-time dose', () => {
+  const first = { ...injectionDose(100, 'thigh-left'), id: 'first' };
+  const tied = { ...first, id: 'tied' };
+  const later = injectionDose(101, 'thigh-right');
+  assert.equal(lastInjectionBefore([first, later], later.timestamp), first);
+  assert.equal(lastInjectionBefore([first, tied], later.timestamp), first);
+});
+
+test('today is never the most recent passed slot', () => {
+  const result = adherence(expectedSlots(schedule(1, 1), 100, 100, 103), [dose(101, 8)], []);
+  assert.equal(mostRecentPassedSlot(result, 103)?.slot.epochDay, 102);
+  assert.equal(mostRecentPassedSlot(result, 100), null);
+});
+
+test('adherence chooses the nearest open slot and keeps the earlier slot on a tie', () => {
+  const logged = dose(100, 12);
+  const slots = (days: number[]) => days.map(epochDay => ({ epochDay, indexInDay: 0, amount: null }));
+  assert.deepEqual(adherence(slots([98, 101, 102]), [logged], [], 3).rows.map(row => row.dose), [null, logged, null]);
+  assert.deepEqual(adherence(slots([99, 101]), [logged], [], 3).rows.map(row => row.dose), [logged, null]);
+  assert.deepEqual(adherence(slots([101, 103]), [logged], [], 3).rows.map(row => row.dose), [logged, null]);
+});
+
+test('nearest open slot searches one recurrence period on either side', () => {
+  assert.equal(nearestOpenSlotDistance(schedule(3, 1), 20000, [dose(20000, 12), dose(20003, 12)], [], 20000, 10), null);
+  assert.equal(nearestOpenSlotDistance(weekdaySchedule([weekdayOfEpochDay(20002)]), 19000, [], [], 20000, 5), 2);
+});
+
+test('auto logging requires a positive day interval or a nonempty weekday rhythm', () => {
+  const amounts = [{ dose: 1, doseUnit: 'mg' }];
+  assert.equal(canAutoLog(schedule(0, 1, amounts), 'oral', []), false);
+  assert.equal(canAutoLog(schedule(2, 1, amounts), 'oral', []), true);
+  assert.equal(canAutoLog(weekdaySchedule([1], 1, amounts), 'oral', []), true);
+  assert.equal(canAutoLog(weekdaySchedule([], 1, amounts), 'oral', []), false);
+});
+
+test('automatic identities fill only their episode and position before timestamp pairing', () => {
+  const slots = expectedSlots(schedule(1, 2), 100, 100, 100);
+  const automatic = dose(101, 12, { source: 'schedule', autoLogSlot: { episodeId: 'e1', epochDay: 100, indexInDay: 1 } });
+  const manual = dose(100, 8);
+  assert.deepEqual(adherence(slots, [automatic, manual], [], 0, 'e1').rows.map(row => row.dose), [manual, automatic]);
+  assert.deepEqual(adherence(slots, [automatic], []).rows.map(row => row.dose), [null, automatic]);
+  assert.deepEqual(adherence(slots, [automatic], [], 0, 'e2').unmatched, [automatic]);
+  assert.deepEqual(adherence(slots, [automatic], [], 0, 'e2').rows.map(row => row.dose), [null, null]);
+});
+
+test('automatic identities outside the window or on occupied slots stay unmatched', () => {
+  const slots = expectedSlots(schedule(1, 1), 100, 100, 100);
+  const first = dose(101, 8, { source: 'schedule', autoLogSlot: { episodeId: 'e1', epochDay: 100, indexInDay: 0 } });
+  const duplicate = { ...first, id: 'duplicate', timestamp: first.timestamp + 3600000 };
+  const outside = dose(100, 12, { source: 'schedule', autoLogSlot: { episodeId: 'e1', epochDay: 99, indexInDay: 0 } });
+  const result = adherence(slots, [duplicate, outside, first], [], 3, 'e1');
+  assert.deepEqual(result.rows.map(row => row.dose), [first]);
+  assert.deepEqual(result.unmatched, [outside, duplicate]);
+});
+
+test('person doses cannot claim an automatic identity', () => {
+  const slots = expectedSlots(schedule(1, 1), 100, 100, 100);
+  const invalid = dose(100, 8, { source: 'person', autoLogSlot: { episodeId: 'e1', epochDay: 100, indexInDay: 0 } });
+  const result = adherence(slots, [invalid], [], 3, 'e1');
+  assert.deepEqual(result.rows.map(row => row.dose), [null]);
+  assert.deepEqual(result.unmatched, [invalid]);
+});
+
+test('fractional rhythms below one cannot generate expected slots', () => {
+  assert.deepEqual(expectedSlots(schedule(1, 0.5), 100, 100, 101), []);
+  assert.deepEqual(expectedSlots(schedule(0.5, 1), 100, 100, 101), []);
+});
+
+test('a repeated dose object cannot fill two positions on the same day', () => {
+  const logged = dose(100, 8);
+  const result = adherence(expectedSlots(schedule(1, 2), 100, 100, 100), [logged, logged], []);
+  assert.deepEqual(result.rows.map(row => row.dose), [logged, null]);
+  assert.deepEqual(result.unmatched, []);
 });

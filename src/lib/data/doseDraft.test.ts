@@ -82,3 +82,55 @@ test('an empty time field still saves the start of the day rather than nothing',
   const saved = new Date(draftTimestamp('2026-10-25', ''));
   assert.deepEqual([saved.getHours(), saved.getMinutes()], [0, 0]);
 });
+
+test('saved doses trim unit and drug without dropping topical route or site', () => {
+  const base = newDoseDraft({ today: TODAY, now: NOW, activeEpisode: null, expectedAmount: null, doses: [], routeWords: [] });
+  for (const route of ['oral', 'sublingual', 'gel', 'patch'] as const) {
+    const saved = doseInputOfDraft({ ...base, route, dose: '2', doseUnit: ' mg ', drug: ' estradiol ', applicationSite: 'upperArm' });
+    assert.deepEqual(saved, {
+      id: undefined, timestamp: NOW, dose: 2, doseUnit: 'mg', status: 'taken', scheduled: null,
+      drug: 'estradiol', route, ...((route === 'gel' || route === 'patch') ? { applicationSite: 'upperArm' } : {})
+    });
+  }
+  assert.equal(doseInputOfDraft({ ...base, route: 'nasal' as never, dose: '2' }), null);
+});
+
+test('new draft preserves scheduled defaults and prefers the expected unit over the episode unit', () => {
+  const known = { today: TODAY, now: NOW, activeEpisode: null, expectedAmount: null, doses: [], routeWords: [] };
+  const blank = newDoseDraft(known);
+  assert.deepEqual([blank.status, blank.scheduledRoute, blank.scheduledTime, blank.drug], ['taken', 'oral', '09:30', '']);
+  const expected = newDoseDraft({ ...known, activeEpisode: episode('estradiol', 'oral'), expectedAmount: { dose: 1, doseUnit: 'g' } });
+  assert.equal(expected.doseUnit, 'g');
+  assert.equal(newDoseDraft({ ...known, activeEpisode: episode('estradiol', 'oral') }).doseUnit, 'mg');
+});
+
+test('editing an unscheduled dose keeps its route and time as changed-dose defaults', () => {
+  const unscheduled = { ...injection, scheduled: null } as DoseEvent;
+  const draft = draftOfDose(unscheduled);
+  assert.deepEqual([draft.scheduledDose, draft.scheduledRoute, draft.scheduledTime], ['4', 'im', '09:30']);
+  assert.deepEqual(doseInputOfDraft({ ...draft, status: 'changed' })?.scheduled,
+    { dose: 4, route: 'im', timestamp: unscheduled.timestamp });
+});
+
+test('editor defaults preserve missing injection vehicle and drug when saved', () => {
+  const event = { ...injection, vehicle: null, drug: null, scheduled: null } as DoseEvent;
+  const draft = draftOfDose(event);
+  assert.deepEqual([draft.vehicle, draft.drug], ['oil', '']);
+  const saved = doseInputOfDraft(draft);
+  assert.ok(saved && 'vehicle' in saved);
+  assert.equal(saved.vehicle, 'oil');
+  assert.equal(saved.drug, null);
+});
+
+test('editor times pad single-digit minutes before saving a changed dose', () => {
+  const event = { ...injection, timestamp: startOfDayTimestamp(TODAY) + 9 * 3600000 + 5 * 60000, scheduled: null } as DoseEvent;
+  const draft = draftOfDose(event);
+  assert.deepEqual([draft.time, draft.scheduledTime], ['09:05', '09:05']);
+  assert.equal(doseInputOfDraft(draft)?.timestamp, event.timestamp);
+});
+
+test('blank scheduled amount stays blank until a changed dose uses the actual amount', () => {
+  const draft = newDoseDraft({ today: TODAY, now: NOW, activeEpisode: null, expectedAmount: null, doses: [], routeWords: [] });
+  assert.equal(draft.scheduledDose, '');
+  assert.equal(doseInputOfDraft({ ...draft, dose: '2', status: 'changed' })?.scheduled?.dose, 2);
+});
