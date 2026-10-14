@@ -6,8 +6,9 @@
      the two drift.
 
      It says the same thing on both screens on purpose. Settings binds `on`
-     to the stored preference, setup binds it to the answer it is holding -
-     but the icon, the name and the note do not vary with it. The disguise
+     to the stored preference, or to the answer its switch is saving while
+     that write runs; setup binds it to the answer it is holding - but the
+     icon, the name and the note do not vary with it. The disguise
      is what it is; `on` only says whether it is in force, which is the
      difference between a proposal and a description. */
 
