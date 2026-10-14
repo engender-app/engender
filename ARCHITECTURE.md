@@ -729,7 +729,7 @@ stateDiagram-v2
   Unlocked --> Locked: immediately,<br/>as the page goes
 ```
 
-`lockAfter` is `immediately`, `one-minute`, `five-minutes` or `restart` ([data/prefs/catalogue.ts](src/lib/data/prefs/catalogue.ts)). [lock/leave-lock.ts](src/lib/lock/leave-lock.ts) checks elapsed wall-clock time when the person comes back, because a backgrounded WebView may never run a timer. On Android, `onUserLeaveHint` locks sooner. [stores/lock.svelte.ts](src/lib/stores/lock.svelte.ts) holds `unlocked`, which starts as false on every load. [SessionUnlock.svelte](src/lib/components/SessionUnlock.svelte) asks for the access mode's own secret again. The PIN wait grows with failed attempts ([lock/throttle.ts](src/lib/lock/throttle.ts), [pin-throttle.ts](src/lib/lock/pin-throttle.ts), and [PinAttemptWait.java](android/app/src/main/java/dev/engender/app/lock/PinAttemptWait.java) on Android), using monotonic time. Android persists the deadline with the boot count and owes the full delay after a reboot. On the web, a reload owes the full pending delay unless the current session can prove elapsed time; changing the wall clock cannot pay it. A forgotten PIN can be recovered at the cold-start gate if a recovery key was created earlier and the journal and recovery wrap remain intact (ADR-0054). `SessionUnlock` does not offer recovery while the journal is already open. Without a usable credential or recovery key, a reset is needed before starting again or restoring an archive with its own password.
+`lockAfter` is `immediately`, `one-minute`, `five-minutes` or `restart` ([data/prefs/catalogue.ts](src/lib/data/prefs/catalogue.ts)). [lock/leave-lock.ts](src/lib/lock/leave-lock.ts) checks elapsed wall-clock time when the person comes back, because a backgrounded WebView may never run a timer. On Android, `onUserLeaveHint` locks sooner. [stores/lock.svelte.ts](src/lib/stores/lock.svelte.ts) holds `unlocked`, which starts as false on every load. [SessionUnlock.svelte](src/lib/components/SessionUnlock.svelte) asks for the access mode's own secret again. The PIN wait grows with failed attempts ([lock/throttle.ts](src/lib/lock/throttle.ts), [pin-throttle.ts](src/lib/lock/pin-throttle.ts), and [PinAttemptWait.java](android/app/src/main/java/dev/engender/app/lock/PinAttemptWait.java) on Android), using monotonic time. Android persists the attempt count and deadline with the boot count, and owes the full pending delay after a reboot. On the web, a reload owes the full pending delay unless the current session can prove elapsed time; changing the wall clock cannot pay it. A forgotten PIN can be recovered at the cold-start gate if a recovery key was created earlier and the journal and recovery wrap remain intact (ADR-0054). `SessionUnlock` does not offer recovery while the journal is already open. Without a usable credential or recovery key, a reset is needed before starting again or restoring an archive with its own password.
 
 PIN authentication waits under [data/credential-ownership.ts](src/lib/data/credential-ownership.ts)
 for the current credential operation, then reads its committed wrap and binding.
@@ -742,9 +742,18 @@ remove the gate, but its session-generation guard still rejects a later lock.
 
 [PinEntry.svelte](src/lib/components/PinEntry.svelte) classifies authentication
 failures for cold start, session unlock and current-PIN verification in Settings.
-Only `DecryptionFailedError` counts as a wrong guess. Contention, missing device
-bindings, cancelled attempts, unreadable access metadata and journal reopening
-failures do not increase the throttle. Unreadable metadata asks the person to
+On the web, only `DecryptionFailedError` increments the wrong-attempt count.
+On Android, the existing authentication queue checks the wrap, binding and
+current gate before admitting a guess. Admission increments the native count
+before derivation, through the same file-sync, atomic-replacement and directory-sync
+boundary as credential wraps. A failed or interrupted derivation keeps that count;
+a successful current authentication resets it durably. Preflight refusals do not
+admit a guess, and reopening failure after correct authentication adds no penalty.
+A new document settles an interrupted admission into its full delay; an old
+owner's completion cannot reset it. The count survives paid waits. One-time
+adoption preserves the surviving web count and native pending delay, but cannot
+reconstruct counts an older build already lost. Local storage remains only a
+display mirror on Android. Unreadable metadata asks the person to
 reopen the app so boot can check the current access mode. Busy and error feedback
 use the catalogue and the existing live regions.
 

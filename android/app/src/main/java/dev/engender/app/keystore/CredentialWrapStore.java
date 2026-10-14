@@ -22,11 +22,20 @@ public final class CredentialWrapStore {
     private final JournalKeystore.DirectorySync directorySync;
 
     public CredentialWrapStore(Context context) {
-        this(context, CredentialWrapStore::syncDirectory);
+        this(context, FILENAME, CredentialWrapStore::syncDirectory);
     }
 
     CredentialWrapStore(Context context, JournalKeystore.DirectorySync directorySync) {
-        file = new File(context.getFilesDir(), FILENAME);
+        this(context, FILENAME, directorySync);
+    }
+
+    /** PIN accounting uses the same durable publication boundary, a separate file. */
+    public static CredentialWrapStore pinAttempts(Context context) {
+        return new CredentialWrapStore(context, "pin-attempts.json", CredentialWrapStore::syncDirectory);
+    }
+
+    private CredentialWrapStore(Context context, String filename, JournalKeystore.DirectorySync directorySync) {
+        file = new File(context.getFilesDir(), filename);
         this.directorySync = directorySync;
     }
 

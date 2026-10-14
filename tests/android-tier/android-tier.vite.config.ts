@@ -27,6 +27,7 @@ const ASSETS = 'android/app/src/androidTest/assets';
 const PROBES = {
   ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
   'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
+  'pin-count': { root: 'pin-count', outDir: `${ASSETS}/pin-count-probe` },
   /** Ticket 11: the shared journal contract suite over the native driver. */
   'auto-export': { root: 'auto-export', outDir: `${ASSETS}/auto-export-probe` },
   contract: { root: '.', outDir: `${ASSETS}/probe` },
@@ -55,7 +56,7 @@ export default defineConfig({
       '$app/navigation': join(repo, 'tests/browser-tier/app-navigation-stub.ts')
     }
   },
-  plugins: (name === 'auto-export' || name === 'archive-recovery') ? [svelte({ configFile: false })] : [],
+  plugins: (name === 'auto-export' || name === 'archive-recovery' || name === 'pin-count') ? [svelte({ configFile: false })] : [],
   define: {
     __DEMO__: JSON.stringify(false),
     __APP_VERSION__: JSON.stringify('0.0.0-archive-recovery')
