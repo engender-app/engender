@@ -46,6 +46,7 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
   const driver = makeNodeSqliteDb(path);
   try {
     await runMigrations(driver, noopFileOps(), chain);
+    assert.equal(await driver.getUserVersion(), Math.max(...chain.map((migration) => migration.version)));
     for (const [table, expected] of Object.entries(counts.sqliteTables)) {
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
       assert.equal(row.n, expected, `released SQLite table ${table}`);
