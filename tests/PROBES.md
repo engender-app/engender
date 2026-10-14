@@ -575,3 +575,10 @@ read. Held authoritative reads exercise lock, newer attachment and a later
 same-value language write. `--publication-only` isolates those publication
 checks and durable Settings language switches.
 The runner closes its own server and browsers and removes every profile.
+
+`src/lib/data/journal/archive-revisit-merge.test.ts` uses real SQLite and
+encrypted Archives to cover dismissing and setting a revisit again, and two
+devices choosing revisits for the same entry. Merge preserves the destination
+row while restoring unrelated entries and media. Duplicate incoming revisit
+owners fail verification and both restore modes before transaction admission
+or file-store access. Healthy distinct owners round-trip in both modes.

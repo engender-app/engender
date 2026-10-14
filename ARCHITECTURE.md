@@ -551,8 +551,9 @@ all `ArchiveJournal` sections and fields at compile time; a new wire field needs
 a validator. Flat descriptors supply their existing natural identities and
 absent-field defaults. Legacy procedure consults are validated before becoming
 appointments. Malformed rows raise `CorruptArchiveError` in both restore modes
-and the backup verification drill. Relational and domain constraints remain
-inside the database transaction.
+and the backup verification drill. Two revisits for one entry are refused here
+before restore can choose between them. Other relational and domain constraints
+remain inside the database transaction.
 
 [journal/fileOwnership.ts](src/lib/data/journal/fileOwnership.ts) supplies one
 ownership rule for Archive reads, cleanup and restore admission. Verification,
@@ -572,6 +573,10 @@ applier filters existing uuids before the shared flat-table applier checks drug
 names. Both checks run inside the restore transaction and use the same column
 descriptor and defaults as Archive reads and row validation. Replace clears
 stock before applying the Archive's counts.
+
+Each entry has at most one revisit. Merge keeps the destination's revisit when
+an older Archive or another device carries a different revisit uuid for that
+entry. Replace installs the Archive's revisit after clearing the old rows.
 
 Bundled roadmap goals keep status and visibility separately during Merge. A
 local unchecked row records only visibility, so an incoming status fills it
