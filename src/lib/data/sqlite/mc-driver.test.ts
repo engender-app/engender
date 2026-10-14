@@ -410,3 +410,103 @@ describe('locking a stalled web database', () => {
     });
   }
 });
+
+it('retained pagehide waits for an admitted transaction before retiring its worker', async () => {
+  const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+  const [worker] = FakeWorker.made;
+  let reached!: () => void;
+  let finish!: () => void;
+  const entered = new Promise<void>(resolve => { reached = resolve; });
+  const held = new Promise<void>(resolve => { finish = resolve; });
+  const saving = driver.transaction(async scope => {
+    await scope.exec('INSERT INTO entry VALUES (1)');
+    reached();
+    await held;
+    await scope.exec('INSERT INTO entry VALUES (2)');
+    return 'saved';
+  });
+  const result = saving.then(value => ({ value }), error => ({ error }));
+  await entered;
+  const released = releaseOnPageHide(true);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(worker.terminated).toBe(false);
+    expect(worker.posted.some(message => message.op === 'close')).toBe(false);
+    const replacement = createEncryptedWebSqlite('journal.sqlite3', key);
+    const next = FakeWorker.made.at(-1)!;
+    expect(next.posted).toEqual([]);
+    finish();
+    expect(await result).toEqual({ value: 'saved' });
+    await released;
+    const operations = worker.posted.map(message => message.args.sql ?? message.op);
+    expect(operations.indexOf('COMMIT')).toBeLessThan(operations.indexOf('close'));
+    expect(worker.terminated).toBe(true);
+    await replacement.driver.exec('SELECT 1');
+    await replacement.driver.close();
+  } finally {
+    finish();
+    await result;
+    await released;
+  }
+});
+
+for (const stalled of ['transaction', 'query', 'close']) {
+  it(`retained pagehide release settles after bounded session disposal (${stalled})`, async () => {
+    vi.useFakeTimers();
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let finish!: () => void;
+    const held = new Promise<void>(resolve => { finish = resolve; });
+    const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+    const [worker] = FakeWorker.made;
+    const session = journalSession<Uint8Array, SqliteDriver>({
+      async suspend() {},
+      release() {}, prewarm() {},
+      async open(_key, _current, own) {
+        const fresh = createEncryptedWebSqlite('journal.sqlite3', key).driver;
+        own(fresh);
+        return fresh;
+      }
+    }, { suspendLimitMs: 20 });
+    session.adopt(key, driver);
+    let waiting: Promise<unknown> = Promise.resolve();
+    try {
+      if (stalled === 'transaction') {
+        let reached!: () => void;
+        const entered = new Promise<void>(resolve => { reached = resolve; });
+        waiting = session.connection.run(connection => connection.transaction(async scope => {
+          await scope.exec('INSERT INTO entry VALUES (1)');
+          reached();
+          await held;
+          await scope.exec('INSERT INTO entry VALUES (2)');
+        })).catch(error => error);
+        await entered;
+      } else {
+        FakeWorker.silent = true;
+        if (stalled === 'query') waiting = session.connection.run(connection => connection.exec('SELECT 1')).catch(error => error);
+      }
+      const released = releaseOnPageHide(true);
+      const suspended = session.suspendForNavigation(true);
+      expect(session.key.current).toBeNull();
+      expect(session.connection.current).toBeNull();
+      await vi.advanceTimersByTimeAsync(25);
+      await Promise.all([released, suspended]);
+      expect(worker.terminated).toBe(true);
+      if (stalled !== 'close') expect((await waiting as Error).message).toMatch(/disposed|closed/);
+      const sent = worker.posted.length;
+      FakeWorker.silent = false;
+      await session.resumeAfterNavigation(() => {});
+      await session.connection.run(connection => connection.exec('SELECT 1'));
+      expect(FakeWorker.made).toHaveLength(2);
+      finish();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(worker.posted, 'late work cannot reach the retired worker').toHaveLength(sent);
+      expect(session.key.current).toBe(key);
+      await session.lock();
+    } finally {
+      finish();
+      FakeWorker.silent = false;
+      warned.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+}

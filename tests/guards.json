@@ -245,7 +245,7 @@
   {
     "name": "bfcache-journal-check",
     "tier": "built",
-    "holds": "real BFCache Back and Forward restore journal reads and writes, including another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"
+    "holds": "real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"
   },
   {
     "name": "date-picker-check",

@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Browser history navigation waits for an admitted journal transaction before
+retiring its worker. Saves can commit before returning through Back or Forward;
+stalled workers still reach the existing disposal limit.
+
 Repeated browser Back and Forward navigation can resume the journal even when
 an earlier return was cancelled while reopening. Explicit locks still require
 fresh authentication.
