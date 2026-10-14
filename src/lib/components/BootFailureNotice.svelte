@@ -97,19 +97,26 @@
          and this puts it back. Offered only when there is one, so the button
          never lies about having something to restore. -->
     {#if bootState.recoverable}
-      <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
-      <!-- The button keeps naming its action while it is disabled and the
-           bar under it says what is happening, rather than the two of them
-           saying the same sentence twice. -->
-      <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
-        <span>{m.boot_restore_action()}</span>
-      </button>
-      {#await import('$lib/components/Progress.svelte') then { default: Progress }}
-        <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
-      {/await}
-      {#if restoreFailed}
-        <p style="margin-top:var(--space-2)" data-restore-failed transition:disclose>{m.boot_restore_failed()}</p>
-      {/if}
+      <!-- Opens its own height rather than landing at full size: the answer
+           comes after the failure is already on screen (the disk is asked
+           once the boot has failed), so without this the offer appeared in
+           one frame and pushed "Try opening again" down under the finger
+           (ui 33). -->
+      <div data-restore-group transition:disclose>
+        <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
+        <!-- The button keeps naming its action while it is disabled and the
+             bar under it says what is happening, rather than the two of them
+             saying the same sentence twice. -->
+        <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
+          <span>{m.boot_restore_action()}</span>
+        </button>
+        {#await import('$lib/components/Progress.svelte') then { default: Progress }}
+          <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
+        {/await}
+        {#if restoreFailed}
+          <p style="margin-top:var(--space-2)" data-restore-failed transition:disclose>{m.boot_restore_failed()}</p>
+        {/if}
+      </div>
     {/if}
     {#if failure !== 'below-baseline'}
       <div style="margin-top:var(--space-2)">
