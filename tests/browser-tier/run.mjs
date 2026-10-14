@@ -216,6 +216,15 @@ await block('interrupted encrypted writes recover their hot journal', 7, async (
   check(!file(recovery.recovered, `${path}-journal`) && file(recovery.before, path)?.bytes === file(recovery.recovered, path)?.bytes, 'SQLite removes the recovered journal and restores the database size');
 });
 
+await block('covered weekly dose slots agree across rendered screens', 2, async () => {
+  for (const dose of ['yesterday', 'today']) {
+    const r = await load(`/dose-slot-screens.html?dose=${dose}`, 'dose-slot-screens');
+    if (r.error) throw new Error(r.error);
+    if (r.results?.length !== 3 || r.next !== r.today + 7) throw new Error(JSON.stringify(r));
+    ok(`${dose} patch dose: Today panel/pin, Care and Transition state the next uncovered weekly slot`);
+  }
+});
+
 // --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
 await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');

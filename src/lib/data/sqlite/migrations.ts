@@ -25,5 +25,20 @@ import { BASELINE_SCHEMA } from './schema.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
-  { version: 89, sql: 'ALTER TABLE roadmap_check ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;' }
+  { version: 89, sql: 'ALTER TABLE roadmap_check ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;' },
+  { version: 90, sql: `
+ALTER TABLE dose_event ADD COLUMN auto_log_episode_uuid TEXT;
+ALTER TABLE dose_event ADD COLUMN auto_log_epoch_day INTEGER;
+ALTER TABLE dose_event ADD COLUMN auto_log_index INTEGER CHECK (
+  (auto_log_episode_uuid IS NULL AND auto_log_epoch_day IS NULL AND auto_log_index IS NULL)
+  OR (source = 'schedule' AND typeof(auto_log_episode_uuid) = 'text'
+      AND length(trim(auto_log_episode_uuid)) > 0 AND typeof(auto_log_epoch_day) = 'integer'
+      AND typeof(auto_log_index) = 'integer' AND auto_log_index >= 0)
+);
+CREATE INDEX idx_dose_event_auto_log_day ON dose_event(auto_log_epoch_day)
+  WHERE auto_log_epoch_day IS NOT NULL;
+CREATE UNIQUE INDEX idx_dose_event_auto_log_slot
+  ON dose_event(auto_log_episode_uuid, auto_log_epoch_day, auto_log_index)
+  WHERE auto_log_episode_uuid IS NOT NULL;
+` }
 ];

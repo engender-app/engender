@@ -51,14 +51,14 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
     /* The whole log, not the window (ticket 10): a rotation site's last use
        routinely predates the window, and "never used" has to mean never. The
        window and whether anything precedes it are cut from the same rows. */
-    journal.doses.getDoses(0, question.toEpochDay ?? today),
+    journal.doses.getDosesForSlots(0, question.toEpochDay ?? today),
     journal.doses.getSchedules(),
     journal.doses.getPauses(),
     deepLinkedDoseId ? journal.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
   ]);
   const windowStart = startOfDayTimestamp(fromEpochDay);
-  const doses = allDoses.filter((dose) => dose.timestamp >= windowStart);
-  const comparisonDoses = doses.filter((dose) => dose.timestamp < startOfDayTimestamp(today + 1));
+  const doses = allDoses.filter((dose) => dose.timestamp >= windowStart && dose.timestamp < startOfDayTimestamp((question.toEpochDay ?? today) + 1));
+  const comparisonDoses = allDoses;
 
   /* Every episode active today (phase 5 ticket 38): usually one, but a
      concurrent second drug's makes it two. An episode is in effect for whole

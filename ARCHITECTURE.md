@@ -336,7 +336,7 @@ erDiagram
   lab_result
 ```
 
-`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
+`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). Since schema 90, new automatic rows retain their episode UUID, slot day and position within that day. This provenance keeps one automatic row attached to one slot through a device zone change; the logged timestamp stays unchanged. Person-logged rows still resolve by timestamp. Existing rows receive no inferred identity, and existing duplicates are not merged or deleted. `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
 
 **Body, transition and the rest**
 
@@ -921,7 +921,7 @@ A returning visit with a full fixture reaches ready in about 0.6 s at 4x CPU thr
 
 **No layout jump on arrival.** Home's blocks answer out of many reads. [data/homeReserve.ts](src/lib/data/homeReserve.ts) remembers how tall each block was last time, and `kit/ReadReserve.svelte` holds that room until the reads agree. [tests/tile-arrival-timing.mjs](tests/tile-arrival-timing.mjs) and [tests/return-floor-check.mjs](tests/return-floor-check.mjs) (`npm run test:return-floor`) guard arrival timing.
 
-**Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](src/lib/data/sqlite/boot.ts)). Auto-logging checks expected days with indexed timestamp probes in batches, then reads dose events only for underfilled days. It still checks historical slots on every pass so deleting an old automatic dose can recreate it; no stored cursor or derived checkpoint skips that history.
+**Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](src/lib/data/sqlite/boot.ts)). Auto-logging checks expected days with indexed timestamp and slot-identity probes in batches, then reads dose events only for underfilled days. Today, Care, the dose log and the Transition Care row use the dose owner's pairing, including its tolerance, episode boundaries and pauses. Calendar day-ahead marks retain their raw expected-day meaning. It still checks historical slots on every pass so deleting an old automatic dose can recreate it; no stored cursor or derived checkpoint skips that history.
 
 **Long lists and media are rendered lazily.**
 - Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069). A log that should grow only on request passes `autoGrow={false}`: the dose log does, so its day headings and older batches arrive through its show-more control, which discloses the new rows and collapses itself with its spacing once nothing is left.

@@ -21,6 +21,7 @@
    precedent). */
 
 import { adherence, expectedSlots, slotToleranceDays, type DoseSlot } from './doseSchedule';
+import { pairDoseSchedule } from './journal/doses';
 import { epochDayFromTimestamp } from './epochDay';
 import { resolveCurveDrug } from './hormoneDrug';
 import { attributeDose, attributeDrug, sameDrug } from './regimenEpisode';
@@ -263,7 +264,7 @@ export function nextExpectedSlot(
   todayEpochDay: number
 ): DoseSlot | null {
   const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS);
-  return adherence(slots, doses, pauses, slotToleranceDays(schedule)).rows.find((row) => row.dose === null)?.slot ?? null;
+  return adherence(slots, doses, pauses, slotToleranceDays(schedule), schedule.episodeId).rows.find((row) => row.dose === null)?.slot ?? null;
 }
 
 type MarkEntry = { kind: SpineMarkKind; epochDay: number; recordId?: string | null };
@@ -413,10 +414,9 @@ export function railEpisodes(activeEpisodes: readonly RegimenEpisode[]): Regimen
     counts here, which is the fix itself - the whole-log scan this
     replaced could not tell the two apart.
 
-    Next reads by this exact episode's own id (attributeDose), unchanged
-    from before this ticket: only a slot this episode's own rhythm expects,
-    from today, is its "next" one. `doses` is the whole log, unbounded by
-    date - both halves do their own scoping over it. */
+    Next reads by this exact episode's own id, using the dose owner's
+    tolerance-aware pairing. `doses` covers the forward reach and tolerance
+    on either side; the last-dose fact only reads logged days through today. */
 export function scheduleDoseFacts(
   episode: RegimenEpisode,
   episodes: readonly RegimenEpisode[],
@@ -429,17 +429,13 @@ export function scheduleDoseFacts(
     const { drug } = attributeDrug(episodes, dose);
     return drug !== null && sameDrug(drug, episode.drug);
   });
-  const lastDose = lastLoggedDose(ownDoses);
+  const lastDose = lastLoggedDose(ownDoses.filter((dose) => epochDayFromTimestamp(dose.timestamp) <= todayEpochDay));
   const lastDoseEpochDay = lastDose ? epochDayFromTimestamp(lastDose.timestamp) : null;
   const lastDoseId = lastDose?.id ?? null;
 
   if (!schedule) return { lastDoseEpochDay, lastDoseId, nextDoseEpochDay: null };
 
-  const dosesFromToday = doses.filter(
-    (dose) =>
-      epochDayFromTimestamp(dose.timestamp) >= todayEpochDay &&
-      attributeDose(episodes, dose).episode?.id === episode.id
-  );
-  const nextSlot = nextExpectedSlot(schedule, episode.startEpochDay, dosesFromToday, pauses, todayEpochDay);
+  const nextSlot = pairDoseSchedule(episodes, doses, schedule, pauses, todayEpochDay,
+    todayEpochDay + SPINE_FORWARD_DAYS).rows.find((row) => row.dose === null)?.slot ?? null;
   return { lastDoseEpochDay, lastDoseId, nextDoseEpochDay: nextSlot?.epochDay ?? null };
 }

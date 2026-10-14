@@ -204,7 +204,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 89);
+  assert.equal(db.getUserVersion(), 90);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1113,4 +1113,26 @@ test('visibility migration preserves existing checked and not-my-path goals as v
     { goal_key: 'checked', status: 'checked', hidden: 0 },
     { goal_key: 'skipped', status: 'not-my-path', hidden: 0 }
   ]);
+});
+
+test('released schema 88 upgrades through 89/90 without rewriting old duplicated dose rows', async () => {
+  const db = makeNodeSqliteDb();
+  const fileOps = noopFileOps();
+  await runMigrations(db, fileOps, migrations.filter((migration) => migration.version <= 88));
+  for (const id of ['legacy-automatic-1', 'legacy-automatic-2']) {
+    await db.run(`INSERT INTO dose_event(uuid,timestamp,route,dose,dose_unit,source,status,updated_at)
+      VALUES (?,123456789,'oral',2,'mg','schedule','taken',42)`, [id]);
+  }
+  await runMigrations(db, fileOps, migrations);
+  assert.equal(db.getUserVersion(), 90);
+  const rows = await db.query(`SELECT uuid,timestamp,source,auto_log_episode_uuid,
+    auto_log_epoch_day,auto_log_index FROM dose_event ORDER BY uuid`);
+  assert.deepEqual(rows, ['legacy-automatic-1', 'legacy-automatic-2'].map((uuid) => ({
+    uuid, timestamp: 123456789, source: 'schedule', auto_log_episode_uuid: null,
+    auto_log_epoch_day: null, auto_log_index: null
+  })));
+  const plan = await db.query<{ detail: string }>(`EXPLAIN QUERY PLAN SELECT * FROM dose_event
+    WHERE (timestamp >= 1 AND timestamp < 10) OR (auto_log_epoch_day >= 1 AND auto_log_epoch_day <= 10)`);
+  assert.ok(plan.some((row) => row.detail.includes('idx_dose_event_timestamp')));
+  assert.ok(plan.some((row) => row.detail.includes('idx_dose_event_auto_log_day')));
 });

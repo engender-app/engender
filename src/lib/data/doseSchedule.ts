@@ -359,7 +359,11 @@ export function slotToleranceDays(schedule: Pick<DoseSchedule, 'recurrence'>): n
   return Number.isFinite(gap) && gap >= 1 ? Math.ceil(gap / 2) - 1 : 0;
 }
 
-/** Pairs doses to slots by position within their day: a day's doses, oldest
+/** Automatic rows first fill their recorded episode/day/position. Their
+    timestamps may display on another day after travel, so they never fall
+    back to timestamp pairing. `episodeId` scopes that recorded identity.
+
+    Other doses pair to slots by position within their day: a day's doses, oldest
     first, fill that day's slots in order. Positional rather than nearest-time
     because the schedule holds no times of day to be near - "twice daily" says
     two, not 8am and 8pm.
@@ -374,30 +378,56 @@ export function slotToleranceDays(schedule: Pick<DoseSchedule, 'recurrence'>): n
     `slots` - attributeDose is how a caller does that (regimenEpisode.ts).
     Handing in a whole window's worth instead puts every earlier episode's
     doses in `unmatched`, where they read as extras or as taken during a pause,
-    and neither is true. This function cannot check it: it is given slots and
-    doses, and knows nothing about episodes. */
+    and neither is true. This function can check an automatic row's identity, but timestamp-based
+    attribution still belongs to the caller. */
 export function adherence(
   slots: readonly DoseSlot[],
   doses: readonly DoseEvent[],
   pauses: readonly DosePause[],
-  toleranceDays = 0
+  toleranceDays = 0,
+  episodeId?: string
 ): Adherence {
   const expected = slots.filter((slot) => !pauses.some((pause) => pauseCoversDay(pause, slot.epochDay)));
 
-  const byDay = new Map<number, DoseEvent[]>();
-  for (const dose of [...doses].sort((a, b) => a.timestamp - b.timestamp)) {
-    const day = epochDayFromTimestamp(dose.timestamp);
-    const onDay = byDay.get(day);
-    if (onDay) onDay.push(dose);
-    else byDay.set(day, [dose]);
-  }
-
+  const ordered = [...doses].sort((a, b) => a.timestamp - b.timestamp);
   const matched = new Set<DoseEvent>();
-  const rows: AdherenceRow[] = expected.map((slot) => {
-    const dose = byDay.get(slot.epochDay)?.[slot.indexInDay] ?? null;
-    if (dose) matched.add(dose);
-    return { slot, dose };
-  });
+  const rows: AdherenceRow[] = expected.map((slot) => ({ slot, dose: null }));
+  const rowsByDay = new Map<number, AdherenceRow[]>();
+  for (const row of rows) {
+    const onDay = rowsByDay.get(row.slot.epochDay) ?? [];
+    onDay.push(row);
+    rowsByDay.set(row.slot.epochDay, onDay);
+  }
+  // A recorded automatic slot wins before timestamp-based pairing. Its
+  // timestamp may now display on another day; it cannot fill another slot.
+  for (const dose of ordered) {
+    const identity = dose.autoLogSlot;
+    if (!identity || dose.source !== 'schedule' || (episodeId !== undefined && identity.episodeId !== episodeId)) continue;
+    const row = rowsByDay.get(identity.epochDay)?.find(({ slot, dose: occupant }) =>
+      occupant === null && slot.indexInDay === identity.indexInDay);
+    if (row) {
+      row.dose = dose;
+      matched.add(dose);
+    }
+  }
+  const byDay = new Map<number, DoseEvent[]>();
+  for (const dose of ordered) {
+    if (dose.autoLogSlot) continue;
+    const day = epochDayFromTimestamp(dose.timestamp);
+    const onDay = byDay.get(day) ?? [];
+    onDay.push(dose);
+    byDay.set(day, onDay);
+  }
+  for (const [day, onDay] of byDay) {
+    for (const dose of onDay) {
+      if (matched.has(dose)) continue;
+      const row = rowsByDay.get(day)?.find((row) => row.dose === null);
+      if (row) {
+        row.dose = dose;
+        matched.add(dose);
+      }
+    }
+  }
 
   if (toleranceDays > 0) {
     for (const [day, onDay] of byDay) {
@@ -420,7 +450,7 @@ export function adherence(
     }
   }
 
-  const unmatched = [...byDay.values()].flat().filter((dose) => !matched.has(dose));
+  const unmatched = ordered.filter((dose) => !matched.has(dose));
   return { rows, unmatched };
 }
 
@@ -484,7 +514,7 @@ export function nearestOpenSlotDistance(
   const period = schedule.recurrence.kind === 'everyNDays' ? Math.max(schedule.recurrence.everyNDays, 1) : 7;
   const radius = Math.min(period, maxRadiusDays);
   const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay - radius, todayEpochDay + radius);
-  const { rows } = adherence(slots, doses, pauses, slotToleranceDays(schedule));
+  const { rows } = adherence(slots, doses, pauses, slotToleranceDays(schedule), schedule.episodeId);
   const distances = rows.filter((row) => row.dose === null).map((row) => Math.abs(row.slot.epochDay - todayEpochDay));
   return distances.length > 0 ? Math.min(...distances) : null;
 }
@@ -594,7 +624,7 @@ export function autoLogSlots(
   if (from === null) return [];
 
   const slots = expectedSlots(schedule, anchorEpochDay, from, todayEpochDay - 1);
-  const { rows } = adherence(slots, doses, pauses, slotToleranceDays(schedule));
+  const { rows } = adherence(slots, doses, pauses, slotToleranceDays(schedule), schedule.episodeId);
   return rows
     .filter((row) => row.dose === null)
     .map((row) => ({ slot: row.slot, timestamp: autoLogTimestamp(row.slot, schedule.dosesPerDay) }));

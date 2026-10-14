@@ -170,7 +170,7 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       latestFeltSenseByTryoutId: new Map(),
       schedules: [schedule],
       dosePauses: [],
-      todayDoses: [],
+      scheduleDoses: [],
       yesterdayDoses: [],
       latestBenchmarkEpochDay: TODAY - 20,
       journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
@@ -454,8 +454,8 @@ describe('what each tile says', () => {
   });
 
   it('the dose panel names the next day once today has been logged', () => {
-    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['todayDoses'];
-    const tile = tileNamed('dose-panel', { reads: { todayDoses: logged } })!;
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    const tile = tileNamed('dose-panel', { reads: { scheduleDoses: logged } })!;
     expect(tile.note).toBe(m.tile_dose_next({ date: `weekday:${TODAY + 3}` }));
   });
 
