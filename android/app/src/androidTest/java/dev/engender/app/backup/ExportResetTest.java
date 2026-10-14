@@ -36,12 +36,21 @@ public class ExportResetTest extends BackupDeliveryTestSupport {
             WebViewProbe probe = new WebViewProbe(scenario, 30);
             probe.awaitTrue("!!window.backupProbe && window.backupProbe.ready");
             String page = probe.evaluate("window.backupProbe.pageId");
+            int process = android.os.Process.myPid();
             probe.evaluate("window.backupProbe.resetDuringTransfer(" + duringDerivation + ", " + scheduler + ")");
             try {
                 probe.awaitTrue("document.readyState === 'complete' && (!window.backupProbe || (window.backupProbe.ready && window.backupProbe.pageId !== " + page + "))");
             } catch (AssertionError failed) {
-                throw new AssertionError(failed.getMessage() + "; state=" + probe.evaluate("JSON.stringify(window.backupProbe)"), failed);
+                boolean replacementReady = "the WebView stopped answering".equals(failed.getMessage()) && "true".equals(
+                    probe.evaluate("document.readyState === 'complete' && !!window.backupProbe && window.backupProbe.ready && window.backupProbe.pageId !== " + page));
+                if (!replacementReady) {
+                    throw new AssertionError(failed.getMessage() + "; state=" + probe.evaluate("JSON.stringify(window.backupProbe)"), failed);
+                }
             }
+            assertEquals("reset must retain the native process", process, android.os.Process.myPid());
+            assertFalse("reset must erase the old journal", app.getDatabasePath("engender.sqlite3").exists());
+            String credential = new dev.engender.app.keystore.CredentialWrapStore(app).read();
+            assertTrue("reset must erase the old credential wrap", credential == null || "null".equals(credential));
             scenario.onActivity(activity -> {
                 AutoExportPlugin plugin = (AutoExportPlugin) activity.getBridge().getPlugin("AutoExport").getInstance();
                 assertSame("reload must retain the native plugin", original[0], plugin);
