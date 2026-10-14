@@ -50,7 +50,8 @@ export async function stopOwnedEmulator(child, name, query) {
   catch { /* A replaced serial must never receive a shutdown command. */ }
   if (alive(child)) child.kill('SIGTERM');
   let timer;
-  await Promise.race([closed, new Promise((resolve) => { timer = setTimeout(resolve, 10_000); })]);
+  // The native emulator allows 20 seconds for graceful shutdown.
+  await Promise.race([closed, new Promise((resolve) => { timer = setTimeout(resolve, 30_000); })]);
   clearTimeout(timer);
   if (alive(child)) {
     child.kill('SIGKILL');
