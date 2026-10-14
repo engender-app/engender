@@ -1,5 +1,12 @@
 # The probes in tests/*.mjs
 
+Archive validation tests cover single-read export length changes, malformed
+payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
+positive header fields and exact JSON/chunk ceilings (`container.test.ts`),
+and v1 preset migration without a presets section (`payload.test.ts`). The
+existing `kdf-cost-cap.test.ts` and `archive-row-validation.test.ts` keep the
+KDF refusal and row identity proofs with their production owners.
+
 `auto-export-scheduler.test.ts` reports one synthetic native backup failure
 across ticks and a fresh scheduler module with the same stored preferences.
 It checks quiet-hours holds, notification refusal, disabled notices, clock
