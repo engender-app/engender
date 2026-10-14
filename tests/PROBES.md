@@ -198,11 +198,12 @@ checks encrypted persistence after reload, and preserves failed-write draft
 recovery followed by an explicit update retry. Fixture and platform limits are
 in [update-handover/README.md](update-handover/README.md).
 
-`credential-change-check` (`tests/credential-change-check.mjs`) runs with
-`npm run test:browser`. It holds credential publication across a real Settings
-lock/unlock, rejects overlapping changes and resets from both pages, then
-restarts and verifies the original entries and encrypted attachment bytes.
-The dev app supplies synthetic demo data; credential storage and UI paths are real.
+`credential-change-check` (`tests/credential-change-check.mjs`) runs with `npm
+run test:browser` and in its own required CI browser job. It holds credential
+publication across a real Settings lock/unlock, rejects overlapping changes and
+resets from both pages, then restarts and verifies the original entries and
+encrypted attachment bytes. The dev app supplies synthetic demo data; credential
+storage and UI paths are real.
 
 `pin-credential-contention` (`tests/pin-credential-contention.mjs`) mounts the
 real cold-start, session and current-PIN Settings gates in English and Polish.
@@ -265,11 +266,12 @@ set through `aapt2`; source declarations alone do not satisfy that gate.
 
 Run `ulimit -c 0` before starting this runner. Build the `auto-export` probe with `ANDROID_TIER_PROBE=auto-export npx vite build --config tests/android-tier/android-tier.vite.config.ts` after the production build and Capacitor sync. Supply `BACKUP_POWER_CUT_AVD`, `BACKUP_POWER_CUT_PACKAGE`, `BACKUP_POWER_CUT_APK` and `BACKUP_POWER_CUT_TEST_APK` for an owned temporary API-35 AVD and an isolated `dev.engender.app.test.*` package. `--setup-only` measures the selected system folder's sync boundary; `--skip-faults` skips the separately runnable native fault test. Use `BACKUP_POWER_CUT_PATHS` and `BACKUP_POWER_CUT_SEEDS` to replay selected cases. The proof covers the tested emulator filesystem and provider, not cloud uploads or every physical storage device. Remove the test packages and AVD after delivery.
 
-`stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with
-`npm run test:browser`. It withholds real schema, preference and reference-read replies
-during unlock, then verifies bounded worker disposal, a usable retry without
-reload, preserved journal content and harmless late replies. Visibility events
-are synthetic; the application, encrypted worker and OPFS are real.
+`stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with `npm
+run test:browser` and in its own required CI browser job. It withholds real
+schema, preference and reference-read replies during unlock, then verifies
+bounded worker disposal, a usable retry without reload, preserved journal
+content and harmless late replies. Visibility events are synthetic; the
+application, encrypted worker and OPFS are real.
 
 `restore-commit-check` (`tests/restore-commit-check.mjs`) runs with
 `npm run test:browser` and in its own CI browser job. It holds a successful

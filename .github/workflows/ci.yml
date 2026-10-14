@@ -159,6 +159,10 @@ jobs:
             entry: tests/browser-tier/run.mjs
           - name: update-handover
             entry: tests/update-handover-check.mjs
+          - name: credential-change
+            entry: tests/credential-change-check.mjs
+          - name: stalled-reopen
+            entry: tests/stalled-reopen-check.mjs
           - name: restore-commit
             entry: tests/restore-commit-check.mjs
           - name: walkthrough-journal
