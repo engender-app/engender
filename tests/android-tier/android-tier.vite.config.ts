@@ -26,6 +26,7 @@ import { join } from 'node:path';
 const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
+  'key-gate': { root: 'key-gate', outDir: `${ASSETS}/key-gate-probe` },
   'kdf-budget': { root: 'kdf-budget', outDir: `${ASSETS}/kdf-budget-probe` },
   ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
   'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
@@ -58,7 +59,7 @@ export default defineConfig({
       '$app/navigation': join(repo, 'tests/browser-tier/app-navigation-stub.ts')
     }
   },
-  plugins: (name === 'auto-export' || name === 'archive-recovery' || name === 'pin-count') ? [svelte({ configFile: false })] : [],
+  plugins: ['auto-export', 'archive-recovery', 'pin-count', 'key-gate'].includes(name) ? [svelte({ configFile: false })] : [],
   define: {
     __DEMO__: JSON.stringify(false),
     __APP_VERSION__: JSON.stringify('0.0.0-archive-recovery')
