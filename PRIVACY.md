@@ -143,8 +143,9 @@ The app opts out of WebView diagnostic uploads to Google.
 Google Safe Browsing stays at WebView's enabled default. Its checks can use
 Google Play services' own network access.
 
-Android keeps its existing keyboard suggestions. What your keyboard learns or
-stores depends on the keyboard and its settings.
+Android always asks the keyboard not to learn words typed in the app, using
+`IME_FLAG_NO_PERSONALIZED_LEARNING`. The keyboard can ignore this request.
+It does not remove words the keyboard learned earlier.
 Your keyboard and browser can make their own network requests
 independently of engender.
 

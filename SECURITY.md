@@ -38,8 +38,9 @@ boot. Cleanup checks the current credential owner before removing anything.
 
 Web journal text fields request `autocomplete="off"` to keep their contents out
 of browser autofill and session restoration. This does not erase copies left by
-older versions. Android retains its existing keyboard behavior; the keyboard
-and its settings control what it learns or stores.
+older versions. Android always sends `IME_FLAG_NO_PERSONALIZED_LEARNING` for
+text input, asking the keyboard not to learn. This is advisory: the keyboard
+controls its own storage, and previously learned words are not removed.
 
 An Archive header is checked before its password starts key derivation. It
 can request at most 64 MiB of Argon2id memory, six iterations, one lane and a
