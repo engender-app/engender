@@ -428,6 +428,7 @@ To run one on its own, use
 | `blind-edge-padding-check` | a padding-only change to a field still moves `--blind-edge` |
 | `dilation-schedule-action` | the dilation schedule's edit action, keyboard editor and its empty and deleted states |
 | `letters-ready-jump` | the ready-letters count and the jump above the waiting list |
+| `deep-link-consumption-check` | ready-letter and lab links apply once; folding, another analyte, URL replacement and return context survive |
 | `body-map-selected-context` | the figure and the cluster select one region, and each case gets an honest sentence |
 | `body-map-figure-yank` | nothing on the body map's figure is painted at its destination first or in neither place |
 | `chart-tick-readout` | what a chart's tick says under a mouse and a finger, across grains, languages and widths |

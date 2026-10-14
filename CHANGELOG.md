@@ -12,6 +12,9 @@ Tryout reflections and recovery notes keep spaces while you type. Recovery
 notes also keep line breaks and can be cleared before saving. Surrounding
 whitespace is removed only when saving the draft.
 
+Letters opened from a link stay folded after closing. Saving a lab result
+after following a link keeps the selected analyte on screen.
+
 Measurement, lab result, wear duration and wear reminder fields keep a
 decimal point or a minus sign while it is being typed. Typed one key at a
 time, 72.5 had been saved as 572 and 0.5 as 50.

@@ -35,6 +35,7 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -163,8 +164,12 @@
     const readId = page.url.searchParams.get('read') ?? page.url.searchParams.get('id');
     if (!readId) return;
     const match = letters.find((l) => l.id === readId);
-    if (match && !isLetterSealed(match, today) && openId !== match.id) {
+    if (match && !isLetterSealed(match, today)) {
       openLetter(match);
+      const url = new URL(page.url);
+      url.searchParams.delete('read');
+      url.searchParams.delete('id');
+      void replaceRoute(url, { noScroll: true, keepFocus: true });
     }
   });
 

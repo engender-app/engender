@@ -18,6 +18,7 @@
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import TimePicker from '$lib/components/TimePicker.svelte';
@@ -73,8 +74,12 @@
      the unavailable state SourceRecordHandoff renders for every source
      link's target (phase 11 ticket 11). */
   let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
-  let deepLinkedLabQuery = liveQuery((j) =>
-    deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
+  let deepLinkedLabQuery = liveQuery(async (j) => {
+    const id = deepLinkedLabId;
+    return { id, result: id ? await j.labs.getResultById(id) : null };
+  });
+  let deepLinkedLab = $derived(
+    deepLinkedLabQuery.value?.id === deepLinkedLabId ? deepLinkedLabQuery.value.result : undefined
   );
 
   /* No hormone assumed: the screen opens on whatever the journal actually
@@ -95,16 +100,22 @@
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (deepLinkedLabQuery.value) {
-      analyte = deepLinkedLabQuery.value.analyte;
-      return;
-    }
-    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
+    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLab === undefined)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
 
+  function openLinkedLab() {
+    if (!deepLinkedLab) return;
+    analyte = deepLinkedLab.analyte;
+    if (page.url.searchParams.has('lab')) {
+      const url = new URL(page.url);
+      url.searchParams.delete('lab');
+      void replaceRoute(url, { noScroll: true, keepFocus: true });
+    }
+  }
+
   $effect(() => {
-    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
+    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLab) {
       scrollToHash();
     }
   });
@@ -472,8 +483,9 @@
        no longer there. -->
   <SourceRecordHandoff
     id={deepLinkedLabId}
-    ready={!deepLinkedLabQuery.loading}
-    found={deepLinkedLabQuery.value !== null}
+    ready={deepLinkedLab !== undefined}
+    found={deepLinkedLab !== null}
+    onOpen={openLinkedLab}
   />
 
   <ReadGate read={chartsRead} variant="block" count={1}>
