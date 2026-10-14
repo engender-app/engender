@@ -21,7 +21,7 @@
    the layout effect's trigger is the projected value, and the test reads
    that value directly at each step. */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -88,10 +88,27 @@ function launcher(initial: boolean) {
 }
 
 describe('the Settings disguise switch', () => {
+  const settings = readFileSync(root + 'src/routes/settings/+page.svelte', 'utf8');
+
   it('writes through the durable preference write onboarding uses, never a plain assignment', () => {
-    const settings = readFileSync(root + 'src/routes/settings/+page.svelte', 'utf8');
-    expect(settings).toMatch(/setPreferenceDurably\('disguise', /);
+    const handler = /label=\{m\.disguise_app_title\(\)\}\s*onChange=\{([\s\S]*?)\}\s*\/>/.exec(settings)?.[1] ?? '';
+    expect(handler).toMatch(/^\s*\(v\) => \{[\s\S]*void setPreferenceDurably\('disguise', v\);\s*\}\s*$/);
     expect(settings.match(/prefs\.disguise\s*=[^=]/g) ?? []).toHaveLength(0);
+  });
+
+  it('leaves the alias request to the projection, with no launcher call of its own', () => {
+    /* The ordering cases below hold only while the projection is the one
+       trigger. A launcher call made from anywhere else - Settings above
+       all - could run ahead of the write again and still pass them. */
+    const sources = (dir: string): string[] =>
+      readdirSync(root + dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory() ? sources(`${dir}/${entry.name}`) : [`${dir}/${entry.name}`]
+      );
+    const callers = sources('src')
+      .filter((file) => /\.(ts|svelte)$/.test(file) && !file.endsWith('.test.ts'))
+      .filter((file) => /\.setLauncherIdentity\(/.test(readFileSync(root + file, 'utf8')));
+    expect(callers).toEqual(['src/lib/android/platform-sync.ts']);
+    expect(settings).not.toContain('disguise/android-bridge');
   });
 });
 
