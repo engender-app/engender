@@ -39,6 +39,14 @@ describe('retained OCR', () => {
     expect(await retainedOcr(caches, 'engender-shell-current', new Request('https://journal.example/unrelated'), '')).toBeUndefined();
   });
 
+  test('reclaims a shell whose compatibility URLs already belong to the current shell', async () => {
+    const caches = store({ 'engender-shell-old': {
+      [legacy[0].path]: library, '/tesseract/generation/worker.js': 'immutable OCR', '/_app/immutable/chunks/other.js': 'old'
+    }, 'engender-shell-current': { [legacy[0].path]: library, '/tesseract/generation/worker.js': 'immutable OCR' } });
+    await retainPreviousOcr(caches, 'engender-shell-current', '');
+    expect(await caches.keys()).toEqual(['engender-shell-current']);
+  });
+
   test('does not keep changed bytes under the legacy URL', async () => {
     const caches = store({ 'engender-shell-old': { [legacy[0].path]: 'different library' } });
     await retainPreviousOcr(caches, 'engender-shell-current', '');

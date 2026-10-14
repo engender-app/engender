@@ -17,6 +17,10 @@ grants, even while the journal is closed. After permission is revoked, the next
 app launch or boot restores inexact alarms, including when launch stops at
 the journal gate.
 
+An open web page keeps its cached release assets when another page applies an
+update. Deferred screens and journal reopening continue offline; retained
+pages keep their drafts and pending saves until they choose to reload.
+
 Archive Merge restores a bundled goal's status when this device has only hidden
 it. The local hidden choice stays in place, and a locally recorded status still
 wins over the Archive's.
