@@ -123,9 +123,10 @@ export async function runRestore(
     const contents = { journal: payload.journal, preferences: payload.preferences, files, fileCount: payload.files.length };
 
     if (mode === 'replace') {
-      const { refreshPreferences, activateLanguagePreference } = await import('../prefs/store.svelte');
-      await journal.archive.replace(contents, onProgress);
-      if (await refreshPreferences()) activateLanguagePreference();
+      const { preparePreferencePublication, activateLanguagePreference } = await import('../prefs/store.svelte');
+      const preferences = preparePreferencePublication();
+      await journal.archive.replace({ ...contents, onPreferencesPrepared: preferences.capture }, onProgress);
+      if (await preferences.publish()) activateLanguagePreference();
     } else {
       await journal.archive.merge(contents, onProgress);
     }

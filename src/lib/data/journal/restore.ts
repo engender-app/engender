@@ -67,6 +67,7 @@ import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/contain
 import { openArchive } from '../archive/pack';
 import type { ArchiveJournal, PortablePreferences } from '../archive/payload';
 import { restorePortablePreferencesWithin } from '../prefs/preferences';
+import type { PreferenceValues } from '../prefs/catalogue';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { filesOf } from '../photos/names';
@@ -89,6 +90,9 @@ export interface RestoreContents {
   /** Portable preferences travel with a full Archive. Row-only callers omit
       this property; an older Archive may provide undefined preferences. */
   preferences?: Partial<PortablePreferences> | null;
+  /** Capture authoritative values while Replace still owns its transaction.
+      The caller publishes them only after this operation commits. */
+  onPreferencesPrepared?(values: PreferenceValues): void;
   files: AsyncIterable<{ name: string; bytes: Uint8Array }>;
   /** How many files that stream will deliver, when the caller knows - the
       manifest inside the payload says so, and an importer that has opened
@@ -310,7 +314,8 @@ async function restoreWithin(
         onProgress?.({ stage: 'rows', done, total })
       );
       if (mode === 'replace' && 'preferences' in contents) {
-        await restorePortablePreferencesWithin(driver, contents.preferences);
+        const preferences = await restorePortablePreferencesWithin(driver, contents.preferences);
+        contents.onPreferencesPrepared?.(preferences);
       }
       if (commit && before) {
         const after = await countRows(driver, commit.counting);

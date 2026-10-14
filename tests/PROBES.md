@@ -500,4 +500,8 @@ writes, between those writes, before COMMIT and after the real COMMIT reply.
 Cold boot must recover a complete row/preference pair with readable encrypted
 attachments. Healthy checks cover English, Polish and system-language restore,
 the Settings Language row, export/reopen parity and Merge's destination policy.
+A post-COMMIT read-refusal trap requires success without another preference SQL
+read. Held authoritative reads exercise lock, newer attachment and a later
+same-value language write. `--publication-only` isolates those publication
+checks and durable Settings language switches.
 The runner closes its own server and browsers and removes every profile.

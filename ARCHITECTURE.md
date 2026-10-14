@@ -534,11 +534,11 @@ flowchart TD
     M -->|Replace| D[discard journal rows]
     D --> A[apply sections in dependency order]
     M -->|Merge| A
-    A --> P[Archive Replace only:<br/>write validated portable preferences]
+    A --> P[Archive Replace only:<br/>write portable preferences<br/>and prepare their snapshot]
     P --> I[external imports only:<br/>count additions and write import_log]
   end
   I --> C[commit]
-  C --> L[Archive Replace only:<br/>refresh preferences and activate locale]
+  C --> L[Archive Replace only:<br/>publish committed preferences<br/>and activate locale]
 ```
 
 [journal/archiveRowValidation.ts](src/lib/data/journal/archiveRowValidation.ts)
@@ -561,7 +561,7 @@ their parent's identity too. A missing file remains a supported placeholder.
 
 [journal/restore.ts](src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion, section application and portable preference writes run inside the transaction. A failure rolls back those database changes together. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
-Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. Full Archive Replace writes only the validated portable allowlist in the row transaction. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) refreshes the preference projection and boot mirror after success, then activates the restored locale through the existing reload strategy. Boot also reconciles the locale after authoritative preference attachment, covering interruption between commit and activation. A lock or newer attachment prevents stale publication. Row-only imports leave preferences untouched. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
+Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. Full Archive Replace writes only the validated portable allowlist in the row transaction. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) publishes the preference snapshot prepared inside that transaction to the projection and boot mirror after success, then activates the restored locale through the existing reload strategy. Publication performs no SQL after COMMIT. Successful preference writes after preparation retain priority, even when they reassert the previous value. Boot also reconciles the locale after authoritative preference attachment, covering interruption between commit and activation. A lock or newer attachment prevents stale publication. Row-only imports leave preferences untouched. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
 Medication stock also matches its exact drug name, since only one current count
 may exist per drug. Merge keeps the destination count when either its uuid or

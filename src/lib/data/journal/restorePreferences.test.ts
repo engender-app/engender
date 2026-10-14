@@ -10,7 +10,7 @@ import { runRestore } from './restoreFlow';
 const device = vi.hoisted(() => ({ journal: null as Journal | null }));
 vi.mock('../live/journal.svelte', () => ({ get journal() { return device.journal; } }));
 vi.mock('../prefs/store.svelte', () => ({
-  refreshPreferences: async () => true,
+  preparePreferencePublication: () => ({ capture: () => {}, publish: async () => true }),
   activateLanguagePreference: () => {}
 }));
 

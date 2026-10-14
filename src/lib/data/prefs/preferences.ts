@@ -42,8 +42,9 @@ export interface Preferences {
   all(): PreferenceValues;
   get<K extends PreferenceKey>(key: K): PreferenceValues[K];
   set<K extends PreferenceKey>(key: K, value: PreferenceValues[K]): Promise<void>;
-  /** Refresh after a bulk operation committed directly through SQLite. */
-  reload(): Promise<void>;
+  /** Prepare an authoritative snapshot inside a bulk transaction. Invoke
+      publication only after commit; later successful writes retain priority. */
+  prepareCommittedValues(snapshot: PreferenceValues): () => void;
   /** True when the table held no preferences at the moment this handle
       opened: a genuinely fresh install, as distinct from one whose
       preferences all happen to sit at their defaults. */
@@ -54,10 +55,11 @@ export interface Preferences {
 export async function restorePortablePreferencesWithin(
   driver: SqliteDriver,
   portable: Partial<PortablePreferences> | null | undefined
-): Promise<void> {
+): Promise<PreferenceValues> {
   for (const [key, value] of Object.entries(portablePreferencePatch(portable))) {
     await writePreference(driver, key as PreferenceKey, value);
   }
+  return (await readPreferences(driver)).values;
 }
 
 async function writePreference(driver: SqliteDriver, key: PreferenceKey, value: unknown): Promise<void> {
@@ -105,6 +107,7 @@ async function readPreferences(driver: SqliteDriver) {
 export async function openPreferences(driver: SqliteDriver, cache?: PreferenceCache): Promise<Preferences> {
   const initial = await readPreferences(driver);
   let values = initial.values;
+  const written = new Map<PreferenceKey, number>();
   cache?.write(bootSubset(values));
 
   return {
@@ -112,15 +115,20 @@ export async function openPreferences(driver: SqliteDriver, cache?: PreferenceCa
     get: (key) => values[key],
     openedEmpty: () => initial.rows.length === 0,
 
-    async reload() {
-      const refreshed = await readPreferences(driver);
-      values = refreshed.values;
-      cache?.write(bootSubset(values));
+    prepareCommittedValues(snapshot) {
+      const atPreparation = new Map(written);
+      return () => {
+        for (const key of Object.keys(snapshot) as PreferenceKey[]) {
+          if (written.get(key) === atPreparation.get(key)) values[key] = snapshot[key] as never;
+        }
+        cache?.write(bootSubset(values));
+      };
     },
 
     async set(key, value) {
       await writePreference(driver, key, value);
       values[key] = value;
+      written.set(key, (written.get(key) ?? 0) + 1);
       // Refreshed whole rather than per key: the cache is small, and a
       // partial refresh is how it drifts from the table it mirrors.
       cache?.write(bootSubset(values));

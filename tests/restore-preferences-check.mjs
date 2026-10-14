@@ -17,6 +17,7 @@ await server.listen();
 const origin = server.resolvedUrls.local[0];
 const { block, ok, finish } = createReporter();
 const seed = 3204;
+const publicationOnly = process.argv.includes('--publication-only');
 
 async function ready(page) {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
@@ -74,8 +75,36 @@ async function restore(page, mode = 'replace', fault = null) {
     const { runRestore } = await import('/src/lib/data/journal/restoreFlow.ts');
     if (fault) {
       const post = Worker.prototype.postMessage;
+      let committed = false;
       Worker.prototype.postMessage = function(message, ...args) {
         const sql = message.args?.sql;
+        if (fault === 'post-commit-read-refusal') {
+          if (committed && message.op === 'query' && sql === 'SELECT key, value FROM pref') {
+            localStorage.setItem('restore-proof-refused', 'true');
+            queueMicrotask(() => this.onmessage({ data: { id: message.id, ok: false, error: 'synthetic post-commit read refusal' } }));
+            return;
+          }
+          if (message.op === 'exec' && sql === 'COMMIT') {
+            const receive = this.onmessage;
+            this.onmessage = event => {
+              if (event.data.id !== message.id) return receive.call(this, event);
+              this.onmessage = receive;
+              committed = event.data.ok;
+              localStorage.setItem('restore-proof-committed', String(committed));
+              receive.call(this, event);
+            };
+          }
+        }
+        if (fault === 'hold-preference-read' && message.op === 'query' && sql === 'SELECT key, value FROM pref') {
+          Worker.prototype.postMessage = post;
+          const receive = this.onmessage;
+          this.onmessage = event => {
+            if (event.data.id !== message.id) return receive.call(this, event);
+            this.onmessage = receive;
+            window.restorePaused = { fault, committed: false };
+            window.releasePreferenceRead = () => receive.call(this, event);
+          };
+        }
         const preference = message.op === 'run' && /INSERT INTO pref/.test(sql ?? '');
         const stop = (fault === 'before-preferences' && preference && message.args.params[0] === 'name') ||
           (fault === 'between-preferences' && preference && message.args.params[0] === 'language') ||
@@ -100,7 +129,10 @@ async function restore(page, mode = 'replace', fault = null) {
     const archive = window.incomingArchive;
     window.restoreResult = null;
     void runRestore({ name: 'synthetic.ttbackup', bytes: async function*() { yield archive; } },
-      'synthetic archive password', mode, () => {}).then(result => { window.restoreResult = result; });
+      'synthetic archive password', mode, () => {}).then(result => {
+        window.restoreResult = result;
+        localStorage.setItem('restore-proof-result', JSON.stringify(result));
+      });
   }, { mode, fault });
 }
 async function evidence(page) {
@@ -137,7 +169,7 @@ function pair(result, incoming, preference = 'pl', locale = preference) {
 }
 
 try {
-  for (const fault of ['before-preferences', 'between-preferences', 'before-commit', 'after-commit']) {
+  for (const fault of publicationOnly ? [] : ['before-preferences', 'between-preferences', 'before-commit', 'after-commit']) {
     await block(`Replace kill ${seed}: ${fault}`, 3, async () => {
       const profile = await mkdtemp(join(tmpdir(), 'engender-restore-prefs-'));
       let context;
@@ -176,7 +208,7 @@ try {
       } finally { await context?.close().catch(() => {}); await rm(profile, { recursive: true, force: true }); }
     });
   }
-  for (const [destination, restored, browserLocale, expected] of [
+  for (const [destination, restored, browserLocale, expected] of publicationOnly ? [] : [
     ['en', 'pl', 'en-US', 'pl'], ['pl', 'en', 'pl-PL', 'en'],
     ['pl', 'system', 'en-US', 'en'], ['en', 'system', 'pl-PL', 'pl']
   ]) {
@@ -216,37 +248,67 @@ try {
       } finally { await context.close(); await rm(profile, { recursive: true, force: true }); }
     });
   }
-  await block('preference projection ownership after Replace', 2, async () => {
-    const profile = await mkdtemp(join(tmpdir(), 'engender-restore-ownership-'));
+  await block('post-COMMIT preference reads cannot refuse a committed Replace', 2, async () => {
+    const profile = await mkdtemp(join(tmpdir(), 'engender-restore-publication-'));
     const context = await launchPersistentChromium(profile, { locale: 'en-US', serviceWorkers: 'block' });
     try {
       const page = await initialize(context);
-      const result = await page.evaluate(async () => {
-        const { attachPreferences, detachPreferences, refreshPreferences, prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
-        const stored = { ...prefs };
-        let complete;
-        const old = { all: () => ({ ...stored, name: 'late old projection', language: 'pl' }),
-          reload: () => new Promise(resolve => { complete = resolve; }), set: async () => {}, openedEmpty: () => false };
-        await attachPreferences(old);
-        const refreshing = refreshPreferences();
-        await new Promise(resolve => queueMicrotask(resolve));
-        await attachPreferences({ ...old, all: () => ({ ...stored, name: 'new owner', language: 'en' }) });
-        complete();
-        const reattached = { publish: await refreshing, name: prefs.name, language: prefs.language };
-        await attachPreferences(old);
-        const locking = refreshPreferences();
-        await new Promise(resolve => queueMicrotask(resolve));
-        await detachPreferences();
-        complete();
-        const detached = { publish: await locking, name: prefs.name, language: prefs.language };
-        return { reattached, detached };
-      });
-      assert.deepEqual(result.reattached, { publish: false, name: 'new owner', language: 'en' });
-      ok('a newer attachment prevents the late old refresh from publishing');
-      assert.deepEqual(result.detached, { publish: false, name: 'late old projection', language: 'pl' });
-      ok('detachment revokes publication while retaining the current lock-screen projection');
+      await prepare(page);
+      await restore(page, 'replace', 'post-commit-read-refusal');
+      await page.waitForFunction(() => localStorage.getItem('restore-proof-result'));
+      const result = await page.evaluate(() => ({
+        committed: localStorage.getItem('restore-proof-committed'),
+        refused: localStorage.getItem('restore-proof-refused'),
+        outcome: JSON.parse(localStorage.getItem('restore-proof-result'))
+      }));
+      assert.equal(result.committed, 'true');
+      assert.deepEqual(result.outcome, { ok: true });
+      assert.equal(result.refused, null);
+      ok('successful COMMIT stays successful without any post-commit preference SQL');
+      await page.waitForLoadState('networkidle');
+      await ready(page);
+      pair(await evidence(page), true);
+      ok('committed rows, preference mirror and restored locale activate together');
     } finally { await context.close(); await rm(profile, { recursive: true, force: true }); }
   });
+  for (const successor of ['lock', 'new-attach', 'later-write']) {
+    await block(`held preference snapshot: ${successor}`, 2, async () => {
+      const profile = await mkdtemp(join(tmpdir(), 'engender-restore-ownership-'));
+      const context = await launchPersistentChromium(profile, { locale: 'en-US', serviceWorkers: 'block' });
+      try {
+        const page = await initialize(context);
+        await prepare(page);
+        await restore(page, 'replace', 'hold-preference-read');
+        await page.waitForFunction(() => window.restorePaused);
+        const before = await page.evaluate(() => localStorage.getItem('engender-boot-prefs'));
+        await page.evaluate(async ({ successor, seed }) => {
+          const { attachPreferences, detachPreferences, setPreferenceDurably, prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+          if (successor === 'lock') await detachPreferences();
+          else if (successor === 'later-write') {
+            window.laterPreferenceWrite = setPreferenceDurably('language', 'en');
+          } else {
+            const values = { ...prefs, name: `New owner ${seed}`, language: 'en' };
+            await attachPreferences({ all: () => values, set: async () => {}, openedEmpty: () => false,
+              prepareCommittedValues() { throw new Error('late old snapshot reached new owner'); } });
+          }
+          window.releasePreferenceRead();
+        }, { successor, seed });
+        await page.waitForFunction(() => window.restoreResult);
+        assert.deepEqual(await page.evaluate(() => window.restoreResult), { ok: true });
+        ok('held authoritative read commits without publishing into a superseding owner');
+        const after = await page.evaluate(async () => {
+          const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+          return { name: prefs.name, language: prefs.language, html: document.documentElement.lang,
+            mirror: localStorage.getItem('engender-boot-prefs') };
+        });
+        assert.equal(after.name, successor === 'lock' ? `Original synthetic name ${seed}` : successor === 'later-write' ? `Incoming synthetic name ${seed}` : `New owner ${seed}`);
+        assert.equal(after.language, 'en');
+        assert.equal(after.html, 'en');
+        assert.equal(after.mirror, before);
+        ok('late values, boot mirror and locale all respect attachment ownership');
+      } finally { await context.close(); await rm(profile, { recursive: true, force: true }); }
+    });
+  }
   await block('Merge preference control and Settings language durability', 3, async () => {
     const profile = await mkdtemp(join(tmpdir(), 'engender-restore-merge-'));
     const context = await launchPersistentChromium(profile, { locale: 'en-US', serviceWorkers: 'block' });

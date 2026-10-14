@@ -146,7 +146,7 @@ test('writing a preference outside the boot set still refreshes the cache', asyn
   expect(writes.at(-1)).not.toHaveProperty('name');
 });
 
-test('reloading after an atomic restore refreshes cached values and the boot mirror without another write', async () => {
+test('publishing an atomic restore snapshot refreshes cached values and the boot mirror without SQL', async () => {
   const driver = await migratedDb();
   const { cache, current } = recordingCache();
   try {
@@ -158,7 +158,12 @@ test('reloading after an atomic restore refreshes cached values and the boot mir
       await within.run('UPDATE pref SET value = ? WHERE key = ?', ['"pl"', 'language']);
     });
     const before = await driver.query('SELECT key, value FROM pref ORDER BY key');
-    await preferences.reload();
+    const snapshot = (await openPreferences(driver)).all();
+    const publish = preferences.prepareCommittedValues(snapshot);
+    const query = driver.query;
+    driver.query = async () => { throw new Error('synthetic post-commit read refusal'); };
+    publish();
+    driver.query = query;
     expect(preferences.get('name')).toBe('Incoming synthetic name');
     expect(preferences.get('language')).toBe('pl');
     expect(current().language).toBe('pl');
@@ -248,4 +253,20 @@ test('a timing chosen after the upgrade wins over the old switch', async () => {
   const reopened = await openPreferences(driver);
 
   expect(reopened.get('lockAfter')).toBe('five-minutes');
+});
+
+
+test('a successful later write wins over prepared Archive values, including reasserting the old value', async () => {
+  const driver = await migratedDb();
+  const { cache, current } = recordingCache();
+  try {
+    const preferences = await openPreferences(driver, cache);
+    await preferences.set('language', 'en');
+    const publish = preferences.prepareCommittedValues({ ...preferences.all(), language: 'pl', name: 'Incoming synthetic name' });
+    await preferences.set('language', 'en');
+    publish();
+    expect(preferences.get('language')).toBe('en');
+    expect(current().language).toBe('en');
+    expect(preferences.get('name')).toBe('Incoming synthetic name');
+  } finally { await driver.close(); }
 });
