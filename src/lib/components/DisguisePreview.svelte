@@ -12,6 +12,8 @@
      is what it is; `on` only says whether it is in force, which is the
      difference between a proposal and a description. */
 
+  import { appWordmark } from '$lib/disguise/identity';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import Icon from './Icon.svelte';
@@ -35,7 +37,7 @@
      picker never get a disguised variant, so that gap is named instead. On
      web the manifest is the browser's to refresh, and a promise the app
      cannot keep is worse than none. -->
-<p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : `${m.disguise_installed_note()} ${m.disguise_web_gap_note()}`}</p>
+<p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : `${m.disguise_installed_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })} ${m.disguise_web_gap_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}`}</p>
 
 <style>
   /* Moved out of screens.css with the block itself: a class with one

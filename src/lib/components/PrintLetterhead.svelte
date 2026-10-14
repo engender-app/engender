@@ -21,6 +21,7 @@
      Print-only: `.print-heading`, which is where both callers put it, is
      display:none until app.css's print block turns it on. */
   import Mark from './Mark.svelte';
+  import { appWordmark } from '$lib/disguise/identity';
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
 
@@ -30,6 +31,6 @@
 {#if !prefs.disguise}
   <div class="print-lockup lockup">
     <Mark {size} mono />
-    <span class="lockup-word" translate="no">{m.app_name()}</span>
+    <span class="lockup-word" translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span>
   </div>
 {/if}

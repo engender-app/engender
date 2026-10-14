@@ -893,3 +893,24 @@ This Node test needs a JDK (`jar`, `keytool`, `jarsigner` on PATH) and an Androi
 SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
 `android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
 device is used. Temporary keys and artifacts are removed after the tests.
+
+
+### Disguised app names
+
+`node tests/disguise-wordmark-check.mjs` checks the Settings footer, About
+and archive error labels in EN/PL, light/dark and both disguise states.
+Run again with `--gates` for both recovery bodies and the below-baseline
+boot notice. `WORDMARK_SHOTS` saves crops after fonts and animations settle;
+`--before` captures the baseline without asserting the repaired wording.
+
+`tests/disguise-wordmark-native/wordmark.vite.config.ts` bundles the real
+AndroidKeyGate and SessionUnlock for a test APK at `/ui03/index.html`.
+Build the app and run `cap sync android` first, then build this fixture.
+The fixture injects unavailable authentication outcomes, without changing
+phone enrollment or testing the native authentication mechanism. Its
+`wordmarkProbe.show(scene, locale, disguise, theme)` selects `cold` or
+`session`; the session case presses the real unlock button. Run only in an
+isolated test package under the shared phone lease. Forward only that WebView's
+devtools socket, then run `WORDMARK_CDP=http://127.0.0.1:<port> node
+tests/disguise-wordmark-native-check.mjs`. It asserts 16 rendered outcomes and
+prints the WebView version and full sentences.

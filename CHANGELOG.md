@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Disguise now covers the app name in Settings, About, recovery and unlock
+messages, boot failures and archive errors in both languages.
+
 Tryout reflections and recovery notes keep spaces while you type. Recovery
 notes also keep line breaks and can be cleared before saving. Surrounding
 whitespace is removed only when saving the draft.
