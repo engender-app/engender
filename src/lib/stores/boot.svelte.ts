@@ -77,7 +77,7 @@ import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
-import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
+import { activateLanguagePreference, applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { UnlockCancelledError } from '../lock/unlock-attempt';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
@@ -410,6 +410,7 @@ async function reopenJournal(
   current();
   await attachPreferences(preferences);
   current();
+  activateLanguagePreference();
   const journal = attachJournal(openJournal(journalDriver, photoFiles));
   openDriver = sqlite.driver;
   openFileOps = sqlite.fileOps;
@@ -1091,6 +1092,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
   }
   await attachPreferences(preferences);
   current();
+  activateLanguagePreference();
 
   // Publish after the last ownership check, so queued reads and draft
   // writes cannot obtain a session superseded while boot was preparing it.

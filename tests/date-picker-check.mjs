@@ -34,7 +34,7 @@ async function open(page, route) {
 try {
   for (const language of ['en', 'pl']) {
     for (const width of [320, 390, 430]) {
-      const page = await browser.newPage({ viewport: { width, height: 844 }, hasTouch: true, timezoneId: 'Europe/Warsaw' });
+      const page = await browser.newPage({ viewport: { width, height: 844 }, locale: language, hasTouch: true, timezoneId: 'Europe/Warsaw' });
       page.on('pageerror', error => errors.push(error.stack));
       await page.addInitScript(language => localStorage.setItem('PARAGLIDE_LOCALE', language), language);
       await open(page, '/health/appointments');

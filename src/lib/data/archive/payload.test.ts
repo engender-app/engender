@@ -94,7 +94,7 @@ test('a v1 archive naming a preset nobody has ever had restores the default scal
 test('a v1 archive that never carried a preset at all is left saying nothing about scales', () => {
   const bare = { journal: { presets: [] }, preferences: { name: 'Ola' }, files: [] } as unknown as ArchivePayload;
 
-  // Not filled in with the default: applyPortablePreferences keeps this
+  // Not filled in with the default: Archive Replace keeps this
   // device's value for a key the archive is missing, and inventing one here
   // would turn "the file does not say" into "the file says the default".
   assert.equal(scalesOf(migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION)), undefined);

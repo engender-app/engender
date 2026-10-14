@@ -3,13 +3,10 @@ import type { PortablePreferences } from '../archive/payload';
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS } from './catalogue';
 import { portablePreferencePatch, portableValueForKey } from './portableShape';
 
-/* portablePreferencePatch is the whole of what applyPortablePreferences
-   (store.svelte.ts) does with an archive: it applies exactly the keys the
-   patch names and touches nothing else, so a key the patch omits is a key
-   this device's own value survives untouched. store.svelte.ts is a
-   `.svelte.ts` file and cannot be node-tested directly (svelte-ts-reactive-
-   wrappers-cannot-be-node-tested), so this is the real boundary a test can
-   reach - as close to "import this archive" as a node test gets. */
+/* Archive Replace writes exactly the validated keys in this patch. A key
+   omitted here keeps the destination value. These tests exercise malformed
+   portable input; restore.preferences-atomic.test.ts covers its real SQLite
+   transaction with the journal rows. */
 
 describe('importing the archive named in the audit (S6)', () => {
   test('keeps the device theme, palette and check-in time', () => {
