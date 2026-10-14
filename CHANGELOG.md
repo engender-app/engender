@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Archive import identifies non-object JSON headers as corrupt files before
+key derivation, including a header containing only `null`.
+
 A scheduled Android backup failure posts one notice across later checks and
 app restarts. Quiet-hours holds survive restarts; a later failure can notify
 again after a successful backup or a destination change.
