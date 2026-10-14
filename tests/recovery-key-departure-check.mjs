@@ -98,14 +98,13 @@ try {
   // without first drawing the active-key rows it would otherwise fall to.
   await page.evaluate(() => {
     window.rkPaintedBeforeKey = [];
-    const watch = () => {
-      if (document.querySelector('[data-recovery-key]')) return;
+    const watch = new MutationObserver(() => {
+      if (document.querySelector('[data-recovery-key]')) return watch.disconnect();
       for (const selector of ['[data-list-row="replace-recovery-key"]', '[data-make-recovery-key]']) {
         if (document.querySelector(selector)) window.rkPaintedBeforeKey.push(selector);
       }
-      requestAnimationFrame(watch);
-    };
-    requestAnimationFrame(watch);
+    });
+    watch.observe(document.body, { childList: true, subtree: true });
   });
   await unlock();
   await page.locator('[data-recovery-key]').waitFor();

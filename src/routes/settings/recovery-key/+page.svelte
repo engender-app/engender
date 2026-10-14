@@ -151,8 +151,10 @@
 
   <!-- Held until the key's presence is known, then faded in (ux-carpet
        ticket 211): a cold open reads it after the first paint, and the panel
-       cut in at full opacity when it came back. -->
-  <ReadReserve ready={presenceRevealed} estimate={presenceEstimate} onrest={presenceRemember}>
+       cut in at full opacity when it came back. A key held across a lock
+       reserves nothing: it opens within the screen's first frame, and a
+       placeholder there only flashed and faded out over the key. -->
+  <ReadReserve ready={presenceRevealed} estimate={heldRead ? presenceEstimate : 0} onrest={presenceRemember}>
   {#if recoveryKeyPresence.known}
     {#if shown !== null}
       <!-- The one moment the characters exist. No back arrow out of this
