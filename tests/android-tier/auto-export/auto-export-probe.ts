@@ -199,8 +199,9 @@ const probe = {
     probe.ready = true;
   },
   newJournalStep: 'idle',
-  pendingScheduledNativeCall: null as string | null,
-  lastScheduledNativeCall: null as string | null,
+  nativeCallTimes: [] as { method: string; startedAt: number; finishedAt?: number }[],
+  pendingBackupNativeCall: null as string | null,
+  lastBackupNativeCall: null as string | null,
   async backUpNewJournal() {
     probe.ready = false;
     probe.newJournalStep = 'loading setup';
@@ -226,24 +227,27 @@ const probe = {
         await live.entries.upsertEntry({ epochDay: 20000, mood: 4, note: 'New journal after reset', dims: {}, tags: [] });
         probe.newJournalStep = 'reading new snapshot';
         const source = { snapshot: await live.archive.snapshot(), snapshotAt: Date.now(), preferences };
-        probe.newJournalStep = 'manual backup';
-        const manual = await runAndroidAutoExport(source, { recordBackup: () => {} });
-        probe.result = { manual, rows: source.snapshot.journal.entries.length };
-        probe.newJournalStep = 'scheduled snapshot';
         const capacitor = (window as unknown as { Capacitor: {
           nativePromise(plugin: string, method: string, options: unknown): Promise<unknown>
         } }).Capacitor;
         const nativePromise = capacitor.nativePromise;
         capacitor.nativePromise = (plugin, method, options) => {
           if (plugin === 'AutoExport') {
-            probe.pendingScheduledNativeCall = method;
-            probe.lastScheduledNativeCall = method;
+            probe.pendingBackupNativeCall = method;
+            probe.lastBackupNativeCall = method;
           }
+          const timing = { method: `${plugin}.${method}`, startedAt: Date.now(), finishedAt: undefined as number | undefined };
+          probe.nativeCallTimes.push(timing);
           return nativePromise(plugin, method, options).finally(() => {
-            if (probe.pendingScheduledNativeCall === method) probe.pendingScheduledNativeCall = null;
+            timing.finishedAt = Date.now();
+            if (probe.pendingBackupNativeCall === method) probe.pendingBackupNativeCall = null;
           });
         };
         try {
+          probe.newJournalStep = 'manual backup';
+          const manual = await runAndroidAutoExport(source, { recordBackup: () => {} });
+          probe.result = { manual, rows: source.snapshot.journal.entries.length };
+          probe.newJournalStep = 'scheduled backup';
           const scheduled = await runAndroidAutoExport(source, { scheduled: true, recordBackup: () => {},
             watch: { onProgress: () => { probe.newJournalStep = 'scheduled packing'; } } });
           probe.result = { manual, scheduled, rows: source.snapshot.journal.entries.length };

@@ -279,8 +279,10 @@ Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vi
 Start over while native key derivation is pending, during a delayed attachment
 read, and during a scheduled read that never settles. Each case checks the
 retained native plugin, creates a new encrypted journal, and completes its first
-manual backup and scheduled snapshot in the same process. The companion
-`FileDeliveryTest` case checks stale-slot takeover and an old abort arriving
+manual backup and scheduled snapshot in the same process. Each backup has its
+own 30-second completion wait after preparation. The probe records native
+method durations and saves both Archives for separate restore verification.
+The companion `FileDeliveryTest` case checks stale-slot takeover and an old abort arriving
 after a new file starts. JVM tests cover reset epochs and ownerless picker
 callbacks. Node tests cover scheduler cancellation and pending-read cleanup.
 The read delays are synthetic timing controls, not physical storage timings.

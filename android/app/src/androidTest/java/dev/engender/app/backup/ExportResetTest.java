@@ -55,7 +55,11 @@ public class ExportResetTest extends BackupDeliveryTestSupport {
             scenario.onActivity(activity -> activity.getBridge().setServerBasePath(bundle.getAbsolutePath()));
             probe.awaitTrue("!!window.backupProbe && window.backupProbe.ready && window.backupProbe.pageId !== " + priorProbe);
             assertEquals("true", probe.evaluate("window.backupProbe.backUpNewJournal(); true"));
-            try { probe.awaitTrue("window.backupProbe.ready"); }
+            try {
+                probe.awaitTrue("window.backupProbe.newJournalStep === 'manual backup' || !!window.backupProbe.result");
+                probe.awaitTrue("!!window.backupProbe.result");
+                probe.awaitTrue("window.backupProbe.ready");
+            }
             catch (AssertionError failed) {
                 throw new AssertionError(failed.getMessage() + "; state=" + probe.evaluate("JSON.stringify(window.backupProbe)"), failed);
             }
@@ -65,7 +69,11 @@ public class ExportResetTest extends BackupDeliveryTestSupport {
             assertEquals(1, result.getInt("rows"));
             assertEquals("ok", result.getJSONObject("manual").getString("outcome"));
             assertEquals("staged", result.getJSONObject("scheduled").getString("outcome"));
-            System.out.println("Reset backup proof (derivation=" + duringDerivation + ", scheduler=" + scheduler + "): " + result);
+            System.out.println("Reset backup proof (derivation=" + duringDerivation + ", scheduler=" + scheduler + "): " + result + "; native calls=" + probe.evaluate("JSON.stringify(window.backupProbe.nativeCallTimes)"));
+            copyDocument(documents().get(0), new File(bundle, "new-manual.ttbackup"));
+            org.json.JSONObject stage = new org.json.JSONObject(BackupWork.preferences(app).getString("encryptedStage", "{}"));
+            java.nio.file.Files.copy(new File(PersistentBackup.directory(app), stage.getString("file")).toPath(),
+                new File(bundle, "new-scheduled.ttbackup").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         } finally {
             AutoExportPlugin.wipe(app);
         }
