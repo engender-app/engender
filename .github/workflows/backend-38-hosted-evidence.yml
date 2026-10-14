@@ -1,0 +1,80 @@
+name: Backend 38 hosted evidence
+'on':
+  push:
+    branches:
+    - ci-evidence/backend38-20261014
+permissions:
+  contents: read
+jobs:
+  measure:
+    name: Backend 38 exact candidate evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+        working-directory: source
+    env:
+      EXPECTED_SOURCE: d47dd3cc7cbe196cbf2621cc45e35c1c655a1ccb
+      TZ: UTC
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: d47dd3cc7cbe196cbf2621cc45e35c1c655a1ccb
+        fetch-depth: 0
+        fetch-tags: true
+        persist-credentials: false
+        path: source
+    - uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: source/package-lock.json
+    - name: Record exact source and hosted runner
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE/evidence"
+        python3 - <<'PYTHON'
+        import json, os, platform, subprocess
+        from pathlib import Path
+        keys = ['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA', 'RUNNER_NAME', 'RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion']
+        record = {key: os.environ.get(key) for key in keys}
+        record.update(testedCommit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), node=subprocess.check_output(['node', '--version'], text=True).strip(), npm=subprocess.check_output(['npm', '--version'], text=True).strip(), cpuCount=os.cpu_count(), platform=platform.platform(), runnerLabel='ubuntu-24.04')
+        record['runUrl'] = f"https://github.com/{record['GITHUB_REPOSITORY']}/actions/runs/{record['GITHUB_RUN_ID']}"
+        assert record['testedCommit'] == os.environ['EXPECTED_SOURCE'], record
+        Path(os.environ['GITHUB_WORKSPACE'], 'evidence', 'identity.json').write_text(json.dumps(record, indent=2))
+        print(json.dumps(record, indent=2))
+        PYTHON
+    - name: Install pinned dependencies
+      run: |-
+        npm ci 2>&1 | tee "$GITHUB_WORKSPACE/evidence/npm-ci.log"
+    - name: Measure required hosted evidence
+      run: |
+        node --input-type=module <<'JS' 2>&1 | tee "$GITHUB_WORKSPACE/evidence/node-checks.log"
+        import { writeFileSync, appendFileSync } from 'node:fs';
+        import { join } from 'node:path';
+        import { CI_CHECKS, runChecks } from './scripts/run-ci-checks.mjs';
+        const ids = ['build', 'node', 'node-warsaw'];
+        const checks = CI_CHECKS.node.filter((check) => ids.includes(check.id));
+        if (checks.length !== ids.length) throw new Error('Required CI checks missing');
+        const results = await runChecks(checks);
+        writeFileSync(join(process.env.GITHUB_WORKSPACE, 'evidence', 'result.json'), JSON.stringify({ testedCommit: process.env.EXPECTED_SOURCE, results }, null, 2));
+        appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+          '## Backend 38 hosted UTC and Warsaw execution', '',
+          '| Check | Result | Seconds | Exit |', '| --- | --- | --- | --- |',
+          ...results.map((r) => `| ${r.name} | ${r.outcome} | ${(r.durationMs / 1000).toFixed(3)} | ${r.code} |`), ''
+        ].join('\n'));
+        process.exitCode = results.some((result) => result.outcome !== 'passed') ? 1 : 0;
+        JS
+    - name: Verify tracked source remained unchanged
+      if: ${{ always() }}
+      run: |
+        test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE"
+        git diff --exit-code HEAD
+    - name: Retain evidence on success or failure
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: backend-38-hosted-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+        path: evidence/
+        retention-days: 14
+        if-no-files-found: error
