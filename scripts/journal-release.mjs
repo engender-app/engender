@@ -25,7 +25,8 @@ import {
   statSync,
   symlinkSync
 } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { isReleaseVersion } from './app-version.mjs';
 
 const DEFAULT_ROOT = '/home/journal/releases';
@@ -135,6 +136,54 @@ function switchCurrent(current, targetPath) {
   renameSync(next, current);
 }
 
+/** Keep exact OCR generations reachable after the release symlink switches.
+    Root URLs belong to pre-generation pages and keep their original bytes. */
+function retainOcrAssets(previous, staging) {
+  const manifest = join(staging, 'tesseract/assets.json');
+  const legacy = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).legacyRuntime ?? [] : [];
+  for (const asset of legacy) {
+    if (!/^\/_app\/immutable\/chunks\/[A-Za-z0-9_-]+\.js$/.test(asset.path) || !/^[a-f0-9]{64}$/.test(asset.sha256)) {
+      throw new Error('Invalid legacy OCR identity');
+    }
+    const source = join(previous, asset.path);
+    if (!existsSync(source)) continue;
+    if (createHash('sha256').update(readFileSync(source)).digest('hex') !== asset.sha256) {
+      throw new Error(`Legacy OCR identity mismatch: ${asset.path}`);
+    }
+    const target = join(staging, asset.path);
+    mkdirSync(dirname(target), { recursive: true });
+    cpSync(source, target);
+  }
+  const oldRoot = join(previous, 'tesseract');
+  if (!existsSync(oldRoot)) return;
+  const nextRoot = join(staging, 'tesseract');
+  mkdirSync(nextRoot, { recursive: true });
+  for (const entry of readdirSync(oldRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
+    const source = join(oldRoot, entry.name);
+    const target = join(nextRoot, entry.name);
+    if (existsSync(target)) {
+      for (const name of readdirSync(source, { recursive: true })) {
+        const oldFile = join(source, name);
+        if (!statSync(oldFile).isFile()) continue;
+        const nextFile = join(target, name);
+        if (!existsSync(nextFile) || !readFileSync(oldFile).equals(readFileSync(nextFile))) {
+          throw new Error(`OCR generation collision: ${entry.name}/${name}`);
+        }
+      }
+    } else cpSync(source, target, { recursive: true });
+  }
+  for (const name of ['worker.min.js', 'tesseract-core.wasm.js', 'tesseract-core.wasm',
+    'lang-data/eng.traineddata', 'lang-data/pol.traineddata']) {
+    const plain = join(oldRoot, name);
+    const source = existsSync(plain) ? plain : plain + '.gz';
+    if (!existsSync(source)) continue;
+    const target = join(nextRoot, name);
+    mkdirSync(dirname(target), { recursive: true });
+    cpSync(source, target);
+  }
+}
+
 function deploy(source, options) {
   const sourcePath = resolve(source);
   if (!existsSync(sourcePath) || !statSync(sourcePath).isDirectory()) {
@@ -179,6 +228,7 @@ function deploy(source, options) {
 
   try {
     cpSync(sourcePath, staging, { recursive: true, errorOnExist: true, force: false });
+    if (previous) retainOcrAssets(previous, staging);
     renameSync(staging, targetPath);
     switchCurrent(options.current, targetPath);
   } finally {

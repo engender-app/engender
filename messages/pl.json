@@ -1812,8 +1812,6 @@
   "labs_no_unit_toast": "Ten wynik nie ma jednostki, więc ma osobną serię.",
   "labs_note_label": "Notatka (opcjonalnie)",
   "labs_note_placeholder": "np. nowa dawka",
-  "labs_ocr_download_body": "To silnik rozpoznawania i jego dwa języki. Potem skaner działa bez sieci.",
-  "labs_ocr_download_title": "Pierwszy odczyt pobiera 21 MB",
   "labs_ocr_duplicate": "Duplikat",
   "labs_ocr_empty_sheet": "Brak wierszy do importu",
   "labs_ocr_failed": "Nie udało się odczytać tego zdjęcia. Spróbuj ponownie lub użyj innego.",

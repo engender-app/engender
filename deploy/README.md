@@ -338,3 +338,9 @@ Use the command for the version being released. Ordinary
 `npm run check:progressive-release` only validates the record's current claims;
 it does not authorize publication. The existing tag workflow still checks the
 signature's presence and main ancestry. No evidence is filled in automatically.
+
+OCR generations live under `/tesseract/<sha256>/`. Release preparation retains
+previous OCR directories and freezes historical root URLs before switching
+`current`. Keep these directories when copying releases outside this helper.
+The nginx snippet serves legacy `.traineddata.gz` requests from canonical
+`.traineddata` files; do not add `.gz` duplicates to APK assets.

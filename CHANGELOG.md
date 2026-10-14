@@ -60,6 +60,8 @@ supported update path.
 
 ## 1.0.0
 
+Web installation now includes English and Polish lab recognition before offline readiness. OCR assets share an immutable generation; a failed update keeps the installed release usable. Recognition still starts only when a scan is requested.
+
 Android lab scanning finds its bundled English and Polish language data on the first offline scan. Release checks reject missing or renamed OCR assets in the APK.
 
 Android automatic backups sync the local file and folder, then check the delivered bytes before reporting success or pruning older backups. Unsupported providers report incomplete delivery and preserve the last good backup.
