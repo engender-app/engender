@@ -7,6 +7,11 @@
     <init>(int,android.content.Intent);
 }
 
+-keep,allowobfuscation,includedescriptorclasses class androidx.biometric.BiometricManager {
+    androidx.biometric.BiometricManager from(android.content.Context);
+    int canAuthenticate(int);
+}
+
 -keep,allowobfuscation,includedescriptorclasses class androidx.documentfile.provider.DocumentFile {
     androidx.documentfile.provider.DocumentFile fromTreeUri(android.content.Context,android.net.Uri);
     long length();
@@ -41,6 +46,10 @@
 
 -keep,allowobfuscation,includedescriptorclasses class com.getcapacitor.BridgeActivity {
     com.getcapacitor.Bridge getBridge();
+}
+
+-keep,allowobfuscation,includedescriptorclasses class com.getcapacitor.CapacitorWebView {
+    <init>(android.content.Context,android.util.AttributeSet);
 }
 
 -keep,allowobfuscation,includedescriptorclasses class com.getcapacitor.JSObject {

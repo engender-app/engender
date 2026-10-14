@@ -2,6 +2,10 @@
 # Preserve only the audited descriptors and external subclass overrides.
 # AGP applies release name mappings to the normal test dependency graph.
 
+-keep,allowobfuscation,includedescriptorclasses class androidx.concurrent.futures.CallbackToFutureAdapter {
+    com.google.common.util.concurrent.ListenableFuture getFuture(androidx.concurrent.futures.CallbackToFutureAdapter$Resolver);
+}
+
 -keep,allowobfuscation,includedescriptorclasses class androidx.concurrent.futures.CallbackToFutureAdapter$Completer {
     boolean set(java.lang.Object);
     boolean setException(java.lang.Throwable);
