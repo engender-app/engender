@@ -152,6 +152,18 @@
       .join(', ')
   );
 
+  /* Durable first (last-audit UI ticket 02): on Android the projection
+     moving is what flips the launcher alias and closes the app, so
+     prefs.disguise changes only once SQLite has the answer. The switch
+     shows the answer meanwhile, so a second tap inside that wait flips
+     it back rather than repeating the first. */
+  let disguiseAnswer = $state<boolean | null>(null);
+  async function setDisguise(on: boolean) {
+    disguiseAnswer = on;
+    await setPreferenceDurably('disguise', on);
+    if (disguiseAnswer === on) disguiseAnswer = null;
+  }
+
   async function setLanguage(v: string) {
     await setPreferenceDurably('language', v as typeof prefs.language);
     activateLanguagePreference();
@@ -549,18 +561,13 @@
           </span>
         </span>
         <Switch
-          checked={prefs.disguise}
+          checked={disguiseAnswer ?? prefs.disguise}
           label={m.disguise_app_title()}
-          onChange={(v) => {
-            /* Durable first: on Android the projection moving is what flips
-               the launcher alias and closes the app, so it waits for SQLite
-               (last-audit UI ticket 02). */
-            void setPreferenceDurably('disguise', v);
-          }}
+          onChange={(v) => void setDisguise(v)}
         />
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
-      <DisguisePreview on={prefs.disguise} />
+      <DisguisePreview on={disguiseAnswer ?? prefs.disguise} />
     </div>
   </Sheet>
 

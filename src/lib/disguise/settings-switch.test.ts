@@ -92,7 +92,13 @@ describe('the Settings disguise switch', () => {
 
   it('writes through the durable preference write onboarding uses, never a plain assignment', () => {
     const handler = /label=\{m\.disguise_app_title\(\)\}\s*onChange=\{([\s\S]*?)\}\s*\/>/.exec(settings)?.[1] ?? '';
-    expect(handler).toMatch(/^\s*\(v\) => \{[\s\S]*void setPreferenceDurably\('disguise', v\);\s*\}\s*$/);
+    expect(handler.trim()).toBe('(v) => void setDisguise(v)');
+    const setDisguise = /async function setDisguise\(on: boolean\) \{([\s\S]*?)\n  \}/.exec(settings)?.[1] ?? '';
+    expect(setDisguise.split('\n').map((line) => line.trim()).filter(Boolean)).toEqual([
+      'disguiseAnswer = on;',
+      "await setPreferenceDurably('disguise', on);",
+      'if (disguiseAnswer === on) disguiseAnswer = null;'
+    ]);
     expect(settings.match(/prefs\.disguise\s*=[^=]/g) ?? []).toHaveLength(0);
   });
 
