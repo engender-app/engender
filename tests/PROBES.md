@@ -188,6 +188,9 @@ probe. Unit cache and registration receipts run in the Node tier.
 
 `update-handover-check` (`tests/update-handover-check.mjs`) runs with
 `npm run test:browser`, or directly with `node tests/update-handover-check.mjs`.
+Set `BROWSER_ENGINE=firefox` for Firefox. Navigation requires the fixture API
+within 60 seconds. Recovery accepts same-URL interruptions only after schema
+refusal at the requested URL. A held SQLite worker verifies delayed readiness and deadline failure.
 It holds public journal writes against worker takeover and activation timeout,
 checks encrypted persistence after reload, and preserves failed-write draft
 recovery followed by an explicit update retry. Fixture and platform limits are

@@ -1,8 +1,17 @@
 # Update handover regression
 
 Run `node tests/update-handover-check.mjs`, or `npm run test:browser`.
-The runner starts its own Vite server and Chromium context per scenario.
+The runner starts its own Vite server and a separate browser context per scenario.
+Chromium is the default. Set `BROWSER_ENGINE=firefox` to run Firefox.
 The `update-handover` browser CI matrix entry runs the same checks.
+
+Navigation waits for document commit, then for the fixture's boot marker and
+API. Recovery must also reach the requested URL and `schema-too-new`. The
+60-second ceiling covers module loading, SQLite boot and worker setup. A held
+SQLite-worker regression checks both delayed readiness and deadline failure.
+The recovery navigation helper accepts only Firefox's retained interruption
+message when both navigation URLs equal the requested recovery URL. Other
+navigation errors still fail, and the replacement page must reach recovery.
 
 The probe uses the production update handler, busy owner, journal write
 wrapper and encrypted SQLite driver. It holds an entry insert inside a real
@@ -31,6 +40,6 @@ checks prove discovery and handover, not release compatibility or a successful
 journal open by a newer application.
 
 This does not exercise the full release worker's precache installation or
-asset replacement; `npm run verify:build` covers that worker. Firefox, Safari,
-mobile browser lifecycle and physical-device behavior are not tested here.
+asset replacement; `npm run verify:build` covers that worker. Safari, mobile
+browser lifecycle and physical-device behavior are not tested here.
 Android installs updates through APK replacement rather than this worker path.
