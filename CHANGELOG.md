@@ -188,6 +188,10 @@ count and restores unrelated missing entries. An existing stock uuid or trimmed,
 case-insensitive drug key keeps the destination's choice. Replace still restores the Archive's
 counts.
 
+Opening or closing a photo, picking a photo filter, zooming or paging a
+document and changing a comparison keep the screen where it was. They used to
+jump back to the top.
+
 - Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Released schema 88 journals upgrade through schema 89, 90 and 91 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.
