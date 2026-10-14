@@ -21,6 +21,7 @@
      same way, because both renderings exist on the same data and only the
      entries' own density is the open question the ticket names. */
   import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { deleter, writer } from '$lib/stores/attempt.svelte';
@@ -232,7 +233,7 @@
     if (!(await removing.run(() => journal.savedQuestions.deleteSavedQuestion(deletedId)))) return;
     deleteOpen = false;
     toast(m.record_deleted(), { kind: 'record-deleted' });
-    void goto('/search');
+    await replaceRoute('/search');
   }
 </script>
 

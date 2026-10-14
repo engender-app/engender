@@ -37,7 +37,6 @@
      file the renderer cannot read: written back out unchanged through the
      share sheet or a download (archive/deliver.ts), the only way this app
      hands a file to anything outside its own encryption. */
-  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { deleter } from '$lib/stores/attempt.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -436,7 +435,7 @@
     toast(m.record_deleted(), { kind: 'record-deleted' });
     // Deleting answered the question a rename would have asked.
     detail.discard();
-    await goto(DOCUMENTS);
+    await replaceRoute(DOCUMENTS);
   }
 </script>
 

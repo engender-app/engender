@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Saving a custom scale, reminder or new tryout no longer leaves its completed
+form in Back history. Deleting a document or saved question also removes
+its detail screen from that history.
+
 Tryout reflections and recovery notes keep spaces while you type. Recovery
 notes also keep line breaks and can be cleared before saving. Surrounding
 whitespace is removed only when saving the draft.

@@ -1,5 +1,12 @@
 # Verification probes and focused regressions
 
+`VITE_DEMO=1 npm run build && node tests/completed-history-check.mjs` drives
+the built SPA through real links, saves, deletes and browser Back. It checks
+custom scales, existing and new reminders, new and edited tryouts, documents
+and saved questions. Ordinary Back and draft discard retain their opener.
+The custom-scale Save/Back assertion fails on the old code by reopening
+`/settings/dimension`. No history or navigation function is mocked.
+
 The browser tier's `entry-contextual-text.mjs` types `felt like me` key by key
 into the real entry editor over encrypted SQLite, for new and existing entries.
 It checks spaces and recovery-note line breaks before saving, trimmed saved

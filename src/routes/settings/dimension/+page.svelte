@@ -1,6 +1,6 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -51,7 +51,7 @@
     }, m.write_failed());
     if (!added || !created) return;
     prefs.activeScales = [...prefs.activeScales, created.key];
-    goto('/settings');
+    await replaceRoute('/settings');
     toast(m.cd_added_toast());
   }
 </script>
