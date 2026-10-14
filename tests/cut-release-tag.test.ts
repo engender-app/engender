@@ -91,12 +91,16 @@ describe('release tag dry run', () => {
       git('config', 'user.email', 'release-test@example.invalid');
       writeFileSync(join(checkout, 'CHANGELOG.md'), `## 1.0.0
 
-- Schema changes: first release
+- Schema changes: this release uses schema {{schema}}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.
+
+Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.
 - Archive format changes: first release
 - Security migrations: none
-- Minimum supported version: first release
+- Minimum supported version: 1.0.0-rc.1.
 `);
-      git('add', 'CHANGELOG.md');
+      mkdirSync(join(checkout, 'src/lib/data/sqlite'), { recursive: true });
+      writeFileSync(join(checkout, 'src/lib/data/sqlite/migrations.ts'), 'export const migrations = [{ version: 123 }];\n');
+      git('add', 'CHANGELOG.md', 'src/lib/data/sqlite/migrations.ts');
       git('-c', 'commit.gpgsign=false', 'commit', '-m', 'Prepare release notes');
       const evidence = JSON.parse(readFileSync('tests/fixtures/progressive-release-record.template.json', 'utf8'));
       evidence.releaseVersion = '1.0.0';

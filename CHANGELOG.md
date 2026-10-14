@@ -224,8 +224,8 @@ can close the journal as soon as you leave the app. Android reminders use a
 generic label by default. The Android build does not request the INTERNET
 permission.
 
-This is the first versioned release. Earlier development builds, including
-the August web beta, do not establish a supported update path. Export anything
+This stable release supports updates from 1.0.0-rc.1. Earlier development
+builds, including the August web beta, do not establish a supported update path. Export anything
 you want to keep before replacing a development build.
 
 Day One imports use the calendar day in each entry's recorded time zone.
@@ -237,7 +237,9 @@ Search queries held for returning from an entry stay in memory and are
 cleared on lock. They no longer leave plaintext copies in browser storage.
 Reloading an entry clears the held query and filters.
 
-- Schema changes: the first release establishes schema 86; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
-- Archive format changes: the first release establishes archive format 2. Archives from development builds are not a supported restore path.
-- Security migrations: none for this first release. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
-- Minimum supported version: 1.0.0 is the first supported release; there is no earlier supported version to update from.
+Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.
+
+- Schema changes: this release uses schema {{schema}}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.
+- Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore. Archives from development builds are not a supported restore path.
+- Security migrations: none. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
+- Minimum supported version: 1.0.0-rc.1.

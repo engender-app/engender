@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { appVersion } from './app-version.mjs';
+import { latestSchemaVersion } from './release-schema.mjs';
 
 /** The lines a release section has to answer, exactly as they are written. */
 export const REQUIRED_CALL_OUTS = [
@@ -60,7 +61,30 @@ export function extractReleaseNotes(changelog, version) {
     );
   }
 
+  if (version === '1.0.0') {
+    const schema = latestSchemaVersion();
+    const rendered = notes.replaceAll('{{schema}}', String(schema));
+    validateStableReleaseNotes(rendered, schema);
+    return rendered;
+  }
   return notes;
+}
+
+/**
+ * @param {string} notes
+ * @param {number} schema
+ */
+export function validateStableReleaseNotes(notes, schema) {
+  const expected = `- Schema changes: this release uses schema ${schema}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.`;
+  if (!notes.split('\n').includes(expected)) {
+    throw new Error(`The 1.0.0 release notes must describe candidate schema ${schema} and rc.1 schema 88.`);
+  }
+  if (!notes.split('\n').includes('- Minimum supported version: 1.0.0-rc.1.')) {
+    throw new Error('The 1.0.0 release notes must support updates from 1.0.0-rc.1.');
+  }
+  if (!notes.includes('Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.')) {
+    throw new Error('The 1.0.0 release notes must retain the pre-squash development journal policy.');
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
