@@ -552,7 +552,10 @@
           checked={prefs.disguise}
           label={m.disguise_app_title()}
           onChange={(v) => {
-            prefs.disguise = v;
+            /* Durable first: on Android the projection moving is what flips
+               the launcher alias and closes the app, so it waits for SQLite
+               (last-audit UI ticket 02). */
+            void setPreferenceDurably('disguise', v);
           }}
         />
       </div>
