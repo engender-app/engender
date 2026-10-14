@@ -29,6 +29,22 @@ describe('CI check collection', () => {
     expect(output.join('\n')).toContain('PASS Copy');
   });
 
+  it('runs Warsaw after a UTC failure and records both durations', async () => {
+    const zones: string[] = [];
+    const output: string[] = [];
+    const results = await runChecks(CI_CHECKS.node, {
+      run: async (_command: string, _args: string[], env: NodeJS.ProcessEnv) => {
+        if (env.TZ) zones.push(env.TZ);
+        return env.TZ === 'UTC' ? 1 : 0;
+      }, log: (line: string) => output.push(line)
+    });
+    expect(zones).toEqual(['UTC', 'Europe/Warsaw']);
+    expect(results.find((result) => result.id === 'node')?.outcome).toBe('failed');
+    expect(results.find((result) => result.id === 'node-warsaw')?.outcome).toBe('passed');
+    expect(output.join('\n')).toMatch(/FAIL Node tier \(UTC\) \| \d+\.\d{2}s/);
+    expect(output.join('\n')).toMatch(/PASS Node tier \(Europe\/Warsaw\) \| \d+\.\d{2}s/);
+  });
+
   it('reports source check failures even when the production build fails', async () => {
     const calls: string[] = [];
     const output: string[] = [];
@@ -40,7 +56,7 @@ describe('CI check collection', () => {
     expect(results.filter((result) => result.outcome === 'failed').map((result) => result.id))
       .toEqual(['ai-directories', 'build', 'copy', 'licences', 'classes', 'progressive-release']);
     expect(results.filter((result) => result.outcome === 'blocked').map((result) => result.id))
-      .toEqual(['types', 'node', 'budget']);
+      .toEqual(['types', 'node', 'node-warsaw', 'budget']);
     expect(output.join('\n')).toContain('FAIL Message catalogues and user-facing literals');
     expect(output.join('\n')).toContain('FAIL Dependency licences');
     expect(output.join('\n')).toContain('FAIL screens.css single-consumer classes');

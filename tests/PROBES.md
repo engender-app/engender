@@ -781,3 +781,23 @@ ranges. Run:
 ```sh
 npx vitest run src/lib/data/doseDraft.test.ts src/lib/data/doseSchedule.test.ts src/lib/data/epochDay.test.ts
 ```
+
+## Node calendar zones
+
+CI runs the full Node suite under both `TZ=UTC` and `TZ=Europe/Warsaw`.
+The check collector reports each run's duration in the job summary and log;
+a failed UTC run does not skip Warsaw. A failed build blocks both runs.
+
+`src/lib/data/epochDay.dst.test.ts` retains the testing audit's six Warsaw
+controls for the 2026 autumn and 2027 spring clock changes: day lengths,
+wall-clock times, repeated and missing hours, reminder recurrence, midnight
+waits and calendar-day boundaries. The test file selects Warsaw and restores
+the original zone afterward, so these controls also run on hosts without DST.
+`epochDay.test.ts` likewise always exercises Warsaw and Los Angeles spring
+forward. Fixture timestamps in draft, cycle and legacy reminder tests use
+local calendar times rather than elapsed hours from UTC or local midnight.
+
+For a local portability check, run `npm test -- --maxWorkers=2` with each
+of `UTC`, `Europe/Warsaw`, `America/Los_Angeles`, `Australia/Lord_Howe`,
+`Asia/Kolkata`, `Pacific/Chatham` and `Pacific/Kiritimati` in `TZ`. Local
+durations are not measurements of the hosted CI runner.
