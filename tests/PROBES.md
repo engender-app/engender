@@ -104,6 +104,22 @@ This proves rendered statements, not a physical-device session or a clinical
 outcome. Domain, migration, Archive and eight zone-switch regressions live in
 `src/lib/data/dose-slot-consistency.test.ts` and `sqlite/schema.test.ts`.
 
+`retained-client-check` (`tests/retained-client-check.mjs`) switches two actual
+built releases under retained Chromium pages, online and offline. Run
+`node tests/retained-client/prepare.mjs <owned output>` to build A/B with
+throwaway deferred-screen and SQLite-worker markers, then
+`node tests/retained-client-check.mjs --a <output>/A --b <output>/B`.
+Source markers are restored even when a build fails; remove the output afterward.
+The check keeps admitted writes, drafts and failed-save recovery through A/B/A
+takeover, visits the old licence screen for the first time, reopens its real
+encrypted worker and checks current documents, cache reclamation and unrelated
+caches. A held old receipt also checks that successor adoption follows the
+outgoing event and protects a controlled pre-policy page. Each policy fixture has its own database name; one retained page also
+runs the real production app and router. `--baseline-ref <ref>` substitutes that
+ref's production worker owner for B and must fail the old-asset assertion on
+an unfixed ref. PDF first-open and physical-device behavior remain outside this
+probe. Unit cache and registration receipts run in the Node tier.
+
 `update-handover-check` (`tests/update-handover-check.mjs`) runs with
 `npm run test:browser`, or directly with `node tests/update-handover-check.mjs`.
 It holds public journal writes against worker takeover and activation timeout,

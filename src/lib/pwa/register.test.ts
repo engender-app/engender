@@ -4,7 +4,7 @@ const policy = vi.hoisted(() => ({ dev: false, android: false }));
 const whenIdle = vi.fn();
 /* Replace browser policy and idle scheduling; registration and update
    ownership remain the production modules. */
-vi.mock('$app/environment', () => ({ get dev() { return policy.dev; } }));
+vi.mock('$app/environment', () => ({ get dev() { return policy.dev; }, version: 'test-release' }));
 vi.mock('$app/paths', () => ({ base: '' }));
 vi.mock('$lib/platform', () => ({ isAndroid: () => policy.android }));
 vi.mock('$lib/idle', () => ({ whenIdle: (run: () => void) => whenIdle(run) }));
@@ -58,7 +58,7 @@ describe('explicit recovery registration', () => {
 
   function browser() {
     const registration = {
-      active: {}, waiting: { postMessage: vi.fn() } as { postMessage(message: unknown): void } | null, installing: null,
+      active: { postMessage: vi.fn() }, waiting: { postMessage: vi.fn() } as { postMessage(message: unknown): void } | null, installing: null,
       update: vi.fn(async () => {}), addEventListener: vi.fn()
     };
     const register = vi.fn(async () => registration);
@@ -66,8 +66,24 @@ describe('explicit recovery registration', () => {
     vi.stubGlobal('navigator', { serviceWorker: { register, addEventListener: vi.fn(), removeEventListener: vi.fn() } });
     vi.stubGlobal('document', { addEventListener: visibility });
     vi.stubGlobal('location', { reload: vi.fn() });
-    return { registration, register, visibility };
+    return { registration, register, visibility, serviceWorker: navigator.serviceWorker };
   }
+
+  test('reports the document release after registration, takeover and visibility return', async () => {
+    const { registration, visibility, serviceWorker } = browser();
+    const { checkForNewerRelease } = await import('./register');
+    await checkForNewerRelease();
+    const message = { type: 'engender:client-release', version: 'test-release' };
+    expect(registration.active.postMessage).toHaveBeenCalledWith(message);
+    const newer = { postMessage: vi.fn() };
+    Object.assign(serviceWorker, { controller: newer });
+    const calls = vi.mocked(serviceWorker.addEventListener).mock.calls;
+    for (const [type, callback] of calls) if (type === 'controllerchange') (callback as () => void)();
+    expect(newer.postMessage).toHaveBeenCalledWith(message);
+    Object.assign(document, { visibilityState: 'visible' });
+    visibility.mock.calls[0][1]();
+    expect(newer.postMessage).toHaveBeenCalledTimes(2);
+  });
 
   test('recovery starts immediately and later idle boot adds no second watcher', async () => {
     const { registration, register, visibility } = browser();
