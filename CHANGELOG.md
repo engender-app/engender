@@ -17,6 +17,10 @@ when the old key cannot be removed. Retrying a published PIN keeps its binding
 key. On the web, a successful secret unlock also removes leftover device-bound
 material from an interrupted change and verifies that it is gone.
 
+SQLite transaction failures keep their original message when rollback also
+fails. Full-disk errors remain identifiable, with rollback refusal retained
+as secondary diagnostic information.
+
 Source packages exclude root local-evidence paths, and CI rejects them if they
 are tracked. Application evidence routes and intentional fixtures remain in
 the source package.
