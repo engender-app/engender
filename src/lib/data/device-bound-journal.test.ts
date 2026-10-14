@@ -1,5 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import {
+  browserKeySlot,
   createDeviceBoundMetadata,
   deleteDeviceKeyDatabase,
   DeviceBoundKeyUnavailableError,
@@ -109,7 +110,7 @@ test('a browser with no IndexedDB at all has nothing to delete, so this resolves
 });
 
 function browserStorage() {
-  let key: CryptoKey | null = null;
+  let key: CryptoKey | undefined;
   let metadata = '';
   const faults = { write: false, close: false, keyCommit: false };
   const abort = vi.fn(async () => {});
@@ -183,6 +184,14 @@ function browserStorage() {
   } } });
   return { faults, abort, close, key: () => key };
 }
+
+test('the browser key adapter normalizes an absent IndexedDB result to null', async () => {
+  const browser = browserStorage();
+  try {
+    expect(browser.key()).toBeUndefined();
+    await expect(browserKeySlot('missing').load()).resolves.toBeNull();
+  } finally { vi.unstubAllGlobals(); }
+});
 
 test.each(['write', 'close'] as const)('failed metadata %s keeps the existing device-bound journal unlockable', async (fault) => {
   const browser = browserStorage();
