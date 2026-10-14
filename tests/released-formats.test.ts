@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +12,7 @@ import {
   archivePath, countsOf, countsPath, everySectionDevice, GOLDEN_PASSWORD, oneShot
 } from '../src/lib/data/journal/golden-archive-fixture.ts';
 import { PREFERENCE_DEFAULTS } from '../src/lib/data/prefs/catalogue.ts';
-import { runMigrations } from '../src/lib/data/sqlite/migration-runner.ts';
+import { runMigrations, type Migration } from '../src/lib/data/sqlite/migration-runner.ts';
 import { migrations } from '../src/lib/data/sqlite/migrations.ts';
 import { LATEST_SCHEMA_VERSION } from '../src/lib/data/sqlite/schema-version.ts';
 import { noopFileOps } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
@@ -23,7 +24,7 @@ interface ReleasedCounts {
   sqliteTables: Record<string, number>;
 }
 
-async function checkReleasedFixture(directory: string): Promise<void> {
+async function checkReleasedFixture(directory: string, chain: Migration[] = migrations): Promise<void> {
   assert.deepEqual(readdirSync(directory).sort(), ['archive.ttbackup', 'counts.json', 'journal.sqlite']);
   const counts: ReleasedCounts = JSON.parse(readFileSync(join(directory, 'counts.json'), 'utf8'));
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(join(directory, 'archive.ttbackup')))), GOLDEN_PASSWORD);
@@ -44,7 +45,7 @@ async function checkReleasedFixture(directory: string): Promise<void> {
   copyFileSync(join(directory, 'journal.sqlite'), path);
   const driver = makeNodeSqliteDb(path);
   try {
-    await runMigrations(driver, noopFileOps(), migrations);
+    await runMigrations(driver, noopFileOps(), chain);
     for (const [table, expected] of Object.entries(counts.sqliteTables)) {
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
       assert.equal(row.n, expected, `released SQLite table ${table}`);
@@ -59,7 +60,7 @@ async function checkReleasedFixture(directory: string): Promise<void> {
 if (process.env.WRITE_RELEASED_FORMAT) {
   test('writes the release candidate fixtures once', async () => {
     const version = process.env.WRITE_RELEASED_FORMAT!;
-    assert.match(version, /^\d+\.\d+\.\d+$/);
+    assert.match(version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
     const directory = join(releasedRoot, version);
     mkdirSync(directory);
     const { driver, journal } = await everySectionDevice();
@@ -85,10 +86,42 @@ if (process.env.WRITE_RELEASED_FORMAT) {
   });
 }
 
-test('every released archive opens and every released SQLite journal migrates without losing rows', async () => {
-  for (const entry of readdirSync(releasedRoot, { withFileTypes: true })) {
-    if (entry.isDirectory()) await checkReleasedFixture(join(releasedRoot, entry.name));
+function requireReleasedFixtures(tags: string[], directories: string[]): void {
+  assert.ok(directories.length > 0, 'No released-format fixtures found');
+  for (const tag of tags) {
+    if (!tag.startsWith('v') || /-alpha(?:[.-]|$)/.test(tag)) continue;
+    assert.ok(directories.includes(tag.slice(1)), `Missing released-format fixture for ${tag}`);
   }
+}
+
+test('every non-alpha release tag has a fixture and every released format preserves rows', async () => {
+  const tags = execFileSync('git', ['tag', '--list', 'v*'], {
+    cwd: releasedRoot, encoding: 'utf8'
+  }).trim().split('\n').filter(Boolean);
+  const directories = readdirSync(releasedRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  requireReleasedFixtures(tags, directories);
+  for (const directory of directories) await checkReleasedFixture(join(releasedRoot, directory));
+});
+
+test('release coverage refuses empty and missing fixtures but excludes alpha tags', () => {
+  assert.throws(() => requireReleasedFixtures(['v1.0.0-rc.1'], []), /No released-format fixtures/);
+  assert.throws(() => requireReleasedFixtures(['v1.0.0-rc.1', 'v1.0.0'], ['1.0.0-rc.1']),
+    /Missing released-format fixture for v1.0.0/);
+  requireReleasedFixtures(['v1.0.0-alpha.1', 'v1.0.0-rc.1'], ['1.0.0-rc.1']);
+});
+
+test('the rc.1 fixture detects a row-deleting migration 90', async () => {
+  const directory = join(releasedRoot, '1.0.0-rc.1');
+  const original = readFileSync(join(directory, 'journal.sqlite'));
+  assert.equal(original.readUInt32BE(60), 88);
+  const mutant = migrations.map((migration) => migration.version === 90
+    ? { ...migration, sql: `${migration.sql}\nDELETE FROM entry;` }
+    : migration);
+  assert.ok(mutant.some((migration) => migration.version === 90));
+  await assert.rejects(checkReleasedFixture(directory, mutant),
+    /Foreign key violations after migration|released SQLite table entry/);
+  assert.deepEqual(readFileSync(join(directory, 'journal.sqlite')), original);
 });
 
 test('the released-format harness catches row loss and leaves fixture bytes untouched', async () => {
