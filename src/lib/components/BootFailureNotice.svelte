@@ -101,9 +101,12 @@
            comes after the failure is already on screen (the disk is asked
            once the boot has failed), so without this the offer appeared in
            one frame and pushed "Try opening again" down under the finger
-           (ui 33). -->
-      <div data-restore-group transition:disclose>
-        <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
+           (ui 33). The gap above is the group's own margin, not the
+           sentence's: a first child's margin that collapses through the
+           group at rest lands inside it while it opens, and disclose then
+           left everything under it 8px short until its last frame. -->
+      <div data-restore-group style="margin-top:var(--space-2)" transition:disclose>
+        <p data-restore-offer>{m.boot_restore_offer()}</p>
         <!-- The button keeps naming its action while it is disabled and the
              bar under it says what is happening, rather than the two of them
              saying the same sentence twice. -->
