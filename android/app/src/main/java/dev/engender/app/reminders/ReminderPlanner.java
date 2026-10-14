@@ -35,11 +35,16 @@ final class ReminderPlanner {
     /** Quiet hours can leave yesterday's occurrence waiting for this morning.
         Compare delivery times before discarding an elapsed rule occurrence. */
     static ZonedDateTime nextReminder(JSONObject reminder, ZonedDateTime now, JSONObject quietHours) {
+        ZonedDateTime occurrence = nextReminderOccurrence(reminder, now, quietHours);
+        return occurrence == null ? null : QuietHours.hold(occurrence, quietHours);
+    }
+
+    static ZonedDateTime nextReminderOccurrence(JSONObject reminder, ZonedDateTime now, JSONObject quietHours) {
         ZonedDateTime cursor = now.toLocalDate().minusDays(1).atStartOfDay(now.getZone()).minusNanos(1);
         ZonedDateTime candidate;
         while ((candidate = nextReminder(reminder, cursor)) != null) {
             ZonedDateTime held = QuietHours.hold(candidate, quietHours);
-            if (held.isAfter(now)) return held;
+            if (held.isAfter(now)) return candidate;
             cursor = candidate;
         }
         return null;

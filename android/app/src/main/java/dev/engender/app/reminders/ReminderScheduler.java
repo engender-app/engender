@@ -25,6 +25,12 @@ public final class ReminderScheduler {
     private static final String KEY_LAUNCH_ROUTE = "launch-route";
     static final String PENDING_AT = "pendingAt";
     static final String BOOT_CATCH_UP = "bootCatchUp";
+    static final String PENDING_DAY = "pendingDay";
+    static final String PENDING_ZONE = "pendingZone";
+    static final String DELIVERED_DAY = "deliveredDay";
+    static final String DELIVERED_ZONE = "deliveredZone";
+    static final String DELIVERED_AT = "deliveredAt";
+    private static final long ZONE_REPEAT_WINDOW_MILLIS = 12 * 60 * 60 * 1000L;
 
     static final String EXTRA_KIND = "kind";
     static final String EXTRA_REMINDER_ID = "reminderId";
@@ -91,11 +97,19 @@ public final class ReminderScheduler {
                 JSONObject reminder = reminders.optJSONObject(i);
                 if (reminder == null) continue;
                 JSONObject old = findReminder(previous, reminder.optString("id", ""));
+                if (old != null && sameRule(old, reminder)) {
+                    for (String field : new String[] { DELIVERED_DAY, DELIVERED_ZONE, DELIVERED_AT }) {
+                        if (old.has(field)) reminder.put(field, old.get(field));
+                    }
+                }
                 boolean heldCatchUp = old != null && old.optBoolean(BOOT_CATCH_UP) && sameRule(old, reminder);
                 reminder.remove(PENDING_AT);
                 reminder.remove(BOOT_CATCH_UP);
                 if (heldCatchUp) {
                     reminder.put(BOOT_CATCH_UP, true);
+                    for (String field : new String[] { PENDING_DAY, PENDING_ZONE }) {
+                        if (old.has(field)) reminder.put(field, old.get(field));
+                    }
                 }
                 updatePending(reminder, payload, now);
             }
@@ -136,7 +150,10 @@ public final class ReminderScheduler {
                             continue;
                         }
                         reminder.remove(BOOT_CATCH_UP);
-                        missed.add(reminder);
+                        if (!repeatsDailySlot(reminder, reminder.optLong(PENDING_DAY, Long.MIN_VALUE), now.getZone().getId(), now)) {
+                            recordDelivery(reminder, now);
+                            missed.add(reminder);
+                        }
                     }
                     updatePending(reminder, payload, now);
                 }
@@ -151,15 +168,46 @@ public final class ReminderScheduler {
     }
 
     private static void updatePending(JSONObject reminder, JSONObject payload, ZonedDateTime now) throws Exception {
-        ZonedDateTime next = reminder.optBoolean(BOOT_CATCH_UP) && reminder.optBoolean("enabled", false)
-            ? QuietHours.hold(now, payload.optJSONObject("quietHours"))
-            : ReminderPlanner.nextReminder(reminder, now, payload.optJSONObject("quietHours"));
+        boolean catchUp = reminder.optBoolean(BOOT_CATCH_UP) && reminder.optBoolean("enabled", false);
+        ZonedDateTime occurrence = catchUp ? null
+            : ReminderPlanner.nextReminderOccurrence(reminder, now, payload.optJSONObject("quietHours"));
+        if (occurrence != null && repeatsDailySlot(reminder, occurrence.toLocalDate().toEpochDay(),
+                now.getZone().getId(), QuietHours.hold(occurrence, payload.optJSONObject("quietHours")))) {
+            occurrence = ReminderPlanner.nextReminderOccurrence(reminder,
+                QuietHours.hold(occurrence, payload.optJSONObject("quietHours")), payload.optJSONObject("quietHours"));
+        }
+        ZonedDateTime next = catchUp ? QuietHours.hold(now, payload.optJSONObject("quietHours"))
+            : occurrence == null ? null : QuietHours.hold(occurrence, payload.optJSONObject("quietHours"));
         if (next == null || reminder.optString("id", "").isBlank()) {
             reminder.remove(PENDING_AT);
+            reminder.remove(PENDING_DAY);
+            reminder.remove(PENDING_ZONE);
             reminder.remove(BOOT_CATCH_UP);
         } else {
             reminder.put(PENDING_AT, next.toInstant().toEpochMilli());
+            if (!catchUp) {
+                reminder.put(PENDING_DAY, occurrence.toLocalDate().toEpochDay());
+                reminder.put(PENDING_ZONE, now.getZone().getId());
+            }
         }
+    }
+
+    /** A daily slot is the reminder row, unchanged rule and original local date.
+     * A changed zone cannot repeat that slot within 12 hours of its delivery.
+     * History lives in the encrypted payload and is committed before posting. */
+    private static boolean repeatsDailySlot(JSONObject reminder, long day, String zone, ZonedDateTime at) {
+        long elapsed = at.toInstant().toEpochMilli() - reminder.optLong(DELIVERED_AT, Long.MIN_VALUE);
+        return "DAILY".equals(reminder.optString("recurrence"))
+            && reminder.has(DELIVERED_AT) && day == reminder.optLong(DELIVERED_DAY, Long.MIN_VALUE)
+            && !zone.equals(reminder.optString(DELIVERED_ZONE))
+            && elapsed >= 0 && elapsed < ZONE_REPEAT_WINDOW_MILLIS;
+    }
+
+    private static void recordDelivery(JSONObject reminder, ZonedDateTime now) throws Exception {
+        if (!"DAILY".equals(reminder.optString("recurrence"))) return;
+        reminder.put(DELIVERED_DAY, reminder.optLong(PENDING_DAY, now.toLocalDate().toEpochDay()));
+        reminder.put(DELIVERED_ZONE, reminder.optString(PENDING_ZONE, now.getZone().getId()));
+        reminder.put(DELIVERED_AT, now.toInstant().toEpochMilli());
     }
 
     private static boolean sameRule(JSONObject left, JSONObject right) {
@@ -188,14 +236,17 @@ public final class ReminderScheduler {
 
     static synchronized void deliverReminder(JSONObject payload, JSONObject reminder, ZonedDateTime now,
                                     PayloadWriter writer, Consumer<JSONObject> post, Consumer<JSONObject> schedule) {
+        boolean repeat = repeatsDailySlot(reminder, reminder.optLong(PENDING_DAY, now.toLocalDate().toEpochDay()),
+            now.getZone().getId(), now);
         try {
+            if (!repeat) recordDelivery(reminder, now);
             reminder.remove(BOOT_CATCH_UP);
             updatePending(reminder, payload, now);
             writer.write(payload);
         } catch (Exception failedStore) {
             return;
         }
-        post.accept(reminder);
+        if (!repeat) post.accept(reminder);
         schedule.accept(reminder);
     }
 
