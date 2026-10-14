@@ -594,6 +594,21 @@ same-value language write. `--publication-only` isolates those publication
 checks and durable Settings language switches.
 The runner closes its own server and browsers and removes every profile.
 
+`pdf-retained-client-check` tests the first PDF in an old controlled page with
+no worker cache entry or earlier worker request. Prepare two actual releases
+with `node tests/pdf-retained-client/prepare.mjs <owned-directory>`, then run
+`node tests/pdf-retained-client-check.mjs --a <owned-directory>/A --b
+<owned-directory>/B`. It uses the production renderer, each release's emitted
+worker and the real nginx snippets through Podman. `CONTAINER_RUNTIME` and
+`NGINX_IMAGE` select another container runtime or nginx image. The operator
+uses only disposable local roots. The check covers deploy, controller takeover,
+explicit rollback, matching new documents and offline reopening after use.
+An uncached offline first open remains unavailable. `--baseline-ref <sha>`
+replays that revision's operator and nginx rules against the same release pair;
+the old behavior fails the positive first-render assertion. Browsers, container
+and temporary server roots close in `finally`; the caller removes prepared
+release roots after use.
+
 `src/lib/data/journal/archive-revisit-merge.test.ts` uses real SQLite and
 encrypted Archives to cover dismissing and setting a revisit again, and two
 devices choosing revisits for the same entry. Merge preserves the destination

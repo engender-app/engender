@@ -24,6 +24,10 @@ An open web page keeps its cached release assets when another page applies an
 update. Deferred screens and journal reopening continue offline; retained
 pages keep their drafts and pending saves until they choose to reload.
 
+An open web page can open its first PDF after a deployment changes the PDF
+worker filename. Deployment and rollback keep exact workers from the selected
+and outgoing releases reachable, without changing the original release files.
+
 Archive Merge restores a bundled goal's status when this device has only hidden
 it. The local hidden choice stays in place, and a locally recorded status still
 wins over the Archive's.
