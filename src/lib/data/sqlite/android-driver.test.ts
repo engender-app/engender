@@ -134,3 +134,31 @@ test('the start-over wipe names the database it deletes', async () => {
 
   expect(sent.find((call) => call.method === 'deleteDatabase')?.options).toEqual({ name: 'engender.sqlite3' });
 });
+
+/* ui 33: the failure screen's file operations come after boot() closed the
+   driver, and the plugin refuses a closed session. They go on a second
+   session, sent only once the close has answered, since the plugin orders
+   calls within a session and not across two. */
+test('a file operation made after the close waits for it, then goes on a session of its own', async () => {
+  const { driver, fileOps } = createAndroidSqlite('journal');
+  const closed = driver.close();
+  const check = fileOps.preMigrationCopyIsUsable();
+  await flush();
+  expect(sent.map((call) => call.method)).toEqual(['open', 'close']);
+
+  sent[0].answer();
+  sent[1].answer();
+  await closed;
+  await flush();
+  const asked = sent[2];
+  expect(asked.method).toBe('preMigrationCopyIsUsable');
+  expect(asked.options.session).not.toBe(sent[0].options.session);
+  expect(asked.options.seq).toBe(0);
+
+  asked.answer({ usable: true });
+  await expect(check).resolves.toBe(true);
+
+  void fileOps.restorePreMigrationCopy();
+  await flush();
+  expect(sent[3].options).toMatchObject({ session: asked.options.session, seq: 1 });
+});
