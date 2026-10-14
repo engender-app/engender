@@ -35,7 +35,7 @@ public class ReminderSchedulerMigrationTest {
     }
 
     @Test
-    public void rescheduleBeforeWebViewPersistsTheLegacyNextOccurrenceOnce() throws Exception {
+    public void legacyAnchorSurvivesLaterPendingOccurrenceUpdates() throws Exception {
         JSONObject payload = legacyPayload("20:00");
         ZonedDateTime firstReschedule = ZonedDateTime.of(2026, 8, 11, 10, 0, 0, 0, ZONE);
         String[] stored = { null };
@@ -60,7 +60,11 @@ public class ReminderSchedulerMigrationTest {
         for (int day = 12; day <= 17; day++) {
             ZonedDateTime now = ZonedDateTime.of(2026, 8, day, 10, 0, 0, 0, ZONE);
             ReminderScheduler.rescheduleFromStore(() -> persisted, now,
-                migrated -> { throw new AssertionError("An anchored payload must not be rewritten"); },
+                migrated -> {
+                    JSONObject persistedRule = migrated.getJSONArray("reminders").getJSONObject(0);
+                    assertEquals(20676, persistedRule.getInt("anchorEpochDay"));
+                    assertTrue(persistedRule.has(ReminderScheduler.PENDING_AT));
+                },
                 cancelled -> {}, scheduled -> {});
             assertEquals(ZonedDateTime.of(2026, 8, 18, 20, 0, 0, 0, ZONE),
                 ReminderPlanner.nextReminder(rule, now));

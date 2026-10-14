@@ -52,7 +52,13 @@ public class RemindersQuietHoursBoundaryTest {
 
         final boolean[] scheduled = {false};
         ReminderScheduler.rescheduleFromStore(() -> ReminderScheduler.loadPayload(context), now(),
-            saved -> fail("quiet hours need no migration"), previous -> {}, saved -> {
+            saved -> {
+                assertEquals(payload.getJSONObject("quietHours").toString(), saved.getJSONObject("quietHours").toString());
+                JSONObject reminder = saved.getJSONArray("reminders").getJSONObject(0);
+                assertEquals(ReminderPlanner.nextReminder(reminder, now(), saved.getJSONObject("quietHours"))
+                    .toInstant().toEpochMilli(), reminder.getLong(ReminderScheduler.PENDING_AT));
+                ReminderPayloadStore.write(context, saved);
+            }, previous -> {}, saved -> {
                 assertBothAt(saved, "23:00", "2026-10-08T07:00+02:00[Europe/Warsaw]");
                 scheduled[0] = true;
             });
