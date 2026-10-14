@@ -21,6 +21,12 @@ SQLite transaction failures keep their original message when rollback also
 fails. Full-disk errors remain identifiable, with rollback refusal retained
 as secondary diagnostic information.
 
+Damaged Daylio backup, Day One and TransTracks ZIP files receive each importer's
+existing failure type. Malformed JSON fields are refused before parsing can
+fail on a string or collection operation. Duplicate incoming identities that
+would fail during commit are refused during preview. Unexpected runtime
+failures remain visible to callers.
+
 Source packages exclude root local-evidence paths, and CI rejects them if they
 are tracked. Application evidence routes and intentional fixtures remain in
 the source package.
