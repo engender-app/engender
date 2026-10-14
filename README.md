@@ -289,9 +289,13 @@ npm run verify:build
 
 The browser capability matrix also runs
 Firefox and automated WebKit against the built app. Run
-`npm run verify:capabilities` after a production build, then
-`npm run verify:capabilities:lifecycle` against the same build. Automated WebKit
-provides engine evidence; actual Safari and iOS PWA remain unverified.
+`npm run build && npm run verify:capabilities` runs both production and
+lifecycle checks, with a pinned matching Playwright container for WebKit.
+The combined matrix records source/build identity, current BFCache controls,
+splash defect controls, engine limitations and duration. It is a pre-release
+check outside routine CI. Podman and host Chromium/Playwright Firefox are
+required. Automated WebKit provides engine evidence; actual Safari and iOS
+PWA remain unverified. See `tests/PROBES.md` for output and runtime options.
 
 
 The hosting check needs Docker running and accessible to your user. It tests

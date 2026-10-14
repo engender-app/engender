@@ -784,3 +784,31 @@ ranges. Run:
 ```sh
 npx vitest run src/lib/data/doseDraft.test.ts src/lib/data/doseSchedule.test.ts src/lib/data/epochDay.test.ts
 ```
+
+`npm run build && npm run verify:capabilities` runs the production and lifecycle
+matrix sequentially in Chromium, Firefox and automated WebKit. WebKit runs in
+the Playwright 1.63.0 Noble container pinned by digest in
+`tests/browser-tier/capability-run.mjs`; its version must match the installed
+`playwright-core`. The host needs Podman (or `CONTAINER_RUNTIME`), Chromium,
+Playwright Firefox, and network access for the container's media tools.
+`CAPABILITY_OUTPUT` selects a new evidence directory. Reused directories are
+refused. Each engine's JSON and the combined `matrix.json` retain source
+revision, dirty status, release/build identity, engine version, duration,
+case results and invocation failures. A dirty source tree, stale build or failed app check exits
+nonzero. This is a pre-release check, outside routine CI. `npm run verify:capabilities:lifecycle` runs only
+the lifecycle portion through the same container owner.
+
+The lifecycle matrix first measures fresh static BFCache controls in the same
+runtime. Chromium must restore the plain page and refuse the unload-blocked
+page before exercising the app's actual retained return. Other engines mark
+that app row unsupported only when their current plain control cannot restore;
+a future capable runtime runs the app check. These controls are automation
+evidence, not proof of Safari or installed iOS PWA behavior.
+
+`tests/browser-tier/splash-check.mjs` retains three fresh runs of the splash
+cap, first tap during/after fading, concealed input and hidden-boot checks in
+each engine. Every check must reject its own injected defect: retained splash,
+blocked taps, input admitted under the splash, or disabled hold cap. Hidden
+visibility and suspended animation frames are emulated. Missing authenticator,
+camera, microphone and native cases retain their explicit not-run or
+unsupported results; splash checks do not supply that coverage.
