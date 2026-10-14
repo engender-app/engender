@@ -2,8 +2,8 @@
    with `npm test`. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
-import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites, prepareJournalHandover } from './journal-busy.ts';
+import { test, vi } from 'vitest';
+import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites, prepareJournalHandover, waitForJournalIdle } from './journal-busy.ts';
 
 test('nothing in flight until something enters', () => {
   assert.equal(journalIsBusy(), false);
@@ -109,4 +109,27 @@ test('handover remembers a failed write even if it finished before activation', 
   assert.equal(await handover(() => { ran = true; }), false);
   assert.equal(ran, false);
   assert.equal(await prepareJournalHandover()(() => { ran = true; }), true);
+});
+
+test('idle wait includes overlapping writes and removes its listener after settling', async () => {
+  vi.useFakeTimers();
+  const first = markJournalBusy();
+  const second = markJournalBusy();
+  try {
+    let settled = false;
+    const idle = waitForJournalIdle().then(() => { settled = true; });
+    first();
+    await vi.runAllTimersAsync();
+    assert.equal(settled, false);
+    second();
+    await vi.runAllTimersAsync();
+    await idle;
+    assert.equal(settled, true);
+    markJournalBusy()();
+    assert.equal(vi.getTimerCount(), 0, 'a completed waiter must not schedule more checks');
+  } finally {
+    first();
+    second();
+    vi.useRealTimers();
+  }
 });

@@ -265,6 +265,16 @@ await block('production foreign key enforcement', 4, async () => {
   else fail('deleted session photos do not travel in the next archive', JSON.stringify(r.manifest));
 });
 
+await block('Replace boot housekeeping on encrypted OPFS', 7, async () => {
+  const result = await load('/housekeeping.html', 'housekeeping');
+  if (result.error) throw new Error(result.error);
+  for (const check of result.checks) {
+    if (check.ok) ok(check.name);
+    else fail(check.name, check.detail);
+  }
+  if (result.checks.length !== 7) throw new Error(`Expected 7 housekeeping checks, got ${result.checks.length}`);
+});
+
 // --- Ticket 04: the real driver + boot() against the real schema -----------
 await block('ticket 04 browser tier', 9, async () => {
   const first = await load('/driver.html', 'driver-probe');
