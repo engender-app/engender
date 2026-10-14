@@ -43,6 +43,11 @@ file names across different owners, including thumbnails and document previews.
 Merge and Replace reject them before changing files or rows. Missing-file
 placeholders and ordinary destination filename collisions still restore.
 
+Merging an older Archive after renaming medication stock now keeps the current
+count and restores unrelated missing entries. An existing stock uuid or exact
+drug name keeps the destination's choice. Replace still restores the Archive's
+counts.
+
 - Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Released schema 88 journals upgrade through schema 89 and 90 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.
