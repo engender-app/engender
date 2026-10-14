@@ -93,6 +93,14 @@ of the journal key. Keep the recovery key on paper or in a password manager
 on another device: anyone with it and the journal data can read the journal.
 It cannot bring back deleted data.
 
+Creating or replacing a recovery key and changing access mode require the
+current PIN, passphrase or biometrics again. Web device-bound mode has no current
+secret, so its confirmation explains that the unlocked browser can make these
+changes. Android unlocked mode requires biometrics or the existing recovery key;
+without either, the change is unavailable. A recovery unlock approves one
+immediate protection setup, not other changes in Settings. These checks happen
+on your device and send no credentials to the maintainer.
+
 When you copy the recovery key in a browser, the app tries to clear it from
 the clipboard after one minute, if the clipboard still holds it. Browsers
 can refuse that, and clipboard managers or sync may already have kept a

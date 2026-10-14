@@ -66,8 +66,8 @@ try {
     mode = accessMode;
     phase = 'change-mode';
     if (mode !== 'passphrase') await page.evaluate(async (mode) => {
-      const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
-      await changeAccessMode(mode, '1234');
+      const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
+      await prepareAccessModeChange(mode, '1234', { title: 'Synthetic change', subtitle: 'Synthetic journal', cancel: 'Cancel' }, () => {})(mode === 'biometric' ? '1234' : 'demo');
     }, mode);
     if (mode !== 'biometric') {
       phase = 'wrong-secret';

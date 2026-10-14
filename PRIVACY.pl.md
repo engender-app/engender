@@ -101,6 +101,15 @@ papierze albo w menedżerze haseł na innym urządzeniu: każdy, kto ma ten kluc
 i dane dziennika, może odczytać dziennik. Klucz nie przywróci usuniętych
 danych.
 
+Utworzenie lub zastąpienie klucza odzyskiwania oraz zmiana sposobu dostępu
+wymagają ponownego podania obecnego PIN-u, hasła albo potwierdzenia biometrią.
+Tryb bez hasła w przeglądarce nie ma obecnego sekretu. Potwierdzenie wyjaśnia,
+że każda osoba z dostępem do odblokowanej przeglądarki może wprowadzić te zmiany.
+Na Androidzie tryb bez blokady wymaga biometrii lub obecnego klucza odzyskiwania.
+Bez nich zmiana jest niedostępna. Odblokowanie kluczem odzyskiwania zatwierdza
+jedną bezpośrednią konfigurację ochrony, nie inne zmiany w Ustawieniach.
+Weryfikacja odbywa się na urządzeniu. Dane do odblokowania nie trafiają do autora.
+
 Gdy kopiujesz klucz odzyskiwania w przeglądarce, aplikacja po minucie
 próbuje usunąć go ze schowka, jeśli nadal tam jest. Przeglądarka może na to
 nie pozwolić, a menedżer schowka albo synchronizacja mogą już mieć kopię.

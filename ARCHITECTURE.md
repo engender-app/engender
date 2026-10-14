@@ -739,6 +739,19 @@ Android PIN/passphrase metadata lives in `journal-credential.json`, owned by [Cr
 
 `JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material. A mode change reports success only after the old device-bound wrap is removed. On the web, removal verifies that both the wrapping key and metadata are absent; the metadata stays until key removal is verified so a failed cleanup remains visible to boot. If boot surveys both wraps, a successful secret unlock retries cleanup under credential ownership and checks that a secret keystore still owns access. A cleanup failure leaves the journal usable and retries on the next boot. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
 
+Settings protection changes capture the current session, lock generation and
+credential generation when their prompt opens. `protection-change.ts` verifies
+the current protection, compares persisted credential and recovery-wrap identities
+under `changeCredentials`, and spends the operation before mutation. Publication
+owners check again after asynchronous derivation or enrolment. PIN verification
+uses the existing attempt store without rebinding credentials. A cleanup failure
+after secret publication reconciles boot's access mode to that persisted authority
+without reporting success; retry asks for that current secret. Recovery unlock
+holds one immediate-setup proof, using a weak reference so it cannot retain a
+locked browser session's key. Android unlocked mode accepts a fresh biometric
+check or an existing recovery key; only web device-bound mode permits unlocked
+session authority.
+
 ```mermaid
 stateDiagram-v2
   [*] --> booting
