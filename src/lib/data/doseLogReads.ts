@@ -34,9 +34,9 @@ export interface DoseLogQuestion {
   deepLinkedDoseId: string | null;
   /** Which regimen the schedule view compares against while more than one
       is active (ticket 15), in order of claim: the pick made on this visit,
-      the drug a Care spine link named, the stored pick. The first naming an
+      the episode a Care spine link named, the stored pick. The first naming an
       active drug wins; with none, the default the new-dose editor gets. */
-  regimenClaims: readonly (string | null)[];
+  regimenClaims: readonly (string | { episodeId: string } | null)[];
 }
 
 /** One result for the dose log's two views and its editor (final-audit
@@ -73,7 +73,11 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
      picker: both ask "which of the concurrently active drugs". */
   const activeDrugChoices = activeEpisodes.map((episode) => episode.drug)
     .filter((drug, index, drugs) => drugs.findIndex((candidate) => sameDrug(candidate, drug)) === index);
-  const claimedDrug = regimenClaims.find((drug): drug is string =>
+  const claimedDrug = regimenClaims.map((claim) =>
+    claim !== null && typeof claim === 'object'
+      ? activeEpisodes.find((episode) => episode.id === claim.episodeId)?.drug ?? null
+      : claim
+  ).find((drug): drug is string =>
     drug !== null && activeDrugChoices.some((choice) => sameDrug(choice, drug)));
   const selectedRegimenDrug =
     activeDrugChoices.find((drug) => claimedDrug !== undefined && sameDrug(drug, claimedDrug)) ??

@@ -146,6 +146,9 @@ export async function verifyCareSpineLinks() {
 
       return {
         today,
+        estradiolEpisodeId,
+        progesteroneEpisodeId,
+        sertralineEpisodeId,
         estradiolDoseId,
         oldDoseId,
         progesteroneDoseId,
@@ -175,9 +178,10 @@ export async function verifyCareSpineLinks() {
     await estradiolLastDoseMark.click();
     await page.waitForURL('**/care/doses**');
 
-    // Verify URL carries drug and dose
+    // Verify URL carries opaque episode and dose identities, not medication text
     const dosesUrl = new URL(page.url());
-    assert.equal(dosesUrl.searchParams.get('drug'), 'Estradiol');
+    assert.equal(dosesUrl.searchParams.get('episode'), fixture.estradiolEpisodeId);
+    assert.equal(dosesUrl.searchParams.get('drug'), null);
     assert.equal(dosesUrl.searchParams.get('dose'), fixture.estradiolDoseId);
 
     // Verify target dose row is highlighted
@@ -208,7 +212,8 @@ export async function verifyCareSpineLinks() {
     await sertralineLane.locator('a.care-mark[data-care-mark="lastDose"]').click();
     await page.waitForURL('**/care/doses**');
     const sertralineUrl = new URL(page.url());
-    assert.equal(sertralineUrl.searchParams.get('drug'), 'Sertraline');
+    assert.equal(sertralineUrl.searchParams.get('episode'), fixture.sertralineEpisodeId);
+    assert.equal(sertralineUrl.searchParams.get('drug'), null);
     assert.equal(sertralineUrl.searchParams.get('dose'), fixture.sertralineDoseId);
     const sertralineTarget = page.locator(`[data-dose-target] [data-dose="${fixture.sertralineDoseId}"]`);
     await sertralineTarget.waitFor({ timeout: 5000 });
@@ -227,7 +232,8 @@ export async function verifyCareSpineLinks() {
 
     const schedUrl = new URL(page.url());
     assert.equal(schedUrl.searchParams.get('view'), 'schedule');
-    assert.equal(schedUrl.searchParams.get('drug'), 'Progesterone');
+    assert.equal(schedUrl.searchParams.get('episode'), fixture.progesteroneEpisodeId);
+    assert.equal(schedUrl.searchParams.get('drug'), null);
 
     // Verify schedule view compares against Progesterone
     await page.waitForSelector('[data-slot]');
@@ -274,23 +280,23 @@ export async function verifyCareSpineLinks() {
     await page.waitForURL('**/care**');
 
     // 5. Test window expansion for historical dose older than 90 days:
-    await visit(`/care/doses?date=${fixture.today - 120}&dose=${fixture.oldDoseId}&drug=Estradiol`);
+    await visit(`/care/doses?date=${fixture.today - 120}&dose=${fixture.oldDoseId}&episode=${fixture.estradiolEpisodeId}`);
     const oldTargetDose = page.locator(`[data-dose-target] [data-dose="${fixture.oldDoseId}"]`);
     await oldTargetDose.waitFor({ timeout: 5000 });
     assert.equal(await oldTargetDose.count(), 1, 'old dose revealed and highlighted after window expansion');
 
     // 6. Test missing / deleted facts produce explicit unavailable state:
     // 6a: Deleted/non-existent dose in log view
-    await visit('/care/doses?date=20000&drug=Estradiol&dose=00000000-0000-0000-0000-000000000000');
+    await visit(`/care/doses?date=20000&episode=${fixture.estradiolEpisodeId}&dose=00000000-0000-0000-0000-000000000000`);
     await page.waitForSelector('[data-dose-unavailable]');
     assert.equal(await page.locator('[data-dose-unavailable]').count(), 1, 'data-dose-unavailable shown');
 
-    // 6b: Schedule link naming a drug no active episode carries - the marks
-    // only exist for running lanes, so a stale name arrives only by an old
+    // 6b: Schedule link naming an episode that is no longer active - the marks
+    // only exist for running lanes, so a stale identity arrives only by an old
     // link. It falls back to a stated comparison rather than faking an
     // unavailable record: the regimen the screen does compare against is
     // named out loud.
-    await visit('/care/doses?view=schedule&date=10000&drug=Nonexistent');
+    await visit('/care/doses?view=schedule&date=10000&episode=00000000-0000-0000-0000-000000000000');
     await page.waitForSelector('[data-slot]');
     assert.equal(
       await page.locator('.screen-part p', { hasText: 'Estradiol' }).count(),

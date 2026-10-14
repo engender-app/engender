@@ -729,6 +729,13 @@ Lock cleanup also removes the legacy search key written by older builds.
 
 The return gap uses the median interval between distinct entry and dose writing days in the last year. One bounded query supplies those days; future records do not count.
 
+Care links carry an episode UUID, record UUID and numeric day instead of a
+free-text drug or lane name. The dose owner resolves the episode after reading
+the encrypted journal, preserving the visit's pick, linked episode and stored
+pick priority. Source-lane memory also keeps the episode identity for Back.
+Drug names stay out of new URL/history entries; old browser history is not
+rewritten by this change.
+
 ### 8.3 The four doors
 
 ```mermaid
