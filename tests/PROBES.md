@@ -31,6 +31,16 @@ results. Browser fixtures, walkthroughs, installed PWA and hosting run in
 separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
+`care-history` (`tests/care-history.mjs`) keeps typed drug names out of browser
+history and session files. It drives the real Care screen, recorded-dose and
+schedule marks, Log and Back in separate persistent Chromium and Firefox
+profiles, then closes each browser and scans every profile file for raw,
+URL-encoded and UTF-16 canaries. A separate profile carrying the former drug
+URL must detect the canary, so an empty scan cannot pass by accident. Profiles
+are synthetic and removed after each engine. Run `node tests/care-history.mjs`
+after build/runtime generation, or name one engine. This proves local profile
+behavior, not browser sync on another device.
+
 `browser-tier/dose-slot-screens-probe.ts` runs through `test:browser` with a
 synthetic encrypted journal and the real Today, Care and Transition screens.
 It checks yesterday and today against a weekly patch slot: the Today panel and

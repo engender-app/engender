@@ -135,3 +135,18 @@ test('only a recent auto-logged dose that was not already skipped offers the one
   const log = await readDoseLog(journal, question());
   assert.deepEqual(log.logRows.filter((row) => row.offersSkip).map((row) => row.dose.id), [recent]);
 });
+
+
+test('episode UUID claims resolve inside the encrypted read and keep selection priority', async () => {
+  const journal = await twoRegimens();
+  const episode = (await journal.regimen.getEpisodes()).find((row) => row.drug === 'progesterone')!;
+  const linked = await readDoseLog(journal, question({ regimenClaims: [null, { episodeId: episode.id }, 'estradiol'] }));
+  assert.equal(linked.selectedRegimenDrug, 'progesterone');
+  const picked = await readDoseLog(journal, question({ regimenClaims: ['estradiol', { episodeId: episode.id }, 'progesterone'] }));
+  assert.equal(picked.selectedRegimenDrug, 'estradiol');
+  await journal.regimen.upsertEpisode({ ...episode, drug: 'Renamed private drug' });
+  assert.equal((await readDoseLog(journal, question({ regimenClaims: [{ episodeId: episode.id }] }))).selectedRegimenDrug, 'Renamed private drug');
+  await journal.regimen.upsertEpisode({ ...episode, endEpochDay: TODAY - 1, endReason: 'pausedForNow' });
+  assert.equal((await readDoseLog(journal, question({ regimenClaims: [{ episodeId: episode.id }, 'estradiol'] }))).selectedRegimenDrug, 'estradiol');
+  assert.equal((await readDoseLog(journal, question({ regimenClaims: [{ episodeId: 'missing' }, 'estradiol'] }))).selectedRegimenDrug, 'estradiol');
+});
