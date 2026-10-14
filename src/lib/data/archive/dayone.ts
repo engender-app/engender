@@ -62,7 +62,7 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { mintUuid } from '../journal/support';
 import { tagMatches, type DaylioNaming } from './daylio';
 import type { ArchiveEntry, ArchiveJournal, ArchiveTag, ArchiveTagGroup } from './payload';
-import { openZip, type ZipReader } from './zipReader';
+import { openZip, ZipFormatError, type ZipReader } from './zipReader';
 
 export interface DayOnePreview {
   /** Net additions, not the raw entry count - candidates already excluded
@@ -193,8 +193,10 @@ function noteFromRichText(richText: string, entryLabel: string): string {
   try {
     parsed = JSON.parse(richText) as DayOneRichText;
   } catch (cause) {
-    throw new DayOneImportError(`has richText that is not valid JSON, for entry ${entryLabel}`, { cause });
+    if (cause instanceof SyntaxError) throw new DayOneImportError(`has richText that is not valid JSON, for entry ${entryLabel}`, { cause });
+    throw cause;
   }
+  if (!isRecord(parsed)) throw new DayOneImportError(`has richText that is not an object, for entry ${entryLabel}`);
   const contents = Array.isArray(parsed.contents) ? parsed.contents : [];
   return contents
     .filter((node): node is DayOneRichTextNode => typeof (node as DayOneRichTextNode)?.text === 'string')
@@ -213,14 +215,14 @@ function noteFromRichText(richText: string, entryLabel: string): string {
 /* localDayInZone stays exported only for its own test (AU-09 test-only
    review). */
 export function localDayInZone(instantMs: number, timeZone: string): number {
-  let parts: Intl.DateTimeFormatPart[];
+  let formatter: Intl.DateTimeFormat;
   try {
-    parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(
-      new Date(instantMs)
-    );
+    formatter = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
   } catch (cause) {
-    throw new DayOneImportError(`has an unrecognised time zone: ${timeZone}`, { cause });
+    if (cause instanceof RangeError) throw new DayOneImportError(`has an unrecognised time zone: ${timeZone}`, { cause });
+    throw cause;
   }
+  const parts = formatter.formatToParts(new Date(instantMs));
   const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   return epochDayFromCalendarDate(part('year'), part('month'), part('day'))!;
 }
@@ -245,6 +247,9 @@ const emptyImportJournal = (tagGroup: ArchiveTagGroup, entries: ArchiveEntry[]):
   entries
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 /** One `photos[]` entry, resolved from `photos/<md5>.<type>` in the zip
     (module header, point 3). A photo whose file is missing, or whose bytes
     do not match its own `md5`, is skipped rather than failing the entire
@@ -255,6 +260,9 @@ async function resolveDayOnePhoto(
   reader: ZipReader,
   photo: DayOneRawPhoto
 ): Promise<{ id: string; fileName: string; raw: Uint8Array } | null> {
+  if (!isRecord(photo) || (photo.md5 != null && typeof photo.md5 !== 'string') || (photo.type != null && typeof photo.type !== 'string')) {
+    throw new DayOneImportError('has a photo with invalid md5 or type');
+  }
   if (!photo.md5 || !photo.type) return null;
   const raw = reader.read(`photos/${photo.md5}.${photo.type}`);
   if (!raw) return null;
@@ -271,116 +279,135 @@ export async function dayonePreview(
   existing: ArchiveJournal,
   naming: DaylioNaming
 ): Promise<DayOnePreview> {
-  const reader = openZip(zipBytes);
-  const journalName = findJournalEntryName(reader.names());
-  if (!journalName) throw new DayOneImportError('has no top-level journal JSON file');
-
-  let parsed: DayOneExportFile;
   try {
+    const reader = openZip(zipBytes);
+    const journalName = findJournalEntryName(reader.names());
+    if (!journalName) throw new DayOneImportError('has no top-level journal JSON file');
+
     const raw = reader.read(journalName);
     if (!raw) throw new DayOneImportError('has no top-level journal JSON file');
-    parsed = JSON.parse(strFromU8(raw)) as DayOneExportFile;
-  } catch (cause) {
-    if (cause instanceof DayOneImportError) throw cause;
-    throw new DayOneImportError('has a journal file that is not valid JSON', { cause });
-  }
-
-  if (parsed.metadata?.version !== '1.0') {
-    throw new DayOneImportError(`has metadata.version ${JSON.stringify(parsed.metadata?.version)}, expected "1.0"`);
-  }
-  if (!Array.isArray(parsed.entries)) throw new DayOneImportError('has no entries array');
-
-  const existingEntries = new Set(existing.entries.map((entry) => entry.uuid));
-  const candidates: { entry: ArchiveEntry; tags: string[] }[] = [];
-  const rawPhotos = new Map<string, Uint8Array>();
-  let unresolvedPhotoCount = 0;
-
-  for (const raw of parsed.entries) {
-    if (!raw.uuid || !raw.creationDate || !raw.timeZone) {
-      throw new DayOneImportError('has an entry missing uuid, creationDate or timeZone');
+    const json = strFromU8(raw);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch (cause) {
+      if (cause instanceof SyntaxError) throw new DayOneImportError('has a journal file that is not valid JSON', { cause });
+      throw cause;
     }
-    const uuid = normalizeDayOneUuid(raw.uuid, raw.uuid);
-    // Skipped before any photo work happens: a device that already has
-    // this entry gets nothing new to write, and resolving its photos
-    // anyway would leave their bytes in `rawPhotos` with no row left to
-    // name them - exactly the orphan a preview handing over "the exact
-    // work a commit does" must never produce.
-    if (existingEntries.has(uuid)) continue;
 
-    const timestamp = Date.parse(raw.creationDate);
-    if (Number.isNaN(timestamp)) {
-      throw new DayOneImportError(`has an invalid creationDate for entry ${raw.uuid}: ${raw.creationDate}`);
+    if (!isRecord(parsed)) throw new DayOneImportError('has a journal file that is not an object');
+    const version = isRecord(parsed.metadata) ? parsed.metadata.version : undefined;
+    if (version !== '1.0') {
+      throw new DayOneImportError(`has metadata.version ${JSON.stringify(version)}, expected "1.0"`);
     }
-    const epochDay = localDayInZone(timestamp, raw.timeZone);
+    if (!Array.isArray(parsed.entries)) throw new DayOneImportError('has no entries array');
 
-    const text = raw.text ?? '';
-    const note = text.trim() !== '' ? noteFromText(text) : noteFromRichText(raw.richText ?? '{}', raw.uuid);
+    const existingEntries = new Set(existing.entries.map((entry) => entry.uuid));
+    const incomingEntries = new Set<string>();
+    const candidates: { entry: ArchiveEntry; tags: string[] }[] = [];
+    const rawPhotos = new Map<string, Uint8Array>();
+    let unresolvedPhotoCount = 0;
 
-    const photoRows: { id: string; fileName: string; starred: boolean; epochDayOverride: null }[] = [];
-    for (const photo of raw.photos ?? []) {
-      const resolved = await resolveDayOnePhoto(reader, photo);
-      if (!resolved) {
-        unresolvedPhotoCount += 1;
-        continue;
+    for (const raw of parsed.entries) {
+      if (!isRecord(raw) || typeof raw.uuid !== 'string' || !raw.uuid || typeof raw.creationDate !== 'string' || !raw.creationDate || typeof raw.timeZone !== 'string' || !raw.timeZone) {
+        throw new DayOneImportError('has an entry missing uuid, creationDate or timeZone');
       }
-      photoRows.push({ id: resolved.id, fileName: resolved.fileName, starred: false, epochDayOverride: null });
-      rawPhotos.set(resolved.fileName, resolved.raw);
+      const uuid = normalizeDayOneUuid(raw.uuid, raw.uuid);
+      // Skipped before any photo work happens: a device that already has
+      // this entry gets nothing new to write, and resolving its photos
+      // anyway would leave their bytes in `rawPhotos` with no row left to
+      // name them - exactly the orphan a preview handing over "the exact
+      // work a commit does" must never produce.
+      if (existingEntries.has(uuid)) continue;
+      if (incomingEntries.has(uuid)) throw new DayOneImportError(`has repeated entry uuid: ${raw.uuid}`);
+      incomingEntries.add(uuid);
+
+      const timestamp = Date.parse(raw.creationDate);
+      if (Number.isNaN(timestamp)) {
+        throw new DayOneImportError(`has an invalid creationDate for entry ${raw.uuid}: ${raw.creationDate}`);
+      }
+      const epochDay = localDayInZone(timestamp, raw.timeZone);
+
+      const text = raw.text ?? '';
+      if (typeof text !== 'string' || (raw.richText != null && typeof raw.richText !== 'string')) {
+        throw new DayOneImportError(`has invalid text or richText for entry ${raw.uuid}`);
+      }
+      const note = text.trim() !== '' ? noteFromText(text) : noteFromRichText(raw.richText ?? '{}', raw.uuid);
+
+      const tags = raw.tags ?? [];
+      const photos = raw.photos ?? [];
+      if (!Array.isArray(tags) || tags.some(tag => typeof tag !== 'string')) throw new DayOneImportError(`has invalid tags for entry ${raw.uuid}`);
+      if (!Array.isArray(photos)) throw new DayOneImportError(`has invalid photos for entry ${raw.uuid}`);
+
+      const photoRows: { id: string; fileName: string; starred: boolean; epochDayOverride: null }[] = [];
+      for (const photo of photos) {
+        const resolved = await resolveDayOnePhoto(reader, photo);
+        if (!resolved) {
+          unresolvedPhotoCount += 1;
+          continue;
+        }
+        photoRows.push({ id: resolved.id, fileName: resolved.fileName, starred: false, epochDayOverride: null });
+        rawPhotos.set(resolved.fileName, resolved.raw);
+      }
+
+      const entry: ArchiveEntry = {
+        uuid,
+        epochDay,
+        timestamp,
+        mood: null,
+        note,
+        dims: {},
+        tags: [],
+        photos: photoRows,
+        recordings: [],
+        videos: [],
+        bodyRegions: {},
+        starred: raw.starred === true,
+        presentationId: null
+      };
+      candidates.push({ entry, tags });
     }
 
-    const entry: ArchiveEntry = {
-      uuid,
-      epochDay,
-      timestamp,
-      mood: null,
-      note,
-      dims: {},
-      tags: [],
-      photos: photoRows,
-      recordings: [],
-      videos: [],
-      bodyRegions: {},
-      starred: raw.starred === true,
-      presentationId: null
+    const matches = tagMatches(existing, naming);
+    const matchedTags = new Set<string>();
+    const newTags = new Map<string, ArchiveTag>();
+    for (const candidate of candidates) {
+      for (const label of candidate.tags.filter((t) => t.trim().length > 0)) {
+        const folded = foldText(label);
+        const matched = matches.get(folded);
+        if (matched) {
+          candidate.entry.tags.push(matched);
+          matchedTags.add(folded);
+          continue;
+        }
+        let tag = newTags.get(folded);
+        if (!tag) {
+          tag = { id: mintUuid(), label, builtIn: false, hidden: false };
+          newTags.set(folded, tag);
+        }
+        candidate.entry.tags.push(tag.id);
+      }
+    }
+
+    const imported: ArchiveTagGroup = {
+      key: 'imported',
+      name: '',
+      enabled: true,
+      builtIn: true,
+      tags: [...newTags.values()]
     };
-    candidates.push({ entry, tags: raw.tags ?? [] });
+    const entries = candidates.map(({ entry }) => ({ ...entry, tags: [...new Set(entry.tags)] }));
+    return {
+      entryCount: entries.length,
+      matchedTagCount: matchedTags.size,
+      newTagCount: newTags.size,
+      photoCount: entries.reduce((n, e) => n + e.photos.length, 0),
+      unresolvedPhotoCount,
+      journal: emptyImportJournal(imported, entries),
+      rawPhotos
+    };
+  } catch (cause) {
+    if (cause instanceof ZipFormatError) throw new DayOneImportError('has a damaged ZIP container', { cause });
+    throw cause;
   }
-
-  const matches = tagMatches(existing, naming);
-  const matchedTags = new Set<string>();
-  const newTags = new Map<string, ArchiveTag>();
-  for (const candidate of candidates) {
-    for (const label of candidate.tags.filter((t) => t.trim().length > 0)) {
-      const folded = foldText(label);
-      const matched = matches.get(folded);
-      if (matched) {
-        candidate.entry.tags.push(matched);
-        matchedTags.add(folded);
-        continue;
-      }
-      let tag = newTags.get(folded);
-      if (!tag) {
-        tag = { id: mintUuid(), label, builtIn: false, hidden: false };
-        newTags.set(folded, tag);
-      }
-      candidate.entry.tags.push(tag.id);
-    }
-  }
-
-  const imported: ArchiveTagGroup = {
-    key: 'imported',
-    name: '',
-    enabled: true,
-    builtIn: true,
-    tags: [...newTags.values()]
-  };
-  const entries = candidates.map(({ entry }) => ({ ...entry, tags: [...new Set(entry.tags)] }));
-  return {
-    entryCount: entries.length,
-    matchedTagCount: matchedTags.size,
-    newTagCount: newTags.size,
-    photoCount: entries.reduce((n, e) => n + e.photos.length, 0),
-    unresolvedPhotoCount,
-    journal: emptyImportJournal(imported, entries),
-    rawPhotos
-  };
 }
