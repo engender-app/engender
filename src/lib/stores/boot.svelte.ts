@@ -83,7 +83,7 @@ import { UnlockCancelledError } from '../lock/unlock-attempt';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
-import type { PreferenceKey } from '../data/prefs/catalogue';
+import { PREFERENCE_DEFAULTS, type PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, isReadyState, type BootState } from './boot-state';
 import { journalSession } from './journal-session';
 import { forgetJournalContent } from '../lock/forget-content';
@@ -877,6 +877,14 @@ async function perform(effect: BootEffect): Promise<void> {
   switch (effect.type) {
     case 'apply-cached-preferences':
       applyCachedBootPreferences(bootCache.read());
+      return;
+
+    case 'discard-erased-journal-mirrors':
+      // No journal credentials or legacy data remain to own these caches.
+      clearBrowserMirrors(localStorage);
+      clearBrowserMirrors(sessionStorage);
+      bootCache.clear();
+      applyCachedBootPreferences(PREFERENCE_DEFAULTS);
       return;
 
     case 'mark-unlocked':
