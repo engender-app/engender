@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Care-caption collisions and reported appointment-debrief failures now fail CI
+instead of appearing only in guard logs.
+
 Lock and disguise clear journal announcements, pending speech and toast actions.
 Fresh gate feedback and later authenticated confirmations remain available.
 
