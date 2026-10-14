@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+A scheduled Android backup failure posts one notice across later checks and
+app restarts. Quiet-hours holds survive restarts; a later failure can notify
+again after a successful backup or a destination change.
+
 Web rollback with `--previous` returns to the release active before the
 last switch, including after an earlier rollback. Listing and deploy output
 identify the same target. Missing or stale history requires a named rollback;
