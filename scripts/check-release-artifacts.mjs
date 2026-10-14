@@ -1,5 +1,5 @@
-/* Ticket 18 release-artifact checks: expected names, checksum integrity,
-   signed Android artifacts, and one version value across artifacts. */
+/* Release artifacts: names, checksums, Android permissions and signatures,
+   and one version value across artifacts. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -35,6 +35,38 @@ export function parseSums(text) {
  */
 function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+/** The complete installed set, including AndroidX merge-ins.
+ * @param {string} applicationId
+ */
+export function expectedAndroidPermissions(applicationId = 'dev.engender.app') {
+  return ['CAMERA', 'MODIFY_AUDIO_SETTINGS', 'POST_NOTIFICATIONS', 'RECEIVE_BOOT_COMPLETED',
+    'RECORD_AUDIO', 'SCHEDULE_EXACT_ALARM', 'USE_BIOMETRIC', 'USE_FINGERPRINT', 'WAKE_LOCK']
+    .map(name => `android.permission.${name}`)
+    .concat(`${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`);
+}
+
+/** Check aapt2's uses-permission rows, not source-manifest declarations.
+ * @param {string} dump
+ * @param {string} applicationId
+ */
+export function androidPermissionSetProblems(dump, applicationId = 'dev.engender.app') {
+  const actual = new Set([...dump.matchAll(/^uses-permission(?:-sdk-\d+)?: name='([^']+)'/gm)]
+    .map(match => match[1]));
+  const expected = new Set(expectedAndroidPermissions(applicationId));
+  return [...[...actual].filter(name => !expected.has(name)).map(name => `Unexpected APK permission: ${name}`),
+    ...[...expected].filter(name => !actual.has(name)).map(name => `Missing APK permission: ${name}`)];
+}
+
+/** @param {string} apk @param {string} applicationId */
+export function androidPermissionProblems(apk, applicationId = 'dev.engender.app') {
+  try {
+    return androidPermissionSetProblems(execFileSync('aapt2', ['dump', 'permissions', apk],
+      { encoding: 'utf8', stdio: 'pipe' }), applicationId);
+  } catch {
+    return [`Cannot inspect APK permissions with aapt2: ${apk}`];
+  }
 }
 
 /** Check the requested OCR names, including any additional web OCR assets.
@@ -90,7 +122,9 @@ export function releaseArtifactProblems(input) {
     if (!existsSync(join(releaseDir, name))) problems.push(`Missing artifact: ${name}`);
   }
   const apk = join(releaseDir, `engender-android-release-${version}.apk`);
-  if (existsSync(apk)) problems.push(...androidOcrAssetProblems(apk, input.webBuildDir));
+  if (existsSync(apk)) {
+    problems.push(...androidOcrAssetProblems(apk, input.webBuildDir), ...androidPermissionProblems(apk));
+  }
 
   const sumsPath = join(releaseDir, 'SHA256SUMS');
   if (!existsSync(sumsPath)) {
@@ -203,5 +237,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`\n${problems.length} release-artifact failure(s).`);
     process.exit(1);
   }
-  console.log('PASS release artifacts have expected names, checksums, signatures and Android version metadata.');
+  console.log('PASS release artifacts have expected names, checksums, signatures, Android permissions and version metadata.');
 }
