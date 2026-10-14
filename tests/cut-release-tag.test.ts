@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,7 +84,7 @@ describe('release tag dry run', () => {
     const checkout = join(root, 'checkout');
     const origin = join(root, 'origin.git');
     mkdirSync(checkout);
-    const git = (...args: string[]) => execFileSync('git', args, { cwd: checkout, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: checkout, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_AUTHOR_DATE: '2020-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2020-01-01T00:00:00Z' } }).trim();
     try {
       git('init', '--initial-branch=main');
       git('config', 'user.name', 'Release test');
@@ -98,6 +98,21 @@ describe('release tag dry run', () => {
 `);
       git('add', 'CHANGELOG.md');
       git('-c', 'commit.gpgsign=false', 'commit', '-m', 'Prepare release notes');
+      const evidence = JSON.parse(readFileSync('tests/fixtures/progressive-release-record.template.json', 'utf8'));
+      evidence.releaseVersion = '1.0.0';
+      evidence.candidateRevision = git('rev-parse', 'HEAD');
+      for (const stage of ['stage3', 'stage4']) {
+        evidence.stages[stage].passedAt = '';
+        evidence.stages[stage].releaseMatrix.ranAt = '';
+        for (const key of Object.keys(evidence.stages[stage].releaseMatrix.checks)) evidence.stages[stage].releaseMatrix.checks[key] = false;
+        for (const key of Object.keys(evidence.stages[stage].evidence)) evidence.stages[stage].evidence[key] = false;
+      }
+      for (const channel of Object.keys(evidence.channels)) evidence.channels[channel] = { state: 'label-only' };
+      mkdirSync(join(checkout, 'scripts'));
+      const recordPath = join(checkout, 'scripts/progressive-release-record.json');
+      writeFileSync(recordPath, JSON.stringify(evidence));
+      git('add', 'scripts/progressive-release-record.json');
+      git('-c', 'commit.gpgsign=false', 'commit', '-m', 'Record candidate checks');
       git('clone', '--bare', checkout, origin);
       git('remote', 'add', 'origin', origin);
       const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/cut-release-tag.mjs', import.meta.url)), '1.0.0', '--dry-run'], { cwd: checkout, encoding: 'utf8' });
@@ -107,6 +122,19 @@ describe('release tag dry run', () => {
       expect(git('tag', '--list')).toBe('');
       expect(git('ls-remote', '--tags', 'origin')).toBe('');
       expect(git('status', '--porcelain')).toBe('');
+
+      evidence.stages.stable.releaseMatrix.checks.rollback = false;
+      writeFileSync(recordPath, JSON.stringify(evidence));
+      git('add', 'scripts/progressive-release-record.json');
+      git('-c', 'commit.gpgsign=false', 'commit', '-m', 'Withdraw candidate check');
+      git('push', 'origin', 'main');
+      for (const flag of ['--dry-run', '--no-push']) {
+        const refused = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/cut-release-tag.mjs', import.meta.url)), '1.0.0', flag], { cwd: checkout, encoding: 'utf8' });
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain('stable.releaseMatrix.checks.rollback must be true.');
+        expect(git('tag', '--list')).toBe('');
+        expect(git('ls-remote', '--tags', 'origin')).toBe('');
+      }
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -4,6 +4,8 @@
    channel gate stages in one place so checker and tests stay in sync.
 */
 
+export const RELEASE_VERSION_RE = /^v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+
 export const STAGE_ORDER = Object.freeze(['stage1', 'stage2', 'stage3', 'stage4', 'stable']);
 
 export const RELEASE_MATRIX_CHECKS = Object.freeze([
@@ -25,7 +27,7 @@ export const STAGE_EVIDENCE_KEYS = Object.freeze({
 export const CHANNEL_STAGE_GATE = Object.freeze({
   web: 'stage1',
   play: 'stage3',
-  obtainium: 'stage3',
+  obtainium: 'stage2',
   fdroid: 'stage4'
 });
 
@@ -36,4 +38,13 @@ export const CHANNEL_STAGE_GATE = Object.freeze({
  */
 export function stageIndex(stage) {
   return STAGE_ORDER.indexOf(stage);
+}
+
+/** Candidate verification precedes publication; store outcomes follow it.
+ * @param {StageName | null} target
+ * @returns {StageName[]}
+ */
+export function requiredReleaseStages(target) {
+  if (target === 'stable') return ['stage1', 'stage2', 'stable'];
+  return target === null ? [] : /** @type {StageName[]} */ (STAGE_ORDER.slice(0, stageIndex(target) + 1));
 }
