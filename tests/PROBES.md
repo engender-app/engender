@@ -18,6 +18,11 @@ encrypted SQLite and attachment storage. It checks cancelled late opens,
 recorder failures, refusal retries, saved playback and the actual 30-second
 video cap. Node capture tests check failure cleanup and cap timer ownership.
 
+`src/lib/data/sqlite/migration-runner.test.ts` checks that the FTS5 probe
+actually attempts a virtual-table creation before reading versions or copying
+files. Wrapped driver errors keep their cause and fail as unavailable FTS5.
+Repeated probes leave no temporary tables and never change the main schema.
+
 `node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
 6501 through 6530, within 160 ms of the reset action. Erased cuts must return

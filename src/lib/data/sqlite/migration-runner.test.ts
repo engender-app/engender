@@ -24,10 +24,10 @@ import { capturedConsoleOutput } from '../../crypto/test-support/capture-console
 /** One step, enough for the runner to have something pending. */
 const migrationsFixture: Migration[] = [{ version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' }];
 
-function makeFts5UnavailableDb(): MigrationDb {
+function makeFts5UnavailableDb(error = new Error('no such module: fts5')): MigrationDb {
   return {
-    exec() {
-      throw new Error('no such module: fts5');
+    exec(sql) {
+      if (/CREATE\s+VIRTUAL\s+TABLE[\s\S]*\bUSING\s+fts5\b/i.test(sql)) throw error;
     },
     getUserVersion() {
       throw new Error('getUserVersion should not be called when FTS5 is unavailable');
@@ -263,12 +263,33 @@ test('a first run with no copy beside it is not mistaken for an interrupted rest
 
 test('assertFts5Available resolves against a build that has FTS5 compiled in', async () => {
   const db = makeDb();
-  await assert.doesNotReject(() => assertFts5Available(db));
+  try {
+    const schemaVersion = db.raw.prepare('PRAGMA main.schema_version').get();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.doesNotReject(() => assertFts5Available(db));
+      assert.deepEqual(await db.query("SELECT name FROM sqlite_temp_schema WHERE name GLOB '__fts5_probe*'"), []);
+      assert.deepEqual(db.raw.prepare('PRAGMA main.schema_version').get(), schemaVersion);
+    }
+  } finally { await db.close(); }
 });
 
 test('assertFts5Available fails loudly with a distinct error when FTS5 is missing', async () => {
   await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb()), Fts5UnavailableError);
 });
+
+test.each(['no such module: fts5', 'no such module:fts5'])(
+  'assertFts5Available recognizes a driver cause saying %s', async (message) => {
+    const cause = new Error('native query failed', { cause: new Error(message) });
+    await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb(cause)), (error: unknown) => {
+      assert.ok(error instanceof Fts5UnavailableError);
+      assert.equal(error.name, 'Fts5UnavailableError');
+      assert.equal(error.cause, cause);
+      assert.match(error.message, /FTS5 is not available/);
+      assert.match(error.message, /native query failed/);
+      return true;
+    });
+  }
+);
 
 test('runMigrations fails loudly on missing FTS5 before touching versions or file-copy hooks', async () => {
   const fileOps = makeFileOpsSpy();
