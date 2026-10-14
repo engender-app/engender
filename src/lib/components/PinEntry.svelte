@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Typing a PIN at a gate: the pad, the growing delay, and the one status
-     line the three outcomes share (ticket 53).
+     line the outcomes share (ticket 53).
 
      Two surfaces ask for a PIN and both are places somebody could be
      guessing at four digits: the cold start, where the journal has not been
@@ -24,6 +24,12 @@
   import { localStorageAttempts } from '$lib/lock/attempt-store';
   import { createPinThrottle } from '$lib/lock/pin-throttle';
   import { pinWaitSpeech } from '$lib/lock/pin-wait-speech';
+  import { CredentialsBusyError } from '$lib/data/credential-ownership';
+  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
+  import { DecryptionFailedError } from '$lib/crypto/aesGcm';
+  import { KeystoreUnreadableError } from '$lib/crypto/keystore';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
+  import { beginSessionUnlock } from '$lib/stores/lock.svelte';
   import { announce } from '$lib/stores/announcer.svelte';
   import type { Snippet } from 'svelte';
   import PinPad from './PinPad.svelte';
@@ -33,8 +39,9 @@
       is not wrong and retyping will never help. `unopened`: the PIN was
       right but the journal would not open again after a web lock
       (after-release ticket 10); not counted as a guess either. `cancelled`:
-      a newer lock superseded the attempt, so the pad accepts a fresh PIN. */
-  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened' | 'cancelled';
+      a newer lock or departure superseded the attempt. Credential contention
+      and unreadable access metadata are separate from a wrong guess too. */
+  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened' | 'cancelled' | 'busy' | 'access-unavailable';
 
   let {
     onVerify,
@@ -42,7 +49,7 @@
     aux,
     statusHandle = 'data-pin-status'
   }: {
-    onVerify: (pin: string) => Promise<PinAttempt>;
+    onVerify: (pin: string, current: () => void) => Promise<PinAttempt>;
     aux?: Snippet;
     statusHandle?: string;
   } = $props();
@@ -50,6 +57,8 @@
   let pin = $state('');
   let error = $state('');
   let busy = $state(true);
+  let authenticating = $state(false);
+  let lastOutcome = $state<PinAttempt | null>(null);
   /** Set once an attempt let the person in; nothing resets the pad after. */
   let opening = false;
   let refusals = $state(0);
@@ -62,6 +71,7 @@
 
   let throttle: Awaited<ReturnType<typeof createPinThrottle>> | null = null;
   let countdown: ReturnType<typeof setInterval> | null = null;
+  let mounted = false;
 
   /* These write `waitMs` and never read it. An effect that reads it would
      re-run on every tick of the interval it started, tear that interval down
@@ -107,7 +117,7 @@
      thing a guesser can do, so the count outlives the page rather than the
      attempt. */
   $effect(() => {
-    let mounted = true;
+    mounted = true;
     void createPinThrottle(localStorageAttempts()).then((ready) => {
       if (!mounted) return;
       throttle = ready;
@@ -120,9 +130,27 @@
   async function submit(entered: string) {
     if (busy || !throttle || throttle.remainingMs(Date.now()) > 0) return;
     busy = true;
+    authenticating = true;
     error = '';
+    lastOutcome = null;
+    announce(m.pp_decrypting());
+    const sessionCurrent = beginSessionUnlock();
+    const current = () => {
+      if (!mounted) throw new UnlockCancelledError();
+      sessionCurrent();
+    };
     try {
-      const outcome = await onVerify(entered);
+      let outcome: PinAttempt;
+      try {
+        outcome = await onVerify(entered, current);
+      } catch (failure) {
+        outcome = failure instanceof UnlockCancelledError ? 'cancelled'
+          : failure instanceof DeviceBindingUnavailableError ? 'device-gone'
+          : failure instanceof CredentialsBusyError ? 'busy'
+          : failure instanceof KeystoreUnreadableError ? 'access-unavailable'
+          : failure instanceof DecryptionFailedError ? 'wrong'
+          : 'unopened';
+      }
       if (outcome === 'ok') {
         /* The pad stays as it is, full and disabled, while the gate leaves:
            emptying it and enabling it again painted for a frame or two
@@ -131,8 +159,19 @@
         await throttle.reset();
         return;
       }
+      if (!mounted) return;
       pin = '';
       if (outcome === 'cancelled') return;
+      current();
+      lastOutcome = outcome;
+      if (outcome === 'busy') {
+        fail(m.pin_credentials_busy());
+        return;
+      }
+      if (outcome === 'access-unavailable') {
+        fail(m.pin_access_unavailable());
+        return;
+      }
       if (outcome === 'unopened') {
         fail(m.su_reopen_failed());
         return;
@@ -154,8 +193,13 @@
       /* A wrong PIN that starts a wait is said by the wait, which names the
          seconds as well. */
       if (waitMs === 0) announce(error, true);
+    } catch (failure) {
+      if (!(failure instanceof UnlockCancelledError)) throw failure;
     } finally {
-      if (!opening) busy = false;
+      if (!opening) {
+        busy = false;
+        authenticating = false;
+      }
     }
   }
 </script>
@@ -171,8 +215,10 @@
   {/key}
 {/if}
 
-<p class="pin-status small" {...{ [statusHandle]: waitMs > 0 ? 'throttled' : error ? 'wrong' : 'idle' }}>
-  {#if waitMs > 0}
+<p class="pin-status small" {...{ [statusHandle]: authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle' }}>
+  {#if authenticating}
+    {m.pp_decrypting()}
+  {:else if waitMs > 0}
     {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
   {:else}{error}{/if}
 </p>

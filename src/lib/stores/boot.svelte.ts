@@ -640,9 +640,10 @@ async function submitPinSetup(pin: string): Promise<void> {
     DeviceBindingUnavailableError when this browser has lost the key the PIN
     was bound to; the gate owns both sentences, and they are different
     sentences because only one of them is worth retyping for. */
-export async function submitPinUnlock(pin: string): Promise<void> {
-  const current = beginSessionUnlock();
-  const dataKey = await unlockJournalPin(pin);
+export async function submitPinUnlock(pin: string, gateCurrent: () => void = () => {}): Promise<void> {
+  const sessionCurrent = beginSessionUnlock();
+  const current = () => { sessionCurrent(); gateCurrent(); };
+  const dataKey = await unlockJournalPin(pin, undefined, current);
   current();
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
 }

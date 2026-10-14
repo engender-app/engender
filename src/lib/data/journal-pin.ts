@@ -25,7 +25,7 @@
    The returned data keys live in memory and nowhere else, exactly as
    ADR-0018 requires. */
 
-import { changeCredentials } from './credential-ownership';
+import { authenticateCredentials, changeCredentials } from './credential-ownership';
 import {
   createKeystore,
   rewrapKeystore,
@@ -148,10 +148,22 @@ export async function addJournalPin(
     DeviceBindingUnavailableError when this browser no longer holds the key -
     two different sentences on the gate, because only one of them is worth
     retyping for. */
-export async function unlockJournalPin(pin: string, ports: PinPorts = platformPorts()): Promise<Uint8Array<ArrayBuffer>> {
-  return ports.legacyBinding
-    ? changeCredentials(() => unlockPin(pin, ports))
-    : unlockPin(pin, ports);
+export async function unlockJournalPin(
+  pin: string,
+  ports: PinPorts = platformPorts(),
+  current: () => void = () => {}
+): Promise<Uint8Array<ArrayBuffer>> {
+  return authenticateCredentials(async () => {
+    current();
+    const dataKey = await unlockPin(pin, ports);
+    try {
+      current();
+      return dataKey;
+    } catch (error) {
+      dataKey.fill(0);
+      throw error;
+    }
+  });
 }
 
 async function unlockPin(pin: string, ports: PinPorts): Promise<Uint8Array<ArrayBuffer>> {

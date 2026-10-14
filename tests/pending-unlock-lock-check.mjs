@@ -194,7 +194,7 @@ try {
     assert.equal(fault.path, 'engender.sqlite3');
     assert.ok(fault.requestId > fault.openRequestId, `${mode}: fault belongs to the newly opened journal worker`);
     console.log('INJECTED REOPEN FAILURE', mode, JSON.stringify(fault));
-    await page.waitForSelector('[data-pin-status="wrong"]');
+    await page.waitForSelector(`[data-pin-status="${mode === 'pin' ? 'unopened' : 'wrong'}"]`);
     assert.deepEqual(await state(), { unlocked: false, journal: false, accessible: false, referenceReady: false, gate: true }, `${mode}: failed reopen`);
     assert.equal(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), attemptsBeforeFailure, `${mode}: failed reopen is not a wrong PIN`);
     await submit();
