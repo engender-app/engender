@@ -347,14 +347,14 @@ test('restoring legacy Weekly rows anchors them and merge preserves an existing 
   }];
   const reminders = makeRemindersArea(driver);
   await driver.transaction((driver) => applyArchiveJournal({
-    driver, mode: 'replace', journal, ts: Date.parse('2026-08-10T12:00:00+02:00')
+    driver, mode: 'replace', journal, ts: new Date(2026, 7, 10, 12).getTime()
   }, ARCHIVE_SECTIONS.filter((section) => section.name === 'reminders')));
   const [imported] = await reminders.getReminders();
   assert.equal(imported.recurrence, 'EVERY_N_DAYS');
   assert.equal(imported.interval, 7);
   assert.equal(imported.anchorEpochDay, 20675);
   await driver.transaction((driver) => applyArchiveJournal({
-    driver, mode: 'merge', journal, ts: Date.parse('2026-08-12T12:00:00+02:00')
+    driver, mode: 'merge', journal, ts: new Date(2026, 7, 12, 12).getTime()
   }, ARCHIVE_SECTIONS.filter((section) => section.name === 'reminders')));
   assert.equal((await reminders.getReminders())[0].anchorEpochDay, 20675);
 });

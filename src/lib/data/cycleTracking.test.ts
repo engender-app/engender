@@ -4,6 +4,7 @@
    answer out, which is no. */
 
 import { describe, expect, it } from 'vitest';
+import { timestampAtLocalTime } from './epochDay';
 import { activeEpisodesAt } from './regimenEpisode';
 import { cycleTrackingVisible, testosteroneActive } from './cycleTracking';
 import type { RegimenEpisode } from './types';
@@ -22,9 +23,7 @@ const episode = (over: Partial<RegimenEpisode>): RegimenEpisode => ({
   ...over
 });
 
-/** An instant inside epoch day `day`: the day's noon, so floor() puts it
-    back on the day it names no matter where the timezone sits. */
-const atDay = (day: number) => day * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000;
+const atDay = (day: number) => timestampAtLocalTime(day, '12:00');
 
 const NOON = atDay(20000); // the fixture episode's start day
 

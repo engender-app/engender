@@ -52,6 +52,8 @@ jobs:
 
       - name: Collect every Node check
         id: node-checks
+        env:
+          TZ: UTC
         run: |
           mkdir -p ci-logs
           node scripts/run-ci-checks.mjs --tier node 2>&1 | tee ci-logs/node-checks.log
