@@ -560,7 +560,7 @@
     </ListCard>
   </Sheet>
 
-  <Sheet bind:open={disguiseSheet} title={m.disguise_row()}>
+  <Sheet busy={disguiseWrite.busy} bind:open={disguiseSheet} title={m.disguise_row()}>
     <h3>{m.disguise_row()}</h3>
     <div class="stack-3">
       <div class="spread">
