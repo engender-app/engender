@@ -148,6 +148,8 @@ The app requests these permissions:
   so a reminder or the daily check-in can notify you, at the time you chose
   rather than in a batched system window, and still fire after the phone
   restarts.
+- `WAKE_LOCK`, so Android can keep the CPU running while a scheduled encrypted
+  backup is delivered to the chosen local folder. The screen can stay off.
 - `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes, voice
   practice and the sound of video notes.
 - `CAMERA`, for video notes and for taking a photo. A photo is taken with

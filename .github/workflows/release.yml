@@ -58,6 +58,7 @@ jobs:
         run: |
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           test -x "$build_tools/apksigner"
+          test -x "$build_tools/aapt2"
           test -x "$build_tools/zipalign"
           echo "$build_tools" >> "$GITHUB_PATH"
 
