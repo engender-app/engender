@@ -1,12 +1,12 @@
-/* One-off end-to-end check of the appointment debrief loop (phase 6 ticket
+/* End-to-end guard of the appointment debrief loop (phase 6 ticket
    08), driving the real demo build through the whole flow rather than
-   trusting unit tests alone. Not wired into any npm script.
+   trusting unit tests alone. Scheduled in the built guard tier.
 
-   Run: node tests/debrief-offer-check.mjs */
+   Run: node tests/debrief-offer-check.mjs (builds its demo surface) */
 import { preview } from 'vite';
 import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { fillDate, launchChromium } from './browser-harness.mjs';
+import { createReporter, fillDate, launchChromium } from './browser-harness.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 
@@ -18,11 +18,12 @@ const run = (command, args, env) =>
 
 await run('npx', ['vite', 'build'], { VITE_DEMO: '1' });
 
+const reporter = createReporter();
 const app = await preview({ preview: { port: 0 } });
 const base = `http://localhost:${app.httpServer.address().port}`;
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-page.on('pageerror', (err) => console.log('PAGE THREW:', err.message));
+page.on('pageerror', error => reporter.fail('Debrief page error', error));
 
 const settle = async (path) => {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
@@ -35,7 +36,7 @@ const settle = async (path) => {
   }
 };
 
-const check = (label, ok) => console.log(`${ok ? 'PASS' : 'FAIL'} ${label}`);
+const check = (label, ok) => ok ? reporter.ok(label) : reporter.fail(label, 'Condition was false');
 
 try {
   await settle('/health/appointments');
@@ -111,10 +112,11 @@ try {
   const debriefRow = page.locator('[data-list-row="debrief"]');
   check('the visit screen shows the "your debrief" row', (await debriefRow.count()) > 0);
 } catch (error) {
-  console.log('SCRIPT ERROR:', error.message);
+  reporter.fail('Appointment debrief flow', error);
   await page.screenshot({ path: resolve(root, '.claude/debrief-check-failure.png') }).catch(() => {});
 } finally {
-  await page.close().catch(() => {});
-  await browser.close().catch(() => {});
-  await app.close().catch(() => {});
+  await page.close().catch(error => reporter.fail('Close debrief page', error));
+  await browser.close().catch(error => reporter.fail('Close debrief browser', error));
+  await app.close().catch(error => reporter.fail('Close debrief server', error));
+  reporter.finish('Appointment debrief checks passed');
 }

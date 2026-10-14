@@ -194,6 +194,8 @@ coverage and the command's selection behavior.
 ## Guards
 
 Pass/fail checks: each exits non-zero when what it holds stops being true.
+The Care-caption and appointment-debrief guards use the shared reporter: measured collisions, false checks, page errors and caught boot or selector errors fail their process. `guard-outcomes.test.ts` injects those outcomes into the actual scripts and checks exit status and resource closure.
+
 CI's regression jobs run both sets from `guards.json`. The runner retries each
 failed guard once and prints every result. CI uses three dev shards and six
 built shards, balanced by measured duration in `guard-durations.json`, including
