@@ -146,3 +146,29 @@ test('a completed monotonic wait stays paid after reload but preserves the attem
   after.recordWrong(86_400_000);
   expect(after.remainingMs(86_400_000)).toBe(2000);
 });
+
+test('polling a pending wait never writes away the deadline needed after reload', () => {
+  const { store, held } = fakeStore();
+  const write = vi.spyOn(store, 'write');
+  const before = createAttemptThrottle(store);
+  before.recordWrong(1000);
+  before.recordWrong(1000);
+  write.mockClear();
+  elapsed = 400;
+  expect(before.remainingMs(86_400_000)).toBe(600);
+  expect(before.remainingMs(-86_400_000)).toBe(600);
+  expect(write).not.toHaveBeenCalled();
+  expect(held()).toEqual({ wrongAttempts: 2, acceptingFrom: 2000 });
+  expect(createAttemptThrottle(store).remainingMs(86_400_000)).toBe(1000);
+});
+
+
+test('the displayed delay follows the restored count and resets after successful authentication', () => {
+  const { store } = fakeStore({ wrongAttempts: 3, acceptingFrom: 0 });
+  const throttle = createAttemptThrottle(store);
+  expect(throttle.delayMs()).toBe(2000);
+  throttle.recordWrong(1000);
+  expect(throttle.delayMs()).toBe(4000);
+  throttle.reset();
+  expect(throttle.delayMs()).toBe(0);
+});
