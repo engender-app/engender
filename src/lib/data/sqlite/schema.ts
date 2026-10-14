@@ -25,7 +25,11 @@
    ordinary ADR-0006 thing: a new entry in migrations.ts numbered above 88,
    never an edit to the SQL below. Editing this string changes what a fresh
    install gets and not what an existing one already has, which are then two
-   different schemas wearing the same version number. */
+   different schemas wearing the same version number.
+
+   The stock comments below describe released schema 88. Forward schema 91
+   derives the Unicode drug key and replaces exact-spelling stock ownership
+   with the same trimmed, case-insensitive identity as dose attribution. */
 
 export const BASELINE_SCHEMA = `
 -- ENTRY AND ITS CONTENT ------------------------------------------------------

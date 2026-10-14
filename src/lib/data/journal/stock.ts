@@ -23,6 +23,7 @@ import { projectEveryStock, reorderByEpochDay, type StockProjection } from '../s
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
+import { drugNameKey } from '../regimenEpisode';
 
 interface StockEntryInput {
   /** The entry being edited. With it the row is matched by id, so a new
@@ -65,8 +66,8 @@ export interface StockProjectionRow {
 export interface StockArea {
   /** By drug. */
   getEntries(): Promise<MedicationStock[]>;
-  /** One entry per drug (matched exactly, trimmed - the drug's own
-      uniqueness, schema.ts): saving a second for the same drug
+  /** One entry per trimmed, case-insensitive drug key (the drug's own
+      uniqueness, migrations.ts): saving a second for the same drug
       replaces the first, the way DoseSchedule replaces per episode
       (doses.ts). Also clears box 4's reminder hand-off state - a fresh
       count is the deliberate act that re-arms a dismissed prompt. Returns
@@ -180,24 +181,25 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
       return driver.transaction(async (scope) => {
         const scopedReminders = makeRemindersArea(scope);
         const drug = input.drug.trim();
+        const drugKey = drugNameKey(drug);
         const allReminders = await scopedReminders.getReminders();
         let existing: { uuid: string }[];
         if (input.id === undefined) {
-          existing = await scope.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]);
+          existing = await scope.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug_key = ?', [drugKey]);
         } else {
           const edited = await scope.query<{ uuid: string; drug: string }>(
             'SELECT uuid, drug FROM medication_stock WHERE uuid = ?',
             [input.id]
           );
           if (edited.length === 0) throw new Error(`unknown stock entry ${input.id}`);
-          if (edited[0].drug !== drug) {
+          if (drugNameKey(edited[0].drug) !== drugKey) {
             /* A rename. The old name's reminder goes first and any row that
                already counts the new name second, in the order deleteEntry
                uses and for its reason: a reminder left behind for a name no
                row carries any more is one nothing can ever clear. */
             const oldAuto = findAutoReminder(allReminders, edited[0].drug);
             if (oldAuto) await scopedReminders.deleteReminder(oldAuto.id);
-            await scope.run('DELETE FROM medication_stock WHERE drug = ? AND uuid <> ?', [drug, input.id]);
+            await scope.run('DELETE FROM medication_stock WHERE drug_key = ? AND uuid <> ?', [drugKey, input.id]);
           }
           existing = edited;
         }
@@ -229,9 +231,9 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
             `UPDATE medication_stock
                 SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
                     opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?, updated_at = ?,
-                    drug = ?
+                    drug = ?, drug_key = ?
               WHERE uuid = ?`,
-            [...values, drug, existing[0].uuid]
+            [...values, drug, drugKey, existing[0].uuid]
           );
           return existing[0].uuid;
         }
@@ -239,10 +241,10 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         const uuid = mintUuid();
         await scope.run(
           `INSERT INTO medication_stock
-             (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
+             (uuid, drug, drug_key, quantity, unit, recorded_epoch_day, reminder_ever_created,
               opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [uuid, drug, ...values]
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [uuid, drug, drugKey, ...values]
         );
         return uuid;
       });

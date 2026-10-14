@@ -22,6 +22,7 @@
 
 import type { Migration } from './migration-runner.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
+import { migrateStockIdentity } from './stock-identity-migration.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
@@ -40,5 +41,6 @@ CREATE INDEX idx_dose_event_auto_log_day ON dose_event(auto_log_epoch_day)
 CREATE UNIQUE INDEX idx_dose_event_auto_log_slot
   ON dose_event(auto_log_episode_uuid, auto_log_epoch_day, auto_log_index)
   WHERE auto_log_episode_uuid IS NOT NULL;
-` }
+` },
+  { version: 91, sql: "ALTER TABLE medication_stock ADD COLUMN drug_key TEXT NOT NULL DEFAULT '';", apply: migrateStockIdentity }
 ];

@@ -615,3 +615,16 @@ devices choosing revisits for the same entry. Merge preserves the destination
 row while restoring unrelated entries and media. Duplicate incoming revisit
 owners fail verification and both restore modes before transaction admission
 or file-store access. Healthy distinct owners round-trip in both modes.
+
+`src/lib/data/journal/stock-identity.test.ts` checks refills and edits across
+ASCII and Unicode drug-name case variants, one projection and one automatic
+reminder, and Archive Merge after a local rename. Real schema-88 and schema-90
+journals upgrade with the whole latest stock choice and its reminder retained.
+Timestamp ties use the later local rowid; manual reminders remain untouched.
+A failure after the repair rolls rows, reminders and schema back together, and
+a retry completes. Existing stock, Archive and migration suites remain active.
+Real schema-90 exports with Unicode and trim duplicates are encrypted,
+verified, opened and restored through Merge and Replace. They keep the whole
+last eligible Archive row and only its automatic reminder. Destination uuid
+and drug-key controls preserve existing stock and manual reminders; repeat
+Merge changes neither stock nor reminders. No wire timestamp is inferred.
