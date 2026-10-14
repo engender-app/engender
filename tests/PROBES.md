@@ -631,6 +631,8 @@ created or changed by that attempt are copied; gallery-only output is excluded.
 
 `letter-composition-gallery` captures composition and discard across all palettes, both themes, English/Polish, compact widths and 200% zoom. It needs a demo build. `android-tier/letter-composition.mjs` checks native Back and drag on a disposable emulator.
 
+`android-tier/wear-reminder-hours.mjs` covers the wear reminder hours field, which renders only on Android. It types the hours one character at a time through `adb shell input text`, checks the reminder lands 1.5 hours after the start and that the running session reopens as typed, then checks that Stop with the hours cleared and the reminder still on keeps a reminder already due. Install a demo debug APK under `dev.engender.app.test` on a disposable emulator and pass its serial; it clears that package's data first and refuses the real app id.
+
 `tryout-save-check` checks label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real tryout routes. `gallery:tryouts` also captures saved details and discard controls across every palette, both themes, English and Polish, with compact and 200% zoom checks. Its feedback arrival/removal scenes reuse the browser harness screencast and write timestamped frames plus a manifest for `panel-motion-flipbook`.
 
 ## Other retained probes
