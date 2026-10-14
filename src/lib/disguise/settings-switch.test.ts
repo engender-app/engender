@@ -12,9 +12,11 @@
 
    Two halves, because only one of them is behaviour. The store's durable
    write is called here for real, with a SQLite stand-in that answers when
-   the test says so. That the Settings switch is the one calling it is a
-   question about source, and a grep is what can answer it - the same one
-   gates-surfaces.test.ts asks of onboarding.
+   the test says so. That the Settings switch is the one calling it, and
+   never with a second write in flight, is a question about the route's
+   source, which this tier cannot run, so it is pinned line by line - the
+   same kind of check gates-surfaces.test.ts makes of onboarding. Changing
+   those lines should mean changing this test on purpose.
 
    The store is a runes module and this tier has no Svelte compiler, so
    `$state` is shimmed as a plain value. Nothing below needs reactivity:
@@ -95,9 +97,10 @@ describe('the Settings disguise switch', () => {
     expect(handler.trim()).toBe('(v) => void setDisguise(v)');
     const setDisguise = /async function setDisguise\(on: boolean\) \{([\s\S]*?)\n  \}/.exec(settings)?.[1] ?? '';
     expect(setDisguise.split('\n').map((line) => line.trim()).filter(Boolean)).toEqual([
+      'if (disguiseAnswer !== null) return;',
       'disguiseAnswer = on;',
       "await setPreferenceDurably('disguise', on);",
-      'if (disguiseAnswer === on) disguiseAnswer = null;'
+      'disguiseAnswer = null;'
     ]);
     expect(settings.match(/prefs\.disguise\s*=[^=]/g) ?? []).toHaveLength(0);
   });

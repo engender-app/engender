@@ -155,13 +155,17 @@
   /* Durable first (last-audit UI ticket 02): on Android the projection
      moving is what flips the launcher alias and closes the app, so
      prefs.disguise changes only once SQLite has the answer. The switch
-     shows the answer meanwhile, so a second tap inside that wait flips
-     it back rather than repeating the first. */
+     shows that answer while it saves and takes no other until it has:
+     a second write in flight would let the first one's projection flip
+     the alias, and close the app, under an answer it then never saves.
+     setPreferenceDurably settles either way, and a refused write
+     leaves the stored value for the switch to fall back to. */
   let disguiseAnswer = $state<boolean | null>(null);
   async function setDisguise(on: boolean) {
+    if (disguiseAnswer !== null) return;
     disguiseAnswer = on;
     await setPreferenceDurably('disguise', on);
-    if (disguiseAnswer === on) disguiseAnswer = null;
+    disguiseAnswer = null;
   }
 
   async function setLanguage(v: string) {
