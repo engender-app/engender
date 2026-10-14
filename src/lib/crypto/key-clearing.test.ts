@@ -3,11 +3,33 @@ import { afterEach, expect, test, vi } from 'vitest';
 const cryptoOps = vi.hoisted(() => ({ deriveKey: vi.fn(), encrypt: vi.fn(), decrypt: vi.fn() }));
 vi.mock('./argon2id.ts', () => ({ deriveKey: cryptoOps.deriveKey, randomSalt: () => new Uint8Array(16) }));
 vi.mock('./aesGcm.ts', () => ({ encrypt: cryptoOps.encrypt, decrypt: cryptoOps.decrypt }));
-import { wrapDataKey, unwrapDataKey, rewrapKeystore } from './keystore.ts';
+import { createKeystore, wrapDataKey, unwrapDataKey, rewrapKeystore } from './keystore.ts';
 
 const params = { memorySize: 32, iterations: 1, parallelism: 1, hashLength: 32 };
 const wrap = { kdf: 'argon2id' as const, params, salt: new Uint8Array(16), nonce: new Uint8Array(12), wrappedKey: new Uint8Array(48) };
-afterEach(() => vi.resetAllMocks());
+afterEach(() => {
+  vi.resetAllMocks();
+  vi.restoreAllMocks();
+});
+
+test.each(['derivation', 'encryption'])('creating a keystore clears its fresh data key after %s fails', async (stage) => {
+  let dataKey: Uint8Array | undefined;
+  vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
+    dataKey = array as Uint8Array;
+    dataKey.fill(9);
+    return array;
+  });
+  const failure = new Error(`${stage} failed`);
+  cryptoOps.deriveKey.mockImplementation(async () => {
+    expect(dataKey).toEqual(new Uint8Array(32).fill(9));
+    if (stage === 'derivation') throw failure;
+    return new Uint8Array(32).fill(7);
+  });
+  cryptoOps.encrypt.mockRejectedValue(failure);
+
+  await expect(createKeystore('secret', params)).rejects.toBe(failure);
+  expect(dataKey).toEqual(new Uint8Array(32));
+});
 
 test.each([false, true])('wrapping clears its derived key even when encryption fails: %s', async (fails) => {
   const key = new Uint8Array(32).fill(7);
