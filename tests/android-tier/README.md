@@ -54,3 +54,25 @@ For an affected-phase rerun, set `ANDROID_TIER_BACKUP_STAGES` to a comma-separat
 list, for example `defer,verify-deferred,catch-up,cleanup`. The report names the
 selection. Unknown stages and selected stages that never execute fail the run;
 unselected stages are explicit skips. Omit the variable for the full roster.
+
+## Locked journal after process death
+
+Run `ANDROID_TIER_LOCK_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`
+for the opt-in lock probe. It builds an isolated `dev.engender.app.test.lockprobe`
+package on a disposable emulator. The fixture uses the production PIN setup and
+journal stores. Before each kill, it unlocks and visits Today, Calendar, Look
+back and More. It backgrounds the app, waits for its lock, runs `am kill`, and
+requires the process to disappear. Recents, the launcher and a posted reminder
+notification each return to a new process. Each arrival must show the PIN pad
+and contain no fixture text anywhere in the DOM, including hidden retained
+doors and form values. The reminder uses the production notification builder
+and authenticated PendingIntent. It does not substitute a route URL for a
+notification tap.
+
+The fixture helper is excluded from the ordinary instrumentation roster. This
+stage needs a supported WebView; selecting the native-only API 26 AVD fails.
+Invocation failures and missing arrival controls fail the command. The runner
+removes its forwards and isolated packages, then shuts down its owned emulator.
+Its evidence includes process IDs and one result for each arrival. This checks
+process death on an emulator, not permission revocation or physical-device
+behavior.

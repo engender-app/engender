@@ -812,3 +812,11 @@ blocked taps, input admitted under the splash, or disabled hold cap. Hidden
 visibility and suspended animation frames are emulated. Missing authenticator,
 camera, microphone and native cases retain their explicit not-run or
 unsupported results; splash checks do not supply that coverage.
+
+`ANDROID_TIER_LOCK_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`
+keeps the locked-journal process-death probe. It visits all four retained doors,
+kills the background process, then returns separately through recents, the
+launcher and a real reminder notification. Each fresh process must show the
+PIN pad and contain no private fixture text in the DOM. The dedicated fixture
+and notification helpers run only in an isolated package. See
+`tests/android-tier/README.md` for runtime requirements and limits.

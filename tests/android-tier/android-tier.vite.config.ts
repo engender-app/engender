@@ -26,6 +26,7 @@ import { join } from 'node:path';
 const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
+  'locked-journal': { root: 'locked-journal', outDir: `${ASSETS}/locked-journal-probe` },
   'key-gate': { root: 'key-gate', outDir: `${ASSETS}/key-gate-probe` },
   'kdf-budget': { root: 'kdf-budget', outDir: `${ASSETS}/kdf-budget-probe` },
   ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
