@@ -355,6 +355,14 @@ The guard requires an R8 compiler/version stamp and obfuscated app helpers.
 It does not prove runtime behavior, Play's
 optimization percentages, or a byte-identical rebuild from a signed tag.
 
+The release rules also preserve the native APIs called by the separate
+instrumentation APK. `android/app/native-test-api.pro` lists those members;
+`native-test-runtime-api.pro` lists the shared AndroidX runtime dependencies.
+Their names may change because AGP applies the app mapping to the test APK,
+but their descriptors and external subclass overrides must survive. These
+rules ship in every release channel. Add only a demonstrated binary dependency
+when a native test or AndroidX upgrade changes this contract.
+
 ## Walkthrough groups
 
 `search-return-privacy` (`tests/search-return-privacy.mjs`) runs after

@@ -13,11 +13,9 @@ import androidx.biometric.BiometricManager;
 import static org.junit.Assume.assumeTrue;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import com.getcapacitor.JSObject;
-import com.getcapacitor.PluginCall;
+import org.json.JSONObject;
+import dev.engender.app.webview.WebViewProbe;
 import dev.engender.app.MainActivity;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,42 +37,39 @@ public class SessionDeviceCredentialTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.moveToState(Lifecycle.State.CREATED);
             scenario.moveToState(Lifecycle.State.RESUMED);
-            CapturedCall biometric = new CapturedCall(false);
-            scenario.onActivity(activity -> plugin(activity).confirm(biometric));
-            assertTrue("biometric refusal did not return", biometric.done.await(5, TimeUnit.SECONDS));
-            assertNotEquals("authenticated", biometric.result.getString("outcome"));
-            CapturedCall credential = new CapturedCall(true);
-            scenario.onActivity(activity -> plugin(activity).confirm(credential));
-            assertFalse("credential request refused before a device prompt could answer: " + credential.result,
-                credential.done.await(2, TimeUnit.SECONDS));
+            WebViewProbe page = new WebViewProbe(scenario, 5);
+            String biometric = page.startCall("Keystore", "confirm", prompt(false));
+            assertNotEquals("authenticated", result(page, biometric).getString("outcome"));
+            String credential = page.startCall("Keystore", "confirm", prompt(true));
+            Thread.sleep(2000);
+            assertTrue("credential request refused before a device prompt could answer", page.pending(credential));
             shell("input keyevent KEYCODE_BACK");
             Thread.sleep(500);
             shell("input keyevent KEYCODE_BACK");
-            assertTrue("cancel did not finish credential prompt", credential.done.await(5, TimeUnit.SECONDS));
-            assertNotEquals("authenticated", credential.result.getString("outcome"));
+            assertNotEquals("authenticated", result(page, credential).getString("outcome"));
         }
     }
 
     @Test public void deviceCredentialConfirmsAndUnwrapsColdStartKey() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            CapturedCall create = new CapturedCall("create", new JSObject().put("authRequired", true));
-            scenario.onActivity(activity -> plugin(activity).create(create));
-            assertTrue("key creation did not return", create.done.await(5, TimeUnit.SECONDS));
-            assertEquals("created", create.result.getString("outcome"));
-            CapturedCall confirm = new CapturedCall(true);
-            scenario.onActivity(activity -> plugin(activity).confirm(confirm));
-            enterCredential(confirm);
-            assertEquals("authenticated", confirm.result.getString("outcome"));
-            CapturedCall unlock = new CapturedCall("unlock", true);
-            scenario.onActivity(activity -> plugin(activity).unlock(unlock));
-            enterCredential(unlock);
-            assertEquals("authenticated", unlock.result.getString("outcome"));
-            assertEquals(create.result.getString("hexKey"), unlock.result.getString("hexKey"));
+            WebViewProbe page = new WebViewProbe(scenario, 5);
+            String create = page.startCall("Keystore", "create", new JSONObject().put("authRequired", true));
+            JSONObject created = result(page, create);
+            assertEquals("created", created.getString("outcome"));
+            String confirm = page.startCall("Keystore", "confirm", prompt(true));
+            enterCredential(page, confirm);
+            assertEquals("authenticated", result(page, confirm).getString("outcome"));
+            String unlock = page.startCall("Keystore", "unlock", prompt(true));
+            enterCredential(page, unlock);
+            JSONObject unlocked = result(page, unlock);
+            assertEquals("authenticated", unlocked.getString("outcome"));
+            assertEquals(created.getString("hexKey"), unlocked.getString("hexKey"));
         }
     }
 
-    private void enterCredential(CapturedCall call) throws Exception {
-        assertFalse("authentication answered without the credential", call.done.await(2, TimeUnit.SECONDS));
+    private void enterCredential(WebViewProbe page, String call) throws Exception {
+        Thread.sleep(2000);
+        assertTrue("authentication answered without the credential", page.pending(call));
         UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
         AccessibilityServiceInfo info = automation.getServiceInfo();
         info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
@@ -83,7 +78,7 @@ public class SessionDeviceCredentialTest {
         assertTrue("credential field was not focused", focusCredentialField(root));
         shell("input text " + PIN);
         shell("input keyevent KEYCODE_ENTER");
-        assertTrue("credential did not finish authentication", call.done.await(5, TimeUnit.SECONDS));
+        result(page, call);
     }
 
     private boolean focusCredentialField(AccessibilityNodeInfo node) throws Exception {
@@ -101,22 +96,14 @@ public class SessionDeviceCredentialTest {
         return false;
     }
 
-    private KeystorePlugin plugin(MainActivity activity) {
-        return (KeystorePlugin) activity.getBridge().getPlugin("Keystore").getInstance();
+    private JSONObject prompt(boolean credential) throws Exception {
+        return new JSONObject().put("title", "Open journal").put("subtitle", "Confirm device access")
+            .put("cancel", "Cancel").put("deviceCredential", credential);
     }
-    private static final class CapturedCall extends PluginCall {
-        final CountDownLatch done = new CountDownLatch(1);
-        JSObject result;
-        CapturedCall(boolean credential) {
-            this("confirm", credential);
-        }
-        CapturedCall(String method, boolean credential) {
-            this(method, new JSObject().put("title", "Open journal").put("subtitle", "Confirm device access")
-                .put("cancel", "Cancel").put("deviceCredential", credential));
-        }
-        CapturedCall(String method, JSObject data) {
-            super(null, "Keystore", "session-proof", method, data);
-        }
-        @Override public void resolve(JSObject value) { result = value; done.countDown(); }
+
+    private JSONObject result(WebViewProbe page, String call) throws Exception {
+        JSONObject answer = page.awaitCall(call);
+        assertEquals(answer.toString(), "resolved", answer.getString("state"));
+        return answer.getJSONObject("result");
     }
 }

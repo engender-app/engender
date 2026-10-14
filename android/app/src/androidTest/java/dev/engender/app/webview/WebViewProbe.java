@@ -8,6 +8,8 @@ import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import dev.engender.app.MainActivity;
 
@@ -37,6 +39,7 @@ public final class WebViewProbe {
 
     private final ActivityScenario<MainActivity> scenario;
     private final long timeoutSeconds;
+    private int nextCall;
 
     public WebViewProbe(ActivityScenario<MainActivity> scenario, long timeoutSeconds) {
         this.scenario = scenario;
@@ -89,6 +92,30 @@ public final class WebViewProbe {
         String url = string(evaluate("window.Capacitor.convertFileSrc(" + JSONObject.quote(path) + ")"));
         if (url == null || url.isEmpty()) throw new AssertionError("Capacitor did not resolve the probe file");
         scenario.onActivity(activity -> webView(activity).loadUrl(url));
+    }
+
+    /** Starts a production plugin call without waiting for its native answer. */
+    public String startCall(String plugin, String method, JSONObject arguments) throws InterruptedException {
+        awaitTrue("!!window.Capacitor && !!window.Capacitor.Plugins && !!window.Capacitor.Plugins[" + JSONObject.quote(plugin) + "]");
+        String id = "call" + ++nextCall;
+        evaluate("window.__nativeTestCalls = window.__nativeTestCalls || {};"
+            + "window.__nativeTestCalls[" + JSONObject.quote(id) + "] = {state:'pending'};"
+            + "window.Capacitor.Plugins[" + JSONObject.quote(plugin) + "][" + JSONObject.quote(method) + "](" + arguments + ")"
+            + ".then(function(result){window.__nativeTestCalls[" + JSONObject.quote(id) + "]={state:'resolved',result:result};},"
+            + "function(error){window.__nativeTestCalls[" + JSONObject.quote(id) + "]={state:'rejected',error:{message:error.message,code:error.code}};});true");
+        return id;
+    }
+
+    /** Reads whether a native call still has no answer. */
+    public boolean pending(String id) throws InterruptedException {
+        return "true".equals(evaluate("window.__nativeTestCalls[" + JSONObject.quote(id) + "].state === 'pending'"));
+    }
+
+    /** Waits within the probe deadline, preserving both native results and rejections. */
+    public JSONObject awaitCall(String id) throws InterruptedException, JSONException {
+        awaitTrue("window.__nativeTestCalls[" + JSONObject.quote(id) + "].state !== 'pending'");
+        String encoded = evaluate("JSON.stringify(window.__nativeTestCalls[" + JSONObject.quote(id) + "])");
+        return new JSONObject(new JSONArray("[" + encoded + "]").getString(0));
     }
 
     /** Polls {@code expression} until it equals {@code wanted}, then returns what it last saw. */

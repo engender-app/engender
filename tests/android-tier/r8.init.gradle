@@ -1,0 +1,54 @@
+// Opt-in instrumentation variant. Release artifacts keep their own source set.
+gradle.beforeProject { project ->
+    if (project.path == ':app') {
+        project.afterEvaluate {
+            def android = project.extensions.getByName('android')
+            def variant = android.buildTypes.create('r8Instrumented')
+            variant.initWith(android.buildTypes.release)
+            variant.matchingFallbacks = ['release']
+            variant.signingConfig = android.signingConfigs.debug
+            variant.debuggable = false
+            variant.testProguardFile(project.file('../../tests/android-tier/r8-instrumentation.pro'))
+            android.testBuildType = 'r8Instrumented'
+
+            gradle.projectsEvaluated {
+                def applicationId = android.defaultConfig.applicationId
+                def testApplicationId = android.defaultConfig.testApplicationId
+                if (!applicationId?.startsWith('dev.engender.app.test.') ||
+                    (testApplicationId != null && !testApplicationId.startsWith('dev.engender.app.test.'))) {
+                    throw new GradleException('The R8 instrumentation variant requires isolated application and test package IDs under dev.engender.app.test.')
+                }
+            }
+
+            // Fault injection uses the existing authenticated test provider.
+            // The release source always refuses that provider.
+            android.sourceSets.r8Instrumented.java.srcDir('src/debug/java')
+            android.sourceSets.r8Instrumented.java.include('dev/engender/app/backup/BackupProviderCapability.java')
+
+            project.tasks.configureEach { task ->
+                if (task.name == 'minifyR8InstrumentedWithR8') {
+                    task.doFirst {
+                        if (variant.debuggable || !variant.minifyEnabled ||
+                            variant.proguardFiles != android.buildTypes.release.proguardFiles) {
+                            throw new GradleException('The R8 instrumentation variant must use release optimization and rules.')
+                        }
+                    }
+                }
+                if (task.name in ['processR8InstrumentedManifest', 'processR8InstrumentedManifestForPackage',
+                    'processR8InstrumentedAndroidTestManifest']) {
+                    task.doLast {
+                        // Enable run-as and authenticate the test provider without R8 debug mode.
+                        task.outputs.files.asFileTree.matching { include '**/AndroidManifest.xml' }.files.each { manifest ->
+                            def source = manifest.getText('UTF-8')
+                            source = source.replaceAll(/android:debuggable="(?:true|false)"/, 'android:debuggable="true"')
+                            if (!source.contains('android:debuggable="true"')) {
+                                source = source.replaceFirst('<application', '<application android:debuggable="true"')
+                            }
+                            manifest.write(source, 'UTF-8')
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

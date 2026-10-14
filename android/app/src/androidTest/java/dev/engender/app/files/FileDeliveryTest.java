@@ -93,7 +93,8 @@ public class FileDeliveryTest {
     @Test public void savePickerDeliversVerifiedBytesAndCancellationAndTruncationNeverSucceed() throws Exception {
         CountDownLatch bootstrapped = new CountDownLatch(1);
         app.sendOrderedBroadcast(new Intent().setComponent(new android.content.ComponentName(
-            "dev.engender.app.test", BackupDocumentsProvider.Bootstrap.class.getName())), null,
+            instrumentation.getContext().getPackageName(), BackupDocumentsProvider.Bootstrap.class.getName()))
+            .putExtra("targetPackage", app.getPackageName()), null,
             new android.content.BroadcastReceiver() {
                 @Override public void onReceive(Context context, Intent intent) { bootstrapped.countDown(); }
             }, null, 0, null, null);
