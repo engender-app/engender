@@ -728,3 +728,20 @@ prewarm reuse, termination and event suppression. Load failures derive the
 known key on the main thread; workers that ran and failed refuse without
 retrying. These checks run in `npm test`; the stand-ins do not prove browser
 worker loading or Android behavior.
+
+
+`attempt-store.test.ts` checks the browser attempt key, hostile stored values,
+count clamping and unavailable storage. The throttle tests keep a pending
+wait on disk while it is polled and preserve elapsed time across gate
+remounts. Android gate tests display the native ledger without admitting or
+resetting attempts. Leave-lock tests cover ordinary versus persisted history,
+disposal, optional lifecycle targets, backwards clocks under restart and
+mixed native leaves when timing changes to immediately.
+
+`node tests/browser-tier/pin-wait-clock-jump.mjs` mounts the production PIN
+gate over a synthetic encrypted journal in Chromium. A reload must owe the
+full pending minute. Moving the wall clock forward one hour or ten years,
+back two days, or loading a stale stored deadline cannot pay the wait.
+The unlocked control also checks leave-lock on short, long and backwards
+clock changes. Playwright changes system time while elapsed time keeps its
+own course. The runner closes its browser and server in `finally`.
