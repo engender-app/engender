@@ -22,7 +22,7 @@
   a chunk plus whatever the caller is holding. */
 
 import { open, seal, SEAL_OVERHEAD } from '../../crypto/aesGcm';
-import { ARCHIVE_ARGON2_PARAMS, type Argon2Params } from '../../crypto/params';
+import { ARCHIVE_ARGON2_MAX_PARAMS, type Argon2Params } from '../../crypto/params';
 import { ARCHIVE_FORMAT_VERSION } from './codec';
 import { CorruptArchiveError, u32 } from './wire';
 
@@ -36,12 +36,6 @@ const PREFIX_LENGTH = MAGIC.length + 2 + 4;
 /** A header this long is not one of ours, whatever the magic says; the
     length is read off an untrusted file and allocated against. */
 const MAX_HEADER_JSON = 64 * 1024;
-
-/** Eight times today's archive profile (ADR-0013): room for a real re-tune,
-    well under a request that would itself crash the allocation it is meant
-    to guard against - F-07, these numbers come off a file from anywhere. */
-const MAX_KDF_MEMORY_SIZE = ARCHIVE_ARGON2_PARAMS.memorySize * 8;
-const MAX_KDF_ITERATIONS = ARCHIVE_ARGON2_PARAMS.iterations * 8;
 
 export { ARCHIVE_FORMAT_VERSION } from './codec';
 
@@ -248,8 +242,8 @@ function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'>
     throw new CorruptArchiveError('the archive header is not readable');
   }
   if (chunkSize! > CHUNK_SIZE * 16) throw new CorruptArchiveError('the archive header is not readable');
-  if (kdf!.memorySize > MAX_KDF_MEMORY_SIZE || kdf!.iterations > MAX_KDF_ITERATIONS
-    || kdf!.hashLength !== 32 || kdf!.parallelism > 4) {
+  if (kdf!.memorySize > ARCHIVE_ARGON2_MAX_PARAMS.memorySize || kdf!.iterations > ARCHIVE_ARGON2_MAX_PARAMS.iterations
+    || kdf!.hashLength !== ARCHIVE_ARGON2_MAX_PARAMS.hashLength || kdf!.parallelism > ARCHIVE_ARGON2_MAX_PARAMS.parallelism) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
 

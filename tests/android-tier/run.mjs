@@ -217,6 +217,8 @@ const gradleEnv = { JAVA_HOME: home };
        -Pandroid.testInstrumentationRunnerArguments.class=dev.engender.app.longjournal.LongJournalBenchmarkTest
    Then copy the logged JSON block into android-budgets.json and commit it. */
 const PIN_WAIT_TEST = 'dev.engender.app.lock.PinAttemptWaitPersistenceTest';
+const KDF_BUDGET_TEST = 'dev.engender.app.archive.ArchiveKdfBudgetTest';
+console.log('SKIP emulator tier: Archive KDF budget needs an isolated app on the physical Pixel');
 const evidenceRoot = resolve(process.env.ANDROID_TIER_LOG_DIR ?? join(repo, '.claude/android-tier'));
 mkdirSync(evidenceRoot, { recursive: true });
 const evidenceDir = mkdtempSync(join(evidenceRoot, 'run-'));
@@ -259,7 +261,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST}`])
           ],
           {
             cwd: androidDir,

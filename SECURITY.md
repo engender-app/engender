@@ -41,6 +41,12 @@ of browser autofill and session restoration. This does not erase copies left by
 older versions. Android retains its existing keyboard behavior; the keyboard
 and its settings control what it learns or stores.
 
+An Archive header is checked before its password starts key derivation. It
+can request at most 64 MiB of Argon2id memory, six iterations, one lane and a
+32-byte output. Higher costs are refused as a corrupt Archive. Export keeps
+the released 64 MiB, three-iteration profile; the import ceiling allows twice
+its combined cost without increasing the memory request.
+
 ## Report a vulnerability
 
 Use GitHub private vulnerability reporting for this repository:
