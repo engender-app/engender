@@ -97,25 +97,34 @@ public class JournalWebViewInputTest {
             });
             WebViewProbe page = new WebViewProbe(scenario, 10);
             page.awaitTrue("Boolean(document.getElementById('password'))");
-            int marker = Integer.parseInt(page.evaluate("(function(){var field=document.getElementById('" + field
-                + "');field.focus();field.setSelectionRange(field.value.length,field.value.length);return field.value.length})()"));
-            page.awaitTrue("document.activeElement.id === '" + field + "'");
             AtomicReference<EditorInfo> seen = new AtomicReference<>();
+            AtomicReference<Integer> marker = new AtomicReference<>();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
             while (seen.get() == null && System.nanoTime() < deadline) {
                 scenario.onActivity(activity -> {
                     WebView view = activity.getBridge().getWebView();
                     view.requestFocus();
-                    EditorInfo info = new EditorInfo();
-                    InputConnection connection = view.onCreateInputConnection(info);
-                    // DOM focus can precede the native editor update. Each
-                    // field's selection endpoint identifies its current state.
-                    if (connection != null && info.initialSelStart == marker && info.initialSelEnd == marker) seen.set(info);
+                    view.evaluateJavascript("(function(){var field=document.getElementById('" + field
+                        + "');field.focus();field.setSelectionRange(field.value.length,field.value.length);return field.value.length})()", result -> {
+                            int endpoint = Integer.parseInt(result);
+                            EditorInfo info = new EditorInfo();
+                            InputConnection connection = view.onCreateInputConnection(info);
+                            // Native focus precedes DOM focus, then the selection
+                            // endpoint confirms this field's editor update.
+                            if (connection != null && info.initialSelStart == endpoint && info.initialSelEnd == endpoint) {
+                                marker.set(endpoint);
+                                seen.set(info);
+                            }
+                        });
                 });
                 if (seen.get() == null) Thread.sleep(250);
             }
             EditorInfo info = seen.get();
             assertNotNull("focused field has no input connection", info);
+            System.out.println("Journal editor " + field + ": marker=" + marker.get()
+                + " selection=" + info.initialSelStart + "," + info.initialSelEnd
+                + " action=" + (info.imeOptions & EditorInfo.IME_MASK_ACTION)
+                + " noLearning=" + ((info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0));
             assertEquals("field type was lost", InputType.TYPE_CLASS_TEXT, info.inputType & InputType.TYPE_MASK_CLASS);
             if ("note".equals(field)) assertNotEquals(0, info.inputType & InputType.TYPE_TEXT_FLAG_MULTI_LINE);
             if ("name".equals(field)) assertEquals(EditorInfo.IME_ACTION_GO, info.imeOptions & EditorInfo.IME_MASK_ACTION);

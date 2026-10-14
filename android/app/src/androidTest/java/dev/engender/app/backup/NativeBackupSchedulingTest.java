@@ -24,9 +24,9 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
         File bundle = new File(app.getFilesDir(), "auto-export-probe");
         if ("cleanup".equals(phase)) {
             grantDestination();
+            AutoExportPlugin.wipe(app);
             InstrumentationRegistry.getInstrumentation().getContext().getContentResolver()
                 .call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
-            AutoExportPlugin.wipe(app);
             assertFalse(preferences.contains("encryptedStage"));
             assertTrue(WorkManager.getInstance(app).getWorkInfosForUniqueWork(BackupWork.NAME).get(10, TimeUnit.SECONDS)
                 .stream().allMatch(info -> info.getState().isFinished()));
@@ -257,9 +257,9 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
             }
         } finally {
             grantDestination();
+            AutoExportPlugin.wipe(app);
             InstrumentationRegistry.getInstrumentation().getContext().getContentResolver()
                 .call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
-            AutoExportPlugin.wipe(app);
             encrypted.delete();
         }
     }
@@ -379,7 +379,9 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
     }
 
     private void unlockRenderedPage(WebViewProbe page) throws Exception {
-        page.evaluate("(() => {const input=document.querySelector('#journal-passphrase');input.value='synthetic current journal credential';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[data-passphrase-submit]').click();})()");
+        page.evaluate("(() => {const input=document.querySelector('#journal-passphrase');input.value='synthetic current journal credential';input.dispatchEvent(new Event('input',{bubbles:true}));})()");
+        page.awaitTrue("!!document.querySelector('[data-passphrase-submit]') && !document.querySelector('[data-passphrase-submit]').disabled");
+        page.evaluate("document.querySelector('[data-passphrase-submit]').click()");
     }
 
     private String journalFileHash() throws Exception {

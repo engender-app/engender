@@ -159,7 +159,7 @@ async function startEmulator(avd, port) {
     .replace(/^sdcard.path=.*\n?/m, '');
   writeFileSync(join(clone, 'config.ini'), config);
   writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
-  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
+  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-no-metrics', '-crash-report-mode', 'disabled', '-wipe-data'];
   if (LOCK_ONLY && !HEADLESS) args.push('-gpu', 'host');
   // The API 26 goldfish kernel panics while mapping graphics DMA buffers.
   // Keep its native checks running without the emulator's GLDMA transport.
@@ -353,7 +353,7 @@ for (const avd of AVDS) {
       };
       const beforePin = failureCount;
       if (!BACKUP_ONLY) try {
-        stage('preferences', 'preferenceDeadlineSurvivesANewOwnerAndNewBoot');
+        stage('preferences', 'nativeDeadlineSurvivesANewOwnerAndNewBoot');
         if (stage('seed')) {
           const killed = device(['shell', 'am', 'force-stop', 'dev.engender.app']);
           const pid = device(['shell', 'pidof', 'dev.engender.app']);
@@ -379,6 +379,7 @@ for (const avd of AVDS) {
         return reportStage(`${avd}: native backup ${name}`, result, { ok, fail });
       };
       try {
+        backupStage('cleanup');
         if (backupStage('defer')) {
           const killed = device(['shell', 'am', 'kill', 'dev.engender.app']);
           const absent = device(['shell', 'pidof', 'dev.engender.app']);
@@ -532,7 +533,7 @@ for (const avd of AVDS) {
               'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
             writeFileSync(join(evidenceDir, `${avd}-backup-reset-transfers.log`),
               `${reset.stdout ?? ''}${reset.stderr ?? ''}\nexit=${reset.status} signal=${reset.signal} error=${reset.error ?? ''}\n`);
-            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail });
+            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail }, 4);
           }
           if (!BACKUP_STAGES.size || BACKUP_STAGES.has('existing-manual')) {
           executedBackupStages.add('existing-manual');

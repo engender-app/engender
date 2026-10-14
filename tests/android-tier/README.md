@@ -10,6 +10,9 @@ serial, and Gradle receives that serial
 through `ANDROID_SERIAL`. Choose an unused even port with `ANDROID_TIER_PORT`
 (default 5580). `ANDROID_TIER_HEADLESS=1` uses software graphics without Vulkan.
 
+The emulator runs with metrics and crash reporting disabled for that process,
+so a previous emulator crash cannot block startup on a consent dialog.
+
 Each run retains invocation logs, stage logs and disposable AVD files in a new
 directory under `.claude/android-tier/`. `ANDROID_TIER_LOG_DIR` overrides that
 parent directory. XML results are cleared before each invocation. Missing,
