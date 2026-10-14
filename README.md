@@ -179,7 +179,8 @@ its OCR assets when first used and caches them for later offline use.
 Android runs the same interface from a bundle installed in the APK. Native
 plugins provide database access, device authentication, media handling,
 notifications and home-screen widgets. Android updates arrive through an
-updated app installation.
+updated app installation. English and Polish lab recognition assets are bundled
+in the APK, so the first scan can run offline.
 
 The web app needs a secure context for browser storage, the service worker
 and authentication APIs. HTTPS is required when hosting it; localhost works

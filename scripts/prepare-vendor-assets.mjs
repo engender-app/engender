@@ -12,7 +12,7 @@
 
    Its cmaps are deliberately not here. They are what a CJK document needs
    and they are 1.7 MB of the same, which ADR-0065 leaves out of scope. */
-import { mkdir, copyFile, readdir } from 'node:fs/promises';
+import { mkdir, copyFile, readdir, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import './patch-sqlite-wasm.mjs';
 
@@ -33,11 +33,11 @@ const files = [
   },
   {
     from: 'node_modules/@tesseract.js-data/eng/4.0.0/eng.traineddata.gz',
-    to: 'static/tesseract/lang-data/eng.traineddata.gz'
+    to: 'static/tesseract/lang-data/eng.traineddata'
   },
   {
     from: 'node_modules/@tesseract.js-data/pol/4.0.0/pol.traineddata.gz',
-    to: 'static/tesseract/lang-data/pol.traineddata.gz'
+    to: 'static/tesseract/lang-data/pol.traineddata'
   }
 ];
 
@@ -55,6 +55,12 @@ for (const file of files) {
   const to = resolve(root, file.to);
   await mkdir(dirname(to), { recursive: true });
   await copyFile(from, to);
+}
+
+// AGP expands .gz assets and strips their suffix. Tesseract detects gzip by bytes.
+// Remove only the two names produced by the previous recipe on an existing checkout.
+for (const lang of ['eng', 'pol']) {
+  await rm(resolve(root, `static/tesseract/lang-data/${lang}.traineddata.gz`), { force: true });
 }
 
 console.log('Prepared local Tesseract assets in static/tesseract, and pdf.js standard fonts in static/pdf-fonts');

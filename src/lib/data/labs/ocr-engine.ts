@@ -29,6 +29,8 @@ export function tesseractLabOcrEngine(): LabOcrEngine {
         workerPath: `${ON_DEMAND_PREFIX}worker.min.js`,
         corePath: `${ON_DEMAND_PREFIX}tesseract-core.wasm.js`,
         langPath: `${ON_DEMAND_PREFIX}lang-data`,
+        // Keep web/APK names identical; Tesseract gunzips the payload by magic bytes.
+        gzip: false,
         logger: ({ status, progress }) => {
           if (status === RECOGNIZING) watch?.onProgress?.(progress);
         }
