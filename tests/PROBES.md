@@ -81,6 +81,17 @@ interruption; it does not model a storage power cut.
 
 ## Walkthrough groups
 
+`search-return-privacy` (`tests/search-return-privacy.mjs`) runs after
+`VITE_DEMO=1 npm run build`. Run it with Node for Chromium and with
+`BROWSER_ENGINE=firefox` for Firefox. It creates a synthetic note, opens an
+entry from search, verifies the restored query and refuses writes of that
+query to either Web Storage owner. After closing the browser it scans its
+owned profile for the query, decoding Firefox session files first. The
+profile is removed even when the check fails. `search-return-flow` shares
+the entry/search actions with device checks and also supports
+an initialized isolated Android test journal; pulling and scanning that
+package after background and force-stop remains a device check.
+
 `page-load-browser` (`tests/page-load-browser.mjs`) checks the production app's
 empty counting request, document reload, internal navigation and offline behavior.
 Run after a production build: `node tests/page-load-browser.mjs`.

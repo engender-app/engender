@@ -4,7 +4,7 @@
    Closing the database and releasing the key leaves the journal itself
    unreadable from this tab, but a few things were copied out of it on the
    way: the reads' last answers (ux-carpet 201), a search held for the way
-   back from an entry - in sessionStorage, in plaintext - and a query on its
+   back from an entry and a query on its
    way from More, the answers jotted in the room before their debrief, and
    the waveform bars of recordings already played. Each is cheap to
    recompute or deliberately short-lived, so a lock drops all of them rather
@@ -16,11 +16,11 @@
    waveform cache are route code, and importing them cost two extra files
    on a first visit. A holder's memory exists only once its module has run,
    and its module registers as it runs, so nothing held in memory can miss
-   the lock. The held search is the exception, because sessionStorage
-   outlives a reload that loaded no search code yet, so its key is removed
-   here by name. */
+   the lock. Older versions held search text in sessionStorage, which
+   outlives a reload that loaded no search code yet. Remove that legacy key
+   here by name as well. */
 
-/** The sessionStorage key searchReturn.ts holds a search under. */
+/** The legacy sessionStorage key used before searches stayed in memory. */
 export const HELD_SEARCH_KEY = 'engender-search-return';
 
 const holders = new Set<() => void>();
