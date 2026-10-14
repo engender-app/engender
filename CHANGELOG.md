@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Boot housekeeping waits for pending journal writes before purging expired
+Trash and sweeping orphaned media. Android stock-reminder reconciliation no
+longer makes those passes give up before they start.
+
 Dose schedules now pair logged doses consistently across Today, Care and
 Transition. An early or late dose within the schedule's tolerance covers its
 slot, so a covered weekly slot no longer prompts another dose today.

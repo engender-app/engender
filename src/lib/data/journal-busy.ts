@@ -93,6 +93,35 @@ export function watchJournalWrites(): { sawWrite: () => boolean; stop: () => voi
   return { sawWrite: () => saw, stop };
 }
 
+/** Check after write callers have handled their results. Another write
+    admitted in that gap keeps the listener until the next edge. */
+function checkAfterJournalWrites(check: () => boolean): void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const run = () => {
+    timer = undefined;
+    if (check()) {
+      stop();
+      clearTimeout(timer);
+    }
+  };
+  const schedule = () => {
+    if (timer === undefined) timer = setTimeout(run, 0);
+  };
+  const stop = onJournalBusyChange(schedule);
+  schedule();
+}
+
+/** Wait for admitted writes before starting a fresh housekeeping read.
+    The pass still watches for writes starting after it begins. */
+export function waitForJournalIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    checkAfterJournalWrites(() => {
+      if (journalIsBusy()) return false;
+      resolve();
+      return true;
+    });
+  });
+}
 
 /** Captures the write outcome before an asynchronous handover starts.
     Complete it only after activation settles. Reload runs in an idle task,
@@ -102,22 +131,16 @@ export function watchJournalWrites(): { sawWrite: () => boolean; stop: () => voi
 export function prepareJournalHandover(): (handover: () => void) => Promise<boolean> {
   const failuresBefore = failedWrites;
   return (handover) => new Promise<boolean>((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const check = () => {
-      timer = undefined;
+    checkAfterJournalWrites(() => {
       if (failedWrites !== failuresBefore) {
-        stop();
         resolve(false);
+        return true;
       } else if (!journalIsBusy()) {
-        stop();
         handover();
         resolve(true);
+        return true;
       }
-    };
-    const schedule = () => {
-      if (timer === undefined) timer = setTimeout(check, 0);
-    };
-    const stop = onJournalBusyChange(schedule);
-    schedule();
+      return false;
+    });
   });
 }
