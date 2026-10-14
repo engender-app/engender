@@ -513,10 +513,21 @@ flowchart TB
   Cn -.-> PJ
 ```
 
-- **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before anything is allocated. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
+- **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before key derivation. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
 - **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2.
 - **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](tests/released-formats.test.ts) reads archives from released versions in [fixtures/released/](fixtures/released).
 - **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 54 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that.
+
+Archive import admits at most 65,536 KiB of Argon2id memory, six iterations,
+one lane and a 32-byte output (ADR-0013). The released export profile remains
+65,536 KiB with three iterations. Doubling only the passes gives twice the
+memory-times-iterations cost; doubling both dimensions would cost four times
+as much and is refused. `ARCHIVE_ARGON2_MAX_PARAMS` is a fixed ceiling separate
+from the export profile. `readArchiveHeader` rejects an over-cap header as
+`CorruptArchiveError` before `openArchive` calls `deriveKey`. The retained
+physical-Pixel probe measures the largest admitted profile against a 2,000 ms
+budget with five fresh workers per profile. Raising the ceiling needs another
+phone measurement and an ADR record.
 
 [journal/archive.ts](src/lib/data/journal/archive.ts) reads all archive rows
 and builds the file manifest inside one `readSnapshot()` reservation, so writes
