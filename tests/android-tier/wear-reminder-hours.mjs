@@ -13,12 +13,14 @@
    the reminder that was set. */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
 const serial = process.argv[2];
 const pkg = process.argv[3] ?? 'dev.engender.app.test';
 if (!/^emulator-\d+$/.test(serial ?? '')) throw new Error('Pass an emulator serial');
-if (pkg === 'dev.engender.app') throw new Error('Install a separate applicationId; this probe never drives the real app');
+// `pm clear` below wipes the package's data, so only a test install is accepted.
+if (!/^dev\.engender\.app\.test(\.[\w.]+)?$/.test(pkg)) throw new Error('Pass a dev.engender.app.test install; this probe never drives the real app');
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8' });
 adb('shell', 'am', 'force-stop', pkg);
 // A fresh journal each run: the separate test install's data only.
@@ -29,16 +31,13 @@ let pid = '';
 for (let i = 0; i < 50 && !pid; i++) {
   try { pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0]; } catch { await new Promise((resolve) => setTimeout(resolve, 200)); }
 }
-const port = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();
+let port;
 let browser;
-for (let i = 0; i < 50 && !browser; i++) {
-  browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { noDefaults: true }).catch(() => undefined);
-  if (!browser) await new Promise((resolve) => setTimeout(resolve, 200));
-}
-const page = browser.contexts()[0].pages()[0];
-page.setDefaultTimeout(30000);
+let page;
 const errors = [];
-page.on('pageerror', (error) => errors.push(error.message));
+/** The reminders list's origin line for a wear reminder, in either locale
+    the app may have picked up from the device. */
+const wearOrigin = ['en', 'pl'].map((locale) => JSON.parse(readFileSync(new URL(`../../messages/${locale}.json`, import.meta.url), 'utf8')).prov_reminder_wear);
 
 const hours = () => page.locator('#wear-reminder-hours');
 const reminderSwitch = () => page.locator('[data-sheet]').getByRole('switch');
@@ -79,7 +78,7 @@ const hhmm = (ms) => page.evaluate((ms) => {
     APK serves a built bundle, so the journal is read through the screen. */
 async function wearReminders() {
   await navigate('/settings/reminders');
-  const rows = page.locator('[data-list-row]').filter({ hasText: /wear session/i });
+  const rows = page.locator('[data-list-row]').filter({ hasText: new RegExp(wearOrigin.map((line) => line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')) });
   await rows.first().waitFor({ timeout: 10000 }).catch(() => {});
   const found = await rows.evaluateAll((els) => els.map((el) => ({ id: el.dataset.listRow, time: el.innerText.match(/\b\d{2}:\d{2}\b/g)?.at(-1) })));
   await navigate('/body/wear');
@@ -87,6 +86,15 @@ async function wearReminders() {
 }
 
 try {
+  port = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();
+  for (let i = 0; i < 50 && !browser; i++) {
+    browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { noDefaults: true }).catch(() => undefined);
+    if (!browser) await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  assert.ok(browser, 'the test app exposes its WebView over CDP');
+  page = browser.contexts()[0].pages()[0];
+  page.setDefaultTimeout(30000);
+  page.on('pageerror', (error) => errors.push(error.message));
   await page.waitForSelector('[data-leave-setup], [data-access-modes], [data-app-root][data-boot="ready"]', { timeout: 60000 });
   if (await page.locator('[data-leave-setup]').count()) {
     await page.locator('[data-leave-setup]').click();
@@ -119,6 +127,8 @@ try {
   assert.equal(set.length, 1, 'one reminder for the session');
   assert.ok(expected.includes(set[0].time), 'the reminder is 1.5 hours after the start');
   await page.locator('[data-wear-running]').waitFor();
+  // The list shows the time; reopening reads day and time back into hours
+  // (hoursAfterStart), so a reminder on the wrong day would not read 1.5.
   await page.locator('[data-wear-running]').click();
   await hours().waitFor();
   assert.equal(await hours().inputValue(), '1.5', 'the running session reopens with 1.5 hours');
@@ -142,9 +152,11 @@ try {
   const small = await typeOnDevice('0.01');
   console.log(`typed 0, ., 0, 1; field read ${JSON.stringify(small)}`);
   assert.equal(small.at(-1), '0.01', 'typing 0.01 key by key keeps it');
-  const started = await page.evaluate(() => Date.now());
   await page.locator('[data-start-wear-session]').click();
   await page.locator('[data-wear-running]').waitFor();
+  // The session's start is before this moment, so 40s from here is past
+  // its 36-second reminder however long the save took.
+  const started = await page.evaluate(() => Date.now());
   await page.waitForFunction((started) => Date.now() > started + 40000, started, { timeout: 60000, polling: 1000 });
   const due = await wearReminders();
   assert.equal(due.length, 1, 'one reminder for the second session');
@@ -164,6 +176,6 @@ try {
   console.error(errors);
   throw error;
 } finally {
-  await browser.close();
-  adb('forward', '--remove', `tcp:${port}`);
+  await browser?.close();
+  if (port) adb('forward', '--remove', `tcp:${port}`);
 }
