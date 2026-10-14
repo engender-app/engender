@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Archive Replace now commits portable preferences with its journal rows.
+An interrupted restore keeps a complete old or incoming pair. Restored
+language choices take effect after commit and recover on the next opening;
+Merge still keeps this device's preferences.
+
 Care-caption collisions and reported appointment-debrief failures now fail CI
 instead of appearing only in guard logs.
 

@@ -146,6 +146,26 @@ test('writing a preference outside the boot set still refreshes the cache', asyn
   expect(writes.at(-1)).not.toHaveProperty('name');
 });
 
+test('reloading after an atomic restore refreshes cached values and the boot mirror without another write', async () => {
+  const driver = await migratedDb();
+  const { cache, current } = recordingCache();
+  try {
+    const preferences = await openPreferences(driver, cache);
+    await preferences.set('name', 'Original synthetic name');
+    await preferences.set('language', 'en');
+    await driver.transaction(async (within) => {
+      await within.run('UPDATE pref SET value = ? WHERE key = ?', ['"Incoming synthetic name"', 'name']);
+      await within.run('UPDATE pref SET value = ? WHERE key = ?', ['"pl"', 'language']);
+    });
+    const before = await driver.query('SELECT key, value FROM pref ORDER BY key');
+    await preferences.reload();
+    expect(preferences.get('name')).toBe('Incoming synthetic name');
+    expect(preferences.get('language')).toBe('pl');
+    expect(current().language).toBe('pl');
+    expect(await driver.query('SELECT key, value FROM pref ORDER BY key')).toEqual(before);
+  } finally { await driver.close(); }
+});
+
 test('opening seeds the cache, so a first-ever boot has something to read next time', async () => {
   const { cache, current } = recordingCache();
 

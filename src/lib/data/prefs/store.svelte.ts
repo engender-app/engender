@@ -20,9 +20,8 @@
      2. attachPreferences() lands the real values from SQLite.
      3. Writes go straight through. */
 
-import type { PortablePreferences } from '../archive/payload';
+import { getLocale, setLocale } from '$lib/paraglide/runtime';
 import { PREFERENCE_DEFAULTS, isPreferenceKey, type PreferenceKey, type PreferenceValues } from './catalogue';
-import { portablePreferencePatch } from './portableShape';
 import type { BootPreferences, Preferences } from './preferences';
 
 const values = $state<PreferenceValues>({ ...PREFERENCE_DEFAULTS });
@@ -81,28 +80,12 @@ export async function flushPreferences(): Promise<void> {
   await Promise.all([...inFlight]);
 }
 
-/** Writes a preference to SQLite first and projects it second, which is the
-    reverse of every other write in this module.
-
-    One preference needs it. Setting `prefs.disguise` is what makes the
-    Android launcher alias flip, by way of an effect in +layout.svelte, and
-    flipping the alias kills the process (DisguisePlugin). The ordinary
-    write leaves those two in a race the process loses: the effect runs on
-    a microtask while the write is still out at the database, so a disguise
-    turned on can be gone by the next boot - with the alias already
-    swapped, so the app closes itself once on launch to put it back. Here
-    the value is durable before anything can react to it.
-
-    A write that fails is logged and dropped, like every other write here,
-    and the value is *not* projected - which is the whole point rather than
-    a shortcut. The one reader of this projection that matters is the
-    effect that flips the launcher alias, and flipping it on a preference
-    that never landed is the exact state this function exists to prevent:
-    the launcher disguised, the preference false, and the app closing
-    itself once on the next boot to put the two back in step.
-
-    Nowhere else has this shape, so nothing else should use this: a screen
-    that waits on SQLite to redraw a switch is a screen that feels broken. */
+/** Writes SQLite before projection when a preference can restart the app.
+    Disguise flips Android's launcher alias and can kill the process; a
+    language change reloads the app through the locale strategy. Their
+    effects must not run ahead of the value they need on the next boot.
+    A failed write is logged and leaves the projection unchanged. Ordinary
+    preferences still use the proxy for an immediate response. */
 export async function setPreferenceDurably<K extends PreferenceKey>(
   key: K,
   value: PreferenceValues[K]
@@ -152,25 +135,34 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   }
 }
 
-/** The portable preferences a Replace import restores (ADR-0003), written
-    through the proxy above so each one lands in SQLite like any other change.
-    Walked over PORTABLE_KEYS rather than over what the file happens to hold,
-    which is the same allowlist that decided what could travel in the first
-    place - and a key the archive is missing keeps this device's value rather
-    than becoming undefined. A Merge calls none of this: what is already here
-    wins, for its rows and for its settings alike.
-
-    Each value is checked against the key's shape (portableShape.ts) before
-    it lands - a value outside what the key can hold is left out of the
-    patch, so this device's own value stays rather than adopting a string
-    that was never a valid theme, palette or check-in time. */
-export function applyPortablePreferences(portable: Partial<PortablePreferences>) {
-  const patch = portablePreferencePatch(portable);
-  for (const key of Object.keys(patch) as (keyof PortablePreferences)[]) {
-    // Both sides index at the same key, which the compiler can't follow
-    // across a loop over a union of key types.
-    prefs[key] = patch[key] as never;
+/** Archive Replace committed its portable preferences with its rows. Reload
+    the authoritative table and its boot mirror, then refresh this projection
+    without queuing duplicate writes. A lock or newer attach owns publication. */
+export async function refreshPreferences(): Promise<boolean> {
+  const current = backing;
+  if (!current) return false;
+  await flushPreferences();
+  if (backing !== current) return false;
+  try {
+    await current.reload();
+  } catch (error) {
+    if (backing !== current) return false;
+    throw error;
   }
+  if (backing !== current) return false;
+  for (const [key, value] of Object.entries(current.all()) as [PreferenceKey, never][]) {
+    values[key] = value;
+  }
+  return true;
+}
+
+/** The locale strategy keeps its own choice; SQLite owns the preference.
+    Activate only after a durable change or authoritative boot attachment. */
+export function activateLanguagePreference() {
+  const target = prefs.language === 'en' || prefs.language === 'pl'
+    ? prefs.language
+    : ((navigator.language || 'en').toLowerCase().startsWith('pl') ? 'pl' : 'en');
+  if (target !== getLocale()) setLocale(target);
 }
 
 /** The lock's half (after-release ticket 10): the database is about to

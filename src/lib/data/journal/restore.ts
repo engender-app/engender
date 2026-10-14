@@ -14,7 +14,8 @@
         replacements, including their derived thumbnails, so re-importing
         an archive cannot overwrite bytes the current journal still owns.
      2. In one transaction: reconcile the built-in vocabulary,
-        unconditionally and first, then swap the journal. Key identity makes
+        unconditionally and first, then swap the journal and its portable
+        preferences for Replace. Key identity makes
         the reconcile idempotent, and it runs before either mode applies
         because a Replace must not be able to leave the journal short of a
         built-in the archive's own rows reference. It is inside the same
@@ -52,10 +53,10 @@
    it discards is the registry's too, in the reverse of the order the inserts
    run in (ADR-0027): until phase 5 ticket 13 that was 51 statements
    hand-ordered in this file, the one list around here the registry did not
-   derive. Preferences are not the journal's (ADR-0003) and nothing here
-   touches the pref table, which is what leaves the PIN, the app-lock flags
-   and the disguise settings in place through the most destructive path in
-   the app.
+   derive. Full Archive Replace also writes validated portable preferences
+   in that transaction (ADR-0003). Device-local settings stay untouched,
+   including the PIN, app-lock flags and disguise. Row-only imports omit
+   preferences, and Merge keeps the destination's preferences.
 
    Row identities, scalar types and safe numeric values are checked before
    the file stream or transaction starts. The schema still enforces relational
@@ -64,7 +65,8 @@
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
-import type { ArchiveJournal } from '../archive/payload';
+import type { ArchiveJournal, PortablePreferences } from '../archive/payload';
+import { restorePortablePreferencesWithin } from '../prefs/preferences';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { filesOf } from '../photos/names';
@@ -84,6 +86,9 @@ export type RestoreMode = 'replace' | 'merge';
     of images. */
 export interface RestoreContents {
   journal: ArchiveJournal;
+  /** Portable preferences travel with a full Archive. Row-only callers omit
+      this property; an older Archive may provide undefined preferences. */
+  preferences?: Partial<PortablePreferences> | null;
   files: AsyncIterable<{ name: string; bytes: Uint8Array }>;
   /** How many files that stream will deliver, when the caller knows - the
       manifest inside the payload says so, and an importer that has opened
@@ -304,6 +309,9 @@ async function restoreWithin(
       await applyArchiveJournal({ driver, mode, journal, ts: Date.now() }, undefined, (done, total) =>
         onProgress?.({ stage: 'rows', done, total })
       );
+      if (mode === 'replace' && 'preferences' in contents) {
+        await restorePortablePreferencesWithin(driver, contents.preferences);
+      }
       if (commit && before) {
         const after = await countRows(driver, commit.counting);
         added = Object.fromEntries(Object.keys(before).map((name) => [name, after[name] - before[name]]));

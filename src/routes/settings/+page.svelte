@@ -8,13 +8,13 @@
      also drops the row's cursor and its :active wash). */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { setLocale, getLocale } from '$lib/paraglide/runtime';
+  import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -152,10 +152,9 @@
       .join(', ')
   );
 
-  function setLanguage(v: string) {
-    prefs.language = v as typeof prefs.language;
-    const target = v === 'system' ? ((navigator.language || 'en').startsWith('pl') ? 'pl' : 'en') : (v as 'en' | 'pl');
-    if (target !== getLocale()) setLocale(target); // reloads; all state is persisted
+  async function setLanguage(v: string) {
+    await setPreferenceDurably('language', v as typeof prefs.language);
+    activateLanguagePreference();
   }
 
   function pickPalette(key: string) {
