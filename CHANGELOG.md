@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Leaving or locking the entry editor cancels pending voice and video capture.
+Repeated taps open one stream, and video recorder failures close the camera
+and microphone. Failed captures offer a retry without attaching partial media.
+
 Web rollback with `--previous` returns to the release active before the
 last switch, including after an earlier rollback. Listing and deploy output
 identify the same target. Missing or stale history requires a named rollback;
