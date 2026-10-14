@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { afterEach, test, expect, vi } from 'vitest';
 import {
   RECOVERY_KEY_LENGTH,
   RecoveryKeyMistypedError,
@@ -7,6 +7,21 @@ import {
 } from './recoveryKey.ts';
 
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+afterEach(() => vi.restoreAllMocks());
+
+test('fixed random bytes produce the known recovery key', () => {
+  let draws = 0;
+  const random = vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
+    draws++;
+    if (draws > 10) throw new Error('recovery key did not accept ten deterministic draws');
+    const bytes = array as Uint8Array;
+    bytes.forEach((_, i) => { bytes[i] = (i * 37 + 5 + draws * 11) & 255; });
+    return array;
+  });
+
+  expect(generateRecoveryKey()).toBe('20TNM-ZX4S7-Q16E2-XGAKW-SW8P1');
+  expect(random).toHaveBeenCalledOnce();
+});
 
 test('a generated key is five groups of five, from the Crockford alphabet only', () => {
   for (let i = 0; i < 200; i++) {
@@ -49,18 +64,10 @@ test('lowercase, spaces and missing separators all read as the same key', () => 
   expect(canonicalRecoveryKey(`  ${key.toLowerCase()}  `)).toBe(canonical);
 });
 
-test("Crockford's substitutions are applied, so an I is a 1 and an O is a 0", () => {
-  /* Built rather than generated: the substitution can only be exercised by
-     a key that actually contains a 1 or a 0, and a random key need not. */
-  let key = generateRecoveryKey();
-  while (!/[01]/.test(key.replace(/-/g, '').slice(0, 24))) key = generateRecoveryKey();
-
-  const canonical = canonicalRecoveryKey(key);
-  const typedBadly = key.replace(/1/g, 'I').replace(/0/g, 'O');
-  expect(canonicalRecoveryKey(typedBadly)).toBe(canonical);
-
-  const typedWorse = key.replace(/1/g, 'l').replace(/0/g, 'o');
-  expect(canonicalRecoveryKey(typedWorse)).toBe(canonical);
+test.each(['I', 'i', 'L', 'l'])("Crockford's %s reads as 1, and O reads as 0", (one) => {
+  const canonical = '20TNMZX4S7Q16E2XGAKWSW8P1';
+  expect(canonicalRecoveryKey(canonical.replace(/1/g, one).replace(/0/g, 'O'))).toBe(canonical);
+  expect(canonicalRecoveryKey(canonical.replace(/0/g, 'o'))).toBe(canonical);
 });
 
 test('a U is a slip rather than a symbol, and is refused by name', () => {

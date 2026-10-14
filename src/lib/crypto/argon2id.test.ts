@@ -1,5 +1,5 @@
-import { test, expect } from 'vitest';
-import { deriveKey, randomSalt, prewarmArgon2 } from './argon2id.ts';
+import { afterEach, beforeEach, describe, test, expect, vi } from 'vitest';
+import { deriveKey, randomSalt } from './argon2id.ts';
 import type { Argon2Params } from './params.ts';
 
 /* Deliberately not one of the shipped profiles: these tests are about what
@@ -54,86 +54,101 @@ test('never logs the password or the derived key', async () => {
   }
 });
 
-/* Off the main thread where there is a worker (ux-carpet ticket 209). The
-   stand-in below plays the worker's side with the same in-thread call, so
-   what is checked is the hand-over, not argon2id itself. */
-test('a worker derives the key and is terminated afterwards', async () => {
-  const g = globalThis as Record<string, unknown>;
-  const prior = g.Worker;
-  const made: { terminated: boolean; got: unknown }[] = [];
-  g.Worker = class {
-    terminated = false;
-    got: unknown = null;
-    onmessage: ((event: { data: unknown }) => void) | null = null;
+describe('worker handover and fallback', () => {
+  const salt = Uint8Array.from({ length: 16 }, (_, i) => i);
+  const expected = Uint8Array.from(Buffer.from('77cce82a2481b757eb86f92a001910c970069038c7537a3ec40d22d50763d0f8', 'hex'));
+  type Answer = { ok: true; key: Uint8Array<ArrayBuffer> } | { ok: false; error?: string; loadFailed?: boolean };
+  class FakeWorker {
+    static made: FakeWorker[] = [];
+    onmessage: ((event: { data: Answer }) => void) | null = null;
     onerror: ((event: { message: string; preventDefault(): void }) => void) | null = null;
-    constructor() {
-      made.push(this);
+    postMessage = vi.fn();
+    terminate = vi.fn();
+    constructor(readonly url: URL, readonly options: WorkerOptions) {
+      FakeWorker.made.push(this);
     }
-    postMessage(message: { password: string; salt: Uint8Array<ArrayBuffer>; params: Argon2Params }) {
-      this.got = message;
-      g.Worker = prior;
-      void deriveKey(message.password, message.salt, message.params).then((key) => this.onmessage?.({ data: { ok: true, key } }));
+    fail() {
+      const preventDefault = vi.fn();
+      this.onerror?.({ message: 'chunk 404', preventDefault });
+      return preventDefault;
     }
-    terminate() {
-      this.terminated = true;
-    }
-  };
-  try {
-    const salt = randomSalt();
-    const viaWorker = await deriveKey('correct horse', salt, CHEAP);
-    expect(made).toHaveLength(1);
-    expect(made[0].terminated).toBe(true);
-    expect(viaWorker).toEqual(await deriveKey('correct horse', salt, CHEAP));
-  } finally {
-    g.Worker = prior;
   }
-});
 
-test('a worker that never starts leaves the derivation to this thread', async () => {
-  const g = globalThis as Record<string, unknown>;
-  const prior = g.Worker;
-  g.Worker = class {
-    onerror: ((event: { message: string; preventDefault(): void }) => void) | null = null;
-    postMessage() {
-      queueMicrotask(() => this.onerror?.({ message: 'blocked', preventDefault() {} }));
-    }
-    terminate() {}
-  };
-  try {
-    const salt = randomSalt();
-    await capturedConsoleOutput(async () => {
-      const key = await deriveKey('correct horse', salt, CHEAP);
-      g.Worker = prior;
-      expect(key).toEqual(await deriveKey('correct horse', salt, CHEAP));
-    });
-  } finally {
-    g.Worker = prior;
-  }
-});
+  beforeEach(() => {
+    vi.resetModules();
+    FakeWorker.made = [];
+    vi.stubGlobal('Worker', FakeWorker);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
-
-test('a prewarmed worker load failure falls back before a secret is posted', async () => {
-  const g = globalThis as Record<string, unknown>;
-  const prior = g.Worker;
-  let worker: { onerror?: (event: { message: string; preventDefault(): void }) => void; terminate(): void; postMessage(): void };
-  let posts = 0;
-  let terminated = false;
-  g.Worker = class {
-    constructor() { worker = this; }
-    postMessage() { posts++; }
-    terminate() { terminated = true; }
-  };
-  try {
+  test('prewarming starts one module worker and derivation consumes it', async () => {
+    const { deriveKey, prewarmArgon2 } = await import('./argon2id.ts');
     prewarmArgon2();
-    worker!.onerror?.({ message: 'chunk 404', preventDefault() {} });
-    g.Worker = prior;
-    const salt = randomSalt();
-    const actual = await Promise.race([
-      deriveKey('correct horse', salt, CHEAP),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 100))
-    ]);
-    expect(actual).toEqual(await deriveKey('correct horse', salt, CHEAP));
-    expect(posts).toBe(0);
-    expect(terminated).toBe(true);
-  } finally { g.Worker = prior; }
+    prewarmArgon2();
+    expect(FakeWorker.made).toHaveLength(1);
+    const worker = FakeWorker.made[0];
+    expect(worker.url.pathname).toMatch(/\/argon2id\.worker\.ts$/);
+    expect(worker.options).toEqual({ type: 'module' });
+
+    const result = deriveKey('correct horse', salt, CHEAP);
+    expect(FakeWorker.made).toHaveLength(1);
+    expect(worker.postMessage).toHaveBeenCalledExactlyOnceWith({ password: 'correct horse', salt, params: CHEAP });
+    worker.onmessage?.({ data: { ok: true, key: expected } });
+    expect(await result).toBe(expected);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    expect(salt).toEqual(Uint8Array.from({ length: 16 }, (_, i) => i));
+    prewarmArgon2();
+    expect(FakeWorker.made).toHaveLength(2);
+  });
+
+  test('a worker load error suppresses its event and derives the known key on this thread', async () => {
+    const { deriveKey } = await import('./argon2id.ts');
+    const output = await capturedConsoleOutput(async () => {
+      const result = deriveKey('correct horse', salt, CHEAP);
+      const worker = FakeWorker.made[0];
+      expect(worker.fail()).toHaveBeenCalledOnce();
+      expect(await result).toEqual(expected);
+      expect(worker.terminate).toHaveBeenCalledOnce();
+    });
+    expect(output).toEqual(['argon2id worker did not start; deriving on the main thread chunk 404']);
+  });
+
+  test('a failed prewarm terminates once and never receives or retries a secret', async () => {
+    const { deriveKey, prewarmArgon2 } = await import('./argon2id.ts');
+    prewarmArgon2();
+    const worker = FakeWorker.made[0];
+    expect(worker.fail()).toHaveBeenCalledOnce();
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    prewarmArgon2();
+    expect(FakeWorker.made).toHaveLength(1);
+    expect(await deriveKey('correct horse', salt, CHEAP)).toEqual(expected);
+    expect(worker.postMessage).not.toHaveBeenCalled();
+    expect(FakeWorker.made).toHaveLength(1);
+  });
+
+  test.each([
+    { ok: false as const, error: 'invalid profile' },
+    { ok: false as const, error: 'invalid profile', loadFailed: false },
+    { ok: false as const }
+  ])('a worker that ran and failed refuses without retrying: %j', async (answer) => {
+    const { deriveKey } = await import('./argon2id.ts');
+    const result = deriveKey('correct horse', salt, CHEAP);
+    const refused = expect(result).rejects.toThrow(answer.error ?? 'argon2id failed');
+    const worker = FakeWorker.made[0];
+    worker.onmessage?.({ data: answer });
+    await refused;
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  test.each(['absent', 'throws'])('an unavailable worker falls back without prewarming: %s', async (failure) => {
+    vi.stubGlobal('Worker', failure === 'absent' ? undefined : class {
+      constructor() { throw new Error('worker blocked'); }
+    });
+    const { deriveKey, prewarmArgon2 } = await import('./argon2id.ts');
+    expect(() => prewarmArgon2()).not.toThrow();
+    expect(await deriveKey('correct horse', salt, CHEAP)).toEqual(expected);
+  });
 });

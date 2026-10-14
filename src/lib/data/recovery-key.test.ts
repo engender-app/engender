@@ -166,6 +166,7 @@ test('the persisted form round-trips through the file the app writes', async () 
 });
 
 test('a recovery file this build cannot read fails by name, never as a wrong key', () => {
+  expect(() => parseRecoveryWrap('null')).toThrow(RecoveryWrapUnreadableError);
   expect(() => parseRecoveryWrap('not json at all')).toThrow(RecoveryWrapUnreadableError);
   expect(() => parseRecoveryWrap(JSON.stringify({ version: 2 }))).toThrow(/version 2/);
   expect(() => parseRecoveryWrap(JSON.stringify({ version: 1, kdf: 'argon2id' }))).toThrow(/missing fields/);
@@ -174,6 +175,21 @@ test('a recovery file this build cannot read fails by name, never as a wrong key
       JSON.stringify({ version: 1, kdf: 'argon2id', salt: 'AA', nonce: 'AA', wrappedKey: 'AA', params: { iterations: 2 } })
     )
   ).toThrow(/no usable KDF parameters/);
+});
+
+test('an unknown recovery-wrap KDF is refused before it can look like a wrong key', async () => {
+  const wrap = await wrapDataKeyWithRecoveryKey(aDataKey(), canonicalRecoveryKey(generateRecoveryKey()));
+  const raw = JSON.parse(serializeRecoveryWrap(wrap)) as Record<string, unknown>;
+  raw.kdf = 'scrypt';
+  expect(() => parseRecoveryWrap(JSON.stringify(raw))).toThrow(RecoveryWrapUnreadableError);
+});
+
+test.each(['salt', 'nonce', 'wrappedKey'])('a non-string recovery-wrap %s cannot be coerced into base64', async (field) => {
+  const wrap = await wrapDataKeyWithRecoveryKey(aDataKey(), canonicalRecoveryKey(generateRecoveryKey()));
+  const raw = JSON.parse(serializeRecoveryWrap(wrap)) as Record<string, unknown>;
+  for (const value of [1234, null]) {
+    expect(() => parseRecoveryWrap(JSON.stringify({ ...raw, [field]: value }))).toThrow(RecoveryWrapUnreadableError);
+  }
 });
 
 test('a damaged salt fails by name rather than as a platform base64 error', async () => {
