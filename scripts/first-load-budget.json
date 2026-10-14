@@ -13,10 +13,10 @@
     "reason": "Demo builds include fixture generation and worker prewarming for walkthroughs. They are not shipped as the production app. CI gates the production locale graphs; demo behavior has walkthrough checks."
   },
   "installedOcr": {
-    "what": "Complete OCR generation installed before offline readiness; recognition initialization remains deferred",
+    "what": "Complete current OCR generation and frozen legacy library installed before offline readiness; initialization remains deferred",
     "recordedOn": "2026-10-14",
-    "files": 8,
-    "gzipBytes": 22334925,
-    "storedBytes": 27600318
+    "files": 9,
+    "gzipBytes": 22341751,
+    "storedBytes": 27616147
   }
 }

@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -75,7 +75,7 @@ describe('journal-release deploy and rollback', () => {
     writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
     const legacyPath = join(old, legacyOcr[0].path);
     mkdirSync(join(legacyPath, '..'), { recursive: true });
-    writeFileSync(legacyPath, gunzipSync(readFileSync('tests/fixtures/ocr/pre21-tesseract.js.gz')));
+    writeFileSync(legacyPath, gunzipSync(readFileSync('scripts/vendor/legacy-ocr/pre21-tesseract.js.gz')));
     const a = 'a'.repeat(64), b = 'b'.repeat(64);
     for (const [path, payload] of [[join(old, 'tesseract', a, 'worker.min.js'), 'old generation'],
       [join(old, 'tesseract/lang-data/eng.traineddata.gz'), 'old compressed model'],
@@ -119,13 +119,64 @@ describe('journal-release deploy and rollback', () => {
     makeRelease(old, '2.0.0', 'a', 88); makeRelease(next, '2.0.1', 'b', 88);
     const source = join(old, legacyOcr[0].path);
     mkdirSync(join(source, '..'), { recursive: true });
-    writeFileSync(source, gunzipSync(readFileSync('tests/fixtures/ocr/pre21-tesseract.js.gz')));
+    writeFileSync(source, gunzipSync(readFileSync('scripts/vendor/legacy-ocr/pre21-tesseract.js.gz')));
     mkdirSync(join(next, 'tesseract'), { recursive: true });
     writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
     const deploy = (path: string) => spawnSync('node', [join(operator, 'journal-release.mjs'),
       'deploy', path, '--root', root, '--current', current], { encoding: 'utf8' });
     expect(deploy(old).status).toBe(0); expect(deploy(next).status).toBe(0);
     expect(readFileSync(join(readlinkSync(current), legacyOcr[0].path))).toEqual(readFileSync(source));
+  });
+
+  test('refuses missing legacy runtime without switching current or changing the old release', () => {
+    const directory = join(ROOT, 'ocr-missing');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const old = join(directory, 'old'), next = join(directory, 'next');
+    makeRelease(old, '2.0.0', 'a', 88); makeRelease(next, '2.0.1', 'b', 88);
+    mkdirSync(join(next, 'tesseract'), { recursive: true });
+    writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
+    expect(run(['deploy', old, '--root', root, '--current', current], ROOT).status).toBe(0);
+    const previous = readlinkSync(current);
+    const before = readFileSync(join(previous, 'release.json'));
+    const result = run(['deploy', next, '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1); expect(result.stderr).toContain('Missing legacy OCR runtime');
+    expect(readlinkSync(current)).toBe(previous);
+    expect(readFileSync(join(previous, 'release.json'))).toEqual(before);
+    expect(readdirSync(root)).toEqual(['2.0.0--a']);
+  });
+
+  test.each([false, true])('uses the verified staged fallback with previous release=%s', (withPrevious) => {
+    const directory = join(ROOT, `ocr-staged-${withPrevious}`);
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    if (withPrevious) {
+      const old = join(directory, 'old'); makeRelease(old, '2.0.0', 'a', 88);
+      expect(run(['deploy', old, '--root', root, '--current', current], ROOT).status).toBe(0);
+    }
+    const next = join(directory, 'next'); makeRelease(next, '2.0.1', 'b', 88);
+    mkdirSync(join(next, 'tesseract'), { recursive: true });
+    writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
+    const runtime = join(next, legacyOcr[0].path);
+    mkdirSync(join(runtime, '..'), { recursive: true });
+    const expected = gunzipSync(readFileSync('scripts/vendor/legacy-ocr/pre21-tesseract.js.gz'));
+    writeFileSync(runtime, expected);
+    expect(run(['deploy', next, '--root', root, '--current', current], ROOT).status).toBe(0);
+    expect(readFileSync(join(readlinkSync(current), legacyOcr[0].path))).toEqual(expected);
+  });
+
+  test('refuses an altered staged legacy fallback before switching current', () => {
+    const directory = join(ROOT, 'ocr-staged-corrupt');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const old = join(directory, 'old'), next = join(directory, 'next');
+    makeRelease(old, '2.0.0', 'a', 88); makeRelease(next, '2.0.1', 'b', 88);
+    expect(run(['deploy', old, '--root', root, '--current', current], ROOT).status).toBe(0);
+    const previous = readlinkSync(current);
+    mkdirSync(join(next, 'tesseract'), { recursive: true });
+    writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
+    const runtime = join(next, legacyOcr[0].path);
+    mkdirSync(join(runtime, '..'), { recursive: true }); writeFileSync(runtime, 'altered');
+    const result = run(['deploy', next, '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1); expect(result.stderr).toContain('Legacy OCR identity mismatch');
+    expect(readlinkSync(current)).toBe(previous); expect(readdirSync(root)).toEqual(['2.0.0--a']);
   });
 
   test('refuses a legacy metadata path outside public chunks', () => {
