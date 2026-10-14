@@ -20,6 +20,7 @@
 
 import {
   chooseJournalAccessMode,
+  accessModeHasSecret,
   describeAndroidBootPlan,
   describeWebBootPlan,
   type JournalAccessMode
@@ -71,8 +72,9 @@ export type BootEvent =
   | { type: 'android-key-answered'; result: AndroidKeyResult }
   /** `unlocked` is whether somebody authenticated to get this key. A typed
       passphrase and an Android prompt both satisfy the casual-access gate;
-      a key the platform handed over unasked does not. */
-  | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean }
+      a key the platform handed over unasked does not. `secretAuthenticated`
+      excludes recovery unlocks from cleanup of an access mode's old wrap. */
+  | { type: 'key-obtained'; dataKey: DataKey; accessMode: JournalAccessMode; unlocked: boolean; secretAuthenticated?: boolean }
   | { type: 'journal-opened'; journal: Journal }
   /** A web lock superseded cold boot before it published journal access. */
   | { type: 'journal-open-cancelled' }
@@ -108,7 +110,7 @@ export type BootEffect =
   | { type: 'demo-unlock' }
   | { type: 'auto-unlock-device-bound' }
   | { type: 'auto-unlock-android' }
-  | { type: 'open-journal'; dataKey: DataKey; accessMode: JournalAccessMode }
+  | { type: 'open-journal'; dataKey: DataKey; accessMode: JournalAccessMode; sweepDeviceBound?: boolean }
   /** A mid-session unlock's key, for the journal a web lock closed. */
   | { type: 'reopen-journal'; dataKey: DataKey }
   | { type: 'restore-previous-journal' }
@@ -130,6 +132,8 @@ export interface BootMachine {
   journalOpening: boolean;
   /** The same for a mid-session unlock: a reopen is already using a key. */
   journalReopening: boolean;
+  /** A secret wrap won over device-bound material in this boot's web survey. */
+  deviceBoundCleanupPending: boolean;
 }
 
 interface BootStep {
@@ -146,7 +150,8 @@ export function initialBoot(cachedAccessMode: CachedAccessMode | null = null): B
     demo: false,
     persistDeniedPending: false,
     journalOpening: false,
-    journalReopening: false
+    journalReopening: false,
+    deviceBoundCleanupPending: false
   };
 }
 
@@ -162,7 +167,8 @@ function withDataKey(
   machine: BootMachine,
   dataKey: DataKey,
   accessMode: JournalAccessMode,
-  unlocked: boolean
+  unlocked: boolean,
+  secretAuthenticated = false
 ): BootStep {
   const unlocking: BootEffect[] = unlocked ? [{ type: 'mark-unlocked' }] : [];
   /* Ready with no journal is a web lock's doing (after-release ticket 10),
@@ -178,18 +184,20 @@ function withDataKey(
   if (machine.boot.status === 'legacy-refused' || machine.boot.status === 'ready' ||
       machine.boot.status === 'schema-too-new' ||
       (machine.boot.status === 'booting' && machine.journalOpening)) return step(machine, machine.boot);
-  return openingJournal(machine, dataKey, accessMode, unlocking);
+  return openingJournal(machine, dataKey, accessMode, unlocking,
+    machine.deviceBoundCleanupPending && unlocked && secretAuthenticated && accessModeHasSecret(accessMode, false));
 }
 
 function openingJournal(
   machine: BootMachine,
   dataKey: DataKey,
   accessMode: JournalAccessMode,
-  before: BootEffect[] = []
+  before: BootEffect[] = [],
+  sweepDeviceBound = false
 ): BootStep {
   return step({ ...machine, journalOpening: true }, bootTransitions.toBooting(bootTransitions.setAccessMode(machine.boot, accessMode)), [
     ...before,
-    { type: 'open-journal', dataKey, accessMode }
+    { type: 'open-journal', dataKey, accessMode, ...(sweepDeviceBound ? { sweepDeviceBound: true } : {}) }
   ]);
 }
 
@@ -210,6 +218,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 
     case 'web-surveyed': {
       const { keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent } = event;
+      machine = { ...machine, deviceBoundCleanupPending: keystoreSecretSource !== null && deviceBoundKeystoreExists };
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
         chooseJournalAccessMode({ keystoreSecretSource, deviceBoundKeystoreExists })
@@ -283,7 +292,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         : step(machine, bootTransitions.toNeedsAuthentication(machine.boot, event.result));
 
     case 'key-obtained':
-      return withDataKey(machine, event.dataKey, event.accessMode, event.unlocked);
+      return withDataKey(machine, event.dataKey, event.accessMode, event.unlocked, event.secretAuthenticated);
 
     case 'journal-opened': {
       const ready = bootTransitions.toReady(machine.boot, { journal: event.journal });

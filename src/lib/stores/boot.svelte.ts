@@ -89,7 +89,7 @@ import { journalSession } from './journal-session';
 import { forgetJournalContent } from '../lock/forget-content';
 import { crossBootFailure, openApp } from '../motion/appOpening';
 import { ui } from './ui.svelte';
-import { performPlatformEffect } from './boot-platform';
+import { performPlatformEffect, sweepDeviceBoundAfterSecretUnlock } from './boot-platform';
 import {
   describeError,
   deviceBoundSetupOutcome,
@@ -628,7 +628,7 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
   const current = beginSessionUnlock();
   const dataKey = await unlockJournalPassphrase(passphrase);
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true });
 }
 
 /** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
@@ -646,7 +646,7 @@ export async function submitPinUnlock(pin: string, gateCurrent: () => void = () 
   const current = () => { sessionCurrent(); gateCurrent(); };
   const dataKey = await unlockJournalPin(pin, undefined, current);
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true, secretAuthenticated: true });
 }
 
 /** The setup module's biometric choice (ticket 55). The prompt the platform
@@ -664,7 +664,7 @@ export async function submitBiometricUnlock(): Promise<void> {
   const current = beginSessionUnlock();
   const dataKey = await unlockJournalBiometric();
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true, secretAuthenticated: true });
 }
 
 /** Whether a recovery unlock happened this page-load, and therefore whether
@@ -826,6 +826,9 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
   if (target === 'pin') await addJournalPin(sessionDataKey, secret);
   else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
   else await addJournalPassphrase(sessionDataKey, secret);
+  // Keep the change retryable until the old no-secret access is gone.
+  if (isAndroid()) await androidKeystore.erase();
+  else await removeDeviceBoundJournal();
   dispatch({ type: 'access-mode-changed', accessMode: target });
   /* Cleared after the wrap landed rather than before it: the module is in
      front of the app precisely until there is a secret the person has, and
@@ -840,15 +843,6 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       console.warn('could not remove the PIN binding key after changing access mode', error);
     });
   }
-  if (isAndroid()) {
-    await androidKeystore.erase().catch((error) => {
-      console.warn('could not erase the Android keystore keys after changing access mode', error);
-    });
-    return;
-  }
-  await removeDeviceBoundJournal().catch((error) => {
-    console.warn('could not remove the browser device-bound key after changing access mode', error);
-  });
 }
 
 /** The Android gate's submit, and the first run's own call. Asks Keystore for
@@ -908,7 +902,7 @@ async function perform(effect: BootEffect): Promise<void> {
     }
 
     case 'open-journal':
-      await openAndBoot(effect.dataKey);
+      await openAndBoot(effect.dataKey, effect.sweepDeviceBound);
       return;
 
     case 'restore-previous-journal':
@@ -951,11 +945,19 @@ async function perform(effect: BootEffect): Promise<void> {
 /** Everything both platforms do once they have a data key: the journal is
     constructed over a driver, boot() runs its sequence, and how it ended goes
     back to the reducer as an event. */
-async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>, sweepDeviceBound = false): Promise<void> {
   // Effects start synchronously at dispatch, before another leave can run.
   const current = !isAndroid() && accessModeHasSecret(machine.boot.accessMode, false)
     ? beginSessionUnlock() : () => {};
   try {
+    if (sweepDeviceBound) {
+      try {
+        await sweepDeviceBoundAfterSecretUnlock(current);
+      } catch (error) {
+        if (error instanceof UnlockCancelledError) throw error;
+        console.warn('could not remove the leftover device-bound key; the next boot will retry', error);
+      }
+    }
     await prepareJournal(dataKey, current);
   } catch (error) {
     if (!(error instanceof UnlockCancelledError)) throw error;

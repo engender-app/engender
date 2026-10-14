@@ -1,5 +1,19 @@
 # The probes in tests/*.mjs
 
+`src/lib/data/device-bound-journal.test.ts` exercises the production browser
+adapters with fake OPFS and IndexedDB requests. A real passphrase wrap and
+unlock prove the boot survey's leftover cleanup path. Removal failures keep
+the next boot's retry marker; silent survivors, cancelled unlocks and a newer
+device-bound mode cannot pass as completed cleanup. `journal-pin.test.ts`
+checks that retrying the same published PIN verifies the active data key
+without replacing its binding or wrap. These run in `npm test`.
+
+`node tests/device-bound-cleanup-check.mjs` mounts the real Settings form in
+Chromium. Forced metadata removal failures must show the existing incomplete
+change notice and keep the passphrase or PIN retry available. A successful
+retry removes both records; a separate real cold boot sweeps a recreated
+leftover after secret authentication. The probe uses synthetic demo data.
+
 `tests/ai-directories.test.ts` plants synthetic root evidence in an isolated
 Git repository. It requires index refusal and verifies that an archive of the
 commit excludes evidence while retaining source, build inputs and intentional
