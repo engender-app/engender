@@ -1,6 +1,6 @@
 # Polityka prywatności
 
-Ostatnia aktualizacja: 7 października 2026
+Ostatnia aktualizacja: 14 października 2026
 
 engender to dziennik tranzycji. Tworzy go i publikuje Alicja Barankiewicz
 w Warszawie. Ta polityka dotyczy aplikacji w przeglądarce i na Androida,
@@ -67,6 +67,11 @@ Aplikacja nie wysyła dziennika i nie zakłada konta ani profilu odwiedzającej
 osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu aplikacja pobiera z tego samego serwera i nie łączy się z żadną inną stroną. Przy pierwszym
 skanowaniu zdjęcia wyników przeglądarka pobiera z tego serwera silnik OCR
 (około 21 MB). Samo rozpoznawanie tekstu odbywa się na twoim urządzeniu.
+
+Pola tekstowe dziennika proszą przeglądarkę o wyłączenie autouzupełniania
+i przywracania ich treści po ponownym otwarciu sesji. To nie usuwa tekstu
+zapisanego przez wcześniejsze wersje aplikacji ani nie kontroluje danych
+zapisywanych przez rozszerzenia przeglądarki lub klawiaturę.
 
 W przeglądarce lokalny dziennik otwiera się na jeden z czterech sposobów:
 
@@ -139,6 +144,9 @@ Aplikacja na Androida nie prosi o uprawnienie `INTERNET`. Nie otwiera
 połączeń sieciowych i niczego nie wysyła na żaden serwer. Wyłącza też kopię
 zapasową Androida w chmurze i przenoszenie danych między telefonami, więc
 system nie kopiuje jej danych do Google ani na nowy telefon.
+
+Na Androidzie podpowiedzi klawiatury działają jak dotychczas. To, czego
+klawiatura się uczy i co zapisuje, zależy od niej i jej ustawień.
 
 Aplikacja prosi o następujące uprawnienia:
 

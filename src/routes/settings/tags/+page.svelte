@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -148,7 +149,7 @@
       <h3>{m.tags_rename_sheet()}</h3>
       <Field label={m.tags_rename_sheet()} id="rename-input" hidden>
         {#snippet children(id)}
-          <input class="input" {id} name="rename-input" bind:value={renameTarget!.label} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="rename-input" bind:value={renameTarget!.label} />
         {/snippet}
       </Field>
       <button
@@ -179,7 +180,7 @@
       <h3>{m.tags_new_tag()}</h3>
       <Field label={m.tags_new_tag()} id="newtag-input" hidden>
         {#snippet children(id)}
-          <input class="input" {id} name="newtag-input" placeholder={m.tags_tag_placeholder()} bind:value={newLabel} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="newtag-input" placeholder={m.tags_tag_placeholder()} bind:value={newLabel} />
         {/snippet}
       </Field>
       <button
@@ -199,7 +200,7 @@
     <h3>{m.tags_new_group()}</h3>
     <Field label={m.tags_new_group()} id="newgroup-input" hidden>
       {#snippet children(id)}
-        <input class="input" {id} name="newgroup-input" placeholder={m.tags_group_placeholder()} bind:value={newGroupName} />
+        <input autocomplete={journalTextAutocomplete()} class="input" {id} name="newgroup-input" placeholder={m.tags_group_placeholder()} bind:value={newGroupName} />
       {/snippet}
     </Field>
     <button

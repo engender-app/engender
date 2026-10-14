@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Measurements and sizes: one screen for one question about one body
      (phase 10 redesign ticket 61).
 
@@ -634,17 +635,17 @@
       </Field>
       <Field label={m.size_log_size_label()} id="size-log-size" hint={!editor.size.trim() ? m.size_log_required_size() : undefined}>
         {#snippet children(id, hintId, touched)}
-          <input class="input" {id} required aria-invalid={touched && !editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} required aria-invalid={touched && !editor.size.trim()} aria-describedby={hintId} name="size-log-size" placeholder={m.size_log_size_placeholder()} bind:value={editor.size} />
         {/snippet}
       </Field>
       <Field label={m.size_log_brand_label()} id="size-log-brand">
         {#snippet children(id)}
-          <input class="input" {id} name="size-log-brand" placeholder={m.size_log_brand_placeholder()} bind:value={editor.brand} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="size-log-brand" placeholder={m.size_log_brand_placeholder()} bind:value={editor.brand} />
         {/snippet}
       </Field>
       <Field label={m.size_log_fit_note_label()} id="size-log-fit-note">
         {#snippet children(id)}
-          <input class="input" {id} name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="size-log-fit-note" placeholder={m.size_log_fit_note_placeholder()} bind:value={editor.fitNote} />
         {/snippet}
       </Field>
       <Field label={m.size_log_date_label()} id="size-log-date">
@@ -680,7 +681,7 @@
     </div>
     <Field label={m.measurement_type_new_label()} id="new-measurement-type">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="new-measurement-type"

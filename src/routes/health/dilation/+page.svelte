@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Dilation: a taper typed in and its session log (phase 8 features
      ticket 12, CONTEXT: "Taper").
 
@@ -461,7 +462,7 @@
       </Field>
       <Field label={m.dilation_session_note_label()} id="dilation-session-note">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="dilation-session-note"

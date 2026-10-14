@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
@@ -576,7 +577,7 @@
     <div in:crossfade>
       <Field label={m.document_title_label()} id="document-title">
         {#snippet children(id)}
-          <input class="input" {id} name="document-title" bind:value={draft.title} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="document-title" bind:value={draft.title} />
         {/snippet}
       </Field>
       <Field label={m.document_day_label()} id="document-day">

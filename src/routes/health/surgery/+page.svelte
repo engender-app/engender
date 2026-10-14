@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { tick } from 'svelte';
   import { travelOnChange } from '$lib/motion/reorder.svelte';
   import { scrollToHash } from '$lib/navigation/scroll-region';
@@ -504,7 +505,7 @@
         <SectionHeading text={title} />
         <Field label={title} id="surgery-notes" hidden>
           {#snippet children(id)}
-            <textarea
+            <textarea autocomplete={journalTextAutocomplete()}
               class="input"
               {id}
               name="surgery-notes"
@@ -731,7 +732,7 @@
     {#snippet fields(editor)}
       <Field label={m.surgery_name_label()} id="surgery-name">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="surgery-name"
@@ -846,7 +847,7 @@
     <h3>{m.surgery_checklist_sheet()}</h3>
     <Field label={m.surgery_checklist_sheet()} id="surgery-item" hidden>
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="surgery-item"

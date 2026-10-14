@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
@@ -595,7 +596,7 @@
     <h3>{m.roadmap_new_goal()}</h3>
     <Field label={m.roadmap_new_goal()} id="newgoal-input" hidden>
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="newgoal-input"
@@ -672,7 +673,7 @@
           {#snippet children(id)}
             <!-- No placeholder: this field opens holding the goal's own
                  text, so one would only ever restate the label above it. -->
-            <input class="input" {id} name="goal-text" bind:value={goalDraft} />
+            <input autocomplete={journalTextAutocomplete()} class="input" {id} name="goal-text" bind:value={goalDraft} />
           {/snippet}
         </Field>
         <button class="btn btn-primary press" data-save-goal disabled={!canSaveGoal || goalWrite.busy} onclick={saveGoalText}>

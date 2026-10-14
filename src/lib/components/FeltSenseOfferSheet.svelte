@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import { writer } from '$lib/stores/attempt.svelte';
   import type { OfferCopy } from '$lib/data/offers';
@@ -66,7 +67,7 @@
   <div style="margin-top:var(--space-3)">
     <Field label={m.note_label()} id="felt-sense-offer-note">
       {#snippet children(id)}
-        <textarea class="input" {id} rows="2" placeholder={m.tryout_feeling_note_placeholder()} bind:value={note}></textarea>
+        <textarea autocomplete={journalTextAutocomplete()} class="input" {id} rows="2" placeholder={m.tryout_feeling_note_placeholder()} bind:value={note}></textarea>
       {/snippet}
     </Field>
   </div>

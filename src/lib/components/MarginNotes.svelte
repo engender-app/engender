@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* A margin note: a visibly later layer under the entry it annotates
      (phase 8 features ticket 07, CONTEXT: "Margin note").
 
@@ -114,7 +115,7 @@
 
 <Sheet busy={saving.busy} bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
   <h3>{editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}</h3>
-  <textarea
+  <textarea autocomplete={journalTextAutocomplete()}
     class="input"
     rows="4"
     style="margin-top:var(--space-3)"

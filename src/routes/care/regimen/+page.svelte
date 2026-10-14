@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { SvelteSet } from 'svelte/reactivity';
   import { page } from '$app/state';
   import { sameDraft, snapshotDraft } from '$lib/components/kit/recordEditor';
@@ -599,12 +600,12 @@
           <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
           <Field label={m.regimen_drug_label()} id="regimen-drug">
             {#snippet children(id, _hint, touched)}
-              <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
             {/snippet}
           </Field>
           <Field label={m.regimen_ester_label()} id="regimen-ester">
             {#snippet children(id)}
-              <input class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
             {/snippet}
           </Field>
           <div class="cd-endpoints">
@@ -615,18 +616,18 @@
             </Field>
             <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
               {#snippet children(id)}
-                <input class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
               {/snippet}
             </Field>
           </div>
           <Field label={m.regimen_route_label()} id="regimen-route">
             {#snippet children(id)}
-              <input class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
             {/snippet}
           </Field>
           <Field label={m.regimen_interval_label()} id="regimen-interval">
             {#snippet children(id)}
-              <input class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
             {/snippet}
           </Field>
           <div class="cd-endpoints">
@@ -759,7 +760,7 @@
                             />
                           </span>
                           <span class="field">
-                            <input
+                            <input autocomplete={journalTextAutocomplete()}
                               class="input"
                               data-amount-unit={index}
                               aria-label={m.dose_unit_label()}

@@ -26,6 +26,11 @@ Changing the passphrase or replacing the recovery key rewraps the same
 data key. A copy of the journal's files taken before the change still
 opens with the old passphrase or recovery key.
 
+Web journal text fields request `autocomplete="off"` to keep their contents out
+of browser autofill and session restoration. This does not erase copies left by
+older versions. Android retains its existing keyboard behavior; the keyboard
+and its settings control what it learns or stores.
+
 ## Report a vulnerability
 
 Use GitHub private vulnerability reporting for this repository:

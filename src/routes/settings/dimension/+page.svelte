@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -60,18 +61,18 @@
 
   <Field label={m.cd_name_label()} id="cd-name">
     {#snippet children(id)}
-      <input class="input" {id} name="cd-name" placeholder={m.cd_name_placeholder()} bind:value={name} />
+      <input autocomplete={journalTextAutocomplete()} class="input" {id} name="cd-name" placeholder={m.cd_name_placeholder()} bind:value={name} />
     {/snippet}
   </Field>
   <div class="cd-endpoints">
     <Field label={m.cd_low_label()} id="cd-low">
       {#snippet children(id)}
-        <input class="input" {id} name="cd-low" placeholder={m.cd_low_placeholder()} bind:value={low} />
+        <input autocomplete={journalTextAutocomplete()} class="input" {id} name="cd-low" placeholder={m.cd_low_placeholder()} bind:value={low} />
       {/snippet}
     </Field>
     <Field label={m.cd_high_label()} id="cd-high">
       {#snippet children(id)}
-        <input class="input" {id} name="cd-high" placeholder={m.cd_high_placeholder()} bind:value={high} />
+        <input autocomplete={journalTextAutocomplete()} class="input" {id} name="cd-high" placeholder={m.cd_high_placeholder()} bind:value={high} />
       {/snippet}
     </Field>
   </div>
