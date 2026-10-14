@@ -188,6 +188,11 @@ writes it on a schedule to a folder you picked, is encrypted with AES-GCM
 under a backup password you choose. Nobody can read it without that
 password.
 
+Android automatic backups require the system's local storage provider. A backup
+is reported complete only after the file and folder are synced and the delivered
+bytes are checked. The app reports incomplete delivery for
+other providers. It does not verify cloud uploads.
+
 ### Exports meant to be read
 
 Some exports are deliberately unencrypted because they are meant to be read,

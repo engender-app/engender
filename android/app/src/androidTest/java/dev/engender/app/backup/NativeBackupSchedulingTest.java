@@ -154,6 +154,14 @@ public class NativeBackupSchedulingTest extends AutoExportDeliveryTest {
             } catch (Exception expected) {
                 assertTrue(new JSONObject(preferences.getString("encryptedStage", "{}")).has("target"));
             } finally { resolver.call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "fault", "none", null); }
+            assertEquals("failed read-back removes the partial target", 1, documents().size());
+
+            // Model an interrupted attempt with an existing recorded target before blocking state writes.
+            Uri stateTarget = android.provider.DocumentsContract.createDocument(resolver,
+                android.provider.DocumentsContract.buildDocumentUriUsingTree(tree, "root"),
+                "application/octet-stream", "auto-state-commit-proof.ttbackup");
+            JSONObject stateStage = new JSONObject(preferences.getString("encryptedStage", "{}"));
+            assertTrue(preferences.edit().putString("encryptedStage", stateStage.put("target", stateTarget.toString()).toString()).commit());
 
             // A failed success-state commit must not prune earlier Archives or change memory state.
             File preferenceDirectory = new File(app.getApplicationInfo().dataDir, "shared_prefs");
