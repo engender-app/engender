@@ -36,8 +36,9 @@ export function verifyR8Mapping(mapping, plugins) {
     assert.equal(annotation?.target, name, `runtime annotation removed or renamed: ${name}`);
     for (const method of methods) {
       // R8 omits unchanged abstract members from the mapping.
-      const members = annotation.members.filter((line) => line.includes(` ${method}(`));
-      assert(members.every((line) => line.endsWith(` -> ${method}`)),
+      /** @type {string[]} */
+      const annotationMembers = annotation.members.filter((line) => line.includes(` ${method}(`));
+      assert(annotationMembers.every((line) => line.endsWith(` -> ${method}`)),
         `runtime annotation member renamed: ${name}.${method}`);
     }
   }
