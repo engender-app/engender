@@ -14,8 +14,9 @@
    the message below. A page asks when the journal is idle and never while a
    write, a migration or an Archive import is in
    flight - lib/pwa/update.ts holds that rule and lib/data/journal-busy.ts
-   is what it reads. clients.claim() stays absent for the same reason: a page
-   that loaded on the old worker keeps it until it reloads itself. */
+   is what it reads. skipWaiting() also changes existing pages' controllers.
+   Those documents keep their original assets until they close or reload;
+   clients.claim() stays absent so a first install does not take over pages. */
 /// <reference types="@sveltejs/kit" />
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
@@ -24,9 +25,10 @@ import { base, build, files, version } from '$service-worker';
 import { emittedClientAssets } from './lib/pwa/emitted-client-assets.generated';
 import { SHELL_CACHE_PREFIX, splitShellAssets } from './lib/pwa/shell-assets';
 import { OCR_ASSET_PREFIX } from './lib/pwa/ocr-assets.generated';
-import { retainPreviousOcr, retainedOcr } from './lib/pwa/retained-ocr';
+import { retainedOcr } from './lib/pwa/retained-ocr';
+import { createShellLifetime, retainedShellAsset } from './lib/pwa/shell-lifetime';
 import { CACHE_PDF_WORKER } from './lib/pwa/pdf-worker-cache';
-import { listenForOnDemandCache, listenForSkipWaiting } from './lib/pwa/sw-messages';
+import { CLIENT_RELEASE, listenForOnDemandCache, listenForSkipWaiting } from './lib/pwa/sw-messages';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -36,6 +38,7 @@ const CACHE = `${SHELL_CACHE_PREFIX}${version}`;
 
 /** The fallback document, which every route in this SPA renders from. */
 const SHELL = `${base}/`;
+const shellLifetime = createShellLifetime(caches, sw.clients, CACHE, base, sw.location.origin);
 
 /* SvelteKit's own `build` list plus the one the plugin in vite.config.ts
    writes from the client bundle. The second exists because the first is
@@ -49,6 +52,12 @@ const { shell: PRECACHE, pdfWorker: PDF_WORKER } = splitShellAssets(
 );
 
 listenForSkipWaiting(sw);
+sw.addEventListener('message', (event) => {
+  const data = event.data;
+  if (data?.type !== CLIENT_RELEASE || typeof data.version !== 'string') return;
+  if (!event.source || !('id' in event.source) || event.source.type !== 'window') return;
+  event.waitUntil(shellLifetime.release(event.source.id, data.version));
+});
 listenForOnDemandCache(sw, caches, { cacheName: CACHE, assets: PDF_WORKER, message: CACHE_PDF_WORKER });
 
 sw.addEventListener('install', (event) => {
@@ -66,11 +75,7 @@ sw.addEventListener('install', (event) => {
 });
 
 sw.addEventListener('activate', (event) => {
-  event.waitUntil(
-    (async () => {
-      await retainPreviousOcr(caches, CACHE, base);
-    })()
-  );
+  event.waitUntil(shellLifetime.activate());
 });
 
 sw.addEventListener('fetch', (event) => {
@@ -80,6 +85,7 @@ sw.addEventListener('fetch', (event) => {
   // off-origin in the first place is the release gate's business, and
   // verify-build.mjs checks it both online and offline.
   if (new URL(request.url).origin !== sw.location.origin) return;
+  if (request.mode === 'navigate') event.waitUntil(shellLifetime.collect());
   event.respondWith(respond(request));
 });
 
@@ -95,7 +101,9 @@ async function respond(request: Request): Promise<Response> {
     if (shell) return shell;
   }
 
-  const cached = await cache.match(request) ?? await retainedOcr(caches, CACHE, request, base);
+  const cached = await cache.match(request)
+    ?? await retainedShellAsset(caches, CACHE, request, base, sw.location.origin)
+    ?? await retainedOcr(caches, CACHE, request, base);
   if (cached) {
     // Complete cached script reads before handing their bodies to module loaders.
     // Repeated navigation can abort imports served from the cached stream.

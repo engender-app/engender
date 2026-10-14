@@ -1,8 +1,9 @@
-import { dev } from '$app/environment';
+import { dev, version } from '$app/environment';
 import { base } from '$app/paths';
 import { whenIdle } from '$lib/idle';
 import { isAndroid } from '$lib/platform';
 import { SHELL_CACHE_PREFIX } from './shell-assets';
+import { CLIENT_RELEASE } from './sw-messages';
 import { checkForNewerRelease as checkWatchedRelease, watchForUpdates } from './update';
 
 let scheduled = false;
@@ -73,6 +74,12 @@ async function ensureServiceWorkerRegistration(): Promise<boolean> {
   registrationRequest ??= navigator.serviceWorker
     .register(`${base}/service-worker.js`, { updateViaCache: 'none' })
     .then((registration) => {
+      // Controller takeover does not change the document's compiled release.
+      const reportRelease = () => {
+        (navigator.serviceWorker.controller ?? registration.active)?.postMessage({ type: CLIENT_RELEASE, version });
+      };
+      reportRelease();
+      navigator.serviceWorker.addEventListener('controllerchange', reportRelease);
       watchForUpdates(registration, {
         onControllerChange: (listener) => {
           navigator.serviceWorker.addEventListener('controllerchange', listener);
@@ -90,7 +97,10 @@ async function ensureServiceWorkerRegistration(): Promise<boolean> {
          updateViaCache: 'none' makes it a conditional request for one small
          file, and finding nothing new costs a 304. */
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') void registration.update().catch(() => {});
+        if (document.visibilityState === 'visible') {
+          reportRelease();
+          void registration.update().catch(() => {});
+        }
       });
     })
     .catch((error) => {

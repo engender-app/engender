@@ -12,8 +12,8 @@ export const PDF_WORKER_PATTERN = /\/_app\/immutable\/workers\/pdf-worker-[^/]+\
 export const UNUSED_WORKER_PATTERN = /\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
 
 /** What every cache this app owns is named after, one per release. Shared
-    because two sides delete by it: the worker keeps only previous OCR on
-    activate, and register.ts drops all of them on Android, where an install
+    because two sides delete by it: the worker retains live document shells
+    and previous OCR, and register.ts drops all of them on Android, where an install
     that predates this ticket left a worker behind. */
 export const SHELL_CACHE_PREFIX = 'engender-shell-';
 

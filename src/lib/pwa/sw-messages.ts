@@ -5,6 +5,9 @@
     never calls skipWaiting() on its own schedule (ADR-0021). */
 export const SKIP_WAITING = 'engender:skip-waiting';
 
+/** A page reports its compiled release after registration and controller takeover. */
+export const CLIENT_RELEASE = 'engender:client-release';
+
 /** Just the part of ServiceWorkerGlobalScope these need, so the worker's own
     reference-lib declarations do not have to reach into here. `waitUntil` is
     what a real ExtendableMessageEvent carries. */
