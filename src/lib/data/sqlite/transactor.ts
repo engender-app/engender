@@ -25,7 +25,15 @@ export function oneTransactionAtATime(
         await steps.commit();
         return value;
       } catch (error) {
-        await steps.rollback();
+        try {
+          await steps.rollback();
+        } catch (rollbackError) {
+          // Preserve the original message and cause for classification while
+          // keeping rollback refusal available as secondary diagnostics.
+          throw new AggregateError([error, rollbackError], error instanceof Error ? error.message : String(error), {
+            cause: error
+          });
+        }
         throw error;
       }
     });
