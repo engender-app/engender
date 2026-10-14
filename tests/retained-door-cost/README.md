@@ -34,6 +34,10 @@ This changes a generated asset, not `src/app.html`.
 
 With JDK 21 and `ANDROID_HOME`, assemble the isolated app and test pair:
 
+The isolation script includes `native/RetainedDoorCostTest.java` in this test
+APK only. Ordinary Android-tier builds do not compile or discover the research
+class.
+
 ```sh
 cd android
 ./gradlew -I ../tests/retained-door-cost/isolate.gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --max-workers=2
