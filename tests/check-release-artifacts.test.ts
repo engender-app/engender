@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { strToU8, zipSync } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { androidOcrAssetProblems, androidPermissionSetProblems, expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
 
@@ -39,18 +40,14 @@ const OCR_FILES = ['worker.min.js', 'tesseract-core.wasm.js', 'tesseract-core.wa
 
 function ocrApk(root: string, apk: string, packaged = OCR_FILES) {
   const webBuildDir = join(root, 'web');
-  const source = join(root, 'apk');
   for (const name of OCR_FILES) {
     const path = join(webBuildDir, 'tesseract', name);
     mkdirSync(join(path, '..'), { recursive: true });
     writeFileSync(path, `synthetic ${name}`);
   }
-  for (const name of packaged) {
-    const path = join(source, 'assets/public/tesseract', name);
-    mkdirSync(join(path, '..'), { recursive: true });
-    writeFileSync(path, `synthetic ${name}`);
-  }
-  execFileSync('jar', ['--create', '--file', apk, '-C', source, 'assets']);
+  writeFileSync(apk, zipSync(Object.fromEntries(packaged.map(name => [
+    `assets/public/tesseract/${name}`, strToU8(`synthetic ${name}`)
+  ]))));
   writeFileSync(`${apk}.permissions`, PERMISSION_DUMP);
   return webBuildDir;
 }
