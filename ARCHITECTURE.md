@@ -722,6 +722,23 @@ stateDiagram-v2
 
 `lockAfter` is `immediately`, `one-minute`, `five-minutes` or `restart` ([data/prefs/catalogue.ts](src/lib/data/prefs/catalogue.ts)). [lock/leave-lock.ts](src/lib/lock/leave-lock.ts) checks elapsed wall-clock time when the person comes back, because a backgrounded WebView may never run a timer. On Android, `onUserLeaveHint` locks sooner. [stores/lock.svelte.ts](src/lib/stores/lock.svelte.ts) holds `unlocked`, which starts as false on every load. [SessionUnlock.svelte](src/lib/components/SessionUnlock.svelte) asks for the access mode's own secret again. The PIN wait grows with failed attempts ([lock/throttle.ts](src/lib/lock/throttle.ts), [pin-throttle.ts](src/lib/lock/pin-throttle.ts), and [PinAttemptWait.java](android/app/src/main/java/dev/engender/app/lock/PinAttemptWait.java) on Android), using monotonic time. Android persists the deadline with the boot count and owes the full delay after a reboot. On the web, a reload owes the full pending delay unless the current session can prove elapsed time; changing the wall clock cannot pay it. A forgotten PIN can be recovered at the cold-start gate if a recovery key was created earlier and the journal and recovery wrap remain intact (ADR-0054). `SessionUnlock` does not offer recovery while the journal is already open. Without a usable credential or recovery key, a reset is needed before starting again or restoring an archive with its own password.
 
+PIN authentication waits under [data/credential-ownership.ts](src/lib/data/credential-ownership.ts)
+for the current credential operation, then reads its committed wrap and binding.
+It retains ownership through any legacy binding migration. Credential mutations
+still reject overlap. The native queue retains completion only, so it does not
+keep returned data keys. A gate's mount and session-generation guards refuse a
+queued or completed derivation after departure or a newer lock; a cancelled
+derived key is cleared before returning it. Successful session publication may
+remove the gate, but its session-generation guard still rejects a later lock.
+
+[PinEntry.svelte](src/lib/components/PinEntry.svelte) classifies authentication
+failures for cold start, session unlock and current-PIN verification in Settings.
+Only `DecryptionFailedError` counts as a wrong guess. Contention, missing device
+bindings, cancelled attempts, unreadable access metadata and journal reopening
+failures do not increase the throttle. Unreadable metadata asks the person to
+reopen the app so boot can check the current access mode. Busy and error feedback
+use the catalogue and the existing live regions.
+
 ### 7.5 Disguise
 
 [disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, journey and wrapped export file names omit the person's name under disguise. Setup doesn't change with disguise and offers it last (ADR-0079).

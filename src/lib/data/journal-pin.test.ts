@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import {
   addJournalPin,
   changeJournalPin,
@@ -18,6 +18,7 @@ import { DecryptionFailedError } from '../crypto/aesGcm.ts';
 import { KeystoreUnreadableError, wrapDataKeyWithSecret, unlockKeystore, type KeystoreMetadata } from '../crypto/keystore.ts';
 import type { DeviceKeySlot } from './device-bound-journal.ts';
 import { changeCredentials, CredentialsBusyError } from './credential-ownership';
+import { UnlockCancelledError, unlockAttempts } from '../lock/unlock-attempt';
 
 /* Both halves of PIN mode in memory: the keystore file and the two key
    stores a PIN can be bound to. The Argon2id derivations are real at the
@@ -113,6 +114,97 @@ test('a journal set up under a PIN opens with that PIN and refuses another', asy
 
   expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
   await expect(unlockJournalPin('4321', world)).rejects.toThrow(DecryptionFailedError);
+});
+
+test('a correct native PIN waits for credential ownership without starting another operation', async () => {
+  vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  let release = () => {};
+  let held: Promise<void> | undefined;
+  let attempt: Promise<unknown> | undefined;
+  try {
+    const world = bothPlatforms();
+    const dataKey = await setupJournalPin('1234', world.phone);
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => { started = resolve; });
+    held = changeCredentials(async () => {
+      started();
+      await new Promise<void>((resolve) => { release = resolve; });
+    });
+    await entered;
+    const read = vi.spyOn(world.phone.binding, 'read');
+    let settled = false;
+    attempt = unlockJournalPin('1234', world.phone).then(
+      (key) => { settled = true; return key; },
+      (error) => { settled = true; return error; }
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(settled).toBe(false);
+    expect(read).not.toHaveBeenCalled();
+    await expect(changeCredentials(async () => 'overlap')).rejects.toThrow(CredentialsBusyError);
+    release();
+    await held;
+    expect(await attempt).toEqual(dataKey);
+    expect(read).toHaveBeenCalledTimes(1);
+  } finally {
+    release();
+    await held;
+    await attempt;
+    vi.unstubAllGlobals();
+  }
+});
+
+test('locking cancels a queued PIN before reading or rebinding credentials', async () => {
+  const world = bothPlatforms();
+  const dataKey = await setupJournalPin('1234', world.phone);
+  const attempts = unlockAttempts();
+  let release = () => {};
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => { started = resolve; });
+  const held = changeCredentials(async () => {
+    started();
+    await new Promise<void>((resolve) => { release = resolve; });
+  });
+  await entered;
+  const read = vi.spyOn(world.phone.binding, 'read');
+  const pending = unlockJournalPin('1234', world.phone, attempts.begin()).then(
+    () => null, (error) => error
+  );
+  try {
+    attempts.lock();
+    release();
+    await held;
+    expect(await pending).toBeInstanceOf(UnlockCancelledError);
+    expect(read).not.toHaveBeenCalled();
+    expect(await unlockJournalPin('1234', world.phone, attempts.begin())).toEqual(dataKey);
+  } finally { release(); await held; await pending; }
+});
+
+test('locking during PIN derivation refuses the derived key and preserves the wrap for a fresh attempt', async () => {
+  const world = bothPlatforms();
+  const dataKey = await setupJournalPin('1234', world.phone);
+  const metadata = world.stored();
+  const attempts = unlockAttempts();
+  const readBinding = world.phone.binding.read.bind(world.phone.binding);
+  let release = () => {};
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => { started = resolve; });
+  world.phone.binding.read = async () => {
+    started();
+    await new Promise<void>((resolve) => { release = resolve; });
+    return readBinding();
+  };
+  const pending = unlockJournalPin('1234', world.phone, attempts.begin()).then(
+    () => null, (error) => error
+  );
+  try {
+    await entered;
+    attempts.lock();
+    release();
+    expect(await pending).toBeInstanceOf(UnlockCancelledError);
+    expect(world.stored()).toBe(metadata);
+    world.phone.binding.read = readBinding;
+    expect(await unlockJournalPin('1234', world.phone, attempts.begin())).toEqual(dataKey);
+  } finally { release(); await pending; }
 });
 
 test('the stored keystore names PIN as its source, so boot draws the pad rather than a passphrase field', async () => {

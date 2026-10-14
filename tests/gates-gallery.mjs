@@ -187,6 +187,11 @@ await fixture.listen();
   }
   await select('Platform', 'web');
 
+  await page.evaluate(async (modulePath) => {
+    const { setupJournalPin } = await import(modulePath);
+    await setupJournalPin('1234');
+  }, `/@fs${resolve(here, '../src/lib/data/journal-pin.ts')}`);
+
   /* The PIN pad's two answers to a wrong PIN, which are the only motion on
      any of these screens that leaves a visible resting state: the row has
      shaken and cleared, the wait is counting down and the rail beside it is
@@ -196,10 +201,8 @@ await fixture.listen();
     await select('Theme', theme);
     await page.waitForSelector('[data-pin-pad]');
     for (const digit of ['9', '9', '9', '9']) await page.locator(`[data-key="${digit}"]`).click();
-    /* The pad's own answer plus the throttle's: the row has shaken and
-       cleared, the wait is counting and the rail beside it is draining. The
-       PIN is wrong for a real reason here - there is no keystore behind this
-       fixture - so this is the true refusal, not a simulated one. */
+    /* The real wrap is bound to 1234, so 9999 exercises wrong-PIN feedback
+       through production decryption. */
     await page.waitForSelector('[data-pin-status="wrong"], [data-pin-status="throttled"]');
     await page.waitForTimeout(400);
     await shoot(page, `gate-wrong-pin-trans-${theme}`);
