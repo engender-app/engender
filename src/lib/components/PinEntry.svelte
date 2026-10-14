@@ -197,6 +197,10 @@
       if (!(failure instanceof UnlockCancelledError)) throw failure;
     } finally {
       if (!opening) {
+        if (mounted) {
+          try { await throttle.refresh(); startCountdown(); }
+          catch { fail(m.pin_access_unavailable()); }
+        }
         busy = false;
         authenticating = false;
       }

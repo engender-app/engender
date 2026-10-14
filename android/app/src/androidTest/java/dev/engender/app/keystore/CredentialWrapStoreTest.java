@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.AssetManager;
 import androidx.test.core.app.ActivityScenario;
+import androidx.lifecycle.Lifecycle;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import dev.engender.app.MainActivity;
@@ -89,10 +90,13 @@ public class CredentialWrapStoreTest {
         if (!"true".equals(InstrumentationRegistry.getArguments().getString("powerCutHost"))) return;
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertTrue("power cuts require an isolated package", app.getPackageName().startsWith("dev.engender.app.test."));
-        File probe = new File(app.getFilesDir(), "credential-power-cut-probe");
-        copy(InstrumentationRegistry.getInstrumentation().getContext().getAssets(), "credential-power-cut-probe", probe);
+        String bundle = InstrumentationRegistry.getArguments().getString("probeBundle", "credential-power-cut-probe");
+        assertTrue("unknown credential probe", "credential-power-cut-probe".equals(bundle) || "pin-count-probe".equals(bundle));
+        File probe = new File(app.getFilesDir(), bundle);
+        copy(InstrumentationRegistry.getInstrumentation().getContext().getAssets(), bundle, probe);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             for (int second = 0; second < 300; second++) {
+                if (scenario.getState() == Lifecycle.State.DESTROYED) break;
                 scenario.onActivity(activity -> {
                     if (!probe.getAbsolutePath().equals(activity.getBridge().getServerBasePath())) {
                         activity.getBridge().setServerBasePath(probe.getAbsolutePath());

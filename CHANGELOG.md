@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android saves each PIN attempt before checking it. Closing or restarting the app
+keeps the count and its growing wait. A correct PIN clears both; missing access
+settings or device keys still do not count as guesses.
+
 Android no longer requests unused network-state and foreground-service
 permissions. Scheduled encrypted backups retain their wake lock, which both
 privacy policies now explain. Release checks inspect the complete APK
