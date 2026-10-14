@@ -28,6 +28,7 @@ import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
 import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import { mountHome } from './mount-home.svelte';
+import { prepareMountedLookBack } from './mount-look-back.svelte';
 import { prepareScreenJournal } from '../browser-tier/screen-journal';
 import { installWorkerReadRecorder } from './worker-reads';
 const workerReads = installWorkerReadRecorder();
@@ -293,7 +294,7 @@ async function run(days: number) {
   const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
-    recorder, mountHome: async (journal) => {
+    recorder, prepareLookBack: (journal, today) => prepareMountedLookBack(journal, today, recorder, workerReads), mountHome: async (journal) => {
       await prepareScreenJournal(journal);
       // End the preceding benchmark's read generation before the cold mount.
       await recorder.driver.readSnapshot(async () => {});

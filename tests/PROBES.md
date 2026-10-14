@@ -87,6 +87,12 @@ schema refusal and same-current no-ops. Filesystem failure controls cover
 history staging/publication, PDF publication and the current-link rename;
 the old receipt, current target and exact retained PDF namespace must survive.
 
+`webview-floor.test.ts` checks source JavaScript APIs, computed CSS transform
+properties and selector syntax against `minWebViewVersion`. Its controls
+cover direct and aliased style reads, bracket notation, shared selector
+constants, and DOM `querySelector` and `matches` calls. It checks source
+requirements rather than claiming to run a historical WebView engine.
+
 `src/lib/data/journal/restore.test.ts` uses real SQLite to guard roadmap Merge
 status separately from visibility. A hidden unchecked goal accepts the incoming
 status, keeps the local hidden flag through repeated Merge, and retains the
@@ -276,6 +282,19 @@ client and isolated app. Remove its packages and owned AVD after delivery.
 Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vite build --config tests/android-tier/android-tier.vite.config.ts`. Build isolated app/test APKs and supply `OCR_OFFLINE_AVD`, `OCR_OFFLINE_PACKAGE`, `OCR_OFFLINE_APK`, `OCR_OFFLINE_TEST_APK`; the package must be `dev.engender.app.test.*`. Set `ulimit -c 0` before the runner and use a disposable AVD. It records emulator ownership, restores its network settings, uninstalls its two packages and stops its emulator. Delete the owned AVD after delivery. This proves the tested Android WebView and real recognition engine; it does not replace physical-device or PWA installation checks.
 
 `backup-power-cut` (`tests/android-tier/backup-power-cut.mjs`) exercises foreground automatic delivery and actual scheduled `BackupWork` against Android's system local storage provider. It repeats retained seeds 2311–2314 and ten additional seeds per path with 40 MiB of synthetic attachments. After each QEMU power cut, the five newest retained verified backups must restore all 3300 rows and attachment bytes; at least one preceding good backup must remain. Older ownership receipts may survive a cut between pruning and the retention metadata update, and are recorded separately. `BackupDeliveryDurabilityTest` exercises both owners against full storage, truncated read-back, a pipe and a cloud cache with a regular file descriptor. A release-only capability class refuses the instrumentation fixture unconditionally.
+
+`reset-transfers`, selectable with `ANDROID_TIER_BACKUP_STAGES`, runs
+`ExportResetTest` through the actual `resetApp` and WebView reload. It requests
+Start over while native key derivation is pending, during a delayed attachment
+read, and during a scheduled read that never settles. Each case checks the
+retained native plugin, creates a new encrypted journal, and completes its first
+manual backup and scheduled snapshot in the same process. Each backup has its
+own 30-second completion wait after preparation. The probe records native
+method durations and saves both Archives for separate restore verification.
+The companion `FileDeliveryTest` case checks stale-slot takeover and an old abort arriving
+after a new file starts. JVM tests cover reset epochs and ownerless picker
+callbacks. Node tests cover scheduler cancellation and pending-read cleanup.
+The read delays are synthetic timing controls, not physical storage timings.
 
 `BackupManifestContractTest` inspects all installed permissions and the native
 backup components through PackageManager. It requires the delayed-job and
@@ -823,3 +842,31 @@ blocked taps, input admitted under the splash, or disabled hold cap. Hidden
 visibility and suspended animation frames are emulated. Missing authenticator,
 camera, microphone and native cases retain their explicit not-run or
 unsupported results; splash checks do not supply that coverage.
+
+`ANDROID_TIER_LOCK_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`
+keeps the locked-journal process-death probe. It visits all four retained doors,
+kills the background process, then returns separately through recents, the
+launcher and a real reminder notification. Each fresh process must show the
+PIN pad and contain no private fixture text in the DOM. The dedicated fixture
+and notification helpers run only in an isolated package. See
+`tests/android-tier/README.md` for runtime requirements and limits.
+
+## Node calendar zones
+
+CI runs the full Node suite under both `TZ=UTC` and `TZ=Europe/Warsaw`.
+The check collector reports each run's duration in the job summary and log;
+a failed UTC run does not skip Warsaw. A failed build blocks both runs.
+
+`src/lib/data/epochDay.dst.test.ts` retains the testing audit's six Warsaw
+controls for the 2026 autumn and 2027 spring clock changes: day lengths,
+wall-clock times, repeated and missing hours, reminder recurrence, midnight
+waits and calendar-day boundaries. The test file selects Warsaw and restores
+the original zone afterward, so these controls also run on hosts without DST.
+`epochDay.test.ts` likewise always exercises Warsaw and Los Angeles spring
+forward. Fixture timestamps in draft, cycle and legacy reminder tests use
+local calendar times rather than elapsed hours from UTC or local midnight.
+
+For a local portability check, run `npm test -- --maxWorkers=2` with each
+of `UTC`, `Europe/Warsaw`, `America/Los_Angeles`, `Australia/Lord_Howe`,
+`Asia/Kolkata`, `Pacific/Chatham` and `Pacific/Kiritimati` in `TZ`. Local
+durations are not measurements of the hosted CI runner.

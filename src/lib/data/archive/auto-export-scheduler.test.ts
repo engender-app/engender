@@ -57,7 +57,7 @@ vi.mock('./android-auto-export', () => ({
 
 import { prefs } from '$lib/data/prefs/store.svelte';
 let startAutoExportScheduler: () => void;
-let stopAutoExportScheduler: () => void;
+let stopAutoExportScheduler: () => Promise<void>;
 
 const flush = async () => {
   /* Fake timers don't advance for a dynamic import's own microtask hop
@@ -68,7 +68,7 @@ const flush = async () => {
 };
 
 /* Quiet hours use local wall time, so each case starts on a real date. */
-let stopFreshScheduler: (() => void) | undefined;
+let stopFreshScheduler: (() => Promise<void>) | undefined;
 
 let nowSeed = new Date(2026, 8, 1).getTime();
 
@@ -140,6 +140,46 @@ describe('auto-export scheduler', () => {
     await flush();
     expect(checks).toBe(1);
     expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
+  });
+
+  test('stop aborts packing and waits for transfer cleanup before reset can proceed', async () => {
+    let release!: () => void;
+    let signal!: AbortSignal;
+    let record!: (at: number) => void;
+    runAndroidAutoExport.mockImplementationOnce((_source, deps) => {
+      signal = deps.watch.signal;
+      record = deps.recordBackup;
+      return new Promise((resolve) => { release = () => resolve({ outcome: 'cancelled' }); });
+    });
+    startAutoExportScheduler();
+    await flush();
+    let stopped = false;
+    const stopping = stopAutoExportScheduler().then(() => { stopped = true; });
+    expect(signal.aborted).toBe(true);
+    record(123);
+    expect(prefs.lastBackupAt).toBeNull();
+    await flush();
+    expect(stopped).toBe(false);
+    release();
+    await stopping;
+    expect(notifyFailure).not.toHaveBeenCalled();
+    startAutoExportScheduler();
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(2);
+  });
+
+  test('a stopped snapshot never starts packing or posts a failure', async () => {
+    let release!: () => void;
+    snapshot.mockImplementationOnce(() => new Promise((resolve) => {
+      release = () => resolve({ journal: {}, files: [], readFile: async () => new Uint8Array() });
+    }));
+    startAutoExportScheduler();
+    await flush();
+    const stopping = stopAutoExportScheduler();
+    release();
+    await stopping;
+    expect(runAndroidAutoExport).not.toHaveBeenCalled();
+    expect(notifyFailure).not.toHaveBeenCalled();
   });
 
   test('does not repack an eligible stage before refresh window', async () => {

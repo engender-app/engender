@@ -1,13 +1,14 @@
 /* The WebView floor, as a rule about the app's own source rather than a
    number in two config files (phase 8 features ticket 55, ADR-0023).
 
-   `minWebViewVersion` says what Android refuses to install on, and
+   `minWebViewVersion` says which WebViews refuse to load the app, and
    `build.target` in vite.config.ts now says what the bundle is compiled
    to - derived from the first, so the syntax half cannot drift. What
-   neither can catch is a method: esbuild compiles `?.` down for Chrome 87
-   and leaves `Array.prototype.at` exactly where it found it, so a call
-   that arrived in Chrome 92 ships happily and throws on the phone the
-   floor promised to run on.
+   neither can catch is a runtime feature: esbuild compiles syntax down
+   and leaves `Array.prototype.toReversed` exactly where it found it. A call
+   that arrived in Chrome 110 still ships and throws on the phone the
+   floor promised to run on. Computed CSS properties and selectors passed
+   to DOM methods also retain their runtime requirements.
 
    That is not hypothetical. Ticket 55 measured it: four `.at(-1)` calls
    and one `.toReversed()` were in shipped screens, putting the app's real
@@ -27,6 +28,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { test } from 'vitest';
+import ts from 'typescript';
 import capacitorConfig from '../capacitor.config.ts';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
@@ -61,6 +63,69 @@ const POLYFILL = 'lib/data/documents/pdf-floor.ts';
 const withoutComments = (code: string): string =>
   code.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
+/** Read computed styles through their direct call, a local alias or a small
+    reader function. Unrelated data properties named scale do not set a CSS
+    requirement. Svelte script blocks use the same TypeScript parser. */
+function cssPropertiesRead(code: string): string[] {
+  const source = ts.createSourceFile('floor.ts', code, ts.ScriptTarget.Latest, true);
+  const styles = new Set<string>();
+  const readers = new Set<string>();
+  const properties: string[] = [];
+  const transforms = new Set(['translate', 'scale', 'rotate']);
+  const isStyle = (node: ts.Expression): boolean => {
+    if (ts.isParenthesizedExpression(node)) return isStyle(node.expression);
+    if (ts.isIdentifier(node)) return styles.has(node.text);
+    if (ts.isPropertyAccessExpression(node)) return node.name.text === 'style';
+    if (!ts.isCallExpression(node)) return false;
+    const callee = node.expression;
+    return (ts.isIdentifier(callee) && (callee.text === 'getComputedStyle' || readers.has(callee.text)))
+      || (ts.isPropertyAccessExpression(callee) && callee.name.text === 'getComputedStyle');
+  };
+  function visit(node: ts.Node): void {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      if (isStyle(node.initializer)) styles.add(node.name.text);
+      if (ts.isArrowFunction(node.initializer) && !ts.isBlock(node.initializer.body)
+        && isStyle(node.initializer.body)) readers.add(node.name.text);
+    }
+    if (ts.isPropertyAccessExpression(node) && transforms.has(node.name.text) && isStyle(node.expression)) {
+      properties.push(node.name.text);
+    }
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression)
+      && transforms.has(node.argumentExpression.text) && isStyle(node.expression)) {
+      properties.push(node.argumentExpression.text);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return properties;
+}
+
+/** Selector definitions may be shared constants or template fragments, so
+    inspect their source too, rather than just literal DOM call arguments. */
+function selectorFeatures(code: string): string[] {
+  const features: string[] = [];
+  for (const name of ['is', 'where']) {
+    if (new RegExp(`:${name}\\(`).test(code)) features.push(`:${name}()`);
+  }
+  for (const match of code.matchAll(/:not\(/g)) {
+    let depth = 1;
+    let argument = '';
+    for (let index = match.index + match[0].length; index < code.length && depth; index++) {
+      const character = code[index];
+      if (character === '(') depth++;
+      if (character === ')') depth--;
+      if (depth) argument += character;
+    }
+    const simple = argument.trim().replace(/\[[^\]]*\]/g, '')
+      .replace(/:[\w-]+\([^()]*\)/g, '');
+    if (/:not\(/.test(argument) || /[,>+~\s]/.test(simple)) {
+      features.push('selector-list or complex :not()');
+      break;
+    }
+  }
+  return features;
+}
+
 function sources(dir: string, found: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -70,7 +135,7 @@ function sources(dir: string, found: string[] = []): string[] {
   return found;
 }
 
-test('nothing the app ships calls an API newer than the WebView floor', () => {
+test('nothing the app ships requires a feature newer than the WebView floor', () => {
   assert.ok(FLOOR > 0, 'capacitor.config.ts names no minWebViewVersion for this rule to be about');
   const offences: string[] = [];
 
@@ -84,6 +149,20 @@ test('nothing the app ships calls an API newer than the WebView floor', () => {
       if (since <= FLOOR) continue;
       const hits = code.match(pattern);
       if (hits) offences.push(`${relative}: ${hits.length}x ${api} (Chrome ${since})`);
+    }
+
+    const script = file.endsWith('.svelte')
+      ? [...code.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1]).join('\n')
+      : code;
+    if (FLOOR < 104) {
+      for (const property of cssPropertiesRead(script)) {
+        offences.push(`${relative}: CSS ${property} read from JavaScript (Chrome 104)`);
+      }
+    }
+    if (FLOOR < 88) {
+      for (const selector of selectorFeatures(code)) {
+        offences.push(`${relative}: selector ${selector} (Chrome 88)`);
+      }
     }
   }
 
@@ -105,4 +184,29 @@ test('the rule finds what it is looking for', () => {
   assert.equal('const last = rows.at(-1);'.match(pattern)?.length, 1);
   assert.equal('const item = rows.at(index);'.match(pattern)?.length, 1);
   assert.equal('const sliced = rows.slice(1);'.match(pattern), null);
+});
+
+test('the CSS rule finds direct, aliased and bracket property reads', () => {
+  assert.deepEqual(cssPropertiesRead(`
+    getComputedStyle(findElement()).translate;
+    const style = window.getComputedStyle(el);
+    style.scale;
+    style['rotate'];
+    const read = (pseudo: string) => getComputedStyle(el, pseudo);
+    read('::before').scale;
+    data.scale;
+  `), ['translate', 'scale', 'rotate', 'scale']);
+});
+
+test('the selector rule finds DOM literals and shared template fragments', () => {
+  assert.deepEqual(selectorFeatures(`
+    document.querySelector(':is(.screen, .field)');
+    element.matches(':where(.visible)');
+    const active = ':not(.hidden, .outgoing)';
+  `), [':is()', ':where()', 'selector-list or complex :not()']);
+  assert.deepEqual(selectorFeatures("const active = ':not([data-door]:not([data-active]) *)';"),
+    ['selector-list or complex :not()']);
+  assert.deepEqual(selectorFeatures("element.matches(':not([data-name=\"a,b\"])');"), []);
+  assert.deepEqual(selectorFeatures("element.matches(':not(:nth-child(2n + 1))');"), []);
+  assert.deepEqual(selectorFeatures("element.matches(':not(.hidden)');"), []);
 });

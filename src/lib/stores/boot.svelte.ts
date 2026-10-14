@@ -463,7 +463,18 @@ export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome')
   return changeCredentials(() => resetAppOwned(next));
 }
 
+async function stopJournalTransfers(): Promise<void> {
+  if (!isAndroid()) return;
+  const { stopAutoExportScheduler } = await import('../data/archive/auto-export-scheduler');
+  await stopAutoExportScheduler();
+  const { androidAutoExport } = await import('../data/archive/android-auto-export-bridge');
+  const { androidFileDelivery } = await import('../data/archive/android-file-delivery-bridge');
+  await androidAutoExport.abortPendingTransfers();
+  await androidFileDelivery.abortPendingTransfers();
+}
+
 async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  await stopJournalTransfers();
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -550,6 +561,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
     that has just been replaced (mc-driver.ts), and boot() has already run. */
 export async function restorePreviousJournal(): Promise<void> {
   if (!openFileOps) throw new Error('there is no failed boot to recover from');
+  await stopJournalTransfers();
   await openFileOps.restorePreMigrationCopy();
   /* Closed before the reload, the way resetApp does it: the restore left the
      database connection gone but the pool still held, and pauseVfs() is what
@@ -920,13 +932,18 @@ async function perform(effect: BootEffect): Promise<void> {
     /* Whether the failure screen can offer a way back. Asked of the disk
        rather than assumed from the failure: a copy is there only if this boot
        or an earlier one got as far as taking one, and a driver too broken to
-       answer is a driver that cannot restore either. */
+       answer is a driver that cannot restore either. Said in the log when
+       that happens: on Android this check was refused by a closed session
+       for every failed migration, and the silence hid it (ui 33). */
     case 'check-pre-migration-copy': {
       const askedFor = machine.boot;
       const usable =
         openFileOps === null
           ? false
-          : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch(() => false);
+          : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch((error) => {
+              console.warn('could not ask whether the pre-migration copy is usable; not offering the restore', error);
+              return false;
+            });
       /* Dropped unless the failure that asked is still the one on screen
          (ux-carpet 222): a "Try opening again" pressed while the check was
          running has moved the boot on - dispatched then, it was an invalid

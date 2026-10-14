@@ -17,6 +17,7 @@ import { recordingDriver } from '../../src/lib/data/sqlite/test-support/recordin
 import { generateLongJournal } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import { budgets, breaches, budgetFor, mountBudgetsFor, overTarget } from './budgets.mjs';
+import { assertLookBackWordsRead } from './look-back-ownership';
 import { bytePatternPhoto } from './test-support.ts';
 
 async function measureSmallJournal(): Promise<Measurement[]> {
@@ -251,4 +252,49 @@ test('the target ceiling catches a regression the 200ms floor alone would miss',
 test('budgetFor leaves a measurement with no recorded target on the floor alone', () => {
   expect(budgetFor(1, null)).toBe(200);
   expect(budgetFor(900, null)).toBe(4500);
+});
+
+test('mounted Look back ownership rejects omitted, repeated or empty Words reads', () => {
+  expect(() => assertLookBackWordsRead(1, 322)).not.toThrow();
+  for (const [calls, rows] of [[0, 0], [2, 644], [1, 0]]) {
+    expect(() => assertLookBackWordsRead(calls, rows)).toThrow('must read Words notes once');
+  }
+});
+
+
+test('Look back measures its prepared mount after reference setup', async () => {
+  const db = await migratedDb();
+  try {
+    const files = fakeFileStore();
+    const recorder = recordingDriver(db);
+    const journal = openJournal(recorder.driver, files);
+    await journal.reconcileBuiltIns();
+    const summary = await generateLongJournal(journal, { seed: 11, days: 120, makePhoto: bytePatternPhoto });
+    let prepared = false;
+    let mounted = false;
+    const measurements = await measureLongJournal(journal, files, {
+      today: summary.lastEpochDay, summary, recorder,
+      prepareLookBack: async (ownedJournal, today) => {
+        expect(ownedJournal).toBe(journal);
+        expect(today).toBe(summary.lastEpochDay);
+        await ownedJournal.eras.getEras();
+        await recorder.driver.readSnapshot(async () => {});
+        prepared = true;
+        return async () => {
+          expect(prepared).toBe(true);
+          mounted = true;
+          const notes = await ownedJournal.entries.noteEntries();
+          assertLookBackWordsRead(1, notes.length);
+          return { result: notes, detail: 'Prepared mount ownership control' };
+        };
+      }
+    });
+    const mount = measurements.find((measurement) => measurement.name === 'mount-stats')!;
+    expect(mounted).toBe(true);
+    expect(mount.detail).toBe('Prepared mount ownership control');
+    expect(mount.statements).toBe(1);
+    expect(mount.bytes).toBeGreaterThan(0);
+  } finally {
+    await db.close();
+  }
 });

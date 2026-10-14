@@ -6,12 +6,12 @@
    The container is a real zip - one JSON file plus `photos/`, `videos/`,
    `audios/` and `pdfs/` folders - so this reads it through fflate rather
    than the platform's own DecompressionStream, for the reason
-   transtracks.ts found first: this app's WebView floor is Chrome 87
-   (capacitor.config.ts) and the 'deflate-raw' format only arrived in
-   Chrome 103, so the platform decoder fails on the devices this app
-   supports. `zipRead` below decompresses one member at a time, the same
-   discipline daylioBackup.ts's own version keeps, so a preview never pays
-   to decompress every photo an entry did not ask for.
+   transtracks.ts found first: the former WebView 87 floor preceded
+   'deflate-raw' support in Chrome 103. WebView 104 now supports it, but
+   fflate remains the shared ZIP owner across the browser targets. `zipRead`
+   below decompresses one member at a time, the same discipline
+   daylioBackup.ts's own version keeps, so a preview never pays to decompress
+   every photo an entry did not ask for.
 
    The vendor publishes no prose schema - the file they host as their own
    import spec is the schema - and this module was written against a real

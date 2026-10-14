@@ -1071,7 +1071,7 @@ test('an old weekly reminder inserted by archive restore is anchored on its reco
   const db = await migratedDb();
   await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
     VALUES ('archive-weekly', 'Injection', 'injection', '20:00', 'WEEKLY', ?)`,
-    [Date.parse('2026-08-10T12:00:00+02:00')]);
+    [new Date(2026, 7, 10, 12).getTime()]);
   assert.deepEqual((await db.query('SELECT recurrence, interval, anchor_epoch_day FROM reminder')).map((row) => ({ ...row })),
     [{ recurrence: 'EVERY_N_DAYS', interval: 7, anchor_epoch_day: 20675 }]);
 });

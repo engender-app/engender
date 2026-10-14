@@ -186,8 +186,7 @@ in the APK, so the first scan can run offline.
 
 The web app needs a secure context for browser storage, the service worker
 and authentication APIs. HTTPS is required when hosting it; localhost works
-for development. Android needs WebView version 87 or newer and shows an
-update explanation if its WebView is too old.
+for development. Android needs WebView version 104 or newer.
 
 To host your own web app, follow the
 [self-hosting guide](deploy/SELF-HOSTING.md). It covers Docker and nginx,

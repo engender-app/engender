@@ -19,10 +19,10 @@
    run only on the current Android. They need a WebView,
    and Android updates its WebView separately from the OS, so an API level
    says nothing about what the app runs in. The API 26 emulator image ships
-   Chrome 69 from 2018, which has no OPFS - capacitor.config.ts puts the
-   floor at Chrome 87 for exactly that reason - so the app cannot start
-   there at all. A real API 26 phone with a current WebView runs the same
-   bundle as an API 35 one, and that is what the API 35 run covers.
+   Chrome 69 from 2018, which has no OPFS. The current WebView 104 floor
+   also covers the computed CSS transforms used by navigation, so the app
+   cannot start there at all. A real API 26 phone with a current WebView runs
+   the same bundle as an API 35 one, and that is what the API 35 run covers.
 
    Set ANDROID_TIER_AVDS to a comma-separated list to run others; an AVD
    whose name is not known here gets the full set.
@@ -39,6 +39,7 @@ import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtem
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { lockedProcessDeath } from './locked-process-death.mjs';
 import { installationRecovery } from './archive/recovery.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
 import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './emulator.mjs';
@@ -49,6 +50,8 @@ const androidDir = join(repo, 'android');
 const { ok, fail, finish } = createReporter();
 
 /* Headless runs use software graphics with Vulkan disabled. */
+const LOCK_ONLY = process.env.ANDROID_TIER_LOCK_ONLY === '1';
+const LOCK_PACKAGE = 'dev.engender.app.test.lockprobe';
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
 const RECOVERY_ONLY = process.env.ANDROID_TIER_RECOVERY_ONLY === '1';
 const BACKUP_ONLY = process.env.ANDROID_TIER_BACKUP_ONLY === '1';
@@ -56,7 +59,7 @@ const BACKUP_TEST = 'dev.engender.app.backup.NativeBackupSchedulingTest';
 const BACKUP_STAGES = new Set((process.env.ANDROID_TIER_BACKUP_STAGES ?? '').split(',').filter(Boolean));
 const KNOWN_BACKUP_STAGES = new Set(['defer', 'verify-deferred', 'catch-up', 'cleanup', 'prepare',
   'prepare-interrupted', 'resume-interrupted', 'verify', 'mounted-status', 'ownership-and-destination',
-  'activity-destruction', 'bounded-retries', 'existing-manual']);
+  'activity-destruction', 'bounded-retries', 'existing-manual', 'reset-transfers']);
 for (const stage of BACKUP_STAGES) if (!KNOWN_BACKUP_STAGES.has(stage)) throw new Error(`Unknown Android backup stage: ${stage}`);
 const executedBackupStages = new Set();
 if (BACKUP_STAGES.size) console.log(`Selected Android backup stages: ${[...BACKUP_STAGES].join(', ')}`);
@@ -148,6 +151,7 @@ async function startEmulator(avd, port) {
   writeFileSync(join(clone, 'config.ini'), config);
   writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
   const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
+  if (LOCK_ONLY && !HEADLESS) args.push('-gpu', 'host');
   if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
   ownedEmulator = await startOwnedEmulator({
     name: disposableName, query: queryDevice, timeout: BOOT_TIMEOUT_MS,
@@ -170,7 +174,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
+for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -236,7 +240,24 @@ for (const avd of AVDS) {
 
     const nativeOnly = NATIVE_ONLY.has(avd);
     if (nativeOnly) {
-      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 87 floor)`);
+      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 104 floor)`);
+    }
+
+    if (LOCK_ONLY) {
+      if (nativeOnly) throw new Error('locked journal requires a supported Android WebView');
+      const init = join(evidenceDir, 'lock-package.gradle');
+      writeFileSync(init, `allprojects { afterEvaluate { p -> if (p.path == ':app') p.android.defaultConfig.applicationId = '${LOCK_PACKAGE}' } }`);
+      const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2', '-I', init], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600000
+      });
+      writeFileSync(join(evidenceDir, 'lock-assemble.log'), `${built.stdout ?? ''}${built.stderr ?? ''}`);
+      if (built.status !== 0 || built.error || built.signal) throw new Error('locked journal APK build failed');
+      for (const apk of ['debug/app-debug.apk', 'androidTest/debug/app-debug-androidTest.apk']) {
+        const installed = device(['install', '-r', join(androidDir, 'app/build/outputs/apk', apk)], { timeout: 120000 });
+        if (installed.status !== 0 || installed.error || installed.signal) throw new Error('locked journal APK install failed');
+      }
+      await lockedProcessDeath({ device, pkg: LOCK_PACKAGE, evidenceDir, reporter: { ok, fail } });
+      continue;
     }
 
     /* :app: rather than the whole build. The empty capacitor-cordova-android-plugins
@@ -262,7 +283,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST}`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest`])
           ],
           {
             cwd: androidDir,
@@ -474,6 +495,15 @@ for (const avd of AVDS) {
           backupStage('cleanup');
           backupStage('bounded-retries', 'nativeFailuresStopAfterThreeAttemptsUntilNextDay');
           backupStage('cleanup');
+          if (!BACKUP_STAGES.size || BACKUP_STAGES.has('reset-transfers')) {
+            executedBackupStages.add('reset-transfers');
+            const reset = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+              'dev.engender.app.backup.ExportResetTest,dev.engender.app.files.FileDeliveryTest#resetAndRecoveryDiscardOldSlotsWithoutAbortingTheNewOwner',
+              'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
+            writeFileSync(join(evidenceDir, `${avd}-backup-reset-transfers.log`),
+              `${reset.stdout ?? ''}${reset.stderr ?? ''}\nexit=${reset.status} signal=${reset.signal} error=${reset.error ?? ''}\n`);
+            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail });
+          }
           if (!BACKUP_STAGES.size || BACKUP_STAGES.has('existing-manual')) {
           executedBackupStages.add('existing-manual');
           const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',

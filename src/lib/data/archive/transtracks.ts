@@ -13,9 +13,9 @@
 
    The container is a real zip: `data.json` at the root, JPEGs under
    `photos/`, deflate-compressed by Android's ZipOutputStream default. This
-   app's WebView floor is 87 (capacitor.config.ts); native
-   DecompressionStream only gained the 'deflate-raw' format in Chrome 103,
-   so unzipping goes through fflate rather than the platform decoder. */
+   app's former WebView 87 floor preceded native 'deflate-raw' support
+   in Chrome 103. WebView 104 now supports it, but unzipping still uses
+   fflate as the shared ZIP owner across the browser targets. */
 
 import { strFromU8 } from 'fflate';
 import { startOfDayTimestamp } from '../epochDay';
