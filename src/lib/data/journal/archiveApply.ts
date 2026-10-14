@@ -834,9 +834,11 @@ export async function applyMarginNotes({ driver, journal, ts }: Restoring): Prom
 
 export async function applyRevisits({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM revisit');
+  const entriesWithRevisit = await presentIds(driver, 'SELECT entry_id AS id FROM revisit');
   const entryIds = await rowidsByUuid(driver, 'entry', journal.revisits.map((revisit) => revisit.entryId));
   const rows = journal.revisits
-    .filter((revisit) => !present.has(revisit.id) && entryIds.has(revisit.entryId))
+    // A destination entry keeps its revisit even when another device minted a different uuid.
+    .filter((revisit) => !present.has(revisit.id) && entryIds.has(revisit.entryId) && !entriesWithRevisit.has(revisit.entryId))
     .map((revisit) => [
       revisit.id, revisit.entryId, revisit.entryEpochDay, revisit.createdEpochDay, revisit.targetEpochDay, ts
     ]);
