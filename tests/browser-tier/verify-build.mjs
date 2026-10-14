@@ -46,8 +46,8 @@ const OCR_ASSETS = [
   '/tesseract/worker.min.js',
   '/tesseract/tesseract-core.wasm.js',
   '/tesseract/tesseract-core.wasm',
-  '/tesseract/lang-data/eng.traineddata.gz',
-  '/tesseract/lang-data/pol.traineddata.gz'
+  '/tesseract/lang-data/eng.traineddata',
+  '/tesseract/lang-data/pol.traineddata'
 ];
 
 /* The two built files the shell does not install (phase 14 pre-release ticket

@@ -4,15 +4,38 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
+import { androidOcrAssetProblems, expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
 
 function sha256(path: string) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+const OCR_FILES = ['worker.min.js', 'tesseract-core.wasm.js', 'tesseract-core.wasm',
+  'lang-data/eng.traineddata', 'lang-data/pol.traineddata'];
+
+function ocrApk(root: string, apk: string, packaged = OCR_FILES) {
+  const webBuildDir = join(root, 'web');
+  const source = join(root, 'apk');
+  for (const name of OCR_FILES) {
+    const path = join(webBuildDir, 'tesseract', name);
+    mkdirSync(join(path, '..'), { recursive: true });
+    writeFileSync(path, `synthetic ${name}`);
+  }
+  for (const name of packaged) {
+    const path = join(source, 'assets/public/tesseract', name);
+    mkdirSync(join(path, '..'), { recursive: true });
+    writeFileSync(path, `synthetic ${name}`);
+  }
+  execFileSync('jar', ['--create', '--file', apk, '-C', source, 'assets']);
+  return webBuildDir;
+}
+
 describe('releaseArtifactProblems', () => {
+  const roots: string[] = [];
+  afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
   it('passes when required names, checksums and metadata all match', () => {
     const root = mkdtempSync(join(tmpdir(), 'gd-release-artifacts-'));
+    roots.push(root);
     const releaseDir = join(root, 'dist', 'release');
     const androidBuildDir = join(root, 'android', 'app', 'build');
     mkdirSync(releaseDir, { recursive: true });
@@ -23,6 +46,7 @@ describe('releaseArtifactProblems', () => {
     const versionCode = 1002003999;
     const names = expectedArtifactNames(version);
     for (const name of names) writeFileSync(join(releaseDir, name), `payload for ${name}\n`);
+    const webBuildDir = ocrApk(root, join(releaseDir, `engender-android-release-${version}.apk`));
 
     const lines = names.map((name) => `${sha256(join(releaseDir, name))}  ${name}`);
     writeFileSync(join(releaseDir, 'SHA256SUMS'), `${lines.join('\n')}\n`);
@@ -37,11 +61,12 @@ describe('releaseArtifactProblems', () => {
       `${JSON.stringify(metadata, null, 2)}\n`
     );
 
-    expect(releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir })).toEqual([]);
+    expect(releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir, webBuildDir })).toEqual([]);
   });
 
   it('reports checksum and metadata drift', () => {
     const root = mkdtempSync(join(tmpdir(), 'gd-release-artifacts-'));
+    roots.push(root);
     const releaseDir = join(root, 'dist', 'release');
     const androidBuildDir = join(root, 'android', 'app', 'build');
     mkdirSync(releaseDir, { recursive: true });
@@ -52,6 +77,7 @@ describe('releaseArtifactProblems', () => {
     const versionCode = 1002003999;
     const names = expectedArtifactNames(version);
     for (const name of names) writeFileSync(join(releaseDir, name), `payload for ${name}\n`);
+    const webBuildDir = ocrApk(root, join(releaseDir, `engender-android-release-${version}.apk`));
 
     const wrong = names.map((name) => `${'0'.repeat(64)}  ${name}`);
     writeFileSync(join(releaseDir, 'SHA256SUMS'), `${wrong.join('\n')}\n`);
@@ -67,11 +93,24 @@ describe('releaseArtifactProblems', () => {
       `${JSON.stringify(aabMetadata, null, 2)}\n`
     );
 
-    const problems = releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir });
+    const problems = releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir, webBuildDir });
     expect(problems.some((p) => /SHA256 mismatch/.test(p))).toBe(true);
     expect(problems.some((p) => /APK versionName is/.test(p))).toBe(true);
     expect(problems.some((p) => /APK versionCode is/.test(p))).toBe(true);
   });
+  it.each(['eng', 'pol'])('rejects missing or renamed %s language data in the APK', (lang) => {
+    const root = mkdtempSync(join(tmpdir(), 'gd-release-artifacts-'));
+    roots.push(root);
+    const apk = join(root, 'fixture.apk');
+    const path = `lang-data/${lang}.traineddata`;
+    const remaining = OCR_FILES.filter((name) => name !== path);
+    const webBuildDir = ocrApk(root, apk, remaining);
+    const problem = `Missing APK OCR asset: assets/public/tesseract/${path}`;
+    expect(androidOcrAssetProblems(apk, webBuildDir)).toContain(problem);
+    ocrApk(root, apk, [...remaining, `${path}.gz`]);
+    expect(androidOcrAssetProblems(apk, webBuildDir)).toContain(problem);
+  });
+
 });
 
 

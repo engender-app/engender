@@ -120,7 +120,7 @@ Versions are the ones the lockfile installs ([package-lock.json](package-lock.js
 | `d3-scale`, `d3-shape` | 4.0.2, 3.2.0 | Scales and path generators for SVG charts. Nothing else from d3 |
 | `melt` | 0.30.1 | Headless behaviour for a few controls (`Slider`, `Switch`, `MediaTransport`) |
 | `fflate` | 0.8.3 | Zip reading for the Daylio and Day One importers |
-| `tesseract.js` (+ eng, pol data) | 7.0.0 | Lab-result OCR. Loaded on demand and cached afterwards |
+| `tesseract.js` (+ eng, pol data) | 7.0.0 | Lab-result OCR. Loaded on demand and cached afterwards on web; bundled in the Android APK |
 | `pdfjs-dist` | 4.10.38 | Renders stored documents in a worker ([src/lib/data/documents/pdf-worker.ts](src/lib/data/documents/pdf-worker.ts)) |
 | Vitest | 4.1.11 | Node tier |
 | `playwright-core` | 1.63.0 | Drives Chromium for the browser tier, guards and walkthrough |
@@ -177,6 +177,12 @@ Generated files, and where they come from:
 | `static/tesseract/`, `static/pdf-fonts/` | [scripts/prepare-vendor-assets.mjs](scripts/prepare-vendor-assets.mjs) (runs on `postinstall` and `build`), copied from `node_modules` |
 | `android/app/src/main/assets/public` and Capacitor plugin glue | `npx cap sync android` |
 | [android/app/src/androidTest/assets/](android/app/src/androidTest/assets) | [tests/android-tier/run.mjs](tests/android-tier/run.mjs) |
+
+Tesseract language data keeps its gzip bytes under `.traineddata` names. The
+loader uses `gzip: false` for the URL suffix and decompresses by byte signature.
+This prevents Android asset merging from renaming the files. The release-artifact
+guard checks required OCR paths and every web OCR asset against `assets/public`
+in the APK.
 
 Naming conventions you'll meet everywhere:
 
