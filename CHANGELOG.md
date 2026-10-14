@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Measurement, lab result, wear duration and wear reminder fields keep a
+decimal point or a minus sign while it is being typed. Typed one key at a
+time, 72.5 had been saved as 572 and 0.5 as 50.
+
 Release verification rejects APKs and App Bundles signed by an unexpected
 certificate, even when the signature itself is valid.
 

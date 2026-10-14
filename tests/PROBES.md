@@ -456,8 +456,9 @@ To run one on its own, use
 | `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
-| `lab-entry-check` | lab result field order, saved values, draft dismissal, failures and privacy in English and Polish |
-| `measurements-entry-check` | measurement field order, saved values, draft dismissal, failures and privacy in English and Polish |
+| `lab-entry-check` | lab result field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
+| `measurements-entry-check` | measurement field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
+| `wear-entry-check` | a wear session duration typed key by key keeps decimals and a minus, saves the hours typed and reopens as typed; empty and negative durations stay refused |
 | `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
 | `milestone-era-handoff-check` | Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return |
 
@@ -629,6 +630,8 @@ The roster's `diagnostics` paths identify files to retain per attempt. Only file
 created or changed by that attempt are copied; gallery-only output is excluded.
 
 `letter-composition-gallery` captures composition and discard across all palettes, both themes, English/Polish, compact widths and 200% zoom. It needs a demo build. `android-tier/letter-composition.mjs` checks native Back and drag on a disposable emulator.
+
+`android-tier/wear-reminder-hours.mjs` covers the wear reminder hours field, which renders only on Android. It types the hours one character at a time through `adb shell input text`, checks the reminder lands 1.5 hours after the start and that the running session reopens as typed, then checks that Stop with the hours cleared and the reminder still on keeps a reminder already due. Install a demo debug APK under `dev.engender.app.test` on a disposable emulator and pass its serial; it clears that package's data first and refuses the real app id.
 
 `tryout-save-check` checks label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real tryout routes. `gallery:tryouts` also captures saved details and discard controls across every palette, both themes, English and Polish, with compact and 200% zoom checks. Its feedback arrival/removal scenes reuse the browser harness screencast and write timestamped frames plus a manifest for `panel-motion-flipbook`.
 

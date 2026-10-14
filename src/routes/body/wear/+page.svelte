@@ -219,10 +219,10 @@
       startTimestamp: startOfDayTimestamp(epochDay),
       mode: 'backfill',
       day: dateInputValueFromEpochDay(epochDay),
-      durationHours: '',
+      durationHours: null,
       note: '',
       reminderEnabled: false,
-      reminderHours: ''
+      reminderHours: null
     };
   }
 
@@ -279,10 +279,13 @@
         never changes which of the two modes wrote it. */
     mode: Mode;
     day: string;
-    durationHours: string;
+    /* Both hour fields hold the number their input parsed, or null while
+       it holds nothing parseable. Bound as strings, they were rewritten
+       under the caret on every key (last-audit UI 01). */
+    durationHours: number | null;
     note: string;
     reminderEnabled: boolean;
-    reminderHours: string;
+    reminderHours: number | null;
   };
 
   const record = recordEditor<WearSession, Editor>({
@@ -292,10 +295,10 @@
       startTimestamp: startOfDayTimestamp(today),
       mode: running ? 'backfill' : 'live',
       day: dateInputValueFromEpochDay(today),
-      durationHours: '',
+      durationHours: null,
       note: '',
       reminderEnabled: false,
-      reminderHours: ''
+      reminderHours: null
     }),
     fromRecord: (session) => {
       const isRunning = session.durationMs === null;
@@ -307,10 +310,10 @@
         startTimestamp: session.startTimestamp,
         mode: isRunning ? 'live' : 'backfill',
         day: dateInputValueFromEpochDay(epochDayFromTimestamp(session.startTimestamp)),
-        durationHours: session.durationMs !== null ? String(session.durationMs / 3600000) : '',
+        durationHours: session.durationMs !== null ? session.durationMs / 3600000 : null,
         note: session.note ?? '',
         reminderEnabled: reminder !== null,
-        reminderHours: reminder ? String(hoursAfterStart(session.startTimestamp, reminder)) : ''
+        reminderHours: reminder ? hoursAfterStart(session.startTimestamp, reminder) : null
       };
     },
     async upsert(draft) {
@@ -350,7 +353,7 @@
         id: draft.id,
         kind: draft.kind,
         startTimestamp: shiftStartToDay(draft.startTimestamp, newDay),
-        durationMs: Math.round(parseFloat(draft.durationHours) * 3600000),
+        durationMs: Math.round(Number(draft.durationHours) * 3600000),
         note,
         reminderHoursAfterStart,
         reminderTitle: wearReminderTitle(draft.kind)
@@ -399,23 +402,23 @@
      so the sheet's disabled state and `upsert`'s own refusal are the same
      rule read twice. */
   function canSave(draft: Editor): boolean {
-    if (!isWeb && draft.reminderEnabled) {
-      const hours = parseFloat(draft.reminderHours);
-      if (draft.reminderHours.trim() === '' || isNaN(hours)) return false;
-    }
+    if (!isWeb && draft.reminderEnabled && !Number.isFinite(draft.reminderHours)) return false;
     if (draft.isRunning) return true;
     if (draft.mode === 'live' && !draft.id) return true;
-    const duration = parseFloat(draft.durationHours);
-    return draft.durationHours.trim() !== '' && !isNaN(duration) && duration > 0;
+    const hours = draft.durationHours;
+    return hours !== null && Number.isFinite(hours) && hours > 0;
   }
 
   /* undefined leaves an existing reminder row untouched; null deletes it
      (wearSessions.reconcileReminder). Web has no way to change the
      reminder, so it must always send undefined - never re-derive null from
      an editor.reminderEnabled that a hidden toggle left at its prefilled
-     value (ticket 32). */
+     value (ticket 32). Stop is the one save canSave does not gate, so an
+     enabled reminder whose hours were cleared also sends undefined there:
+     the reminder already set stays, rather than being deleted with the
+     toggle still on. */
   const reminderHoursOf = (editor: Editor): number | null | undefined =>
-    isWeb ? undefined : editor.reminderEnabled ? parseFloat(editor.reminderHours) : null;
+    isWeb ? undefined : editor.reminderEnabled ? (editor.reminderHours ?? undefined) : null;
 
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -792,11 +795,12 @@
                 <input
                   class="input"
                   type="number"
+                  step="any"
                   {id}
                   name="wear-duration"
                   inputmode="decimal"
                   placeholder={m.wear_session_duration_placeholder()}
-                  bind:value={() => editor.durationHours, (value) => { editor.durationHours = value == null ? '' : String(value); }}
+                  bind:value={editor.durationHours}
                 />
               {/snippet}
             </Field>
@@ -846,10 +850,11 @@
                 <input
                   class="input"
                   type="number"
+                  step="any"
                   {id}
                   name="wear-reminder-hours"
                   inputmode="decimal"
-                  bind:value={() => editor.reminderHours, (value) => { editor.reminderHours = value == null ? '' : String(value); }}
+                  bind:value={editor.reminderHours}
                 />
               {/snippet}
             </Field>

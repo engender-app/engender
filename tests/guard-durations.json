@@ -10,7 +10,8 @@
     "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs",
     "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
     "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs",
-    "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14"
+    "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14",
+    "wear-entry-check": "Local Fedora run on 2026-10-14, excluding build; tests/wear-entry-check.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -66,6 +67,7 @@
     "document-import-check": 14.12,
     "lab-entry-check": 17.73,
     "measurements-entry-check": 20.14,
+    "wear-entry-check": 6,
     "leave-lock-check": 11.66,
     "date-picker-check": 260.39,
     "date-picker-motion": 32.67,
@@ -226,6 +228,9 @@
     ],
     "measurements-entry-check": [
       20.14
+    ],
+    "wear-entry-check": [
+      6
     ],
     "leave-lock-check": [
       11.66

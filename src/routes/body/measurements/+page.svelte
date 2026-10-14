@@ -182,25 +182,28 @@
     return { start, current, change: current - start };
   });
 
-  const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
+  /* A number input binds the number it parsed, or null while it holds
+     nothing parseable: blank, a lone minus, `e`. Bound as a string, the
+     field was rewritten under the caret on every key (last-audit UI 01). */
+  const validValue = (value: number | null): value is number => value !== null && Number.isFinite(value);
 
-  const record = recordEditor<Measurement, { id?: string; date: string; type: string; value: string; unit: string }>({
+  const record = recordEditor<Measurement, { id?: string; date: string; type: string; value: number | null; unit: string }>({
     blank: () => ({
       date: dateInputValueFromEpochDay(todayEpochDay()),
       type,
-      value: '',
+      value: null,
       unit: lastUnit()
     }),
     fromRecord: (measurement) => ({
       id: measurement.id,
       date: dateInputValueFromEpochDay(measurement.epochDay),
       type: measurement.type,
-      value: String(measurement.value),
+      value: measurement.value,
       unit: measurement.unit
     }),
     async upsert(draft) {
-      const value = Number(draft.value);
-      if (!validValue(draft.value)) return false;
+      const value = draft.value;
+      if (!validValue(value)) return false;
 
       await journal.measurements.upsertMeasurement({
         id: draft.id,
@@ -582,7 +585,7 @@
       <div class="cd-endpoints measurement-pair">
         <Field label={m.measurement_value_label()} id="measurement-value" hint={!validValue(editor.value) ? m.measurement_invalid_value() : undefined}>
           {#snippet children(id, hintId, touched)}
-            <input class="input" type="number" step="any" {id} required aria-invalid={touched && !validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+            <input class="input" type="number" step="any" {id} required aria-invalid={touched && !validValue(editor.value)} aria-describedby={hintId} name="measurement-value" placeholder={m.measurement_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
           {/snippet}
         </Field>
         <Field label={m.measurement_unit_label()} legend>
