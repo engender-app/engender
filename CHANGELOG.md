@@ -6,6 +6,21 @@ its own, and refuses a section that leaves one of the four call-outs
 unanswered. Those four are what a person needs to know before installing an
 update, and "none" is a perfectly good answer to any of them.
 
+## Unreleased
+
+Dose schedules now pair logged doses consistently across Today, Care and
+Transition. An early or late dose within the schedule's tolerance covers its
+slot, so a covered weekly slot no longer prompts another dose today.
+
+New automatic dose rows retain their scheduled episode, day and position after
+a time zone change. Logged timestamps stay unchanged. Existing duplicate rows
+are left for the person to review; this update does not merge or delete them.
+
+- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Released schema 88 journals upgrade through schema 89 and 90 without rewriting old dose rows.
+- Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
+- Security migrations: none.
+- Minimum supported version: 1.0.0-rc.1.
+
 ## 1.0.0-rc.1
 
 This first release candidate includes the current app and the updated English

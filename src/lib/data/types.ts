@@ -565,6 +565,9 @@ interface DoseEventFields {
   status: DoseStatus;
   source: DoseSource;
   scheduled: ScheduledDose | null;
+  /** Provenance of a newly auto-logged row. The logged timestamp still
+      records its time; this identity keeps its schedule slot through travel. */
+  autoLogSlot?: { episodeId: string; epochDay: number; indexInDay: number };
   /** Which drug this dose was, in the dose's own words - optional, and null
       on almost every dose (phase 5 ticket 38). Attribution still resolves
       from the episode history first (regimenEpisode.ts's attributeDose);

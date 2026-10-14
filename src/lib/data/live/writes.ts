@@ -921,6 +921,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // joined to it (doses.ts), so ending an episode changes what they answer.
     reads: {
       getDoses: ['dose'],
+      getDosesForSlots: ['dose', 'regimen'],
+      getNextUncoveredSlot: ['dose', 'regimen'],
       getDoseById: ['dose'],
       hasDosesBefore: ['dose'],
       getSchedules: ['dose', 'regimen'],

@@ -31,6 +31,16 @@ results. Browser fixtures, walkthroughs, installed PWA and hosting run in
 separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
+`browser-tier/dose-slot-screens-probe.ts` runs through `test:browser` with a
+synthetic encrypted journal and the real Today, Care and Transition screens.
+It checks yesterday and today against a weekly patch slot: the Today panel and
+pinned Care row, Care's next-dose statement and Transition's Care subtitle all
+show the next uncovered week, and Today omits the covered patch prompt.
+Query parameters support EN/PL, palette, light/dark and disguise rendering.
+This proves rendered statements, not a physical-device session or a clinical
+outcome. Domain, migration, Archive and eight zone-switch regressions live in
+`src/lib/data/dose-slot-consistency.test.ts` and `sqlite/schema.test.ts`.
+
 `update-handover-check` (`tests/update-handover-check.mjs`) runs with
 `npm run test:browser`, or directly with `node tests/update-handover-check.mjs`.
 It holds public journal writes against worker takeover and activation timeout,

@@ -2,11 +2,11 @@
    types that are always read together: the doses themselves, the schedule an
    episode expects them on, and the pauses during which it expects none.
 
-   A dose event is its own record type, not an Entry, and it stores no
-   regimen episode. Attribution is attributeDose(episodes, dose) above this
-   seam (regimenEpisode.ts), which is what makes backdating a dose
-   re-resolve rather than carry a stale link - `drug` (phase 5 ticket 38)
-   only ever breaks a tie that attribution could not resolve on its own.
+   A person-logged dose stores no regimen episode. Automatic-slot provenance
+   records which standing instruction wrote a new automatic row. Attribution
+   is attributeDose(episodes, dose) above this seam (regimenEpisode.ts), so
+   backdating a person-logged dose re-resolves rather than carrying a stale
+   link. `drug` (phase 5 ticket 38) only ever breaks a tie that attribution could not resolve on its own.
 
    Nothing here judges adherence, and getComparison below does not either:
    the verdict-free comparison itself is expectedSlots and adherence
@@ -40,6 +40,7 @@ import {
   isTopicalDose,
   slotToleranceDays,
   type Adherence,
+  type DoseSlot,
   type ApplicationSiteKey,
   type InjectionSiteKey,
   type RouteOption
@@ -61,6 +62,7 @@ interface DoseInputFields {
       below is a person logging a dose, and a caller that forgets the field
       must not accidentally claim a schedule said so. */
   source?: DoseSource;
+  autoLogSlot?: DoseEvent['autoLogSlot'];
   /** `changed` doses only. */
   scheduled?: ScheduledDose | null;
   /** Which drug this dose was, in its own words (phase 5 ticket 38).
@@ -151,6 +153,39 @@ export type DoseScheduleComparison =
       comparison: Adherence;
     };
 
+/** One episode's slot pairing, shared by the log, Today and Care. */
+export function pairDoseSchedule(
+  episodes: readonly RegimenEpisode[],
+  doses: readonly DoseEvent[],
+  schedule: DoseSchedule,
+  pauses: readonly DosePause[],
+  fromEpochDay: number,
+  toEpochDay: number
+): Adherence {
+  const episode = episodes.find((candidate) => candidate.id === schedule.episodeId);
+  if (!episode) return { rows: [], unmatched: [] };
+  const tolerance = slotToleranceDays(schedule);
+  const slots = expectedSlots(
+    schedule, episode.startEpochDay, fromEpochDay - tolerance,
+    Math.min(toEpochDay + tolerance, episode.endEpochDay ?? toEpochDay + tolerance)
+  );
+  const ownDoses = doses.filter((dose) => dose.autoLogSlot
+    ? dose.source === 'schedule' && dose.autoLogSlot.episodeId === episode.id &&
+      dose.autoLogSlot.epochDay >= episode.startEpochDay &&
+      (episode.endEpochDay === null || dose.autoLogSlot.epochDay <= episode.endEpochDay)
+    : attributeDose(episodes, dose).episode?.id === episode.id);
+  const paired = adherence(
+    slots, ownDoses, pauses.filter((pause) => pause.episodeId === episode.id), tolerance, episode.id
+  );
+  return {
+    rows: paired.rows.filter((row) => row.slot.epochDay >= fromEpochDay && row.slot.epochDay <= toEpochDay),
+    unmatched: paired.unmatched.filter((dose) => {
+      const day = dose.autoLogSlot?.epochDay ?? epochDayFromTimestamp(dose.timestamp);
+      return day >= fromEpochDay && day <= toEpochDay;
+    })
+  };
+}
+
 /** getComparison's answer over reads a caller already holds: the dose
     log screen reads these four lists for itself and asks the same
     question of them without a second round trip (final-audit ticket 31).
@@ -181,34 +216,9 @@ export function compareDoseSchedule(
   if (!schedule) return { reason: 'noSchedule', activeEpisode };
 
   const episodePauses = pauses.filter((pause) => pause.episodeId === activeEpisode.id);
-  /* Only the doses this episode is responsible for. adherence cannot
-     check this itself - it is handed slots and doses and knows nothing
-     about episodes (doseSchedule.ts) - and handing it the whole window
-     instead puts every earlier episode's doses in `unmatched`, where the
-     wording says they were extras or fell in a pause. Attributed rather
-     than filtered by date, so the split is the one every other screen
-     makes. */
-  const episodeDoses = doses.filter((dose) => attributeDose(episodes, dose).episode?.id === activeEpisode.id);
-
-  /* Paired over the range widened by the schedule's tolerance on both sides
-     (after-release ticket 01): a dose inside the range can be a day late for
-     a slot just before it, and reading that dose as an extra would say
-     something that did not happen. Only the range's own rows and the range's
-     own unpaired doses come back. */
-  const tolerance = slotToleranceDays(schedule);
-  const slots = expectedSlots(schedule, activeEpisode.startEpochDay, fromEpochDay - tolerance, toEpochDay + tolerance);
-  const paired = adherence(slots, episodeDoses, episodePauses, tolerance);
-  const inRange = (day: number) => day >= fromEpochDay && day <= toEpochDay;
-
   return {
-    reason: null,
-    activeEpisode,
-    schedule,
-    pauses: episodePauses,
-    comparison: {
-      rows: paired.rows.filter((row) => inRange(row.slot.epochDay)),
-      unmatched: paired.unmatched.filter((dose) => inRange(epochDayFromTimestamp(dose.timestamp)))
-    }
+    reason: null, activeEpisode, schedule, pauses: episodePauses,
+    comparison: pairDoseSchedule(episodes, doses, schedule, pauses, fromEpochDay, toEpochDay)
   };
 }
 
@@ -225,6 +235,11 @@ export interface DosesArea {
       because every caller has a range: the log shows recent doses, the
       adherence view a schedule's window. */
   getDoses(fromEpochDay: number, toEpochDay: number): Promise<DoseEvent[]>;
+  /** Widen the requested window by the schedules' tolerance. Include rows
+      by logged timestamp and automatic rows by their stable slot day. */
+  getDosesForSlots(fromEpochDay: number, toEpochDay: number): Promise<DoseEvent[]>;
+  /** Soonest uncovered slot of an episode active today, over this reach. */
+  getNextUncoveredSlot(todayEpochDay: number, toEpochDay: number): Promise<DoseSlot | null>;
   /** A single dose by its travelling uuid, or null if none exists
       (phase 11 ticket 18). The dose log screen uses this to resolve a
       deep link that lands outside the initial 90-day window: the
@@ -348,6 +363,9 @@ type DoseRow = {
   scheduled_timestamp: number | null;
   drug: string | null;
   source: string;
+  auto_log_episode_uuid: string | null;
+  auto_log_epoch_day: number | null;
+  auto_log_index: number | null;
 };
 
 const scheduledOf = (row: DoseRow): ScheduledDose | null =>
@@ -367,7 +385,11 @@ function toDoseEvent(row: DoseRow): DoseEvent {
     status: row.status as DoseStatus,
     source: row.source as DoseSource,
     scheduled: scheduledOf(row),
-    drug: row.drug
+    drug: row.drug,
+    ...(row.auto_log_episode_uuid != null ? { autoLogSlot: {
+      episodeId: row.auto_log_episode_uuid,
+      epochDay: row.auto_log_epoch_day!, indexInDay: row.auto_log_index!
+    } } : {})
   };
   const route = row.route as DoseRoute;
 
@@ -420,13 +442,14 @@ function routeColumns(input: {
 }
 
 const DOSE_COLUMNS = `uuid, timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
-                      status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, source`;
+                      status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, source,
+                      auto_log_episode_uuid, auto_log_epoch_day, auto_log_index`;
 
 const AUTO_LOG_BATCH_DAYS = 1024;
 
 /** Find underfilled slot days without transferring the historical dose log.
     Attribution still comes from attributeDose, evaluated where episode
-    boundaries make its answer change. JSON binds keep each batch at four
+    boundaries make its answer change. JSON binds keep each batch at six
     parameters even on drivers with SQLite's 999-variable limit. */
 async function missingAutoLogDays(
   driver: SqliteDriver,
@@ -466,12 +489,14 @@ async function missingAutoLogDays(
                 json_extract(value, '$[2]') AS drug FROM json_each(?))
        SELECT day FROM windows WHERE (SELECT COUNT(*) FROM (
          SELECT 1 FROM dose_event dose
-         WHERE dose.timestamp >= windows.from_ts AND dose.timestamp < windows.until_ts
-           AND EXISTS (SELECT 1 FROM eligible
-             WHERE dose.timestamp >= eligible.from_ts AND dose.timestamp < eligible.until_ts
-               AND dose.drug IS eligible.drug)
+         WHERE (dose.auto_log_episode_uuid = ? AND dose.auto_log_epoch_day = windows.day AND dose.auto_log_index < ?)
+            OR (dose.auto_log_episode_uuid IS NULL
+              AND dose.timestamp >= windows.from_ts AND dose.timestamp < windows.until_ts
+              AND EXISTS (SELECT 1 FROM eligible
+                WHERE dose.timestamp >= eligible.from_ts AND dose.timestamp < eligible.until_ts
+                  AND dose.drug IS eligible.drug))
          LIMIT ?)) < ?`,
-      [JSON.stringify(windows.slice(offset, offset + AUTO_LOG_BATCH_DAYS)), JSON.stringify(eligible), schedule.dosesPerDay, schedule.dosesPerDay]
+      [JSON.stringify(windows.slice(offset, offset + AUTO_LOG_BATCH_DAYS)), JSON.stringify(eligible), episode.id, schedule.dosesPerDay, schedule.dosesPerDay, schedule.dosesPerDay]
     );
     missing.push(...rows.map((row) => row.day));
   }
@@ -506,6 +531,32 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         [startOfDayTimestamp(fromEpochDay), startOfDayTimestamp(toEpochDay + 1)]
       );
       return rows.map(toDoseEvent);
+    },
+
+    async getDosesForSlots(fromEpochDay, toEpochDay) {
+      const tolerance = widestTolerance(await area.getSchedules());
+      const from = fromEpochDay - tolerance;
+      const to = toEpochDay + tolerance;
+      const rows = await driver.query<DoseRow>(
+        `SELECT ${DOSE_COLUMNS} FROM dose_event
+         WHERE (timestamp >= ? AND timestamp < ?)
+            OR (auto_log_epoch_day >= ? AND auto_log_epoch_day <= ?)
+         ORDER BY timestamp, id`,
+        [startOfDayTimestamp(from), startOfDayTimestamp(to + 1), from, to]
+      );
+      return rows.map(toDoseEvent);
+    },
+
+    async getNextUncoveredSlot(todayEpochDay, toEpochDay) {
+      const [episodes, schedules, pauses] = await Promise.all([regimen.getEpisodes(), area.getSchedules(), area.getPauses()]);
+      const doses = await area.getDosesForSlots(todayEpochDay, toEpochDay);
+      const active = activeEpisodesAt(episodes, startOfDayTimestamp(todayEpochDay));
+      const slots = active.flatMap((episode) => {
+        const schedule = schedules.find((candidate) => candidate.episodeId === episode.id);
+        return schedule ? pairDoseSchedule(episodes, doses, schedule, pauses, todayEpochDay, toEpochDay).rows
+          .filter((row) => row.dose === null).map((row) => row.slot) : [];
+      });
+      return slots.sort((a, b) => a.epochDay - b.epochDay || a.indexInDay - b.indexInDay)[0] ?? null;
     },
 
     async getDoseById(id) {
@@ -608,14 +659,18 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
         now()
       ];
 
+      const slot = input.autoLogSlot;
+      const slotValues = slot ? [slot.episodeId, slot.epochDay, slot.indexInDay] : [];
       if (input.id) {
+        const slotUpdate = slot ? ', auto_log_episode_uuid = ?, auto_log_epoch_day = ?, auto_log_index = ?'
+          : input.source === 'schedule' ? '' : ', auto_log_episode_uuid = NULL, auto_log_epoch_day = NULL, auto_log_index = NULL';
         const result = await driver.run(
           `UPDATE dose_event
               SET timestamp = ?, route = ?, dose = ?, dose_unit = ?, injection_site = ?, vehicle = ?,
                   application_site = ?, status = ?, scheduled_dose = ?, scheduled_route = ?,
-                  scheduled_timestamp = ?, drug = ?, source = ?, updated_at = ?
+                  scheduled_timestamp = ?, drug = ?, source = ?, updated_at = ?${slotUpdate}
             WHERE uuid = ?`,
-          [...values, input.id]
+          [...values, ...slotValues, input.id]
         );
         assertChanged(result, `dose event: ${input.id}`);
         return input.id;
@@ -625,9 +680,9 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       await driver.run(
         `INSERT INTO dose_event (timestamp, route, dose, dose_unit, injection_site, vehicle, application_site,
                                  status, scheduled_dose, scheduled_route, scheduled_timestamp, drug, source,
-                                 updated_at, uuid)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [...values, uuid]
+                                 updated_at, uuid, auto_log_episode_uuid, auto_log_epoch_day, auto_log_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [...values, uuid, ...(slot ? slotValues : [null, null, null])]
       );
       return uuid;
     },
@@ -832,8 +887,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       ]);
       /* After the schedules rather than beside them: how far past the range
          to read depends on their tolerance (compareDoseSchedule). */
-      const tolerance = widestTolerance(schedules);
-      const doses = await area.getDoses(fromEpochDay - tolerance, toEpochDay + tolerance);
+      const doses = await area.getDosesForSlots(fromEpochDay, toEpochDay);
       return compareDoseSchedule(episodes, doses, schedules, pauses, { fromEpochDay, toEpochDay, drug });
     }
   };
@@ -890,14 +944,16 @@ async function dueDoseCandidates(
            SELECT json_extract(value, '$[0]') AS day, json_extract(value, '$[1]') AS from_ts,
                   json_extract(value, '$[2]') AS until_ts FROM json_each(?))
          SELECT windows.day AS slot_day, ${DOSE_COLUMNS} FROM windows JOIN dose_event
-           ON dose_event.timestamp >= windows.from_ts AND dose_event.timestamp < windows.until_ts
+           ON (dose_event.auto_log_episode_uuid = ? AND dose_event.auto_log_epoch_day = windows.day)
+             OR (dose_event.auto_log_episode_uuid IS NULL AND dose_event.timestamp >= windows.from_ts
+                 AND dose_event.timestamp < windows.until_ts)
          ORDER BY dose_event.timestamp, dose_event.id`,
-        [JSON.stringify(batch.map((day) => [day, startOfDayTimestamp(day - tolerance), startOfDayTimestamp(day + tolerance + 1)]))]
+        [JSON.stringify(batch.map((day) => [day, startOfDayTimestamp(day - tolerance), startOfDayTimestamp(day + tolerance + 1)])), episode.id]
       );
       const byDay = new Map<number, DoseEvent[]>();
       for (const row of logged) {
         const dose = toDoseEvent(row);
-        if (attributeDose(episodes, dose).episode?.id !== episode.id) continue;
+        if (dose.autoLogSlot ? dose.autoLogSlot.episodeId !== episode.id : attributeDose(episodes, dose).episode?.id !== episode.id) continue;
         const onDay = byDay.get(row.slot_day) ?? [];
         onDay.push(dose);
         byDay.set(row.slot_day, onDay);
@@ -930,7 +986,8 @@ async function dueDoseCandidates(
            one regimen was active: drug not recorded" for ever. Which is
            exactly the tie `drug` exists to break (types.ts). */
         drug: episode.drug,
-        source: 'schedule'
+        source: 'schedule',
+        autoLogSlot: { episodeId: episode.id, epochDay: slot.epochDay, indexInDay: slot.indexInDay }
       });
     }
   }

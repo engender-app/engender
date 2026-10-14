@@ -16,13 +16,9 @@
    and one bounded row of measurements. The ticket's own line: no new data,
    no new read, no new screen.
 
-   The dose slot comes through `dayAhead` rather than through the schedule
-   arithmetic directly, which is the one place this file defers to another
-   registry. ADR-0067 already owns "which day does a schedule next expect a
-   dose", pauses and logged-ahead doses included, and a second answer to
-   that question is exactly the drift `lastWrite.ts`'s own header refuses.
-   Nothing else is taken from there, because a mark carries no name and
-   eight of the nine lines have to say what the thing is.
+   The dose owner supplies the next uncovered slot. Calendar marks remain
+   raw expectations, so they cannot answer whether an early dose already
+   covers today's slot. Today, Transition and Care share the same pairing.
 
    Every read is issued inside one `Promise.all`, before this function's
    first `await`, so a `liveQuery` wrapping it discovers all nine
@@ -35,7 +31,7 @@
 import { rowForward, type RowForwardFacts, type RowForwardMap, type RowForwardKey } from './rowForward';
 import { SPINE_FORWARD_DAYS } from './careSpine';
 import type { AppointmentsArea } from './journal/appointments';
-import type { DayAheadArea } from './journal/dayAhead';
+import type { DosesArea } from './journal/doses';
 import type { LettersArea } from './journal/letters';
 import type { MeasurementsArea } from './journal/measurements';
 import type { MilestonesArea } from './journal/milestones';
@@ -55,7 +51,7 @@ export interface RowForwardAreas {
   tryouts: TryoutsArea;
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
-  dayAhead: DayAheadArea;
+  doses: DosesArea;
   stock: StockArea;
   measurements: MeasurementsArea;
 }
@@ -91,7 +87,7 @@ export async function readRowForward(
   rows?: readonly RowForwardKey[]
 ): Promise<RowForwardMap> {
   const includes = (row: RowForwardKey) => rows === undefined || rows.includes(row);
-  const [milestones, seals, runningWear, tryouts, appointments, procedures, marks, stock, latestMeasurement] =
+  const [milestones, seals, runningWear, tryouts, appointments, procedures, nextDose, stock, latestMeasurement] =
     await Promise.all([
       includes('milestones') ? areas.milestones.getMilestones() : [],
       includes('letters') ? areas.letters.getLetterSeals(LETTER_SEAL_PAGE) : [],
@@ -99,14 +95,10 @@ export async function readRowForward(
       includes('tryouts') ? areas.tryouts.getTryouts() : [],
       includes('appointments') ? areas.appointments.getAppointments() : [],
       includes('surgery') ? areas.procedures.getProcedures() : [],
-      includes('care') ? areas.dayAhead.getDayAhead(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS, todayEpochDay, ['doseSlot']) : [],
+      includes('care') ? areas.doses.getNextUncoveredSlot(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS) : null,
       includes('care') ? areas.stock.getProjections(todayEpochDay) : [],
       includes('measurements') ? areas.measurements.latestMeasurement(todayEpochDay) : null
     ]);
-
-  /* Marks arrive in day order across every kind (dayAhead.ts sorts them), so
-     the first dose slot in the list is the next one. */
-  const nextDose = marks.find((mark) => mark.kind === 'doseSlot');
 
   /* The soonest run-out across every tracked drug, which is the one the row
      can state in a line. A drug with no rate to project from has no run-out

@@ -627,9 +627,10 @@ interface ArchiveRegimenEpisode {
    variants, rather than a union on route the way the domain type is
    (types.ts). A transport shape that never changes arms is one an older
    build can still parse field by field, and mapping it back to the union is
-   the dose area's job either way (doses.ts). No episode id: a dose's
-   regimen episode is resolved from its timestamp on whatever device reads
-   it, so carrying one would carry an answer instead of the question. */
+   the dose area's job either way (doses.ts). Person-logged doses resolve their
+   episode from their timestamp. Newly
+   automatic rows also carry the episode/day/index of the slot that wrote
+   them, so changing device zones cannot write the same slot again. */
 interface ArchiveDoseEvent {
   id: string;
   timestamp: number;
@@ -652,6 +653,10 @@ interface ArchiveDoseEvent {
       ADR-0086). Absent on an archive from before auto-logging existed, read
       back as 'person', which is what every row in one was. */
   source: string;
+  /** Automatic-slot provenance, absent in released format-2 Archives. */
+  autoLogEpisodeId?: string | null;
+  autoLogEpochDay?: number | null;
+  autoLogIndex?: number | null;
 }
 
 /** Named by the episode's travelling uuid, not its rowid: the rowid means

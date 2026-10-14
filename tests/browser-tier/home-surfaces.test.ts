@@ -291,7 +291,7 @@ export async function homeContracts(): Promise<Result[]> {
     ['feltSense', 'latestDaysForTryouts'],
     ['doses', 'getSchedules'],
     ['doses', 'getPauses'],
-    ['doses', 'getDoses', today],
+    ['doses', 'getDosesForSlots', today],
     ['doses', 'getDoses', today - 1],
     ['voiceBenchmarks', 'lastWriteEpochDay'],
     ['journalingPauses', 'getPauses'],
