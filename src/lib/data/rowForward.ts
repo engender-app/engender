@@ -18,16 +18,15 @@
    **Nothing here is a new kind of fact.** Every row below is read off
    something a screen already draws - the milestone mirror, the letters'
    seals, the running wear session, the running tryout, the appointment
-   list, the procedure list, the agenda's own dose slot (ADR-0067) and the
+   list, the procedure list, the dose owner's next uncovered slot and the
    stock projection. What is new is only that a *row* may now say it.
 
    Names are read off the records rather than off `dayAhead`'s marks, and
    that is deliberate: ADR-0067 is explicit that a mark carries a day and a
    kind and nothing else - "never which appointment, never which letter" -
    and the copy here has to name the thing ("Name-change hearing in 16
-   days"). The one fact this takes from `dayAhead` is the next dose slot,
-   which needs no name and does need the schedule arithmetic that registry
-   already owns.
+   days"). The next dose slot needs no name, but it must account for logged
+   doses. The dose owner supplies that pairing rather than calendar marks.
 
    **Nothing here ranks.** A row states the one fact nearest its own reason
    for existing, and no row is urgent, late or due: the app ranks nothing

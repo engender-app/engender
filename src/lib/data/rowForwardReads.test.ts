@@ -1,8 +1,7 @@
 /* The forward read (phase 11 all-four-doors ticket 02): that every area is
-   asked exactly once through its own method, that the dose slot comes off
-   `dayAhead` and nothing else, and the two reductions this file makes on the
-   way to the projection - which dose slot is next, and which run-out day is
-   soonest.
+   asked exactly once through its own method, that the dose owner supplies
+   the next uncovered slot, and that the soonest stock run-out is handed
+   to the projection.
 
    What each fact turns into is `rowForward.test.ts`'s question. This is
    about what gets asked and what is handed on. */
@@ -11,12 +10,11 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readRowForward, type RowForwardAreas } from './rowForwardReads.ts';
 import { SPINE_FORWARD_DAYS } from './careSpine.ts';
-import type { DayAheadMark, DayAheadMarkKind } from './journal/dayAhead.ts';
 
 const TODAY = 20000;
 
 interface Held {
-  marks?: DayAheadMark[];
+  nextDoseEpochDay?: number;
   runOutDays?: (number | null)[];
   unlockDays?: number[];
 }
@@ -26,7 +24,7 @@ interface Held {
     `agendaReads.test.ts` holds next door. */
 function recordingAreas(held: Held = {}) {
   const asked: string[] = [];
-  const dayAheadCalls: { fromEpochDay: number; toEpochDay: number; todayEpochDay: number; kinds?: readonly DayAheadMarkKind[] }[] = [];
+  const doseSlotCalls: { fromEpochDay: number; toEpochDay: number }[] = [];
   const sealPages: number[] = [];
 
   const note =
@@ -53,11 +51,12 @@ function recordingAreas(held: Held = {}) {
     tryouts: { getTryouts: note('tryouts', []) },
     appointments: { getAppointments: note('appointments', []) },
     procedures: { getProcedures: note('procedures', []) },
-    dayAhead: {
-      getDayAhead: async (fromEpochDay: number, toEpochDay: number, todayEpochDay: number, kinds?: readonly DayAheadMarkKind[]) => {
-        asked.push('dayAhead');
-        dayAheadCalls.push({ fromEpochDay, toEpochDay, todayEpochDay, kinds });
-        return held.marks ?? [];
+    doses: {
+      getNextUncoveredSlot: async (fromEpochDay: number, toEpochDay: number) => {
+        asked.push('doses');
+        doseSlotCalls.push({ fromEpochDay, toEpochDay });
+        return held.nextDoseEpochDay === undefined ? null
+          : { epochDay: held.nextDoseEpochDay, indexInDay: 0, amount: null };
       }
     },
     stock: {
@@ -73,7 +72,7 @@ function recordingAreas(held: Held = {}) {
     measurements: { latestMeasurement: note('measurements', null) }
   } as unknown as RowForwardAreas;
 
-  return { areas, asked, dayAheadCalls, sealPages };
+  return { areas, asked, doseSlotCalls, sealPages };
 }
 
 test('every area is asked once, through its own method', async () => {
@@ -83,7 +82,7 @@ test('every area is asked once, through its own method', async () => {
 
   assert.deepEqual([...asked].sort(), [
     'appointments',
-    'dayAhead',
+    'doses',
     'letters',
     'measurements',
     'milestones',
@@ -98,46 +97,25 @@ test('every area is asked once, through its own method', async () => {
 /* The Care screen behind the row draws its rail over exactly this window, so
    a row announcing a dose the screen does not show would be the two
    surfaces disagreeing. */
-test('the dose slot is read off dayAhead, over the care rail’s own reach', async () => {
-  const { areas, dayAheadCalls } = recordingAreas();
+test('the uncovered dose slot is read from its owner, over the care rail’s own reach', async () => {
+  const { areas, doseSlotCalls } = recordingAreas();
 
   await readRowForward(areas, TODAY);
 
-  assert.deepEqual(dayAheadCalls, [
-    { fromEpochDay: TODAY, toEpochDay: TODAY + SPINE_FORWARD_DAYS, todayEpochDay: TODAY, kinds: ['doseSlot'] }
+  assert.deepEqual(doseSlotCalls, [
+    { fromEpochDay: TODAY, toEpochDay: TODAY + SPINE_FORWARD_DAYS }
   ]);
 });
 
-test('the next dose is the soonest dose slot, not the soonest mark of any kind', async () => {
-  const { areas } = recordingAreas({
-    marks: [
-      { kind: 'milestone', epochDay: TODAY + 1 },
-      { kind: 'doseSlot', epochDay: TODAY + 3 },
-      { kind: 'doseSlot', epochDay: TODAY + 10 }
-    ]
-  });
-
+test('the next dose is the uncovered slot supplied by its owner', async () => {
+  const { areas } = recordingAreas({ nextDoseEpochDay: TODAY + 3 });
   const map = await readRowForward(areas, TODAY);
-
   assert.deepEqual(map.care, { kind: 'next', epochDay: TODAY + 3, what: { area: 'dose', runOutEpochDay: null } });
 });
 
-/* A mark of another kind is the agenda's business, never a row's: the
-   milestone above is drawn by the milestones row off the record that names
-   it, and `dayAhead` is asked here for the one fact that needs no name. */
-test('no row is built from a mark other than the dose slot', async () => {
-  const { areas } = recordingAreas({
-    marks: [
-      { kind: 'milestone', epochDay: TODAY + 1 },
-      { kind: 'appointment', epochDay: TODAY + 2 },
-      { kind: 'letterUnlock', epochDay: TODAY + 3 },
-      { kind: 'surgery', epochDay: TODAY + 4 }
-    ]
-  });
-
-  const map = await readRowForward(areas, TODAY);
-
-  assert.deepEqual(map, {});
+test('no uncovered slot and no projected run-out gives no care row', async () => {
+  const { areas } = recordingAreas();
+  assert.deepEqual(await readRowForward(areas, TODAY), {});
 });
 
 test('the run-out is the soonest across every tracked drug', async () => {
@@ -192,12 +170,12 @@ test('a pinned wear row reads no facts belonging to other rows', async () => {
 
 test('an empty pin selection reads nothing, while care keeps both dose and stock facts', async () => {
   const { areas, asked } = recordingAreas({
-    marks: [{ kind: 'doseSlot', epochDay: TODAY + 3 }], runOutDays: [TODAY + 10]
+    nextDoseEpochDay: TODAY + 3, runOutDays: [TODAY + 10]
   });
   assert.deepEqual(await readRowForward(areas, TODAY, []), {});
   assert.deepEqual(asked, []);
   assert.deepEqual(await readRowForward(areas, TODAY, ['care']), {
     care: { kind: 'next', epochDay: TODAY + 3, what: { area: 'dose', runOutEpochDay: TODAY + 10 } }
   });
-  assert.deepEqual(asked, ['dayAhead', 'stock']);
+  assert.deepEqual(asked, ['doses', 'stock']);
 });

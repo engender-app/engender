@@ -445,7 +445,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledRoute: null,
       scheduledTimestamp: null,
       drug: null,
-      source: 'person'
+      source: 'person',
+      autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null
     },
     {
       id: changedDose,
@@ -461,21 +462,18 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledRoute: 'oral',
       scheduledTimestamp: 1_700_090_000_000,
       drug: null,
-      source: 'person'
+      source: 'person',
+      autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null
     }
   ]);
 });
 
-test('a dose carries no episode link, so nothing about its attribution travels', async () => {
+test('person-logged doses carry no automatic-slot provenance', async () => {
   const { journal } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
-
-  for (const dose of snapshot.journal.doseEvents) {
-    assert.deepEqual(
-      Object.keys(dose).filter((key) => key.toLowerCase().includes('episode')),
-      []
-    );
+  for (const dose of (await journal.archive.snapshot()).journal.doseEvents) {
+    assert.equal(dose.autoLogEpisodeId, null);
+    assert.equal(dose.autoLogEpochDay, null);
+    assert.equal(dose.autoLogIndex, null);
   }
 });
 

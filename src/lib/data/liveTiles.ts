@@ -32,14 +32,15 @@ import type {
   WearSession
 } from './types';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
-import { adherence, expectedAmountOn, expectedSlots, isDailySchedule, pauseCoversDay as isDosePauseOn } from './doseSchedule';
+import { expectedAmountOn, isDailySchedule } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import { spanCoversDay } from './span';
 import { binderCueShowing, hoursMinutesSecondsOf } from './journal/wearSessions';
 import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
-import { nextExpectedSlot } from './careSpine';
+import { SPINE_FORWARD_DAYS } from './careSpine';
+import { pairDoseSchedule } from './journal/doses';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
 import type { AppointmentDayRecord } from './journal/appointments';
@@ -111,26 +112,8 @@ export function shouldShowPatchScheduleTile(params: {
 
     if (isDailySchedule(schedule)) continue;
 
-    const slotsToday = expectedSlots(
-      schedule,
-      episode.startEpochDay,
-      params.todayEpochDay,
-      params.todayEpochDay
-    );
-    if (slotsToday.length === 0) continue;
-
-    const isPaused = params.pauses.some(
-      (p) => p.episodeId === episode.id && isDosePauseOn(p, params.todayEpochDay)
-    );
-    if (isPaused) continue;
-
-    const episodeDoses = params.doses.filter(
-      (d) =>
-        epochDayFromTimestamp(d.timestamp) === params.todayEpochDay &&
-        attributeDose(params.episodes, d).episode?.id === episode.id
-    );
-
-    const adh = adherence(slotsToday, episodeDoses, params.pauses);
+    const adh = pairDoseSchedule(params.episodes, params.doses, schedule, params.pauses,
+      params.todayEpochDay, params.todayEpochDay);
     const unloggedSlot = adh.rows.find((r) => r.slot.epochDay === params.todayEpochDay && r.dose === null);
 
     if (unloggedSlot) {
@@ -513,13 +496,9 @@ export interface HomeTileReads {
   latestFeltSenseByTryoutId: ReadonlyMap<string, number>;
   schedules: readonly DoseSchedule[];
   dosePauses: readonly DosePause[];
-  todayDoses: readonly DoseEvent[];
-  /** Yesterday's, read separately rather than by widening `todayDoses`
-      (phase 11 ticket 11): every other reader of that list means today by
-      it, and a yesterday row in it would answer "already logged today" for
-      the patch tile and the dose panel alike. What this is for is the one
-      sentence the panel owes on a day the app wrote a dose on the person's
-      behalf. */
+  scheduleDoses: readonly DoseEvent[];
+  /** Yesterday's logged timestamps, used only for the automatic-log notice.
+      Schedule pairing reads its own tolerance-widened window above. */
   yesterdayDoses: readonly DoseEvent[];
   latestBenchmarkEpochDay: number | null;
   journalingPauses: readonly JournalingPause[];
@@ -527,7 +506,7 @@ export interface HomeTileReads {
   measurements: { count: number; latestDay: number | null };
   /** Today's own appointment rows (phase 8 features ticket 63) - `getDayRecords`
       asked for today rather than the whole table, the same reason
-      `todayDoses` above is bounded rather than every dose ever logged. */
+      `scheduleDoses` above is bounded rather than every dose ever logged. */
   todayAppointments: readonly AppointmentDayRecord[];
 }
 
@@ -701,23 +680,11 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
          rows while this tile is up (agendaReads.ts) - so the day the
          schedule expects is stated here or nowhere.
 
-         `nextExpectedSlot` rather than the raw slot list, so a dose already
-         logged against today moves the reading on to the following slot
-         instead of leaving the tile saying a dose is due that the person
-         has just taken. Doses are narrowed to this episode the way the
-         patch tile narrows them, since `todayDoses` is the whole day's log
-         and a second concurrent regimen's dose must not answer for this
-         one. A regimen with no schedule on it has no next day to state and
-         the line is simply absent - the panel is still the way in to the
-         log sheet. */
+         The dose owner pairs this episode's full tolerance window. An early
+         dose can cover today, while another episode's dose cannot. */
       const schedule = reads.schedules.find((s) => s.episodeId === episode.id) ?? null;
-      const ownDoses = reads.todayDoses.filter(
-        (dose) => attributeDose(reads.episodes, dose).episode?.id === episode.id
-      );
-      const ownPauses = reads.dosePauses.filter((pause) => pause.episodeId === episode.id);
-      const next = schedule
-        ? nextExpectedSlot(schedule, episode.startEpochDay, ownDoses, ownPauses, today)
-        : null;
+      const next = schedule ? pairDoseSchedule(reads.episodes, reads.scheduleDoses, schedule,
+        reads.dosePauses, today, today + SPINE_FORWARD_DAYS).rows.find((row) => row.dose === null)?.slot ?? null : null;
       /* What the app did on the person's behalf yesterday, which the panel
          states ahead of the next day it expects (phase 11 ticket 11,
          ADR-0086). Ahead, not beside: the line holds one sentence, and on
@@ -879,7 +846,7 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
         formatNumber: format.number,
         episodes: reads.episodes,
         schedules: reads.schedules,
-        doses: reads.todayDoses,
+        doses: reads.scheduleDoses,
         pauses: reads.dosePauses,
         todayEpochDay: today,
         enabled: gate.enabled,

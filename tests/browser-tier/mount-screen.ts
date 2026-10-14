@@ -15,6 +15,7 @@ import Entry from '../../src/routes/entry/[id]/+page.svelte';
 import NewEntry from '../../src/routes/entry/new/[day]/+page.svelte';
 import More from '../../src/routes/more/+page.svelte';
 import Stats from '../../src/routes/stats/+page.svelte';
+import Care from '../../src/routes/care/+page.svelte';
 import Milestones from '../../src/routes/transition/milestones/+page.svelte';
 import SafeSpace from '../../src/routes/doubt/+page.svelte';
 import GoodMoments from '../../src/routes/doubt/evidence/+page.svelte';
@@ -45,6 +46,7 @@ function componentFor(route: string): Component {
     '/search': Search,
     '/more': More,
     '/stats': Stats,
+    '/care': Care,
     '/doubt': SafeSpace,
     '/doubt/evidence': GoodMoments,
     '/transition/milestones': Milestones
