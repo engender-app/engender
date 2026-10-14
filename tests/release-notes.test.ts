@@ -6,7 +6,10 @@
    release nobody can decide about, so the pipeline refuses it rather than
    publishing notes that quietly skip it. */
 import { describe, expect, it } from 'vitest';
-import { REQUIRED_CALL_OUTS, extractReleaseNotes } from '../scripts/release-notes.mjs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { migrations } from '../src/lib/data/sqlite/migrations.ts';
+import { REQUIRED_CALL_OUTS, extractReleaseNotes, validateStableReleaseNotes } from '../scripts/release-notes.mjs';
 
 /** A changelog section with every call-out answered. */
 const complete = (version: string, answer = 'none') =>
@@ -77,5 +80,34 @@ describe('extractReleaseNotes', () => {
       }
     })();
     for (const label of REQUIRED_CALL_OUTS) expect(error).toContain(label);
+  });
+});
+
+describe('published stable release notes', () => {
+  it('renders the actual candidate schema in the section used by publication', () => {
+    const output = execFileSync(process.execPath, ['scripts/release-notes.mjs', '1.0.0'], { encoding: 'utf8' });
+    const schema = Math.max(...migrations.map((migration) => migration.version));
+    validateStableReleaseNotes(output.trim(), schema);
+    expect(output).not.toContain('{{schema}}');
+    expect(output).toContain(`this release uses schema ${schema}.`);
+    expect(output).toContain('1.0.0-rc.1 start at schema 88');
+  });
+
+  it('rejects stale schema and minimum-version facts in published output', () => {
+    const output = extractReleaseNotes(readFileSync('CHANGELOG.md', 'utf8'), '1.0.0');
+    const schema = Math.max(...migrations.map((migration) => migration.version));
+    expect(() => validateStableReleaseNotes(output.replace(`uses schema ${schema}`, 'uses schema 86'), schema))
+      .toThrow(/candidate schema/);
+    expect(() => validateStableReleaseNotes(output.replace('- Minimum supported version: 1.0.0-rc.1.', '- Minimum supported version: 1.0.0.'), schema))
+      .toThrow(/support updates/);
+    expect(() => validateStableReleaseNotes(output, schema + 1)).toThrow(/candidate schema/);
+  });
+
+  it('refuses stale facts in the actual published section even when Unreleased is correct', () => {
+    const changelog = readFileSync('CHANGELOG.md', 'utf8');
+    expect(() => extractReleaseNotes(changelog.replace('this release uses schema {{schema}}', 'this release uses schema 86'), '1.0.0'))
+      .toThrow(/candidate schema/);
+    expect(() => extractReleaseNotes(changelog.replace('## 1.0.0\n', '## 1.0.1\n'), '1.0.0'))
+      .toThrow(/no section for 1\.0\.0/);
   });
 });
