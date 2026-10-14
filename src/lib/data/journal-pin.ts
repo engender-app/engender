@@ -67,7 +67,7 @@ export interface PinPorts {
       nothing to move its key to. */
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
-  writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  writeKeystore(metadata: KeystoreMetadata, current?: () => void): Promise<void>;
   /** Android admits durably before derivation; web counts at its gate. */
   attempts?: {
     begin(): Promise<string>;
@@ -142,8 +142,10 @@ export async function setupJournalPin(pin: string, ports: PinPorts = platformPor
 export async function addJournalPin(
   dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
-  ports: PinPorts = platformPorts()
+  ports: PinPorts = platformPorts(),
+  current: () => void = () => {}
 ): Promise<void> {
+  current();
   requireValidPin(pin);
   const existing = await ports.readKeystore();
   if (existing?.secretSource === 'pin') {
@@ -157,8 +159,11 @@ export async function addJournalPin(
       return;
     } finally { opened.fill(0); }
   }
+  current();
   const secret = combinePinWithDevice(pin, await ports.binding.create());
-  await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
+  const metadata = bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports);
+  current();
+  await ports.writeKeystore(metadata, current);
 }
 
 /** Every later run. Throws DecryptionFailedError on a wrong PIN and
@@ -176,7 +181,17 @@ export async function unlockJournalPin(
   });
 }
 
-async function unlockPin(pin: string, ports: PinPorts, current: () => void): Promise<Uint8Array<ArrayBuffer>> {
+/** A fresh Settings check uses the same attempt accounting without migrating
+    a binding or changing any credential as a side effect of authentication. */
+export async function verifyJournalPin(
+  pin: string,
+  current: () => void,
+  ports: PinPorts = platformPorts()
+): Promise<Uint8Array<ArrayBuffer>> {
+  return authenticateCredentials(() => { current(); return unlockPin(pin, ports, current, false); });
+}
+
+async function unlockPin(pin: string, ports: PinPorts, current: () => void, migrate = true): Promise<Uint8Array<ArrayBuffer>> {
   const metadata = await requirePinKeystore(ports);
   const wrappedUnder = metadata.pinBinding ?? 'browser';
   const rebinding = wrappedUnder !== ports.bindingKind;
@@ -189,8 +204,8 @@ async function unlockPin(pin: string, ports: PinPorts, current: () => void): Pro
   try {
     dataKey = await unlockKeystore(metadata, secret);
     current();
-    if (rebinding) await rebindOnUnlock(dataKey, pin, ports);
-    await forgetLegacyBinding(ports);
+    if (migrate && rebinding) await rebindOnUnlock(dataKey, pin, ports);
+    if (migrate) await forgetLegacyBinding(ports);
     current();
     if (token !== undefined) {
       settled = true;

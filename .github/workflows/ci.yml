@@ -163,6 +163,8 @@ jobs:
             entry: tests/update-handover-check.mjs
           - name: credential-change
             entry: tests/credential-change-check.mjs
+          - name: protection-change
+            entry: tests/protection-change-check.mjs
           - name: stalled-reopen
             entry: tests/stalled-reopen-check.mjs
           - name: restore-commit

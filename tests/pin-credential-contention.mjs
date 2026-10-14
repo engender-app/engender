@@ -205,7 +205,7 @@ try {
         const fixture = await page.evaluate(async () => {
           const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
           const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-          const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+          const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
           const { unlockJournalPin } = await import('/src/lib/data/journal-pin.ts');
           const { mintRecoveryKey } = await import('/src/lib/data/recovery-key.ts');
           const { readPhoto } = await import('/src/lib/stores/photoFiles.ts');
@@ -215,7 +215,7 @@ try {
           const bytes = new TextEncoder().encode('Synthetic PIN encrypted attachment');
           const entryId = await journal.entries.upsertEntry({ epochDay: 20000, mood: 3, note, attachPhotos: [{ full: bytes, thumb: bytes }] });
           const fileName = (await journal.entries.getEntry(entryId)).photos[0].fileName;
-          await changeAccessMode('pin', '1234');
+          await prepareAccessModeChange('pin', '1234', { title: 'Synthetic change', subtitle: 'Synthetic journal', cancel: 'Cancel' }, () => {})('demo');
           await mintRecoveryKey(await unlockJournalPin('1234'));
           return { entryId, fileName, note, bytes: Array.from(bytes), encrypted: Array.from(await opfsPhotoFiles().read(fileName)), read: Array.from(await readPhoto(fileName)) };
         });

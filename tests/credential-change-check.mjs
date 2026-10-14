@@ -36,6 +36,8 @@ async function selectPin(page, pin) {
   await page.locator('[data-access-continue]').click();
   await page.waitForSelector('[data-access-secret="pin"]');
   for (const digit of pin + pin) await page.locator(`[data-key="${digit}"]`).click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
 }
 
 async function credentialState(page, fileName) {
@@ -112,9 +114,10 @@ try {
       await peer.goto(`${base}credential-change-peer`);
       peer.on('pageerror', error => errors.push(error.message));
       const rejected = await peer.evaluate(async () => {
-        const { changeAccessMode, resetApp } = await import('/src/lib/stores/boot.svelte.ts');
+        const { resetApp } = await import('/src/lib/stores/boot.svelte.ts');
+        const { changeCredentials } = await import('/src/lib/data/credential-ownership.ts');
         const outcomes = [];
-        for (const operation of [() => changeAccessMode('pin', '9876'), () => resetApp()]) {
+        for (const operation of [() => changeCredentials(async () => {}), () => resetApp()]) {
           try { await operation(); outcomes.push('resolved'); }
           catch (error) { outcomes.push(error.name); }
         }
@@ -145,24 +148,25 @@ try {
       assert.equal(await page.locator('[data-list-row="pin"]').isEnabled(), true);
       ok('lock and successful unlock remount an enabled Settings form');
 
-      await selectPin(page, '5678');
-      await page.waitForFunction(() => document.querySelector('[data-access-status]')?.textContent.trim());
-      assert.equal(await page.locator('[data-key="1"]').isEnabled(), true);
-      assert.deepEqual(await credentialState(page, fixture.fileName), heldState);
-      ok('the remounted form reports refusal without replacing the first binding or wrap');
-
       await page.evaluate(() => window.releaseCredentialWrite());
-      await page.waitForFunction(() => window.credentialWriteCommitted);
+      await page.waitForFunction(async () => {
+        const { changeCredentials } = await import('/src/lib/data/credential-ownership.ts');
+        try { await changeCredentials(async () => {}); return true; } catch { return false; }
+      });
+      assert.equal(await page.evaluate(() => window.credentialWriteCommitted ?? false), false);
+      assert.deepEqual(await credentialState(page, fixture.fileName), heldState);
+      ok('reset admission and lock invalidate the old operation before OPFS close commits its wrap');
+
+      await selectPin(page, '5678');
       await page.waitForURL('**/settings/security');
       const committed = await credentialState(page, fixture.fileName);
       assert.notEqual(committed.metadata, heldState.metadata);
-      assert.equal(committed.binding, heldState.binding);
       assert.deepEqual(committed.attachment, fixture.encrypted);
-      ok('the original change commits its matching wrap and binding without rewriting attachments');
+      ok('a new current-passphrase approval commits the replacement without rewriting attachments');
 
       await page.reload({ waitUntil: 'networkidle' });
       await page.waitForSelector('[data-pin-pad]');
-      for (const digit of '1234') await page.locator(`[data-key="${digit}"]`).click();
+      for (const digit of '5678') await page.locator(`[data-key="${digit}"]`).click();
       await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 30000 });
       const recovered = await page.evaluate(async fixture => {
         const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
@@ -179,14 +183,14 @@ try {
       assert.equal(recovered.note, 'Synthetic credential ownership entry');
       assert.equal(recovered.fileName, fixture.fileName);
       assert.deepEqual(recovered.bytes, fixture.bytes);
-      ok('after restart the first PIN opens the original SQL content and encrypted attachment');
+      ok('after restart the freshly approved PIN opens the original SQL content and encrypted attachment');
 
       const rejectedPin = await page.evaluate(async () => {
         const { unlockJournalPin } = await import('/src/lib/data/journal-pin.ts');
-        try { await unlockJournalPin('5678'); return false; } catch { return true; }
+        try { await unlockJournalPin('1234'); return false; } catch { return true; }
       });
       assert.equal(rejectedPin, true);
-      ok('the rejected replacement PIN never becomes an unlocking credential');
+      ok('the cancelled PIN never becomes an unlocking credential');
       assert.deepEqual(errors, []);
       ok('the held-write and refused-operation paths cause no uncaught page errors');
     } finally {

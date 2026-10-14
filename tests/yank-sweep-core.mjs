@@ -2396,6 +2396,31 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
  *  patched after the fact. */
 export const DEMO_THEME_EXPRESSION = (theme) => SETTLE_PAGE_EXPRESSION(theme);
 
+export const APPROVE_PROTECTION_EXPRESSION = (secret = 'demo') => `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const q = (selector) => document.querySelector('[data-current-protection] ' + selector);
+  for (let i = 0; i < 100 && !document.querySelector('[data-current-protection]'); i++) await sleep(100);
+  if (!document.querySelector('[data-current-protection]')) throw new Error('current protection prompt did not open');
+  if (q('[data-pin-pad]')) {
+    for (const digit of ${JSON.stringify(secret)}) {
+      const key = q('[data-key="' + digit + '"]');
+      if (!key) throw new Error('the synthetic current PIN is required');
+      key.click();
+      await sleep(140);
+    }
+  } else {
+    const field = q('#current-protection-secret');
+    if (field) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, ${JSON.stringify(secret)});
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    q('[data-confirm-current-protection]').click();
+  }
+  for (let i = 0; i < 300 && document.querySelector('[data-current-protection]'); i++) await sleep(100);
+  if (document.querySelector('[data-current-protection]')) throw new Error('fresh current protection was not approved; Android requires an enrolled biometric');
+  return true;
+})()`;
+
 /** The lock-gate epilogue: walk the access-mode screen into a PIN, so the
  *  next cold load has a gate to draw. The pad completes and submits itself
  *  at four digits (PinPad.svelte), so the digits are clicked and the
@@ -2423,6 +2448,7 @@ export const LOCK_SETUP_EXPRESSION = (pin) => `(async () => {
     }
     await sleep(800);
   }
+  await ${APPROVE_PROTECTION_EXPRESSION()};
   /* Settled is either control the settings screen offers, or the
      confirmation's own navigation: after the second PIN entry the module
      can land on /settings/security itself, where the link this used to
