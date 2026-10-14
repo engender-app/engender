@@ -70,6 +70,7 @@ try {
     await openBackfill();
     await duration().pressSequentially(typed, { delay: 20 });
     assert.equal(await duration().inputValue(), typed, `typing ${typed} key by key keeps it`);
+    assert.equal(await duration().evaluate((el) => el.validity.valid), true, `${typed} is a valid value for the field itself, not a step mismatch`);
     await save().click();
     await page.waitForSelector('[data-sheet]', { state: 'detached' });
     const added = (await sessions()).filter(({ id }) => !before.has(id));
@@ -83,7 +84,7 @@ try {
       await bootState.journal.wearSessions.deleteSession(id);
     }, added[0].id);
   }
-  console.log('PASS duration typed key by key keeps decimals, saves the hours typed and reopens as typed');
+  console.log('PASS duration typed key by key keeps decimals, is natively valid, saves the hours typed and reopens as typed');
   assert.deepEqual(errors, []);
 } finally {
   await browser.close();

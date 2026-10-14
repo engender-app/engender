@@ -413,9 +413,12 @@
      (wearSessions.reconcileReminder). Web has no way to change the
      reminder, so it must always send undefined - never re-derive null from
      an editor.reminderEnabled that a hidden toggle left at its prefilled
-     value (ticket 32). */
+     value (ticket 32). Stop is the one save canSave does not gate, so an
+     enabled reminder whose hours were cleared also sends undefined there:
+     the reminder already set stays, rather than being deleted with the
+     toggle still on. */
   const reminderHoursOf = (editor: Editor): number | null | undefined =>
-    isWeb ? undefined : editor.reminderEnabled ? editor.reminderHours : null;
+    isWeb ? undefined : editor.reminderEnabled ? (editor.reminderHours ?? undefined) : null;
 
 
   const fmtDayLong = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -792,6 +795,7 @@
                 <input
                   class="input"
                   type="number"
+                  step="any"
                   {id}
                   name="wear-duration"
                   inputmode="decimal"
@@ -846,6 +850,7 @@
                 <input
                   class="input"
                   type="number"
+                  step="any"
                   {id}
                   name="wear-reminder-hours"
                   inputmode="decimal"
