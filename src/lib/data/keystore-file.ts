@@ -15,8 +15,7 @@ interface CredentialWrapBridge {
 
 const androidWraps = registerAndroidPlugin<CredentialWrapBridge>(androidPluginOwners.keystore);
 
-/* KEYSTORE_FILE stays exported only for conversion-probe.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* Reset also uses this name to keep credential deletion after data deletion. */
 export const KEYSTORE_FILE = 'keystore.json';
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';

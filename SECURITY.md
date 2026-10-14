@@ -74,3 +74,10 @@ One person maintains this project, so a report is read when that person next
 sits down with it rather than inside a fixed window. What follows is a
 reproduction, an assessment of severity, and a disclosure timeline agreed with
 the reporter. The fix ships with release notes naming the problem.
+
+
+Web Start over uses logical reset recovery. Ordinary app-owned mirrors are
+cleared before asynchronous file deletion; credential wraps remain until the
+other OPFS entries are removed. If a browser crash restores old mirror values
+after the journal is gone, boot discards them before onboarding. Browser
+storage does not expose fsync or guarantee erasure of old physical log bytes.

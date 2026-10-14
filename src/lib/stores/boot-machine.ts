@@ -103,6 +103,7 @@ export type BootEvent =
 
 export type BootEffect =
   | { type: 'apply-cached-preferences' }
+  | { type: 'discard-erased-journal-mirrors' }
   | { type: 'mark-unlocked' }
   | { type: 'survey-web' }
   | { type: 'survey-android' }
@@ -227,15 +228,17 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       // Refuse before any key creation, unlock or demo reset can change storage.
       if (plan === 'legacy-refused') return step(machine, bootTransitions.toLegacyRefused(surveyed));
       if (plan === 'auto-unlock') return step(machine, surveyed, [{ type: 'auto-unlock-device-bound' }]);
+      const effects: BootEffect[] = plan === 'needs-setup' ? [{ type: 'discard-erased-journal-mirrors' }] : [];
       if (machine.demo) {
-        return step(machine, surveyed, [{ type: plan === 'needs-setup' ? 'demo-setup' : 'demo-unlock' }]);
+        return step(machine, surveyed, [...effects, { type: plan === 'needs-setup' ? 'demo-setup' : 'demo-unlock' }]);
       }
 
       return step(
         machine,
         plan === 'needs-unlock'
           ? bootTransitions.toNeedsUnlock(surveyed)
-          : bootTransitions.toNeedsSetup(surveyed)
+          : bootTransitions.toNeedsSetup(surveyed),
+        effects
       );
     }
 
