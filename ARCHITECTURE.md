@@ -1127,7 +1127,7 @@ flowchart LR
   Bm --> All
 ```
 
-- **[ci.yml](.github/workflows/ci.yml) ("Checks")** runs on pushes, pull requests and `workflow_call`. The Node and Android jobs run their check lists through [scripts/run-ci-checks.mjs](scripts/run-ci-checks.mjs), which keeps going after a failure and reports checks whose prerequisites failed as blocked. The `results` job, "All required checks", runs with `if: always()` and fails unless every upstream tier succeeded. The main ruleset requires that job, in strict mode with no bypass ([CONTRIBUTING.md](CONTRIBUTING.md)).
+- **[ci.yml](.github/workflows/ci.yml) ("Checks")** runs on pushes, pull requests and `workflow_call`. The Node suite runs under UTC and Europe/Warsaw, with each duration recorded in the job summary. The Node and Android jobs run their check lists through [scripts/run-ci-checks.mjs](scripts/run-ci-checks.mjs), which keeps going after a failure and reports checks whose prerequisites failed as blocked. The `results` job, "All required checks", runs with `if: always()` and fails unless every upstream tier succeeded. The main ruleset requires that job, in strict mode with no bypass ([CONTRIBUTING.md](CONTRIBUTING.md)).
 - **[guard-recovery-proof.yml](.github/workflows/guard-recovery-proof.yml)** is a manual, synthetic check of the guard runner's retry evidence.
 
 ```mermaid

@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { dateInputValueFromEpochDay, epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
+import { dateInputValueFromEpochDay, epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
 import { doseInputOfDraft, draftOfDose, draftTimestamp, draftWithDrug, newDoseDraft } from './doseDraft';
 import type { DoseEvent, RegimenEpisode } from './types';
 
@@ -13,9 +13,9 @@ const episode = (drug: string, route: string, dose = 4): RegimenEpisode => ({
 } as RegimenEpisode);
 
 const injection = {
-  id: 'dose-1', timestamp: NOW - 7 * 86400000, route: 'im', dose: 4, doseUnit: 'mg',
+  id: 'dose-1', timestamp: timestampAtLocalTime(TODAY - 7, '09:30'), route: 'im', dose: 4, doseUnit: 'mg',
   injectionSite: 'thigh-left', vehicle: 'aqueous', status: 'changed',
-  scheduled: { dose: 5, route: 'sc', timestamp: NOW - 7 * 86400000 - 3600000 }, drug: 'estradiol', source: 'manual'
+  scheduled: { dose: 5, route: 'sc', timestamp: timestampAtLocalTime(TODAY - 7, '09:30') - 3600000 }, drug: 'estradiol', source: 'manual'
 } as unknown as DoseEvent;
 
 test('a dose opened in the editor saves back as the same dose', () => {
