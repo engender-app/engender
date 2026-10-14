@@ -11,6 +11,9 @@ update, and "none" is a perfectly good answer to any of them.
 Archive import identifies non-object JSON headers as corrupt files before
 key derivation, including a header containing only `null`.
 
+Android always asks keyboards not to learn words typed in the app. Keyboard
+support controls whether the request works; previously learned words remain.
+
 A scheduled Android backup failure posts one notice across later checks and
 app restarts. Quiet-hours holds survive restarts; a later failure can notify
 again after a successful backup or a destination change.
