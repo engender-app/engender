@@ -31,7 +31,7 @@ async function proof(locator, label, name) {
   await locator.scrollIntoViewIfNeeded();
   await settled();
   const text = await locator.innerText();
-  if (!before) { assert.ok(text.includes(name), `${label}: ${text}`); if (name !== 'engender') assert.doesNotMatch(text, /engender/i); checks++; }
+  if (!before) { assert.ok(text.includes(name), `${label}: ${text}`); if (name !== 'engender') assert.doesNotMatch(text, /engender/i); else assert.doesNotMatch(text, /\b(?:Notes|Notatki)\b/); checks++; }
   if (out) { await mkdir(out, { recursive: true }); await locator.screenshot({ path: `${out}/${before ? 'before' : 'after'}-${label}.png` }); }
 }
 async function preferences(locale, theme, disguise) {
@@ -65,7 +65,7 @@ try {
               const { importFailureMessage, verifyFailureMessage } = await import('/src/lib/data/vocabulary/archiveErrorLabels.ts');
               return [importFailureMessage('not-an-archive'), verifyFailureMessage('not-an-archive')];
             });
-            for (const text of messages) { assert.ok(text.includes(name), text); if (disguise) assert.doesNotMatch(text, /engender/i); checks++; }
+            for (const text of messages) { assert.ok(text.includes(name), text); if (disguise) assert.doesNotMatch(text, /engender/i); else assert.doesNotMatch(text, /\b(?:Notes|Notatki)\b/); checks++; }
           }
         } else {
           await page.goto(`${base}gates.html`, { waitUntil: 'networkidle' });

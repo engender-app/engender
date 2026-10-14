@@ -24,7 +24,9 @@ try {
         await Promise.all(document.getAnimations().filter(a => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
       });
       const text = await page.locator(selector).innerText();
-      if (disguise) assert.doesNotMatch(await page.locator('#gate').innerText(), /engender/i);
+      const gateText = await page.locator('#gate').innerText();
+      if (disguise) assert.doesNotMatch(gateText, /engender/i);
+      else assert.doesNotMatch(gateText, /\b(?:Notes|Notatki)\b/);
       assert.equal(await page.locator('[data-session-device-credential]').count(), scene === 'session' ? 1 : 0);
       results.push({ scene, locale, theme, disguise, text });
     }
