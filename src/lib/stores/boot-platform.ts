@@ -61,13 +61,16 @@ type PlatformEffect = Extract<
 export async function performPlatformEffect(effect: PlatformEffect, dispatch: BootDispatch): Promise<void> {
   switch (effect.type) {
     case 'survey-web': {
-      const keystoreSecretSource = await readKeystoreSource();
-      const deviceBoundKeystoreExists = await deviceBoundJournalExists();
-      dispatch({
-        type: 'web-surveyed',
-        keystoreSecretSource,
-        deviceBoundKeystoreExists,
-        legacyStoragePresent: await legacyStoragePresent()
+      // Empty-journal cache cleanup must share ownership with setup and reset.
+      await authenticateCredentials(async () => {
+        const keystoreSecretSource = await readKeystoreSource();
+        const deviceBoundKeystoreExists = await deviceBoundJournalExists();
+        dispatch({
+          type: 'web-surveyed',
+          keystoreSecretSource,
+          deviceBoundKeystoreExists,
+          legacyStoragePresent: await legacyStoragePresent()
+        });
       });
       return;
     }

@@ -75,7 +75,7 @@ test('a web first run reaches the setup gate with no access mode yet', () => {
 
   expect(machine.boot.status).toBe('needs-setup');
   expect(machine.boot.accessMode).toBeNull();
-  expect(effects).toEqual([]);
+  expect(effects).toEqual([{ type: 'discard-erased-journal-mirrors' }]);
 });
 
 test('a web journal with a passphrase keystore reaches the unlock gate', () => {
@@ -150,7 +150,9 @@ test('a demo build unlocks itself, and falls back to the gate when the passphras
 });
 
 test('a demo build with nothing on disk sets its own passphrase', () => {
-  expect(walk(started('web', true), surveyedWeb()).effects).toEqual([{ type: 'demo-setup' }]);
+  expect(walk(started('web', true), surveyedWeb()).effects).toEqual([
+    { type: 'discard-erased-journal-mirrors' }, { type: 'demo-setup' }
+  ]);
 });
 
 test('android reaches each of its four gates', () => {
@@ -622,4 +624,11 @@ test.each(['passphrase', 'pin', 'biometric'] as const)('stale setup returns to t
   expect(result.machine.boot.status).toBe('needs-unlock');
   expect(result.machine.boot.accessMode).toBe(mode);
   expect(result.effects).toEqual([]);
+});
+
+
+test('an empty web survey discards erased-journal mirrors before setup', () => {
+  const step = reduce(initialBoot('pin'), surveyedWeb());
+  expect(step.machine.boot.status).toBe('needs-setup');
+  expect(step.effects).toEqual([{ type: 'discard-erased-journal-mirrors' }]);
 });
