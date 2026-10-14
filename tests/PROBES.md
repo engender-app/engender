@@ -1,5 +1,10 @@
 # The probes in tests/*.mjs
 
+`src/lib/data/archive/header-shape.test.ts` sends the retained JSON `null`
+header frame and other non-object headers through `openArchive`. Corrupt-file
+classification must precede key derivation. Newer and invalid format versions
+keep their existing unsupported-file classifications.
+
 `auto-export-scheduler.test.ts` reports one synthetic native backup failure
 across ticks and a fresh scheduler module with the same stored preferences.
 It checks quiet-hours holds, notification refusal, disabled notices, clock
