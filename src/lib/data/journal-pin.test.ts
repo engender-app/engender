@@ -521,3 +521,79 @@ test('stale PIN setup preserves the original binding and credential', async () =
   expect(world.stored()).toEqual(metadata);
   await expect(unlockJournalPin('1234', world.phone)).resolves.toEqual(key);
 });
+
+async function accountedPhone() {
+  const world = bothPlatforms();
+  await setupJournalPin('1234', world.phone);
+  const begin = vi.fn(async () => 'durable-admission');
+  const finish = vi.fn(async (_token: string, _successful: boolean) => {});
+  return { world, begin, finish, ports: { ...world.phone, attempts: { begin, finish } } satisfies PinPorts };
+}
+
+test('PIN admission follows metadata and binding preflight, then settles wrong and correct authentication', async () => {
+  const { world, ports, begin, finish } = await accountedPhone();
+  const metadata = vi.spyOn(ports, 'readKeystore');
+  const binding = vi.spyOn(ports.binding, 'read');
+  await expect(unlockJournalPin('0000', ports)).rejects.toBeInstanceOf(DecryptionFailedError);
+  expect(metadata.mock.invocationCallOrder[0]).toBeLessThan(binding.mock.invocationCallOrder[0]);
+  expect(binding.mock.invocationCallOrder[0]).toBeLessThan(begin.mock.invocationCallOrder[0]);
+  expect(finish).toHaveBeenLastCalledWith('durable-admission', false);
+  const key = await unlockJournalPin('1234', ports);
+  expect(finish).toHaveBeenLastCalledWith('durable-admission', true);
+  expect(key).toEqual(await unlockJournalPin('1234', world.phone));
+  key.fill(0);
+});
+
+test('missing binding, unreadable metadata and preflight cancellation never admit a PIN guess', async () => {
+  const { ports, begin } = await accountedPhone();
+  const binding = ports.binding.read;
+  ports.binding.read = async () => { throw new DeviceBindingUnavailableError('missing alias'); };
+  await expect(unlockJournalPin('0000', ports)).rejects.toBeInstanceOf(DeviceBindingUnavailableError);
+  ports.binding.read = binding;
+  const read = ports.readKeystore;
+  ports.readKeystore = async () => null;
+  await expect(unlockJournalPin('0000', ports)).rejects.toBeInstanceOf(KeystoreUnreadableError);
+  ports.readKeystore = read;
+  await expect(unlockJournalPin('0000', ports, () => { throw new UnlockCancelledError(); })).rejects.toBeInstanceOf(UnlockCancelledError);
+  expect(begin).not.toHaveBeenCalled();
+});
+
+test('failed durable admission never derives a PIN and failed settlement cannot acknowledge a miss', async () => {
+  const { ports, begin, finish } = await accountedPhone();
+  const crypto = await import('../crypto/argon2id');
+  const derive = vi.spyOn(crypto, 'deriveKey');
+  try {
+    begin.mockRejectedValueOnce(new Error('admission failed'));
+    await expect(unlockJournalPin('0000', ports)).rejects.toThrow('admission failed');
+    expect(derive).not.toHaveBeenCalled();
+    finish.mockRejectedValueOnce(new Error('settlement failed'));
+    await expect(unlockJournalPin('0000', ports)).rejects.toThrow('settlement failed');
+    expect(derive).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith('durable-admission', false);
+  } finally { derive.mockRestore(); }
+});
+
+test('cancellation during an admitted derivation keeps its count and refuses the key', async () => {
+  const { ports, begin, finish } = await accountedPhone();
+  let cancelled = false;
+  begin.mockImplementation(async () => { cancelled = true; return 'durable-admission'; });
+  await expect(unlockJournalPin('1234', ports, () => {
+    if (cancelled) throw new UnlockCancelledError();
+  })).rejects.toBeInstanceOf(UnlockCancelledError);
+  expect(finish).toHaveBeenCalledWith('durable-admission', false);
+});
+
+test('legacy rebinding uses the same durable admission and does not reset a failed publication', async () => {
+  const world = bothPlatforms();
+  await setupJournalPin('1234', world.web);
+  const begin = vi.fn(async () => 'legacy-admission');
+  const finish = vi.fn(async (_token: string, _successful: boolean) => {});
+  const ports = { ...world.phone, attempts: { begin, finish } };
+  world.failNextWrite();
+  await expect(unlockJournalPin('1234', ports)).rejects.toThrow('keystore landed');
+  expect(finish).toHaveBeenLastCalledWith('legacy-admission', false);
+  const key = await unlockJournalPin('1234', ports);
+  expect(finish).toHaveBeenLastCalledWith('legacy-admission', true);
+  expect(world.stored()?.pinBinding).toBe('keystore');
+  key.fill(0);
+});

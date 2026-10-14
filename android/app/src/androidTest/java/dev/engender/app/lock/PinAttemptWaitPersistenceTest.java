@@ -1,6 +1,7 @@
 package dev.engender.app.lock;
 
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.os.SystemClock;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -8,6 +9,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import java.io.File;
+import java.nio.file.Files;
 
 @RunWith(AndroidJUnit4.class)
 public class PinAttemptWaitPersistenceTest {
@@ -15,7 +18,7 @@ public class PinAttemptWaitPersistenceTest {
     private static final long DELAY_MS = 300_000;
     private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-    @Test public void preferenceDeadlineSurvivesANewOwnerAndNewBoot() {
+    @Test public void nativeDeadlineSurvivesANewOwnerAndNewBoot() {
         PinAttemptWait wait = LockTimingPlugin.pinWait(context);
         try {
             wait.reset();
@@ -24,6 +27,43 @@ public class PinAttemptWaitPersistenceTest {
             assertEquals(60_000, LockTimingPlugin.pinWait(context).remaining(100, 8));
             assertEquals(59_750, LockTimingPlugin.pinWait(context).remaining(350, 8));
         } finally { LockTimingPlugin.pinWait(context).reset(); }
+    }
+
+    @Test public void durableAdmissionRetainsCountThroughRestartRebootAndSuccessfulReset() throws Exception {
+        File directory = new File(context.getCacheDir(), "pin-count-" + java.util.UUID.randomUUID());
+        assertTrue(directory.mkdirs());
+        Context isolated = new ContextWrapper(context) {
+            @Override public File getFilesDir() { return directory; }
+            @Override public android.content.SharedPreferences getSharedPreferences(String name, int mode) {
+                return super.getSharedPreferences(name + "-count-fixture", mode);
+            }
+        };
+        String first = java.util.UUID.randomUUID().toString(), next = java.util.UUID.randomUUID().toString();
+        try {
+            PinAttemptWait wait = LockTimingPlugin.pinWait(isolated);
+            wait.adopt(3, false, 100, 7);
+            String token = wait.admit(first, 100, 7);
+            PinAttemptWait restarted = LockTimingPlugin.pinWait(isolated);
+            assertEquals(4, restarted.wrongAttempts());
+            restarted.recover(next, 200, 7);
+            assertEquals(4000, restarted.remaining(200, 7));
+            assertEquals(4000, LockTimingPlugin.pinWait(isolated).remaining(100, 8));
+            try { restarted.finish(first, token, true, 200, 7); throw new AssertionError("stale completion reset attempts"); }
+            catch (IllegalStateException expected) { assertEquals(4, LockTimingPlugin.pinWait(isolated).wrongAttempts()); }
+            PinAttemptWait paid = LockTimingPlugin.pinWait(isolated);
+            assertEquals(0, paid.remaining(4100, 8));
+            assertEquals(4, LockTimingPlugin.pinWait(isolated).wrongAttempts());
+            String successful = paid.admit(next, 4200, 8);
+            paid.finish(next, successful, true, 4300, 8);
+            PinAttemptWait reset = LockTimingPlugin.pinWait(isolated);
+            reset.adopt(99, true, 4400, 8);
+            assertEquals(0, reset.wrongAttempts());
+            assertTrue(!reset.hasState());
+        } finally {
+            for (File file : directory.listFiles()) Files.deleteIfExists(file.toPath());
+            Files.deleteIfExists(directory.toPath());
+            context.deleteSharedPreferences(LockTimingPlugin.PREFS + "-count-fixture");
+        }
     }
 
     // Each stage is a separate instrumentation invocation. Only cleanup clears the fixture.
