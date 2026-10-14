@@ -1,5 +1,12 @@
 # The probes in tests/*.mjs
 
+`auto-export-scheduler.test.ts` reports one synthetic native backup failure
+across ticks and a fresh scheduler module with the same stored preferences.
+It checks quiet-hours holds, notification refusal, disabled notices, clock
+correction and new failures after success or destination changes.
+`preferences.test.ts` reopens real SQLite to verify the receipt and held flag;
+`catalogue.test.ts` keeps the receipt out of Archives and the boot mirror.
+
 `node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
 6501 through 6530, within 160 ms of the reset action. Erased cuts must return

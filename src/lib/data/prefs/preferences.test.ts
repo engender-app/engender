@@ -270,3 +270,14 @@ test('a successful later write wins over prepared Archive values, including reas
     expect(preferences.get('name')).toBe('Incoming synthetic name');
   } finally { await driver.close(); }
 });
+
+test('a backup failure receipt and quiet-hours hold survive reopening SQLite', async () => {
+  const driver = await migratedDb();
+  const first = await openPreferences(driver);
+  await first.set('heldExportFailureNotice', true);
+  await first.set('lastExportFailureNotifiedAt', 1_760_000_000_000);
+
+  const second = await openPreferences(driver);
+  expect(second.get('lastExportFailureNotifiedAt')).toBe(1_760_000_000_000);
+  expect(second.get('heldExportFailureNotice')).toBe(true);
+});
