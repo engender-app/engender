@@ -164,13 +164,13 @@ export function recordStream(stream: MediaStream): ActiveRecording {
     async stop() {
       try {
         if (recorder.state !== 'inactive') recorder.stop();
-        await stopped;
       } finally {
         // Closes the mic indicator the OS/browser shows while a stream is
         // live - stopping the recorder alone leaves the track open. In a
         // `finally` so a failed stop still lets the tracks go.
         for (const track of stream.getTracks()) track.stop();
       }
+      await stopped;
       if (chunks.length === 0) return null;
       return new Uint8Array(await new Blob(chunks, { type: RECORDING_MIME_TYPE }).arrayBuffer());
     }
@@ -179,9 +179,15 @@ export function recordStream(stream: MediaStream): ActiveRecording {
 
 /** Opens the microphone and starts capturing. Null if the browser refused -
     permission denied, no microphone, or an unsupported codec - reported with
-    a toast and treated as an ordinary outcome rather than an error. */
-export async function startRecording(): Promise<ActiveRecording | null> {
+    a toast and treated as an ordinary outcome rather than an error. A
+    cancelled owner gets neither recording nor delayed refusal feedback. */
+export async function startRecording(signal?: AbortSignal): Promise<ActiveRecording | null> {
+  if (signal?.aborted) return null;
   const stream = await openMicrophone();
+  if (signal?.aborted) {
+    if (typeof stream !== 'string') for (const track of stream.getTracks()) track.stop();
+    return null;
+  }
   if (stream === 'unsupported') {
     toast(m.recording_unsupported());
     return null;

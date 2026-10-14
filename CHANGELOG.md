@@ -12,6 +12,10 @@ A scheduled Android backup failure posts one notice across later checks and
 app restarts. Quiet-hours holds survive restarts; a later failure can notify
 again after a successful backup or a destination change.
 
+Leaving or locking the entry editor cancels pending voice and video capture.
+Repeated taps open one stream, and video recorder failures close the camera
+and microphone. Failed captures offer a retry without attaching partial media.
+
 Web rollback with `--previous` returns to the release active before the
 last switch, including after an earlier rollback. Listing and deploy output
 identify the same target. Missing or stale history requires a named rollback;
