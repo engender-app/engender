@@ -175,6 +175,7 @@
 }
 
 -keep,allowobfuscation,includedescriptorclasses class dev.engender.app.photos.PhotoPickChannel {
+    java.io.InputStream limit(java.io.InputStream,long);
     byte[] readFully(java.io.InputStream);
 }
 
