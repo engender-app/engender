@@ -1,5 +1,12 @@
 # The probes in tests/*.mjs
 
+For isolated Daylio preview measurements, run
+`DAYLIO_PREVIEW_BENCHMARK=1 npx vitest run src/lib/data/archive/daylioBackup-performance.test.ts`
+on a quiet host. It reports three preview durations for each of 500, 1,000 and
+2,000 stored 100 KiB JPEG attachments. Fixture creation and complete reads are
+outside the measurement; counts, sniffing, stable identities and sampled
+attachment content are asserted. Normal Node runs skip these large fixtures.
+
 Every `.mjs` file directly under `tests/` is a guard, a gallery, or a helper
 the other two import, plus `walkthrough.test` (`walkthrough.test.mjs`), which has its own npm
 script and its own rules (ADR-0029). A probe written for one ticket's
