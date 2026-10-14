@@ -350,6 +350,9 @@ their own schedules. Neither is a prerequisite for the first stable release or
 a later stable hotfix. An incomplete stage3 or stage4 claim still fails the gate;
 leave its timestamps empty and checks false until that work is complete.
 
+For Android signing and channel-switch evidence, follow
+[Android channel verification](#android-channel-verification).
+
 Commit the candidate source, including release notes, before running its release
 matrix. Record that commit's full SHA in `candidateRevision` and the intended
 version, including any `-rc.N` suffix, in `releaseVersion`. Run and record every
@@ -374,6 +377,51 @@ Use the command for the version being released. Ordinary
 `npm run check:progressive-release` only validates the record's current claims;
 it does not authorize publication. The existing tag workflow still checks the
 signature's presence and main ancestry. No evidence is filled in automatically.
+
+## Android channel verification
+
+Play retains its current app-signing key and update path. The release workflow
+continues to sign GitHub APKs and AAB uploads with the existing developer key.
+Their public fingerprints and separate roles are recorded in
+[SECURITY.md](../SECURITY.md#android-signing-certificates). Do not reset Play's
+key to align channels: existing internal and closed-test installations would
+lose their update path. Play publication remains in the human release workflow.
+
+The selected F-Droid route is
+[reproducible builds with upstream signatures](https://f-droid.org/en/docs/Reproducible_Builds/).
+Its metadata uses the published GitHub APK URL in `Binaries` and pins the
+GitHub APK certificate in `AllowedAPKSigningKeys`. F-Droid independently rebuilds
+the source and verifies the upstream signature. No private key is given to
+F-Droid, and no Play-signed APK is redistributed through these channels.
+
+GitHub/F-Droid in-place switching is a target, not a verified capability.
+Before claiming it works, retain:
+
+- The exact source revision, build recipe, toolchain, version name/code, APK
+  digests and certificate fingerprints for the GitHub and F-Droid artifacts.
+- F-Droid's successful comparison of its clean source rebuild with the signed
+  upstream APK. The local `fdroid-rebuild-report.mjs` only compares two unsigned
+  Gradle builds using already prepared web assets; its result cannot substitute
+  for this comparison or F-Droid's acceptance.
+- Installed updates from GitHub to F-Droid and from F-Droid to GitHub on
+  disposable test installations. Use synthetic journals, compatible
+  equal-or-newer destination versions and the same application ID. Confirm
+  unlock, journal rows and attachment bytes survive each update without
+  uninstalling, clearing data or restoring an Archive. Record device/API,
+  artifact identities and results. A matching certificate alone is insufficient.
+
+Keep the F-Droid submission disabled and its release-record claims unset until
+their required evidence exists. Channel availability follows each store's
+schedule; wait for a compatible version rather than downgrading. Existing
+GitHub and Play installations retain their original signing/update paths.
+The publication workflow and F-Droid acceptance remain separate from this
+signing decision.
+
+Direct switching between Play and the other channels is not supported. If a
+person chooses to move between incompatible channels, they must export an
+Archive and verify restoration on a separate disposable installation before
+uninstalling. Uninstalling removes the local journal; a signing decision does
+not authorize that operation.
 
 OCR generations live under `/tesseract/<sha256>/`. Release preparation retains
 previous OCR directories and freezes historical root URLs before switching
