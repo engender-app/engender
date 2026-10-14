@@ -16,6 +16,10 @@ New automatic dose rows retain their scheduled episode, day and position after
 a time zone change. Logged timestamps stay unchanged. Existing duplicate rows
 are left for the person to review; this update does not merge or delete them.
 
+Care links now carry episode IDs instead of typed drug names. Marks, Log and
+Back keep their lane and date without adding medication text to browser history.
+Existing browser history is not rewritten.
+
 - Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Released schema 88 journals upgrade through schema 89 and 90 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.

@@ -34,16 +34,21 @@ export function withSourceReturn(href: string, source: URL): string {
   return target.pathname + target.search + target.hash;
 }
 
-/** Where a Care-spine source screen goes back to: the lane and day the
-    tapped mark named (`?lane=<drug>&date=<day>`, under either name - `drug`
-    is what a schedule link carries for its own picker), or the hub when it
-    names neither. */
+/** A Care link carries an episode UUID, never its free-text drug name. */
+export function careEpisodeId(url: URL): string | null {
+  const id = url.searchParams.get('episode');
+  return id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : null;
+}
+
+/** Return to the same Care episode and numeric day. Legacy drug/lane text
+    is not copied into another history entry. */
 export function careLaneReturnHref(url: URL): string {
-  const lane = url.searchParams.get('lane') ?? url.searchParams.get('drug');
-  const date = url.searchParams.get('date');
-  if (!lane && !date) return '/more';
+  const episodeId = careEpisodeId(url);
+  const rawDate = url.searchParams.get('date');
+  const date = rawDate !== null && /^-?\d+$/.test(rawDate) ? rawDate : null;
+  if (!episodeId && !date) return '/more';
   const params = new URLSearchParams();
-  if (lane) params.set('lane', lane);
+  if (episodeId) params.set('episode', episodeId);
   if (date) params.set('date', date);
   return `/care?${params.toString()}`;
 }

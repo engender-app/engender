@@ -35,13 +35,16 @@ try {
         }
       }).observe(document.body, { childList: true, subtree: true });
     });
-    if (entry === 'care') await page.locator('a[href="/care/doses?add=1&drug=Estradiol"]').click();
+    if (entry === 'care') await page.locator('[data-care-log="Estradiol"]').click();
     if (entry === 'quick-add') {
       await page.locator('[data-nav-fab]').click();
       await page.locator('[data-choose="dose"]').click();
     }
     if (entry === 'today') await page.locator('[data-dose-add]').click();
     await page.locator('[data-save-dose]').waitFor();
+    const arrival = new URL(page.url());
+    assert.equal(arrival.searchParams.has('drug'), false, 'Medication text stays out of the arrival URL');
+    if (entry === 'care') assert.ok(arrival.searchParams.get('episode'), 'Care keeps its episode context');
     const before = await page.locator('[data-dose]').count();
     assert.match(await page.locator('#dose-requirements').innerText(), /Choose an injection site/, 'Opening says why Save is refused');
     await page.locator('button[data-site="thigh-left"]').click();
