@@ -185,9 +185,14 @@ try {
   await restore();
   await page.waitForFunction(() => window.reopenHeld === true);
   assert.equal(await page.locator('[data-nav-item]').count(), 0, 'recovery has not published route access');
-  await page.evaluate(() => window.releaseReopen());
+  // Leave while the private reopen is held, then return through real BFCache again.
+  // The cancelled reply arrives only after the newer return opens its own worker.
+  await restore();
   await ready();
+  await page.evaluate(() => window.releaseReopen());
   await calendar();
+  assert.equal(await page.evaluate(() => window.historyProof.workers.filter(worker => !worker.retired).length), 1);
+  console.log('PASS repeated actual restoration during held reopen keeps the next retained key and worker');
   // Write through the restored application's UI, then read through normal reload.
   const note = `BFCache saved note ${Date.now()}`;
   await clientRoute('/entry/new/2026-10-05?seedMood=4');
