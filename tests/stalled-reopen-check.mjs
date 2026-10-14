@@ -20,7 +20,7 @@ async function unlock(page) {
 }
 
 try {
-  for (const phase of ['preferences', 'reference']) {
+  for (const phase of ['compatibility', 'preferences', 'reference']) {
     await block(`cancel stalled ${phase} preparation`, 5, async () => {
       const context = await newCapabilityContext(browser);
       const page = await context.newPage();
@@ -49,9 +49,9 @@ try {
           };
           Worker.prototype.postMessage = function (message, ...args) {
             const sql = message.args?.sql ?? '';
-            const matches = phase === 'preferences'
-              ? sql === 'SELECT key, value FROM pref'
-              : sql.includes('FROM gender_dimension ORDER BY id');
+            const matches = phase === 'compatibility' ? sql === 'PRAGMA user_version'
+              : phase === 'preferences' ? sql === 'SELECT key, value FROM pref'
+                : sql.includes('FROM gender_dimension ORDER BY id');
             if (message.op === 'query' && matches) {
               Worker.prototype.postMessage = post;
               window.heldOpeningWorker = this;

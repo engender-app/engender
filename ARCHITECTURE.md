@@ -640,12 +640,13 @@ stateDiagram-v2
   needs_authentication --> booting: key obtained
   booting --> ready: journal opened
   booting --> schema_too_new: journal newer<br/>than the app
+  ready --> schema_too_new: private reopen<br/>finds a newer schema
   booting --> error
 ```
 
-A web lock does not leave `ready`. Two events swap the journal handle a ready state holds: `journal-closed` sets it to null when a lock closes the database, and `journal-reopened` puts the reopened handle back.
+A web lock keeps `ready` with a null journal handle. Every private reopen runs the existing migration owner before reading preferences or reference data. A current schema opens without loading the migration list; a supported older schema follows the same copy and forward-migration policy as cold boot. A newer schema reaches the existing update-recovery gate. Reopen does not repeat cold-boot reconciliation or housekeeping. The session disposes a failed private driver before the boot adapter reports its failure; its file operations remain available for existing migration recovery.
 
-These are the statuses in [stores/boot-state.ts](src/lib/stores/boot-state.ts), and the edges are the ones its transitions allow. Only `booting` reaches `ready` or `schema_too_new`: a gate hands back to `booting` once a key is obtained (`resetToBooting`), and any state can fail into `error`. [stores/boot-machine.ts](src/lib/stores/boot-machine.ts) is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. [stores/boot.svelte.ts](src/lib/stores/boot.svelte.ts) and [boot-platform.ts](src/lib/stores/boot-platform.ts) are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
+These are the statuses in [stores/boot-state.ts](src/lib/stores/boot-state.ts), and the edges are the ones its transitions allow. Only `booting` reaches `ready`; a closed `ready` state can also reach `schema_too_new`. A gate hands back to `booting` once a key is obtained (`resetToBooting`), and any state can fail into `error`. [stores/boot-machine.ts](src/lib/stores/boot-machine.ts) is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. [stores/boot.svelte.ts](src/lib/stores/boot.svelte.ts) and [boot-platform.ts](src/lib/stores/boot-platform.ts) are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
 
 ```mermaid
 sequenceDiagram

@@ -32,6 +32,7 @@ import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { JOURNAL_DATABASE } from '../data/legacy-journal';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
+import { markJournalBusy } from '../data/journal-busy';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
 import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
@@ -332,7 +333,8 @@ export function watchBrowserSession(): () => void {
       await session.resumeAfterNavigation(current);
     })().catch((error) => {
       if (mine === generation && !isLocked(bootState.accessMode)) {
-        dispatch({ type: 'boot-failed', message: describeError(error) });
+        if (error instanceof ReopenPreparationError) reportReopenPreparationFailure(error, current);
+        else dispatch({ type: 'boot-failed', message: describeError(error) });
       }
     }).finally(() => {
       if (mine === generation) browserSession.recovering = false;
@@ -379,12 +381,10 @@ let reopening: Promise<void> = Promise.resolve();
 /* Captured by the synchronous reopen effect, before its first wait. */
 let reopeningCurrent: () => void = () => {};
 
-/* A lock's reopen: the boot's own construction without the boot. The
-   journal was open and migrated minutes ago in this same page, so there is
-   nothing to migrate, reconcile or sweep; what is left is a driver over the
-   key, the preferences and the vocabulary read back, and the facade opened
-   on the new handle. The prewarmed worker the lock started is what the
-   driver takes over, so the wait is an `open` and a few reads. */
+/* A private reopen uses the cold boot's compatibility and migration owner
+   before reading preferences or vocabulary. Another page may have upgraded
+   the journal while this page released its connection. Reconciliation and
+   housekeeping remain cold-boot work. */
 async function reopenJournal(
   dataKey: Uint8Array<ArrayBuffer>,
   current: () => void,
@@ -393,6 +393,14 @@ async function reopenJournal(
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   own(sqlite.driver);
+  const migrating = markJournalBusy();
+  try {
+    await migrateJournal(sqlite.driver, sqlite.fileOps);
+  } catch (error) {
+    migrating(false);
+    throw new ReopenPreparationError(error, sqlite.fileOps);
+  } finally { migrating(); }
+  current();
   const preparing = openJournal(sqlite.driver, photoFiles);
   const preferences = await openPreferences(sqlite.driver, bootCache);
   current();
@@ -411,6 +419,22 @@ async function reopenJournal(
   journalIsOpen();
   dispatch({ type: 'journal-reopened', journal });
   return sqlite.driver;
+}
+
+/** Carry recovery operations through the session's private-driver disposal.
+    The original migration error still reaches the caller after reporting. */
+class ReopenPreparationError extends Error {
+  readonly fileOps: MigrationFileOps;
+  constructor(cause: unknown, fileOps: MigrationFileOps) {
+    super('the private journal could not be prepared', { cause });
+    this.fileOps = fileOps;
+  }
+}
+
+function reportReopenPreparationFailure(error: ReopenPreparationError, current: () => void): void {
+  current();
+  openFileOps = error.fileOps;
+  dispatch({ type: 'journal-open-failed', error: error.cause });
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
@@ -869,7 +893,13 @@ async function perform(effect: BootEffect): Promise<void> {
     case 'reopen-journal': {
       const current = reopeningCurrent;
       reopeningCurrent = () => {};
-      reopening = session.unlock(effect.dataKey, current);
+      reopening = session.unlock(effect.dataKey, current).catch((error) => {
+        if (error instanceof ReopenPreparationError) {
+          reportReopenPreparationFailure(error, current);
+          throw error.cause;
+        }
+        throw error;
+      });
       await reopening.catch(() => {});
       dispatch({ type: 'journal-reopen-ended' });
       return;

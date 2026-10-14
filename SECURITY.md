@@ -13,6 +13,10 @@ derives the key again from your secret. While locked, the page keeps your
 settings, which the lock screen needs for its theme, language and timing,
 and an encrypted copy of an unsaved entry draft.
 
+Before a reopened web connection becomes available, the existing migration
+rules refuse a journal newer than the running build. Unlock and retained
+navigation check compatibility before reading private preferences or content.
+
 JavaScript cannot overwrite memory on demand. The browser frees what the
 app let go of on its own schedule, so the lock does not promise that the
 key's bytes are gone from memory, and it does not protect against

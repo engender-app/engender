@@ -20,6 +20,7 @@ import { checkRadioGroup } from './radio-controls.mjs';
 import { coldUnlock } from './cold-unlock.mjs';
 import { firstRunSetup } from './first-run-setup.mjs';
 import { firstRunBuiltSetup } from './first-run-built-setup.mjs';
+import { verifyWarmSchema } from '../warm-schema-check.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
     element under it is stroked in the role's edge, over the same geometry,
@@ -94,6 +95,10 @@ await block('cold authentication respects newer locks', 5, async () => {
   for (const mode of await coldUnlock(browser, `http://localhost:${port}`)) {
     ok(`${mode} cold authentication cancels after a newer lock and accepts a fresh attempt`);
   }
+});
+
+await block('private reopening checks schema before journal access', 5, async () => {
+  for (const result of await verifyWarmSchema()) ok(`warm schema: ${JSON.stringify(result)}`);
 });
 
 await block('Archive after browser installation loss', 2, async () => {
