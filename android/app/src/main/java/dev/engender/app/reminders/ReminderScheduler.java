@@ -11,14 +11,20 @@ import android.provider.Settings;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class ReminderScheduler {
 
     public static final String PREFS = "engender-reminders";
     private static final String KEY_LAUNCH_ROUTE = "launch-route";
+    static final String PENDING_AT = "pendingAt";
+    static final String BOOT_CATCH_UP = "bootCatchUp";
 
     static final String EXTRA_KIND = "kind";
     static final String EXTRA_REMINDER_ID = "reminderId";
@@ -53,9 +59,18 @@ public final class ReminderScheduler {
 
     public static synchronized void rescheduleFromStore(Context context) {
         ZonedDateTime now = ZonedDateTime.now();
+        rescheduleFromStore(context, now, false);
+    }
+
+    static synchronized void rescheduleAfterBoot(Context context) {
+        rescheduleFromStore(context, ZonedDateTime.now(), true);
+    }
+
+    private static void rescheduleFromStore(Context context, ZonedDateTime now, boolean boot) {
         rescheduleFromStore(() -> loadPayload(context), now,
-            migrated -> ReminderPayloadStore.write(context, migrated),
-            payload -> cancelAll(context, payload), payload -> scheduleAll(context, payload, now));
+            saved -> ReminderPayloadStore.write(context, saved),
+            payload -> cancelAll(context, payload), payload -> scheduleAll(context, payload, now), boot,
+            (payload, reminder) -> ReminderAlarmReceiver.postReminderNotification(context, payload, reminder));
     }
 
     interface PayloadReader {
@@ -70,25 +85,118 @@ public final class ReminderScheduler {
                                 Consumer<JSONObject> cancel, Consumer<JSONObject> schedule) throws Exception {
         JSONObject previous = reader.read();
         ReminderPlanner.anchorLegacyWeeklyRules(payload, now);
+        JSONArray reminders = payload.optJSONArray("reminders");
+        if (reminders != null) {
+            for (int i = 0; i < reminders.length(); i++) {
+                JSONObject reminder = reminders.optJSONObject(i);
+                if (reminder == null) continue;
+                JSONObject old = findReminder(previous, reminder.optString("id", ""));
+                boolean heldCatchUp = old != null && old.optBoolean(BOOT_CATCH_UP) && sameRule(old, reminder);
+                reminder.remove(PENDING_AT);
+                reminder.remove(BOOT_CATCH_UP);
+                if (heldCatchUp) {
+                    reminder.put(BOOT_CATCH_UP, true);
+                }
+                updatePending(reminder, payload, now);
+            }
+        }
         writer.write(payload);
         cancel.accept(previous);
         schedule.accept(payload);
     }
 
-    /** A failed migration write leaves existing alarms intact. Anchored
-        payloads need no further store write. */
+    /** Persist occurrence changes before replacing alarms or posting a caught-up notification. */
     static synchronized void rescheduleFromStore(PayloadReader reader, ZonedDateTime now, PayloadWriter writer,
                                     Consumer<JSONObject> cancel, Consumer<JSONObject> schedule) {
+        rescheduleFromStore(reader, now, writer, cancel, schedule, false, (payload, reminder) -> {});
+    }
+
+    static synchronized void rescheduleFromStore(PayloadReader reader, ZonedDateTime now, PayloadWriter writer,
+                                    Consumer<JSONObject> cancel, Consumer<JSONObject> schedule, boolean boot,
+                                    BiConsumer<JSONObject, JSONObject> post) {
         JSONObject payload;
+        List<JSONObject> missed = new ArrayList<>();
         try {
             payload = reader.read();
             if (payload == null) return;
-            if (ReminderPlanner.anchorLegacyWeeklyRules(payload, now)) writer.write(payload);
+            String before = payload.toString();
+            ReminderPlanner.anchorLegacyWeeklyRules(payload, now);
+            JSONArray reminders = payload.optJSONArray("reminders");
+            if (reminders != null) {
+                for (int i = 0; i < reminders.length(); i++) {
+                    JSONObject reminder = reminders.optJSONObject(i);
+                    if (reminder == null) continue;
+                    boolean due = reminder.has(PENDING_AT)
+                        && reminder.optLong(PENDING_AT) <= now.toInstant().toEpochMilli();
+                    if (boot && due && reminder.optBoolean("enabled", false)) {
+                        ZonedDateTime held = QuietHours.hold(now, payload.optJSONObject("quietHours"));
+                        if (held.isAfter(now)) {
+                            reminder.put(BOOT_CATCH_UP, true);
+                            reminder.put(PENDING_AT, held.toInstant().toEpochMilli());
+                            continue;
+                        }
+                        reminder.remove(BOOT_CATCH_UP);
+                        missed.add(reminder);
+                    }
+                    updatePending(reminder, payload, now);
+                }
+            }
+            if (!before.equals(payload.toString())) writer.write(payload);
         } catch (Exception failedStore) {
             return;
         }
         cancel.accept(payload);
+        for (JSONObject reminder : missed) post.accept(payload, reminder);
         schedule.accept(payload);
+    }
+
+    private static void updatePending(JSONObject reminder, JSONObject payload, ZonedDateTime now) throws Exception {
+        ZonedDateTime next = reminder.optBoolean(BOOT_CATCH_UP) && reminder.optBoolean("enabled", false)
+            ? QuietHours.hold(now, payload.optJSONObject("quietHours"))
+            : ReminderPlanner.nextReminder(reminder, now, payload.optJSONObject("quietHours"));
+        if (next == null || reminder.optString("id", "").isBlank()) {
+            reminder.remove(PENDING_AT);
+            reminder.remove(BOOT_CATCH_UP);
+        } else {
+            reminder.put(PENDING_AT, next.toInstant().toEpochMilli());
+        }
+    }
+
+    private static boolean sameRule(JSONObject left, JSONObject right) {
+        for (String field : new String[] { "enabled", "time", "recurrence", "interval", "anchorEpochDay", "epochDay" }) {
+            if (!String.valueOf(left.opt(field)).equals(String.valueOf(right.opt(field)))) return false;
+        }
+        return true;
+    }
+
+    static JSONObject findReminder(JSONObject payload, String id) {
+        JSONArray reminders = payload == null ? null : payload.optJSONArray("reminders");
+        if (reminders == null || id == null || id.isBlank()) return null;
+        for (int i = 0; i < reminders.length(); i++) {
+            JSONObject reminder = reminders.optJSONObject(i);
+            if (reminder != null && id.equals(reminder.optString("id", ""))) return reminder;
+        }
+        return null;
+    }
+
+    /** Consuming the occurrence must reach disk before its notification can be posted. */
+    static synchronized void deliverReminder(Context context, JSONObject payload, JSONObject reminder, ZonedDateTime now) {
+        deliverReminder(payload, reminder, now, saved -> ReminderPayloadStore.write(context, saved),
+            row -> ReminderAlarmReceiver.postReminderNotification(context, payload, row),
+            row -> scheduleOneReminder(context, payload, row, now));
+    }
+
+    static synchronized void deliverReminder(JSONObject payload, JSONObject reminder, ZonedDateTime now,
+                                    PayloadWriter writer, Consumer<JSONObject> post, Consumer<JSONObject> schedule) {
+        try {
+            reminder.remove(BOOT_CATCH_UP);
+            updatePending(reminder, payload, now);
+            writer.write(payload);
+        } catch (Exception failedStore) {
+            return;
+        }
+        post.accept(reminder);
+        schedule.accept(reminder);
     }
 
     /**
@@ -131,17 +239,17 @@ public final class ReminderScheduler {
     }
 
     static void scheduleOneReminder(Context context, JSONObject payload, JSONObject reminder, ZonedDateTime now) {
-        scheduleOneReminder(payload, reminder, now, fireAt -> {
-            String reminderId = reminder.optString("id", "");
-            if (reminderId.isBlank()) return;
-            PendingIntent pending = PendingIntent.getBroadcast(
-                context,
-                REQUEST_REMINDER,
-                reminderIntent(context, reminderId),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
-            schedule(context, pending, fireAt.toInstant().toEpochMilli());
-        });
+        if (!reminder.has(PENDING_AT)) return;
+        ZonedDateTime fireAt = Instant.ofEpochMilli(reminder.optLong(PENDING_AT)).atZone(now.getZone());
+        String reminderId = reminder.optString("id", "");
+        if (reminderId.isBlank()) return;
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context,
+            REQUEST_REMINDER,
+            reminderIntent(context, reminderId),
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        schedule(context, pending, fireAt.toInstant().toEpochMilli());
     }
 
     static void scheduleOneReminder(JSONObject payload, JSONObject reminder, ZonedDateTime now,
