@@ -1,66 +1,51 @@
-/* The vendored runtime assets that have to sit in static/ under a name the
-   app can ask for, rather than reach the browser through the bundler.
-
-   Two libraries need it, for the same reason and with opposite consequences
-   in the shell. Tesseract loads its worker, its core and its language data
-   by URL, and shell-assets.ts carves that whole directory out of the
-   precache (ADR-0021) because most first visits never open the lab
-   scanner. pdf.js loads the fourteen standard PDF fonts the same way -
-   a document that names Helvetica ships no Helvetica with it - and those
-   stay in the shell: they are 800 KB, not 50 MB, and a document viewer
-   that only works online would be the wrong half of the trade (ADR-0065).
-
-   Its cmaps are deliberately not here. They are what a CJK document needs
-   and they are 1.7 MB of the same, which ADR-0065 leaves out of scope. */
-import { mkdir, copyFile, readdir, rm } from 'node:fs/promises';
+/* OCR installs as one immutable generation. Recognition still loads the
+   library only when requested. PDF fonts remain in the shell (ADR-0065). */
+import { mkdir, copyFile, readdir, rm, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import './patch-sqlite-wasm.mjs';
 
 const root = process.cwd();
-
-const files = [
-  {
-    from: 'node_modules/tesseract.js/dist/worker.min.js',
-    to: 'static/tesseract/worker.min.js'
-  },
-  {
-    from: 'node_modules/tesseract.js-core/tesseract-core.wasm.js',
-    to: 'static/tesseract/tesseract-core.wasm.js'
-  },
-  {
-    from: 'node_modules/tesseract.js-core/tesseract-core.wasm',
-    to: 'static/tesseract/tesseract-core.wasm'
-  },
-  {
-    from: 'node_modules/@tesseract.js-data/eng/4.0.0/eng.traineddata.gz',
-    to: 'static/tesseract/lang-data/eng.traineddata'
-  },
-  {
-    from: 'node_modules/@tesseract.js-data/pol/4.0.0/pol.traineddata.gz',
-    to: 'static/tesseract/lang-data/pol.traineddata'
-  }
+const ocr = [
+  ['tesseract.js/dist/tesseract.esm.min.js', 'tesseract.esm.min.js'],
+  ['tesseract.js/dist/tesseract.min.js.LICENSE.txt', 'tesseract.min.js.LICENSE.txt'],
+  ['tesseract.js/dist/worker.min.js', 'worker.min.js'],
+  ['tesseract.js/dist/worker.min.js.LICENSE.txt', 'worker.min.js.LICENSE.txt'],
+  ['tesseract.js-core/tesseract-core.wasm.js', 'tesseract-core.wasm.js'],
+  ['tesseract.js-core/tesseract-core.wasm', 'tesseract-core.wasm'],
+  ['@tesseract.js-data/eng/4.0.0/eng.traineddata.gz', 'lang-data/eng.traineddata'],
+  ['@tesseract.js-data/pol/4.0.0/pol.traineddata.gz', 'lang-data/pol.traineddata']
 ];
-
-/* Copied as a directory rather than named file by file: the set is
-   pdf.js's to decide, the two LICENSE files in it belong beside the fonts
-   they cover, and a release that pinned a version shipping a fifteenth
-   face should ship it rather than fail to draw it. */
-const PDF_FONTS = 'node_modules/pdfjs-dist/standard_fonts';
-for (const name of await readdir(resolve(root, PDF_FONTS))) {
-  files.push({ from: join(PDF_FONTS, name), to: `static/pdf-fonts/${name}` });
+const hash = createHash('sha256');
+for (const [from, name] of ocr) {
+  hash.update(name + '\0');
+  hash.update(createHash('sha256').update(await readFile(resolve(root, 'node_modules', from))).digest());
 }
-
-for (const file of files) {
-  const from = resolve(root, file.from);
-  const to = resolve(root, file.to);
-  await mkdir(dirname(to), { recursive: true });
-  await copyFile(from, to);
+const generation = hash.digest('hex');
+const prefix = `/tesseract/${generation}/`;
+await rm(resolve(root, 'static/tesseract'), { recursive: true, force: true });
+async function copy(from, to) {
+  const target = resolve(root, to);
+  await mkdir(dirname(target), { recursive: true });
+  await copyFile(resolve(root, from), target);
 }
-
-// AGP expands .gz assets and strips their suffix. Tesseract detects gzip by bytes.
-// Remove only the two names produced by the previous recipe on an existing checkout.
-for (const lang of ['eng', 'pol']) {
-  await rm(resolve(root, `static/tesseract/lang-data/${lang}.traineddata.gz`), { force: true });
+for (const [from, name] of ocr) {
+  await copy(`node_modules/${from}`, `static${prefix}${name}`);
+  // Root paths serve pre-generation pages. Release preparation freezes these
+  // bytes from the previous release; they are not downloaded by new installs.
+  if (!name.startsWith('tesseract.esm') && !name.endsWith('LICENSE.txt')) {
+    await copy(`node_modules/${from}`, `static/tesseract/${name}`);
+  }
 }
+await mkdir(resolve(root, 'src/lib/pwa'), { recursive: true });
+await writeFile(resolve(root, 'src/lib/pwa/ocr-assets.generated.ts'),
+  `// Written by prepare-vendor-assets.mjs.\nexport const OCR_ASSET_PREFIX = ${JSON.stringify(prefix)};\n`);
+await writeFile(resolve(root, 'static/tesseract/assets.json'),
+  JSON.stringify({ generation, assets: ocr.map(([, name]) => prefix + name),
+    legacyRuntime: JSON.parse(await readFile(resolve(root, 'src/lib/pwa/legacy-ocr-assets.json'), 'utf8')) }, null, 2) + '\n');
 
-console.log('Prepared local Tesseract assets in static/tesseract, and pdf.js standard fonts in static/pdf-fonts');
+const fonts = 'node_modules/pdfjs-dist/standard_fonts';
+for (const name of await readdir(resolve(root, fonts))) {
+  await copy(join(fonts, name), `static/pdf-fonts/${name}`);
+}
+console.log(`Prepared OCR generation ${generation} and local PDF fonts`);

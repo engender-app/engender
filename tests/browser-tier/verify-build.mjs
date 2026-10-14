@@ -26,59 +26,14 @@ import { serveBuild } from '../serve-build.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
 import { choosePassphrase, firstRun } from './built-flow.mjs';
 
-/* --- Phase 5 performance ticket 01: the OCR engine, online then offline ---
-
-   The shell no longer precaches that engine, so the question this answers is
-   the one the trade turns on: are its bytes still there with no network, after
-   the app has loaded it once.
-
-   Driven at the cache rather than through the scanner's own sheet: what this
-   file is responsible for is the shell's caching behaviour, not the screen
-   that triggers it, and a real recognition run would make this slower and
-   less deterministic for no gain here. The screen itself - opening the sheet,
-   running a recognition, the download notice it shows first - is the
-   walkthrough's job (ticket 44). The step neither file drives (tesseract
-   reading those files) stays covered by ocr-engine.test.ts, which pins the
-   paths the engine loads from.
-
-   The set the page asks for, as ocr-engine.ts names it. */
-const OCR_ASSETS = [
-  '/tesseract/worker.min.js',
-  '/tesseract/tesseract-core.wasm.js',
-  '/tesseract/tesseract-core.wasm',
-  '/tesseract/lang-data/eng.traineddata',
-  '/tesseract/lang-data/pol.traineddata'
-];
+// The generation manifest comes from the same recipe as the worker and APK.
+const OCR_ASSETS = JSON.parse(readFileSync('build/tesseract/assets.json', 'utf8')).assets;
 
 /* The two built files the shell does not install (phase 14 pre-release ticket
    13; shell-assets.ts has the reasoning). Named by pattern, as it does,
    because their names carry a hash. */
 const PDF_WORKER = /^\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
 const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
-
-/** Loads the engine's files the way a first recognition does, then sends the
-    ask ocr-engine.ts sends once they are in. Returns what each file measured,
-    which is what the offline half is compared against - not the bytes on
-    disk, since the two language files are served .gz and a blob of one is its
-    decompressed size. */
-async function loadAndKeepOcrEngine(page, assets, message) {
-  return await page.evaluate(
-    async ({ assets, message }) => {
-      const sizes = {};
-      for (const asset of assets) {
-        const response = await fetch(asset);
-        if (!response.ok) return `fetching ${asset} answered ${response.status}`;
-        sizes[asset] = (await response.blob()).size;
-      }
-      /* Through the registration, the way ocr-engine.ts sends it: this page
-         installed the worker, so it is not controlled by it. */
-      const registration = await navigator.serviceWorker.getRegistration();
-      registration?.active?.postMessage(message);
-      return registration?.active ? { sizes } : 'no active worker to ask';
-    },
-    { assets, message }
-  );
-}
 
 /** Any screen, from whatever state the page is in.
 
@@ -417,65 +372,16 @@ try {
     ok(`the shell is one cache per release (${shell.names[0]}), ${shell.paths.length} entries, ${megabytes} MB`);
   else fail('the shell is one cache per release', JSON.stringify(shell.names));
 
-  /* The whole of ticket 01's first finding, as the one number a person feels:
-     the shell was 54.06 MB across 324 entries, 49.7 MB of it an OCR engine
-     that a first visit has no use for. The ceiling is deliberately loose - it
-     is here to catch another feature's assets being precached wholesale, not
-     to make an ordinary release fail because a font was added. */
-  const SHELL_CEILING_MB = 15;
-  if (shell.bytes < SHELL_CEILING_MB * 1e6) ok(`a first visit stores ${megabytes} MB, under the ${SHELL_CEILING_MB} MB ceiling`);
-  else fail(`a first visit stores under ${SHELL_CEILING_MB} MB`, `${megabytes} MB across ${shell.paths.length} entries`);
-
-  const precachedOnDemand = shell.paths.filter((path) => path.startsWith('/tesseract/'));
-  if (precachedOnDemand.length === 0) ok('the OCR engine is not in a fresh install\'s shell');
-  else fail("the OCR engine is not in a fresh install's shell", precachedOnDemand.slice(0, 4).join(', '));
-
-  /* The download notice, read off the built bundle rather than off the
-     screen: what can be checked here is that the copy shipped and that both
-     languages of it did. The walkthrough drives the screen itself and checks
-     the notice is actually on it, in whichever one locale that runs in. */
-  const shipped = emittedAssets();
-  /* Read out of the catalogues rather than restated here, so a reworded notice
-     stays checked instead of quietly failing (ADR-0029's rule, applied to copy
-     this file has to name). */
-  const notice = ['messages/en.json', 'messages/pl.json']
-    .map((catalogue) => JSON.parse(readFileSync(catalogue, 'utf8')).labs_ocr_download_title)
-    .filter((line) => shipped.includes(line));
-  if (notice.length === 2) ok('the scanner ships the line that says what it is about to download, in both languages');
-  else fail('the scanner ships its download notice in both languages', `found ${notice.length} of 2`);
-
-  /* Loading the engine, which is what puts it in the cache: the same files
-     ocr-engine.ts fetches, then the same ask it sends afterwards. */
-  const online = await loadAndKeepOcrEngine(cold, OCR_ASSETS, 'engender:cache-on-demand');
-  if (typeof online === 'string') fail('the OCR engine loads from the app origin', online);
-  else ok('the OCR engine loads from the app origin');
-  const onlineSizes = typeof online === 'string' ? {} : online.sizes;
-
-  /* The worker fills its cache off the message, so the wait is for the cache
-     rather than for a reply: the ask is deliberately one-way. Polled with
-     plain evaluates rather than waitForFunction, whose default polling runs on
-     animation frames - which a page that is not the frontmost tab does not
-     get, and this one has had a second page opened over it. */
-  for (let attempt = 0; attempt < 60; attempt++) {
-    const cached = await cold.evaluate(async (assets) => {
-      const cache = await caches.open((await caches.keys())[0]);
-      let found = 0;
-      for (const asset of assets) if (await cache.match(asset)) found++;
-      return found;
-    }, OCR_ASSETS);
-    if (cached === OCR_ASSETS.length) break;
-    await cold.waitForTimeout(1000);
-  }
-
-  const afterUse = await measureCache(cold);
-  const cachedOcr = afterUse.paths.filter((path) => path.startsWith('/tesseract/')).length;
-  if (cachedOcr === OCR_ASSETS.length)
-    ok(
-      `loading the engine adds it to the same release cache (${afterUse.paths.length} entries, ${(
-        afterUse.bytes / 1e6
-      ).toFixed(2)} MB)`
-    );
-  else fail('loading the engine adds it to the release cache', `${cachedOcr} of ${OCR_ASSETS.length} OCR files cached`);
+  const ocrStoredBytes = OCR_ASSETS.reduce((sum, asset) => sum + statSync(join('build', asset)).size, 0);
+  const applicationBytes = shell.bytes - ocrStoredBytes;
+  // The accepted OCR installation cost is separate from the application shell.
+  if (applicationBytes < 15e6) ok(`application shell stores ${(applicationBytes / 1e6).toFixed(2)} MB, under 15 MB`);
+  else fail('application shell stores under 15 MB', `${applicationBytes} bytes`);
+  const precachedOcr = shell.paths.filter(path => path.startsWith('/tesseract/'));
+  if (OCR_ASSETS.every(asset => precachedOcr.includes(asset)) && precachedOcr.length === OCR_ASSETS.length)
+    ok(`fresh installation contains all ${OCR_ASSETS.length} OCR assets (${ocrStoredBytes} stored bytes)`);
+  else fail('fresh installation contains the complete current OCR generation', JSON.stringify(precachedOcr));
+  const onlineSizes = Object.fromEntries(OCR_ASSETS.map(asset => [asset, statSync(join('build', asset)).size]));
 
   /* The PDF renderer's worker, kept out of the install and asked for by the
      first document opened (pdf.ts). Sent the way pdf.ts sends it. Checked on
@@ -507,14 +413,9 @@ try {
      go on answering for the release that was live when it was cached
      (ticket 05).
 
-     The OCR engine is outside it for a different reason, and the assertion is
-     narrowed rather than weakened: /tesseract/ belongs to a feature the app
-     loads on demand, so an install that has never opened the lab scanner is
-     supposed not to hold it, and what is checked below is every file of the
-     release except that set (phase 5 performance ticket 01). The set is named
-     by its directory rather than listed, so a sixth OCR file would join it
-     silently - which is right, since the whole directory is what ships and
-     what a page later asks the worker for. */
+     Current OCR assets are checked against the complete generated manifest
+     above. Root legacy copies stay on the server for older pages and are
+     excluded from a new install. */
   const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
   const release = releasePaths().filter(
     (path) =>
@@ -702,14 +603,9 @@ try {
       deepBooted ? 'the entry editor did not render' : 'the app never booted - check the asset URLs in the cached document'
     );
 
-  /* The half of ticket 01 the whole trade rests on: the engine was loaded once
-     while there was a network, and this is a different browser process against
-     an origin that is gone. Every byte below can only come from the cache the
-     page asked the worker to fill.
-
-     Sizes compared against the files on disk, because a 200 proves less than
-     it looks: an offline fetch that fell through to a cached error page would
-     also be ok. */
+  /* Every OCR byte comes from the fresh installation's complete generation,
+     with no scanner warm-up required. Compare against on-disk bytes so a
+     fallback error page cannot count as an offline engine. */
   const offlineEngine = await deep.evaluate(async (assets) => {
     const sizes = {};
     for (const asset of assets) {

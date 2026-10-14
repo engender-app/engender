@@ -451,3 +451,20 @@ recovery proof workflow uploads both attempts for seven days, including on succe
 `procedure-collapse-motion` (`tests/procedure-collapse-motion.mjs`) records procedure logs closing in light and dark, with descendant paint bounds beside timestamped compositor frames. It checks shared clipping and fading, reopening, rapid selection changes, saved data, unsaved notes, disclosure state and both reduced-motion settings. Run after a demo build: `node tests/procedure-collapse-motion.mjs [output-directory]`; `--baseline` records the unfixed behavior.
 
 `today-settings-sun-motion` captures both navigation directions at 195px, 390px and 1280px in both themes. Painted stripe probes check sun continuity; the recorder also checks interrupted navigation, reduced motion, disguise, lock replacement and all 16 palettes. Run after a demo build: `node tests/today-settings-sun-motion.mjs [output-directory]`. `--baseline` records without assertions; `--gate-only` limits capture to lock replacement.
+
+`node tests/browser-tier/ocr-offline.mjs` uses the production service worker,
+then runs the real OCR engine after offline reload. It checks English/Polish
+lab extraction, interrupted installation/retry and two compatible immutable
+generations. Generation B changes only a library comment, so this proves
+asset isolation rather than compatibility with an arbitrary future Tesseract
+upgrade. The owned Android equivalent is `tests/android-tier/ocr-offline.mjs`.
+
+For historical retained-scanner proof, build the dispatch baseline separately
+and run `OCR_LEGACY_BUILD=/path/to/baseline node
+tests/browser-tier/ocr-legacy-offline.mjs`. The directory must contain `build/`
+and the exact pre-generation runtime recorded in `legacy-ocr-assets.json`.
+The probe opens the genuine production scanner without initializing its
+library, completes the old worker's asset download, reloads to obtain a
+controller, then checks interrupted update and first offline English/Polish
+scans after activation. The committed compressed runtime fixture checks its
+cache retention and release-copy identity in the Node tier.

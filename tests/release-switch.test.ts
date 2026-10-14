@@ -1,7 +1,9 @@
-import { mkdtempSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { gunzipSync } from 'node:zlib';
+import legacyOcr from '../src/lib/pwa/legacy-ocr-assets.json';
 import { describe, expect, test } from 'vitest';
 
 const ROOT = mkdtempSync(join(tmpdir(), 'gd-release-switch-'));
@@ -59,6 +61,86 @@ describe('journal-release deploy and rollback', () => {
 
     const kept = readFileSync(join(root, '1.2.3--build-a', 'release.json'), 'utf8');
     expect(kept).toContain('"schemaMax": 2');
+  });
+
+  test('keeps exact OCR generations and legacy root bytes across switches', () => {
+    const directory = join(ROOT, 'ocr');
+    const root = join(directory, 'releases');
+    const current = join(directory, 'current');
+    const old = join(directory, 'old');
+    const next = join(directory, 'next');
+    makeRelease(old, '2.0.0', 'a', 88);
+    makeRelease(next, '2.0.1', 'b', 88);
+    mkdirSync(join(next, 'tesseract'), { recursive: true });
+    writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
+    const legacyPath = join(old, legacyOcr[0].path);
+    mkdirSync(join(legacyPath, '..'), { recursive: true });
+    writeFileSync(legacyPath, gunzipSync(readFileSync('tests/fixtures/ocr/pre21-tesseract.js.gz')));
+    const a = 'a'.repeat(64), b = 'b'.repeat(64);
+    for (const [path, payload] of [[join(old, 'tesseract', a, 'worker.min.js'), 'old generation'],
+      [join(old, 'tesseract/lang-data/eng.traineddata.gz'), 'old compressed model'],
+      [join(next, 'tesseract', b, 'worker.min.js'), 'new generation'],
+      [join(next, 'tesseract/lang-data/eng.traineddata'), 'new model']]) {
+      mkdirSync(join(path, '..'), { recursive: true }); writeFileSync(path, payload);
+    }
+    expect(run(['deploy', old, '--root', root, '--current', current], ROOT).status).toBe(0);
+    expect(run(['deploy', next, '--root', root, '--current', current], ROOT).status).toBe(0);
+    const deployed = readlinkSync(current);
+    expect(readFileSync(join(deployed, legacyOcr[0].path))).toEqual(readFileSync(legacyPath));
+    expect(readFileSync(join(deployed, 'tesseract', a, 'worker.min.js'), 'utf8')).toBe('old generation');
+    expect(readFileSync(join(deployed, 'tesseract', b, 'worker.min.js'), 'utf8')).toBe('new generation');
+    expect(readFileSync(join(deployed, 'tesseract/lang-data/eng.traineddata'), 'utf8')).toBe('old compressed model');
+  });
+
+  test('refuses an OCR identity collision before switching current', () => {
+    const directory = join(ROOT, 'ocr-collision');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const old = join(directory, 'old'), next = join(directory, 'next');
+    makeRelease(old, '2.0.0', 'a', 88); makeRelease(next, '2.0.1', 'b', 88);
+    for (const [path, payload] of [[old, 'original'], [next, 'changed']]) {
+      const target = join(path, 'tesseract', 'a'.repeat(64), 'worker.min.js');
+      mkdirSync(join(target, '..'), { recursive: true }); writeFileSync(target, payload);
+    }
+    expect(run(['deploy', old, '--root', root, '--current', current], ROOT).status).toBe(0);
+    const previous = readlinkSync(current);
+    const result = run(['deploy', next, '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1); expect(result.stderr).toContain('OCR generation collision');
+    expect(readlinkSync(current)).toBe(previous);
+  });
+
+  test('reads the legacy receipt from the upload with standalone operator scripts', () => {
+    const directory = join(ROOT, 'ocr-standalone');
+    const operator = join(directory, 'operator');
+    mkdirSync(operator, { recursive: true });
+    cpSync(SCRIPT, join(operator, 'journal-release.mjs'));
+    cpSync(join(process.cwd(), 'scripts/app-version.mjs'), join(operator, 'app-version.mjs'));
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const old = join(directory, 'old'), next = join(directory, 'next');
+    makeRelease(old, '2.0.0', 'a', 88); makeRelease(next, '2.0.1', 'b', 88);
+    const source = join(old, legacyOcr[0].path);
+    mkdirSync(join(source, '..'), { recursive: true });
+    writeFileSync(source, gunzipSync(readFileSync('tests/fixtures/ocr/pre21-tesseract.js.gz')));
+    mkdirSync(join(next, 'tesseract'), { recursive: true });
+    writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: legacyOcr }));
+    const deploy = (path: string) => spawnSync('node', [join(operator, 'journal-release.mjs'),
+      'deploy', path, '--root', root, '--current', current], { encoding: 'utf8' });
+    expect(deploy(old).status).toBe(0); expect(deploy(next).status).toBe(0);
+    expect(readFileSync(join(readlinkSync(current), legacyOcr[0].path))).toEqual(readFileSync(source));
+  });
+
+  test('refuses a legacy metadata path outside public chunks', () => {
+    const directory = join(ROOT, 'ocr-path');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const old = join(directory, 'old'), next = join(directory, 'next');
+    makeRelease(old, '2.0.0', 'a', 88); makeRelease(next, '2.0.1', 'b', 88);
+    mkdirSync(join(next, 'tesseract'), { recursive: true });
+    writeFileSync(join(next, 'tesseract/assets.json'), JSON.stringify({ legacyRuntime: [{
+      path: '/../private.js', sha256: 'a'.repeat(64) }] }));
+    expect(run(['deploy', old, '--root', root, '--current', current], ROOT).status).toBe(0);
+    const previous = readlinkSync(current);
+    const result = run(['deploy', next, '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1); expect(result.stderr).toContain('Invalid legacy OCR identity');
+    expect(readlinkSync(current)).toBe(previous);
   });
 
   test('rollback refuses a target whose schemaMax is older than the current one', () => {

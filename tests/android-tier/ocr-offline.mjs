@@ -43,11 +43,18 @@ try {
   attempt('uninstall', pkg); attempt('uninstall', `${pkg}.test`);
   adb('install', '-t', process.env.OCR_OFFLINE_APK);
   adb('install', '-t', process.env.OCR_OFFLINE_TEST_APK);
-  const network = {
-    airplane: adb('shell', 'settings', 'get', 'global', 'airplane_mode_on').trim(),
-    wifi: adb('shell', 'settings', 'get', 'global', 'wifi_on').trim(),
-    wifiStatus: adb('shell', 'cmd', 'wifi', 'status').trim()
-  };
+  const deadline = Date.now() + 15000;
+  let network;
+  do {
+    adb('shell', 'svc', 'wifi', 'disable');
+    network = {
+      airplane: adb('shell', 'settings', 'get', 'global', 'airplane_mode_on').trim(),
+      wifi: adb('shell', 'settings', 'get', 'global', 'wifi_on').trim(),
+      wifiStatus: adb('shell', 'cmd', 'wifi', 'status').trim()
+    };
+    if (network.airplane === '1' && network.wifiStatus.includes('Wifi is disabled')) break;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  } while (Date.now() < deadline);
   if (network.airplane !== '1' || !network.wifiStatus.includes('Wifi is disabled')) {
     throw new Error(`offline state missing: ${JSON.stringify(network)}`);
   }

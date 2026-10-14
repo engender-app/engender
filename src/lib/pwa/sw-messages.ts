@@ -1,24 +1,9 @@
-/* The two messages the page and the service worker exchange (ticket 04, and
-   phase 5 performance ticket 01 for the second).
-
-   Imported by both sides - src/service-worker.ts installs the listeners,
-   update.ts and labs/ocr-engine.ts send them - and by the browser tier's
-   fixture worker, so none of those can drift apart from another on a string.
-   The release gate cannot import from here, being plain .mjs against a built
-   app, so verify-build.mjs writes the one it sends out in full. */
+/* Update activation and the optional PDF worker use fixed messages. */
 
 /** Sent to a waiting worker to let it take over. The page only sends it when
     the journal is idle, which is the whole of the guard: the worker itself
     never calls skipWaiting() on its own schedule (ADR-0021). */
 export const SKIP_WAITING = 'engender:skip-waiting';
-
-/** Sent once the lab scanner's OCR engine has loaded: the page asking for the
-    set the shell deliberately left out to be added to this release's cache, so
-    the scanner keeps working offline from here (shell-assets.ts says why it is
-    out). The ask carries no paths, and that is the point - the worker owns
-    both the cache name and the list, so a page can start the download but
-    cannot name what gets stored under the app's key. */
-export const CACHE_ON_DEMAND = 'engender:cache-on-demand';
 
 /** Just the part of ServiceWorkerGlobalScope these need, so the worker's own
     reference-lib declarations do not have to reach into here. `waitUntil` is
@@ -50,19 +35,14 @@ export function listenForSkipWaiting(sw: SkipWaitingScope): void {
   });
 }
 
-/** Called once by a worker at the top level, with the release's cache name and
-    the set that was kept out of the install. The add is held open with
-    `waitUntil`, because 21 MB is long enough for a browser to decide an idle
-    worker can be shut down and a half-stored engine is worse than none.
-
-    A failed add is dropped: the page has the engine either way, this only
-    decides whether the next open of the scanner needs the network again. */
+/** The PDF renderer stays optional. A page can ask only for the worker's
+    fixed asset list; a failed fetch leaves the request retryable. */
 export function listenForOnDemandCache(
   sw: MessageScope,
   cacheStore: CacheStore,
-  onDemand: { cacheName: string; assets: string[]; message?: string }
+  onDemand: { cacheName: string; assets: string[]; message: string }
 ): void {
-  const message = onDemand.message ?? CACHE_ON_DEMAND;
+  const message = onDemand.message;
   sw.addEventListener('message', (event) => {
     if (event.data !== message) return;
     event.waitUntil(
