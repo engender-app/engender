@@ -227,10 +227,13 @@ export async function readArchiveHeader(
 }
 
 function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'> {
-  let parsed: { kdf?: Argon2Params; salt?: string; chunkSize?: number; totalChunks?: number };
+  let parsed: { kdf?: Argon2Params; salt?: string; chunkSize?: number; totalChunks?: number } | null;
   try {
     parsed = JSON.parse(new TextDecoder().decode(json));
   } catch {
+    throw new CorruptArchiveError('the archive header is not readable');
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
 

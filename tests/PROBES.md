@@ -7,6 +7,11 @@ and v1 preset migration without a presets section (`payload.test.ts`). The
 existing `kdf-cost-cap.test.ts` and `archive-row-validation.test.ts` keep the
 KDF refusal and row identity proofs with their production owners.
 
+`src/lib/data/archive/header-shape.test.ts` sends the retained JSON `null`
+header frame and other non-object headers through `openArchive`. Corrupt-file
+classification must precede key derivation. Newer and invalid format versions
+keep their existing unsupported-file classifications.
+
 `auto-export-scheduler.test.ts` reports one synthetic native backup failure
 across ticks and a fresh scheduler module with the same stored preferences.
 It checks quiet-hours holds, notification refusal, disabled notices, clock
