@@ -894,6 +894,17 @@ fresh installs, failure cleanup and restoration of network settings.
 upgrade, refuses mismatched sources and fabricated control roles, and keeps
 optional-only evidence insufficient for the core release gate.
 
+## First-load budget
+
+`tests/check-first-load-budget.test.ts` reads the committed budget and rejects
+a 16-file startup graph or a 14,139-byte increase, the eager d3 regression
+from the audit. It also checks that the recorded byte allowance ends at
+1,024 bytes above the baseline. `npm run check:first-load-budget` measures
+the production build's English and Polish graphs, including the locale
+selector, and gates the larger result. Record an intended graph change with
+`node scripts/check-first-load-budget.mjs --record` and name it in the budget
+file's dated note. Demo builds remain exempt.
+
 ## Node calendar zones
 
 CI runs the full Node suite under both `TZ=UTC` and `TZ=Europe/Warsaw`.

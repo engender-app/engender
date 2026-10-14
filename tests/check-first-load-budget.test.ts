@@ -4,8 +4,32 @@
    audit to notice they grew. */
 import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { budgetFailures, firstLoadBudgetFor, firstLoadUrls, gzipTotal, localeGraphsForShell } from '../scripts/check-first-load-budget.mjs';
+
+describe('recorded production startup budget', () => {
+  const { firstLoad } = JSON.parse(readFileSync('scripts/first-load-budget.json', 'utf8'));
+
+  it('keeps final-audit 10\'s 15-file graph without spare round trips', () => {
+    expect(budgetFailures({ files: 16, gzipBytes: firstLoad.gzipBytesBaseline }, firstLoad))
+      .toEqual(['first-load file count is 16, over the 15 budget']);
+  });
+
+  it('allows only the 1,024-byte build wobble above the recorded bytes', () => {
+    const baseline = { files: firstLoad.filesBaseline, gzipBytes: firstLoad.gzipBytesBaseline };
+    expect(budgetFailures({ ...baseline, gzipBytes: baseline.gzipBytes + 1024 }, firstLoad)).toEqual([]);
+    expect(budgetFailures({ ...baseline, gzipBytes: baseline.gzipBytes + 1025 }, firstLoad))
+      .toHaveLength(1);
+  });
+
+  it('rejects the audit\'s 14,139-byte eager d3 increase even without another file', () => {
+    const measured = { files: 15, gzipBytes: firstLoad.gzipBytesBaseline + 14139 };
+    expect(budgetFailures(measured, firstLoad)).toEqual([
+      `first-load gzip total is ${measured.gzipBytes}B, over the ${firstLoad.gzipBytesBudget}B budget`
+    ]);
+  });
+});
 
 describe('localeGraphsForShell', () => {
   const html = '<script>const engenderLocaleGraphs = { en: {}, pl: {} };</script>';
