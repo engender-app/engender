@@ -55,6 +55,8 @@ supported update path.
 
 ## 1.0.0
 
+Android lab scanning finds its bundled English and Polish language data on the first offline scan. Release checks reject missing or renamed OCR assets in the APK.
+
 Android automatic backups sync the local file and folder, then check the delivered bytes before reporting success or pruning older backups. Unsupported providers report incomplete delivery and preserve the last good backup.
 
 Android PIN and journal passphrase changes wait until the credential wrap is saved to app-private storage and synced. Released OPFS wraps move there on first use. A failed change asks you to keep both credentials until the active one is checked.

@@ -2,7 +2,7 @@
    signed Android artifacts, and one version value across artifacts. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -37,8 +37,41 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+/** Check the requested OCR names, including any additional web OCR assets.
+ * @param {string} apk
+ * @param {string} webBuildDir
+ */
+export function androidOcrAssetProblems(apk, webBuildDir = 'build') {
+  const required = ['tesseract/worker.min.js', 'tesseract/tesseract-core.wasm.js',
+    'tesseract/tesseract-core.wasm', 'tesseract/lang-data/eng.traineddata',
+    'tesseract/lang-data/pol.traineddata'];
+  const problems = required.filter((path) => !existsSync(join(webBuildDir, path)))
+    .map((path) => `Missing web OCR asset: ${path}`);
+  const paths = new Set(required);
+  /** @param {string} directory @param {string} prefix */
+  function collect(directory, prefix) {
+    if (!existsSync(directory)) return;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = `${prefix}/${entry.name}`;
+      if (entry.isDirectory()) collect(join(directory, entry.name), path);
+      else paths.add(path);
+    }
+  }
+  collect(join(webBuildDir, 'tesseract'), 'tesseract');
+  let packaged;
+  try {
+    packaged = new Set(execFileSync('unzip', ['-Z1', apk], { encoding: 'utf8', stdio: 'pipe' }).split(/\r?\n/));
+  } catch {
+    return [...problems, `Cannot inspect APK OCR assets: ${apk}`];
+  }
+  for (const path of paths) {
+    if (!packaged.has(`assets/public/${path}`)) problems.push(`Missing APK OCR asset: assets/public/${path}`);
+  }
+  return problems;
+}
+
 /**
- * @param {{version: string, releaseDir: string, androidBuildDir: string, versionCode: number}} input
+ * @param {{version: string, releaseDir: string, androidBuildDir: string, versionCode: number, webBuildDir?: string}} input
  */
 export function releaseArtifactProblems(input) {
   const { version, releaseDir, androidBuildDir, versionCode } = input;
@@ -48,6 +81,8 @@ export function releaseArtifactProblems(input) {
   for (const name of expected) {
     if (!existsSync(join(releaseDir, name))) problems.push(`Missing artifact: ${name}`);
   }
+  const apk = join(releaseDir, `engender-android-release-${version}.apk`);
+  if (existsSync(apk)) problems.push(...androidOcrAssetProblems(apk, input.webBuildDir));
 
   const sumsPath = join(releaseDir, 'SHA256SUMS');
   if (!existsSync(sumsPath)) {
