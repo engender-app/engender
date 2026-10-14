@@ -1677,6 +1677,8 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     --inset-left: 0px;
   }
 
+  .app-viewport { container-type: inline-size; }
+
   .app-viewport,
   .app,
   .app-main {
