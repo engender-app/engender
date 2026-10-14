@@ -5,13 +5,25 @@ const {
   notifyFailure,
   runAndroidAutoExport,
   snapshot,
-  toast
+  toast,
+  preferenceState
 } = vi.hoisted(() => ({
   status: vi.fn(),
   notifyFailure: vi.fn(),
   runAndroidAutoExport: vi.fn(),
   snapshot: vi.fn(),
-  toast: vi.fn()
+  toast: vi.fn(),
+  preferenceState: {
+    lastBackupAt: null as number | null,
+    backupNoticeDismissed: true,
+    exportFailureNoticeEnabled: true,
+    heldExportFailureNotice: false,
+    lastExportFailureNotifiedAt: null as number | null,
+    hideNotificationTitles: false,
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00'
+  }
 }));
 
 vi.mock('$lib/platform', () => ({ isAndroid: () => true }));
@@ -25,19 +37,10 @@ vi.mock('$lib/paraglide/messages', () => ({
 }));
 vi.mock('$lib/stores/toasts.svelte', () => ({ toast }));
 vi.mock('$lib/data/prefs/store.svelte', () => ({
-  prefs: {
-    lastBackupAt: null as number | null,
-    backupNoticeDismissed: true,
-    /* The registry's own switches for this producer (phase 6 ticket 04), at
-       the defaults a journal that has never opened /settings/notifications
-       is on. */
-    exportFailureNoticeEnabled: true,
-    heldExportFailureNotice: false,
-    hideNotificationTitles: false,
-    quietHoursEnabled: false,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '07:00'
-  }
+  prefs: preferenceState,
+  setPreferenceDurably: vi.fn(async (key: keyof typeof preferenceState, value: never) => {
+    preferenceState[key] = value;
+  })
 }));
 vi.mock('$lib/data/live/journal.svelte', () => ({
   journal: { archive: { snapshot } }
@@ -49,13 +52,12 @@ vi.mock('./android-auto-export-bridge', () => ({
   }
 }));
 vi.mock('./android-auto-export', () => ({
-  isDue: vi.fn(),
   runAndroidAutoExport
 }));
 
 import { prefs } from '$lib/data/prefs/store.svelte';
-import { isDue } from './android-auto-export';
-import { startAutoExportScheduler, stopAutoExportScheduler } from './auto-export-scheduler';
+let startAutoExportScheduler: () => void;
+let stopAutoExportScheduler: () => void;
 
 const flush = async () => {
   /* Fake timers don't advance for a dynamic import's own microtask hop
@@ -65,15 +67,15 @@ const flush = async () => {
   for (let i = 0; i < 12; i++) await Promise.resolve();
 };
 
-/* A real 2026 date rather than a few seconds past the epoch: quiet hours are
-   read off the local wall clock, so the cases below that care about the hour
-   set an explicit date, and `lastAttemptAt` is module state that outlives a
-   test - a later case landing in 1970 would look like a backup attempted 56
-   years in the future and be skipped by the minimum-gap check. */
+/* Quiet hours use local wall time, so each case starts on a real date. */
+let stopFreshScheduler: (() => void) | undefined;
+
 let nowSeed = new Date(2026, 8, 1).getTime();
 
 describe('auto-export scheduler', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ startAutoExportScheduler, stopAutoExportScheduler } = await import('./auto-export-scheduler'));
     vi.useFakeTimers();
     nowSeed += 2_000_000;
     vi.setSystemTime(new Date(nowSeed));
@@ -95,23 +97,22 @@ describe('auto-export scheduler', () => {
       lastFailureReason: null
     });
     snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], measurements: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
-    vi.mocked(isDue).mockReturnValue(true);
     runAndroidAutoExport.mockResolvedValue({ outcome: 'ok', writtenAt: 10 });
     prefs.lastBackupAt = null;
     prefs.backupNoticeDismissed = true;
     prefs.exportFailureNoticeEnabled = true;
     prefs.heldExportFailureNotice = false;
+    prefs.lastExportFailureNotifiedAt = null;
     prefs.hideNotificationTitles = false;
     prefs.quietHoursEnabled = false;
   });
 
   afterEach(() => {
-    /* Carry the clock forward past whatever this case moved it to: the
-       scheduler's `lastAttemptAt` is module state that outlives a test, and a
-       later case landing before it reads as a backup attempted in the future
-       and is skipped by the minimum-gap check. */
+    // Quiet-hours cases may advance into another day.
     nowSeed = Math.max(nowSeed, Date.now());
     stopAutoExportScheduler();
+    stopFreshScheduler?.();
+    stopFreshScheduler = undefined;
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
@@ -142,7 +143,6 @@ describe('auto-export scheduler', () => {
   });
 
   test('does not repack an eligible stage before refresh window', async () => {
-    vi.mocked(isDue).mockReturnValue(false);
     status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true, stagedSnapshotAt: nowSeed, nextDueAt: nowSeed + 7 * 86400000 });
 
     startAutoExportScheduler();
@@ -162,7 +162,6 @@ describe('auto-export scheduler', () => {
   });
 
   test('prepares one stage before due when no encrypted snapshot is available', async () => {
-    vi.mocked(isDue).mockReturnValue(false);
     runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });
     startAutoExportScheduler();
     await flush();
@@ -172,7 +171,6 @@ describe('auto-export scheduler', () => {
   });
 
   test('refreshes an older stage once during final day before due', async () => {
-    vi.mocked(isDue).mockReturnValue(false);
     status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
       stagedSnapshotAt: nowSeed - 2 * 86400000, nextDueAt: nowSeed + 3600000 });
     runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });
@@ -333,5 +331,180 @@ describe('auto-export scheduler', () => {
     startAutoExportScheduler();
     await flush();
     expect(runAndroidAutoExport).toHaveBeenCalledTimes(2);
+  });
+
+  test('reports one native delivery failure across ticks and a fresh scheduler module', async () => {
+    const native = { enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
+      stagedSnapshotAt: null as number | null, nextDueAt: nowSeed,
+      lastFailureAt: null as number | null };
+    status.mockImplementation(async () => ({ ...native }));
+    runAndroidAutoExport.mockImplementationOnce(async () => {
+      native.lastFailureAt = nowSeed + 5;
+      native.stagedSnapshotAt = nowSeed;
+      return { outcome: 'failed', reason: 'destination-full' };
+    });
+
+    startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(native.lastFailureAt);
+
+    stopAutoExportScheduler();
+    vi.resetModules();
+    const fresh = await import('./auto-export-scheduler');
+    stopFreshScheduler = fresh.stopAutoExportScheduler;
+    fresh.startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+  });
+
+  test.each(['success', 'destination change'])('a new failure after %s notifies again', async (change) => {
+    const native = { enabled: false, lastFailureAt: nowSeed as number | null,
+      lastSuccessAt: null as number | null, destinationUri: 'content://tree/backup' };
+    status.mockImplementation(async () => ({ ...native }));
+    startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+
+    native.lastFailureAt = null;
+    if (change === 'success') native.lastSuccessAt = nowSeed + 1;
+    else native.destinationUri = 'content://tree/new-backup';
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+
+    expect(prefs.lastExportFailureNotifiedAt).toBeNull();
+    // Reusing a timestamp after a cleared native failure is still a new event.
+    native.lastFailureAt = nowSeed;
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(2);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(native.lastFailureAt);
+  });
+
+  test('holds one native failure across a cold module and posts once after quiet hours', async () => {
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    prefs.quietHoursEnabled = true;
+    status.mockResolvedValue({ enabled: false, lastFailureAt: quiet.getTime() });
+    startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).not.toHaveBeenCalled();
+    expect(prefs.heldExportFailureNotice).toBe(true);
+
+    stopAutoExportScheduler();
+    vi.resetModules();
+    const fresh = await import('./auto-export-scheduler');
+    stopFreshScheduler = fresh.stopAutoExportScheduler;
+    const morning = new Date(quiet);
+    morning.setDate(morning.getDate() + 1);
+    morning.setHours(8, 0);
+    vi.setSystemTime(morning);
+    fresh.startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+    expect(prefs.heldExportFailureNotice).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not replay a native failure dropped while notices were off', async () => {
+    status.mockResolvedValue({ enabled: false, lastFailureAt: nowSeed });
+    prefs.exportFailureNoticeEnabled = false;
+    startAutoExportScheduler();
+    await flush();
+    stopAutoExportScheduler();
+    vi.resetModules();
+    const fresh = await import('./auto-export-scheduler');
+    stopFreshScheduler = fresh.stopAutoExportScheduler;
+    prefs.exportFailureNoticeEnabled = true;
+    fresh.startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).not.toHaveBeenCalled();
+  });
+
+  test('retries a native failure notice when posting rejects', async () => {
+    status.mockResolvedValue({ enabled: false, lastFailureAt: nowSeed });
+    notifyFailure.mockRejectedValueOnce(new Error('notification unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+      expect(prefs.lastExportFailureNotifiedAt).toBeNull();
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+      await flush();
+      expect(notifyFailure).toHaveBeenCalledTimes(2);
+      expect(prefs.lastExportFailureNotifiedAt).toBe(nowSeed);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test('a distinct native failure notifies after the device clock moves back', async () => {
+    const native = { enabled: false, lastFailureAt: nowSeed };
+    status.mockImplementation(async () => ({ ...native }));
+    startAutoExportScheduler();
+    await flush();
+    native.lastFailureAt -= 1000;
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(2);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(native.lastFailureAt);
+  });
+
+  test('a held native notice remains held if posting rejects', async () => {
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    prefs.quietHoursEnabled = true;
+    status.mockResolvedValue({ enabled: false, lastFailureAt: quiet.getTime() });
+    startAutoExportScheduler();
+    await flush();
+    stopAutoExportScheduler();
+    const morning = new Date(quiet);
+    morning.setDate(morning.getDate() + 1);
+    morning.setHours(8, 0);
+    vi.setSystemTime(morning);
+    notifyFailure.mockRejectedValueOnce(new Error('notification unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+      expect(prefs.heldExportFailureNotice).toBe(true);
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+      await flush();
+      expect(prefs.heldExportFailureNotice).toBe(false);
+      expect(notifyFailure).toHaveBeenCalledTimes(2);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test('does not consume a native failure when its quiet-hours hold cannot persist', async () => {
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    prefs.quietHoursEnabled = true;
+    status.mockResolvedValue({ enabled: false, lastFailureAt: quiet.getTime() });
+    const { setPreferenceDurably } = await import('$lib/data/prefs/store.svelte');
+    // The production setter logs a refused write and leaves its projection unchanged.
+    vi.mocked(setPreferenceDurably).mockImplementationOnce(async () => {});
+    startAutoExportScheduler();
+    await flush();
+    expect(prefs.heldExportFailureNotice).toBe(false);
+    expect(prefs.lastExportFailureNotifiedAt).toBeNull();
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(prefs.heldExportFailureNotice).toBe(true);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(quiet.getTime());
+    expect(notifyFailure).not.toHaveBeenCalled();
   });
 });

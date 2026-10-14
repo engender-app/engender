@@ -150,3 +150,10 @@ test('the ticked scales travel with the journal, because they describe it (ADR-0
   expect(PORTABLE_KEYS).toContain('activeScales');
   expect(BOOT_KEYS).not.toContain('activeScales');
 });
+
+test('backup failure notification history stays on this device', () => {
+  expect(PREFERENCE_DEFAULTS.lastExportFailureNotifiedAt).toBeNull();
+  expect(DEVICE_LOCAL_KEYS).toContain('lastExportFailureNotifiedAt');
+  expect(PORTABLE_KEYS).not.toContain('lastExportFailureNotifiedAt');
+  expect(BOOT_KEYS).not.toContain('lastExportFailureNotifiedAt');
+});
