@@ -1,6 +1,7 @@
 /* Quiet toast confirmations, rendered by Toasts.svelte in the layout. */
 
 import { announce } from './announcer.svelte';
+import { forgetOnLock } from '../lock/forget-content';
 
 interface ToastItem {
   id: number;
@@ -21,6 +22,8 @@ interface ToastItem {
 
 let seq = 1;
 export const toasts = $state<ToastItem[]>([]);
+export const toastLifetime = $state({ generation: 0 });
+const pending = new Map<number, ReturnType<typeof setTimeout>>();
 
 export function toast(
   message: string,
@@ -30,13 +33,22 @@ export function toast(
   const item: ToastItem = { id: seq++, message, actionLabel: opts.actionLabel, onAction: opts.onAction, kind: opts.kind, raised };
   toasts.push(item);
   announce(message, opts.kind === 'failed');
-  setTimeout(() => {
-    const i = toasts.findIndex((t) => t.id === item.id);
-    if (i >= 0) toasts.splice(i, 1);
-  }, opts.duration ?? 4000);
+  pending.set(item.id, setTimeout(() => dismissToast(item.id), opts.duration ?? 4000));
 }
 
 export function dismissToast(id: number) {
+  clearTimeout(pending.get(id));
+  pending.delete(id);
   const i = toasts.findIndex((t) => t.id === id);
   if (i >= 0) toasts.splice(i, 1);
 }
+
+/** Concealment also retires outgoing toast DOM and its old action bindings. */
+export function clearToasts(): void {
+  for (const timer of pending.values()) clearTimeout(timer);
+  pending.clear();
+  for (const item of toasts) item.onAction = undefined;
+  toasts.splice(0);
+  toastLifetime.generation++;
+}
+forgetOnLock(clearToasts);

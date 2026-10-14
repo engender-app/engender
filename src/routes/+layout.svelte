@@ -19,7 +19,7 @@
 
   import { navigating, page } from '$app/state';
   import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
@@ -34,7 +34,8 @@
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
-  import { speech } from '$lib/stores/announcer.svelte';
+  import { announce, speech } from '$lib/stores/announcer.svelte';
+  import { clearToasts } from '$lib/stores/toasts.svelte';
   import { bootState, browserSession, closeJournalForLock, recoveryUnlock, startBoot, watchBrowserSession } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -103,6 +104,9 @@
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
+  $effect(() => {
+    if (prefs.disguise) untrack(() => { announce.clear(); clearToasts(); });
+  });
   $effect(() => {
     const stopLock = watchLock(closeJournalForLock);
     const stopSession = watchBrowserSession();
