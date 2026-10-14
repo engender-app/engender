@@ -939,3 +939,18 @@ replacement, and deduplicates each transfer. Native `FileResetOwnershipTest`
 checks that retained staging contains no Activity or plugin owner and that
 reset closes its in-memory key. Existing reset and scheduled-backup tests
 remain unchanged.
+
+`tests/protection-change-check.mjs` exercises mounted current-protection prompts
+against synthetic journals, real browser storage and the shipped cryptography.
+It covers PIN, passphrase and a fake WebAuthn PRF authenticator, refused and
+cancelled approval, minting, replacement, rejection of the old recovery key and
+single-operation approval. Post-recovery setup consumes its proof once; a failed
+publication keeps the old PIN and requires the existing recovery key for retry.
+The fixture does not verify biometric hardware. Node tests cover Android biometric
+outcomes and existing-recovery-key approval through fake ports, plus credential,
+lock, cancellation, reset and session ownership races. The credential-change
+probe holds OPFS publication before close and requires a lock/reset-invalidated
+operation to abort, then verifies a new authenticated operation and cold unlock.
+The cleanup probe requires the published secret on retry after old-binding
+cleanup fails. Browser swap close and native bridge dispatch are the respective
+publication admission boundaries; later cancellation cannot undo committed data.

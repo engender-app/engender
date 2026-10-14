@@ -33,9 +33,10 @@ export async function setupJournalPassphrase(passphrase: string): Promise<Uint8A
 /** The access-mode operation owns credential mutation through cleanup. */
 export async function addJournalPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
-  passphrase: string
+  passphrase: string,
+  current: () => void = () => {}
 ): Promise<void> {
-  await writeKeystoreFile(await wrapDataKeyWithSecret(dataKey, passphrase));
+  await writeKeystoreFile(await wrapDataKeyWithSecret(dataKey, passphrase), current);
 }
 
 /** Every later run: throws DecryptionFailedError on a wrong passphrase,

@@ -165,6 +165,12 @@ your journal: clearing browser storage, wiping app data or losing a device
 can remove the only local copy. The maintainer cannot recover passwords
 or keys.
 
+Creating or replacing a recovery key and changing access mode ask for the
+current PIN, passphrase or biometrics again. Web device-bound mode instead
+explains that the unlocked browser has this authority. Android unlocked mode
+requires biometrics or an existing recovery key and blocks the change without
+either. A recovery unlock approves one immediate protection setup only.
+
 CSV, JSON, journal books, clinician summaries and exported images or videos
 are readable files. Anyone who receives them can read their contents.
 Choose an encrypted Archive when you need a private backup.

@@ -68,3 +68,15 @@ test('a successful write records createWritable, write, close and reads back', a
   await expect(readRecoveryWrapFile()).resolves.toEqual(wrap);
   vi.unstubAllGlobals();
 });
+
+test('cancellation before recovery-wrap commit preserves the old recovery key', async () => {
+  const wrap = await wrapDataKeyWithRecoveryKey(new Uint8Array(32), generateRecoveryKey());
+  const { root, log, files } = fakeRoot();
+  files[RECOVERY_KEY_FILE] = 'previous';
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+  try {
+    await expect(writeRecoveryWrapFile(wrap, () => { throw new Error('cancelled'); })).rejects.toThrow('cancelled');
+    expect(log).toEqual(['createWritable', 'write', 'abort']);
+    expect(files[RECOVERY_KEY_FILE]).toBe('previous');
+  } finally { vi.unstubAllGlobals(); }
+});

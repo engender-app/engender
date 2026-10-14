@@ -8704,6 +8704,8 @@ try {
   await page.locator('a[href="/settings/recovery-key"]').click();
   await page.waitForSelector('[data-make-recovery-key]');
   await page.locator('[data-make-recovery-key]').click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
 
   /* The key itself, gripped by its handle rather than by its copy
      (ADR-0029). Its shape is the assertion: five groups of five from the
@@ -8885,6 +8887,8 @@ try {
 
   await typePin('1234');
   await typePin('1234');
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   await page.waitForSelector('[data-security-list]');
 
   /* The retired gate's preference is gone rather than merely unread: a
@@ -9011,6 +9015,7 @@ try {
   await page.locator('a[href="/settings/recovery-key"]').click();
   await page.waitForSelector('[data-make-recovery-key]');
   await page.locator('[data-make-recovery-key]').click();
+  await typePin('1234');
   const written = (await page.locator('[data-recovery-key]').innerText()).trim();
   await page.locator('[data-recovery-key-done]').click();
   await page.waitForSelector('[data-list-row="remove-recovery-key"]');

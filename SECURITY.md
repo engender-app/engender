@@ -48,42 +48,45 @@ can request at most 64 MiB of Argon2id memory, six iterations, one lane and a
 the released 64 MiB, three-iteration profile; the import ceiling allows twice
 its combined cost without increasing the memory request.
 
-## Accepted authentication policy, implementation pending
+## Authentication for recovery and access changes
 
-On 14 October 2026, the owner approved fresh authentication for each recovery
-key mint, recovery key replacement and access-mode change. This decision does
-not add those checks to the app. The current recovery and access-mode flows
-can use an already unlocked session; the implementation remains separate work.
-Recovery replacement already asks for confirmation and warns that the old key
-will stop opening the journal. Credential serialization prevents conflicting
-changes, but does not authenticate the person making them.
+Creating or replacing a recovery key and changing access mode require a new
+successful check of the current protection. PIN mode verifies the current PIN
+with its existing attempt accounting; passphrase mode verifies the current
+passphrase; biometric protection requires a new successful biometric prompt.
+A proposed replacement credential and an earlier unlock do not approve a change.
+Android device-lock fallback is not offered for these operations.
 
-The follow-up must verify the current PIN in PIN mode, the current passphrase
-in passphrase mode, or require a new successful biometric authentication in
-biometric mode. An earlier unlock or a proposed new credential is insufficient.
-Failed or cancelled authentication must not fall back to session authority.
-Android device-lock fallback is not an approved substitute for biometrics.
+Each prompt belongs to one operation in one journal session. Cancellation,
+lock, reset, session replacement or credential changes invalidate pending
+approval. The operation checks the persisted credential and recovery-wrap
+identities again under credential serialization. It checks ownership after
+key derivation or authenticator enrolment and before publishing a wrap. Browser
+writes abort their swap file if approval is revoked before close; native writes
+check before bridge dispatch. A write already committed cannot be rolled back
+by a later cancellation. Existing atomic publication and old-binding cleanup
+remain in force. If cleanup fails after a new secret is published, the change
+reports failure and a retry verifies that published secret.
 
-Approval must authorize only one operation in the current journal and session.
-Cancellation leaves the current recovery wrap and access mode unchanged. Lock,
-reset, session replacement or credential changes invalidate approval, including
-late successful authentication callbacks. The operation must recheck ownership
-before publishing any change.
+Web device-bound mode has no current secret. Its confirmation explains that
+anyone holding the unlocked browser can create lasting access or replace the
+journal's protection. Choosing a new secret is not owner authentication. This
+session-authority exception applies only to web device-bound mode.
 
-Web device-bound mode is the explicit exception for both recovery changes and
-access-mode changes: it has no current secret, so an unlocked session is
-sufficient. The flow must explain this exception. Someone holding an unlocked
-web journal can create lasting access or replace its protection; choosing a new
-secret during that flow is not authentication of the current owner. This
-exception does not extend to Android or create another access mode.
+Android unlocked mode requires a fresh biometric check or the existing recovery
+key. If neither is available, recovery-key and access-mode changes are blocked.
+This does not introduce a device-lock fallback or a new access mode.
 
-Implementation must preserve PIN throttling, existing failure behavior, durable
-credential publication, and the recovery replacement confirmation and old-key
-warning. Synthetic-journal tests must cover successful operations, wrong
-credentials, biometric failure and cancellation, single-operation approval,
-and invalidation races, as well as the web device-bound exception. The separate
-recovery replacement protocol decision remains outside this authentication
-policy; this decision does not settle interrupted replacement behavior.
+A successful recovery unlock approves only the immediate post-recovery
+protection setup, once, in that recovered session. It does not approve general
+Settings changes or recovery-key minting. If setup fails after consuming this
+proof, another attempt requires the existing recovery key again. No operation
+stores the typed key or adopts a newly verified key as another journal session.
+
+Replacement still asks for confirmation and warns that the old recovery key
+stops opening the journal. The separate interrupted-replacement protocol is
+unchanged. The policy was approved on 14 October 2026, including its explicit
+post-recovery and Android unlocked cases.
 
 ## Android signing certificates
 
