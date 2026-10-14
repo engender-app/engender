@@ -825,4 +825,7 @@ and notification helpers run only in an isolated package. See
 use synthetic records to check dirty-source refusal, record-only commit
 equivalence, stale timestamps, missing build/stage identity and optional-stage
 claims. They do not substitute for an Android runtime run. The runner records
-actual completed checks and APK hashes only after a clean passing run.
+actual completed checks and APK hashes only after a clean passing run. Current
+Android must also complete isolated first-use OCR in airplane mode with its own
+APK identity. `offline-ocr-stage.test.ts` uses fake device replies to verify
+fresh installs, failure cleanup and restoration of network settings.

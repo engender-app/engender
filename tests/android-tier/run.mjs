@@ -40,6 +40,7 @@ import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtem
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { offlineOcrStage } from './offline-ocr-stage.mjs';
 import { lockedProcessDeath } from './locked-process-death.mjs';
 import { installationRecovery } from './archive/recovery.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
@@ -182,7 +183,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
+for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal', 'ocr'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -300,7 +301,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest,dev.engender.app.ocr.OcrOfflineRecognitionTest`])
           ],
           {
             cwd: androidDir,
@@ -532,6 +533,31 @@ for (const avd of AVDS) {
         } else console.log(`SKIP ${avd}: staged Archive production needs a supported WebView`);
       } finally { backupStage('cleanup'); }
       if (failureCount === beforeBackup) activeRun.completedStages.push(BACKUP_STAGES.size ? 'selected-native-backup' : 'native-backup');
+    }
+    if (!nativeOnly && activeRun.kind === 'core') {
+      // The test provider has a fixed authority; remove the completed core
+      // instrumentation package before installing the isolated OCR pair.
+      for (const pkg of ['dev.engender.app.test', 'dev.engender.app']) {
+        const removed = device(['uninstall', pkg]);
+        if (removed.status !== 0 || removed.error || removed.signal || !removed.stdout.includes('Success')) {
+          throw new Error(`could not remove completed core package before offline OCR: ${pkg}`);
+        }
+      }
+      const pkg = 'dev.engender.app.test.offlineocr';
+      const init = join(evidenceDir, 'ocr-package.gradle');
+      writeFileSync(init, `allprojects { afterEvaluate { p -> if (p.path == ':app') p.android.defaultConfig.applicationId = '${pkg}' } }`);
+      const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2', '-I', init], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600000
+      });
+      writeFileSync(join(evidenceDir, `${avd}-ocr-assemble.log`), `${built.stdout ?? ''}${built.stderr ?? ''}`);
+      if (built.status !== 0 || built.error || built.signal) throw new Error('offline OCR APK build failed');
+      const ocrBuild = androidBuildIdentity(repo);
+      await offlineOcrStage({ device, pkg, avd, evidenceDir,
+        apk: join(androidDir, 'app/build/outputs/apk/debug/app-debug.apk'),
+        testApk: join(androidDir, 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk') });
+      activeRun.completedStages.push('offline-ocr');
+      activeRun.offlineOcr = { package: pkg, build: ocrBuild };
+      ok(`${avd}: fresh English and Polish OCR in airplane mode`);
     }
     if (failureCount === failuresBefore) evidenceRuns.push(activeRun);
   } catch (e) {

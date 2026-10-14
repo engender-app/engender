@@ -85,7 +85,11 @@ working tree stayed unchanged. It records each AVD, serial, API, APK hashes,
 completed stage groups and individual passing checks. Failed runs do not write
 passing evidence. Commit the record before tagging or running another tier.
 Tagging and publication require the API 26 and current-Android core rosters;
-focused runs cannot satisfy that requirement.
+focused runs cannot satisfy that requirement. The current-Android roster also
+requires fresh English and Polish OCR in airplane mode. The runner builds an
+isolated package for this phase, records its APK hashes separately, and restores
+network settings and removes both packages when the phase ends or fails.
+`offline-ocr-stage.mjs` owns this phase for both the core and standalone runners.
 
 `optionalStages.installedUpgrade` and `optionalStages.lockedProcessDeath` are
 explicitly absent until their stages complete. A focused lock run can add its

@@ -57,3 +57,13 @@ it('keeps optional stages absent until actual completed stage records exist', ()
   evidence.runs[1].kind = 'locked-process-death';
   expect(androidTierProblems(evidence, start.revision, root)).toContain('Android tier requires completed current-Android core stages and Archive recovery.');
 });
+
+it('refuses current core evidence without fresh isolated offline OCR identity', () => {
+  const start = beginAndroidTier(root);
+  const evidence = androidTierFixture(start.revision);
+  evidence.startedAt = start.startedAt;
+  evidence.passedAt = start.startedAt;
+  evidence.runs.forEach(run => { run.startedAt = start.startedAt; run.passedAt = start.startedAt; });
+  evidence.runs[1].completedStages = evidence.runs[1].completedStages.filter(stage => stage !== 'offline-ocr');
+  expect(androidTierProblems(evidence, start.revision, root)).toContain('Android tier requires fresh isolated offline OCR with APK identity on current Android.');
+});

@@ -4,7 +4,7 @@ import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** @typedef {{revision: string, startedAt: string}} AndroidStart */
-/** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: {apkSha256: string, testApkSha256: string}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
+/** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: {apkSha256: string, testApkSha256: string}, offlineOcr?: {package: string, build: {apkSha256: string, testApkSha256: string}}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
 /** @typedef {{revision: string, startedAt: string, passedAt: string, runs: AndroidRun[], optionalStages: Record<string, string | null>}} AndroidEvidence */
 
 export const ANDROID_CORE_STAGES = ['instrumentation', 'pin-wait', 'native-backup'];
@@ -71,6 +71,11 @@ export function androidTierProblems(evidence, candidateRevision, cwd) {
   if (!runs.some((run) => run?.api === 26 && completeCore(run))) problems.push('Android tier requires completed API 26 core stages.');
   if (!runs.some((run) => run?.api >= 35 && run.nativeOnly === false && completeCore(run) && run.completedStages.includes('archive-recovery'))) {
     problems.push('Android tier requires completed current-Android core stages and Archive recovery.');
+  }
+  if (!runs.some((run) => run?.api >= 35 && completeCore(run) &&
+      run.completedStages.includes('offline-ocr') && /^dev\.engender\.app\.test\.[a-z0-9]+$/.test(run.offlineOcr?.package ?? '') &&
+      digest.test(run.offlineOcr?.build?.apkSha256 ?? '') && digest.test(run.offlineOcr?.build?.testApkSha256 ?? ''))) {
+    problems.push('Android tier requires fresh isolated offline OCR with APK identity on current Android.');
   }
   for (const [key, stage] of [['lockedProcessDeath', 'locked-process-death'], ['installedUpgrade', 'installed-upgrade']]) {
     const optional = data.optionalStages?.[key];

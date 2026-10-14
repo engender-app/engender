@@ -143,9 +143,9 @@ public class DisguiseAliasTest {
     }
 
     @Test
-    public void mainActivityIsExcludedFromRecents() throws Exception {
+    public void mainActivityRemainsAvailableInRecents() throws Exception {
         ActivityInfo info = pm.getActivityInfo(new ComponentName(context, "dev.engender.app.MainActivity"), 0);
-        assertTrue((info.flags & ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS) != 0);
+        assertEquals(0, info.flags & ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS);
     }
 
     /** The palette an alias is the icon for, which is the inverse of the

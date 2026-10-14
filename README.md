@@ -371,7 +371,9 @@ run writes its source revision, device/API identities, APK hashes and completed
 stages into `scripts/progressive-release-record.json`. The required roster is
 API 26 native instrumentation, PIN-wait persistence and native backup deferral,
 plus current-Android instrumentation, PIN-wait persistence, Archive recovery
-and native backup lifecycle stages. Commit the record after the run. Only that
+and native backup lifecycle stages. Current Android also runs fresh English and
+Polish OCR in airplane mode under an isolated package, with separate APK hashes.
+Commit the record after the run. Only that
 record may differ from the tested candidate source.
 
 Focused backup, recovery and locked-process-death runs do not replace the core

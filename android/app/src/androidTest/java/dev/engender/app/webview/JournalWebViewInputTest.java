@@ -36,6 +36,50 @@ public class JournalWebViewInputTest {
     @Test public void searchRequestsNoLearningAndKeepsSearchAction() throws Exception { check("search"); }
     @Test public void passwordAlsoRequestsNoLearning() throws Exception { check("password"); }
 
+    @Test public void baselineActionsFromUntouchedCapacitor() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            AtomicReference<CapacitorWebView> baseline = new AtomicReference<>();
+            scenario.onActivity(activity -> {
+                CapacitorWebView view = new CapacitorWebView(activity, null);
+                view.setBridge(activity.getBridge());
+                view.getSettings().setJavaScriptEnabled(true);
+                activity.addContentView(view, new android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+                view.loadDataWithBaseURL("https://localhost/", FIELDS, "text/html", "UTF-8", null);
+                baseline.set(view);
+            });
+            try {
+                for (String field : new String[] { "note", "name", "search", "password" }) {
+                    AtomicReference<EditorInfo> seen = new AtomicReference<>();
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                    while (seen.get() == null && System.nanoTime() < deadline) {
+                        scenario.onActivity(activity -> {
+                            CapacitorWebView view = baseline.get();
+                            view.requestFocus();
+                            view.evaluateJavascript("(function(){var field=document.getElementById('" + field
+                                + "');if(!field)return false;field.focus();return document.activeElement===field})()", result -> {
+                                if (!"true".equals(result)) return;
+                                EditorInfo info = new EditorInfo();
+                                if (view.onCreateInputConnection(info) != null
+                                    && (info.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT) seen.set(info);
+                            });
+                        });
+                        if (seen.get() == null) Thread.sleep(250);
+                    }
+                    assertNotNull("baseline focused field has no input connection: " + field, seen.get());
+                    System.out.println("Capacitor baseline " + field + ": inputType=" + seen.get().inputType
+                        + " imeOptions=" + seen.get().imeOptions + " action=" + (seen.get().imeOptions & EditorInfo.IME_MASK_ACTION));
+                }
+            } finally {
+                scenario.onActivity(activity -> {
+                    CapacitorWebView view = baseline.get();
+                    ((android.view.ViewGroup) view.getParent()).removeView(view);
+                    view.destroy();
+                });
+            }
+        }
+    }
+
     private void check(String field) throws Exception {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         assumeTrue("use an isolated app or disposable emulator",
