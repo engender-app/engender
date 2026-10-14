@@ -859,3 +859,13 @@ For a local portability check, run `npm test -- --maxWorkers=2` with each
 of `UTC`, `Europe/Warsaw`, `America/Los_Angeles`, `Australia/Lord_Howe`,
 `Asia/Kolkata`, `Pacific/Chatham` and `Pacific/Kiritimati` in `TZ`. Local
 durations are not measurements of the hosted CI runner.
+
+## Retained hidden-read research
+
+`tests/retained-door-cost/README.md` describes the isolated physical Android
+comparison and its web observer control. The recorded result is in
+`tests/retained-door-cost/RESULTS.md`: write completion, visible read readiness
+and dirty warm revisit settlement have separate boundaries. The disposable
+activity gate changes only the probe build; it is not production scheduling.
+Actual-shell captures retain the existing paint hold, last-result DOM, opacity
+floor, reduced-motion and lock-concealment assertions.

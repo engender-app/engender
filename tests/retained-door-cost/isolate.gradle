@@ -1,0 +1,5 @@
+allprojects { afterEvaluate { p ->
+    if (p.path == ':app') {
+        p.android.defaultConfig.applicationId = 'dev.engender.app.test.retained64'
+    }
+} }
