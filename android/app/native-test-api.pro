@@ -212,7 +212,27 @@
 }
 
 -keep,allowobfuscation,includedescriptorclasses class dev.engender.app.sqlite.SqliteConnection {
+    <init>();
+    void open(android.content.Context,java.lang.String,java.lang.String);
+    org.json.JSONArray query(java.lang.String,org.json.JSONArray);
+    void exec(java.lang.String);
+    void close();
+    void deleteDatabaseFiles(android.content.Context,java.lang.String);
     void copyDatabaseFile();
     int getUserVersion();
     void loadNativeLibrary();
+}
+
+-keep,allowobfuscation,includedescriptorclasses class dev.engender.app.sqlite.SqlStatements {
+    java.util.List split(java.lang.String);
+}
+
+-keep,allowobfuscation,includedescriptorclasses class net.zetetic.database.sqlcipher.SQLiteDatabase {
+    net.zetetic.database.sqlcipher.SQLiteDatabase openOrCreateDatabase(java.io.File,java.lang.String,net.zetetic.database.sqlcipher.SQLiteDatabase$CursorFactory,net.zetetic.database.DatabaseErrorHandler,net.zetetic.database.sqlcipher.SQLiteDatabaseHook);
+    android.database.Cursor rawQuery(java.lang.String,java.lang.String[]);
+    void execSQL(java.lang.String);
+}
+
+-keep,allowobfuscation,includedescriptorclasses class net.zetetic.database.sqlcipher.SQLiteClosable {
+    void close();
 }

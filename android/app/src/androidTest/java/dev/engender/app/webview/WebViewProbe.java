@@ -106,11 +106,6 @@ public final class WebViewProbe {
         return id;
     }
 
-    /** Reads whether a native call still has no answer. */
-    public boolean pending(String id) throws InterruptedException {
-        return "true".equals(evaluate("window.__nativeTestCalls[" + JSONObject.quote(id) + "].state === 'pending'"));
-    }
-
     /** Waits within the probe deadline, preserving both native results and rejections. */
     public JSONObject awaitCall(String id) throws InterruptedException, JSONException {
         awaitTrue("window.__nativeTestCalls[" + JSONObject.quote(id) + "].state !== 'pending'");
