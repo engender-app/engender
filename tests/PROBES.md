@@ -1,5 +1,16 @@
 # The probes in tests/*.mjs
 
+`node tests/entry-capture-check.mjs` drives the real entry routes and lock
+shell in Chromium with synthetic camera and microphone tracks. EN/PL keyboard
+activation, duplicate taps, navigation and actual visibility-triggered PIN
+concealment must leave no recorder, live track, preview or delayed feedback.
+`--gallery` records the pending controls beside their idle state in the trans
+palette, light and dark. It checks stable control geometry and retained focus.
+The browser tier's `entry-capture-probe.ts` mounts production EntryEditor over
+encrypted SQLite and attachment storage. It checks cancelled late opens,
+recorder failures, refusal retries, saved playback and the actual 30-second
+video cap. Node capture tests check failure cleanup and cap timer ownership.
+
 `node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
 6501 through 6530, within 160 ms of the reset action. Erased cuts must return
