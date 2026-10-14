@@ -518,11 +518,18 @@ export function assertArchiveRows(
   const defaults = new Set(flatTable ? columnsOf(flatTable)
     .filter((column) => column.bool || column.whenAbsent !== undefined).map((column) => column.field) : []);
   const naturalIdentity = flatTable ? identityFieldOf(flatTable) : undefined;
+  const revisitOwners = new Set<unknown>();
   for (const [index, row] of rows.entries()) {
     if (!record(row) || (naturalIdentity && !identity(row[naturalIdentity])) ||
         !Object.entries(fields).every(([field, check]) =>
           row[field] === undefined && defaults.has(field) || check(row[field]))) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
+    if (name === 'revisits') {
+      if (revisitOwners.has(row.entryId)) {
+        throw new CorruptArchiveError('the archive has more than one revisit for an entry');
+      }
+      revisitOwners.add(row.entryId);
     }
   }
 }

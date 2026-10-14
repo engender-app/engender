@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Archive Merge keeps an entry's current revisit when an older Archive carries
+a different one. Archives with two revisits for one entry are refused before
+they can change the journal.
+
 Archive Merge restores a bundled goal's status when this device has only hidden
 it. The local hidden choice stays in place, and a locally recorded status still
 wins over the Archive's.
