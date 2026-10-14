@@ -254,7 +254,11 @@ try {
     try {
       const page = await initialize(context);
       await prepare(page);
+      const switched = page.waitForEvent('load');
       await restore(page, 'replace', 'post-commit-read-refusal');
+      await switched;
+      await ready(page);
+      await stable(page, 'pl', `Incoming synthetic name ${seed}`);
       await page.waitForFunction(() => localStorage.getItem('restore-proof-result'));
       const result = await page.evaluate(() => ({
         committed: localStorage.getItem('restore-proof-committed'),
