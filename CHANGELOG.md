@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android manual exports survive activity recreation while the save picker is
+open. Interrupted writes leave a cleanup record for the chosen destination;
+the app retries removal at its next start and reports when access is refused.
+
 Archive import identifies non-object JSON headers as corrupt files before
 key derivation, including a header containing only `null`.
 

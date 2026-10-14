@@ -216,6 +216,15 @@ z sieci. Jeśli zapiszesz plik na dysku w chmurze albo u innego dostawcy
 dokumentów, ten dostawca może widzieć nazwę pliku, czas zapisu, rozmiar
 i dzienniki dostępu do twojego konta.
 
+Na Androidzie przerwany eksport ręczny może zostawić niepełny plik w wybranym
+miejscu. Aplikacja zapisuje jego położenie w swojej prywatnej pamięci, dopóki
+nie usunie niepełnego pliku albo nie zakończy eksportu. Po przerwaniu zapisu
+ponawia usuwanie przy następnym uruchomieniu. Dostawca plików może odmówić
+dostępu. Wtedy aplikacja zachowuje położenie do kolejnej próby i prosi o
+sprawdzenie miejsca zapisu. Wyczyszczenie danych aplikacji lub jej odinstalowanie
+usuwa też ten zapis. Aplikacja nie może usunąć pliku, zanim okno wyboru miejsca
+zapisu zwróci jego położenie.
+
 ### Zaszyfrowane kopie zapasowe
 
 Zaszyfrowana kopia zapasowa (`.ngndr`), eksportowana ręcznie albo
@@ -272,8 +281,8 @@ okresy przechowywania, opisane w tej polityce:
 - **W przeglądarce.** Wyczyszczenie danych strony
   `app.engender.barankiewicz.dev` usuwa dziennik i jego klucze.
 
-Żaden z tych sposobów nie usuwa plików, które wyeksportujesz albo
-udostępnisz, w tym kopii zapasowych zapisywanych według harmonogramu we
+Żaden z tych sposobów nie usuwa ukończonych eksportów ani udostępnionych
+plików, w tym kopii zapasowych zapisywanych według harmonogramu we
 wskazanym folderze. Je usuń tam, gdzie zostały zapisane.
 
 ## Utracone klucze i hasła

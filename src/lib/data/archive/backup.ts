@@ -53,6 +53,7 @@ export interface ExportSource {
     path stays bounded (ADR-0007); the plain paths are one piece. */
 /* OutgoingFile stays exported only for its own test (AU-09 test-only review). */
 export interface OutgoingFile {
+  recordBackup?: boolean;
   fileName: string;
   type: string;
   body: AsyncIterable<Uint8Array>;
@@ -110,7 +111,7 @@ interface ExportDeps {
 }
 
 export async function runExport(path: ExportPath, source: ExportSource, deps: ExportDeps): Promise<Delivery> {
-  const delivery = await (deps.deliver ?? deliverFile)(PRODUCERS[path](source, deps.watch ?? {}));
+  const delivery = await (deps.deliver ?? deliverFile)({ ...PRODUCERS[path](source, deps.watch ?? {}), recordBackup: true });
   // A cancelled share sheet is not a backup. Stamping it would tell
   // someone they have a copy of their journal that does not exist.
   if (delivery !== 'cancelled') deps.recordBackup(Date.now());

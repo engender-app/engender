@@ -201,6 +201,14 @@ shared files and links and may use the network. If you save a file to a
 cloud drive or another document provider, that provider can see the file's
 name, time, size and the access logs of your account there.
 
+On Android, an unfinished manual export can leave a partial file at the chosen
+destination. The app keeps that file's location in private app storage until it
+can remove the partial file or finish the export. If the app stops during a
+write, it retries removal when it next starts. A provider can refuse access;
+the app then keeps the location for another attempt and asks you to check the
+destination. Clearing app storage or uninstalling also removes this record.
+The app cannot clean up a destination before the picker returns its location.
+
 ### Encrypted backups
 
 An encrypted backup (`.ngndr`), whether you export it yourself or Android
@@ -252,7 +260,7 @@ retention periods described in this policy:
 - **On the web.** Clearing the site data for `app.engender.barankiewicz.dev`
   in your browser removes the journal and the keys kept for it.
 
-None of these reach files you exported or shared, including backups written
+None of these remove completed files you exported or shared, including backups written
 on a schedule to a folder you picked. Delete those where you saved them.
 
 ## Lost keys and passwords

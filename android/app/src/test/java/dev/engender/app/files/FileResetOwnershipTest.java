@@ -56,6 +56,30 @@ public class FileResetOwnershipTest {
         } finally { currentPlugin.handleOnDestroy(); directory.delete(); }
     }
 
+    @Test public void pendingPickerDetachesWithoutRetainingTheActivityAndResetClosesItsKey() throws Exception {
+        FileDeliveryPlugin plugin = new FileDeliveryPlugin();
+        StagedFile staged = StagedFile.encrypted(Files.createTempFile("retained-picker", ".pending").toFile());
+        set(plugin, "staged", staged);
+        set(plugin, "transferId", "picker-owner");
+        set(plugin, "pendingResetEpoch", epoch());
+        Class<?> retainedClass = Class.forName(FileDeliveryPlugin.class.getName() + "$RetainedPicker");
+        java.lang.reflect.Constructor<?> constructor = retainedClass.getDeclaredConstructor(FileDeliveryPlugin.class);
+        constructor.setAccessible(true);
+        set(null, "retainedPicker", constructor.newInstance(plugin));
+        try {
+            plugin.handleOnDestroy();
+            assertFalse("picker recreation must retain the staging key", staged.isClosed());
+            assertNull(get("staged", plugin));
+            for (Field field : retainedClass.getDeclaredFields()) {
+                assertFalse("no activity retention", android.app.Activity.class.isAssignableFrom(field.getType()));
+                assertFalse("no plugin retention", com.getcapacitor.Plugin.class.isAssignableFrom(field.getType()));
+            }
+            FileDeliveryPlugin.resetTransfers();
+            assertTrue("reset must revoke the detached key", staged.isClosed());
+            assertNull(get("retainedPicker", null));
+        } finally { FileDeliveryPlugin.resetTransfers(); staged.close(); }
+    }
+
     private static long epoch() throws Exception { return ((AtomicLong) get("resetEpoch", null)).get(); }
     private static Object get(String name, Object owner) throws Exception {
         Field field = FileDeliveryPlugin.class.getDeclaredField(name);
