@@ -62,10 +62,11 @@ android {
     buildTypes {
         release {
             if (hasReleaseSigning) signingConfig signingConfigs.release
-            // Deliberate: the source is public, so obfuscation buys
-            // nothing, and R8 is a moving part between a signed tag and
-            // an F-Droid rebuild. No proguardFiles here on purpose.
-            minifyEnabled false
+            // R8 runs for every release, including F-Droid (13 October 2026).
+            // Play requires DEX optimization; the signed-tag rebuild must
+            // still be byte-identical with the pinned AGP/R8 toolchain.
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

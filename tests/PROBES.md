@@ -325,6 +325,13 @@ use the Photos plugin's test directory. Idle waits keep the existing
 mid-pass write guards. OPFS file deletion is checked separately from storage
 allocation estimates, which can remain after readable files are removed.
 
+`android-r8-artifact` checks the release R8 mapping against the native plugin
+registry and source annotations. Run after an Android release build with
+`node tests/android-r8-artifact.mjs [mapping.txt]`. It rejects removed or renamed
+bridge methods and callbacks, requires an R8 compiler/version stamp, and checks
+that app helpers were obfuscated. It does not prove runtime behavior, Play's
+optimization percentages, or a byte-identical rebuild from a signed tag.
+
 ## Walkthrough groups
 
 `search-return-privacy` (`tests/search-return-privacy.mjs`) runs after
