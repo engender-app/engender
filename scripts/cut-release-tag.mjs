@@ -13,8 +13,11 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { extractReleaseNotes } from './release-notes.mjs';
+import { publicationReleaseProblems } from './check-progressive-release.mjs';
 
-export const RELEASE_VERSION_RE = /^v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+import { RELEASE_VERSION_RE } from './progressive-release-gate-contract.mjs';
+
+export { RELEASE_VERSION_RE };
 
 /** @param {string} message */
 function die(message) {
@@ -202,6 +205,9 @@ function run(argv = process.argv.slice(2)) {
   assertMainTip();
   assertChangelogSection(version);
   assertTagMissing(tag);
+  const record = JSON.parse(readFileSync('scripts/progressive-release-record.json', 'utf8'));
+  const problems = publicationReleaseProblems(record, version.includes('-') ? 'stage2' : 'stable', version);
+  if (problems.length) throw new Error(`Candidate is not ready for publication:\n${problems.join('\n')}`);
 
   if (parsed.dryRun) {
     console.log(`PASS checks for ${tag}`);
