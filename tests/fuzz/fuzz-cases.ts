@@ -3,6 +3,7 @@
 
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import type { StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 
@@ -112,7 +113,19 @@ export async function freshDevice(): Promise<Device> {
   const db = await migratedDb();
   const files = androidRuleStore(fakeFileStore());
   const journal = openJournal(db, files);
-  await seedCompleteArchiveJournal(db, journal, textBytes);
+  // Reuse seed statements within this fresh connection; import calls use the unmodified driver.
+  const prepare = db.raw.prepare;
+  const statements = new Map<string, StatementSync>();
+  db.raw.prepare = function (sql: string) {
+    let statement = statements.get(sql);
+    if (!statement) {
+      statement = prepare.call(this, sql);
+      statements.set(sql, statement);
+    }
+    return statement;
+  };
+  try { await seedCompleteArchiveJournal(db, journal, textBytes); }
+  finally { db.raw.prepare = prepare; }
   return { driver: db, raw: (db as any).raw, journal, files };
 }
 
@@ -182,6 +195,7 @@ export async function runOn(
     const ms = performance.now() - start;
     if (done === 'timeout') return { kind: 'async-hang', sig: 'async-hang', ms };
     const after = await fingerprint(d);
+    let fileHash = after.fileHash;
     let filesLeft = after.files === before.files ? undefined : d.files.names().filter((n) => !before.files.split(',').includes(n));
     const sameRows = after.hash === before.hash;
     if (failed || guard) {
@@ -190,9 +204,10 @@ export async function runOn(
         await sweepOrphanPhotos((d as any).driver, d.files);
         if (d.files.names().join(',') !== before.files) return { kind: 'orphans-survive-sweep', sig: 'orphans-survive-sweep', filesLeft: d.files.names(), ms };
         filesLeft = undefined;
+        fileHash = (await fingerprint(d)).fileHash;
       }
       if (!sameRows) return { kind: 'state-changed', sig: 'state-changed after ' + (failed ? signature(error) : 'guard'), errName: (error as Error)?.name, errMsg: String((error as Error)?.message).slice(0, 200), filesLeft, ms };
-      if ((await fingerprint(d)).fileHash !== before.fileHash) return { kind: 'state-changed', sig: 'file content changed after refusal', ms };
+      if (fileHash !== before.fileHash) return { kind: 'state-changed', sig: 'file content changed after refusal', ms };
       if (guard) return { kind: 'guard', sig: 'guard', filesLeft, ms };
       if (typed(error)) return { kind: 'typed', sig: signature(error), errName: (error as Error).name, filesLeft, ms };
       return { kind: 'untyped', sig: signature(error), errName: (error as Error)?.name, errMsg: String((error as Error)?.message).slice(0, 300), filesLeft, ms };
