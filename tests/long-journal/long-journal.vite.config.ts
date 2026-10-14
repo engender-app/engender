@@ -19,6 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '$lib/stores/today.svelte': resolve(import.meta.dirname, './today-stub.ts'),
       '$app/state': resolve(import.meta.dirname, '../browser-tier/app-state-stub.ts'),
       '$app/navigation': resolve(import.meta.dirname, '../browser-tier/app-navigation-stub.ts'),
       '$lib/stores/boot.svelte': resolve(import.meta.dirname, '../browser-tier/entry-editor-boot-stub.ts'),

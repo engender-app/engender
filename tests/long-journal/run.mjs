@@ -137,6 +137,7 @@ await server.listen();
 const port = server.config.server.port;
 
 const browser = await launchChromium();
+console.log(`Runtime: Chromium ${browser.version()}, Node ${process.version}, ${cpus()[0]?.model}`);
 const context = await browser.newContext();
 const page = await context.newPage();
 const startupEvents = [];
@@ -294,7 +295,8 @@ for (const m of measurements) {
      the statements are round trips through a serialising boundary and the
      bytes are what that boundary carries (phase 8 audit ticket 01). */
   if (m.statements != null) {
-    const counts = `${m.statements} statements, ${kb(m.bytes)} across the driver seam`;
+    const small = oneYear.measurements.find((measurement) => measurement.name === m.name);
+    const counts = `1y ${small?.statements} statements, ${kb(small?.bytes)}; 10y ${m.statements} statements, ${kb(m.bytes)} across the driver seam`;
     const ceilings =
       budget?.statementBudget != null ? `  budget ${budget.statementBudget} statements, ${kb(budget.byteBudget)}` : '';
     console.log(`  ${pad('', widest)}  ${counts}${recording ? '' : ceilings}`);
