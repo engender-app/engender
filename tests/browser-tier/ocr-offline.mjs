@@ -105,7 +105,7 @@ try {
     for (const request of entries) totalBytes += (await (await cache.match(request)).arrayBuffer()).byteLength;
     const estimate = await navigator.storage.estimate();
     return { bytes, totalBytes, applicationBytes: totalBytes - bytes, quotaUsage: estimate.usage, entries: entries.length };
-  }, manifestA.assets);
+  }, [...manifestA.assets, ...manifestA.legacyRuntime.map(asset => asset.path)]);
   const beforeFirstScan = requests.filter(path => path.startsWith(prefixA));
   assert.equal(new Set(beforeFirstScan).size, manifestA.assets.length);
   await context.setOffline(true);

@@ -23,7 +23,7 @@ function store(entries: Record<string, Record<string, string | Uint8Array>>) {
   } as unknown as CacheStorage;
 }
 
-const library = new Uint8Array(gunzipSync(readFileSync('tests/fixtures/ocr/pre21-tesseract.js.gz')));
+const library = new Uint8Array(gunzipSync(readFileSync('scripts/vendor/legacy-ocr/pre21-tesseract.js.gz')));
 
 describe('retained OCR', () => {
   test('keeps the exact legacy library and models while dropping unrelated old shell bytes', async () => {

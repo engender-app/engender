@@ -466,5 +466,6 @@ and the exact pre-generation runtime recorded in `legacy-ocr-assets.json`.
 The probe opens the genuine production scanner without initializing its
 library, completes the old worker's asset download, reloads to obtain a
 controller, then checks interrupted update and first offline English/Polish
-scans after activation. The committed compressed runtime fixture checks its
-cache retention and release-copy identity in the Node tier.
+scans after activation. The asset recipe ships the frozen runtime under
+`scripts/vendor/legacy-ocr/`. Node regressions check cache retention, staged
+fallback, release-copy identity and missing/changed-byte refusal.

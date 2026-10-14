@@ -344,3 +344,8 @@ previous OCR directories and freezes historical root URLs before switching
 `current`. Keep these directories when copying releases outside this helper.
 The nginx snippet serves legacy `.traineddata.gz` requests from canonical
 `.traineddata` files; do not add `.gz` duplicates to APK assets.
+
+The upload carries the frozen pre-generation Tesseract library at its original
+immutable URL. Release preparation checks the receipt against both a retained
+copy and any staged fallback. Missing or changed required bytes refuse the
+switch; a verified staged copy also supports first deployment.

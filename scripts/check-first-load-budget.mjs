@@ -112,9 +112,9 @@ function measureFirstLoad(html, metadata, locale) {
 
 /** Installed OCR bytes, separated from app startup and optional PDF rendering. */
 function measureInstalledOcr() {
-  /** @type {{ assets: string[] }} */
-  const { assets } = JSON.parse(readFileSync(join(BUILD_DIR, 'tesseract/assets.json'), 'utf8'));
-  const buffers = assets.map((asset) => readFileSync(join(BUILD_DIR, asset)));
+  /** @type {{ assets: string[], legacyRuntime: {path: string}[] }} */
+  const { assets, legacyRuntime } = JSON.parse(readFileSync(join(BUILD_DIR, 'tesseract/assets.json'), 'utf8'));
+  const buffers = [...assets, ...legacyRuntime.map(asset => asset.path)].map((asset) => readFileSync(join(BUILD_DIR, asset)));
   return { files: buffers.length, gzipBytes: gzipTotal(buffers), storedBytes: buffers.reduce((sum, buffer) => sum + buffer.length, 0) };
 }
 

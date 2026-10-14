@@ -145,15 +145,21 @@ function retainOcrAssets(previous, staging) {
     if (!/^\/_app\/immutable\/chunks\/[A-Za-z0-9_-]+\.js$/.test(asset.path) || !/^[a-f0-9]{64}$/.test(asset.sha256)) {
       throw new Error('Invalid legacy OCR identity');
     }
-    const source = join(previous, asset.path);
-    if (!existsSync(source)) continue;
-    if (createHash('sha256').update(readFileSync(source)).digest('hex') !== asset.sha256) {
-      throw new Error(`Legacy OCR identity mismatch: ${asset.path}`);
-    }
     const target = join(staging, asset.path);
-    mkdirSync(dirname(target), { recursive: true });
-    cpSync(source, target);
+    const prior = previous ? join(previous, asset.path) : undefined;
+    const source = prior && existsSync(prior) ? prior : target;
+    if (!existsSync(source)) throw new Error(`Missing legacy OCR runtime: ${asset.path}`);
+    for (const path of new Set([source, ...(existsSync(target) ? [target] : [])])) {
+      if (createHash('sha256').update(readFileSync(path)).digest('hex') !== asset.sha256) {
+        throw new Error(`Legacy OCR identity mismatch: ${asset.path}`);
+      }
+    }
+    if (source !== target) {
+      mkdirSync(dirname(target), { recursive: true });
+      cpSync(source, target);
+    }
   }
+  if (!previous) return;
   const oldRoot = join(previous, 'tesseract');
   if (!existsSync(oldRoot)) return;
   const nextRoot = join(staging, 'tesseract');
@@ -228,7 +234,7 @@ function deploy(source, options) {
 
   try {
     cpSync(sourcePath, staging, { recursive: true, errorOnExist: true, force: false });
-    if (previous) retainOcrAssets(previous, staging);
+    retainOcrAssets(previous, staging);
     renameSync(staging, targetPath);
     switchCurrent(options.current, targetPath);
   } finally {
