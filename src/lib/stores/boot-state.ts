@@ -228,7 +228,9 @@ function legacyRefused(state: BootState): LegacyRefusedState {
 }
 
 function schemaTooNew(state: BootState): SchemaTooNewState {
-  if (state.status !== 'booting') invalidTransition(state, 'schema-too-new');
+  if (state.status !== 'booting' && !(state.status === 'ready' && state.journal === null)) {
+    invalidTransition(state, 'schema-too-new');
+  }
   return {
     status: 'schema-too-new',
     accessMode: state.accessMode,
