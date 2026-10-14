@@ -27,6 +27,10 @@ check in Settings also keep unreadable or changed access settings outside the
 wrong-attempt count and explain how to reopen the app. Leaving or locking still
 cancels the pending unlock.
 
+When a browser no longer holds a journal's PIN binding, unlock shows the
+existing lost-key guidance. It does not count the attempt as a wrong PIN
+or create a replacement key.
+
 Boot housekeeping waits for pending journal writes before purging expired
 Trash and sweeping orphaned media. Android stock-reminder reconciliation no
 longer makes those passes give up before they start.

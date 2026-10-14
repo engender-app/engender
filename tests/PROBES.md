@@ -86,6 +86,14 @@ at 390px and 200% CSS zoom. Run after build/runtime generation with
 are real; visibility events and the held/faulted credential states are synthetic.
 This does not establish physical-phone overlap frequency.
 
+The same runner checks missing and deleted records through the real IndexedDB
+adapter, persisted non-extractable HMAC signing, device-bound key loss and
+older PIN wraps without a binding name. Each mounted gate also loses its
+actual PIN binding: existing key-loss guidance must appear without changing
+the attempt count or minting a key. The fixture restores its saved synthetic
+key to prove journal bytes remain unchanged. `--adapter-only` runs just the
+storage and compatibility checks.
+
 `credential-power-cut` (`tests/android-tier/credential-power-cut.mjs`) drives the production Android PIN/passphrase change functions from a bundled WebView probe. It requires an owned temporary API-35 AVD and an isolated `dev.engender.app.test.*` package. It kills the owned QEMU process at 20 seeded offsets per credential type, then checks which credential opens the same SQLCipher record after boot. Half of each batch waits for the production change promise to resolve before cutting power; released OPFS adoption is exercised too. `CredentialWrapStoreTest` checks staged interruption, write failure, directory-sync failure and removal/adoption. The runner also injects post-rename directory-sync failure with real PIN/passphrase wraps, cuts QEMU, starts a separate instrumentation process, then verifies authority and the unchanged SQLCipher record. Use `--failure-restart` for just those combined cases. This proves the emulator's filesystem behavior, not a physical phone or web power-loss durability.
 
 Build with `ANDROID_TIER_PROBE=credential-power-cut npx vite build --config tests/android-tier/android-tier.vite.config.ts`, after `npm run build && npx cap sync android`. Build app and instrumentation APKs with an isolated application ID, then supply `CREDENTIAL_POWER_CUT_AVD`, `CREDENTIAL_POWER_CUT_PACKAGE`, `CREDENTIAL_POWER_CUT_APK` and `CREDENTIAL_POWER_CUT_TEST_APK`. The runner owns only its supplied emulator process and CDP forward. Remove its test package and AVD after delivery.
