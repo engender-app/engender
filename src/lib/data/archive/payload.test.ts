@@ -124,3 +124,12 @@ test('only the original complete alpha shape gains later empty sections', () => 
   const unknown = { ...source, journal: { ...original, futureArea: [] } } as unknown as ArchivePayload;
   assert.deepEqual((migratePayload(unknown, 1, 2).journal as unknown as Record<string, unknown>).futureArea, []);
 });
+
+
+test('a v1 archive naming a preset without carrying a presets section uses the default scales', () => {
+  const bare = { journal: {}, preferences: { name: 'Ola', activePreset: 'unknown-preset' }, files: [] } as unknown as ArchivePayload;
+  const migrated = migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION);
+  assert.equal((migrated.preferences as { activePreset?: string }).activePreset, undefined);
+  assert.deepEqual(migrated.preferences.activeScales, PREFERENCE_DEFAULTS.activeScales);
+  assert.equal(migrated.preferences.name, 'Ola');
+});

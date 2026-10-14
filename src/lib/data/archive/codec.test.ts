@@ -3,7 +3,7 @@ import v8 from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { DOCUMENT_SIZE_CEILING } from '../documents/limits.ts';
 import { test, vi } from 'vitest';
-import { byteReader, type ByteReader } from './container.ts';
+import { ARCHIVE_FORMAT_VERSION, CorruptArchiveError, byteReader, type ByteReader } from './container.ts';
 import { decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
 import type { ArchivePayload } from './payload.ts';
 import type { ArchiveContents } from './pack.ts';
@@ -221,4 +221,64 @@ test('current and pending photo batches share the byte bound', async () => {
   await Promise.resolve();
   assert.deepEqual(calls.map((call) => call.length), [4, 4]);
   await body.return(undefined);
+});
+
+
+function plaintext(json: string, ...files: Uint8Array[]): ByteReader {
+  const bytes = new TextEncoder().encode(json);
+  return byteReader(oneShot(u32(bytes.length), bytes, ...files));
+}
+
+for (const actualLength of [2, 4]) {
+  test(`single-read export refuses a file changed from 3 to ${actualLength} bytes`, async () => {
+    const { body } = await encodeArchive({
+      ...emptyContents,
+      files: [{ name: 'photo.jpg', length: 3 }],
+      readFile: async () => new Uint8Array(actualLength)
+    });
+    await assert.rejects(async () => {
+      for await (const _ of body) { /* Drain the deferred file read. */ }
+    }, /photo\.jpg changed length while exporting/);
+  });
+}
+
+test('unreadable payload JSON is refused as corrupt', async () => {
+  await assert.rejects(decodeArchive(plaintext('{'), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+});
+
+for (const [label, value] of [
+  ['null', null],
+  ['array', []],
+  ['number', 5],
+  ['missing journal', { files: [] }],
+  ['missing files', { journal: emptyContents.journal }],
+  ['files is not an array', { journal: emptyContents.journal, files: 'file' }],
+  ['null file', { journal: emptyContents.journal, files: [null] }],
+  ['missing name', { journal: emptyContents.journal, files: [{ length: 1 }] }],
+  ['numeric name', { journal: emptyContents.journal, files: [{ name: 5, length: 1 }] }],
+  ['negative length', { journal: emptyContents.journal, files: [{ name: 'file', length: -1 }] }],
+  ['fractional length', { journal: emptyContents.journal, files: [{ name: 'file', length: 1.5 }] }],
+  ['string length', { journal: emptyContents.journal, files: [{ name: 'file', length: '1' }] }],
+  ['missing length', { journal: emptyContents.journal, files: [{ name: 'file' }] }]
+] as const) {
+  test(`payload with ${label} is refused as corrupt before reading files`, async () => {
+    await assert.rejects(decodeArchive(plaintext(JSON.stringify(value)), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+  });
+}
+
+test('a declared empty file is valid and remains in the decoded file stream', async () => {
+  const file = { name: 'empty', length: 0 };
+  const opened = await decodeArchive(plaintext(JSON.stringify({ ...payload('source'), files: [file] })), ARCHIVE_FORMAT_VERSION);
+  const files = [];
+  for await (const file of opened.files) files.push(file);
+  assert.deepEqual(files, [{ name: 'empty', bytes: new Uint8Array() }]);
+});
+
+test('plaintext bytes after the declared files are refused as corrupt', async () => {
+  const file = { name: 'photo.jpg', length: 2 };
+  const opened = await decodeArchive(plaintext(JSON.stringify({ ...payload('source'), files: [file] }),
+    new Uint8Array([1, 2, 9])), ARCHIVE_FORMAT_VERSION);
+  await assert.rejects(async () => {
+    for await (const _ of opened.files) { /* Include the final boundary check. */ }
+  }, CorruptArchiveError);
 });
