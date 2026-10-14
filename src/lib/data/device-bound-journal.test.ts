@@ -5,6 +5,7 @@ import {
   deleteDeviceKeyDatabase,
   DeviceBoundKeyUnavailableError,
   parseDeviceBoundMetadata,
+  removeDeviceBoundJournal,
   serializeDeviceBoundMetadata,
   unlockDeviceBoundMetadata
 } from './device-bound-journal.ts';
@@ -110,9 +111,9 @@ test('a browser with no IndexedDB at all has nothing to delete, so this resolves
 });
 
 function browserStorage() {
-  let key: CryptoKey | undefined;
-  let metadata = '';
-  const faults = { write: false, close: false, keyCommit: false };
+  const keys = new Map<string, CryptoKey>();
+  const files = new Map<string, string>();
+  const faults = { write: false, close: false, keyCommit: false, keyRemove: false, keyRemains: false, metadataRemove: false, metadataRemains: false };
   const abort = vi.fn(async () => {});
   const close = vi.fn();
   const indexedDB = {
@@ -124,15 +125,15 @@ function browserStorage() {
           transaction() {
             const transaction = {} as IDBTransaction;
             Object.assign(transaction, { objectStore: () => ({
-              get() {
+              get(slot: string) {
                 const reading = {} as IDBRequest;
                 queueMicrotask(() => {
-                  Object.assign(reading, { result: key });
+                  Object.assign(reading, { result: keys.get(slot) });
                   reading.onsuccess?.(new Event('success'));
                 });
                 return reading;
               },
-              put(next: CryptoKey) {
+              put(next: CryptoKey, slot: string) {
                 const writing = {} as IDBRequest;
                 queueMicrotask(() => {
                   writing.onsuccess?.(new Event('success'));
@@ -141,12 +142,23 @@ function browserStorage() {
                       Object.assign(transaction, { error: new DOMException('key commit failed') });
                       transaction.onabort?.(new Event('abort'));
                     } else {
-                      key = next;
+                      keys.set(slot, next);
                       transaction.oncomplete?.(new Event('complete'));
                     }
                   });
                 });
                 return writing;
+              },
+              delete(slot: string) {
+                queueMicrotask(() => {
+                  if (faults.keyRemove) {
+                    Object.assign(transaction, { error: new Error('key removal failed') });
+                    transaction.onabort?.(new Event('abort'));
+                  } else {
+                    if (!faults.keyRemains) keys.delete(slot);
+                    transaction.oncomplete?.(new Event('complete'));
+                  }
+                });
               }
             }) });
             return transaction;
@@ -159,10 +171,14 @@ function browserStorage() {
   };
   vi.stubGlobal('indexedDB', indexedDB);
   vi.stubGlobal('navigator', { locks: navigator.locks, storage: { async getDirectory() {
-    return { async getFileHandle(name: string, options?: { create?: boolean }) {
-      if (!options?.create && (name !== 'device-key.json' || !metadata)) throw new DOMException('missing', 'NotFoundError');
+    return { async removeEntry(name: string) {
+      if (faults.metadataRemove) throw new Error('metadata removal failed');
+      if (!files.has(name)) throw new DOMException('missing', 'NotFoundError');
+      if (!faults.metadataRemains) files.delete(name);
+    }, async getFileHandle(name: string, options?: { create?: boolean }) {
+      if (!options?.create && !files.has(name)) throw new DOMException('missing', 'NotFoundError');
       return {
-        async getFile() { return { async text() { return metadata; } }; },
+        async getFile() { return { async text() { return files.get(name); } }; },
         async createWritable() {
           let staged = '';
           return {
@@ -174,7 +190,7 @@ function browserStorage() {
             async close() {
               close();
               if (faults.close) throw new Error('metadata close failed');
-              metadata = staged;
+              files.set(name, staged);
             },
             abort
           };
@@ -182,8 +198,140 @@ function browserStorage() {
       };
     } };
   } } });
-  return { faults, abort, close, key: () => key };
+  return { faults, abort, close, files, key: () => keys.get('journal-device-key') };
 }
+
+test.each(['keyRemove', 'metadataRemove'] as const)('a failed %s rejects removal and permits a retry', async (fault) => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal, deviceBoundJournalExists } = await import('./device-bound-journal');
+  try {
+    await addDeviceBoundJournal(crypto.getRandomValues(new Uint8Array(32)));
+    browser.faults[fault] = true;
+    await expect(removeDeviceBoundJournal()).rejects.toThrow('removal failed');
+    await expect(deviceBoundJournalExists()).resolves.toBe(true);
+    browser.faults[fault] = false;
+    await removeDeviceBoundJournal();
+    expect(browser.key()).toBeUndefined();
+    await expect(deviceBoundJournalExists()).resolves.toBe(false);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test.each(['keyRemains', 'metadataRemains'] as const)('removal verifies absence when %s silently keeps material', async (fault) => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal } = await import('./device-bound-journal');
+  try {
+    await addDeviceBoundJournal(crypto.getRandomValues(new Uint8Array(32)));
+    browser.faults[fault] = true;
+    await expect(removeDeviceBoundJournal()).rejects.toThrow(/still present/);
+    expect(browser.files.has('device-key.json')).toBe(true);
+    browser.faults[fault] = false;
+    await expect(removeDeviceBoundJournal()).resolves.toBeUndefined();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('a secret unlock sweeps the surveyed device-bound wrap through production boot modules', async () => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal, deviceBoundJournalExists, unlockDeviceBoundJournal } = await import('./device-bound-journal');
+  const { addJournalPassphrase, unlockJournalPassphrase } = await import('./journal-passphrase');
+  const { initialBoot, reduce } = await import('../stores/boot-machine');
+  const platform = await import('../stores/boot-platform');
+  try {
+    const dataKey = crypto.getRandomValues(new Uint8Array(32));
+    await addDeviceBoundJournal(dataKey);
+    await addJournalPassphrase(dataKey, 'test passphrase');
+    await expect(unlockDeviceBoundJournal()).resolves.toEqual(dataKey);
+    let machine = initialBoot();
+    await platform.performPlatformEffect({ type: 'survey-web' }, (event) => {
+      machine = reduce(machine, event).machine;
+    });
+    expect(machine.boot.status).toBe('needs-unlock');
+    const unlocked = await unlockJournalPassphrase('test passphrase');
+    const opening = reduce(machine, {
+      type: 'key-obtained', dataKey: unlocked, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true
+    });
+    expect(opening.effects).toContainEqual({ type: 'open-journal', dataKey, accessMode: 'passphrase', sweepDeviceBound: true });
+    await platform.sweepDeviceBoundAfterSecretUnlock();
+    await expect(deviceBoundJournalExists()).resolves.toBe(false);
+    expect(browser.key()).toBeUndefined();
+    await expect(unlockJournalPassphrase('test passphrase')).resolves.toEqual(dataKey);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test.each(['keyRemove', 'metadataRemove'] as const)('a boot sweep that fails at %s keeps its surveyed retry marker for the next boot', async (fault) => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal } = await import('./device-bound-journal');
+  const { addJournalPassphrase, unlockJournalPassphrase } = await import('./journal-passphrase');
+  const { initialBoot, reduce } = await import('../stores/boot-machine');
+  const platform = await import('../stores/boot-platform');
+  try {
+    const dataKey = crypto.getRandomValues(new Uint8Array(32));
+    await addDeviceBoundJournal(dataKey);
+    await addJournalPassphrase(dataKey, 'test passphrase');
+    browser.faults[fault] = true;
+    await expect(unlockJournalPassphrase('test passphrase')).resolves.toEqual(dataKey);
+    await expect(platform.sweepDeviceBoundAfterSecretUnlock()).rejects.toThrow('removal failed');
+    let nextBoot = initialBoot();
+    await platform.performPlatformEffect({ type: 'survey-web' }, (event) => {
+      nextBoot = reduce(nextBoot, event).machine;
+    });
+    expect(nextBoot.deviceBoundCleanupPending).toBe(true);
+    browser.faults[fault] = false;
+    await expect(unlockJournalPassphrase('test passphrase')).resolves.toEqual(dataKey);
+    await platform.sweepDeviceBoundAfterSecretUnlock();
+    expect(browser.files.has('device-key.json')).toBe(false);
+    expect(browser.key()).toBeUndefined();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('a stale sweep preserves a newer device-bound mode and its usable key', async () => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal, unlockDeviceBoundJournal } = await import('./device-bound-journal');
+  const { addJournalPassphrase } = await import('./journal-passphrase');
+  const { removeKeystoreFile } = await import('./keystore-file');
+  const { sweepDeviceBoundAfterSecretUnlock } = await import('../stores/boot-platform');
+  try {
+    const dataKey = crypto.getRandomValues(new Uint8Array(32));
+    await addJournalPassphrase(dataKey, 'test passphrase');
+    await addDeviceBoundJournal(dataKey);
+    await removeKeystoreFile();
+    await sweepDeviceBoundAfterSecretUnlock();
+    await expect(unlockDeviceBoundJournal()).resolves.toEqual(dataKey);
+    expect(browser.files.has('device-key.json')).toBe(true);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('a cancelled sweep checks gate ownership before removing either record', async () => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal } = await import('./device-bound-journal');
+  const { addJournalPassphrase } = await import('./journal-passphrase');
+  const { sweepDeviceBoundAfterSecretUnlock } = await import('../stores/boot-platform');
+  const { UnlockCancelledError } = await import('../lock/unlock-attempt');
+  try {
+    const dataKey = crypto.getRandomValues(new Uint8Array(32));
+    await addJournalPassphrase(dataKey, 'test passphrase');
+    await addDeviceBoundJournal(dataKey);
+    const wrappingKey = browser.key();
+    let checks = 0;
+    await expect(sweepDeviceBoundAfterSecretUnlock(() => {
+      if (++checks === 2) throw new UnlockCancelledError();
+    })).rejects.toThrow(UnlockCancelledError);
+    expect(browser.key()).toBe(wrappingKey);
+    expect(browser.files.has('device-key.json')).toBe(true);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('device-bound cleanup keeps unrelated PIN binding slots', async () => {
+  const browser = browserStorage();
+  const { addDeviceBoundJournal } = await import('./device-bound-journal');
+  try {
+    await addDeviceBoundJournal(crypto.getRandomValues(new Uint8Array(32)));
+    const binding = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    await browserKeySlot('pin-device-binding').save(binding);
+    await removeDeviceBoundJournal();
+    expect(await browserKeySlot('pin-device-binding').load()).toBe(binding);
+    expect(browser.key()).toBeUndefined();
+  } finally { vi.unstubAllGlobals(); }
+});
 
 test('the browser key adapter normalizes an absent IndexedDB result to null', async () => {
   const browser = browserStorage();

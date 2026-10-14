@@ -325,15 +325,29 @@ test('only four digits is a PIN', () => {
    binding key replaces the only key that opens the keystore already on disk,
    the second because the digit count is what the setup copy's whole
    brute-force figure is computed from. */
-test('moving to PIN mode refuses a journal already in PIN mode, rather than replacing its device key', async () => {
+test('moving to PIN mode refuses a different PIN instead of replacing its device key', async () => {
   const world = ports();
   const dataKey = await setupJournalPin('1234', world);
   const before = world.stored();
 
-  await expect(addJournalPin(dataKey, '5678', world)).rejects.toThrow(KeystoreUnreadableError);
+  await expect(addJournalPin(dataKey, '5678', world)).rejects.toThrow(DecryptionFailedError);
   // Nothing written, and the PIN that worked still does.
   expect(world.stored()).toBe(before);
   expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
+});
+
+test('retrying a published PIN wrap keeps its binding and permits old-mode cleanup', async () => {
+  const world = ports();
+  const dataKey = crypto.getRandomValues(new Uint8Array(32));
+  await addJournalPin(dataKey, '1234', world);
+  const published = world.stored();
+  const mint = vi.spyOn(world.binding, 'create');
+  await expect(changeCredentials(() => addJournalPin(dataKey, '1234', world))).resolves.toBeUndefined();
+  expect(mint).not.toHaveBeenCalled();
+  expect(world.stored()).toBe(published);
+  await expect(unlockJournalPin('1234', world)).resolves.toEqual(dataKey);
+  await expect(addJournalPin(crypto.getRandomValues(new Uint8Array(32)), '1234', world)).rejects.toThrow(KeystoreUnreadableError);
+  expect(world.stored()).toBe(published);
 });
 
 test('a PIN that is not four digits never reaches the wrap', async () => {

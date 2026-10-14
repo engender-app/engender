@@ -129,9 +129,10 @@ export async function setupJournalPin(pin: string, ports: PinPorts = platformPor
     where the data key is in memory. Mints a fresh binding key, so the
     previous mode's leftovers cannot open what this writes.
 
-    Refuses a journal already in PIN mode, and the refusal is the point rather
-    than tidiness. Minting replaces the binding key before the new keystore is
-    written, and for every other starting mode that is safe: the keystore on
+    A retry of the same PIN and data key keeps the published wrap unchanged.
+    Any other PIN journal refuses. Minting replaces the binding key before
+    the new keystore is written, and for every other starting mode that is
+    safe: the keystore on
     disk does not use the binding key, so it keeps opening if this is
     interrupted. From PIN mode it is not safe - the key being replaced is the
     only one that opens the keystore still on disk, so an interruption between
@@ -144,8 +145,17 @@ export async function addJournalPin(
   ports: PinPorts = platformPorts()
 ): Promise<void> {
   requireValidPin(pin);
-  if ((await ports.readKeystore())?.secretSource === 'pin') {
-    throw new KeystoreUnreadableError('this journal is already in PIN mode - use changeJournalPin to change the PIN');
+  const existing = await ports.readKeystore();
+  if (existing?.secretSource === 'pin') {
+    const binding = (existing.pinBinding ?? 'browser') === ports.bindingKind
+      ? ports.binding : requireLegacyBinding(existing, ports);
+    const opened = await unlockKeystore(existing, combinePinWithDevice(pin, await binding.read()));
+    try {
+      if (opened.length !== dataKey.length || !opened.every((byte, index) => byte === dataKey[index])) {
+        throw new KeystoreUnreadableError('the published PIN wrap belongs to a different journal key');
+      }
+      return;
+    } finally { opened.fill(0); }
   }
   const secret = combinePinWithDevice(pin, await ports.binding.create());
   await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
