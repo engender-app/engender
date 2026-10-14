@@ -42,7 +42,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
     }
 
     private File directory() {
-        File directory = new File(getContext().getCacheDir(), "backup-destination");
+        File directory = new File(getContext().getExternalFilesDir(null), "backup-destination");
         directory.mkdirs();
         return directory;
     }
@@ -53,6 +53,9 @@ public class BackupDocumentsProvider extends DocumentsProvider {
     }
 
     @Override public Bundle call(String method, String arg, Bundle extras) {
+        if ("durability".equals(method)) {
+            Bundle out = new Bundle(); out.putBoolean("local", !"cloud-cache".equals(fault)); return out;
+        }
         if ("fault".equals(method)) {
             release.countDown();
             setFault(arg); blocked = false; release = new java.util.concurrent.CountDownLatch(1);
@@ -140,6 +143,7 @@ public class BackupDocumentsProvider extends DocumentsProvider {
 
     @Override public ParcelFileDescriptor openDocument(String id, String mode, CancellationSignal signal)
         throws FileNotFoundException {
+        if (id.startsWith("root")) return ParcelFileDescriptor.open(directory(), ParcelFileDescriptor.MODE_READ_ONLY);
         File file = file(id);
         if (mode.contains("w") && "full".equals(fault)) throw new FileNotFoundException("ENOSPC");
         if (mode.contains("w") && "blocked".equals(fault)) {
@@ -149,6 +153,37 @@ public class BackupDocumentsProvider extends DocumentsProvider {
             } catch (InterruptedException error) { throw new FileNotFoundException("provider-interrupted"); }
         }
         if (mode.contains("w") && "interrupted-write".equals(fault)) {
+            android.os.HandlerThread thread = new android.os.HandlerThread("backup-provider-interruption");
+            thread.start();
+            java.util.concurrent.CountDownLatch paused = release;
+            try {
+                return getContext().getSystemService(android.os.storage.StorageManager.class).openProxyFileDescriptor(
+                    ParcelFileDescriptor.MODE_WRITE_ONLY, new android.os.ProxyFileDescriptorCallback() {
+                        private boolean first = true;
+                        @Override public long onGetSize() { return file.length(); }
+                        @Override public int onWrite(long offset, int size, byte[] data) throws android.system.ErrnoException {
+                            try (java.io.RandomAccessFile output = new java.io.RandomAccessFile(file, "rw")) {
+                                output.seek(offset); output.write(data, 0, size);
+                                if (first) {
+                                    first = false;
+                                    try (java.io.FileOutputStream marker = new java.io.FileOutputStream(new File(getContext().getFilesDir(), "backup-partial-state.json"))) {
+                                        marker.write(("{\"target\":\"" + id + "\",\"writtenBytes\":" + size + "}").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                    }
+                                    blocked = true;
+                                    paused.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                                }
+                                return size;
+                            } catch (Exception ended) { throw new android.system.ErrnoException("interrupted-write", android.system.OsConstants.EIO); }
+                        }
+                        @Override public void onFsync() throws android.system.ErrnoException {
+                            try (java.io.FileOutputStream output = new java.io.FileOutputStream(file, true)) { output.getFD().sync(); }
+                            catch (IOException error) { throw new android.system.ErrnoException("fsync", android.system.OsConstants.EIO); }
+                        }
+                        @Override public void onRelease() { thread.quitSafely(); }
+                    }, new android.os.Handler(thread.getLooper()));
+            } catch (IOException error) { thread.quitSafely(); throw new FileNotFoundException(error.toString()); }
+        }
+        if (mode.contains("w") && "pipe".equals(fault)) {
             try {
                 ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createReliablePipe();
                 java.util.concurrent.CountDownLatch paused = release;

@@ -134,7 +134,10 @@ The full policies are available in
 
 Export an encrypted Archive when you want a backup or need to move your
 journal. Archives use a backup password you choose and can be restored on
-another device. Android also supports scheduled encrypted backups. It keeps
+another device. Android also supports scheduled encrypted backups to its local
+storage provider. Delivery syncs the file and folder, then checks the bytes read
+back before reporting success. Providers without that boundary report an
+incomplete backup. Android keeps
 the five newest verified automatic backups and prunes older automatic backups
 only after a new one verifies. Manual backups remain untouched.
 

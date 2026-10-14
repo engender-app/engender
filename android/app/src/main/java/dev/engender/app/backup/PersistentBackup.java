@@ -8,7 +8,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import org.json.JSONObject;
 
 /** Durable encrypted bytes plus non-secret attempt metadata. All calls hold OWNER. */
@@ -126,18 +125,8 @@ final class PersistentBackup {
                 throw new IllegalStateException("staging-unavailable");
             }
         }
-        // Reuse the recorded target after interruption, never create duplicate attempts.
-        try (InputStream input = new FileInputStream(file); OutputStream output = context.getContentResolver().openOutputStream(target.getUri(), "wt")) {
-            if (output == null) throw new IllegalStateException("destination-unavailable");
-            byte[] buffer = new byte[8192];
-            int count;
-            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-            output.flush();
-        }
-        try (InputStream input = context.getContentResolver().openInputStream(target.getUri())) {
-            if (input == null) throw new IllegalStateException("destination-unavailable");
-            StagedBackup.verify(input, size, digest);
-        }
+        // An interrupted attempt can reuse its unverified target; a failed copy removes it.
+        DeliveredBackup.writeAndVerify(context, folder, target, file, size, digest);
         AutoExportPlugin.completeVerifiedBackup(context, folder, target, stage.getLong("snapshotAt"), System.currentTimeMillis());
         file.delete();
         return true;
