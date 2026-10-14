@@ -48,7 +48,8 @@ export function browserKeySlot(slot: string): DeviceKeySlot {
   return {
     async load() {
       const db = await openDeviceKeyDatabase();
-      return runRequest<CryptoKey | null>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
+      const key = await runRequest<CryptoKey | undefined>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
+      return key ?? null;
     },
     async save(key) {
       const db = await openDeviceKeyDatabase();
