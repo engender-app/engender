@@ -283,6 +283,14 @@ Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vi
 
 `backup-power-cut` (`tests/android-tier/backup-power-cut.mjs`) exercises foreground automatic delivery and actual scheduled `BackupWork` against Android's system local storage provider. It repeats retained seeds 2311–2314 and ten additional seeds per path with 40 MiB of synthetic attachments. After each QEMU power cut, the five newest retained verified backups must restore all 3300 rows and attachment bytes; at least one preceding good backup must remain. Older ownership receipts may survive a cut between pruning and the retention metadata update, and are recorded separately. `BackupDeliveryDurabilityTest` exercises both owners against full storage, truncated read-back, a pipe and a cloud cache with a regular file descriptor. A release-only capability class refuses the instrumentation fixture unconditionally.
 
+`mounted-status` uses the Settings language control and checks concealed export
+gates, native delivery refresh and Polish status text. Its deferred-text case
+clears the saved password through the native API, re-enables the destination
+and lets WorkManager produce the deferral. Without a saved password,
+foreground capture cannot immediately consume that state. The separate
+`defer`, `verify-deferred` and `catch-up` stages prove cold execution with a
+saved password and authenticated recovery.
+
 `reset-transfers`, selectable with `ANDROID_TIER_BACKUP_STAGES`, runs
 `ExportResetTest` through the actual `resetApp` and WebView reload. It requests
 Start over while native key derivation is pending, during a delayed attachment
