@@ -47,6 +47,7 @@ describe('tesseractLabOcrEngine', () => {
       workerPath: '/tesseract/worker.min.js',
       corePath: '/tesseract/tesseract-core.wasm.js',
       langPath: '/tesseract/lang-data',
+      gzip: false,
       logger: expect.any(Function)
     });
     expect(terminate).toHaveBeenCalledTimes(1);

@@ -68,6 +68,9 @@ osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tek
 skanowaniu zdjęcia wyników przeglądarka pobiera z tego serwera silnik OCR
 (około 21 MB). Samo rozpoznawanie tekstu odbywa się na twoim urządzeniu.
 
+Na Androidzie pliki do rozpoznawania tekstu po angielsku i po polsku są w APK.
+Pierwsze skanowanie wyników nie wymaga pobierania plików ani połączenia z siecią.
+
 Pola tekstowe dziennika proszą przeglądarkę o wyłączenie autouzupełniania
 i przywracania ich treści po ponownym otwarciu sesji. To nie usuwa tekstu
 zapisanego przez wcześniejsze wersje aplikacji ani nie kontroluje danych

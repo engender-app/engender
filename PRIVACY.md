@@ -65,6 +65,9 @@ Page-opening counts are described below. The app loads its fonts and its text re
 lab photo, the browser downloads the text recognition engine (about 21 MB)
 from that server; scanning itself happens on your device.
 
+Android includes the English and Polish text recognition files in the APK.
+Its first lab scan needs no download or network connection.
+
 Journal text fields ask the browser to turn off autofill and session restoration
 for their contents. This does not remove text saved by earlier app versions or
 control what a browser extension or your keyboard stores.
