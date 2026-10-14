@@ -592,3 +592,8 @@ journals upgrade with the whole latest stock choice and its reminder retained.
 Timestamp ties use the later local rowid; manual reminders remain untouched.
 A failure after the repair rolls rows, reminders and schema back together, and
 a retry completes. Existing stock, Archive and migration suites remain active.
+Real schema-90 exports with Unicode and trim duplicates are encrypted,
+verified, opened and restored through Merge and Replace. They keep the whole
+last eligible Archive row and only its automatic reminder. Destination uuid
+and drug-key controls preserve existing stock and manual reminders; repeat
+Merge changes neither stock nor reminders. No wire timestamp is inferred.
