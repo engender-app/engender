@@ -67,7 +67,7 @@ export interface StockArea {
   /** By drug. */
   getEntries(): Promise<MedicationStock[]>;
   /** One entry per trimmed, case-insensitive drug key (the drug's own
-      uniqueness, schema.ts): saving a second for the same drug
+      uniqueness, migrations.ts): saving a second for the same drug
       replaces the first, the way DoseSchedule replaces per episode
       (doses.ts). Also clears box 4's reminder hand-off state - a fresh
       count is the deliberate act that re-arms a dismissed prompt. Returns

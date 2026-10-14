@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { collect } from '../archive/container.ts';
+import { openArchive, packArchive } from '../archive/pack.ts';
+import { portablePreferences } from '../archive/payload.ts';
 import { startOfDayTimestamp } from '../epochDay.ts';
 import { readCare } from '../careReads.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
@@ -7,7 +10,10 @@ import { runMigrations } from '../sqlite/migration-runner.ts';
 import { migrations } from '../sqlite/migrations.ts';
 import { migratedDb, noopFileOps } from '../sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver.ts';
+import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
+import { CHEAP_KDF, oneShot } from './golden-archive-fixture.ts';
 import { openJournal } from './journal.ts';
+import { verifyArchive } from './restore.ts';
 
 test.each([
   ['Estradiol', ' estradiol '],
@@ -60,6 +66,102 @@ test('Merge matches case variants but still preserves a locally renamed stock uu
     await journal.archive.merge({ journal: snapshot.journal, files: (async function* () {})() });
     assert.deepEqual((await journal.stock.getEntries()).map(({ id, drug, quantity }) => ({ id, drug, quantity })), [
       { id: other, drug: 'ESTRADIOL', quantity: 45 }, { id, drug: 'Estradiol 2mg', quantity: 20 }
+    ]);
+  } finally { await db.close(); }
+});
+
+for (const mode of ['merge', 'replace'] as const) {
+  test.each([
+    ['ŻEL', 'żel', 'żel'],
+    [' estradiol ', 'Estradiol', 'estradiol'],
+    ['i̇laç', 'İLAÇ', 'i̇laç']
+  ])(`${mode} selects one whole legacy exported stock row for %s and %s and its automatic reminder`, async (firstDrug, lastDrug, key) => {
+    const sourceDb = makeNodeSqliteDb();
+    const targetDb = await migratedDb();
+    const source = openJournal(sourceDb, fakeFileStore());
+    const target = openJournal(targetDb, fakeFileStore());
+    try {
+      await runMigrations(sourceDb, noopFileOps(), migrations.filter((migration) => migration.version <= 90));
+      await source.reconcileBuiltIns();
+      for (const [id, drug, quantity, day, updated] of [
+        ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]
+      ] as const) {
+        await sourceDb.run(`INSERT INTO medication_stock
+          (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed,
+           opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
+          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, drug, quantity, id, day, id === 'first' ? 1 : 0, day - 1, quantity, day + 9, quantity + 1, quantity + 2, updated]);
+        await sourceDb.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, auto_source, updated_at)
+          VALUES (?, ?, 'med', '09:00', ?, ?, ?)`, [`auto-${id}`, drug, day + 1, `stock:${drug}`, updated]);
+      }
+      await sourceDb.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, updated_at)
+        VALUES ('manual', 'A manual reminder', 'med', '10:00', 20020, 300)`);
+      await source.entries.upsertEntry({ epochDay: 20000, mood: 3, note: 'Legacy Archive entry' });
+      const snapshot = await source.archive.snapshot();
+      assert.deepEqual(snapshot.journal.medicationStock.map((row) => row.id), ['first', 'last']);
+      assert.equal('updated_at' in snapshot.journal.medicationStock[0], false);
+      assert.equal('drugKey' in snapshot.journal.medicationStock[0], false);
+      const packed = await collect(packArchive({ ...snapshot, preferences: portablePreferences(PREFERENCE_DEFAULTS) },
+        'synthetic legacy stock', CHEAP_KDF));
+      await verifyArchive(oneShot(packed), 'synthetic legacy stock');
+      const opened = await openArchive(oneShot(packed), 'synthetic legacy stock');
+      await target.archive[mode]({ journal: opened.payload.journal, files: opened.files });
+      assert.deepEqual((await target.archive.snapshot()).journal.medicationStock, [snapshot.journal.medicationStock[1]]);
+      assert.deepEqual((await target.reminders.getReminders()).map(({ id, autoSource }) => ({ id, autoSource })), [
+        { id: 'auto-last', autoSource: `stock:${key}` }, { id: 'manual', autoSource: null }
+      ]);
+      assert.equal((await target.archive.snapshot()).journal.entries.length, 1);
+      const before = await targetDb.query('SELECT * FROM medication_stock');
+      const reminders = await targetDb.query('SELECT * FROM reminder ORDER BY id');
+      const repeated = await openArchive(oneShot(packed), 'synthetic legacy stock');
+      await target.archive.merge({ journal: repeated.payload.journal, files: repeated.files });
+      assert.deepEqual(await targetDb.query('SELECT * FROM medication_stock'), before);
+      assert.deepEqual(await targetDb.query('SELECT * FROM reminder ORDER BY id'), reminders);
+      assert.deepEqual(await targetDb.query('PRAGMA foreign_key_check'), []);
+    } finally { await sourceDb.close(); await targetDb.close(); }
+  });
+}
+
+test('legacy stock selection filters destination uuids before choosing siblings and preserves destination keys', async () => {
+  const db = await migratedDb();
+  const journal = openJournal(db, fakeFileStore());
+  try {
+    const renamed = await journal.stock.upsertEntry({ drug: 'Estradiol', quantity: 28, unit: 'pills', recordedEpochDay: 20000 });
+    const snapshot = await journal.archive.snapshot();
+    await journal.stock.upsertEntry({ id: renamed, drug: 'Estradiol 2mg', quantity: 20, unit: 'pills', recordedEpochDay: 20010 });
+    const destination = await journal.stock.upsertEntry({ drug: 'ŻEL', quantity: 40, unit: 'pumps', recordedEpochDay: 20010 });
+    await db.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, auto_source, updated_at)
+      VALUES ('destination-auto', 'Destination reminder', 'med', '09:00', 20020, 'stock:żel', 100),
+        ('destination-manual', 'A taken-over reminder', 'med', '09:00', 20020, NULL, 100)`);
+    const before = await db.query('SELECT * FROM medication_stock ORDER BY id');
+    const reminders = await db.query('SELECT * FROM reminder ORDER BY id');
+    const old = snapshot.journal.medicationStock[0];
+    snapshot.journal.medicationStock = [
+      { ...old, id: 'incoming', drug: ' estradiol ', quantity: 59 }, old,
+      { ...old, id: 'gel-first', drug: 'żel', quantity: 4 },
+      { ...old, id: 'gel-last', drug: ' ŻEL ', quantity: 9 }
+    ];
+    const reminder = { title: 'Incoming reminder', type: 'med' as const, time: '09:00', recurrence: null,
+      interval: null, anchorEpochDay: null, epochDay: 20020, enabled: true };
+    snapshot.journal.reminders = [
+      { ...reminder, id: 'incoming-auto', autoSource: 'stock: estradiol ' },
+      { ...reminder, id: 'discarded-uuid-auto', autoSource: 'stock:Estradiol' },
+      { ...reminder, id: 'discarded-key-auto', autoSource: 'stock: ŻEL ' },
+      { ...reminder, id: 'destination-manual', autoSource: 'stock: ŻEL ' },
+      { ...reminder, id: 'unrelated-auto', autoSource: 'stock:Unrelated' },
+      { ...reminder, id: 'incoming-manual', autoSource: null }
+    ];
+    await journal.archive.merge({ journal: snapshot.journal, files: (async function* () {})() });
+    assert.deepEqual(await db.query('SELECT * FROM medication_stock WHERE uuid IN (?, ?) ORDER BY id', [renamed, destination]), before);
+    assert.deepEqual((await journal.archive.snapshot()).journal.medicationStock.find((row) => row.id === 'incoming'),
+      snapshot.journal.medicationStock[0]);
+    assert.equal((await journal.stock.getEntries()).length, 3);
+    assert.deepEqual(await db.query('SELECT * FROM reminder WHERE uuid IN (?, ?) ORDER BY id',
+      ['destination-auto', 'destination-manual']), reminders);
+    assert.deepEqual((await journal.reminders.getReminders()).map(({ id, autoSource }) => ({ id, autoSource })), [
+      { id: 'destination-auto', autoSource: 'stock:żel' }, { id: 'destination-manual', autoSource: null },
+      { id: 'incoming-auto', autoSource: 'stock:estradiol' },
+      { id: 'unrelated-auto', autoSource: 'stock:Unrelated' }, { id: 'incoming-manual', autoSource: null }
     ]);
   } finally { await db.close(); }
 });

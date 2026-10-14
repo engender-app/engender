@@ -14,6 +14,10 @@ Schema 91 keeps the latest updated complete stock row when older journals
 contain case duplicates; a later local rowid breaks timestamp ties. The chosen
 row's automatic reminder survives, while manual reminders remain untouched.
 
+Legacy Archives with case-duplicate stock restore one complete choice and its
+automatic reminder. Archives have no edit timestamps, so the last eligible
+row in Archive order wins. Merge keeps this device's stock and reminder owners.
+
 Archive Merge keeps an entry's current revisit when an older Archive carries
 a different one. Archives with two revisits for one entry are refused before
 they can change the journal.

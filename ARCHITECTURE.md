@@ -571,9 +571,18 @@ dose attribution. Schema 91 stores that derived identity under a unique index;
 the reported drug spelling and count remain on the stock row. Live writes and
 Archive application derive the key locally, so it is not a new wire field.
 Merge keeps the destination count when either its uuid or drug key matches,
-including a row renamed since the Archive was made. The stock applier filters
-existing uuids before the shared flat-table applier checks drug keys. Both
-checks run inside the restore transaction. Replace clears stock first.
+including a row renamed since the Archive was made. The stock owner filters
+destination uuids before grouping incoming rows by drug key. Both checks run
+inside the restore transaction. Replace clears stock first.
+
+Legacy Archives can contain multiple stock spellings for one key. They do not
+carry edit timestamps, so the last eligible row in Archive order supplies the
+whole choice, regardless of its recorded count day. Only that spelling's
+automatic reminder travels, with its marker normalized; the last matching
+reminder in Archive order wins if there is more than one. Reminder application
+runs before stock insertion and shares the same selection. Destination stock
+and automatic reminder owners take precedence in Merge. Manual reminders and
+markers unrelated to incoming stock retain ordinary uuid matching.
 
 The forward migration keeps each duplicate group's whole latest updated row,
 with the later local rowid breaking timestamp ties. It retains that row's
