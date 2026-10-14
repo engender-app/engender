@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class ReminderScheduler {
@@ -50,7 +51,7 @@ public final class ReminderScheduler {
             previous -> cancelAll(context, previous), saved -> scheduleAll(context, saved, now));
     }
 
-    static synchronized void rescheduleFromStore(Context context) {
+    public static synchronized void rescheduleFromStore(Context context) {
         ZonedDateTime now = ZonedDateTime.now();
         rescheduleFromStore(() -> loadPayload(context), now,
             migrated -> ReminderPayloadStore.write(context, migrated),
@@ -322,14 +323,24 @@ public final class ReminderScheduler {
     private static void schedule(Context context, PendingIntent pending, long triggerAtMillis) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending);
-            } else {
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending);
-            }
+        schedule(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S, alarmManager::canScheduleExactAlarms,
+            () -> alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending),
+            () -> alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending));
+    }
+
+    static void schedule(boolean requiresPermission, BooleanSupplier canScheduleExact, Runnable exact, Runnable inexact) {
+        if (!requiresPermission) {
+            exact.run();
             return;
         }
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending);
+        if (canScheduleExact.getAsBoolean()) {
+            try {
+                exact.run();
+                return;
+            } catch (SecurityException revoked) {
+                // Permission can be revoked between the check and admission.
+            }
+        }
+        inexact.run();
     }
 }

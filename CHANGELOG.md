@@ -12,6 +12,11 @@ Archive Merge keeps an entry's current revisit when an older Archive carries
 a different one. Archives with two revisits for one entry are refused before
 they can change the journal.
 
+Android reminders reschedule after clock changes and exact-alarm permission
+grants, even while the journal is closed. After permission is revoked, the next
+app launch or boot restores inexact alarms, including when launch stops at
+the journal gate.
+
 Archive Merge restores a bundled goal's status when this device has only hidden
 it. The local hidden choice stays in place, and a locally recorded status still
 wins over the Archive's.

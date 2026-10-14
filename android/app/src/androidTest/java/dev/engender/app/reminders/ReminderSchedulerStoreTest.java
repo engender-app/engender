@@ -212,23 +212,18 @@ public class ReminderSchedulerStoreTest {
 
     @Test
     public void alarmsComeBackAfterEveryRescheduleEventWithTheJournalNeverOpened() throws Exception {
-        /* Audit finding G-02. Each of these three events
-           takes the alarms with it, and the payload the receiver reads back
-           afterwards is now wrapped - so this is the path that would break
-           if reading it needed the data key. Nothing in this process has
-           opened the journal; there is no database here at all. The events
-           themselves are the part a test cannot stage, and cancelling the
-           PendingIntent by hand leaves the same starting state: rules on
-           disk, nothing scheduled.
-
-           The pre-existing rescheduleReceiver tests below assert that the
-           payload survives all three; this one asserts an alarm comes back
-           from it, which is the half that was inferred. */
+        // The stored payload is wrapped, but none of these events opens the
+        // journal. Cancel each alarm first so reading the payload alone cannot
+        // satisfy the assertion: the receiver must rebuild the alarm too.
         ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
 
         for (String action : new String[] {
-            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_MY_PACKAGE_REPLACED
+            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED, AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
         }) {
+            assertTrue("the manifest does not receive " + action,
+                context.getPackageManager().queryBroadcastReceivers(new Intent(action).setPackage(context.getPackageName()), 0)
+                    .stream().anyMatch(info -> ReminderRescheduleReceiver.class.getName().equals(info.activityInfo.name)));
             cancelReminderAlarm();
             assertFalse("the alarm was still scheduled before " + action, reminderAlarmExists());
 
@@ -252,20 +247,12 @@ public class ReminderSchedulerStoreTest {
 
     @Test
     public void rescheduleReceiverIgnoresUnknownAction() throws Exception {
-        JSONObject payload = new JSONObject()
-            .put("reminders", new JSONArray())
-            .put("checkInEnabled", true)
-            .put("checkInTime", "21:00")
-            .put("latestEntryEpochDay", 20314)
-            .put("texts", new JSONObject()
-                .put("channelReminders", "Reminders")
-                .put("channelCheckIn", "Check-in")
-                .put("checkInTitle", "Daily check-in")
-                .put("checkInBody", "How are you today?"));
-
-        ReminderScheduler.saveAndSchedule(context, payload);
-        new ReminderRescheduleReceiver().onReceive(context, new Intent("dev.engender.app.UNRELATED"));
-
-        assertNotNull(ReminderScheduler.loadPayload(context));
+        ReminderScheduler.saveAndSchedule(context, dailyReminderPayload());
+        cancelReminderAlarm();
+        for (Intent intent : new Intent[] {null, new Intent(), new Intent("dev.engender.app.UNRELATED")}) {
+            new ReminderRescheduleReceiver().onReceive(context, intent);
+            assertFalse("an unrelated action scheduled an alarm", reminderAlarmExists());
+            assertNotNull(ReminderScheduler.loadPayload(context));
+        }
     }
 }
