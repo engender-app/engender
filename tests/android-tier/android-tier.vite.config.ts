@@ -17,7 +17,8 @@
    SvelteKit's generated tsconfig includes every .js file under tests/, so a
    bundle left there becomes 400 svelte-check errors in generated code.
 
-   ANDROID_TIER_PROBE picks which one; run.mjs builds both. */
+   ANDROID_TIER_PROBE picks which one. run.mjs builds the regular tier's
+   bundles; kdf-budget is an explicit physical-Pixel measurement. */
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { join } from 'node:path';
@@ -25,6 +26,7 @@ import { join } from 'node:path';
 const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
+  'kdf-budget': { root: 'kdf-budget', outDir: `${ASSETS}/kdf-budget-probe` },
   ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
   'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
   'pin-count': { root: 'pin-count', outDir: `${ASSETS}/pin-count-probe` },

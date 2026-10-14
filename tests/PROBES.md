@@ -639,3 +639,20 @@ verified, opened and restored through Merge and Replace. They keep the whole
 last eligible Archive row and only its automatic reminder. Destination uuid
 and drug-key controls preserve existing stock and manual reminders; repeat
 Merge changes neither stock nor reminders. No wire timestamp is inferred.
+
+`src/lib/data/archive/kdf-cost-cap.test.ts` checks the import ceilings at
+65,537 KiB, seven passes and two lanes, including a profile that doubles both
+memory and passes. Every refusal is `corrupt`, with zero key-derivation calls.
+A complete Archive round-trip retains the released default profile. The
+container suite also keeps the measured maximum and lower-cost header controls.
+
+`tests/android-tier/kdf-budget/probe.ts` and `ArchiveKdfBudgetTest` measure
+production header parsing and derivation in the installed Pixel WebView. Five
+calls per profile start ten fresh workers and receive ten worker replies;
+returned keys are zeroed. Every call must fit a 2,000 ms budget. Build the
+probe with `ANDROID_TIER_PROBE=kdf-budget npx vite build --config
+tests/android-tier/android-tier.vite.config.ts`, after building and syncing the
+app. Assemble with an isolated `dev.engender.app.test.*` application ID before
+running the instrumentation class; the test refuses other packages. The regular
+emulator tier reports this physical-device gate as excluded. ADR-0013 records
+the chosen tuple and measured phone result.
