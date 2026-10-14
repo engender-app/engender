@@ -29,7 +29,6 @@
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
-  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -122,14 +121,11 @@
      Verifying by unlocking rather than by a comparison: there is nothing to
      compare against, and a PIN that opens the keystore is the definition of
      the current one. */
-  async function verifyCurrentPin(entered: string): Promise<PinAttempt> {
-    try {
-      await unlockJournalPin(entered);
-      currentPin = entered;
-      return 'ok';
-    } catch (e) {
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  async function verifyCurrentPin(entered: string, current: () => void): Promise<PinAttempt> {
+    await unlockJournalPin(entered, undefined, current);
+    current();
+    currentPin = entered;
+    return 'ok';
   }
 
   /** The new PIN, twice. Nothing is being guessed at here, so the bare pad. */

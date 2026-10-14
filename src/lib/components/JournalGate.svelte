@@ -16,7 +16,6 @@
   } from '$lib/stores/boot.svelte';
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
@@ -128,18 +127,11 @@
     }
   }
 
-  /* PinEntry owns the pad, the growing delay and the status line; this only
-     has to say what an attempt came to. The device-key failure is reported
-     rather than thrown away because it is the one outcome retyping cannot
-     fix, and PinEntry keeps it off the throttle for the same reason. */
-  async function submitPin(entered: string): Promise<PinAttempt> {
-    try {
-      await submitPinUnlock(entered);
-      return 'ok';
-    } catch (e) {
-      if (e instanceof UnlockCancelledError) return 'cancelled';
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  /* PinEntry classifies failures and owns the throttle. Its mount guard
+     prevents a queued attempt publishing after this gate leaves. */
+  async function submitPin(entered: string, current: () => void): Promise<PinAttempt> {
+    await submitPinUnlock(entered, current);
+    return 'ok';
   }
 
   /* No throttle and no attempt count: the authenticator does its own, and
