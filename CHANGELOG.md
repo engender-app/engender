@@ -12,6 +12,9 @@ Measurement, lab result, wear duration and wear reminder fields keep a
 decimal point or a minus sign while it is being typed. Typed one key at a
 time, 72.5 had been saved as 572 and 0.5 as 50.
 
+Turning disguise on or off in Settings is saved before Android swaps the
+launcher icon and restarts the app, so the next launch no longer undoes it.
+
 Release verification rejects APKs and App Bundles signed by an unexpected
 certificate, even when the signature itself is valid.
 

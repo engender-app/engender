@@ -3779,9 +3779,10 @@ try {
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.keyboard.press('Escape');
-  /* Waits on the mirror, not on the screen: the screen updates from the
-     in-memory projection immediately, while the write to SQLite and the
-     cache refresh behind it are a round-trip away. */
+  /* Waits on the mirror, not on the screen: palette and theme update the
+     screen from the in-memory projection immediately, disguise only once
+     its own write has landed, and the cache refresh behind every write is a
+     round-trip away. */
   await page.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.theme === 'dark' && boot.palette === 'lesbian' && boot.disguise === true;
