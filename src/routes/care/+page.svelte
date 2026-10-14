@@ -377,9 +377,9 @@
      (journal/doses.ts getComparison) - and labDraw the drawn result.
 
      A record id travels twice, as `?dose=`/`?lab=` and as the hash: the
-     hash is what scrollToHash consumes once it has scrolled (scroll-region
-     .ts), the param is what keeps the deep link - and its unavailable
-     state - alive after that. */
+     hash is what scrollToHash consumes once it has scrolled. Labs also
+     consumes its parameter after selecting the result's analyte; unresolved
+     links keep the parameter so their unavailable state remains visible. */
   const markHref = (mark: SpineMark, episodeId: string | null): string | null => {
     if (mark.kind === 'today' || mark.kind === 'runOut') return null;
     const params = new URLSearchParams();

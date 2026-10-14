@@ -268,12 +268,12 @@ export async function verifyCareSpineLinks() {
     await page.waitForURL('**/care/labs**');
 
     const labsUrl = new URL(page.url());
-    assert.equal(labsUrl.searchParams.get('lab'), fixture.labId);
     assert.equal(labsUrl.searchParams.get('drug'), null, 'shared mark names no lane');
 
     // Verify target lab row highlighted
     const targetLab = page.locator(`button.kit-row.is-target-lab[data-lab-result="${fixture.labId}"]`);
     await targetLab.waitFor({ timeout: 5000 });
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has('lab'));
 
     // Tap Back, verify return to /care
     await page.locator('[data-screen-back]').click();

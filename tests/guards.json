@@ -25,6 +25,11 @@
     "holds": "the ready-letters count and the jump above the waiting list"
   },
   {
+    "name": "deep-link-consumption-check",
+    "tier": "dev",
+    "holds": "ready-letter and lab links apply once; folding, another analyte, URL replacement and return context survive"
+  },
+  {
     "name": "body-map-selected-context",
     "tier": "dev",
     "holds": "the figure and the cluster select one region, and each case gets an honest sentence",

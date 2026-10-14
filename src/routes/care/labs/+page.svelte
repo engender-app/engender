@@ -18,6 +18,7 @@
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import TimePicker from '$lib/components/TimePicker.svelte';
@@ -95,13 +96,19 @@
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (deepLinkedLabQuery.value) {
-      analyte = deepLinkedLabQuery.value.analyte;
-      return;
-    }
     if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
+
+  function openLinkedLab() {
+    if (!deepLinkedLabQuery.value) return;
+    analyte = deepLinkedLabQuery.value.analyte;
+    if (page.url.searchParams.has('lab')) {
+      const url = new URL(page.url);
+      url.searchParams.delete('lab');
+      void replaceRoute(url, { noScroll: true, keepFocus: true });
+    }
+  }
 
   $effect(() => {
     if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
@@ -473,7 +480,8 @@
   <SourceRecordHandoff
     id={deepLinkedLabId}
     ready={!deepLinkedLabQuery.loading}
-    found={deepLinkedLabQuery.value !== null}
+    found={deepLinkedLabQuery.value?.id === deepLinkedLabId}
+    onOpen={openLinkedLab}
   />
 
   <ReadGate read={chartsRead} variant="block" count={1}>
