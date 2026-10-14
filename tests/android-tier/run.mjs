@@ -39,6 +39,7 @@ import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtem
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { lockedProcessDeath } from './locked-process-death.mjs';
 import { installationRecovery } from './archive/recovery.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
 import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './emulator.mjs';
@@ -49,6 +50,8 @@ const androidDir = join(repo, 'android');
 const { ok, fail, finish } = createReporter();
 
 /* Headless runs use software graphics with Vulkan disabled. */
+const LOCK_ONLY = process.env.ANDROID_TIER_LOCK_ONLY === '1';
+const LOCK_PACKAGE = 'dev.engender.app.test.lockprobe';
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
 const RECOVERY_ONLY = process.env.ANDROID_TIER_RECOVERY_ONLY === '1';
 const BACKUP_ONLY = process.env.ANDROID_TIER_BACKUP_ONLY === '1';
@@ -148,6 +151,7 @@ async function startEmulator(avd, port) {
   writeFileSync(join(clone, 'config.ini'), config);
   writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
   const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
+  if (LOCK_ONLY && !HEADLESS) args.push('-gpu', 'host');
   if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
   ownedEmulator = await startOwnedEmulator({
     name: disposableName, query: queryDevice, timeout: BOOT_TIMEOUT_MS,
@@ -170,7 +174,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
+for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -239,6 +243,23 @@ for (const avd of AVDS) {
       console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 87 floor)`);
     }
 
+    if (LOCK_ONLY) {
+      if (nativeOnly) throw new Error('locked journal requires a supported Android WebView');
+      const init = join(evidenceDir, 'lock-package.gradle');
+      writeFileSync(init, `allprojects { afterEvaluate { p -> if (p.path == ':app') p.android.defaultConfig.applicationId = '${LOCK_PACKAGE}' } }`);
+      const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2', '-I', init], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600000
+      });
+      writeFileSync(join(evidenceDir, 'lock-assemble.log'), `${built.stdout ?? ''}${built.stderr ?? ''}`);
+      if (built.status !== 0 || built.error || built.signal) throw new Error('locked journal APK build failed');
+      for (const apk of ['debug/app-debug.apk', 'androidTest/debug/app-debug-androidTest.apk']) {
+        const installed = device(['install', '-r', join(androidDir, 'app/build/outputs/apk', apk)], { timeout: 120000 });
+        if (installed.status !== 0 || installed.error || installed.signal) throw new Error('locked journal APK install failed');
+      }
+      await lockedProcessDeath({ device, pkg: LOCK_PACKAGE, evidenceDir, reporter: { ok, fail } });
+      continue;
+    }
+
     /* :app: rather than the whole build. The empty capacitor-cordova-android-plugins
        module Capacitor generates has an androidTest variant of its own, and it
        fails to dex on a Kotlin stdlib clash between androidx.test's 1.8.22 and a
@@ -262,7 +283,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST}`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest`])
           ],
           {
             cwd: androidDir,
