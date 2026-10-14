@@ -205,11 +205,15 @@ const flag = (value: unknown): boolean => value === true;
     under neither, depending on which form the caller happened to hold. */
 const zipName = (name: string): string => name.replace(/^\/+/, '');
 
-/** Every entry name in the archive, normalised, decompressing none of
-    them: `names()`'s own filter always says no, which walks the central
-    directory and stops there. */
-function zipNames(reader: ZipReader): string[] {
-  return reader.names().map(zipName);
+/** Retain the first raw member for each normalised name, matching the
+    former lookup even when distinct raw names share a leading-slash alias. */
+function zipNames(reader: ZipReader): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const raw of reader.names()) {
+    const name = zipName(raw);
+    if (!names.has(name)) names.set(name, raw);
+  }
+  return names;
 }
 
 /** One entry's bytes, or null when the archive has no such entry. Named
@@ -219,8 +223,8 @@ function zipNames(reader: ZipReader): string[] {
     to the shared reader's ceiling, which is what keeps a preview off the
     500 full attachments it is not retaining, and off a member declaring more than
     this app will hold in memory at once. */
-function zipRead(reader: ZipReader, name: string, prefix = false): Uint8Array | null {
-  const raw = reader.names().find((candidate) => zipName(candidate) === name);
+function zipRead(reader: ZipReader, names: Map<string, string>, name: string, prefix = false): Uint8Array | null {
+  const raw = names.get(name);
   return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
 }
 
@@ -232,7 +236,7 @@ function zipRead(reader: ZipReader, name: string, prefix = false): Uint8Array | 
     decompresses nothing - only the directory of names is read. */
 export function detectDaylioBackup(file: Uint8Array): boolean {
   try {
-    return zipNames(openZip(file)).includes(BACKUP_MEMBER);
+    return zipNames(openZip(file)).has(BACKUP_MEMBER);
   } catch {
     return false;
   }
@@ -245,14 +249,14 @@ export function detectDaylioBackup(file: Uint8Array): boolean {
     read for this same file has to go through the one reader, so the
     ceiling's running total covers the whole backup rather than resetting
     per member. */
-function openBackup(file: Uint8Array): { payload: Record_; names: Set<string>; reader: ZipReader } {
+function openBackup(file: Uint8Array): { payload: Record_; names: Map<string, string>; reader: ZipReader } {
   let reader: ZipReader;
-  let names: Set<string>;
+  let names: Map<string, string>;
   let member: Uint8Array | null;
   try {
     reader = openZip(file);
-    names = new Set(zipNames(reader));
-    member = names.has(BACKUP_MEMBER) ? zipRead(reader, BACKUP_MEMBER) : null;
+    names = zipNames(reader);
+    member = zipRead(reader, names, BACKUP_MEMBER);
   } catch (cause) {
     if (cause instanceof ZipTooLargeError) throw cause;
     throw new DaylioBackupError('unreadable', 'is not a zip file');
@@ -426,9 +430,32 @@ export async function daylioBackupPreview(
   const unimported = new Set<number>();
   const plannedAssets = new Map<string, DaylioAsset>();
   const assetPaths = new Map<number, string>();
+  const photos = new Map<string, string>();
+  const audio = new Map<string, string>();
+  const wantedPhotos = new Map<string, Set<string>>();
+  const wantedAudio = new Map<string, Set<string>>();
+  for (const asset of assets.values()) {
+    const wanted = asset.type === AUDIO_ASSET ? wantedAudio : wantedPhotos;
+    const tail = asset.checksum.slice(asset.checksum.lastIndexOf('/') + 1);
+    const checksums = wanted.get(tail) ?? new Set<string>();
+    checksums.add(asset.checksum);
+    wanted.set(tail, checksums);
+  }
+  for (const name of zipEntries.keys()) {
+    const paths = name.startsWith(PHOTO_DIRECTORY) ? photos : name.startsWith(AUDIO_DIRECTORY) ? audio : null;
+    if (!paths) continue;
+    const wanted = paths === photos ? wantedPhotos : wantedAudio;
+    const checksums = wanted.get(name.slice(name.lastIndexOf('/') + 1));
+    // Preserve slash-containing checksums without retaining every path suffix.
+    for (const checksum of checksums ?? []) {
+      if (name.endsWith(`/${checksum}`)) {
+        paths.set(checksum, name);
+        checksums!.delete(checksum);
+      }
+    }
+  }
   for (const [id, asset] of assets) {
-    const directory = asset.type === AUDIO_ASSET ? AUDIO_DIRECTORY : PHOTO_DIRECTORY;
-    const path = [...zipEntries].find((name) => name.startsWith(directory) && name.endsWith(`/${asset.checksum}`));
+    const path = (asset.type === AUDIO_ASSET ? audio : photos).get(asset.checksum);
     if (!path) {
       missingAssets.add(id);
       continue;
@@ -438,7 +465,7 @@ export async function daylioBackupPreview(
 
   const readAsset = async (id: number, prefix = false): Promise<Uint8Array> => {
     const path = assetPaths.get(id)!;
-    const bytes = zipRead(reader, path, prefix);
+    const bytes = zipRead(reader, zipEntries, path, prefix);
     if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };

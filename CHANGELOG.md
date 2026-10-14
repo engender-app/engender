@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Daylio photo previews locate ZIP members once instead of rescanning preceding
+attachments for every photo. Stored and deflated backups retain the same
+attachment identities, content and size limits.
+
 Care-caption collisions and reported appointment-debrief failures now fail CI
 instead of appearing only in guard logs.
 
