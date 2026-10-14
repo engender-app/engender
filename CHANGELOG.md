@@ -23,6 +23,8 @@ supported update path.
 
 ## 1.0.0
 
+Android PIN and journal passphrase changes wait until the credential wrap is saved to app-private storage and synced. Released OPFS wraps move there on first use. A failed change asks you to keep both credentials until the active one is checked.
+
 engender is a private journal for tracking a gender transition. Keep daily
 entries, photos and care records on your own device, then use Look back to
 review them over time. You choose which areas to use and what to record.

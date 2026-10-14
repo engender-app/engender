@@ -1,6 +1,7 @@
 package dev.engender.app.reset;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -19,6 +20,7 @@ import java.security.KeyStore;
 import java.io.File;
 
 import dev.engender.app.photos.CameraCapture;
+import dev.engender.app.keystore.CredentialWrapStore;
 
 import javax.crypto.KeyGenerator;
 
@@ -68,6 +70,15 @@ public class DeviceStoresTest {
     @After
     public void tearDown() throws Exception {
         DeviceStores.wipe(context);
+    }
+
+    @Test
+    public void aResetRemovesTheCredentialWithoutAllowingReadoption() throws Exception {
+        CredentialWrapStore credentials = new CredentialWrapStore(context);
+        credentials.write("{\"credential\":\"synthetic\"}");
+        wipe();
+        credentials.adopt("{\"credential\":\"stale OPFS copy\"}");
+        assertEquals("null", new CredentialWrapStore(context).read());
     }
 
     @Test
