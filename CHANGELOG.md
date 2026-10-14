@@ -45,6 +45,11 @@ This is the first versioned release. Earlier development builds, including
 the August web beta, do not establish a supported update path. Export anything
 you want to keep before replacing a development build.
 
+Day One imports use the calendar day in each entry's recorded time zone.
+Imports made in rc.1 on a device west of UTC landed one day early. Already
+imported rows keep their dates; remove the affected imports and import the
+original Day One export again to correct them.
+
 - Schema changes: the first release establishes schema 86; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
 - Archive format changes: the first release establishes archive format 2. Archives from development builds are not a supported restore path.
 - Security migrations: none for this first release. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
