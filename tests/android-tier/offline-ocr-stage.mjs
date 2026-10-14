@@ -25,6 +25,12 @@ export async function offlineOcrStage({ device, pkg, apk, testApk, evidenceDir, 
     command(['shell', 'wm', 'dismiss-keyguard']);
     device(['uninstall', pkg]);
     device(['uninstall', `${pkg}.test`]);
+    const packages = command(['shell', 'pm', 'list', 'packages', '-u']).split('\n').map(line => line.trim());
+    const remaining = [pkg, `${pkg}.test`].filter(name => packages.includes(`package:${name}`));
+    writeFileSync(join(evidenceDir, `${avd}-ocr-preinstall.json`), JSON.stringify({
+      checkedPackages: [pkg, `${pkg}.test`], remaining
+    }, null, 2));
+    if (remaining.length) throw new Error('offline OCR packages remain before fresh installation');
     for (const file of [apk, testApk]) {
       if (!command(['install', '-t', file], 120000).includes('Success')) throw new Error('offline OCR fresh installation failed');
     }

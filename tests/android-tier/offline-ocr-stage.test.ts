@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -32,6 +32,11 @@ it('uses fresh isolated installs after disabling networks and restores settings'
   const firstInstall = calls.findIndex(args => args[0] === 'install');
   expect(calls.slice(0, firstInstall)).toContainEqual(['shell', 'svc', 'wifi', 'disable']);
   expect(calls.slice(0, firstInstall)).toContainEqual(['uninstall', options.pkg]);
+  expect(calls.slice(0, firstInstall)).toContainEqual(['uninstall', `${options.pkg}.test`]);
+  expect(calls.slice(0, firstInstall)).toContainEqual(['shell', 'pm', 'list', 'packages', '-u']);
+  expect(JSON.parse(readFileSync(join(options.evidenceDir, 'owned-ocr-preinstall.json'), 'utf8'))).toEqual({
+    checkedPackages: [options.pkg, `${options.pkg}.test`], remaining: []
+  });
   expect(calls.filter(args => args.includes('instrument'))).toHaveLength(1);
   expect(calls).toContainEqual(['shell', 'cmd', 'connectivity', 'airplane-mode', 'disable']);
   expect(calls.at(-1)).toEqual(['shell', 'svc', 'wifi', 'enable']);
@@ -51,6 +56,40 @@ it('refuses failed recognition and still uninstalls both packages and restores s
   const { options, calls } = fixture(false);
   await expect(offlineOcrStage(options)).rejects.toThrow('real offline OCR recognition failed');
   expect(calls.slice(-4, -2)).toEqual([['uninstall', options.pkg], ['uninstall', `${options.pkg}.test`]]);
+  expect(calls.at(-1)).toEqual(['shell', 'svc', 'wifi', 'enable']);
+});
+
+for (const suffix of ['', '.test']) {
+  it(`refuses a retained ${suffix ? 'instrumentation' : 'app'} package after failed uninstall`, async () => {
+    const { options, calls } = fixture(true);
+    const leftover = `${options.pkg}${suffix}`;
+    const original = options.device;
+    options.device = (args) => {
+      const result = original(args);
+      if (args[0] === 'uninstall' && args[1] === leftover &&
+          calls.filter(call => call[0] === 'uninstall' && call[1] === leftover).length === 1) {
+        return { ...result, status: 1, stdout: 'Failure [DELETE_FAILED_INTERNAL_ERROR]' };
+      }
+      if (args.join(' ') === 'shell pm list packages -u') return { ...result, stdout: `package:${leftover}\n` };
+      return result;
+    };
+    await expect(offlineOcrStage(options)).rejects.toThrow('offline OCR packages remain before fresh installation');
+    expect(calls.some(args => args[0] === 'install' || args.includes('instrument'))).toBe(false);
+    expect(existsSync(join(options.evidenceDir, 'owned-ocr-result.json'))).toBe(false);
+    expect(calls.at(-1)).toEqual(['shell', 'svc', 'wifi', 'enable']);
+  });
+}
+
+it('refuses an unreadable package inventory before installation', async () => {
+  const { options, calls } = fixture(true);
+  const original = options.device;
+  options.device = (args) => {
+    const result = original(args);
+    return args.join(' ') === 'shell pm list packages -u' ? { ...result, status: 1 } : result;
+  };
+  await expect(offlineOcrStage(options)).rejects.toThrow('offline OCR command failed: shell pm list packages -u');
+  expect(calls.some(args => args[0] === 'install' || args.includes('instrument'))).toBe(false);
+  expect(existsSync(join(options.evidenceDir, 'owned-ocr-result.json'))).toBe(false);
   expect(calls.at(-1)).toEqual(['shell', 'svc', 'wifi', 'enable']);
 });
 
