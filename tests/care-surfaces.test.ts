@@ -113,7 +113,7 @@ describe('the spine draws one lane per running regimen', () => {
   });
 
   it('gives every block a Log button that opens the dose sheet on that block’s own drug', () => {
-    expect(care).toContain("const logHref = (drug: string) => `/care/doses?add=1&drug=${encodeURIComponent(drug)}`;");
+    expect(care).toContain("const logHref = (episodeId: string) => `/care/doses?add=1&episode=${encodeURIComponent(episodeId)}`;");
     expect(care).toContain('data-care-log={lane.episode.drug}');
   });
 });

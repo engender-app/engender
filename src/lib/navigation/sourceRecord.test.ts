@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listReturnTo, sourceReturnTo, withListReturn } from './sourceRecord';
+import { careEpisodeId, careLaneReturnHref, listReturnTo, sourceReturnTo, withListReturn } from './sourceRecord';
 
 const at = (path: string) => new URL(`https://engender.test${path}`);
 
@@ -23,5 +23,20 @@ describe('listReturnTo', () => {
 
   it('does not make the editor think a source record sent it', () => {
     expect(sourceReturnTo(at(withListReturn('/entry/7', at('/calendar'))))).toBeNull();
+  });
+});
+
+const EPISODE = '12345678-1234-1234-1234-123456789abc';
+
+describe('Care return identity', () => {
+  it('keeps the episode UUID and day without copying journal text', () => {
+    expect(careLaneReturnHref(at(`/care/doses?episode=${EPISODE}&date=20000&drug=private&lane=private`)))
+      .toBe(`/care?episode=${EPISODE}&date=20000`);
+    expect(careLaneReturnHref(at('/care/labs?date=20000'))).toBe('/care?date=20000');
+  });
+
+  it('refuses names disguised as episode IDs and dates', () => {
+    expect(careEpisodeId(at('/care?episode=private-drug'))).toBeNull();
+    expect(careLaneReturnHref(at('/care/doses?episode=private-drug&date=private-drug'))).toBe('/more');
   });
 });
