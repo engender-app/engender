@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+SQLite transaction failures keep their original message when rollback also
+fails. Full-disk errors remain identifiable, with rollback refusal retained
+as secondary diagnostic information.
+
 Source packages exclude root local-evidence paths, and CI rejects them if they
 are tracked. Application evidence routes and intentional fixtures remain in
 the source package.

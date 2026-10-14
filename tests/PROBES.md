@@ -1,5 +1,11 @@
 # The probes in tests/*.mjs
 
+`src/lib/data/sqlite/transactor.test.ts` limits real Node SQLite with
+`max_page_count` to force SQLITE_FULL and its automatic rollback. The caller
+must retain the full-disk message and original error cause, plus the refused
+explicit rollback. Statement/commit controls keep both diagnostics, and the
+next queued transaction must still commit.
+
 `tests/ai-directories.test.ts` plants synthetic root evidence in an isolated
 Git repository. It requires index refusal and verifies that an archive of the
 commit excludes evidence while retaining source, build inputs and intentional
