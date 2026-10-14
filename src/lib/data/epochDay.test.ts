@@ -469,3 +469,19 @@ test('msUntilNextLocalMidnight lands on the next local midnight', () => {
   const morning = new Date(2026, 9, 5, 0, 0, 0);
   expect(epochDayFromLocalDate(new Date(morning.getTime() + msUntilNextLocalMidnight(morning)))).toBe(epochDayFromLocalDate(morning) + 1);
 });
+
+test('calendar duration borrows across a year boundary and keeps exact-month zero days', () => {
+  const day = (year: number, month: number, date: number) => epochDayFromCalendarDate(year, month, date)!;
+  expect(calendarDuration(day(2025, 11, 20), day(2026, 1, 10))).toEqual({ years: 0, months: 1, days: 21 });
+  expect(calendarDuration(day(2025, 12, 15), day(2026, 1, 15))).toEqual({ years: 0, months: 1, days: 0 });
+  expect(calendarDuration(day(2025, 12, 31), day(2026, 1, 1))).toEqual({ years: 0, months: 0, days: 1 });
+});
+
+test('custom inclusive range accepts one calendar day', () => {
+  expect(customInclusiveRange(20000, 20000)).toEqual({ start: 20000, end: 20000 });
+});
+
+test('a missing range end stays invalid before the Unix epoch', () => {
+  expect(customInclusiveRange(-1, null)).toBeNull();
+  expect(customInclusiveRange(0, null)).toBeNull();
+});

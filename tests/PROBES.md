@@ -771,3 +771,13 @@ Without CSP, the context observer records the request while the page observer
 misses it. With the nginx CSP header, the sink receives nothing. The build
 server reads that policy directly from `deploy/nginx/journal-headers.conf`
 and sends it on documents, service workers and error responses.
+
+Dose draft and schedule unit tests preserve saved route, site, trimmed unit
+and drug fields. They check distant weekday amount cycles, route aliases,
+injection boundaries, passed slots, nearest-slot ties and auto-log rhythm
+guards. Epoch-day tests cover year-boundary borrowing and one-day custom
+ranges. Run:
+
+```sh
+npx vitest run src/lib/data/doseDraft.test.ts src/lib/data/doseSchedule.test.ts src/lib/data/epochDay.test.ts
+```
