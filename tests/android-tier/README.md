@@ -77,6 +77,10 @@ Its evidence includes process IDs and one result for each arrival. This checks
 process death on an emulator, not permission revocation or physical-device
 behavior.
 
+The API 26 runner disables the emulator's GLDMA transport. Its old goldfish
+kernel panics while mapping graphics DMA buffers during Android startup.
+The native floor checks run after a fresh boot with that transport disabled.
+
 ## Release evidence
 
 Start from a clean working tree. A passing run writes `androidTier` in

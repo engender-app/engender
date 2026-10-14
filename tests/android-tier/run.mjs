@@ -161,7 +161,11 @@ async function startEmulator(avd, port) {
   writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
   const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
   if (LOCK_ONLY && !HEADLESS) args.push('-gpu', 'host');
-  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
+  // The API 26 goldfish kernel panics while mapping graphics DMA buffers.
+  // Keep its native checks running without the emulator's GLDMA transport.
+  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature',
+    NATIVE_ONLY.has(avd) ? '-Vulkan,-GLDMA' : '-Vulkan');
+  else if (NATIVE_ONLY.has(avd)) args.push('-feature', '-GLDMA');
   ownedEmulator = await startOwnedEmulator({
     name: disposableName, query: queryDevice, timeout: BOOT_TIMEOUT_MS,
     launch: () => {
