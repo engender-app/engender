@@ -23,6 +23,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { newCapabilityContext, createReporter, launchBrowser, launchPersistentBrowser, browserEngine } from '../browser-harness.mjs';
 import { serveBuild } from '../serve-build.mjs';
+import { observeBuildRequests } from '../build-requests.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
 import { choosePassphrase, firstRun } from './built-flow.mjs';
 
@@ -105,12 +106,8 @@ const browser = await launchBrowser();
 const initialContext = await newCapabilityContext(browser);
 const page = await initialContext.newPage();
 
-const allRequests = [];
-const externalRequests = [];
-page.on('request', (req) => {
-  allRequests.push(req.url());
-  if (new URL(req.url()).origin !== origin) externalRequests.push(req.url());
-});
+const { allRequests, externalRequests, observe } = observeBuildRequests(origin);
+observe(initialContext);
 
 const { ok, fail, finish } = createReporter();
 
@@ -288,6 +285,7 @@ const closeServer = async () => {
 };
 try {
   installed = await launchPersistentBrowser(profile, profileOptions);
+  observe(installed);
   const cold = installed.pages()[0] ?? (await installed.newPage());
   await firstRun(cold, origin);
   await cold.locator('[data-mood="4"]').click();
@@ -537,9 +535,8 @@ try {
   // The stopped origin remains the real network boundary for that engine.
   installed = await launchPersistentBrowser(profile, { ...profileOptions, offline: browserEngine() !== 'webkit' });
 
+  const offlineRequests = observe(installed);
   const restarted = installed.pages()[0] ?? (await installed.newPage());
-  const offlineRequests = [];
-  restarted.on('request', (request) => offlineRequests.push(request.url()));
   const offlineURL = `${origin}/?offline-proof=${Date.now()}`;
   const offlineResponse = await restarted.goto(offlineURL);
 
@@ -586,7 +583,6 @@ try {
   // closes its browser window, so that context cannot create another page.
   const deep = await installed.newPage();
   await restarted.close();
-  deep.on('request', (request) => offlineRequests.push(request.url()));
   await deep.goto(`${origin}/entry/new/today`);
   await deep.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});
   await deep.fill('#journal-passphrase', 'verify-build passphrase').catch(() => {});
@@ -678,6 +674,9 @@ try {
   // A no-op unless the section threw before it got that far itself.
   await closeServer();
 }
+
+if (externalRequests.length === 0) ok(`all browser contexts made ${allRequests.length} requests without leaving the build origin`);
+else fail('all browser contexts make no request to another origin', externalRequests.join(', '));
 
 const failures = finish('BUILD VERIFICATION PASSES');
 process.exit(failures ? 1 : 0);
