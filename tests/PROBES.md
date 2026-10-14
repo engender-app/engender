@@ -1,5 +1,39 @@
 # The probes in tests/*.mjs
 
+`tests/fuzz/fuzz.test.ts` runs in `npm test` without a new dependency. Seed 1
+produces 40 cases for each of 12 targets: five Archive variants, Daylio CSV,
+Daylio backup, Day One, TransTracks, Track & Graph, Pixels and sniffers.
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` runs 2,000 cases per target. To run only
+the harness, use `npx vitest run tests/fuzz/fuzz.test.ts`. `FUZZ_COUNT`,
+`FUZZ_LONG_COUNT` and comma-separated `FUZZ_TARGETS` narrow diagnostic runs.
+The browser photo/PDF targets are outside this Node harness.
+
+Each child has a 1 GiB heap cap and a 30-second case watchdog. Environment
+overrides can lower these bounds, never raise them. A crash, timeout, changed
+row or file content after refusal, orphan surviving the sweep, failed SQLite
+integrity check, unreadable accepted snapshot, prototype pollution or throwing
+sniffer fails the test. Untyped refusals stay in the summary without failing
+unless `FUZZ_STRICT_TYPED=1`. There is no corrupt-input signature allow-list.
+`invariants.test.ts` plants partial writes, changed file bytes, orphan survivors,
+broken foreign keys and unreadable rows, plus sniffer throws and pollution.
+
+`FUZZ_OUT` selects the output directory, defaulting to ignored `ci-logs/fuzz/`.
+Summaries include seed, counts, wall time, child CPU time and peak RSS. Each
+defect or untyped refusal keeps a `case-seed<seed>-<target>-<index>.json`
+receipt and its exact `.bin` input. A killed child keeps the active input;
+startup or generation failures have a receipt without an input. Replay a saved
+receipt from the repository root with:
+
+```sh
+node --max-old-space-size=1024 tests/fuzz/child.mjs '{"root":".","artifact":"/absolute/path/case-seed1-daylio-csv-0.json","run":true}'
+```
+
+The retained `replay: "target:index"` option regenerates a case from its seed.
+Encrypted framing uses fresh nonces, so only an artifact replay reproduces the
+exact bytes. The optional shrinker cuts ciphertext and cannot meaningfully
+minimise encrypted targets. A future LAN receiver adds its damaged-frame target
+with the same refusal fingerprint rule when that receiver lands.
+
 `node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
 6501 through 6530, within 160 ms of the reset action. Erased cuts must return

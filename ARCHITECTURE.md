@@ -1026,6 +1026,15 @@ The contract suite in [data/journal/contract-suite.ts](src/lib/data/journal/cont
 
 **Fixtures and the demo.** [data/demo/persona.ts](src/lib/data/demo/persona.ts) is "Alice", a seeded, deterministic persona about two and a half years into transition, generated relative to today. Every import of it sits behind `__DEMO__`, which a production build replaces with `false`. [verify-build.mjs](tests/browser-tier/verify-build.mjs) greps the built bundle to prove the persona is gone. `VITE_DEMO=1 npm run build` produces the demo build that guards and the walkthrough use. On a cold web load the database worker seeds the persona itself, in one transaction ([worker-seed.ts](src/lib/data/demo/worker-seed.ts)). While the sqlite wasm is still downloading, the worker draws the persona's photos ahead of time (`warmDemoPhotos`); the seed takes each one from that set, and draws on demand any photo the set does not hold. Photos depend on their seed alone, so the rows and bytes written do not change. [data/demo/fullFixture.ts](src/lib/data/demo/fullFixture.ts) fills every feature. The long-journal fixture is a separate generator ([tests/long-journal/generate.ts](tests/long-journal/generate.ts)).
 
+The Node tier also runs [tests/fuzz/](tests/fuzz/): 40 seeded mutations for
+each of 12 importer and sniffer targets. A separate child has a 1 GiB heap
+limit and a 30-second case watchdog. Refused cases must preserve row and file
+content hashes after orphan cleanup; accepted imports must pass SQLite
+integrity checks and read back through the journal. Exact failing inputs and
+seed/index receipts stay in ignored `ci-logs/fuzz/`. `FUZZ_LONG=1` raises the
+default to 2,000 cases per target. Untyped refusals are report-only unless
+`FUZZ_STRICT_TYPED=1`; crashes and invariant failures always fail the run.
+
 `docs/agents/verification.md` lists what each tier needs and its known noise.
 
 ## 11. Performance architecture
