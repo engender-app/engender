@@ -1,4 +1,4 @@
-# The probes in tests/*.mjs
+# Verification probes and focused regressions
 
 Archive validation tests cover single-read export length changes, malformed
 payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
