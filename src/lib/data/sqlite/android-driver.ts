@@ -22,7 +22,9 @@
    arrive before the statements written after it - so every call carries
    this driver's session and a sequence number counted from the open, and
    the plugin runs them strictly in that order on its own single thread,
-   holding back any that arrive early (CallSequencer.java). Capacitor 8.5
+   holding back any that arrive early (CallSequencer.java). File operations
+   made after the close are the one exception and go on a second session
+   (fileCall below, ui 33). Capacitor 8.5
    happens to deliver plugin calls in order, but that is a framework
    internal, and the order here is ours to own.
 
@@ -138,15 +140,19 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
      copy there was refused and read as "no copy": the restore was never
      offered although the copy was on disk. Once this driver is closed its
      file operations go on a session of their own. The plugin's connection
-     still knows the journal's file and key after a close, and nothing else
-     is left on the old session to keep them in order with. One session for
-     whatever comes after the close, not one per call, and it is never
-     closed: its close would close the plugin's one connection, which by then
-     may belong to the next driver. */
-  let closed = false;
+     still knows the journal's file and key after a close. A call on the new
+     session waits for the close to come back before it is sent, since two
+     sessions are not ordered against each other by the plugin and the order
+     is ours to own. One session for whatever comes after the close, not one
+     per call, and it is never closed: its close would close the plugin's one
+     connection, which by then may belong to the next driver. That leaves
+     one empty entry in the plugin's session map per failed boot. */
+  let closing: Promise<unknown> | null = null;
   let afterClose: (() => Stamp) | null = null;
   const fileCall = <T>(send: (stamp: Stamp) => Promise<T>): Promise<T> =>
-    closed ? send((afterClose ??= sequencer())()) : afterOpen(send);
+    closing
+      ? closing.catch(() => {}).then(() => send((afterClose ??= sequencer())()))
+      : afterOpen(send);
 
   const driver: SqliteDriver = withReadSnapshots({
     async exec(statements: string) {
@@ -183,9 +189,9 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
     }),
 
     async close() {
-      const closing = afterOpen((s) => Sqlite.close(s));
-      closed = true;
-      await closing;
+      const sent = afterOpen((s) => Sqlite.close(s));
+      closing ??= sent;
+      await sent;
     }
   });
 

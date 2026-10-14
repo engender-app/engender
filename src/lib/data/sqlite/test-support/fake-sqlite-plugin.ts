@@ -12,10 +12,22 @@
 
    Use it behind a mocked registerPlugin. android-driver.ts registers its
    plugin once, when it loads, so the mock returns a forwarder to whichever
-   fake the test made last - android-failed-migration.test.ts shows the
-   shape.
+   fake the test made last (android-failed-migration.test.ts does this):
 
-   The hex key is accepted and ignored: node:sqlite has no SQLCipher. */
+     const plugin = vi.hoisted(() => ({ current: null as unknown as Record<string, (options: unknown) => unknown> }));
+     vi.mock('@capacitor/core', () => ({
+       registerPlugin: () => new Proxy({}, { get: (_target, method: string) => (options: unknown) => plugin.current[method](options) })
+     }));
+     const { createAndroidSqlite } = await import('../android-driver.ts');
+     plugin.current = createFakeSqlitePlugin(dir) as never;
+
+   Where it is looser than the device: the hex key is accepted and ignored,
+   because node:sqlite has no SQLCipher, so a copy written under another key
+   still reads as usable here where SqliteConnection.java says no; open
+   always reopens, where the plugin keeps a connection whose file and key
+   have not changed; and the closed-session set is not bounded at 64. None
+   of these bears on a closed session refusing calls, which is what it was
+   written for. */
 
 import { copyFileSync, existsSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
