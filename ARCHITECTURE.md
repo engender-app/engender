@@ -562,6 +562,14 @@ their parent's identity too. A missing file remains a supported placeholder.
 
 Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) applies portable preferences only after Replace returns, outside the row transaction. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
+Medication stock also matches its exact drug name, since only one current count
+may exist per drug. Merge keeps the destination count when either its uuid or
+drug matches, including a row renamed since the Archive was made. The stock
+applier filters existing uuids before the shared flat-table applier checks drug
+names. Both checks run inside the restore transaction and use the same column
+descriptor and defaults as Archive reads and row validation. Replace clears
+stock before applying the Archive's counts.
+
 **External importers** sit in [data/archive/sources.ts](src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](src/lib/data/archive/plain.ts)) are readable files, not backups.
 
 Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.

@@ -147,6 +147,26 @@ function flat<
   };
 }
 
+const MEDICATION_STOCK = {
+  table: 'medication_stock',
+  identity: 'drug',
+  orderBy: 'drug',
+  columns: {
+    uuid: 'id',
+    drug: 'drug',
+    quantity: 'quantity',
+    unit: 'unit',
+    recorded_epoch_day: 'recordedEpochDay',
+    reminder_ever_created: { field: 'reminderEverCreated', bool: true },
+    reminder_dismissed: { field: 'reminderDismissed', bool: true },
+    opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
+    in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
+    in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
+    lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
+    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
+  }
+} as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
+
 const SECTIONS = [
   section({
     name: 'dimensions',
@@ -923,34 +943,21 @@ const SECTIONS = [
     read: read.readDosePauses,
     apply: apply.applyDosePauses
   }),
-  /* Identified by `drug`, not by uuid: medication_stock is UNIQUE per drug
-     (schema.ts), one row that a fresh count replaces in place rather
-     than a log of past ones - the same shape personalEffects has for an
-     effect. The reminder bookkeeping travels as recorded: restoring a
-     device's own backup should restore its own hand-off state, not a blank
-     one (see ArchiveMedicationStock's own comment). */
-  flat({
-    name: 'medicationStock',
-    // Your own current inventory count, not structure to hand a stranger.
-    travels: 'none',
-    table: 'medication_stock',
-    identity: 'drug',
-    orderBy: 'drug',
-    columns: {
-      uuid: 'id',
-      drug: 'drug',
-      quantity: 'quantity',
-      unit: 'unit',
-      recorded_epoch_day: 'recordedEpochDay',
-      reminder_ever_created: { field: 'reminderEverCreated', bool: true },
-      reminder_dismissed: { field: 'reminderDismissed', bool: true },
-      opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
-      in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
-      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
-      lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
-      doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
-    }
-  }),
+  /* A destination stock row keeps its count when either its travelling uuid
+     or its exact drug name is present. Renaming preserves the uuid; a fresh
+     count is still one row per drug, not a log of past ones. The descriptor
+     keeps the column mapping and defaults while this conflict rule has its
+     own applier. Reminder bookkeeping travels as recorded, so Replace
+     restores the device's own hand-off state (ArchiveMedicationStock). */
+  {
+    ...flat({
+      name: 'medicationStock',
+      // Your own current inventory count, not structure to hand a stranger.
+      travels: 'none',
+      ...MEDICATION_STOCK
+    }),
+    apply: (restoring: Restoring) => apply.applyMedicationStock(MEDICATION_STOCK, restoring)
+  },
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
   // and `procedures` above give.
   section({
