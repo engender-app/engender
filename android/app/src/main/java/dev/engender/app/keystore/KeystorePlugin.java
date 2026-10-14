@@ -51,10 +51,48 @@ public class KeystorePlugin extends Plugin {
     private static final String TAG = "Keystore";
 
     private JournalKeystore keystore;
+    private CredentialWrapStore credentialWraps;
 
     @Override
     public void load() {
         keystore = new JournalKeystore(getContext());
+        credentialWraps = new CredentialWrapStore(getContext());
+    }
+
+    @PluginMethod
+    public void readCredential(PluginCall call) {
+        try { call.resolve(credentialRecord()); }
+        catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    @PluginMethod
+    public void writeCredential(PluginCall call) {
+        try {
+            credentialWraps.write(call.getString("serialized"));
+            call.resolve();
+        } catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    @PluginMethod
+    public void adoptCredential(PluginCall call) {
+        try {
+            credentialWraps.adopt(call.getString("serialized"));
+            call.resolve(credentialRecord());
+        } catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    @PluginMethod
+    public void removeCredential(PluginCall call) {
+        try { credentialWraps.remove(); call.resolve(); }
+        catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    private JSObject credentialRecord() throws Exception {
+        JSObject result = new JSObject();
+        String stored = credentialWraps.read();
+        result.put("initialized", stored != null);
+        if (stored != null && !"null".equals(stored)) result.put("serialized", stored);
+        return result;
     }
 
     /** A first run against every later one. */
