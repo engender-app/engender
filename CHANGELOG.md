@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Repeated browser Back and Forward navigation can resume the journal even when
+an earlier return was cancelled while reopening. Explicit locks still require
+fresh authentication.
+
 Web unlock and retained navigation now check journal compatibility before
 reopening access. Older pages refuse a journal upgraded by newer code and
 offer the same update recovery as cold boot. Supported older journals use
