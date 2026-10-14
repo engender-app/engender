@@ -23,6 +23,12 @@ test('same-count reseeding fails the preserved journal identity check', () => {
   expect(compareUpgradeState(before, { ...before, entryUuids: ['new-first', 'new-second', 'new-third'] }, 88).differences).toEqual(['entry_uuids']);
 });
 
+test('detaching milestone photos fails even when counts and media are preserved', () => {
+  const before = state();
+  const after = { ...state(), linkedMilestones: 0 };
+  expect(compareUpgradeState(before, after, 88).differences).toEqual(['linked_milestones']);
+});
+
 test('media additions, removals and changed checksums fail', () => {
   const before = state();
   const variants: Record<string, string>[] = [{}, { 'photo.enc': 'different' }, { ...before.mediaSha256, 'extra.enc': 'abcd' }];

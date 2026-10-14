@@ -56,6 +56,7 @@ export function compareUpgradeState(before, after, expectedVersion) {
   };
   check('user_version', before.userVersion, after.userVersion, expectedVersion);
   check('entry_uuids', before.entryUuids, after.entryUuids);
+  check('linked_milestones', before.linkedMilestones, after.linkedMilestones);
   for (const table of [...new Set([...Object.keys(before.counts), ...Object.keys(after.counts)])].sort()) {
     check(`rows:${table}`, before.counts[table], after.counts[table]);
   }
