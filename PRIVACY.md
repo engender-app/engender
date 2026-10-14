@@ -139,8 +139,14 @@ network connections and sends nothing to any server. It also opts out of
 Android's cloud backup and of device-to-device transfer, so the system does
 not copy the app's storage to Google or to a new phone.
 
+The app opts out of WebView diagnostic uploads to Google.
+Google Safe Browsing stays at WebView's enabled default. Its checks can use
+Google Play services' own network access.
+
 Android keeps its existing keyboard suggestions. What your keyboard learns or
 stores depends on the keyboard and its settings.
+Your keyboard and browser can make their own network requests
+independently of engender.
 
 The app requests these permissions:
 

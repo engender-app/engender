@@ -65,6 +65,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Opt out of per-app diagnostic uploads. Safe Browsing keeps
+             WebView's enabled default. -->
+        <meta-data android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+
         <!-- BackupWork uses ordinary delayed jobs without network constraints
              or foreground execution. Keep WorkManager's job and rescheduling
              owners; omit the two components those unused features add. -->
