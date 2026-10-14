@@ -156,8 +156,17 @@ export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer
 
 /** Called inside the access-mode operation's credential ownership. */
 export async function removeDeviceBoundJournal(): Promise<void> {
-  await browserDeviceKeySlot().remove().catch(() => {});
-  await removeDeviceBoundMetadata().catch(() => {});
+  const slot = browserDeviceKeySlot();
+  // Keep the metadata until its key is gone, so a failed removal remains
+  // visible to the next boot's survey and gets another authenticated sweep.
+  await slot.remove();
+  if ((await slot.load()) !== null) {
+    throw new Error('device-bound journal key material is still present');
+  }
+  await removeDeviceBoundMetadata();
+  if (await deviceBoundJournalExists()) {
+    throw new Error('device-bound journal key material is still present');
+  }
 }
 
 /** Takes every slot this database holds - the device-bound wrapping key and
@@ -261,7 +270,11 @@ async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata): Promise<
 
 async function removeDeviceBoundMetadata(): Promise<void> {
   const root = await navigator.storage.getDirectory();
-  await root.removeEntry(DEVICE_BOUND_FILE);
+  try {
+    await root.removeEntry(DEVICE_BOUND_FILE);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
 }
 
 async function wrapDeviceBoundDataKey(
