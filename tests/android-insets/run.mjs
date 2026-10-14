@@ -17,16 +17,21 @@ const api = Number(adb('shell', 'getprop', 'ro.build.version.sdk').trim());
 assert.ok([33, 35, 36].includes(api), 'Only the requested API33/35/36 matrix counts');
 assert.match(adb('emu', 'avd', 'name'), new RegExp(`^backend51-api${api}\\r?\\n`));
 await mkdir(out, { recursive: true });
+const apkPath = 'android/app/build/outputs/apk/debug/app-debug.apk';
+const source = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const packagedRelease = JSON.parse(execFileSync('unzip', ['-p', apkPath, 'assets/public/release.json'], { encoding: 'utf8' }));
+assert.ok(packagedRelease.version.includes(`+g${source.slice(0, 8)}`),
+  'Build and cap-sync the current source before running the Android inset matrix');
 const original = {
   accelerometer: adb('shell', 'settings', 'get', 'system', 'accelerometer_rotation').trim(),
   rotation: adb('shell', 'settings', 'get', 'system', 'user_rotation').trim(),
   overlays: adb('shell', 'cmd', 'overlay', 'list')
 };
 const metadata = {
-  api, serial, package: pkg, source: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+  api, serial, package: pkg, source, packagedRelease,
   fingerprint: adb('shell', 'getprop', 'ro.build.fingerprint').trim(),
   webview: adb('shell', 'dumpsys', 'webviewupdate').split('\n').find((line) => line.includes('Current WebView package'))?.trim(),
-  apkSha256: createHash('sha256').update(await readFile('android/app/build/outputs/apk/debug/app-debug.apk')).digest('hex'),
+  apkSha256: createHash('sha256').update(await readFile(apkPath)).digest('hex'),
   driverSha256: createHash('sha256').update(await readFile(new URL('./run.mjs', import.meta.url))).digest('hex'),
   geometrySha256: createHash('sha256').update(await readFile(new URL('./geometry.mjs', import.meta.url))).digest('hex'),
   capturedAt: new Date().toISOString(), results: []

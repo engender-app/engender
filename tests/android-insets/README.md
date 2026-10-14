@@ -26,7 +26,9 @@ adb -s emulator-5592 install android/app/build/outputs/apk/debug/app-debug.apk
 node tests/android-insets/run.mjs emulator-5592 .claude/android-insets/api33
 ```
 
-The host needs ImageMagick for screenshot crops. The probe keeps screenshots,
+The host needs ImageMagick for screenshot crops and unzip for APK identity.
+The APK must embed the current checkout commit in its development version;
+a stale APK fails before the probe changes device settings. The probe keeps screenshots,
 top/bottom crops, an IME-boundary crop, native WebView bounds, DOM control bounds, window inset sources
 and IME visibility in the output directory. It writes each case before its
 assertions so failures retain their evidence. The driver restores navigation,
