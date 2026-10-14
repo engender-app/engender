@@ -366,8 +366,20 @@ npm run release:tag -- 1.2.3 --dry-run
 npm run release:tag -- 1.2.3
 ```
 
-The script requires a clean main branch and notes for the version in
-[CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
+Before tagging, run `npm run test:android` on the clean candidate. A passing
+run writes its source revision, device/API identities, APK hashes and completed
+stages into `scripts/progressive-release-record.json`. The required roster is
+API 26 native instrumentation, PIN-wait persistence and native backup deferral,
+plus current-Android instrumentation, PIN-wait persistence, Archive recovery
+and native backup lifecycle stages. Commit the record after the run. Only that
+record may differ from the tested candidate source.
+
+Focused backup, recovery and locked-process-death runs do not replace the core
+roster. The record names optional stages as completed or absent; the core pass
+count does not claim an installed-upgrade or locked-process-death run.
+
+The script requires a clean main branch, matching Android-tier evidence and
+notes for the version in [CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
 Release notes state schema changes, Archive format changes, security

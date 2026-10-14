@@ -820,3 +820,9 @@ launcher and a real reminder notification. Each fresh process must show the
 PIN pad and contain no private fixture text in the DOM. The dedicated fixture
 and notification helpers run only in an isolated package. See
 `tests/android-tier/README.md` for runtime requirements and limits.
+
+`tests/android-tier/evidence.test.ts` and `check-progressive-release.test.ts`
+use synthetic records to check dirty-source refusal, record-only commit
+equivalence, stale timestamps, missing build/stage identity and optional-stage
+claims. They do not substitute for an Android runtime run. The runner records
+actual completed checks and APK hashes only after a clean passing run.

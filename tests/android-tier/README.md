@@ -76,3 +76,19 @@ removes its forwards and isolated packages, then shuts down its owned emulator.
 Its evidence includes process IDs and one result for each arrival. This checks
 process death on an emulator, not permission revocation or physical-device
 behavior.
+
+## Release evidence
+
+Start from a clean working tree. A passing run writes `androidTier` in
+`scripts/progressive-release-record.json` after checking that HEAD and the
+working tree stayed unchanged. It records each AVD, serial, API, APK hashes,
+completed stage groups and individual passing checks. Failed runs do not write
+passing evidence. Commit the record before tagging or running another tier.
+Tagging and publication require the API 26 and current-Android core rosters;
+focused runs cannot satisfy that requirement.
+
+`optionalStages.installedUpgrade` and `optionalStages.lockedProcessDeath` are
+explicitly absent until their stages complete. A focused lock run can add its
+completed result to earlier core evidence only when both runs used equivalent
+source. The installed-upgrade stage remains unavailable until its runner lands.
+The release workflow reads the committed record from the publication checkout.
