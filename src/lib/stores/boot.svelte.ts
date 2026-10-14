@@ -463,7 +463,18 @@ export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome')
   return changeCredentials(() => resetAppOwned(next));
 }
 
+async function stopJournalTransfers(): Promise<void> {
+  if (!isAndroid()) return;
+  const { stopAutoExportScheduler } = await import('../data/archive/auto-export-scheduler');
+  await stopAutoExportScheduler();
+  const { androidAutoExport } = await import('../data/archive/android-auto-export-bridge');
+  const { androidFileDelivery } = await import('../data/archive/android-file-delivery-bridge');
+  await androidAutoExport.abortPendingTransfers();
+  await androidFileDelivery.abortPendingTransfers();
+}
+
 async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  await stopJournalTransfers();
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -550,6 +561,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
     that has just been replaced (mc-driver.ts), and boot() has already run. */
 export async function restorePreviousJournal(): Promise<void> {
   if (!openFileOps) throw new Error('there is no failed boot to recover from');
+  await stopJournalTransfers();
   await openFileOps.restorePreMigrationCopy();
   /* Closed before the reload, the way resetApp does it: the restore left the
      database connection gone but the pool still held, and pauseVfs() is what

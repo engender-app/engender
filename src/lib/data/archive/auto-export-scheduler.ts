@@ -12,7 +12,8 @@ import { androidAutoExport } from './android-auto-export-bridge';
 import { exportFailureNoticeStep } from './failureNotice';
 import { periodicCheck } from '../backgroundSchedulers';
 
-let running = false;
+let running: AbortController | null = null;
+let activeRun: Promise<void> | null = null;
 let lastAttemptAt = 0;
 
 const MIN_GAP_MS = 60 * 1000;
@@ -60,16 +61,22 @@ async function reportFailure(failedNow: boolean, at: number, failureAt?: number)
   }
 }
 
-async function maybeRun() {
+function maybeRun() {
   if (running || !isAndroid()) return;
 
   const now = Date.now();
   if (now - lastAttemptAt < MIN_GAP_MS) return;
 
-  running = true;
+  const owner = new AbortController();
+  running = owner;
   lastAttemptAt = now;
+  activeRun = run(owner, now);
+}
+
+async function run(owner: AbortController, now: number) {
   try {
     const status = await androidAutoExport.status();
+    owner.signal.throwIfAborted();
     // A held notice waits for quiet hours to end, not for another backup.
     await reportFailure(status.lastFailureAt != null, now, status.lastFailureAt ?? undefined);
     if (status.lastFailureAt == null && prefs.lastExportFailureNotifiedAt != null) {
@@ -87,6 +94,7 @@ async function maybeRun() {
         (now < refreshWindow || status.stagedSnapshotAt >= refreshWindow)) return;
 
     const snapshot = await journal.archive.snapshot();
+    owner.signal.throwIfAborted();
     const snapshotAt = Date.now();
     const result = await runAndroidAutoExport(
       {
@@ -97,14 +105,16 @@ async function maybeRun() {
       {
         now: () => now,
         scheduled: true,
+        watch: { signal: owner.signal },
         recordBackup: (at) => {
+          if (owner.signal.aborted) return;
           prefs.lastBackupAt = at;
           prefs.backupNoticeDismissed = false;
         }
       }
     );
 
-    if (result.outcome === 'ok' || result.outcome === 'staged') return;
+    if (owner.signal.aborted || result.outcome === 'cancelled' || result.outcome === 'ok' || result.outcome === 'staged') return;
     if (result.outcome === 'needs-destination') toast(m.exp_auto_reselect_needed());
     // Native delivery records its own timestamp. Use that same identity here
     // and on the next tick; packing failures have no native receipt.
@@ -112,10 +122,11 @@ async function maybeRun() {
     await reportFailure(true, now,
       failure.lastFailureAt !== status.lastFailureAt ? failure.lastFailureAt ?? undefined : undefined);
   } catch (error) {
+    if (owner.signal.aborted) return;
     console.error('scheduled auto-export failed', error);
     await reportFailure(true, now);
   } finally {
-    running = false;
+    if (running === owner) { running = null; activeRun = null; }
   }
 }
 
@@ -128,4 +139,8 @@ export function startAutoExportScheduler() {
   }
 }
 
-export const stopAutoExportScheduler = check.stop;
+export function stopAutoExportScheduler(): Promise<void> {
+  check.stop();
+  running?.abort();
+  return activeRun ?? Promise.resolve();
+}

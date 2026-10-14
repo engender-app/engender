@@ -90,7 +90,7 @@ The hosted origin serves only static files: the app shell, chunks, fonts, icons,
 | Offline | Service worker, one cache per release (ADR-0021) | Bundle is local |
 | Updates | New release waits until the journal is idle | App update |
 | Background work | None | Reminders (AlarmManager), scheduled backups, retrospective notifications, widgets |
-| Minimum runtime | Secure context with OPFS | WebView 87 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
+| Minimum runtime | Secure context with OPFS | WebView 104 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
 
 The browser's SAHPool holds exclusive access handles, and the production driver
 opens one connection per database path. `scripts/patch-sqlite-wasm.mjs` pins two
@@ -1127,7 +1127,7 @@ flowchart LR
   Bm --> All
 ```
 
-- **[ci.yml](.github/workflows/ci.yml) ("Checks")** runs on pushes, pull requests and `workflow_call`. The Node and Android jobs run their check lists through [scripts/run-ci-checks.mjs](scripts/run-ci-checks.mjs), which keeps going after a failure and reports checks whose prerequisites failed as blocked. The `results` job, "All required checks", runs with `if: always()` and fails unless every upstream tier succeeded. The main ruleset requires that job, in strict mode with no bypass ([CONTRIBUTING.md](CONTRIBUTING.md)).
+- **[ci.yml](.github/workflows/ci.yml) ("Checks")** runs on pushes, pull requests and `workflow_call`. The Node suite runs under UTC and Europe/Warsaw, with each duration recorded in the job summary. The Node and Android jobs run their check lists through [scripts/run-ci-checks.mjs](scripts/run-ci-checks.mjs), which keeps going after a failure and reports checks whose prerequisites failed as blocked. The `results` job, "All required checks", runs with `if: always()` and fails unless every upstream tier succeeded. The main ruleset requires that job, in strict mode with no bypass ([CONTRIBUTING.md](CONTRIBUTING.md)).
 - **[guard-recovery-proof.yml](.github/workflows/guard-recovery-proof.yml)** is a manual, synthetic check of the guard runner's retry evidence.
 
 ```mermaid

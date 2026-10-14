@@ -325,11 +325,12 @@ public class AutoExportPlugin extends Plugin {
                 call.reject("beginBackup requires fileName");
                 return;
             }
-            if (pendingBackup != null || BackupWork.foregroundPacking) {
-                call.reject("backup-in-progress");
-                return;
-            }
             try {
+                discardStaleBackup();
+                if (pendingBackup != null || BackupWork.foregroundPacking) {
+                    call.reject("backup-in-progress");
+                    return;
+                }
                 pendingTransferId = UUID.randomUUID().toString();
                 pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export-" + pendingTransferId + ".pending"));
                 BackupWork.foregroundTransferId = pendingTransferId;
@@ -500,6 +501,19 @@ public class AutoExportPlugin extends Plugin {
         return pendingBackup;
     }
 
+    void discardStaleBackup() throws IOException {
+        if (pendingBackup != null && pendingResetEpoch != BackupWork.resetEpoch) clearPendingBackup();
+    }
+
+    @PluginMethod
+    public synchronized void abortPendingTransfers(PluginCall call) {
+        synchronized (BackupWork.OWNER) {
+            BackupWork.resetForegroundOwner();
+            try { clearPendingBackup(); call.resolve(); }
+            catch (IOException error) { call.reject("staging-cleanup-unavailable", error); }
+        }
+    }
+
     private void clearPendingBackup() throws IOException {
         try {
             if (pendingBackup != null) pendingBackup.close();
@@ -587,7 +601,7 @@ public class AutoExportPlugin extends Plugin {
      */
     public static void wipe(Context context) throws Exception {
         synchronized (BackupWork.OWNER) {
-            BackupWork.resetEpoch++;
+            BackupWork.resetForegroundOwner();
             BackupWork.await(androidx.work.WorkManager.getInstance(context).cancelUniqueWork(BackupWork.NAME));
             PersistentBackup.clear(context);
             File[] pendingFiles = context.getCacheDir().listFiles((directory, name) ->

@@ -19,10 +19,10 @@
    run only on the current Android. They need a WebView,
    and Android updates its WebView separately from the OS, so an API level
    says nothing about what the app runs in. The API 26 emulator image ships
-   Chrome 69 from 2018, which has no OPFS - capacitor.config.ts puts the
-   floor at Chrome 87 for exactly that reason - so the app cannot start
-   there at all. A real API 26 phone with a current WebView runs the same
-   bundle as an API 35 one, and that is what the API 35 run covers.
+   Chrome 69 from 2018, which has no OPFS. The current WebView 104 floor
+   also covers the computed CSS transforms used by navigation, so the app
+   cannot start there at all. A real API 26 phone with a current WebView runs
+   the same bundle as an API 35 one, and that is what the API 35 run covers.
 
    Set ANDROID_TIER_AVDS to a comma-separated list to run others; an AVD
    whose name is not known here gets the full set.
@@ -68,7 +68,7 @@ const BACKUP_TEST = 'dev.engender.app.backup.NativeBackupSchedulingTest';
 const BACKUP_STAGES = new Set((process.env.ANDROID_TIER_BACKUP_STAGES ?? '').split(',').filter(Boolean));
 const KNOWN_BACKUP_STAGES = new Set(['defer', 'verify-deferred', 'catch-up', 'cleanup', 'prepare',
   'prepare-interrupted', 'resume-interrupted', 'verify', 'mounted-status', 'ownership-and-destination',
-  'activity-destruction', 'bounded-retries', 'existing-manual']);
+  'activity-destruction', 'bounded-retries', 'existing-manual', 'reset-transfers']);
 for (const stage of BACKUP_STAGES) if (!KNOWN_BACKUP_STAGES.has(stage)) throw new Error(`Unknown Android backup stage: ${stage}`);
 const executedBackupStages = new Set();
 if (BACKUP_STAGES.size) console.log(`Selected Android backup stages: ${[...BACKUP_STAGES].join(', ')}`);
@@ -255,7 +255,7 @@ for (const avd of AVDS) {
 
     const nativeOnly = NATIVE_ONLY.has(avd);
     if (nativeOnly) {
-      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 87 floor)`);
+      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 104 floor)`);
     }
 
     if (LOCK_ONLY) {
@@ -521,6 +521,15 @@ for (const avd of AVDS) {
           backupStage('cleanup');
           backupStage('bounded-retries', 'nativeFailuresStopAfterThreeAttemptsUntilNextDay');
           backupStage('cleanup');
+          if (!BACKUP_STAGES.size || BACKUP_STAGES.has('reset-transfers')) {
+            executedBackupStages.add('reset-transfers');
+            const reset = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+              'dev.engender.app.backup.ExportResetTest,dev.engender.app.files.FileDeliveryTest#resetAndRecoveryDiscardOldSlotsWithoutAbortingTheNewOwner',
+              'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
+            writeFileSync(join(evidenceDir, `${avd}-backup-reset-transfers.log`),
+              `${reset.stdout ?? ''}${reset.stderr ?? ''}\nexit=${reset.status} signal=${reset.signal} error=${reset.error ?? ''}\n`);
+            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail });
+          }
           if (!BACKUP_STAGES.size || BACKUP_STAGES.has('existing-manual')) {
           executedBackupStages.add('existing-manual');
           const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',

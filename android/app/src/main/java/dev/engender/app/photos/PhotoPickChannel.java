@@ -57,9 +57,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>{@link #registerIfSupported} is a no-op below the WebView versions that
  * carry {@code WEB_MESSAGE_LISTENER} and {@code WEB_MESSAGE_ARRAY_BUFFER},
- * the same two the write channel needs. The app's floor is WebView 87, below
- * both (ADR-0023), so {@code window.androidPhotoPickChannel} is not always
- * there and {@code picker.ts} falls back to the plugin's own
+ * the same two the write channel needs. The app's floor is WebView 104, below
+ * array-buffer support in 105 (ADR-0023), so
+ * {@code window.androidPhotoPickChannel} is not always there and
+ * {@code picker.ts} falls back to the plugin's own
  * {@code readPickedChunk} exactly where it does not exist - a piece of the
  * file per bridge call, which is how that path reaches the 25 MB ceiling
  * without an allocation the heap can refuse (phase 9 audit ticket 14).
