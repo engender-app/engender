@@ -16,6 +16,7 @@
   import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { replaceRoute } from '$lib/navigation/smart-back';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Mark from '$lib/components/Mark.svelte';
@@ -155,16 +156,21 @@
   /* Durable first (last-audit UI ticket 02): on Android the projection
      moving is what flips the launcher alias and closes the app, so
      prefs.disguise changes only once SQLite has the answer. The switch
-     shows that answer while it saves and takes no other until it has:
-     a second write in flight would let the first one's projection flip
-     the alias, and close the app, under an answer it then never saves.
-     setPreferenceDurably settles either way, and a refused write
-     leaves the stored value for the switch to fall back to. */
+     shows that answer while it saves and, like every tapped write, takes
+     no other until it has: a second write in flight would let the first
+     one's projection flip the alias, and close the app, under an answer
+     it then never saves. setPreferenceDurably logs a refused write and
+     leaves the projection alone, which is how this one knows to say so
+     and let the switch fall back to the stored value. */
+  const disguiseWrite = writer();
   let disguiseAnswer = $state<boolean | null>(null);
   async function setDisguise(on: boolean) {
-    if (disguiseAnswer !== null) return;
+    if (disguiseWrite.busy) return;
     disguiseAnswer = on;
-    await setPreferenceDurably('disguise', on);
+    await disguiseWrite.run(async () => {
+      await setPreferenceDurably('disguise', on);
+      if (prefs.disguise !== on) throw new Error('The disguise preference was not saved');
+    }, m.write_failed());
     disguiseAnswer = null;
   }
 

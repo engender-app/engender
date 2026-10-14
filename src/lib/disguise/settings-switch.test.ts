@@ -97,9 +97,12 @@ describe('the Settings disguise switch', () => {
     expect(handler.trim()).toBe('(v) => void setDisguise(v)');
     const setDisguise = /async function setDisguise\(on: boolean\) \{([\s\S]*?)\n  \}/.exec(settings)?.[1] ?? '';
     expect(setDisguise.split('\n').map((line) => line.trim()).filter(Boolean)).toEqual([
-      'if (disguiseAnswer !== null) return;',
+      'if (disguiseWrite.busy) return;',
       'disguiseAnswer = on;',
+      'await disguiseWrite.run(async () => {',
       "await setPreferenceDurably('disguise', on);",
+      "if (prefs.disguise !== on) throw new Error('The disguise preference was not saved');",
+      '}, m.write_failed());',
       'disguiseAnswer = null;'
     ]);
     expect(settings.match(/prefs\.disguise\s*=[^=]/g) ?? []).toHaveLength(0);
