@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Web rollback with `--previous` returns to the release active before the
+last switch, including after an earlier rollback. Listing and deploy output
+identify the same target. Missing or stale history requires a named rollback;
+the schema safety guard remains in place.
+
 Medication stock treats trimmed drug-name case variants as one count, including
 Unicode names. A refill updates the existing row and its run-out reminder.
 Schema 91 keeps the latest updated complete stock row when older journals
