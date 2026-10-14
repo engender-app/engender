@@ -18,6 +18,10 @@ Legacy Archives with case-duplicate stock restore one complete choice and its
 automatic reminder. Archives have no edit timestamps, so the last eligible
 row in Archive order wins. Merge keeps this device's stock and reminder owners.
 
+Android opts out of WebView diagnostic uploads while keeping Google Safe
+Browsing enabled at its default. Both privacy policies explain that the
+keyboard and browser can make network requests independently of the app.
+
 Archive Merge keeps an entry's current revisit when an older Archive carries
 a different one. Archives with two revisits for one entry are refused before
 they can change the journal.

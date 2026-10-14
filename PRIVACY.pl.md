@@ -150,8 +150,14 @@ połączeń sieciowych i niczego nie wysyła na żaden serwer. Wyłącza też ko
 zapasową Androida w chmurze i przenoszenie danych między telefonami, więc
 system nie kopiuje jej danych do Google ani na nowy telefon.
 
+Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google.
+Google Safe Browsing pozostaje domyślnie włączone w WebView. Do sprawdzania
+stron może korzystać z własnego dostępu do sieci usług Google Play.
+
 Na Androidzie podpowiedzi klawiatury działają jak dotychczas. To, czego
 klawiatura się uczy i co zapisuje, zależy od niej i jej ustawień.
+Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe
+niezależnie od engender.
 
 Aplikacja prosi o następujące uprawnienia:
 

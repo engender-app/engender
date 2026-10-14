@@ -57,6 +57,18 @@ describe('android permissions', () => {
     expect(declared()).not.toContain('INTERNET');
   });
 
+  it('opts out of WebView diagnostic uploads at the application level', () => {
+    const application = /<application\b[^>]*>([\s\S]*?)<\/application>/.exec(manifest)?.[1] ?? '';
+    const metrics = [...application.matchAll(/<meta-data\b[^>]*>/g)]
+      .filter(([tag]) => tag.includes('android:name="android.webkit.WebView.MetricsOptOut"'));
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0][0]).toContain('android:value="true"');
+  });
+
+  it('keeps Safe Browsing at its enabled platform default', () => {
+    expect(manifest).not.toContain('android.webkit.WebView.EnableSafeBrowsing');
+  });
+
   it('declares exactly these seven, so an addition has to be argued for', () => {
     expect(declared().sort()).toEqual([...EXPECTED].sort());
   });
@@ -94,5 +106,17 @@ describe('privacy policy names every installed permission', () => {
   it('both policies still say the app requests no INTERNET permission', () => {
     expect(privacyPolicyEn).toContain('does not request the `INTERNET` permission');
     expect(privacyPolicyPl).toContain('nie prosi o uprawnienie `INTERNET`');
+  });
+
+  it('both policies explain diagnostic opt-out and retained Safe Browsing', () => {
+    expect(privacyPolicyEn).toContain('opts out of WebView diagnostic uploads to Google');
+    expect(privacyPolicyEn).toMatch(/Google Safe Browsing[\s\S]*?enabled default/);
+    expect(privacyPolicyPl).toContain('rezygnuje z wysyłania danych diagnostycznych WebView do Google');
+    expect(privacyPolicyPl).toMatch(/Google Safe Browsing[\s\S]*?domyślnie włączon/);
+  });
+
+  it('both policies distinguish keyboard and browser network requests', () => {
+    expect(privacyPolicyEn).toMatch(/keyboard and browser can make their own network requests\s+independently of engender/);
+    expect(privacyPolicyPl).toMatch(/Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe\s+niezależnie od engender/);
   });
 });
