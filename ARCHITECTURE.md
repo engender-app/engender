@@ -526,7 +526,7 @@ through a snapshot.
 
 ```mermaid
 flowchart TD
-  O[openArchive password] --> V[validate sections and rows]
+  O[openArchive password] --> V[validate sections, rows<br/>and file ownership]
   V --> F[stage all files;<br/>rename collisions]
   F --> R
   subgraph T[one database transaction]
@@ -550,6 +550,13 @@ absent-field defaults. Legacy procedure consults are validated before becoming
 appointments. Malformed rows raise `CorruptArchiveError` in both restore modes
 and the backup verification drill. Relational and domain constraints remain
 inside the database transaction.
+
+[journal/fileOwnership.ts](src/lib/data/journal/fileOwnership.ts) supplies one
+ownership rule for Archive reads, cleanup and restore admission. Verification,
+Merge and Replace refuse a physical name claimed by distinct deletion owners
+before accessing destination files. The rule includes derived photo thumbnails
+and document previews across all file-bearing sections. Nested attachments use
+their parent's identity too. A missing file remains a supported placeholder.
 
 [journal/restore.ts](src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion and section application run inside the transaction. A failure rolls back those database changes. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
