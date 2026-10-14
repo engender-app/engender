@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 engender is a journal for tracking a gender transition. It is made and
 published by Alicja Barankiewicz in Warsaw, Poland. This policy covers the
@@ -64,6 +64,10 @@ The app does not upload your journal or create an account or visitor profile.
 Page-opening counts are described below. The app loads its fonts and its text recognition files from the same server and asks nothing of any other site. The first time you scan a
 lab photo, the browser downloads the text recognition engine (about 21 MB)
 from that server; scanning itself happens on your device.
+
+Journal text fields ask the browser to turn off autofill and session restoration
+for their contents. This does not remove text saved by earlier app versions or
+control what a browser extension or your keyboard stores.
 
 On the web, the local journal opens in one of four ways:
 
@@ -130,6 +134,9 @@ The Android app does not request the `INTERNET` permission. It opens no
 network connections and sends nothing to any server. It also opts out of
 Android's cloud backup and of device-to-device transfer, so the system does
 not copy the app's storage to Google or to a new phone.
+
+Android keeps its existing keyboard suggestions. What your keyboard learns or
+stores depends on the keyboard and its settings.
 
 The app requests these permissions:
 

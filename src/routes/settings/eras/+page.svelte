@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Naming the person's own eras (phase 6 ticket 01, ADR-0049, CONTEXT:
      "Era"): list, add, rename, move either bound, delete.
 
@@ -254,7 +255,7 @@
     {#snippet fields(editor)}
       <Field label={m.era_name_label()} id="era-name">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="era-name"

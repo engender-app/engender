@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
   import { careEpisodeId } from '$lib/navigation/sourceRecord';
   import { navigating, page } from '$app/state';
@@ -1033,7 +1034,7 @@
       <div class="stock-content" transition:stockSwap onoutrostart={(event) => retireStockContent(event.currentTarget)}>
       <Field label={m.stock_drug_label()} id="care-stock-drug">
         {#snippet children(id)}
-          <input class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
         {/snippet}
       </Field>
       <div class="cd-endpoints">
@@ -1052,7 +1053,7 @@
         </Field>
         <Field label={m.stock_unit_label()} id="care-stock-unit">
           {#snippet children(id)}
-            <input class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={stockEditor!.unit} />
+            <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={stockEditor!.unit} />
           {/snippet}
         </Field>
       </div>

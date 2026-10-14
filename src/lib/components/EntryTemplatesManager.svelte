@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* Entry templates, editable and hideable (phase 6 ticket 07). The six
      original templates and the eight folded-in guided prompts are built-in
@@ -200,7 +201,7 @@
   {#snippet fields(editor)}
     <Field label={m.entry_template_name_label()} id="entry-template-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="entry-template-name"
@@ -245,7 +246,7 @@
 
     <Field label={m.note_label()} id="entry-template-note-scaffold">
       {#snippet children(id)}
-        <textarea
+        <textarea autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="entry-template-note-scaffold"

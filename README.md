@@ -103,6 +103,10 @@ key until you unlock again.
 Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
+Journal text fields turn off browser autofill and session restoration on the
+web. Android keeps its existing keyboard suggestions. Text saved by earlier
+app versions is not removed from browser profiles.
+
 The layout adapts to the space available, with a bottom navigation bar on
 narrow screens and a rail on wider ones. The app uses bundled fonts and
 respects reduced-motion preferences.

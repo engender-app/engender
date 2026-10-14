@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* The visit (phase 8 features ticket 57, phase 11 all-four-doors ticket 12,
      ADR-0066): one screen for the next appointment, what you want to raise at
      it, and the ones already behind you.
@@ -545,7 +546,7 @@
     <h3>{m.appointment_prep_new_sheet()}</h3>
     <Field label={m.appointment_prep_new_sheet()} id="appointment-prep-input" hidden>
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="appointment-prep-input"
@@ -587,7 +588,7 @@
     {#snippet fields(editor)}
       <Field label={m.appointments_kind_label()} id="appointment-kind">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="appointment-kind"
@@ -623,7 +624,7 @@
       {/if}
       <Field label={m.appointments_place_label()} id="appointment-place">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="appointment-place"
@@ -634,7 +635,7 @@
       </Field>
       <Field label={m.appointments_note_label()} id="appointment-note">
         {#snippet children(id)}
-          <textarea
+          <textarea autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="appointment-note"

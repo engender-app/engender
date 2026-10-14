@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
@@ -946,7 +947,7 @@
        now, grown to its text; every structured question is one tap away
        in the chip row under it; mood is asked where the saving happens.
        Nothing about what an entry records changed (CONTEXT: "Entry"). -->
-  <textarea
+  <textarea autocomplete={journalTextAutocomplete()}
     class="input editor-note"
     id="ed-note"
     name="note"
@@ -1236,7 +1237,7 @@
         {/each}
       </div>
       {#if entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           type="text"
           class="input contextual-input"
           placeholder={m.entry_tryout_reflection_placeholder()}
@@ -1310,7 +1311,7 @@
           {m.entry_procedure_recovery_title({ day: recoveringProcedure.postOpDays, name: recoveringProcedure.proc.name })}
         </span>
       </div>
-      <textarea
+      <textarea autocomplete={journalTextAutocomplete()}
         class="input contextual-textarea"
         rows="2"
         placeholder={m.entry_procedure_recovery_notes_placeholder()}

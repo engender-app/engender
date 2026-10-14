@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* One tryout, on the surface kit (phase 5 UX ticket 25).
 
@@ -368,7 +369,7 @@
     </Field>
     <Field label={m.tryout_label_label()} hint={m.tryout_label_required()} id="tr-label">
       {#snippet children(id, describedBy)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="tr-label"
@@ -384,7 +385,7 @@
       <div class="disclosed" transition:disclose>
         <Field label={m.tryout_description_label()} id="tr-description">
           {#snippet children(id)}
-            <textarea
+            <textarea autocomplete={journalTextAutocomplete()}
               class="input"
               {id}
               rows="2"
@@ -470,7 +471,7 @@
          this was the one field on the screen with none. -->
     <Field label={m.note_label()} id="tr-feeling-note">
       {#snippet children(id)}
-        <textarea
+        <textarea autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           rows="2"

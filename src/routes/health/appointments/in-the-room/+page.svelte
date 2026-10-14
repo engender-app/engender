@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* In the room (phase 8 features ticket 60, ADR-0066): the standing prep
      list, one question per screen, at a size somebody can read while a
      doctor is talking to them.
@@ -241,7 +242,7 @@
         {#if appointment}
           <Field label={m.in_the_room_answer_label()} id="room-answer">
             {#snippet children(id)}
-              <textarea
+              <textarea autocomplete={journalTextAutocomplete()}
                 class="input room-answer"
                 {id}
                 name="room-answer"

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Every dose, and how it sits against the schedule, on the surface kit
      (phase 5 UX ticket 25).
 
@@ -827,7 +828,7 @@
                   value={editor.dose}
                   oninput={(event) => { editor.dose = event.currentTarget.value; }}
                 />
-                <input
+                <input autocomplete={journalTextAutocomplete()}
                   class="dose-amount-unit"
                   id="dose-unit"
                   name="dose-unit"

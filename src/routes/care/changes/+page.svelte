@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* When you first noticed each change, on the surface kit (phase 5 UX
      ticket 25).
 
@@ -616,7 +617,7 @@
     {#snippet fields(editor)}
       <Field label={m.side_effect_name_label()} id="side-effect-name">
         {#snippet children(id)}
-          <input class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
       <Field label={m.side_effect_severity_label()} legend>
@@ -722,7 +723,7 @@
 
     <Field label={m.effect_type_new_label()} id="new-effect-type">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="new-effect-type"
