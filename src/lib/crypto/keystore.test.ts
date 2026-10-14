@@ -95,6 +95,25 @@ test('a mangled KDF parameter block is refused by name, not surfaced as a wrong 
   expect(() => parseKeystore(JSON.stringify(parsed))).toThrow(/parameters/);
 });
 
+test.each(['null', 'not json'])('unreadable keystore JSON fails as KeystoreUnreadableError: %s', (serialized) => {
+  expect(() => parseKeystore(serialized)).toThrow(KeystoreUnreadableError);
+});
+
+test('an unknown keystore KDF is refused before it can look like a wrong passphrase', async () => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const raw = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  raw.kdf = 'scrypt';
+  expect(() => parseKeystore(JSON.stringify(raw))).toThrow(KeystoreUnreadableError);
+});
+
+test.each(['salt', 'nonce', 'wrappedKey'])('a non-string keystore %s cannot be coerced into base64', async (field) => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const raw = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  for (const value of [1234, null]) {
+    expect(() => parseKeystore(JSON.stringify({ ...raw, [field]: value }))).toThrow(KeystoreUnreadableError);
+  }
+});
+
 /* --- the secret source (ticket 53, ADR-0041) --------------------------- */
 
 /* Cheap params where the test is about the record rather than about the
@@ -226,6 +245,7 @@ test.each(['credentialId', 'prfSalt'])('malformed biometric %s reports KeystoreU
     ...metadata,
     biometric: { credentialId: new Uint8Array([1]), prfSalt: new Uint8Array([2]) }
   }));
-  raw[field] = 'not base64 !!!';
-  expect(() => parseKeystore(JSON.stringify(raw))).toThrow(KeystoreUnreadableError);
+  for (const value of ['not base64 !!!', 1234, null]) {
+    expect(() => parseKeystore(JSON.stringify({ ...raw, [field]: value }))).toThrow(KeystoreUnreadableError);
+  }
 });
