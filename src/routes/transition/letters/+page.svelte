@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
      redesign ticket 45).
 
@@ -329,7 +330,7 @@
   {#snippet fields(draft: Composition)}
     <Field label={m.letters_text_label()} id="letter-text">
       {#snippet children(id, _hint, touched)}
-        <textarea
+        <textarea autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           rows="6"

@@ -91,7 +91,7 @@
   import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { isAndroid } from '$lib/platform';
+  import { isAndroid, journalTextAutocomplete } from '$lib/platform';
 
   /* ADR-0063 / ticket 32: the elapsed reminder can only ever fire through
      the Android bridge, so web offers no toggle and no hours field. */
@@ -806,7 +806,7 @@
 
       <Field label={m.wear_session_note_label()} id="wear-note">
         {#snippet children(id)}
-          <textarea class="input" {id} name="wear-note" placeholder={m.wear_session_note_placeholder()} bind:value={editor.note}
+          <textarea autocomplete={journalTextAutocomplete()} class="input" {id} name="wear-note" placeholder={m.wear_session_note_placeholder()} bind:value={editor.note}
           ></textarea>
         {/snippet}
       </Field>

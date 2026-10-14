@@ -20,3 +20,9 @@ export function isAndroid(): boolean {
   const capacitor = (window as { Capacitor?: CapacitorGlobal }).Capacitor;
   return capacitor?.getPlatform?.() === 'android';
 }
+
+/** Browser form history and session restore must not keep journal text.
+ * Android retains its existing attributes so keyboard suggestions stay available. */
+export function journalTextAutocomplete(): 'off' | undefined {
+  return isAndroid() ? undefined : 'off';
+}

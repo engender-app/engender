@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Search (phase 5 ticket 22), rebuilt on the kit.
 
      Three things were wrong with it as a screen, none of them about what it
@@ -838,7 +839,7 @@
     <h3>{m.saved_question_save_sheet()}</h3>
     <Field label={m.saved_question_name_label()} id="saved-question-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="saved-question-name"

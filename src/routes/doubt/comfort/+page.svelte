@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* The comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"), lifted
      out of Safe space by phase 10 redesign ticket 47.
 
@@ -251,7 +252,7 @@
     {#snippet fields(editor)}
       <Field label={m.comfort_list_item_label()} id="comfort-item-text" hidden>
         {#snippet children(id)}
-          <textarea
+          <textarea autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="comfort-item-text"

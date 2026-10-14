@@ -31,6 +31,16 @@ results. Browser fixtures, walkthroughs, installed PWA and hosting run in
 separate jobs. The final required-checks job fails if any tier fails or is
 blocked.
 
+`journal-field-profile` (`tests/journal-field-profile.mjs`) types unique synthetic
+canaries into the real entry note, tag and imported PDF title fields, closes
+each independent Chromium and Firefox profile, then checks that raw, UTF-16
+and base64 copies are absent. Firefox session files are decompressed before
+scanning. Run `node tests/journal-field-profile.mjs` after runtime generation;
+`--expect-leak` requires positive detection on an unprotected source baseline.
+Profiles are removed after each field, including failures. This proves local
+profile behavior, not keyboard learning or browser sync. `profile-canaries.py`
+and `unmozlz4.py` are its scanner and Firefox decoder helpers.
+
 `care-history` (`tests/care-history.mjs`) keeps typed drug names out of browser
 history and session files. It drives the real Care screen, recorded-dose and
 schedule marks, Log and Back in separate persistent Chromium and Firefox

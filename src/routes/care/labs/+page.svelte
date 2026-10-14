@@ -32,7 +32,7 @@
   import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
-  import { isAndroid } from '$lib/platform';
+  import { isAndroid, journalTextAutocomplete } from '$lib/platform';
   import {
   formatLabReviewValue,
   type OcrReviewRow
@@ -644,7 +644,7 @@
         <div class="disclosed" transition:disclose>
           <Field label={m.labs_custom_label()} id="lab-custom-analyte" hint={!editor.customAnalyte.trim() ? m.labs_missing_analyte() : undefined}>
             {#snippet children(id, hintId)}
-              <input class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
             {/snippet}
           </Field>
         </div>
@@ -657,13 +657,13 @@
         </Field>
         <Field label={m.labs_unit_label()} id="lab-unit">
           {#snippet children(id)}
-            <input class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
+            <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
           {/snippet}
         </Field>
       </div>
       <Field label={m.labs_provider_label()} id="lab-provider">
         {#snippet children(id)}
-          <input class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
         {/snippet}
       </Field>
       <div class="cd-endpoints lab-pair">
@@ -682,7 +682,7 @@
       </div>
       <Field label={m.labs_note_label()} id="lab-note">
         {#snippet children(id)}
-          <input class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
         {/snippet}
       </Field>
 
@@ -798,18 +798,18 @@
             {/if}
             <Field label={m.labs_analyte_label()} id={`ocr-analyte-${i}`}>
               {#snippet children(id)}
-                <input class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
             <div class="cd-endpoints lab-pair">
               <Field label={m.labs_value_label()} id={`ocr-value-${i}`}>
                 {#snippet children(id)}
-                  <input class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                  <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
               <Field label={m.labs_unit_label()} id={`ocr-unit-${i}`}>
                 {#snippet children(id)}
-                  <input class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                  <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
             </div>
@@ -820,7 +820,7 @@
             </Field>
             <Field label={m.labs_note_label()} id={`ocr-note-${i}`}>
               {#snippet children(id)}
-                <input class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
           </div>
