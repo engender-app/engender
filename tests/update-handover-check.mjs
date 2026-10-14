@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { gotoFixture } from './update-handover/navigation.mjs';
+import { READY_LIMIT_MS, waitForFixture } from './update-handover/readiness.mjs';
 import { createServer } from 'vite';
 import { newCapabilityContext, launchBrowser, createReporter } from './browser-harness.mjs';
 
@@ -15,6 +17,33 @@ async function releaseActivation(page) {
 }
 
 try {
+  await block('fixture readiness waits for SQLite boot', 2, async () => {
+    const context = await newCapabilityContext(browser);
+    const page = await context.newPage();
+    page.setDefaultTimeout(100);
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await context.route(/\/mc-worker\.ts(?:\?|$)/, async route => {
+      await held;
+      await route.continue();
+    });
+    try {
+      const workerRequested = page.waitForRequest(/\/mc-worker\.ts(?:\?|$)/, { timeout: READY_LIMIT_MS });
+      await page.goto(base, { waitUntil: 'commit', timeout: READY_LIMIT_MS });
+      await workerRequested;
+      await assert.rejects(page.waitForSelector('body[data-ready="true"]'), { name: 'TimeoutError' });
+      await assert.rejects(waitForFixture(page, 'handover', 100), { name: 'TimeoutError' });
+      ok('held SQLite boot stays unready and readiness keeps a finite ceiling');
+      const ready = waitForFixture(page, 'handover');
+      release();
+      await ready;
+      assert.equal((await page.evaluate(() => window.handover.state())).busy, false);
+      ok('released SQLite boot reaches the fixture API beyond the incidental page timeout');
+    } finally {
+      release();
+      await context.close();
+    }
+  });
   for (const mode of ['waiting', 'installing', 'offline-waiting']) {
     await block(`cold schema refusal: ${mode}`, mode === 'installing' ? 5 : 4, async () => {
       const context = await newCapabilityContext(browser);
@@ -23,15 +52,14 @@ try {
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       try {
-        await page.goto(`${base}/recovery.html?seed`);
-        await page.waitForSelector('body[data-ready="true"]', { state: 'attached' });
+        await gotoFixture(page, `${base}/recovery.html?seed`, 'recoverySeed');
         // Retain an old controlled client so navigation cannot activate the waiting worker.
         const keeper = await context.newPage();
         await keeper.goto(`${base}/client.html`);
         await keeper.waitForFunction(() => navigator.serviceWorker.controller !== null);
         if (mode === 'installing') await page.request.get(`${base}/recovery-bump-held`);
         else await page.evaluate(() => window.recoverySeed.offer());
-        await page.goto(`${base}/recovery.html`);
+        await gotoFixture(page, `${base}/recovery.html`, 'recovery');
         await page.waitForSelector('[data-schema-too-new]');
         const before = await page.evaluate(() => window.recovery.state());
         assert.equal(before.status, 'schema-too-new');
@@ -59,9 +87,9 @@ try {
         if (mode === 'offline-waiting') {
           console.log('AUTOMATIC OFFLINE RELOAD REQUEST', navigation.url());
           await context.setOffline(false);
-          await page.goto(`${base}/recovery.html`);
+          await gotoFixture(page, `${base}/recovery.html`, 'recovery');
         }
-        await page.waitForSelector('body[data-ready="true"]');
+        await waitForFixture(page, 'recovery');
         const checkpoint = await page.evaluate(() => window.recovery.checkpoint());
         assert.equal(checkpoint.registerCalls, 1);
         assert.equal(checkpoint.takeovers, 1);
@@ -88,9 +116,8 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     try {
-      await page.goto(`${base}/recovery.html?seed`);
-      await page.waitForSelector('body[data-ready="true"]', { state: 'attached' });
-      await page.goto(`${base}/recovery.html`);
+      await gotoFixture(page, `${base}/recovery.html?seed`, 'recoverySeed');
+      await gotoFixture(page, `${base}/recovery.html`, 'recovery');
       await page.waitForSelector('[data-schema-too-new]');
       await context.setOffline(true);
       await page.locator('[data-look-for-newer]').click();
@@ -111,7 +138,7 @@ try {
       const reloaded = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() });
       await page.locator('[data-look-for-newer]').click();
       await reloaded;
-      await page.waitForSelector('body[data-ready="true"]');
+      await waitForFixture(page, 'recovery');
       const checkpoint = await page.evaluate(() => window.recovery.checkpoint());
       assert.equal(checkpoint.takeovers, 1);
       assert.equal(checkpoint.journalReads, 0);
@@ -135,8 +162,7 @@ try {
         const errors = [];
         page.on('pageerror', error => { errors.push(error.message); console.error('Probe error:', error.message); });
         try {
-          await page.goto(base);
-          await page.waitForSelector('body[data-ready="true"]');
+          await gotoFixture(page, base, 'handover');
           await page.request.get(`${base}/bump`);
           await page.evaluate(() => window.handover.offer());
           await page.evaluate(() => window.handover.apply());
@@ -176,7 +202,7 @@ try {
           } else await page.evaluate(() => { void window.handover.finish(); });
 
           await reloaded;
-          await page.waitForSelector('body[data-ready="true"]');
+          await waitForFixture(page, 'handover');
           const checkpoint = await page.evaluate(() => window.handover.checkpoint());
           assert.equal(checkpoint.busy, false);
           assert.equal(checkpoint.saved, true);
@@ -204,8 +230,7 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     try {
-      await page.goto(base);
-      await page.waitForSelector('body[data-ready="true"]');
+      await gotoFixture(page, base, 'handover');
       await page.request.get(`${base}/bump`);
       await page.evaluate(() => window.handover.offer());
       await page.evaluate(() => window.handover.hold(false));
@@ -223,7 +248,7 @@ try {
       await page.evaluate(() => window.handover.apply());
       await releaseActivation(page);
       await reloaded;
-      await page.waitForSelector('body[data-ready="true"]');
+      await waitForFixture(page, 'handover');
       assert.equal((await page.evaluate(() => window.handover.entries()))[0].note, 'Earlier write');
       ok('explicit retry applies and saved entry persists');
     } finally {
