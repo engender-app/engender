@@ -122,7 +122,18 @@ The current GitHub and Play certificates differ. Direct channel switching is
 not established, and a matching fingerprint alone would not prove that an
 installed update works. Before uninstalling to change an incompatible channel,
 export an Archive and verify its restore on a separate disposable installation.
-F-Droid uses its own signing key; its certificate is not recorded here.
+The current Play key is retained to preserve updates for existing Play test
+installations. GitHub releases remain independently signed with the existing
+developer key; Play-signed APKs are not the source for GitHub or F-Droid.
+
+The planned F-Droid route uses reproducible-build verification to preserve the
+GitHub APK signature. F-Droid receives the signed APK and public certificate
+fingerprint, never the private key. Its metadata must pin the GitHub APK
+fingerprint above. No F-Droid-published APK has been verified here, so
+GitHub/F-Droid in-place switching remains unverified. Require the actual
+reproducibility result and installed-update evidence in both directions before
+claiming support. Destination versions must be compatible and equal or newer;
+never downgrade a journal to change channels.
 
 ## Report a vulnerability
 

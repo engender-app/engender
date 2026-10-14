@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android channel guidance retains Play's existing signing key and records the
+planned F-Droid route using the GitHub APK's developer signature. GitHub/F-Droid
+switching remains unverified pending reproducibility and installed-update proof.
+
 The Node test suite runs 480 seeded importer and sniffer fuzz cases. A
 24,000-case run is available with `FUZZ_LONG=1 FUZZ_SEED=7`. Failures retain
 their exact inputs and seed/index receipts for replay.

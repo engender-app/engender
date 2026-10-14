@@ -949,6 +949,12 @@ SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
 `android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
 device is used. Temporary keys and artifacts are removed after the tests.
 
+`tests/ci-checks.test.ts` exercises the local F-Droid report with failed and
+different unsigned Gradle outputs. `scripts/fdroid-rebuild-report.mjs` reuses
+prepared web assets, so even identical unsigned APKs do not establish F-Droid
+reproducibility or installed-update compatibility. Those require the separate
+[channel verification evidence](../deploy/README.md#android-channel-verification).
+
 `manual-export` is an opt-in physical-device probe, outside default Android
 instrumentation discovery. Build the ordinary web bundle and sync Capacitor,
 then compile isolated APKs with:
