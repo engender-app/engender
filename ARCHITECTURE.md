@@ -586,6 +586,13 @@ leaves room even if media barely compresses. These allocation limits do not
 guarantee enough memory on every device. Engender's encrypted Archives use a
 separate streaming reader.
 
+Daylio preview indexes raw member names and attachment suffixes once. The ZIP
+reader retains central-directory member ranges, copies only a stored file's
+requested prefix and feeds deflated prefixes in bounded compressed chunks.
+Data descriptors and ZIP64 use the central sizes and offsets. Prefix reads
+remain uncached and share the declared-size budget with complete reads; import
+commit still loads the original attachment through the same reader.
+
 ## 7. Security model
 
 ### 7.1 Threat model
