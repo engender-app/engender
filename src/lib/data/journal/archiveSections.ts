@@ -857,9 +857,9 @@ const SECTIONS = [
       hidden: { field: 'hidden', bool: true }
     }
   }),
-  // Carries no episode link: which episode a dose belongs to is resolved
-  // from its own timestamp above the seam (regimenEpisode.ts), so unlike the
-  // schedules and pauses below this needs no `after`. `drug` is absent on an
+  // Person-logged doses resolve their episode by timestamp above the seam
+  // (regimenEpisode.ts). Automatic provenance carries a travelling episode
+  // uuid, not a local rowid, so this still needs no `after`. `drug` is absent on an
   // archive from before ticket 38 - null, same as every dose ever logged
   // without one.
   flat({
@@ -886,7 +886,10 @@ const SECTIONS = [
          11 carries no source at all, and every row in one was logged by
          hand, because nothing else could write a dose then. The column's
          own default says the same thing (schema v82). */
-      source: { field: 'source', whenAbsent: 'person' }
+      source: { field: 'source', whenAbsent: 'person' },
+      auto_log_episode_uuid: { field: 'autoLogEpisodeId', whenAbsent: null },
+      auto_log_epoch_day: { field: 'autoLogEpochDay', whenAbsent: null },
+      auto_log_index: { field: 'autoLogIndex', whenAbsent: null }
     }
   }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just

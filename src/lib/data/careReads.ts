@@ -15,12 +15,12 @@ export async function readCare(
 ) {
   const [recentDoses, episodes, schedules, pauses, stock, latestLab, counters] = await Promise.all([
     /* The totals window's doses, not the whole log (ux-carpet ticket 221).
-       Every lane asks for two things of the log: its last logged dose and
-       any dose logged from today. Both sit in the last few weeks on any
-       journal kept up, and the whole log was 593 KB of the 611 KB this read
+       Every lane asks for its last logged dose and doses that cover forward
+       slots. The pairing window includes tolerance; the last-dose fact
+       remains capped to today. The whole log was 593 KB of the 611 KB this read
        moved across the Android bridge on the decade fixture. A lane whose
        last dose is older than the window reads the rest below. */
-    journal.doses.getDoses(today - CARE_DOSE_TOTAL_WINDOW_DAYS + 1, today),
+    journal.doses.getDosesForSlots(today - CARE_DOSE_TOTAL_WINDOW_DAYS + 1, today + SPINE_FORWARD_DAYS),
     journal.regimen.getEpisodes(),
     journal.doses.getSchedules(),
     journal.doses.getPauses(),

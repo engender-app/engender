@@ -108,6 +108,16 @@ const SECTIONS = [
     fixture.ts) - so the two can never quietly drift apart. */
 const SECTION_COUNTS: Record<string, number> = JSON.parse(readFileSync(countsPath, 'utf8'));
 
+// Keep the released encrypted fixture intact. New nullable provenance
+// fields restore as null when an older Archive never carried them.
+function goldenWithCurrentDoseDefaults(): ArchiveJournal {
+  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  golden.doseEvents = golden.doseEvents.map((dose) => ({
+    autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null, ...dose
+  }));
+  return golden;
+}
+
 if (process.env.GOLDEN_ARCHIVE === 'rebuild') {
   test('rebuilds the golden archive', async () => {
     await rebuildGolden();
@@ -138,7 +148,7 @@ test('the patch mechanism round-trips the fixture unchanged through the identity
 });
 
 test('the golden archive restores section by section into an empty journal', async () => {
-  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  const golden = goldenWithCurrentDoseDefaults();
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
 
   const target = await emptyDevice();
@@ -177,7 +187,7 @@ test('the golden archive names its sections in the order a snapshot writes them'
    by hand (restore.ts's discardJournalRows), and a table missed there keeps
    stale rows through the most destructive path in the app. */
 test('replacing a populated journal leaves exactly the golden archive behind', async () => {
-  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  const golden = goldenWithCurrentDoseDefaults();
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
 
   const target = await everySection();
