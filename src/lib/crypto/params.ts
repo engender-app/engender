@@ -25,6 +25,16 @@ export const ARCHIVE_ARGON2_PARAMS: Argon2Params = {
   hashLength: 32
 };
 
+/** Import admission ceiling (ADR-0013). Fixed memory and lanes with twice the
+    default passes bound the combined cost; doubling both dimensions would
+    cost four times as much. Export retains its released default above. */
+export const ARCHIVE_ARGON2_MAX_PARAMS: Argon2Params = {
+  memorySize: 65536,
+  iterations: 6,
+  parallelism: 1,
+  hashLength: 32
+};
+
 /** The PIN as an encryption credential (ADR-0041, ticket 53), replacing the
     old compare-only app-lock profile.
 

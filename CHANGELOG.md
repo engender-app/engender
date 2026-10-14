@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Archive import refuses headers asking for more than 64 MiB of Argon2id
+memory, six iterations or one lane before deriving a key. This allows twice
+the released profile's combined cost. Archives written with the released
+default keep opening; export still uses 64 MiB and three iterations.
+
 Archive Merge keeps an entry's current revisit when an older Archive carries
 a different one. Archives with two revisits for one entry are refused before
 they can change the journal.
