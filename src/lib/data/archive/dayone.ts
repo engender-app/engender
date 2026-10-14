@@ -197,7 +197,11 @@ function noteFromRichText(richText: string, entryLabel: string): string {
     throw cause;
   }
   if (!isRecord(parsed)) throw new DayOneImportError(`has richText that is not an object, for entry ${entryLabel}`);
+  if (parsed.contents !== undefined && !Array.isArray(parsed.contents)) throw new DayOneImportError(`has invalid richText contents, for entry ${entryLabel}`);
   const contents = Array.isArray(parsed.contents) ? parsed.contents : [];
+  if (contents.some(node => !isRecord(node) || (node.text !== undefined && typeof node.text !== 'string'))) {
+    throw new DayOneImportError(`has invalid richText content, for entry ${entryLabel}`);
+  }
   return contents
     .filter((node): node is DayOneRichTextNode => typeof (node as DayOneRichTextNode)?.text === 'string')
     .map((node) => node.text)
@@ -260,7 +264,7 @@ async function resolveDayOnePhoto(
   reader: ZipReader,
   photo: DayOneRawPhoto
 ): Promise<{ id: string; fileName: string; raw: Uint8Array } | null> {
-  if (!isRecord(photo) || (photo.md5 != null && typeof photo.md5 !== 'string') || (photo.type != null && typeof photo.type !== 'string')) {
+  if (!isRecord(photo) || (photo.md5 !== undefined && typeof photo.md5 !== 'string') || (photo.type !== undefined && typeof photo.type !== 'string')) {
     throw new DayOneImportError('has a photo with invalid md5 or type');
   }
   if (!photo.md5 || !photo.type) return null;
@@ -328,14 +332,14 @@ export async function dayonePreview(
       }
       const epochDay = localDayInZone(timestamp, raw.timeZone);
 
-      const text = raw.text ?? '';
-      if (typeof text !== 'string' || (raw.richText != null && typeof raw.richText !== 'string')) {
+      const text = raw.text === undefined ? '' : raw.text;
+      if (typeof text !== 'string' || (raw.richText !== undefined && typeof raw.richText !== 'string')) {
         throw new DayOneImportError(`has invalid text or richText for entry ${raw.uuid}`);
       }
       const note = text.trim() !== '' ? noteFromText(text) : noteFromRichText(raw.richText ?? '{}', raw.uuid);
 
-      const tags = raw.tags ?? [];
-      const photos = raw.photos ?? [];
+      const tags = raw.tags === undefined ? [] : raw.tags;
+      const photos = raw.photos === undefined ? [] : raw.photos;
       if (!Array.isArray(tags) || tags.some(tag => typeof tag !== 'string')) throw new DayOneImportError(`has invalid tags for entry ${raw.uuid}`);
       if (!Array.isArray(photos)) throw new DayOneImportError(`has invalid photos for entry ${raw.uuid}`);
 

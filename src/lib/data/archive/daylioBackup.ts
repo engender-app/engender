@@ -296,7 +296,10 @@ function openBackup(file: Uint8Array): { payload: Record_; names: Map<string, st
   try {
     parsed = JSON.parse(json);
   } catch (cause) {
-    if (cause instanceof SyntaxError) throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON', { cause });
+    if (cause instanceof SyntaxError) {
+      // Parser diagnostics can echo the backup's cleartext PIN.
+      throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON');
+    }
     throw cause;
   }
   if (!isRecord(parsed)) throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not a JSON object');

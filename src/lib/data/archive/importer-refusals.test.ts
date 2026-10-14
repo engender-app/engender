@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { inspect } from 'node:util';
 import { zipSync, strToU8 } from 'fflate';
 import { test } from 'vitest';
 import { emptyArchiveJournal } from '../journal/archiveSections';
@@ -43,11 +44,41 @@ for (const [name, preview, ErrorType] of [
   });
 }
 
-for (const patch of [{ uuid: 123 }, { creationDate: 123 }, { timeZone: 123 }, { text: 123 }, { richText: 123 }, { tags: 123 }, { tags: [123] }, { photos: 123 }, { photos: [null] }, { photos: [{ md5: 123, type: 'png' }] }, { photos: [{ md5: 'synthetic', type: 123 }] }, { richText: 'null', text: '' }]) {
+for (const patch of [{ uuid: 123 }, { creationDate: 123 }, { timeZone: 123 }, { text: 123 }, { text: null }, { richText: 123 }, { richText: null }, { tags: 123 }, { tags: null }, { tags: [123] }, { photos: 123 }, { photos: null }, { photos: [null] }, { photos: [{ md5: 123, type: 'png' }] }, { photos: [{ md5: null, type: 'png' }] }, { photos: [{ md5: 'synthetic', type: 123 }] }, { photos: [{ md5: 'synthetic', type: null }] }, { richText: 'null', text: '' }]) {
   test(`Day One refuses invalid fields before string or collection operations: ${JSON.stringify(patch)}`, async () => {
     await assert.rejects(dayonePreview(jsonZip({ metadata: { version: '1.0' }, entries: [{ ...entry, ...patch }] }), emptyArchiveJournal(), naming), DayOneImportError);
   });
 }
+
+for (const contents of [null, {}, 'synthetic', 123, false, [null], [{ text: null }], [{ text: 123 }], [42]]) {
+  test(`Day One refuses malformed consumed rich-text contents: ${JSON.stringify(contents)}`, async () => {
+    const payload = { metadata: { version: '1.0' }, entries: [{ ...entry, text: '', richText: JSON.stringify({ contents }) }] };
+    await assert.rejects(dayonePreview(jsonZip(payload), emptyArchiveJournal(), naming), DayOneImportError);
+  });
+}
+
+test('Day One preserves omitted optional keys and missing-photo tolerance', async () => {
+  for (const richText of ['{}', JSON.stringify({ contents: [{ type: 'photo', identifier: 'synthetic' }] })]) {
+    const payload = { metadata: { version: '1.0' }, entries: [{ ...entry, text: '', richText, photos: [{}] }] };
+    const result = await dayonePreview(jsonZip(payload), emptyArchiveJournal(), naming);
+    assert.equal(result.entryCount, 1);
+    assert.equal(result.journal.entries[0].note, '');
+    assert.equal(result.photoCount, 0);
+    assert.equal(result.unresolvedPhotoCount, 1);
+  }
+});
+
+test('Daylio JSON refusals cannot retain a cleartext vendor PIN in diagnostics', async () => {
+  const pin = '2468';
+  const bytes = zipSync({ 'backup.daylio': strToU8(Buffer.from(`{"pin":x${pin}}`).toString('base64')) });
+  await assert.rejects(daylioBackupPreview(bytes, emptyArchiveJournal(), naming), error => {
+    assert.ok(error instanceof DaylioBackupError);
+    assert.equal(error.kind, 'unreadable');
+    assert.equal(inspect(error).includes(pin), false);
+    assert.equal(error.cause, undefined);
+    return true;
+  });
+});
 
 test('Day One owns null export and entry refusals', async () => {
   for (const payload of [null, { metadata: { version: '1.0' }, entries: [null] }]) {
