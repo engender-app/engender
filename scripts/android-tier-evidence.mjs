@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 /** @typedef {{revision: string, startedAt: string}} AndroidStart */
 /** @typedef {{sha256: string, sourceRevision: string, versionName: string, versionCode: number, packageId: string, patch: null | 'loss-migration-measurement' | 'loss-migration'}} UpgradeApk */
-/** @typedef {{apkSha256: string, testApkSha256?: string, upgradeApks?: {previous: UpgradeApk, healthy: UpgradeApk, rowDeleting: UpgradeApk, failing: UpgradeApk}}} AndroidBuild */
+/** @typedef {{variant?: 'debug' | 'r8Instrumented', apkSha256: string, testApkSha256?: string, upgradeApks?: {previous: UpgradeApk, healthy: UpgradeApk, rowDeleting: UpgradeApk, failing: UpgradeApk}}} AndroidBuild */
 /** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: AndroidBuild, offlineOcr?: {package: string, build: {apkSha256: string, testApkSha256: string}}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
 /** @typedef {{revision: string, startedAt: string, passedAt: string, runs: AndroidRun[], optionalStages: Record<string, string | null>}} AndroidEvidence */
 
@@ -63,13 +63,15 @@ export function beginAndroidTier(cwd) {
   return { revision: git(cwd, 'rev-parse', 'HEAD'), startedAt: new Date().toISOString() };
 }
 
-/** @param {string} cwd */
-export function androidBuildIdentity(cwd) {
+/** @param {string} cwd @param {'debug' | 'r8Instrumented'} [variant] */
+export function androidBuildIdentity(cwd, variant = 'debug') {
+  if (!['debug', 'r8Instrumented'].includes(variant)) throw new Error('Unsupported Android tier build type');
   /** @param {string} path */
   const hash = (path) => createHash('sha256').update(readFileSync(join(cwd, path))).digest('hex');
   return {
-    apkSha256: hash('android/app/build/outputs/apk/debug/app-debug.apk'),
-    testApkSha256: hash('android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk')
+    variant,
+    apkSha256: hash(`android/app/build/outputs/apk/${variant}/app-${variant}.apk`),
+    testApkSha256: hash(`android/app/build/outputs/apk/androidTest/${variant}/app-${variant}-androidTest.apk`)
   };
 }
 

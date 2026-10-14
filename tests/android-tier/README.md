@@ -34,6 +34,12 @@ Parser and invocation regressions run in the Node tier through
 
 ## Optimized instrumentation
 
+Run `ANDROID_TIER_R8=1 npm run test:android` for the complete optimized tier.
+The runner builds and installs `dev.engender.app.test.r8`, uses the optimized
+variant for every stage including isolated offline OCR, and records that
+variant's APK hashes. Omitting `ANDROID_TIER_R8` retains the debug tier.
+The same switch also applies to the optional lock, recovery and backup runs.
+
 `r8.init.gradle` defines the opt-in `r8Instrumented` build type. It copies the
 release settings and ProGuard rules, uses local debug signing, and keeps R8 in
 release mode. It requires isolated application and test package IDs under
