@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Lock and disguise clear journal announcements, pending speech and toast actions.
+Fresh gate feedback and later authenticated confirmations remain available.
+
 Browser history navigation waits for an admitted journal transaction before
 retiring its worker. Saves can commit before returning through Back or Forward;
 stalled workers still reach the existing disposal limit.
