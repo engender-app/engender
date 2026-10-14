@@ -8,6 +8,12 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Medication stock treats trimmed drug-name case variants as one count, including
+Unicode names. A refill updates the existing row and its run-out reminder.
+Schema 91 keeps the latest updated complete stock row when older journals
+contain case duplicates; a later local rowid breaks timestamp ties. The chosen
+row's automatic reminder survives, while manual reminders remain untouched.
+
 Archive Merge keeps an entry's current revisit when an older Archive carries
 a different one. Archives with two revisits for one entry are refused before
 they can change the journal.
@@ -118,11 +124,11 @@ Merge and Replace reject them before changing files or rows. Missing-file
 placeholders and ordinary destination filename collisions still restore.
 
 Merging an older Archive after renaming medication stock now keeps the current
-count and restores unrelated missing entries. An existing stock uuid or exact
-drug name keeps the destination's choice. Replace still restores the Archive's
+count and restores unrelated missing entries. An existing stock uuid or trimmed,
+case-insensitive drug key keeps the destination's choice. Replace still restores the Archive's
 counts.
 
-- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Released schema 88 journals upgrade through schema 89 and 90 without rewriting old dose rows.
+- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Released schema 88 journals upgrade through schema 89, 90 and 91 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.
 - Minimum supported version: 1.0.0-rc.1.
