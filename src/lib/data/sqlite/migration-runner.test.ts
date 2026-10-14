@@ -33,6 +33,7 @@ function makeFts5UnavailableDb(): MigrationDb {
       throw new Error('getUserVersion should not be called when FTS5 is unavailable');
     },
     async query() { return []; },
+    async run() { throw new Error('run should not be called when FTS5 is unavailable'); },
     setUserVersion() {},
     transaction(fn) {
       return fn(this);
@@ -288,6 +289,7 @@ test('assertFts5Available does not misclassify a locked database as missing FTS5
       throw new Error('should not be called');
     },
     async query() { return []; },
+    async run() { throw new Error('should not be called'); },
     setUserVersion() {},
     transaction(fn) {
       return fn(this);

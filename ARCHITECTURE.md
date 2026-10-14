@@ -566,13 +566,23 @@ their parent's identity too. A missing file remains a supported placeholder.
 
 Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. Full Archive Replace writes only the validated portable allowlist in the row transaction. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) publishes the preference snapshot prepared inside that transaction to the projection and boot mirror after success, then activates the restored locale through the existing reload strategy. Publication performs no SQL after COMMIT. Successful preference writes after preparation retain priority, even when they reassert the previous value. Boot also reconciles the locale after authoritative preference attachment, covering interruption between commit and activation. A lock or newer attachment prevents stale publication. Row-only imports leave preferences untouched. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
-Medication stock also matches its exact drug name, since only one current count
-may exist per drug. Merge keeps the destination count when either its uuid or
-drug matches, including a row renamed since the Archive was made. The stock
-applier filters existing uuids before the shared flat-table applier checks drug
-names. Both checks run inside the restore transaction and use the same column
-descriptor and defaults as Archive reads and row validation. Replace clears
-stock before applying the Archive's counts.
+Medication stock matches the trimmed, case-insensitive `drugNameKey` used by
+dose attribution. Schema 91 stores that derived identity under a unique index;
+the reported drug spelling and count remain on the stock row. Live writes and
+Archive application derive the key locally, so it is not a new wire field.
+Merge keeps the destination count when either its uuid or drug key matches,
+including a row renamed since the Archive was made. The stock applier filters
+existing uuids before the shared flat-table applier checks drug keys. Both
+checks run inside the restore transaction. Replace clears stock first.
+
+The forward migration keeps each duplicate group's whole latest updated row,
+with the later local rowid breaking timestamp ties. It retains that row's
+automatic reminder and removes the discarded rows' automatic reminders.
+Reminders taken over by a person have no owner marker and remain untouched.
+Unicode folding uses the same JavaScript helper as live writes; SQLite's
+`lower()` cannot supply it. The data repair runs after the column change in
+the same migration transaction, before the version advances. The released
+schema-88 baseline and intervening migrations remain unchanged.
 
 Each entry has at most one revisit. Merge keeps the destination's revisit when
 an older Archive or another device carries a different revisit uuid for that

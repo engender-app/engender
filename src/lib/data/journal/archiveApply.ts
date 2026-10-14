@@ -22,6 +22,7 @@
    on the way in. */
 
 import { foldText } from '../fold';
+import { drugNameKey } from '../regimenEpisode';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -137,14 +138,19 @@ export async function applyFlatTable<Row>(
 }
 
 /** A stock rename keeps its uuid. Keep that destination row before the flat
-    applier also skips a different uuid already counting the same exact drug.
+    applier also skips a different uuid already counting the same drug key.
     Replace has cleared stock first, so every incoming healthy row still lands. */
 export async function applyMedicationStock(
   table: FlatTable<ArchiveJournal['medicationStock'][number]>,
   restoring: Restoring
 ): Promise<void> {
   const present = await presentIds(restoring.driver, `SELECT uuid AS id FROM ${table.table}`);
-  await applyFlatTable(table, restoring.journal.medicationStock.filter((row) => !present.has(row.id)), restoring);
+  // The key is derived locally and never becomes an Archive wire field.
+  const keyedTable: FlatTable<ArchiveJournal['medicationStock'][number] & { drugKey: string }> = {
+    ...table, identity: 'drug_key', columns: { ...table.columns, drug_key: 'drugKey' }
+  };
+  await applyFlatTable(keyedTable, restoring.journal.medicationStock
+    .filter((row) => !present.has(row.id)).map((row) => ({ ...row, drugKey: drugNameKey(row.drug) })), restoring);
 }
 
 export async function applyDimensions({ driver, mode, journal, ts }: Restoring): Promise<void> {
