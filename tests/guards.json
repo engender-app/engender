@@ -100,6 +100,11 @@
     "holds": "the grid stays whole batches deep at 3000 photos"
   },
   {
+    "name": "in-place-scroll-check",
+    "tier": "dev",
+    "holds": "opening and closing a photo and picking a chip keep the library's scroll within 1px; forward visits still open at the top and back still restores"
+  },
+  {
     "name": "photo-export",
     "tier": "dev",
     "holds": "the export format and count are stated before anything is selected"

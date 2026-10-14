@@ -223,7 +223,7 @@
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
-    if (navigation.to) restoreScroll(navigation.to.url.pathname, navigation.type);
+    if (navigation.to) restoreScroll(navigation.to.url, navigation.type);
     /* And a screen that just arrived is not a screen changing (phase 9
        carpet ticket 04). Its panels are gated on reads that answer a few
        dozen milliseconds from here, so without this every one of them would

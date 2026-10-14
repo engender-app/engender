@@ -14,7 +14,9 @@
    (a door, a tab, a link, a `goto`) opens its screen at the top, even one
    you have scrolled before: choosing a door is starting to read it, not
    returning to where you were (Alicja, 2026-09-30). That is what the browser
-   would do for you if this were the window scrolling.
+   would do for you if this were the window scrolling. The one navigation
+   that stays put is a screen rewriting its own address in place
+   (`replaceRoute` with `noScroll`), which is not going anywhere.
 
    Deliberately not asked of `screen-transition.ts`'s `isBack`, which was the
    first attempt: that one answers "is this a step back up a path", and the
@@ -43,6 +45,37 @@ const positions = new Map<string, number>();
 const batches = new Map<string, number>();
 
 const batchKey = (path: string, list: string) => `${path}#${list}`;
+
+/* A navigation that only rewrites the screen's own address - opening a
+   photo, picking a chip, zooming or paging a document - asks `goto` for
+   `noScroll`, and SvelteKit honours that for the window it scrolls. It has
+   no way to tell this module: `afterNavigate` reports a plain `goto`, and a
+   `goto` that is not a popstate is a screen to open at the top. So the
+   grid went back to its first row every time a photo was opened half way
+   down it (last-audit UI ticket 12).
+
+   `replaceRoute` says so instead, by holding the address it is going to.
+   The hold is claimed by the next navigation to start, and only if that
+   navigation is going there; any other one drops it, so a navigation that
+   was superseded before it settled never lends its hold to whatever
+   replaced it, and a claimed hold is spent by whichever navigation starts
+   after it. Held as an address rather than resolved, because the node-tier
+   test of `replaceRoute` has no `location` to resolve one against. */
+let hold: { url: string | URL; claimed: boolean } | null = null;
+
+/** Called by `replaceRoute` for a navigation asked not to scroll. */
+export function holdScroll(url: string | URL): void {
+  hold = { url, claimed: false };
+}
+
+/** Called as every navigation starts, before anything is restored. */
+export function claimScrollHold(to: URL | null | undefined): void {
+  hold = hold && !hold.claimed && to && new URL(hold.url, to).href === to.href ? { ...hold, claimed: true } : null;
+}
+
+function held(to: URL, type: string): boolean {
+  return type !== 'popstate' && !!hold?.claimed && new URL(hold.url, to).href === to.href;
+}
 
 function region(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-app-scroll-region]');
@@ -81,12 +114,15 @@ export function rememberScroll(path: string | null | undefined): void {
     number, not this. The same shape `scrollToHash` below already uses for
     the same reason, and the same reason it is a loop rather than a single
     delayed retry: what is being waited for is a layout, and nothing fires
-    an event when one has finished growing. */
-export function restoreScroll(path: string, type: string): void {
-  const el = region();
-  if (!el) return;
+    an event when one has finished growing.
 
-  const wanted = savedScroll(path, type);
+    A navigation `replaceRoute` was asked not to scroll is left exactly
+    where it is (`holdScroll` above). */
+export function restoreScroll(to: URL, type: string): void {
+  const el = region();
+  if (!el || held(to, type)) return;
+
+  const wanted = savedScroll(to.pathname, type);
   const reachable = () => el.scrollHeight - el.clientHeight >= wanted;
   const travel = () => el.scrollTo({ top: wanted, behavior: scrollBehavior() });
   /* Once the position can be reached it is travelled to, eased, exactly once.
