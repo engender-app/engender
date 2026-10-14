@@ -26,8 +26,6 @@ export interface SqliteDriver extends MigrationDb, SqliteReader {
   /** Read committed rows without other calls entering this connection.
       Use the supplied reader; calling this driver inside would wait on itself. */
   readSnapshot<T>(read: (reader: SqliteReader) => Promise<T>): Promise<T>;
-  /** Runs a parameterized statement that doesn't return rows. */
-  run(sql: string, params?: unknown[]): Promise<{ changes: number; lastInsertRowid: number }>;
   /** Disconnects from the database and releases its resources. */
   close(): Promise<void>;
   /** Emergency synchronous disposal, where the platform can terminate its

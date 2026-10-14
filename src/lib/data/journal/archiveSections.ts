@@ -167,6 +167,24 @@ const MEDICATION_STOCK = {
   }
 } as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
 
+const REMINDERS = {
+  table: 'reminder',
+  identity: 'uuid',
+  orderBy: 'id',
+  columns: {
+    uuid: 'id',
+    title: 'title',
+    type: 'type',
+    time: 'time',
+    recurrence: 'recurrence',
+    interval: 'interval',
+    anchor_epoch_day: 'anchorEpochDay',
+    epoch_day: 'epochDay',
+    enabled: { field: 'enabled', bool: true },
+    auto_source: { field: 'autoSource', whenAbsent: null }
+  }
+} as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
+
 const SECTIONS = [
   section({
     name: 'dimensions',
@@ -740,28 +758,17 @@ const SECTIONS = [
   // `auto_source` declares what it is written from when absent, the way lab
   // results' dosing columns do - an archive written before ticket 04 has no
   // such field at all.
-  flat({
-    name: 'reminders',
-    // Not structure to hand a stranger: `auto_source` ties a reminder to
-    // this device's own stock or wear-session state (reminderAutoSource has
-    // two writers), which means nothing on a receiving device.
-    travels: 'none',
-    table: 'reminder',
-    identity: 'uuid',
-    orderBy: 'id',
-    columns: {
-      uuid: 'id',
-      title: 'title',
-      type: 'type',
-      time: 'time',
-      recurrence: 'recurrence',
-      interval: 'interval',
-      anchor_epoch_day: 'anchorEpochDay',
-      epoch_day: 'epochDay',
-      enabled: { field: 'enabled', bool: true },
-      auto_source: { field: 'autoSource', whenAbsent: null }
-    }
-  }),
+  {
+    ...flat({
+      name: 'reminders',
+      // Not structure to hand a stranger: `auto_source` ties a reminder to
+      // this device's own stock or wear-session state (reminderAutoSource has
+      // two writers), which means nothing on a receiving device.
+      travels: 'none',
+      ...REMINDERS
+    }),
+    apply: (restoring: Restoring) => apply.applyReminders(REMINDERS, restoring)
+  },
   flat({
     name: 'tallyEvents',
     travels: 'none',
@@ -944,14 +951,15 @@ const SECTIONS = [
     apply: apply.applyDosePauses
   }),
   /* A destination stock row keeps its count when either its travelling uuid
-     or its exact drug name is present. Renaming preserves the uuid; a fresh
-     count is still one row per drug, not a log of past ones. The descriptor
-     keeps the column mapping and defaults while this conflict rule has its
+     or its trimmed, case-insensitive drug key is present. Renaming preserves
+     the uuid; a fresh count is still one row per drug, not a log of past
+     ones. The descriptor keeps the column mapping and defaults while this rule has its
      own applier. Reminder bookkeeping travels as recorded, so Replace
      restores the device's own hand-off state (ArchiveMedicationStock). */
   {
     ...flat({
       name: 'medicationStock',
+      after: ['reminders'],
       // Your own current inventory count, not structure to hand a stranger.
       travels: 'none',
       ...MEDICATION_STOCK

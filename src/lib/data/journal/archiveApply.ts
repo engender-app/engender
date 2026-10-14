@@ -22,6 +22,8 @@
    on the way in. */
 
 import { foldText } from '../fold';
+import { drugNameKey } from '../regimenEpisode';
+import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -136,15 +138,75 @@ export async function applyFlatTable<Row>(
   );
 }
 
+type KeyedStock = ArchiveJournal['medicationStock'][number] & { drugKey: string };
+
+async function incomingStock({ driver, journal }: Restoring): Promise<Map<string, KeyedStock>> {
+  const destination = await driver.query<{ uuid: string; drug_key: string }>(
+    'SELECT uuid, drug_key FROM medication_stock'
+  );
+  const uuids = new Set(destination.map((row) => row.uuid));
+  const keys = new Set(destination.map((row) => row.drug_key));
+  const incoming = new Map<string, KeyedStock>();
+  for (const row of journal.medicationStock) {
+    if (uuids.has(row.id)) continue;
+    const drugKey = drugNameKey(row.drug);
+    if (!keys.has(drugKey)) incoming.set(drugKey, { ...row, drugKey });
+  }
+  return incoming;
+}
+
+/** Runs before stock insertion, so destination stock and reminder owners keep
+    precedence. A legacy duplicate group carries only the chosen spelling's
+    automatic reminder. Without wire timestamps, the last matching reminder
+    wins too. Manual reminders and markers unrelated to incoming stock travel
+    through the ordinary uuid applier unchanged. */
+export async function applyReminders(
+  table: FlatTable<ArchiveJournal['reminders'][number]>,
+  restoring: Restoring
+): Promise<void> {
+  const incoming = await incomingStock(restoring);
+  const owners = new Map<string, Set<string>>();
+  for (const row of restoring.journal.medicationStock) {
+    const key = drugNameKey(row.drug);
+    const names = owners.get(key) ?? new Set<string>();
+    names.add(row.drug);
+    owners.set(key, names);
+  }
+  const present = await presentIds(restoring.driver, "SELECT auto_source AS id FROM reminder WHERE auto_source GLOB 'stock:*'");
+  const destinationKeys = new Set([...present].map((source) => drugNameKey(source.slice(STOCK_PREFIX.length))));
+  const keyOf = (row: ArchiveJournal['reminders'][number]) => row.autoSource?.startsWith(STOCK_PREFIX)
+    ? drugNameKey(row.autoSource.slice(STOCK_PREFIX.length)) : null;
+  const selected = new Map<string, ArchiveJournal['reminders'][number]>();
+  for (const row of restoring.journal.reminders) {
+    const key = keyOf(row);
+    if (key === null || !owners.has(key)) continue;
+    const owner = incoming.get(key);
+    if (!owner || destinationKeys.has(key)) continue;
+    if (owners.get(key)!.size > 1 && row.autoSource !== `${STOCK_PREFIX}${owner.drug}`) continue;
+    selected.set(key, row);
+  }
+  const rows = restoring.journal.reminders.flatMap((row) => {
+    const key = keyOf(row);
+    if (key === null || !owners.has(key)) return [row];
+    return selected.get(key) === row ? [{ ...row, autoSource: stockAutoSource(incoming.get(key)!.drug) }] : [];
+  });
+  await applyFlatTable(table, rows, restoring);
+}
+
 /** A stock rename keeps its uuid. Keep that destination row before the flat
-    applier also skips a different uuid already counting the same exact drug.
-    Replace has cleared stock first, so every incoming healthy row still lands. */
+    applier also skips a different uuid already counting the same drug key.
+    Legacy siblings have no edit timestamp on the wire; their last complete
+    row in Archive order wins. Replace has cleared destination stock first. */
 export async function applyMedicationStock(
   table: FlatTable<ArchiveJournal['medicationStock'][number]>,
   restoring: Restoring
 ): Promise<void> {
-  const present = await presentIds(restoring.driver, `SELECT uuid AS id FROM ${table.table}`);
-  await applyFlatTable(table, restoring.journal.medicationStock.filter((row) => !present.has(row.id)), restoring);
+  // The key is derived locally and never becomes an Archive wire field.
+  const keyedTable: FlatTable<KeyedStock> = {
+    ...table, identity: 'drug_key', columns: { ...table.columns, drug_key: 'drugKey' }
+  };
+  const incoming = await incomingStock(restoring);
+  await applyFlatTable(keyedTable, [...incoming.values()], restoring);
 }
 
 export async function applyDimensions({ driver, mode, journal, ts }: Restoring): Promise<void> {

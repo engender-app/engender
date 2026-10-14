@@ -204,7 +204,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 90);
+  assert.equal(db.getUserVersion(), 91);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1115,7 +1115,7 @@ test('visibility migration preserves existing checked and not-my-path goals as v
   ]);
 });
 
-test('released schema 88 upgrades through 89/90 without rewriting old duplicated dose rows', async () => {
+test('released schema 88 upgrades through the current chain without rewriting old duplicated dose rows', async () => {
   const db = makeNodeSqliteDb();
   const fileOps = noopFileOps();
   await runMigrations(db, fileOps, migrations.filter((migration) => migration.version <= 88));
@@ -1124,7 +1124,7 @@ test('released schema 88 upgrades through 89/90 without rewriting old duplicated
       VALUES (?,123456789,'oral',2,'mg','schedule','taken',42)`, [id]);
   }
   await runMigrations(db, fileOps, migrations);
-  assert.equal(db.getUserVersion(), 90);
+  assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
   const rows = await db.query(`SELECT uuid,timestamp,source,auto_log_episode_uuid,
     auto_log_epoch_day,auto_log_index FROM dose_event ORDER BY uuid`);
   assert.deepEqual(rows, ['legacy-automatic-1', 'legacy-automatic-2'].map((uuid) => ({
