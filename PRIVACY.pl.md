@@ -64,9 +64,11 @@ Dzienniki błędów mogą zawierać adres IP i żądany URL; serwer przechowuje 
 najwyżej przez siedem dni. Żądania licznika otwarć nie trafiają do logów.
 
 Aplikacja nie wysyła dziennika i nie zakłada konta ani profilu odwiedzającej
-osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu aplikacja pobiera z tego samego serwera i nie łączy się z żadną inną stroną. Przy pierwszym
-skanowaniu zdjęcia wyników przeglądarka pobiera z tego serwera silnik OCR
-(około 21 MB). Samo rozpoznawanie tekstu odbywa się na twoim urządzeniu.
+osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu
+pochodzą z tego samego serwera. Instalacja aplikacji internetowej pobiera cały
+silnik OCR z danymi do języka angielskiego i polskiego, zanim aplikacja będzie
+gotowa do pracy bez sieci. Rozpoznawanie tekstu odbywa się na twoim urządzeniu.
+Pierwsze skanowanie po instalacji również działa bez połączenia z siecią.
 
 Na Androidzie pliki do rozpoznawania tekstu po angielsku i po polsku są w APK.
 Pierwsze skanowanie wyników nie wymaga pobierania plików ani połączenia z siecią.

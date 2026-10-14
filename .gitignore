@@ -75,6 +75,8 @@ src/lib/pwa/*.generated.ts
 
 # Copied out of node_modules by scripts/prepare-vendor-assets.mjs
 static/tesseract/
+# Frozen pre-generation runtime copied by the same asset recipe
+static/_app/immutable/chunks/C6xHUsg2.js
 static/pdf-fonts/
 
 # Throwaway prototypes, which live on their own branches and leave build output

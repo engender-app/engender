@@ -173,6 +173,8 @@ jobs:
           - name: walkthrough-actions
             entry: tests/walkthrough.test.mjs
             args: --group actions
+          - name: installed-ocr
+            entry: tests/browser-tier/ocr-offline.mjs
           - name: installed-pwa
             entry: tests/browser-tier/verify-build.mjs
           - name: hosting

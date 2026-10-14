@@ -1786,8 +1786,6 @@
   "labs_no_unit_toast": "This result has no unit, so it gets its own trend.",
   "labs_note_label": "Note (optional)",
   "labs_note_placeholder": "e.g. new dose",
-  "labs_ocr_download_body": "That is the reading engine and its two languages. After that the scanner works with no network.",
-  "labs_ocr_download_title": "The first read downloads 21 MB",
   "labs_ocr_duplicate": "Duplicate",
   "labs_ocr_empty_sheet": "Nothing to import",
   "labs_ocr_failed": "Couldn't read this photo. Try again or use another.",
