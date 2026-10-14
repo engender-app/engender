@@ -6,9 +6,9 @@
    side is the lazily loaded document code, and a lazy chunk importing from
    sw-messages made Rollup split that module's constants away from
    shell-assets.ts's, which the OCR code and the update code had been sharing
-   as one tiny chunk: one more file on the first-load graph, whose budget has
-   one file of slack (check:first-load-budget). Here only the worker and the
-   document code import it. */
+   as one tiny chunk. That adds a file to the first-load graph, whose budget
+   has no file-count headroom (check:first-load-budget). Here only the worker
+   and the document code import it. */
 
 /** Sent once the first document has built its worker. A message of its own,
     because the OCR ask would pull the scanner's 21 MB along with a 0.4 MB
