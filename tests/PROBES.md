@@ -580,6 +580,7 @@ on this page ran green on 2026-09-23.
 
 Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`), `serve-build` (build/ as production serves it),
+`build-requests` (context request observer for the build origin),
 `cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
@@ -747,3 +748,10 @@ back two days, or loading a stale stored deadline cannot pay the wait.
 The unlocked control also checks leave-lock on short, long and backwards
 clock changes. Playwright changes system time while elapsed time keeps its
 own course. The runner closes its browser and server in `finally`.
+
+`node tests/build-requests-check.mjs` checks the request observer used by
+`verify-build.mjs`. A synthetic service worker fetches another local origin.
+Without CSP, the context observer records the request while the page observer
+misses it. With the nginx CSP header, the sink receives nothing. The build
+server reads that policy directly from `deploy/nginx/journal-headers.conf`
+and sends it on documents, service workers and error responses.
