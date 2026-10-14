@@ -2,7 +2,7 @@
    into the registry by archiveSections.ts and run inside restore.ts's single
    transaction.
 
-   A flat area needs no function here at all: applyFlatTable() below writes it
+   A flat area with one identity needs no function here: applyFlatTable() writes it
    from the descriptor the registry declares (archiveTable.ts). What is left
    is the sections whose merge semantics are their own - a matched row a
    Replace overwrites in place, a child table walked in both modes, a rowid
@@ -134,6 +134,17 @@ export async function applyFlatTable<Row>(
       ts
     ])
   );
+}
+
+/** A stock rename keeps its uuid. Keep that destination row before the flat
+    applier also skips a different uuid already counting the same exact drug.
+    Replace has cleared stock first, so every incoming healthy row still lands. */
+export async function applyMedicationStock(
+  table: FlatTable<ArchiveJournal['medicationStock'][number]>,
+  restoring: Restoring
+): Promise<void> {
+  const present = await presentIds(restoring.driver, `SELECT uuid AS id FROM ${table.table}`);
+  await applyFlatTable(table, restoring.journal.medicationStock.filter((row) => !present.has(row.id)), restoring);
 }
 
 export async function applyDimensions({ driver, mode, journal, ts }: Restoring): Promise<void> {
