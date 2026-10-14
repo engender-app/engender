@@ -197,6 +197,7 @@ To run one on its own, use
 | Probe | Holds |
 | --- | --- |
 | `pending-unlock-lock-check` | a newer lock cancels pending authentication and its opening transition |
+| `feedback-concealment-check` | lock and disguise clear private live regions, pending announcements and toast actions; fresh feedback and keyboard actions still work |
 | `blind-edge-padding-check` | a padding-only change to a field still moves `--blind-edge` |
 | `dilation-schedule-action` | the dilation schedule's edit action, keyboard editor and its empty and deleted states |
 | `letters-ready-jump` | the ready-letters count and the jump above the waiting list |
