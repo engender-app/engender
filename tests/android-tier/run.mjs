@@ -80,6 +80,7 @@ const NATIVE_TESTS = [
   'dev.engender.app.keystore.JournalKeystoreTest',
   'dev.engender.app.keystore.BiometricAuthenticatorAvailabilityTest',
   'dev.engender.app.keystore.SessionDeviceCredentialTest',
+  'dev.engender.app.keystore.KeystorePromptLifecycleTest',
   'dev.engender.app.photos.PhotoDirectoryInitializationTest',
   'dev.engender.app.screencapture.CaptureChoiceOnLeaveTest'
 ].join(',');
@@ -169,7 +170,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'long-journal'])) {
+for (const probe of (RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
