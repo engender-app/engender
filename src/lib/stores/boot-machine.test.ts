@@ -89,6 +89,17 @@ test('a web journal with a passphrase keystore reaches the unlock gate', () => {
   expect(effects).toEqual([]);
 });
 
+test.each(['passphrase', 'pin', 'biometric'] as const)('a surveyed leftover is swept only after an authenticated %s unlock', (accessMode) => {
+  const surveyed = walk(started('web'), surveyedWeb({ keystoreSecretSource: accessMode, deviceBoundKeystoreExists: true }));
+  expect(surveyed.effects).toEqual([]);
+  const key: BootEvent = { type: 'key-obtained', dataKey: KEY, accessMode, unlocked: true };
+  // A recovery key opens the same data key without confirming the old secret.
+  expect(reduce(surveyed.machine, key).effects).toContainEqual({ type: 'open-journal', dataKey: KEY, accessMode });
+  expect(reduce(surveyed.machine, { ...key, secretAuthenticated: true }).effects).toContainEqual({
+    type: 'open-journal', dataKey: KEY, accessMode, sweepDeviceBound: true
+  });
+});
+
 test.each(['passphrase', 'pin', 'biometric'] as const)('a cancelled %s cold boot returns to its gate and accepts another key', (accessMode) => {
   const opening = walk(started('web'), surveyedWeb({ keystoreSecretSource: accessMode }), {
     type: 'key-obtained', dataKey: KEY, accessMode, unlocked: true

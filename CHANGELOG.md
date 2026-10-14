@@ -12,6 +12,11 @@ Archive Merge restores a bundled goal's status when this device has only hidden
 it. The local hidden choice stays in place, and a locally recorded status still
 wins over the Archive's.
 
+Changing from device-bound access to a secret now reports an incomplete change
+when the old key cannot be removed. Retrying a published PIN keeps its binding
+key. On the web, a successful secret unlock also removes leftover device-bound
+material from an interrupted change and verifies that it is gone.
+
 Source packages exclude root local-evidence paths, and CI rejects them if they
 are tracked. Application evidence routes and intentional fixtures remain in
 the source package.

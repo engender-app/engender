@@ -30,6 +30,12 @@ Changing the passphrase or replacing the recovery key rewraps the same
 data key. A copy of the journal's files taken before the change still
 opens with the old passphrase or recovery key.
 
+Moving from device-bound access to a secret reports success only after the
+old device-bound wrap is removed. The web verifies removal of both its key
+and metadata. If an interrupted change leaves both wraps, the next successful
+secret unlock retries cleanup; a failed cleanup remains visible to the next
+boot. Cleanup checks the current credential owner before removing anything.
+
 Web journal text fields request `autocomplete="off"` to keep their contents out
 of browser autofill and session restoration. This does not erase copies left by
 older versions. Android retains its existing keyboard behavior; the keyboard
