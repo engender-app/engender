@@ -16,6 +16,9 @@ Android reminders reschedule after clock changes and exact-alarm permission
 grants, even while the journal is closed. After permission is revoked, the next
 app launch or boot restores inexact alarms, including when launch stops at
 the journal gate.
+A pending reminder missed while the phone is off is delivered once at boot,
+with quiet hours and title hiding preserved. Recurring reminders then resume
+at the next future occurrence; one-off reminders stay one-off.
 
 Archive Merge restores a bundled goal's status when this device has only hidden
 it. The local hidden choice stays in place, and a locally recorded status still
