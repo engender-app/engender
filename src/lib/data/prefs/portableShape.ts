@@ -1,5 +1,5 @@
-/* The shape check applyPortablePreferences (store.svelte.ts) runs on a
-   restored archive's values before they replace this device's (ADR-0003).
+/* The shape check Archive Replace runs on its portable preferences before
+   committing them with the restored rows (ADR-0003).
    Pure and rune-free on purpose: store.svelte.ts is a `.svelte.ts` file,
    which cannot be node-tested directly (its `$state` is a compiler macro
    with no runtime outside Svelte), so the logic that decides what a value
@@ -75,7 +75,7 @@ export function portableValueForKey<K extends PortableKey>(
   return value as PortablePreferences[K];
 }
 
-/** What applyPortablePreferences (store.svelte.ts) writes for a restored
+/** What Archive Replace writes for a restored
     archive: every valid portable key, plus a null cycle choice for older
     archives. Other missing or invalid keys leave this device's value alone.
 

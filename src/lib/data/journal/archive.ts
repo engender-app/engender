@@ -147,7 +147,9 @@ export interface ArchiveArea {
       asking "where did this come from" should not pay for it. */
   importLog(): Promise<ArchiveImportLogRecord[]>;
   /** Discards this device's journal and installs the archive's, keeping the
-      built-in vocabulary by key and leaving preferences alone (ADR-0011).
+      built-in vocabulary by key and device-local preferences (ADR-0011).
+      Full Archives replace validated portable preferences in the same
+      transaction; row-only callers omit them.
       One operation: the order it happens in is not a caller's to compose. */
   replace(contents: RestoreContents, onProgress?: OnRestoreProgress): Promise<void>;
   /** Adds what this device does not have and leaves matched rows alone, so

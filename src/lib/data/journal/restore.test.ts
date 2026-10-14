@@ -692,7 +692,7 @@ test('replace leaves the PIN, the app-lock flags and the disguise settings alone
   const source = await populated();
   const target = await device();
   // Written as rows rather than through preferences.ts: what this asserts is
-  // that a restore does not touch the pref table at all, whoever wrote it.
+  // that row-only restore leaves device-local settings untouched.
   for (const [key, value] of [
     ['pinHash', '"argon2-hash"'],
     ['appLock', 'true'],

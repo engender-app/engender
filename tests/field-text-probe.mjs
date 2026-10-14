@@ -31,7 +31,7 @@ import { chromium } from 'playwright-core';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { JUMP_FIRST_RUN_EXPRESSION } from './yank-sweep-core.mjs';
 import {
@@ -313,7 +313,7 @@ async function rest(page, scene) {
   const locale = scene.locale ?? (DEVICE ? 'en' : '');
   if (locale) {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-    await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
+    await setAppLanguage(page, locale);
   }
   await boot(page, scene.at);
   if (scene.enter) {
@@ -473,7 +473,7 @@ try {
         const held = await pageFor(width, { fresh: true, tag: `setup-${locale}`, reduced: !!mode.reduced, height: mode.height ?? 0 });
         const { page } = held;
         await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), mode.lang);
+        await setAppLanguage(page, mode.lang);
         await page.goto(`${base}/`, { waitUntil: IDLE });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
         /* A fresh profile boots into the demo persona; the demo bar's own
@@ -568,7 +568,7 @@ try {
       }
       if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'pin gate unlock'.includes(o) || o.startsWith('pin'))) {
         try {
-          await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+          await setAppLanguage(page, 'en');
           for (let run = 0; run < Math.max(RUNS, 1); run++) {
             await boot(page, '/settings/access-mode');
             await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
@@ -688,7 +688,7 @@ try {
             requestAnimationFrame(tick);
           });
           await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-          await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
+          await setAppLanguage(page, locale);
           await boot(page, route);
           await page.evaluate(() => (window.__field = []));
           await page.goto(`${base}${route}`, { waitUntil: 'domcontentloaded' });

@@ -659,7 +659,9 @@ export const DEVICE_LOCAL_KEYS = [
     resolves the locale from its own localStorage strategy (vite.config.ts)
     before any of this runs, and setLocale() reloads the page. This is the
     app's own record of the choice, which is what makes it portable in an
-    archive - paraglide's copy is not. */
+    archive - paraglide's copy is not. After durable preference attachment,
+    boot reconciles that strategy with SQLite so an interrupted Replace
+    cannot leave a restored choice beside the previous locale. */
 export const BOOT_KEYS = [
   'theme',
   'palette',

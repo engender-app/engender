@@ -202,7 +202,7 @@ describe('a first run that restores an archive', () => {
   });
 
   it('reads what the archive carries off the portable set rather than a second list', () => {
-    /* The one guard against drift. `applyPortablePreferences` walks
+    /* The one guard against drift. Archive Replace walks
        PORTABLE_KEYS and nothing else, so a key that leaves that list stops
        travelling - and its step has to start asking again the same day,
        not whenever somebody notices. */
