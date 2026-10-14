@@ -61,17 +61,22 @@
      second one from under the first skips it - the app would appear in a
      single frame, which is exactly what this exists to stop. */
   const opened = async (current: () => void) => {
+    const sessionCurrent = beginSessionUnlock();
+    let published = false;
     current();
     ui.appOpening = true;
     await openApp(() => {
       try {
         current();
         markUnlocked();
+        published = true;
       } catch (e) {
         if (!(e instanceof UnlockCancelledError)) throw e;
       }
     }).finally(() => (ui.appOpening = false));
-    current();
+    // Successful publication removes the gate; a later lock still revokes it.
+    if (!published) throw new UnlockCancelledError();
+    sessionCurrent();
   };
 
   let passphrase = $state('');
@@ -106,14 +111,8 @@
 
   /* PIN mode's attempts go through PinEntry, which owns the pad and the
      growing delay for both this screen and the cold-start gate. */
-  async function submitPin(entered: string): Promise<PinAttempt> {
-    const current = beginSessionUnlock();
-    let dataKey;
-    try {
-      dataKey = await unlockJournalPin(entered);
-    } catch (e) {
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  async function submitPin(entered: string, current: () => void): Promise<PinAttempt> {
+    const dataKey = await unlockJournalPin(entered, undefined, current);
     try {
       if (!(await reopened(dataKey, current))) return 'unopened';
       await opened(current);

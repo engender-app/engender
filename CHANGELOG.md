@@ -17,6 +17,12 @@ reopening access. Older pages refuse a journal upgraded by newer code and
 offer the same update recovery as cold boot. Supported older journals use
 the existing migration path.
 
+A PIN entered during another access change now waits for that operation instead
+of counting as a wrong guess. Cold start, session unlock and the current-PIN
+check in Settings also keep unreadable or changed access settings outside the
+wrong-attempt count and explain how to reopen the app. Leaving or locking still
+cancels the pending unlock.
+
 Boot housekeeping waits for pending journal writes before purging expired
 Trash and sweeping orphaned media. Android stock-reminder reconciliation no
 longer makes those passes give up before they start.

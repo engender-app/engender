@@ -74,6 +74,18 @@ lock/unlock, rejects overlapping changes and resets from both pages, then
 restarts and verifies the original entries and encrypted attachment bytes.
 The dev app supplies synthetic demo data; credential storage and UI paths are real.
 
+`pin-credential-contention` (`tests/pin-credential-contention.mjs`) mounts the
+real cold-start, session and current-PIN Settings gates in English and Polish.
+It holds credential ownership, checks a correct PIN waits without changing the
+throttle, then verifies successful unlock and one genuine wrong guess. A peer
+changes or removes the wrap through production credential/file helpers; the
+old gate must offer reopen guidance without another wrong attempt. Departure
+and lock cancel queued publication. Error copy and live feedback are checked
+at 390px and 200% CSS zoom. Run after build/runtime generation with
+`node tests/pin-credential-contention.mjs`. SQLite, OPFS, IndexedDB and crypto
+are real; visibility events and the held/faulted credential states are synthetic.
+This does not establish physical-phone overlap frequency.
+
 `credential-power-cut` (`tests/android-tier/credential-power-cut.mjs`) drives the production Android PIN/passphrase change functions from a bundled WebView probe. It requires an owned temporary API-35 AVD and an isolated `dev.engender.app.test.*` package. It kills the owned QEMU process at 20 seeded offsets per credential type, then checks which credential opens the same SQLCipher record after boot. Half of each batch waits for the production change promise to resolve before cutting power; released OPFS adoption is exercised too. `CredentialWrapStoreTest` checks staged interruption, write failure, directory-sync failure and removal/adoption. The runner also injects post-rename directory-sync failure with real PIN/passphrase wraps, cuts QEMU, starts a separate instrumentation process, then verifies authority and the unchanged SQLCipher record. Use `--failure-restart` for just those combined cases. This proves the emulator's filesystem behavior, not a physical phone or web power-loss durability.
 
 Build with `ANDROID_TIER_PROBE=credential-power-cut npx vite build --config tests/android-tier/android-tier.vite.config.ts`, after `npm run build && npx cap sync android`. Build app and instrumentation APKs with an isolated application ID, then supply `CREDENTIAL_POWER_CUT_AVD`, `CREDENTIAL_POWER_CUT_PACKAGE`, `CREDENTIAL_POWER_CUT_APK` and `CREDENTIAL_POWER_CUT_TEST_APK`. The runner owns only its supplied emulator process and CDP forward. Remove its test package and AVD after delivery.
