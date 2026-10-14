@@ -1,5 +1,11 @@
 # The probes in tests/*.mjs
 
+`src/lib/data/archive/importer-refusals.test.ts` checks damaged ZIP containers,
+malformed consumed JSON fields and deferred Daylio attachment refusals through
+the production importers. `importer-infrastructure.test.ts` injects failures
+at decoder, parser and calendar boundaries and requires the original error to
+reach the caller. Both run in the Node tier.
+
 `tests/ai-directories.test.ts` plants synthetic root evidence in an isolated
 Git repository. It requires index refusal and verifies that an archive of the
 commit excludes evidence while retaining source, build inputs and intentional

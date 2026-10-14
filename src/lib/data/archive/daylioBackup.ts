@@ -63,7 +63,7 @@ import type {
   ArchiveTag,
   ArchiveTagGroup
 } from './payload';
-import { openZip, ZipTooLargeError, type ZipReader } from './zipReader';
+import { openZip, ZipFormatError, type ZipReader } from './zipReader';
 
 /** Why a backup could not be read, for a screen that words its own
     message from it - the same split normalize.ts's UnsupportedImageError
@@ -82,8 +82,8 @@ type DaylioBackupErrorKind = 'unreadable' | 'platform' | 'record';
 export class DaylioBackupError extends Error {
   readonly kind: DaylioBackupErrorKind;
 
-  constructor(kind: DaylioBackupErrorKind, message: string) {
-    super(`Daylio backup ${message}`);
+  constructor(kind: DaylioBackupErrorKind, message: string, options?: ErrorOptions) {
+    super(`Daylio backup ${message}`, options);
     this.name = 'DaylioBackupError';
     this.kind = kind;
   }
@@ -225,7 +225,12 @@ function zipNames(reader: ZipReader): Map<string, string> {
     this app will hold in memory at once. */
 function zipRead(reader: ZipReader, names: Map<string, string>, name: string, prefix = false): Uint8Array | null {
   const raw = names.get(name);
-  return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
+  try {
+    return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
+  } catch (cause) {
+    if (cause instanceof ZipFormatError) throw new DaylioBackupError('unreadable', 'has a damaged ZIP member', { cause });
+    throw cause;
+  }
 }
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:
@@ -258,26 +263,41 @@ function openBackup(file: Uint8Array): { payload: Record_; names: Map<string, st
     names = zipNames(reader);
     member = zipRead(reader, names, BACKUP_MEMBER);
   } catch (cause) {
-    if (cause instanceof ZipTooLargeError) throw cause;
-    throw new DaylioBackupError('unreadable', 'is not a zip file');
+    if (cause instanceof ZipFormatError) throw new DaylioBackupError('unreadable', 'is not a zip file', { cause });
+    throw cause;
   }
 
   if (!member) throw new DaylioBackupError('unreadable', `has no ${BACKUP_MEMBER} member, so it is not a Daylio backup`);
 
+  // Base64 text may be newline-wrapped in a vendor export.
+  const encoded = new TextDecoder().decode(member).replace(/\s+/g, '');
+  let raw: string;
+  try {
+    raw = atob(encoded);
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'InvalidCharacterError') {
+      throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`, { cause });
+    }
+    throw cause;
+  }
+  const decoded = Uint8Array.from(raw, (char) => char.charCodeAt(0));
+  const decoder = new TextDecoder('utf-8', { fatal: true });
   let json: string;
   try {
-    // Newline-wrapped in the observed file, which atob will not accept.
-    const raw = atob(new TextDecoder().decode(member).replace(/\s+/g, ''));
-    json = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(raw, (char) => char.charCodeAt(0)));
+    json = decoder.decode(decoded);
   } catch (cause) {
-    throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`);
+    if (cause instanceof TypeError) {
+      throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`, { cause });
+    }
+    throw cause;
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
   } catch (cause) {
-    throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON');
+    if (cause instanceof SyntaxError) throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON', { cause });
+    throw cause;
   }
   if (!isRecord(parsed)) throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not a JSON object');
 
@@ -384,7 +404,8 @@ function assetRows(payload: Record_): Map<number, AssetRow> {
     try {
       const metadata: unknown = JSON.parse(str(asset.android_metadata));
       if (isRecord(metadata)) sourceName = str(metadata.Name);
-    } catch {
+    } catch (cause) {
+      if (!(cause instanceof SyntaxError)) throw cause;
       // Not present, not a string, or not JSON after all. The bytes are
       // the primary answer about a file's type; this was the fallback.
     }
@@ -563,6 +584,7 @@ export async function daylioBackupPreview(
      values would be an empty dimension nobody logged anything on. */
   const dimensionOf = new Map<number, { key: string; position: Map<number, number> }>();
   const existingDimensions = new Set(existing.dimensions.map((dimension) => dimension.key));
+  const incomingDimensions = new Set<string>();
   let unreadableScales = 0;
   for (const scale of list(payload.scales)) {
     const id = int(scale.id);
@@ -579,6 +601,8 @@ export async function daylioBackupPreview(
     // when the dimension itself is already here and travels as nothing.
     dimensionOf.set(id, { key, position: new Map(ids.map((valueId, index) => [valueId, index + 1])) });
     if (existingDimensions.has(key)) continue;
+    if (incomingDimensions.has(key)) throw new DaylioBackupError('record', `repeats scale ${name}`);
+    incomingDimensions.add(key);
     journal.dimensions.push({
       key,
       name,
@@ -700,6 +724,7 @@ export async function daylioBackupPreview(
      app's milestone cannot hold - so the origin date arrives and the
      recurrence is named as dropped rather than invented somewhere. */
   const existingMilestones = new Set(existing.milestones.map((milestone) => milestone.id));
+  const incomingMilestones = new Set<string>();
   let anniversaries = 0;
   for (const record of list(payload.milestones)) {
     const id = int(record.id);
@@ -716,6 +741,8 @@ export async function daylioBackupPreview(
 
     const uuid = await contentUuid(['daylio-milestone', name, epochDay]);
     if (existingMilestones.has(uuid)) continue;
+    if (incomingMilestones.has(uuid)) throw new DaylioBackupError('record', `repeats ${named}`);
+    incomingMilestones.add(uuid);
 
     const assetId = int(record.assetId);
     let photo: ArchiveMilestone['photo'] = null;
