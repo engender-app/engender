@@ -16,7 +16,6 @@ test('a hair-removal save overlapping a failed Merge survives its rollback', asy
   await sourceJournal.entries.upsertEntry({ epochDay: 19000, mood: 3, note: 'first' });
   await sourceJournal.entries.upsertEntry({ epochDay: 19001, mood: 3, note: 'last' });
   const snapshot = await sourceJournal.archive.snapshot();
-  const bad = { ...snapshot.journal, entries: snapshot.journal.entries.map((entry, i) => i === 1 ? { ...entry, epochDay: null } : entry) };
   const db = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);
@@ -24,15 +23,19 @@ test('a hair-removal save overlapping a failed Merge survives its rollback', asy
   const entered = latch();
   const release = latch();
   const transaction = db.transaction.bind(db);
-  db.transaction = (work) => transaction(async (scope) => {
-    entered.release();
-    await release.promise;
-    return work(scope);
+  const refusing: typeof db = {
+    ...db,
+    transaction: (work) => transaction(async (scope) => {
+      entered.release();
+      await release.promise;
+      await work(scope);
+      throw new Error('deliberate Merge rollback');
+    })
+  };
+  const restoring = restoreArchive(refusing, files, 'merge', {
+    journal: snapshot.journal, files: (async function* () {})()
   });
-  const restoring = restoreArchive(db, files, 'merge', {
-    journal: bad as typeof snapshot.journal, files: (async function* () {})()
-  });
-  const refused = expect(restoring).rejects.toThrow();
+  const refused = expect(restoring).rejects.toThrow('deliberate Merge rollback');
   await entered.promise;
   const saving = journal.hairRemoval.upsertSession({ epochDay: 20003, area: 'chin', method: 'laser', painRating: 2 });
   await new Promise((done) => setTimeout(done, 0));
@@ -40,6 +43,7 @@ test('a hair-removal save overlapping a failed Merge survives its rollback', asy
   await refused;
   await expect(saving).resolves.toEqual(expect.any(String));
   expect((await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM hair_removal_session'))[0].n).toBe(1);
+  expect(await db.query('SELECT id FROM entry WHERE epoch_day IN (19000, 19001)')).toEqual([]);
   await db.close();
   await source.close();
 });

@@ -57,13 +57,10 @@
    and the disguise settings in place through the most destructive path in
    the app.
 
-   What the rows contain is validated by the schema as they are written, which
-   is why every insert is inside the transaction: a value the columns refuse -
-   a reminder with no rule, an entry with no day - rolls the whole import back
-   and leaves the journal as it was. Only the payload's shape is checked up
-   front, because a section that is not an array would otherwise fail as a
-   TypeError that reads like a bug in this file rather than like a damaged
-   file on disk. */
+   Row identities, scalar types and safe numeric values are checked before
+   the file stream or transaction starts. The schema still enforces relational
+   and domain constraints inside the transaction, so a refused write rolls the
+   import back rather than leaving a partial journal. */
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
@@ -76,7 +73,8 @@ import { readFileOwnership } from './fileOwnership';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
-import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
+import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS } from './archiveSections';
+import { assertArchiveRows } from './archiveRowValidation';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -267,8 +265,8 @@ async function restoreWithin(
   onProgress?: OnRestoreProgress,
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
+  assertRestorable(contents.journal);
   const original = aliasLegacyConsults(contents.journal);
-  assertRestorable(original);
   const existing = new Set(await files.list());
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
@@ -357,7 +355,7 @@ export async function verifyArchive(
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const { payload, files } = await openArchive(source, password);
-  assertRestorable(aliasLegacyConsults(payload.journal));
+  assertRestorable(payload.journal);
 
   /* One stage, so a pair rather than a RestoreProgress: the whole drill is
      the drain, and the manifest already says how many files that is. */
@@ -370,7 +368,7 @@ export async function verifyArchive(
 /** Reject unknown sections before writing any files or rows, even when the
     archive declares a known format version. Ignoring a section would silently
     lose the data it carries. Known sections must be arrays before their apply
-    functions can read them. */
+    functions can read them; each row must satisfy its wire contract. */
 function assertRestorable(journal: ArchiveJournal): void {
   for (const section of Object.keys(journal ?? {})) {
     // ADR-0037 retired this known pre-release section and deliberately drops it.
@@ -378,10 +376,14 @@ function assertRestorable(journal: ArchiveJournal): void {
       throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
     }
   }
-  for (const section of ARCHIVE_SECTION_NAMES) {
+  for (const { name, flatTable } of ARCHIVE_SECTIONS) {
+    const section = name as keyof ArchiveJournal;
+    // Older archives lift validated procedure consults into this absent section.
+    if (section === 'appointments' && journal?.appointments === undefined) continue;
     if (!Array.isArray(journal?.[section])) {
       throw new CorruptArchiveError(`the archive's ${section} are not readable`);
     }
+    assertArchiveRows(section, journal[section], flatTable);
   }
 }
 

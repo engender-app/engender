@@ -520,7 +520,7 @@ through a snapshot.
 
 ```mermaid
 flowchart TD
-  O[openArchive password] --> V[validate payload shape]
+  O[openArchive password] --> V[validate sections and rows]
   V --> F[stage all files;<br/>rename collisions]
   F --> R
   subgraph T[one database transaction]
@@ -533,6 +533,17 @@ flowchart TD
   I --> C[commit]
   C --> P[Replace only: apply portable<br/>preferences outside this transaction]
 ```
+
+[journal/archiveRowValidation.ts](src/lib/data/journal/archiveRowValidation.ts)
+checks every wire row's identity, scalar types and finite numeric values before
+file-store access or transaction admission. Integers must stay within the safe
+JavaScript range. Nested rows are checked too. The contracts are checked against
+all `ArchiveJournal` sections and fields at compile time; a new wire field needs
+a validator. Flat descriptors supply their existing natural identities and
+absent-field defaults. Legacy procedure consults are validated before becoming
+appointments. Malformed rows raise `CorruptArchiveError` in both restore modes
+and the backup verification drill. Relational and domain constraints remain
+inside the database transaction.
 
 [journal/restore.ts](src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion and section application run inside the transaction. A failure rolls back those database changes. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
