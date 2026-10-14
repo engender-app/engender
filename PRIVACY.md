@@ -61,9 +61,10 @@ logs can contain an IP address and requested URL; the live server keeps
 them for at most seven days. Page-count requests are not logged.
 
 The app does not upload your journal or create an account or visitor profile.
-Page-opening counts are described below. The app loads its fonts and its text recognition files from the same server and asks nothing of any other site. The first time you scan a
-lab photo, the browser downloads the text recognition engine (about 21 MB)
-from that server; scanning itself happens on your device.
+Page-opening counts are described below. Fonts and text recognition files come
+from the same server. Installing the web app downloads the complete English and
+Polish OCR engine before it is ready offline. Scanning happens on your device,
+including the first scan after installation.
 
 Android includes the English and Polish text recognition files in the APK.
 Its first lab scan needs no download or network connection.

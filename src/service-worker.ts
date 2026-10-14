@@ -5,12 +5,8 @@
    and whatever else sits in static/ - the manifest's icons today, a .riv
    animation the moment one lands there.
 
-   One directory in static/ is not that, and joins the cache later or never:
-   the lab scanner's OCR engine, which shell-assets.ts holds the reasoning and
-   the split for. A page that has loaded it asks for it, and so does a page
-   that has opened a document, for the PDF renderer's worker, which is the
-   other file kept out of the install. The asks a page can make are in
-   lib/pwa/sw-messages.ts.
+   OCR's library, worker, core and both languages install as one immutable
+   generation. Recognition stays lazy. Only the PDF worker is added later.
 
    This worker still never decides for itself when to take over (phase 2
    ticket 04, which owns that decision): a new release installs quietly and
@@ -27,6 +23,8 @@
 import { base, build, files, version } from '$service-worker';
 import { emittedClientAssets } from './lib/pwa/emitted-client-assets.generated';
 import { SHELL_CACHE_PREFIX, splitShellAssets } from './lib/pwa/shell-assets';
+import { OCR_ASSET_PREFIX } from './lib/pwa/ocr-assets.generated';
+import { retainPreviousOcr, retainedOcr } from './lib/pwa/retained-ocr';
 import { CACHE_PDF_WORKER } from './lib/pwa/pdf-worker-cache';
 import { listenForOnDemandCache, listenForSkipWaiting } from './lib/pwa/sw-messages';
 
@@ -44,13 +42,13 @@ const SHELL = `${base}/`;
    derived from Vite's manifest, which omits everything Vite's worker pipeline
    emits; both are here because `build` keeps working if the app directory is
    ever renamed out from under that plugin's filter. */
-const { shell: PRECACHE, onDemand: ON_DEMAND, pdfWorker: PDF_WORKER } = splitShellAssets(
+const { shell: PRECACHE, pdfWorker: PDF_WORKER } = splitShellAssets(
   [...new Set([...build, ...emittedClientAssets.map((asset) => base + asset), ...files])],
-  base
+  base,
+  OCR_ASSET_PREFIX
 );
 
 listenForSkipWaiting(sw);
-listenForOnDemandCache(sw, caches, { cacheName: CACHE, assets: ON_DEMAND });
 listenForOnDemandCache(sw, caches, { cacheName: CACHE, assets: PDF_WORKER, message: CACHE_PDF_WORKER });
 
 sw.addEventListener('install', (event) => {
@@ -70,11 +68,7 @@ sw.addEventListener('install', (event) => {
 sw.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Previous releases' shells, and nothing else on the origin: another
-      // cache here would belong to something that is not this worker's.
-      for (const key of await caches.keys()) {
-        if (key.startsWith(SHELL_CACHE_PREFIX) && key !== CACHE) await caches.delete(key);
-      }
+      await retainPreviousOcr(caches, CACHE, base);
     })()
   );
 });
@@ -101,7 +95,7 @@ async function respond(request: Request): Promise<Response> {
     if (shell) return shell;
   }
 
-  const cached = await cache.match(request);
+  const cached = await cache.match(request) ?? await retainedOcr(caches, CACHE, request, base);
   if (cached) {
     // Complete cached script reads before handing their bodies to module loaders.
     // Repeated navigation can abort imports served from the cached stream.

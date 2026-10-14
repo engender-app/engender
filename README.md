@@ -173,8 +173,9 @@ Choose an encrypted Archive when you need a private backup.
 The web app is a static SvelteKit SPA with a service worker. Once the app
 has cached its release, it can start without a network connection. A new
 release waits until journal operations allow it to activate. Fonts and
-runtime assets come from the app's own origin; the lab scanner downloads
-its OCR assets when first used and caches them for later offline use.
+runtime assets come from the app's own origin. Installation includes the complete
+English and Polish OCR engine before offline readiness. Recognition starts only
+when you scan a photo.
 
 Android runs the same interface from a bundle installed in the APK. Native
 plugins provide database access, device authentication, media handling,

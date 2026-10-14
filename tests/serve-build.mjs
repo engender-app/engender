@@ -52,11 +52,12 @@ export function buildRequestHandler(root) {
     } catch {
       pathname = '/';
     }
-    const file = resolve(build, `.${pathname}`);
+    const legacyModel = /^\/tesseract\/lang-data\/(eng|pol)\.traineddata\.gz$/.exec(pathname);
+    const file = resolve(build, `.${legacyModel ? pathname.slice(0, -3) : pathname}`);
     const inside = file === build || file.startsWith(build + sep);
     const isFile = inside && existsSync(file) && statSync(file).isFile();
 
-    if (!isFile && pathname.startsWith('/_app/immutable/')) {
+    if (!isFile && (pathname.startsWith('/_app/immutable/') || pathname.startsWith('/tesseract/'))) {
       res.writeHead(404, { ...ISOLATION, 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('not found');
       return;
