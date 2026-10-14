@@ -300,10 +300,19 @@ If you keep a machine-specific runbook, store it in
 Development CI accepts the pending record in
 `scripts/progressive-release-record.json`. A signed tag does not. Before the
 release workflow builds or publishes artifacts, it checks the record against
-that tag's exact version and the tested source revision. Stable tags require
-`stable`; prerelease tags require `stage2`, the prerequisite for the signed
-GitHub APK in stage3. Stage3's publication claims are recorded after that APK
-and Play open testing exist. Prereleases never deploy the production web app.
+that tag's exact version and the tested source revision. The tag command runs
+the same gate before creating or pushing a tag, including in dry-run mode.
+Stable tags require the candidate checks in `stage1`, `stage2` and `stable`.
+Prerelease tags require `stage1` and `stage2`. These checks can pass while every
+channel is still `label-only`; channel availability is recorded after publication.
+Prereleases never deploy the production web app.
+
+Publish web and GitHub/Obtainium first. Record the web channel after its stage1
+checks and deployment, and Obtainium after its stage2 device checks and signed
+GitHub APK publication. Play's stage3 and F-Droid's stage4 outcomes follow on
+their own schedules. Neither is a prerequisite for the first stable release or
+a later stable hotfix. An incomplete stage3 or stage4 claim still fails the gate;
+leave its timestamps empty and checks false until that work is complete.
 
 Commit the candidate source, including release notes, before running its release
 matrix. Record that commit's full SHA in `candidateRevision` and the intended
