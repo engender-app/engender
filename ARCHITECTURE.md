@@ -165,6 +165,7 @@ Ignored working directories you will see in a maintainer's checkout:
 |---|---|
 | `.scratch/<phase>/<feature>/` | The issue tracker. One markdown file per ticket; finished phases move under `.scratch/done/` (`docs/agents/issue-tracker.md`) |
 | `.claude/` | Agent worktrees, audit evidence, review pages |
+| Root `evidence*/` directories | Private local evidence; ignored, rejected by the index guard and excluded from committed source archives |
 | `docs/adr/`, `CONTEXT.md`, `PRODUCT.md`, `SCREENS.md` | Decisions and briefs, kept out of the public tree |
 | `build/`, `.svelte-kit/`, `dist/`, `ci-logs/` | Build output, release artifacts and kept CI logs |
 

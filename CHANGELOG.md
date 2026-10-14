@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Source packages exclude root local-evidence paths, and CI rejects them if they
+are tracked. Application evidence routes and intentional fixtures remain in
+the source package.
+
 Android no longer requests unused network-state and foreground-service
 permissions. Scheduled encrypted backups retain their wake lock, which both
 privacy policies now explain. Release checks inspect the complete APK

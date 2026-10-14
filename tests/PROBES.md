@@ -1,5 +1,10 @@
 # The probes in tests/*.mjs
 
+`tests/ai-directories.test.ts` plants synthetic root evidence in an isolated
+Git repository. It requires index refusal and verifies that an archive of the
+commit excludes evidence while retaining source, build inputs and intentional
+fixtures. Editing checkout attributes after commit cannot change that receipt.
+
 For isolated Daylio preview measurements, run
 `DAYLIO_PREVIEW_BENCHMARK=1 npx vitest run src/lib/data/archive/daylioBackup-performance.test.ts`
 on a quiet host. It reports three preview durations for each of 500, 1,000 and

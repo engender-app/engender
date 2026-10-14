@@ -368,6 +368,13 @@ bundle, source archive, signed Android APK and App Bundle, and checksums.
 Release notes state schema changes, Archive format changes, security
 migrations and the minimum supported version.
 
+Keep private local evidence in the ignored working directories or root paths
+starting with `evidence`. CI rejects those root paths if they enter the index;
+the committed export policy also excludes them from `git archive` source
+packages. Application source and intentional test fixtures remain included,
+including nested directories named `evidence`. The policy prevents future
+packages from including these paths; it does not rewrite published history.
+
 [Deployment notes](deploy/README.md) describe immutable web releases, the
 atomic switch between them and rollback checks. A rollback refuses code
 that cannot open the current journal schema by default.
