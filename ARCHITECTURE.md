@@ -739,6 +739,12 @@ failures do not increase the throttle. Unreadable metadata asks the person to
 reopen the app so boot can check the current access mode. Busy and error feedback
 use the catalogue and the existing live regions.
 
+[browserKeySlot](src/lib/data/device-bound-journal.ts) converts IndexedDB's
+absent-record `undefined` to its declared `null` result. Missing PIN bindings
+and device-bound wrapping keys reach their existing typed key-loss errors.
+Unlocking never creates a replacement for a missing key. Older PIN wraps
+without a binding name still use the browser binding.
+
 ### 7.5 Disguise
 
 [disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, journey and wrapped export file names omit the person's name under disguise. Setup doesn't change with disguise and offers it last (ADR-0079).
