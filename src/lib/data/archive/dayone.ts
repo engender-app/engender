@@ -55,7 +55,7 @@
 
 import { strFromU8 } from 'fflate';
 import { md5 } from 'hash-wasm';
-import { epochDayFromLocalDate } from '../epochDay';
+import { epochDayFromCalendarDate } from '../epochDay';
 import { photoFileName } from '../photos/names';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
@@ -222,7 +222,7 @@ export function localDayInZone(instantMs: number, timeZone: string): number {
     throw new DayOneImportError(`has an unrecognised time zone: ${timeZone}`, { cause });
   }
   const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  return epochDayFromLocalDate(new Date(Date.UTC(part('year'), part('month') - 1, part('day'))));
+  return epochDayFromCalendarDate(part('year'), part('month'), part('day'))!;
 }
 
 /** `uuid` is 32 uppercase hex characters with no dashes - stable, so used

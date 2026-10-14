@@ -179,23 +179,23 @@ test('a photo resolves by its own md5, ignoring the differently-cased identifier
   assert.equal(withPhoto.photos.length, 1, 'resolved via photos[].md5, matched to the file the zip actually carries');
 });
 
-test('localDayInZone reads the calendar date in the given zone, not the device\'s', () => {
-  // A positive offset (UTC+9): 23:30 UTC is already the next calendar day in Tokyo.
-  const tokyo = localDayInZone(Date.parse('2026-06-14T23:30:00Z'), 'Asia/Tokyo');
-  const tokyoNextDay = localDayInZone(Date.parse('2026-06-15T00:30:00Z'), 'UTC');
-  assert.equal(tokyo, tokyoNextDay);
+test('localDayInZone returns absolute calendar days in the entry zone', () => {
+  assert.equal(localDayInZone(Date.parse('2026-06-14T23:30:00Z'), 'Asia/Tokyo'), 20619); // 2026-06-15
+  assert.equal(localDayInZone(Date.parse('2026-01-16T03:00:00Z'), 'America/Denver'), 20468); // 2026-01-15
 
-  // A negative offset (UTC-7, no DST in January): 03:00 UTC is still the previous day in Denver.
-  const denver = localDayInZone(Date.parse('2026-01-16T03:00:00Z'), 'America/Denver');
-  const denverPreviousDay = localDayInZone(Date.parse('2026-01-15T00:00:00Z'), 'UTC');
-  assert.equal(denver, denverPreviousDay);
+  // Both sides of Denver's spring DST change stay on 2026-03-08.
+  assert.equal(localDayInZone(Date.parse('2026-03-08T09:00:00Z'), 'America/Denver'), 20520);
+  assert.equal(localDayInZone(Date.parse('2026-03-08T10:00:00Z'), 'America/Denver'), 20520);
+});
 
-  // US DST starts 2026-03-08 02:00 local (clocks jump to 03:00): an instant
-  // either side of the transition still reads its own correct local day.
-  const beforeSpringForward = localDayInZone(Date.parse('2026-03-08T09:00:00Z'), 'America/Denver'); // 02:00 MST
-  const afterSpringForward = localDayInZone(Date.parse('2026-03-08T10:00:00Z'), 'America/Denver'); // 04:00 MDT
-  assert.equal(beforeSpringForward, afterSpringForward);
-  assert.equal(beforeSpringForward, localDayInZone(Date.parse('2026-03-08T00:00:00Z'), 'UTC'));
+test('preview keeps each fixture entry on its source calendar day', async () => {
+  const preview = await dayonePreview(await makeDayOneExport(), emptyArchiveJournal(), naming);
+  assert.deepEqual(preview.journal.entries.map(({ uuid, epochDay }) => [uuid, epochDay]), [
+    ['5e2b6975-0d52-4837-8592-cc8dae174009', 20468], // 2026-01-15, Denver
+    ['6a3c7986-0e63-5948-9693-dd9ebf285110', 20469], // 2026-01-16, Berlin
+    ['7b4d8a97-0f74-6059-0794-eeb0fc396221', 20614], // 2026-06-10, Berlin
+    ['8c5e9ba8-1085-4671-a895-ffc1fd4a7332', 20513] // 2026-03-01, UTC
+  ]);
 });
 
 test('normalizeDayOneUuid reshapes the 32-hex form deterministically', () => {
