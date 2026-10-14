@@ -19,10 +19,22 @@ export const ANNOUNCE_GAP_MS = 100;
 
 export function createAnnouncer(write: (region: Region, text: string) => void) {
   const pending: Partial<Record<Region, ReturnType<typeof setTimeout>>> = {};
-  return (text: string, urgent = false) => {
+  const announce = (text: string, urgent = false) => {
     const region: Region = urgent ? 'assertive' : 'polite';
     clearTimeout(pending[region]);
     write(region, '');
-    pending[region] = setTimeout(() => write(region, text), ANNOUNCE_GAP_MS);
+    pending[region] = setTimeout(() => {
+      delete pending[region];
+      write(region, text);
+    }, ANNOUNCE_GAP_MS);
   };
+  return Object.assign(announce, {
+    clear() {
+      for (const region of ['polite', 'assertive'] as const) {
+        clearTimeout(pending[region]);
+        delete pending[region];
+        write(region, '');
+      }
+    }
+  });
 }
