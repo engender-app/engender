@@ -283,6 +283,14 @@ Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vi
 
 `backup-power-cut` (`tests/android-tier/backup-power-cut.mjs`) exercises foreground automatic delivery and actual scheduled `BackupWork` against Android's system local storage provider. It repeats retained seeds 2311–2314 and ten additional seeds per path with 40 MiB of synthetic attachments. After each QEMU power cut, the five newest retained verified backups must restore all 3300 rows and attachment bytes; at least one preceding good backup must remain. Older ownership receipts may survive a cut between pruning and the retention metadata update, and are recorded separately. `BackupDeliveryDurabilityTest` exercises both owners against full storage, truncated read-back, a pipe and a cloud cache with a regular file descriptor. A release-only capability class refuses the instrumentation fixture unconditionally.
 
+`mounted-status` uses the Settings language control and checks concealed export
+gates, native delivery refresh and Polish status text. Its deferred-text case
+clears the saved password through the native API, re-enables the destination
+and lets WorkManager produce the deferral. Without a saved password,
+foreground capture cannot immediately consume that state. The separate
+`defer`, `verify-deferred` and `catch-up` stages prove cold execution with a
+saved password and authenticated recovery.
+
 `reset-transfers`, selectable with `ANDROID_TIER_BACKUP_STAGES`, runs
 `ExportResetTest` through the actual `resetApp` and WebView reload. It requests
 Start over while native key derivation is pending, during a delayed attachment
@@ -839,6 +847,18 @@ launcher and a real reminder notification. Each fresh process must show the
 PIN pad and contain no private fixture text in the DOM. The dedicated fixture
 and notification helpers run only in an isolated package. See
 `tests/android-tier/README.md` for runtime requirements and limits.
+
+`tests/android-tier/evidence.test.ts` and `check-progressive-release.test.ts`
+use synthetic records to check dirty-source refusal, record-only commit
+equivalence, stale timestamps, missing build/stage identity and optional-stage
+claims. They do not substitute for an Android runtime run. The runner records
+actual completed checks and APK hashes only after a clean passing run. Current
+Android must also complete isolated first-use OCR in airplane mode with its own
+APK identity. `offline-ocr-stage.test.ts` uses fake device replies to verify
+fresh installs, failure cleanup and restoration of network settings.
+`installed-upgrade-evidence.test.ts` checks four-APK provenance for a CDP-only
+upgrade, refuses mismatched sources and fabricated control roles, and keeps
+optional-only evidence insufficient for the core release gate.
 
 ## Node calendar zones
 
