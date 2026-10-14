@@ -2170,6 +2170,35 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     );
 });
 
+await block('entry capture ownership', 14, async () => {
+  const r = await load('/entry-capture.html', 'entry-capture-probe');
+  if (r.error) throw new Error(r.error);
+  for (const row of r.late) {
+    const closed = row.refusal || (row.tracks.length > 0 && row.tracks.every(state => state === 'ended'));
+    if (row.requested === 1 && row.pending && closed && row.recorders === 0 &&
+        row.attachedToReplacement === 0 && row.delayedFeedback === 0)
+      ok(`${row.kind}: ${row.taps} pending taps and late ${row.refusal ? 'refusal' : 'permission'} leave no detached capture`);
+    else fail('pending entry capture owns its late result', JSON.stringify(row));
+  }
+  for (const row of r.failures) {
+    if (row.tracks.length >= 2 && row.tracks.every(state => state === 'ended') && row.retryEnabled &&
+        row.feedback === (row.failure === 'teardown-stop' ? 0 : 1) &&
+        (row.failure === 'teardown-stop' || row.retried))
+      ok(`video ${row.failure}: tracks close, current owner can retry, teardown reports no delayed feedback`);
+    else fail('video failure releases ownership', JSON.stringify(row));
+  }
+  for (const row of r.healthy) {
+    if (row.count === 1 && row.bytes > 0 && row.encrypted && row.storedPlayback && row.tracks.every(state => state === 'ended'))
+      ok(`${row.kind}: refusal retries into capture, playback, encrypted save and stored playback`);
+    else fail('healthy entry capture and save', JSON.stringify(row));
+  }
+  if (r.intervals === 0 && r.capTimers === 0) ok('entry capture leaves no countdown or cap timer');
+  else fail('entry capture timers stop', JSON.stringify({ intervals: r.intervals, capTimers: r.capTimers }));
+  if (r.cap.bytes > 0 && r.cap.tracks.length === 2 && r.cap.tracks.every(state => state === 'ended'))
+    ok('the actual 30-second video cap stops every track and retains capture bytes');
+  else fail('actual video duration cap', JSON.stringify(r.cap));
+});
+
 // --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
 await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
   const r = await load('/mic-teardown.html', 'mic-teardown-probe');

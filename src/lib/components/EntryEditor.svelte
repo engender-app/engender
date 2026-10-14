@@ -657,15 +657,43 @@
   // Unset while nothing is being recorded; the record/stop button reads
   // this to know which state it is showing (ticket 24).
   let activeRecording = $state<ActiveRecording | null>(null);
+  // Owns opening, recording and collection, so a second tap cannot open a
+  // competing stream and teardown can cancel before permission returns.
+  let recordingOwner = $state<AbortController | null>(null);
+  let recordingPending = $derived(recordingOwner !== null && activeRecording === null);
 
   async function toggleRecording() {
-    if (activeRecording) {
-      const bytes = await activeRecording.stop();
+    if (recordingOwner) {
+      if (!activeRecording) return;
+      const owner = recordingOwner;
+      const active = activeRecording;
       activeRecording = null;
-      if (bytes) entryDraft.addRecording(bytes);
+      try {
+        const bytes = await active.stop();
+        if (!owner.signal.aborted && bytes) entryDraft.addRecording(bytes);
+      } catch (error) {
+        console.error('the voice recording could not be finished', error);
+        if (!owner.signal.aborted) toast(m.recording_failed());
+      } finally {
+        if (recordingOwner === owner) recordingOwner = null;
+      }
       return;
     }
-    activeRecording = await startRecording();
+    const owner = new AbortController();
+    recordingOwner = owner;
+    try {
+      const started = await startRecording(owner.signal);
+      if (owner.signal.aborted) {
+        await started?.stop();
+        return;
+      }
+      activeRecording = started;
+    } catch (error) {
+      console.error('the voice recording could not be started', error);
+      if (!owner.signal.aborted) toast(m.recording_failed());
+    } finally {
+      if (!activeRecording && recordingOwner === owner) recordingOwner = null;
+    }
   }
 
   /* Picking one that already exists, rather than making one here. Photos
@@ -682,25 +710,29 @@
     if (bytes) entryDraft.addRecording(bytes);
   }
 
-  /* Video notes (ticket 22). Three pieces of state where a voice recording
-     needs one: the live capture for the preview, the countdown, and a flag
-     for the wait while an oversized capture is compressed - that step runs in
-     real time (videoNotes/reencode.ts), so a 30-second note takes another 30
-     seconds and a silent editor would look broken. */
+  /* The live video capture supplies the preview and countdown. Compressing
+     an oversized note can take another 30 seconds (videoNotes/reencode.ts),
+     so its own flag keeps that wait visible. */
   let activeVideo = $state<ActiveVideoRecording | null>(null);
+  let videoOwner = $state<AbortController | null>(null);
+  let videoPending = $derived(videoOwner !== null && activeVideo === null);
   let videoSecondsLeft = $state(0);
   let compressingVideo = $state(false);
 
   const VIDEO_MAX_SECONDS = Math.round(VIDEO_MAX_DURATION_MS / 1000);
 
-  async function finishVideo(active: ActiveVideoRecording) {
+  async function finishVideo(active: ActiveVideoRecording, owner: AbortController) {
     activeVideo = null;
     compressingVideo = true;
     try {
       const bytes = await active.stop();
-      if (bytes) entryDraft.addVideo(bytes);
+      if (!owner.signal.aborted && bytes) entryDraft.addVideo(bytes);
+    } catch (error) {
+      console.error('the video note could not be finished', error);
+      if (!owner.signal.aborted) toast(m.video_recording_failed());
     } finally {
       compressingVideo = false;
+      if (videoOwner === owner) videoOwner = null;
     }
   }
 
@@ -719,20 +751,33 @@
   }
 
   async function toggleVideo() {
-    if (activeVideo) {
-      await finishVideo(activeVideo);
+    if (videoOwner) {
+      if (activeVideo) await finishVideo(activeVideo, videoOwner);
       return;
     }
-    const started = await startVideoRecording();
-    if (!started) return;
-    activeVideo = started;
-    videoSecondsLeft = VIDEO_MAX_SECONDS;
-    /* The cap is enforced in the store, not here (videoRecording.ts): this
-       only mirrors it, so a note that hits 30 seconds is collected the same
-       way a tapped Stop collects one. */
-    started.capped.then(() => {
-      if (activeVideo === started) void finishVideo(started);
-    });
+    if (compressingVideo) return;
+    const owner = new AbortController();
+    videoOwner = owner;
+    try {
+      const started = await startVideoRecording(owner.signal);
+      if (!started) return;
+      if (owner.signal.aborted) {
+        await started.stop();
+        return;
+      }
+      activeVideo = started;
+      videoSecondsLeft = VIDEO_MAX_SECONDS;
+      /* The store enforces the cap; the editor collects it through the same
+         owner as a tapped Stop. */
+      started.capped.then(() => {
+        if (activeVideo === started) void finishVideo(started, owner);
+      });
+    } catch (error) {
+      console.error('the video note could not be started', error);
+      if (!owner.signal.aborted) toast(m.video_recording_failed());
+    } finally {
+      if (!activeVideo && videoOwner === owner) videoOwner = null;
+    }
   }
 
   /* The countdown, which exists only while something is recording - an
@@ -761,12 +806,16 @@
   // mid-recording) must not leave the microphone or the camera open behind
   // the screen.
   onDestroy(() => {
-    activeRecording?.stop();
-    activeVideo?.stop();
+    recordingOwner?.abort();
+    videoOwner?.abort();
+    void activeRecording?.stop().catch((error) => console.error('the voice recording could not be stopped', error));
+    void activeVideo?.stop().catch((error) => console.error('the video note could not be stopped', error));
+    activeRecording = null;
+    activeVideo = null;
   });
 
   let mediaPreparing = $derived(
-    activeRecording !== null || activeVideo !== null || compressingVideo ||
+    recordingOwner !== null || videoOwner !== null || compressingVideo ||
     dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
   );
   let draftPreparing = $derived(session.preparing);
@@ -1125,7 +1174,7 @@
         </div>
       {/if}
       <div class="photo-row">
-        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={() => prepareDraft(toggleRecording)}>
+        <button class="photo-add press" aria-disabled={recordingPending} aria-busy={recordingPending} aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={() => prepareDraft(toggleRecording)}>
           <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
           <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
         </button>
@@ -1170,6 +1219,8 @@
         <button
           class="photo-add press"
           disabled={compressingVideo}
+          aria-disabled={videoPending || compressingVideo}
+          aria-busy={videoPending}
           aria-label={activeVideo ? m.stop_video() : m.add_video()}
           onclick={() => prepareDraft(toggleVideo)}
         >
@@ -1179,7 +1230,7 @@
         <button
           class="photo-add press"
           data-add-video-file
-          disabled={compressingVideo || !!activeVideo}
+          disabled={compressingVideo || videoOwner !== null}
           aria-label={m.add_video_file()}
           onclick={() => prepareDraft(addVideoFile)}
         >
