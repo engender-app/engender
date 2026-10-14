@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -135,7 +136,7 @@
     <h3>{m.body_regions_new_sheet()}</h3>
     <Field label={m.body_regions_new_sheet()} id="new-region-input" hidden>
       {#snippet children(id)}
-        <input class="input" {id} name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
+        <input autocomplete={journalTextAutocomplete()} class="input" {id} name="new-region-input" placeholder={m.body_regions_placeholder()} bind:value={newName} />
       {/snippet}
     </Field>
     <button class="btn btn-primary" disabled={adding.busy} onclick={add}><span>{m.body_regions_save()}</span></button>
@@ -146,7 +147,7 @@
       <h3>{m.body_regions_rename_sheet()}</h3>
       <Field label={m.body_regions_rename_sheet()} id="rename-region-input" hidden>
         {#snippet children(id)}
-          <input class="input" {id} name="rename-region-input" bind:value={renameTarget!.name} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="rename-region-input" bind:value={renameTarget!.name} />
         {/snippet}
       </Field>
       <button class="btn btn-primary" data-save-region-name disabled={!renameTarget.name.trim() || renaming.busy} onclick={rename}>

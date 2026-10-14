@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from './DatePicker.svelte';
   import Icon from './Icon.svelte';
@@ -108,7 +109,7 @@
 
     <Field label={m.ms_name_label()} id="adopt-milestone-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="milestone-name"

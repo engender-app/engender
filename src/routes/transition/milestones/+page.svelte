@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
@@ -536,12 +537,12 @@
       {/if}
       <Field label={m.ms_name_label()} id="ms-name">
         {#snippet children(id)}
-          <input class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
       <Field label={m.ms_description_label()} id="ms-description">
         {#snippet children(id)}
-          <textarea
+          <textarea autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="ms-description"

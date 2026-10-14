@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { rovingRadio } from '$lib/components/rovingRadio';
   /* The fluidity engine's presentations, managed (phase 5 deepening ticket
      17, ADR-0048): list, add, rename, recolour and hide - there is no
@@ -130,7 +131,7 @@
   {#snippet fields(editor)}
     <Field label={m.presentation_name_label()} id="presentation-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="presentation-name"

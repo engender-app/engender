@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import { writer } from '$lib/stores/attempt.svelte';
   import DatePicker from './DatePicker.svelte';
@@ -72,7 +73,7 @@
   <h3>{m.roadmap_milestone_prompt_title({ goal: goalTitle })}</h3>
   <Field label={m.ms_name_label()} id="roadmap-milestone-name">
     {#snippet children(id)}
-      <input
+      <input autocomplete={journalTextAutocomplete()}
         class="input"
         {id}
         name="milestone-name"

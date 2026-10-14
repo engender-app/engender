@@ -575,6 +575,17 @@ These controls assume trusted application code, browser and operating system. Me
 
 Web PIN binding prevents guessing from `keystore.json` alone. Copying the whole browser profile can also copy the binding material, leaving the PIN's 10,000 candidates as the search space ([data/device-secret.ts](src/lib/data/device-secret.ts), ADR-0041). Android keeps the binding key in Keystore, outside the app's files, though code running with the app's authority can ask it to sign. CSP limits browser requests; it does not protect plaintext or keys from compromised application code running on the trusted origin.
 
+Journal text inputs and textareas use `journalTextAutocomplete()` in
+[platform.ts](src/lib/platform.ts): web fields receive `autocomplete="off"`,
+while Android receives no new attribute so its existing keyboard behavior
+stays. Existing explicit attributes, including password-manager hints, remain
+unchanged. [journal-field-policy.test.ts](tests/journal-field-policy.test.ts)
+checks every editable text control through the Svelte AST; the retained
+[journal-field-profile probe](tests/journal-field-profile.mjs) types into the
+real entry, tag and document fields, closes Chromium and Firefox, and scans
+their profiles, including decoded Firefox session files. Earlier profile
+copies and keyboard storage remain outside this control.
+
 Report vulnerabilities as [SECURITY.md](SECURITY.md) describes.
 
 ### 7.2 Keys

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
@@ -364,7 +365,7 @@
       </Field>
       <Field label={m.hair_removal_cost_label()} id="hair-removal-cost">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="hair-removal-cost"
@@ -375,7 +376,7 @@
       </Field>
       <Field label={m.hair_removal_provider_label()} id="hair-removal-provider">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="hair-removal-provider"

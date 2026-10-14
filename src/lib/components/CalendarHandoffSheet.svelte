@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* The share sheet ticket 03's calendar builder was missing (phase 10
      redesign ticket 18, ADR-0067). One sheet, opened from the three surfaces
      that carry a dated thing worth a mark: the appointment editor, the
@@ -90,7 +91,7 @@
 
   <Field label={m.calendar_handoff_title_label()} id="calendar-handoff-title">
     {#snippet children(id)}
-      <input class="input" {id} name="calendar-handoff-title" bind:value={title} />
+      <input autocomplete={journalTextAutocomplete()} class="input" {id} name="calendar-handoff-title" bind:value={title} />
     {/snippet}
   </Field>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import PhotoViewer from '$lib/components/PhotoViewer.svelte';
@@ -501,7 +502,7 @@
           {:else}
             <Field label={m.hair_other_label()} id="hair-other-value">
               {#snippet children(id)}
-                <input
+                <input autocomplete={journalTextAutocomplete()}
                   class="input"
                   {id}
                   name="hair-other-value"

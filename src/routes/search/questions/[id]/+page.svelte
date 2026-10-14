@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* One saved question, answered as a run (phase 8 features ticket 06,
      CONTEXT: "Saved question").
 
@@ -360,7 +361,7 @@
       <h3>{m.saved_question_edit_sheet()}</h3>
       <Field label={m.saved_question_name_label()} id="saved-question-rename-name">
         {#snippet children(fieldId)}
-          <input class="input" id={fieldId} name="saved-question-rename-name" bind:value={renamingName} />
+          <input autocomplete={journalTextAutocomplete()} class="input" id={fieldId} name="saved-question-rename-name" bind:value={renamingName} />
         {/snippet}
       </Field>
       <div class="stack-3">

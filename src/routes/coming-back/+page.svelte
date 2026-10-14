@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* What was waiting when somebody came back (phase 8 features ticket 05,
      ADR-0062, ADR-0045).
 
@@ -566,7 +567,7 @@
             placeholder={m.dose_amount_placeholder()}
             bind:value={doseDraft!.dose}
           />
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input coming-back-amount-unit"
             name="coming-back-dose-unit"
             aria-label={m.dose_unit_label()}

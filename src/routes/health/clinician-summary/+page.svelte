@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Overhauled Clinician Summary / Clinical Dossier Generator (phase 5 ticket 09).
      Synthesizes patient demographics, current regimen, dose history, cumulative
      exposure, lab timeline with post-dose context, side effects, cycle events,
@@ -284,7 +285,7 @@
   <div class="cd-person">
     <Field label={m.clinician_summary_pronouns_optional()} id="clinician-summary-pronouns">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           {id}
           type="text"
           class="input"
@@ -295,7 +296,7 @@
     </Field>
     <Field label={m.clinician_summary_dob_optional()} id="clinician-summary-dob">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           {id}
           type="text"
           class="input"
