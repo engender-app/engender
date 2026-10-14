@@ -710,6 +710,11 @@ stateDiagram-v2
 
 ### 8.2 The shell and route policy
 
+Search return snapshots and queries handed over from More stay in module
+memory. Returning from an entry consumes the snapshot; lock or reload drops
+it. They never go to Web Storage, whose disk logs can retain removed text.
+Lock cleanup also removes the legacy search key written by older builds.
+
 [src/routes/+layout.svelte](src/routes/+layout.svelte) is the composition root. It imports the global CSS, starts boot, and renders one of the gates in a single `{#if}` chain: `JournalGate`, `AndroidKeyGate`, `DeviceBoundRecovery`, `SessionUnlock`, `PostRecoveryAccessMode`, `SchemaTooNew`, or the route. It also passes ports into the policy modules:
 
 | Module | Decides |

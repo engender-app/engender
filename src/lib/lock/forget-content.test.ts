@@ -62,7 +62,7 @@ it('runs what a holder registered, so the lock never has to import the holder', 
   expect(held).toBeNull();
 });
 
-it('takes a search held before a reload, when nothing has loaded the search module yet', () => {
+it('removes the legacy search key left by an older version', () => {
   stubStorage();
   sessionStorage.setItem('engender-search-return', JSON.stringify({ ...EMPTY_SEARCH, query: 'from before the reload' }));
   forgetJournalContent();
