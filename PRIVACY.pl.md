@@ -158,6 +158,9 @@ Aplikacja prosi o następujące uprawnienia:
 - `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` i `RECEIVE_BOOT_COMPLETED`,
   żeby przypomnienie albo codzienne pytanie pojawiło się o wybranej
   godzinie, a nie w zbiorczym oknie systemu, także po restarcie telefonu.
+- `WAKE_LOCK`, żeby Android mógł utrzymać pracę procesora podczas zapisu
+  zaplanowanej, zaszyfrowanej kopii zapasowej w wybranym folderze lokalnym.
+  Ekran może pozostać wyłączony.
 - `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS`, do notatek głosowych, ćwiczeń
   głosu i dźwięku w notatkach wideo.
 - `CAMERA`, do notatek wideo i do robienia zdjęć. Zdjęcie robi aplikacja

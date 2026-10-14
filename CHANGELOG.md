@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android no longer requests unused network-state and foreground-service
+permissions. Scheduled encrypted backups retain their wake lock, which both
+privacy policies now explain. Release checks inspect the complete APK
+permission set and refuse unexpected dependency additions.
+
 Care-caption collisions and reported appointment-debrief failures now fail CI
 instead of appearing only in guard logs.
 

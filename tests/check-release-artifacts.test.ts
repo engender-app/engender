@@ -1,10 +1,34 @@
-import { spawnSync, execFileSync } from 'node:child_process';
+import { spawnSync, execFileSync, type ExecFileSyncOptions } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { androidOcrAssetProblems, expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { androidOcrAssetProblems, androidPermissionSetProblems, expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
+
+// ZIP fixtures have no binary manifest. Supply the platform tool's receipt;
+// candidate verification invokes real aapt2 against the actual APK.
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  const { readFileSync } = await import('node:fs');
+  return { ...actual, execFileSync(command: string, args: string[], options: ExecFileSyncOptions = {}) {
+    if (command === 'aapt2') return readFileSync(`${args[2]}.permissions`, 'utf8');
+    return actual.execFileSync(command, args, options);
+  } };
+});
+
+const PERMISSION_DUMP = `package: dev.engender.app
+uses-permission: name='android.permission.CAMERA'
+uses-permission: name='android.permission.MODIFY_AUDIO_SETTINGS'
+uses-permission: name='android.permission.POST_NOTIFICATIONS'
+uses-permission: name='android.permission.RECEIVE_BOOT_COMPLETED'
+uses-permission: name='android.permission.RECORD_AUDIO'
+uses-permission: name='android.permission.SCHEDULE_EXACT_ALARM'
+uses-permission: name='android.permission.USE_BIOMETRIC'
+uses-permission: name='android.permission.USE_FINGERPRINT'
+uses-permission: name='android.permission.WAKE_LOCK'
+uses-permission: name='dev.engender.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+`;
 
 function sha256(path: string) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -27,6 +51,7 @@ function ocrApk(root: string, apk: string, packaged = OCR_FILES) {
     writeFileSync(path, `synthetic ${name}`);
   }
   execFileSync('jar', ['--create', '--file', apk, '-C', source, 'assets']);
+  writeFileSync(`${apk}.permissions`, PERMISSION_DUMP);
   return webBuildDir;
 }
 
@@ -62,6 +87,13 @@ describe('releaseArtifactProblems', () => {
     );
 
     expect(releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir, webBuildDir })).toEqual([]);
+    const apk = join(releaseDir, `engender-android-release-${version}.apk`);
+    writeFileSync(`${apk}.permissions`, `${PERMISSION_DUMP}uses-permission: name='android.permission.READ_CONTACTS'\n`);
+    expect(releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir, webBuildDir }))
+      .toContain('Unexpected APK permission: android.permission.READ_CONTACTS');
+    rmSync(`${apk}.permissions`);
+    expect(releaseArtifactProblems({ version, versionCode, releaseDir, androidBuildDir, webBuildDir }))
+      .toContain(`Cannot inspect APK permissions with aapt2: ${apk}`);
   });
 
   it('reports checksum and metadata drift', () => {
@@ -111,6 +143,26 @@ describe('releaseArtifactProblems', () => {
     expect(androidOcrAssetProblems(apk, webBuildDir)).toContain(problem);
   });
 
+});
+
+describe('complete APK permission gate', () => {
+  it('accepts the reviewed complete set, including AndroidX permissions', () => {
+    expect(androidPermissionSetProblems(PERMISSION_DUMP)).toEqual([]);
+  });
+  it.each(['INTERNET', 'ACCESS_NETWORK_STATE', 'FOREGROUND_SERVICE', 'READ_CONTACTS'])
+    ('rejects dependency-added %s', (name) => {
+      expect(androidPermissionSetProblems(`${PERMISSION_DUMP}uses-permission: name='android.permission.${name}'\n`))
+        .toEqual([`Unexpected APK permission: android.permission.${name}`]);
+    });
+  it('refuses a missing wake lock and an unreadable permission receipt', () => {
+    expect(androidPermissionSetProblems(PERMISSION_DUMP.replace("uses-permission: name='android.permission.WAKE_LOCK'\n", '')))
+      .toEqual(['Missing APK permission: android.permission.WAKE_LOCK']);
+    expect(androidPermissionSetProblems('')).toHaveLength(10);
+  });
+  it('inspects sdk-specific permission rows too', () => {
+    expect(androidPermissionSetProblems(`${PERMISSION_DUMP}uses-permission-sdk-23: name='android.permission.READ_CONTACTS'\n`))
+      .toEqual(['Unexpected APK permission: android.permission.READ_CONTACTS']);
+  });
 });
 
 
