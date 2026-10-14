@@ -87,11 +87,13 @@ for (const mode of ['merge', 'replace'] as const) {
     contents.journal = {
       ...contents.journal,
       entries: [...contents.journal.entries, {
-        ...contents.journal.entries[0], uuid: 'invalid-entry', mood: 100
+        ...contents.journal.entries[0], uuid: 'invalid-entry', photos: [], recordings: [], videos: []
       }]
     };
 
-    await assert.rejects(made.journal.archive[mode](contents));
+    await made.db.exec(`CREATE TRIGGER reject_archive_entry BEFORE INSERT ON entry
+      WHEN NEW.uuid = 'invalid-entry' BEGIN SELECT RAISE(ABORT, 'synthetic archive row failure'); END`);
+    await assert.rejects(made.journal.archive[mode](contents), /synthetic archive row failure/);
 
     assert.deepEqual((await made.journal.archive.snapshot()).journal, made.snapshot.journal);
     for (const [name, data] of made.original) {

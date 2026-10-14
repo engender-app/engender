@@ -69,7 +69,7 @@ import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { filesOf } from '../photos/names';
 import { documentFilesOf } from './documents';
-import { readFileOwnership } from './fileOwnership';
+import { assertArchiveFileOwnership, readFileOwnership } from './fileOwnership';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
@@ -385,6 +385,7 @@ function assertRestorable(journal: ArchiveJournal): void {
     }
     assertArchiveRows(section, journal[section], flatTable);
   }
+  assertArchiveFileOwnership(journal);
 }
 
 /** Every journal row this device has, gone: one operation, ordered by the
