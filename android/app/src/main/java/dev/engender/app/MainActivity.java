@@ -158,6 +158,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        // Permission revocation cancels exact alarms without a broadcast.
+        // Stored rules can recover inexact alarms even at the journal gate.
+        ReminderScheduler.rescheduleFromStore(this);
         returnFromLeave();
     }
 
