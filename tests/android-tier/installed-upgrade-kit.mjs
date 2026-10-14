@@ -68,7 +68,7 @@ try {
   cpSync(join(repo, 'tests/android-tier/installed-upgrade-fixture'), fixtureDir, { recursive: true });
   cpSync(join(fixtureDir, 'gen.ts.template'), join(fixtureDir, 'gen.ts'));
   const server = await createServer({ configFile: join(previous, 'tests/long-journal/long-journal.vite.config.ts'), root: fixtureDir,
-    server: { port: 0, fs: { strict: false } } });
+    server: { host: '127.0.0.1', port: 0, fs: { strict: false } } });
   await server.listen();
   const browser = await launchChromium();
   const sink = createWriteStream(join(output, manifest.fixture));
