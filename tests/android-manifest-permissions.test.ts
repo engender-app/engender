@@ -10,29 +10,27 @@
    off-origin requests online and offline - so the declaration bought nothing
    and is gone.
 
-   This file reads the manifest this repository writes. What ships is the merged
-   manifest, and the merge is not a no-op: androidx.biometric brings USE_BIOMETRIC
-   and USE_FINGERPRINT for the app lock, and Capacitor generates a
-   DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION of its own, so a reader of the
-   installed app sees nine where this file declares six. Checked on 2026-08-27
-   against android/app/build/intermediates/merged_manifest/debug/: INTERNET is
-   absent from the merged list too, which is the claim that matters here. The
-   merged file is a build artifact, so it is not what this test can read.
+   Source declarations alone do not describe the installed permission set.
+   AndroidX adds biometric permissions and its private receiver permission.
+   check-release-artifacts.mjs gates the complete set from the packaged APK
+   through aapt2. These tests cover source removal directives and EN/PL copy;
+   BackupManifestContractTest checks the installed permissions and components.
 
    A permission that reappears without a comment naming what needs it fails
    here rather than shipping. The reasoning for each one that is declared lives
    beside it in the manifest. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { expectedAndroidPermissions } from '../scripts/check-release-artifacts.mjs';
 
 const manifest = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');
 const privacyPolicyEn = readFileSync(new URL('../PRIVACY.md', import.meta.url), 'utf8');
 const privacyPolicyPl = readFileSync(new URL('../PRIVACY.pl.md', import.meta.url), 'utf8');
 
 const declared = (): string[] =>
-  [...manifest.matchAll(/<uses-permission\s+android:name="android\.permission\.([A-Z_]+)"/g)].map(
-    (match) => match[1]
-  );
+  [...manifest.matchAll(/<uses-permission\b[^>]*>/g)]
+    .filter(([tag]) => !tag.includes('tools:node="remove"'))
+    .map(([tag]) => /android:name="android\.permission\.([A-Z_]+)"/.exec(tag)![1]);
 
 /** Everything this manifest asks for, and why, one line each. */
 const EXPECTED = [
@@ -41,7 +39,8 @@ const EXPECTED = [
   'RECEIVE_BOOT_COMPLETED', // rescheduling those alarms after a restart
   'RECORD_AUDIO', // voice notes, through getUserMedia
   'MODIFY_AUDIO_SETTINGS', // the same
-  'CAMERA' // video notes, through getUserMedia
+  'CAMERA', // video notes, through getUserMedia
+  'WAKE_LOCK' // keep scheduled encrypted delivery running while the screen sleeps
 ];
 
 describe('android permissions', () => {
@@ -58,28 +57,30 @@ describe('android permissions', () => {
     expect(declared()).not.toContain('INTERNET');
   });
 
-  it('declares exactly these six, so a seventh has to be argued for', () => {
+  it('declares exactly these seven, so an addition has to be argued for', () => {
     expect(declared().sort()).toEqual([...EXPECTED].sort());
+  });
+
+  it('removes unused network and foreground WorkManager permissions and components', () => {
+    for (const name of ['android.permission.ACCESS_NETWORK_STATE', 'android.permission.FOREGROUND_SERVICE',
+      'androidx.work.impl.foreground.SystemForegroundService',
+      'androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy']) {
+      const tag = [...manifest.matchAll(/<(?:uses-permission|service|receiver)\b[^>]*>/g)]
+        .find(([tag]) => tag.includes(`android:name="${name}"`));
+      expect(tag, name).toBeDefined();
+      expect(tag![0]).toContain('tools:node="remove"');
+    }
   });
 });
 
-describe('privacy policy names every permission the manifest declares (phase 12 ticket 12, audit finding S7)', () => {
-  it.each(EXPECTED)('%s appears in the English policy', (permission) => {
+const INSTALLED = expectedAndroidPermissions().map(name => name.replace(/^android\.permission\./, ''));
+
+describe('privacy policy names every installed permission', () => {
+  it.each(INSTALLED)('%s appears in the English policy', (permission) => {
     expect(privacyPolicyEn).toContain(permission);
   });
 
-  it.each(EXPECTED)('%s appears in the Polish policy', (permission) => {
-    expect(privacyPolicyPl).toContain(permission);
-  });
-
-  /* What ships is the merged manifest, and androidx.biometric adds these
-     two to it (the note at the top of this file). A reader of the installed
-     app sees them, so the policy has to name them too (phase 15
-     release-blockers ticket 10, audit findings S-09 and SEC-04). */
-  const MERGED_IN = ['USE_BIOMETRIC', 'USE_FINGERPRINT'];
-
-  it.each(MERGED_IN)('%s, merged in by androidx.biometric, appears in both policies', (permission) => {
-    expect(privacyPolicyEn).toContain(permission);
+  it.each(INSTALLED)('%s appears in the Polish policy', (permission) => {
     expect(privacyPolicyPl).toContain(permission);
   });
 
