@@ -33,6 +33,8 @@ top/bottom crops, an IME-boundary crop, native WebView bounds, DOM control bound
 and IME visibility in the output directory. It writes each case before its
 assertions so failures retain their evidence. The driver restores navigation,
 cutout and rotation settings and removes its own CDP forward in `finally`.
+The keyboard captures type a note and verify a complete text line remains visible,
+then check navigation returns after keyboard dismissal.
 It restarts its isolated app and reconnects after each native configuration,
 because changing a cutout overlay can recreate the activity and WebView.
 The caller owns AVD startup/shutdown and must uninstall the isolated package.

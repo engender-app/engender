@@ -91,6 +91,14 @@ async function capture(name, selectors, keyboard = false) {
       palette: document.documentElement.dataset.palette,
       insets: Object.fromEntries(['top', 'right', 'bottom', 'left'].map((side) => [side,
         getComputedStyle(document.documentElement).getPropertyValue(`--inset-${side}`).trim()])),
+      note: document.querySelector('#ed-note') ? (() => {
+        const field = document.querySelector('#ed-note');
+        const region = document.querySelector('[data-app-scroll-region]');
+        const style = getComputedStyle(field);
+        const lineTop = field.getBoundingClientRect().top + parseFloat(style.paddingTop) - field.scrollTop;
+        return { active: document.activeElement === field, lineTop, lineBottom: lineTop + parseFloat(style.lineHeight),
+          regionTop: region.getBoundingClientRect().top, regionBottom: region.getBoundingClientRect().bottom };
+      })() : null,
       controls: selectors.flatMap((selector) => [...document.querySelectorAll(selector)].filter((el) => el.checkVisibility())
         .map((el, index) => ({ selector, index, ...rect(el) })))
     };
@@ -128,6 +136,11 @@ async function capture(name, selectors, keyboard = false) {
       assert.ok(control.right - control.left >= 48 && control.bottom - control.top >= 48,
         `${name}: ${control.selector} keeps a 48px touch target`);
     }
+  }
+  if (keyboard) {
+    assert.ok(dom.note?.active, `${name}: note keeps keyboard focus`);
+    assert.ok(dom.note.lineTop >= dom.note.regionTop - 1 && dom.note.lineBottom <= dom.note.regionBottom + 1,
+      `${name}: typed line remains visible in the scroll region`);
   }
   result.status = 'pass';
   await writeFile(`${out}/result.json`, JSON.stringify(metadata, null, 2) + '\n');
@@ -175,6 +188,7 @@ try {
   assert.equal(metadata.installedApkSha256, metadata.apkSha256, 'Installed APK must match the current local artifact');
   for (const navigation of ['gesture', 'buttons']) {
     adb('shell', 'cmd', 'overlay', 'enable-exclusive', '--category', navigationOverlays[navigation]);
+    for (let i = 0; i < 30 && Number(adb('shell', 'settings', 'get', 'secure', 'navigation_mode').trim()) !== (navigation === 'gesture' ? 2 : 0); i++) await pause(100);
     assert.equal(Number(adb('shell', 'settings', 'get', 'secure', 'navigation_mode').trim()), navigation === 'gesture' ? 2 : 0);
     for (const profile of ['portrait', 'cutout-portrait', 'cutout-landscape']) {
       adb('shell', 'cmd', 'overlay', profile === 'portrait' ? 'disable' : 'enable', cutoutOverlay);
@@ -205,9 +219,13 @@ try {
         await page.locator('[data-sheet]').waitFor({ state: 'detached' });
         await page.locator('#ed-note').click();
         for (let i = 0; i < 30 && !imeOpen(); i++) await pause(100);
+        await page.locator('#ed-note').fill('');
+        await page.locator('#ed-note').pressSequentially('Inset check');
+        await page.locator('#ed-note').evaluate((el) => el.scrollIntoView({ block: 'start' }));
         await capture(`${name}-editor-ime`, ['[data-save]', '[data-save-star]', '[data-save-moods] [data-mood]'], true);
         adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
         for (let i = 0; i < 30 && imeOpen(); i++) await pause(100);
+        await page.locator('[data-nav-item]').first().waitFor({ state: 'visible' });
       }
     }
   }

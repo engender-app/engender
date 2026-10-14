@@ -68,7 +68,7 @@ body {
 }
 
 .app-viewport {
-  container: app / inline-size;
+  container: app / size;
   height: 100dvh;
   width: 100%;
   max-width: 100%;
@@ -246,12 +246,14 @@ body {
   gap: var(--space-2);
 }
 
-/* A landscape keyboard can leave 127px above it. Keep the editor's
-   single control row and navigation within that space. */
-@container app (min-width: 640px) and (max-width: 1023px) {
+/* A landscape keyboard can leave 127px above it. Give the focused editor
+   room for its text and controls; navigation returns when the frame grows. */
+@container app (min-width: 640px) and (max-width: 1023px) and (max-height: 240px) {
+  .app:has(.editor) { --nav-clearance: var(--inset-bottom); }
+  .app:has(.editor) .app-nav { display: none; }
   .app-savebar:has(.editor-save-row) {
     padding-top: var(--space-1);
-    padding-bottom: calc(var(--nav-clearance) - var(--space-5));
+    padding-bottom: calc(var(--inset-bottom) + var(--space-1));
   }
 }
 
