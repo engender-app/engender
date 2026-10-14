@@ -820,3 +820,13 @@ launcher and a real reminder notification. Each fresh process must show the
 PIN pad and contain no private fixture text in the DOM. The dedicated fixture
 and notification helpers run only in an isolated package. See
 `tests/android-tier/README.md` for runtime requirements and limits.
+
+## Retained hidden-read research
+
+`tests/retained-door-cost/README.md` describes the isolated physical Android
+comparison and its web observer control. The recorded result is in
+`tests/retained-door-cost/RESULTS.md`: write completion, visible read readiness
+and dirty warm revisit settlement have separate boundaries. The disposable
+activity gate changes only the probe build; it is not production scheduling.
+Actual-shell captures retain the existing paint hold, last-result DOM, opacity
+floor, reduced-motion and lock-concealment assertions.
