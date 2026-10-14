@@ -274,6 +274,17 @@ Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vi
 
 `backup-power-cut` (`tests/android-tier/backup-power-cut.mjs`) exercises foreground automatic delivery and actual scheduled `BackupWork` against Android's system local storage provider. It repeats retained seeds 2311–2314 and ten additional seeds per path with 40 MiB of synthetic attachments. After each QEMU power cut, the five newest retained verified backups must restore all 3300 rows and attachment bytes; at least one preceding good backup must remain. Older ownership receipts may survive a cut between pruning and the retention metadata update, and are recorded separately. `BackupDeliveryDurabilityTest` exercises both owners against full storage, truncated read-back, a pipe and a cloud cache with a regular file descriptor. A release-only capability class refuses the instrumentation fixture unconditionally.
 
+`reset-transfers`, selectable with `ANDROID_TIER_BACKUP_STAGES`, runs
+`ExportResetTest` through the actual `resetApp` and WebView reload. It requests
+Start over while native key derivation is pending, during a delayed attachment
+read, and during a scheduled read that never settles. Each case checks the
+retained native plugin, creates a new encrypted journal, and completes its first
+manual backup and scheduled snapshot in the same process. The companion
+`FileDeliveryTest` case checks stale-slot takeover and an old abort arriving
+after a new file starts. JVM tests cover reset epochs and ownerless picker
+callbacks. Node tests cover scheduler cancellation and pending-read cleanup.
+The read delays are synthetic timing controls, not physical storage timings.
+
 `BackupManifestContractTest` inspects all installed permissions and the native
 backup components through PackageManager. It requires the delayed-job and
 rescheduling owners while refusing the unused network proxy and foreground

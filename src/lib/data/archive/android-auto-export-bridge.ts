@@ -31,6 +31,7 @@ interface AndroidAutoExportBridge {
   beginBackup(options: { fileName: string; snapshotAt?: number; scheduled?: boolean }): Promise<{ transferId: string }>;
   appendBackup(options: { transferId: string; offset: number; base64: string }): Promise<void>;
   finishBackup(options: { transferId: string; byteLength: number; sha256: string }): Promise<{ writtenAt: number | null; staged?: boolean }>;
+  abortPendingTransfers(): Promise<void>;
   abortBackup(options: { transferId: string }): Promise<void>;
   /** Posts the scheduled-backup failure notice (phase 6 ticket 04). The
       strings arrive from this side now, so the notice is localized and the
