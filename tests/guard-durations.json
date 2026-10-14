@@ -10,7 +10,8 @@
     "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs",
     "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
     "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs",
-    "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14"
+    "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14",
+    "in-place-scroll-check": "Local Fedora run on 2026-10-15, dev server; tests/in-place-scroll-check.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -43,6 +44,7 @@
     "recovery-key-departure-check": 9.57,
     "photo-browse-compare": 9.68,
     "photo-grid-batching": 114.33,
+    "in-place-scroll-check": 11.0,
     "photo-export": 26.11,
     "chosen-appointment": 8.88,
     "appointment-entry-check": 18.05,
@@ -157,6 +159,9 @@
     ],
     "photo-grid-batching": [
       114.33
+    ],
+    "in-place-scroll-check": [
+      11.0
     ],
     "photo-export": [
       26.11

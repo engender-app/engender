@@ -19,6 +19,7 @@
    the whole reason the old version could rot silently. */
 
 import { goto } from '$app/navigation';
+import { holdScroll } from './scroll-region';
 
 /** Navigations pushed since the entry the app booted on. */
 let depth = 0;
@@ -100,12 +101,17 @@ export function navigationDepth(): number {
  * next, which undercounts by one - back takes its fallback where it could
  * have gone through history. That is the safe direction: a fallback stays
  * inside the app, and walking out of it does not.
+ *
+ * `noScroll` is the other fact SvelteKit keeps to itself: it holds the
+ * window still, and the app scrolls its own region (scroll-region.ts), so
+ * the region is told here too.
  */
 export function replaceRoute(
   url: string | URL,
   options?: Omit<NonNullable<Parameters<typeof goto>[1]>, 'replaceState'>
 ): Promise<void> {
   replacing = true;
+  if (options?.noScroll) holdScroll(url);
   return goto(url, { ...options, replaceState: true });
 }
 

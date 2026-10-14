@@ -434,6 +434,7 @@ To run one on its own, use
 | `recovery-key-departure-check` | every way off the recovery key screen asks before the key is lost |
 | `photo-browse-compare` | browsing, selecting and wiping photos on a small library |
 | `photo-grid-batching` | the grid stays whole batches deep at 3000 photos |
+| `in-place-scroll-check` | opening and closing a photo and picking a chip keep the library's scroll within 1px; forward visits still open at the top and back still restores |
 | `photo-export` | the export format and count are stated before anything is selected |
 | `chosen-appointment` | the room's answers stay attached to the appointment they were given in |
 | `appointment-entry-check` | appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff and deletion; English and Polish at 390px and 200% zoom |

@@ -144,6 +144,26 @@ describe('replaceRoute', () => {
     expect(goto).toHaveBeenCalledWith('/compare', { noScroll: true, keepFocus: true, replaceState: true });
   });
 
+  /* `noScroll` holds the window, which the app does not scroll: the region
+     has to be told as well, or the in-place swap opens it at the top
+     (last-audit UI ticket 12). */
+  it('holds the scroll region still for a noScroll replacement, and only then', async () => {
+    const { claimScrollHold, restoreScroll } = await import('./scroll-region.ts');
+    const el = { scrollTop: 500 };
+    vi.stubGlobal('document', { querySelector: () => el });
+    const to = new URL('http://localhost/compare?a=1');
+
+    await replaceRoute('/compare?a=1', { noScroll: true, keepFocus: true });
+    claimScrollHold(to);
+    restoreScroll(to, 'goto');
+    expect(el.scrollTop).toBe(500);
+
+    await replaceRoute('/compare?a=1');
+    claimScrollHold(to);
+    restoreScroll(to, 'goto');
+    expect(el.scrollTop).toBe(0);
+  });
+
   it('does not deepen the history it replaced into', () => {
     /* The case that motivates this: a notification opens the app straight
        onto a screen, so the app sits on its boot entry with nothing behind
