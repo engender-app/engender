@@ -1,0 +1,226 @@
+<!doctype html>
+<!--
+  Shown instead of the app when the system WebView is older than
+  capacitor.config.ts's minWebViewVersion (ADR-0023). Capacitor loads it
+  itself, through server.errorPath, from the same https://localhost origin
+  the app uses, so it can read the boot mirror app.html reads.
+
+  No build step and no imports: this page exists for the WebViews that could
+  not run the app, so anything it borrowed from the bundle would be the thing
+  that failed. Its words are written here rather than in messages/*.json for
+  the same reason, and its colours are the default palette's (trans) copied
+  out of src/lib/theme/palettes.css.
+
+  The markup alone names no app and shows both languages. The two scripts are
+  plain ES5 and only narrow that down: one language (the app's own setting if
+  it has one, then the device's), the app's theme, and the name. engender is
+  written in only when the boot mirror says disguise is off; under disguise
+  the title is Notes or Notatki, as app.html sets it, and the heading keeps
+  "This app". A mirror that cannot be read leaves the page nameless, because
+  then nothing here knows whether disguise is on.
+  tests/webview-too-old-page.test.ts runs both scripts.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Update Android System WebView</title>
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var disguised = null;
+        var saved = null;
+        try {
+          var boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+          disguised = boot.disguise === true;
+          if (boot.theme === 'light' || boot.theme === 'dark') root.setAttribute('data-theme', boot.theme);
+          if (boot.a11yMotionReduce) root.setAttribute('data-motion', 'reduce');
+          saved = localStorage.getItem('PARAGLIDE_LOCALE');
+        } catch (e) {
+          /* no storage: stay nameless */
+        }
+        var locale = saved === 'en' || saved === 'pl' ? saved : navigator.language || '';
+        var lang = locale.toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+        root.setAttribute('lang', lang);
+        root.setAttribute('data-lang', lang);
+        if (disguised === false) {
+          root.setAttribute('data-named', '');
+          root.setAttribute('data-field', 'flag');
+          document.title = 'engender';
+        } else if (disguised) {
+          document.title = lang === 'pl' ? 'Notatki' : 'Notes';
+        }
+      })();
+    </script>
+    <style>
+      @font-face {
+        font-family: 'Nunito';
+        font-weight: 200 1000;
+        src: url('fonts/nunito-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+2000-206F;
+      }
+      @font-face {
+        font-family: 'Nunito';
+        font-weight: 200 1000;
+        src: url('fonts/nunito-latin-ext.woff2') format('woff2');
+        unicode-range: U+0100-02AF;
+      }
+      @font-face {
+        font-family: 'Outfit';
+        font-weight: 100 900;
+        src: url('fonts/outfit-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+2000-206F;
+      }
+      @font-face {
+        font-family: 'Outfit';
+        font-weight: 100 900;
+        src: url('fonts/outfit-latin-ext.woff2') format('woff2');
+        unicode-range: U+0100-02BA;
+      }
+      /* Trans light and dark. The field is the gates' header: the page's
+         second surface by default and under disguise, the flag's pink when
+         the app is known to be undisguised (activeFlag.svelte.ts). */
+      :root {
+        --bg: #f4f8fb;
+        --surface-2: #e9f1f7;
+        --text: #1b2b36;
+        --text-2: #55707f;
+        --field: var(--surface-2);
+        --field-ink: var(--text);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #0d141a;
+          --surface-2: #1d2a34;
+          --text: #e8f1f7;
+          --text-2: #9db4c3;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #0d141a;
+        --surface-2: #1d2a34;
+        --text: #e8f1f7;
+        --text-2: #9db4c3;
+      }
+      :root[data-field='flag'] {
+        --field: #f5a9b8;
+        --field-ink: #101820;
+      }
+      html[data-lang='en'] #pl,
+      html[data-lang='pl'] #en {
+        display: none;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Nunito', system-ui, sans-serif;
+        font-weight: 450;
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 36rem;
+        margin: 0 auto;
+        animation: arrive 280ms cubic-bezier(0.38, 0.32, 0.2, 1) both;
+      }
+      @keyframes arrive {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        main {
+          animation: none;
+        }
+      }
+      html[data-motion='reduce'] main {
+        animation: none;
+      }
+      .field {
+        padding: 56px 24px 24px;
+        border-radius: 0 0 6px 6px;
+        background: var(--field);
+        color: var(--field-ink);
+      }
+      h1 {
+        margin: 0;
+        font-family: 'Outfit', 'Nunito', system-ui, sans-serif;
+        font-weight: 800;
+        font-size: 1.75rem;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        overflow-wrap: break-word;
+      }
+      .page {
+        padding: 24px 24px 32px;
+      }
+      p {
+        margin: 0 0 1em;
+      }
+      strong {
+        font-weight: 750;
+      }
+      .note {
+        margin: 0;
+        color: var(--text-2);
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section id="en" lang="en">
+        <div class="field">
+          <h1><span data-name>This app</span> needs a newer Android System WebView</h1>
+        </div>
+        <div class="page">
+          <p>
+            The app runs inside Android System WebView, and the version on this device is too old
+            for it. You can update WebView without updating Android.
+          </p>
+          <p>
+            Find <strong>Android System WebView</strong> in your app store and update it, then open
+            the app again. On some phones it's <strong>Google Chrome</strong> that needs updating
+            instead.
+          </p>
+          <p class="note">
+            Anything you've saved here is still on this device. The app hasn't opened or changed any
+            of it.
+          </p>
+        </div>
+      </section>
+      <section id="pl" lang="pl">
+        <div class="field">
+          <h1><span data-name>Ta aplikacja</span> potrzebuje nowszej wersji Android System WebView</h1>
+        </div>
+        <div class="page">
+          <p>
+            Aplikacja działa w Android System WebView, a wersja na tym urządzeniu jest dla niej za
+            stara. WebView da się zaktualizować bez aktualizacji Androida.
+          </p>
+          <p>
+            Znajdź w sklepie z aplikacjami <strong>Android System WebView</strong>, zaktualizuj go i
+            otwórz aplikację jeszcze raz. Na niektórych telefonach trzeba zamiast tego zaktualizować
+            <strong>Google Chrome</strong>.
+          </p>
+          <p class="note">
+            Wszystko, co tu masz, nadal jest na tym urządzeniu. Aplikacja niczego nie otworzyła ani
+            nie zmieniła.
+          </p>
+        </div>
+      </section>
+    </main>
+    <script>
+      (function () {
+        if (document.documentElement.getAttribute('data-named') === null) return;
+        var names = document.querySelectorAll('[data-name]');
+        for (var i = 0; i < names.length; i++) names[i].textContent = 'engender';
+      })();
+    </script>
+  </body>
+</html>
