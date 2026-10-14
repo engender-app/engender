@@ -65,6 +65,8 @@ the journal gate.
 A pending reminder missed while the phone is off is delivered once at boot,
 with quiet hours and title hiding preserved. Recurring reminders then resume
 at the next future occurrence; one-off reminders stay one-off.
+After a time zone change, a daily slot already delivered less than 12 hours
+ago does not repeat. Future daily slots remain eligible, including after restart.
 
 An open web page keeps its cached release assets when another page applies an
 update. Deferred screens and journal reopening continue offline; retained
