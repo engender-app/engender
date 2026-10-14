@@ -366,7 +366,12 @@ The script requires a clean main branch and notes for the version in
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
 Release notes state schema changes, Archive format changes, security
-migrations and the minimum supported version.
+migrations and the minimum supported version. The stable section uses
+`{{schema}}`, resolved from the candidate migration list by the notes generator
+and shared with `release.json`. Generation rejects stale schema or minimum
+version facts. The released-format tests migrate a copy of the rc.1 schema-88
+fixture and check retained row counts; they do not replace the human exercise
+of updating an installed release or set release-matrix success flags.
 
 Keep private local evidence in the ignored working directories or root paths
 starting with `evidence`. CI rejects those root paths if they enter the index;
