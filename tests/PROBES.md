@@ -704,3 +704,15 @@ app. Assemble with an isolated `dev.engender.app.test.*` application ID before
 running the instrumentation class; the test refuses other packages. The regular
 emulator tier reports this physical-device gate as excluded. ADR-0013 records
 the chosen tuple and measured phone result.
+
+`src/lib/crypto/recoveryKey.test.ts` pins the written recovery key for fixed
+random bytes and checks every I/L spelling against a key containing 1.
+`keystore.test.ts` and `data/recovery-key.test.ts` reject null JSON, unknown
+KDF names and byte fields that would otherwise coerce into base64. Refusals
+use the matching unreadable-file error. `key-clearing.test.ts`
+checks that a fresh data key is zeroed when derivation or encryption fails.
+`argon2id.test.ts` uses isolated worker stand-ins to check module startup,
+prewarm reuse, termination and event suppression. Load failures derive the
+known key on the main thread; workers that ran and failed refuse without
+retrying. These checks run in `npm test`; the stand-ins do not prove browser
+worker loading or Android behavior.
