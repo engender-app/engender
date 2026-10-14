@@ -23,6 +23,22 @@ describe('guard roster', () => {
     }
   });
 
+  it('runs every browser-tier npm probe in the required CI browser matrix', () => {
+    const scripts = JSON.parse(read('package.json')).scripts;
+    const probes = [...scripts['test:browser'].matchAll(/\bnode (tests\/[^\s]+\.mjs)\b/g)]
+      .map((match) => match[1]);
+    expect(probes.length).toBeGreaterThan(0);
+    const workflow = read('.github/workflows/ci.yml');
+    const browser = workflow.split('\n  browser:')[1]?.split(/\n  [a-z][\w-]*:/)[0];
+    expect(browser, 'CI must retain the browser job').toBeDefined();
+    const entries = [...browser!.matchAll(/^            entry: (tests\/[^\s]+\.mjs)$/gm)]
+      .map((match) => match[1]);
+    expect(probes.filter((probe) => !entries.includes(probe)),
+      'Every test:browser probe must run in the CI browser matrix').toEqual([]);
+    expect(browser).not.toContain('continue-on-error:');
+    expect(workflow).toContain('needs: [node, android, browser, guards, benchmark]');
+  });
+
   it('assigns every guard exactly once across the hosted duration-balanced groups', () => {
     const roster = JSON.parse(read('tests/guards.json'));
     const timings = JSON.parse(read('tests/guard-durations.json'));
