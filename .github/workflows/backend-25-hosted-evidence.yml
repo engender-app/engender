@@ -1,0 +1,127 @@
+name: Backend 25 hosted evidence
+'on':
+  push:
+    branches:
+    - ci-evidence/backend25-20261014
+permissions:
+  contents: read
+jobs:
+  measure:
+    name: Backend 25 exact candidate evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+        working-directory: source
+    env:
+      EXPECTED_SOURCE: bf343807952052c51d66e5de92d38747a97cfca0
+      TZ: UTC
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: bf343807952052c51d66e5de92d38747a97cfca0
+        fetch-depth: 0
+        fetch-tags: true
+        persist-credentials: false
+        path: source
+    - uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: source/package-lock.json
+    - name: Record exact source and hosted runner
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE/evidence"
+        python3 - <<'PYTHON'
+        import json, os, platform, subprocess
+        from pathlib import Path
+        keys = ['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA', 'RUNNER_NAME', 'RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion']
+        record = {key: os.environ.get(key) for key in keys}
+        record.update(testedCommit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), node=subprocess.check_output(['node', '--version'], text=True).strip(), npm=subprocess.check_output(['npm', '--version'], text=True).strip(), cpuCount=os.cpu_count(), platform=platform.platform(), runnerLabel='ubuntu-24.04')
+        record['runUrl'] = f"https://github.com/{record['GITHUB_REPOSITORY']}/actions/runs/{record['GITHUB_RUN_ID']}"
+        assert record['testedCommit'] == os.environ['EXPECTED_SOURCE'], record
+        Path(os.environ['GITHUB_WORKSPACE'], 'evidence', 'identity.json').write_text(json.dumps(record, indent=2))
+        print(json.dumps(record, indent=2))
+        PYTHON
+    - name: Install pinned dependencies
+      run: |-
+        npm ci 2>&1 | tee "$GITHUB_WORKSPACE/evidence/npm-ci.log"
+    - name: Build prerequisites outside timing
+      run: |-
+        npm run build 2>&1 | tee "$GITHUB_WORKSPACE/evidence/build.log"
+    - name: Measure required hosted evidence
+      run: |
+        python3 - <<'PYTHON'
+        import json, os, signal, statistics, subprocess, time
+        from pathlib import Path
+        out = Path(os.environ['GITHUB_WORKSPACE'], 'evidence')
+        env = {k: v for k, v in os.environ.items() if not k.startswith('FUZZ_')}
+        env['TZ'] = 'UTC'
+        rows = []
+        for pair, order in enumerate([['control', 'full'], ['full', 'control'], ['control', 'full']], 1):
+            for arm in order:
+                name = f'pair{pair}-{arm}'
+                report = out / f'{name}.json'
+                fuzz = out / f'{name}-fuzz'
+                args = ['npm', 'test', '--', '--maxWorkers=2', '--reporter=default', '--reporter=json', f'--outputFile={report}']
+                if arm == 'control':
+                    args += ['--exclude', 'tests/fuzz/fuzz.test.ts']
+                run_env = dict(env, FUZZ_OUT=str(fuzz))
+                print(f'START {name}: {args}', flush=True)
+                started = time.monotonic()
+                with (out / f'{name}.log').open('w') as log:
+                    try:
+                        child = subprocess.Popen(args, env=run_env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                        code = child.wait(timeout=600)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(child.pid, signal.SIGKILL)
+                        child.wait()
+                        code = 124
+                seconds = time.monotonic() - started
+                data = json.loads(report.read_text()) if report.exists() else {}
+                counts = {k: data.get(k) for k in ['numTotalTests', 'numPassedTests', 'numFailedTests', 'numPendingTests', 'numTotalTestSuites', 'numPassedTestSuites', 'numFailedTestSuites']}
+                valid = code == 0 and data.get('numPassedTests', 0) > 0 and data.get('numFailedTests') == 0
+                fuzz_summary = None
+                if arm == 'full':
+                    path = fuzz / 'summary-seed1-n40.json'
+                    fuzz_summary = json.loads(path.read_text()) if path.exists() else {}
+                    valid = valid and fuzz_summary.get('seed') == 1 and fuzz_summary.get('count') == 40 and fuzz_summary.get('long') is False and fuzz_summary.get('cases') == 480 and len(fuzz_summary.get('byTarget', {})) == 12 and fuzz_summary.get('crashes') == [] and fuzz_summary.get('defects') == []
+                row = dict(pair=pair, arm=arm, command=args, timezone='UTC', seconds=seconds, exitCode=code, counts=counts, valid=valid, fuzzSummary=fuzz_summary)
+                rows.append(row)
+                (out / 'timings.json').write_text(json.dumps(rows, indent=2))
+                print(json.dumps({k:v for k,v in row.items() if k != 'fuzzSummary'}), flush=True)
+        deltas = []
+        for pair in range(1, 4):
+            arms = {r['arm']:r for r in rows if r['pair'] == pair}
+            deltas.append(arms['full']['seconds'] - arms['control']['seconds'])
+            if arms['full']['counts'].get('numTotalTests') != (arms['control']['counts'].get('numTotalTests') or 0) + 1:
+                arms['full']['valid'] = False
+        valid = all(r['valid'] for r in rows)
+        passed = valid and all(delta < 10 for delta in deltas)
+        summary = dict(testedCommit=os.environ['EXPECTED_SOURCE'], valid=valid, overheadSeconds=deltas, medianOverheadSeconds=statistics.median(deltas), limitSecondsExclusive=10, passed=passed)
+        (out / 'result.json').write_text(json.dumps(summary, indent=2))
+        print(json.dumps(summary, indent=2))
+        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+            f.write('## Backend 25 hosted fuzz overhead\n\n')
+            f.write('| Pair | Arm | Seconds | Exit | Passed | Failed | Skipped |\n| --- | --- | --- | --- | --- | --- | --- |\n')
+            for r in rows:
+                c = r['counts']
+                f.write(f"| {r['pair']} | {r['arm']} | {r['seconds']:.3f} | {r['exitCode']} | {c['numPassedTests']} | {c['numFailedTests']} | {c['numPendingTests']} |\n")
+            f.write('\nPaired overhead seconds: ' + ', '.join(f'{x:.6f}' for x in deltas) + '\n')
+            f.write(f'\nAcceptance: {"PASS" if passed else "FAIL"}. Every pair must remain below 10 seconds; no failed suite counts as timing proof.\n')
+        raise SystemExit(0 if passed else 1)
+        PYTHON
+    - name: Verify tracked source remained unchanged
+      if: ${{ always() }}
+      run: |
+        test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE"
+        git diff --exit-code HEAD
+    - name: Retain evidence on success or failure
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: backend-25-hosted-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+        path: evidence/
+        retention-days: 14
+        if-no-files-found: error
