@@ -1,5 +1,12 @@
 # The probes in tests/*.mjs
 
+`release-switch.test.ts` drives the real operator against disposable release
+roots. It checks active rollback history across deploy/rollback/deploy, list
+markers and deploy messages, stale timestamps, missing or invalid history,
+schema refusal and same-current no-ops. Filesystem failure controls cover
+history staging/publication, PDF publication and the current-link rename;
+the old receipt, current target and exact retained PDF namespace must survive.
+
 `src/lib/data/journal/restore.test.ts` uses real SQLite to guard roadmap Merge
 status separately from visibility. A hidden unchecked goal accepts the incoming
 status, keeps the local hidden flag through repeated Merge, and retains the

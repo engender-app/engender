@@ -4,7 +4,8 @@
    switches the `current` symlink with one rename, so no request can see a half
    copied release. Rollback uses the same switch in reverse, with one guard:
    unless forced, it refuses a target whose schemaMax is lower than the
-   currently deployed release.
+   currently deployed release. A sidecar receipt records the outgoing target
+   at each switch; --previous never infers active history from directory age.
 
    Commands:
      node scripts/journal-release.mjs deploy <source-dir> [--root DIR] [--current LINK]
@@ -29,7 +30,7 @@ import {
   writeFileSync
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { isReleaseVersion } from './app-version.mjs';
 
 const DEFAULT_ROOT = '/home/journal/releases';
@@ -136,7 +137,37 @@ function switchCurrent(current, targetPath) {
   const next = `${current}.next-${process.pid}`;
   rmSync(next, { force: true });
   symlinkSync(targetPath, next);
-  renameSync(next, current);
+  try {
+    renameSync(next, current);
+  } finally {
+    rmSync(next, { force: true });
+  }
+}
+
+/** Publish complete receipt bytes before current changes. Its current field
+    lets a later command refuse a switch interrupted between the two renames. */
+function writeHistory(path, bytes) {
+  const next = `${path}.next-${randomUUID()}`;
+  try {
+    writeFileSync(next, bytes, { flag: 'wx' });
+    renameSync(next, path);
+  } finally {
+    rmSync(next, { force: true });
+  }
+}
+
+function recordedPrevious(options, current, releases) {
+  const history = `${options.current}.history.json`;
+  if (!existsSync(history)) return null;
+  let record;
+  try {
+    record = JSON.parse(readFileSync(history, 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+  if (record?.current !== current || typeof record.previous !== 'string' || record.previous === current) return null;
+  return releases.find((entry) => realpathSync(entry.path) === record.previous)?.path ?? null;
 }
 
 /** A first PDF can request its old worker after either deploy or rollback.
@@ -173,10 +204,37 @@ function preparePdfNamespace(previous, target, root) {
 
 function switchRelease(current, target, root, pdfNamespace) {
   const pdfCurrent = join(root, '.pdf-current');
+  const history = `${current}.history.json`;
+  let priorHistory;
+  let priorPdf;
+  let historyPublished = false;
+  let pdfPublished = false;
   try {
+    priorHistory = existsSync(history) ? readFileSync(history) : null;
+    priorPdf = existsSync(pdfCurrent) ? realpathSync(pdfCurrent) : null;
+    mkdirSync(dirname(resolve(current)), { recursive: true });
+    writeHistory(history, JSON.stringify({ current: realpathSync(target), previous: currentTarget(current) }) + '\n');
+    historyPublished = true;
     // The union includes the outgoing release, so publishing it first is safe.
     switchCurrent(pdfCurrent, pdfNamespace);
+    pdfPublished = true;
     switchCurrent(current, target);
+  } catch (error) {
+    const failures = [error];
+    if (pdfPublished) {
+      try {
+        if (priorPdf) switchCurrent(pdfCurrent, priorPdf);
+        else rmSync(pdfCurrent, { force: true });
+      } catch (restoreError) { failures.push(restoreError); }
+    }
+    if (historyPublished) {
+      try {
+        if (priorHistory === null) rmSync(history, { force: true });
+        else writeHistory(history, priorHistory);
+      } catch (restoreError) { failures.push(restoreError); }
+    }
+    if (failures.length > 1) throw new AggregateError(failures, error.message, { cause: error });
+    throw error;
   } finally {
     if (!existsSync(pdfCurrent) || realpathSync(pdfCurrent) !== pdfNamespace) {
       rmSync(pdfNamespace, { recursive: true, force: true });
@@ -312,9 +370,9 @@ function resolveRollbackTarget(options) {
 
   if (options.previous) {
     if (!current) die('No current symlink to roll back from');
-    const previous = releases.find((entry) => realpathSync(entry.path) !== current);
-    if (!previous) die('No previous release found');
-    return previous.path;
+    const previous = recordedPrevious(options, current, releases);
+    if (!previous) die('No recorded previous release for current. Use an explicit release name.');
+    return previous;
   }
 
   const name = options.positional[0];
@@ -344,6 +402,11 @@ function rollback(options) {
     );
   }
 
+  if (realpathSync(target) === current) {
+    console.log(`${basename(target)} is already current`);
+    console.log(`Current -> ${target}`);
+    return;
+  }
   const pdfNamespace = preparePdfNamespace(current, target, options.root);
   switchRelease(options.current, target, options.root, pdfNamespace);
   console.log(`Rolled back to ${basename(target)}`);
@@ -357,9 +420,10 @@ function list(options) {
     console.log(`No releases in ${options.root}`);
     return;
   }
+  const previous = recordedPrevious(options, current, releases);
 
   for (const entry of releases) {
-    const marker = current && realpathSync(entry.path) === current ? '*' : ' ';
+    const marker = current && realpathSync(entry.path) === current ? '*' : entry.path === previous ? '<' : ' ';
     const metadata = readReleaseMetadata(entry.path);
     console.log(`${marker} ${entry.name}  schemaMax=${metadata.schemaMax}  version=${metadata.version}`);
   }
