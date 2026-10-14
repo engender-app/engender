@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Archive Merge restores a bundled goal's status when this device has only hidden
+it. The local hidden choice stays in place, and a locally recorded status still
+wins over the Archive's.
+
 Source packages exclude root local-evidence paths, and CI rejects them if they
 are tracked. Application evidence routes and intentional fixtures remain in
 the source package.
