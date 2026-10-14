@@ -13,6 +13,10 @@ permissions. Scheduled encrypted backups retain their wake lock, which both
 privacy policies now explain. Release checks inspect the complete APK
 permission set and refuse unexpected dependency additions.
 
+Daylio photo previews locate ZIP members once instead of rescanning preceding
+attachments for every photo. Stored and deflated backups retain the same
+attachment identities, content and size limits.
+
 Care-caption collisions and reported appointment-debrief failures now fail CI
 instead of appearing only in guard logs.
 

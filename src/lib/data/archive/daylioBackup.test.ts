@@ -249,6 +249,30 @@ test('assets resolve by checksum under photos and audio alike', async () => {
   assert.deepEqual(await byName.get(entry.recordings[0].fileName)!.read(), AUDIO_BYTES);
 });
 
+test.each([false, true])('normalised asset aliases retain the first raw member (leading slash first: %s)', async leadingFirst => {
+  const files = daylioAssetFiles();
+  const photo = files[0];
+  const plain = photo.name.slice(1);
+  const aliases = [
+    { ...photo, name: leadingFirst ? photo.name : plain },
+    { ...photo, name: leadingFirst ? plain : photo.name, bytes: MILESTONE_PHOTO_BYTES }
+  ];
+  const result = await daylioBackupPreview(await makeDaylioBackup(daylioPayload(), [...aliases, ...files.slice(1)]), emptyArchiveJournal(), naming);
+  const attachment = entryOn(result, '2026-01-15').photos[0];
+  assert.deepEqual(await result.assets.find(asset => asset.fileName === attachment.fileName)!.read(), PHOTO_BYTES);
+});
+
+test('asset checksum suffixes containing slashes retain first-match identity and content', async () => {
+  const payload = daylioPayload();
+  (payload.assets as Record<string, unknown>[])[0].checksum = `nested/${PHOTO_CHECKSUM}`;
+  const files = daylioAssetFiles();
+  files[0].name = files[0].name.replace(PHOTO_CHECKSUM, `nested/${PHOTO_CHECKSUM}`);
+  files.push({ ...files[0], name: `/assets/photos/later/nested/${PHOTO_CHECKSUM}`, bytes: MILESTONE_PHOTO_BYTES });
+  const result = await daylioBackupPreview(await makeDaylioBackup(payload, files), emptyArchiveJournal(), naming);
+  const attachment = entryOn(result, '2026-01-15').photos[0];
+  assert.deepEqual(await result.assets.find(asset => asset.fileName === attachment.fileName)!.read(), PHOTO_BYTES);
+});
+
 test('a milestone photo resolves through assetId, from a deflated member', async () => {
   const result = await preview();
   const milestone = result.journal.milestones.find((one) => one.name === 'came out to my sister')!;
