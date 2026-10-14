@@ -205,7 +205,7 @@
     time: string;
     analyte: string;
     customAnalyte: string;
-    value: string;
+    value: number | null;
     unit: string;
     note: string;
     provider: string;
@@ -214,7 +214,10 @@
     timing: LabResult['timing'];
   };
 
-  const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
+  /* A number input binds the number it parsed, or null while it holds
+     nothing parseable: blank, a lone minus, `e`. Bound as a string, the
+     field was rewritten under the caret on every key (last-audit UI 01). */
+  const validValue = (value: number | null): value is number => value !== null && Number.isFinite(value);
 
   let unitStated = false;
   const record = recordEditor<LabResult, LabDraft>({
@@ -228,7 +231,7 @@
          fallback the measurements screen uses for its own unit. */
       analyte,
       customAnalyte: '',
-      value: '',
+      value: null,
       unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results[results.length - 1]?.unit ?? ''),
       note: '',
       provider: '',
@@ -240,16 +243,16 @@
       time: result.drawTime ?? '',
       analyte: result.analyte,
       customAnalyte: '',
-      value: String(result.value),
+      value: result.value,
       unit: result.unit,
       note: result.note,
       provider: result.provider,
       timing: result.timing
     }),
     async upsert(draft) {
-      const value = Number(draft.value);
+      const value = draft.value;
       const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-      if (!validValue(draft.value) || !resultAnalyte) return false;
+      if (!validValue(value) || !resultAnalyte) return false;
 
       /* Which units this analyte already has, ignoring the result being edited,
          so that changing the unit on an analyte's only result does not announce
@@ -644,7 +647,7 @@
       <div class="cd-endpoints lab-pair">
         <Field label={m.labs_value_label()} id="lab-value" hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
           {#snippet children(id, hintId)}
-            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
           {/snippet}
         </Field>
         <Field label={m.labs_unit_label()} id="lab-unit">

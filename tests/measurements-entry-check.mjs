@@ -230,9 +230,37 @@ try {
   console.log('PASS empty and invalid measurement explain disabled Save; correction enables Save');
   await fieldOrder(measurementControls());
   console.log('PASS measurement type, value and unit precede date in reading and keyboard order');
+  // Last-audit UI 01: typed one key at a time, as a person types, a decimal
+  // or a minus sign must not be rewritten under the caret (72.5 used to
+  // save as 572, -3 read 3). `fill` sets the whole value at once and never
+  // showed it.
+  await page.locator('#measurement-value').fill('');
+  await page.locator('#measurement-value').pressSequentially('-', { delay: 20 });
+  assert.equal(await page.locator('[data-save-measurement]').isDisabled(), true, 'a lone minus is not a value yet');
+  await page.locator('#measurement-value').pressSequentially('3', { delay: 20 });
+  assert.equal(await page.locator('#measurement-value').inputValue(), '-3', 'typing -3 keeps its minus');
   await page.locator('[data-close-record]').click();
   await page.locator('[data-discard-record]').click();
   await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  for (const [typed, saved] of [['72.5', 72.5], ['0.5', 0.5], ['12.75', 12.75]]) {
+    await page.locator('[data-add]').click();
+    const type = await editorType().locator('[aria-checked="true"]').getAttribute('data-segment');
+    await page.locator('#measurement-value').pressSequentially(typed, { delay: 20 });
+    assert.equal(await page.locator('#measurement-value').inputValue(), typed, `typing ${typed} key by key keeps it`);
+    await page.locator('[data-save-measurement]').click();
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
+    const stored = await page.evaluate(async (type) => {
+      const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
+      return (await journal.measurements.getMeasurements(type)).map(({ id, value }) => ({ id, value }));
+    }, type);
+    const record = stored.find(({ value }) => value === saved);
+    assert.ok(record, `${typed} saved as ${saved}, not ${JSON.stringify(stored.map(({ value }) => value))}`);
+    await page.evaluate(async (id) => {
+      const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
+      await journal.measurements.deleteMeasurement(id);
+    }, record.id);
+  }
+  console.log('PASS measurement value typed key by key keeps decimals and a minus, and saves the number typed');
   await page.locator('[data-add-size]').click();
   await page.locator('#size-log-size').waitFor();
   assert.equal(await page.locator('[data-save-size-record]').isDisabled(), true);
