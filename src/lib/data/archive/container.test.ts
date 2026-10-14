@@ -244,11 +244,19 @@ test('a wrong password fails, and says only that', async () => {
 
 test('a file that is not an archive is refused before anything is decrypted', async () => {
   const notAnArchive = new TextEncoder().encode('PK this is a zip, actually, and quite a long one');
-  await assert.rejects(unframe(key(), notAnArchive), UnsupportedArchiveError);
+  await assert.rejects(unframe(key(), notAnArchive), (error: unknown) => {
+    assert.ok(error instanceof UnsupportedArchiveError);
+    assert.equal(error.kind, 'not-an-archive');
+    return true;
+  });
 });
 
 test('a file too short to hold a header is refused as not an archive', async () => {
-  await assert.rejects(unframe(key(), new Uint8Array([1, 2, 3])), UnsupportedArchiveError);
+  await assert.rejects(unframe(key(), new Uint8Array([1, 2, 3])), (error: unknown) => {
+    assert.ok(error instanceof UnsupportedArchiveError);
+    assert.equal(error.kind, 'not-an-archive');
+    return true;
+  });
 });
 
 test('a higher format version is refused, without deriving a key or decrypting', async () => {
@@ -258,7 +266,12 @@ test('a higher format version is refused, without deriving a key or decrypting',
 
   await assert.rejects(
     readArchiveHeader(byteReader(oneShot(newer))),
-    (error: Error) => error instanceof UnsupportedArchiveError && /newer version/.test(error.message)
+    (error: unknown) => {
+      assert.ok(error instanceof UnsupportedArchiveError);
+      assert.equal(error.kind, 'newer-version');
+      assert.match(error.message, /newer version/);
+      return true;
+    }
   );
 });
 
@@ -373,4 +386,72 @@ test('a body longer than the header declares is refused rather than written', as
 test('a body shorter than the header declares is refused rather than written', async () => {
   const header = headerFor(5000, 1024);
   await assert.rejects(collect(frameArchive(key(), header, body(1000))), /shorter than/);
+});
+
+
+for (const index of [0, 5]) {
+  test(`a wrong magic byte at index ${index} is refused as not-an-archive`, async () => {
+    const bytes = rawHeader(validHeaderJson());
+    bytes[index] ^= 0xff;
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(bytes))), (error: unknown) => {
+      assert.ok(error instanceof UnsupportedArchiveError);
+      assert.equal(error.kind, 'not-an-archive');
+      return true;
+    });
+  });
+}
+
+test('format version zero is refused as not-an-archive', async () => {
+  const bytes = rawHeader(validHeaderJson());
+  new DataView(bytes.buffer).setUint16(6, 0);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(bytes))), (error: unknown) => {
+    assert.ok(error instanceof UnsupportedArchiveError);
+    assert.equal(error.kind, 'not-an-archive');
+    return true;
+  });
+});
+
+test('unreadable header JSON is refused as corrupt', async () => {
+  const bytes = rawHeader(validHeaderJson());
+  bytes[12] = '!'.charCodeAt(0);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(bytes))), CorruptArchiveError);
+});
+
+for (const field of ['memorySize', 'iterations', 'parallelism', 'hashLength', 'chunkSize', 'totalChunks']) {
+  for (const value of [0, -1, 1.5, '1', null, undefined]) {
+    test(`header ${field} refuses ${String(value)} as corrupt`, async () => {
+      const json = field === 'chunkSize' || field === 'totalChunks'
+        ? validHeaderJson({ [field]: value })
+        : validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, [field]: value } });
+      await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(json)))), CorruptArchiveError);
+    });
+  }
+}
+
+test('a missing KDF object is refused as corrupt', async () => {
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ kdf: undefined }))))), CorruptArchiveError);
+});
+
+test('a non-string salt is refused even when its coercion would be valid base64', async () => {
+  for (const salt of [1234, null]) {
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ salt }))))), CorruptArchiveError);
+  }
+});
+
+test('the chunk-size ceiling accepts 16 MiB and refuses one byte more', async () => {
+  const maximum = 16 * 1024 * 1024;
+  const { header } = await readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: maximum })))));
+  assert.equal(header.chunkSize, maximum);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: maximum + 1 }))))), CorruptArchiveError);
+});
+
+test('the header JSON ceiling accepts 64 KiB and refuses one byte more', async () => {
+  for (const length of [64 * 1024, 64 * 1024 + 1]) {
+    const bytes = new Uint8Array(12 + length).fill(0x20);
+    bytes.set(rawHeader(validHeaderJson()));
+    new DataView(bytes.buffer).setUint32(8, length);
+    const reading = readArchiveHeader(byteReader(oneShot(bytes)));
+    if (length === 64 * 1024) assert.equal((await reading).header.totalChunks, 1);
+    else await assert.rejects(reading, CorruptArchiveError);
+  }
 });
