@@ -49,7 +49,9 @@ describe('what the page says before any script runs', () => {
 
   it('uses no syntax the WebViews it exists for cannot parse', () => {
     /* Optional chaining and ?? are what Chrome 69 threw on at boot
-       (testing 13: "Unexpected token ?"); this page has to run there. */
+       (testing 13: "Unexpected token ?"); this page has to run there. Only
+       that blocker is pinned here, plus a parse in Node; the stylesheet is
+       not checked, and the API 26 emulator is where the page was seen. */
     for (const script of scripts()) {
       expect(script).not.toMatch(/\?\.|\?\?/);
       expect(() => new Function(script)).not.toThrow();
@@ -154,7 +156,7 @@ describe('what the page says once its scripts have run', () => {
   });
 
   it('holds still when the app was told to reduce motion', () => {
-    expect(open({ boot: { a11yMotionReduce: true } }).attributes['data-motion']).toBe('reduce');
-    expect(open({}).attributes['data-motion']).toBeUndefined();
+    expect(open({ boot: { a11yMotionReduce: true } }).attributes['data-a11y-motion']).toBe('reduce');
+    expect(open({}).attributes['data-a11y-motion']).toBeUndefined();
   });
 });

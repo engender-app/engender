@@ -14,10 +14,13 @@
   The markup alone names no app and shows both languages. The two scripts are
   plain ES5 and only narrow that down: one language (the app's own setting if
   it has one, then the device's), the app's theme, and the name. engender is
-  written in only when the boot mirror says disguise is off; under disguise
-  the title is Notes or Notatki, as app.html sets it, and the heading keeps
-  "This app". A mirror that cannot be read leaves the page nameless, because
-  then nothing here knows whether disguise is on.
+  written in only when the boot mirror can be read and does not say disguise
+  is on, which includes a first install that has no mirror yet. Under
+  disguise the title is Notes or Notatki, as app.html sets it, and the
+  heading keeps "This app". A mirror that cannot be read leaves the page
+  nameless, because then nothing here knows whether disguise is on.
+  Chrome 69 ignores prefers-color-scheme (76) and prefers-reduced-motion
+  (74), so there it follows only the app's own theme and motion settings.
   tests/webview-too-old-page.test.ts runs both scripts.
 -->
 <html lang="en">
@@ -34,7 +37,7 @@
           var boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
           disguised = boot.disguise === true;
           if (boot.theme === 'light' || boot.theme === 'dark') root.setAttribute('data-theme', boot.theme);
-          if (boot.a11yMotionReduce) root.setAttribute('data-motion', 'reduce');
+          if (boot.a11yMotionReduce) root.setAttribute('data-a11y-motion', 'reduce');
           saved = localStorage.getItem('PARAGLIDE_LOCALE');
         } catch (e) {
           /* no storage: stay nameless */
@@ -81,29 +84,29 @@
          second surface by default and under disguise, the flag's pink when
          the app is known to be undisguised (activeFlag.svelte.ts). */
       :root {
-        --bg: #f4f8fb;
-        --surface-2: #e9f1f7;
-        --text: #1b2b36;
-        --text-2: #55707f;
+        --bg: #F4F8FB;
+        --surface-2: #E9F1F7;
+        --text: #1B2B36;
+        --text-2: #55707F;
         --field: var(--surface-2);
         --field-ink: var(--text);
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme='light']) {
-          --bg: #0d141a;
-          --surface-2: #1d2a34;
-          --text: #e8f1f7;
-          --text-2: #9db4c3;
+          --bg: #0D141A;
+          --surface-2: #1D2A34;
+          --text: #E8F1F7;
+          --text-2: #9DB4C3;
         }
       }
       :root[data-theme='dark'] {
-        --bg: #0d141a;
-        --surface-2: #1d2a34;
-        --text: #e8f1f7;
-        --text-2: #9db4c3;
+        --bg: #0D141A;
+        --surface-2: #1D2A34;
+        --text: #E8F1F7;
+        --text-2: #9DB4C3;
       }
       :root[data-field='flag'] {
-        --field: #f5a9b8;
+        --field: #F5A9B8;
         --field-ink: #101820;
       }
       html[data-lang='en'] #pl,
@@ -137,7 +140,7 @@
           animation: none;
         }
       }
-      html[data-motion='reduce'] main {
+      html[data-a11y-motion='reduce'] main {
         animation: none;
       }
       .field {
