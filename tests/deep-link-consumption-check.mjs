@@ -60,6 +60,14 @@ try {
   await page.locator('[data-letter-close]').waitFor({ state: 'detached' });
   console.log('PASS legacy letter id is consumed on same-route navigation');
 
+  await page.evaluate(() => {
+    window.unavailableFlashes = 0;
+    window.handoffObserver = new MutationObserver(() => {
+      if (document.querySelector('[data-notice="source-unavailable"]')) window.unavailableFlashes++;
+    });
+    window.handoffObserver.observe(document.body, { childList: true, subtree: true });
+  });
+
   for (const hash of ['', `#${ids.lab}`]) {
     await clientRoute(page, '/more');
     const beforeLabs = await page.evaluate(() => history.length);
@@ -81,9 +89,17 @@ try {
     await page.locator(`[data-lab-result="${ids.lab}"]`).waitFor();
     await page.waitForFunction(() => !new URL(location.href).searchParams.has('lab'));
     assert.equal(await page.locator('[data-segment="Estradiol"]').getAttribute('aria-checked'), 'true');
+    await clientRoute(page, `/care/labs?lab=${ids.otherLab}`);
+    await page.locator(`[data-lab-result="${ids.otherLab}"]`).waitFor();
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has('lab'));
+    assert.equal(await page.locator('[data-segment="Testosterone"]').getAttribute('aria-checked'), 'true');
     console.log(`PASS lab link${hash ? ' with Care hash' : ''} opens once; saving another analyte keeps its result visible and preserves Care return context`);
   }
 
+  assert.equal(await page.evaluate(() => {
+    window.handoffObserver.disconnect();
+    return window.unavailableFlashes;
+  }), 0, 'valid links never flash unavailable while the matching read is pending');
   await clientRoute(page, '/care/labs?lab=missing-result&date=20000');
   await page.locator('[data-notice="source-unavailable"]').waitFor();
   assert.equal(new URL(page.url()).searchParams.get('lab'), 'missing-result', 'unresolved link retains its unavailable state');

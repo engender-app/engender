@@ -74,8 +74,12 @@
      the unavailable state SourceRecordHandoff renders for every source
      link's target (phase 11 ticket 11). */
   let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
-  let deepLinkedLabQuery = liveQuery((j) =>
-    deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
+  let deepLinkedLabQuery = liveQuery(async (j) => {
+    const id = deepLinkedLabId;
+    return { id, result: id ? await j.labs.getResultById(id) : null };
+  });
+  let deepLinkedLab = $derived(
+    deepLinkedLabQuery.value?.id === deepLinkedLabId ? deepLinkedLabQuery.value.result : undefined
   );
 
   /* No hormone assumed: the screen opens on whatever the journal actually
@@ -96,13 +100,13 @@
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
+    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLab === undefined)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
 
   function openLinkedLab() {
-    if (!deepLinkedLabQuery.value) return;
-    analyte = deepLinkedLabQuery.value.analyte;
+    if (!deepLinkedLab) return;
+    analyte = deepLinkedLab.analyte;
     if (page.url.searchParams.has('lab')) {
       const url = new URL(page.url);
       url.searchParams.delete('lab');
@@ -111,7 +115,7 @@
   }
 
   $effect(() => {
-    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
+    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLab) {
       scrollToHash();
     }
   });
@@ -479,8 +483,8 @@
        no longer there. -->
   <SourceRecordHandoff
     id={deepLinkedLabId}
-    ready={!deepLinkedLabQuery.loading}
-    found={deepLinkedLabQuery.value?.id === deepLinkedLabId}
+    ready={deepLinkedLab !== undefined}
+    found={deepLinkedLab !== null}
     onOpen={openLinkedLab}
   />
 
