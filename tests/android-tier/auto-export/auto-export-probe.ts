@@ -114,6 +114,7 @@ const probe = {
       const { openPreferences } = await import('../../../src/lib/data/prefs/preferences');
       const stored = await openPreferences(sqlite.driver);
       await stored.set('onboarded', true);
+      await stored.set('language', 'en');
       const { writeCachedAccessMode } = await import('../../../src/lib/data/prefs/boot-cache');
       writeCachedAccessMode('passphrase');
       await sqlite.driver.close();

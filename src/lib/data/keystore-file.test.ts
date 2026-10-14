@@ -82,7 +82,6 @@ test('a successful write records createWritable, write, close and reads back', a
   vi.unstubAllGlobals();
 });
 
-
 test('Android waits for native persistence and never opens OPFS for a new write', async () => {
   android();
   const { metadata } = await createKeystore('native passphrase');
@@ -171,4 +170,22 @@ test('native tombstone commits before legacy removal and a failure preserves leg
   native.removeCredential.mockImplementation(async () => { expect(files[KEYSTORE_FILE]).toBe('old wrap'); });
   await removeKeystoreFile();
   expect(files[KEYSTORE_FILE]).toBeUndefined();
+});
+
+test('cancellation before the OPFS commit keeps the previous credential', async () => {
+  const { metadata } = await createKeystore('synthetic replacement');
+  const { root, log, files } = fakeRoot();
+  files[KEYSTORE_FILE] = 'previous';
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+  const current = () => { if (log.includes('write')) throw new Error('cancelled'); };
+  await expect(writeKeystoreFile(metadata, current)).rejects.toThrow('cancelled');
+  expect(log).toEqual(['createWritable', 'write', 'abort']);
+  expect(files[KEYSTORE_FILE]).toBe('previous');
+});
+
+test('revoked approval never dispatches an Android credential write', async () => {
+  android();
+  const { metadata } = await createKeystore('synthetic native replacement');
+  await expect(writeKeystoreFile(metadata, () => { throw new Error('cancelled'); })).rejects.toThrow('cancelled');
+  expect(native.writeCredential).not.toHaveBeenCalled();
 });

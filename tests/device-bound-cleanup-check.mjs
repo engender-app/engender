@@ -18,11 +18,11 @@ try {
       await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
       if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
       await page.evaluate(async () => {
-        const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+        const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
         const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
         prefs.lockAfter = 'restart';
         prefs.onboarded = true;
-        await changeAccessMode('device-bound', '');
+        await prepareAccessModeChange('device-bound', '', { title: 'Synthetic change', subtitle: 'Synthetic journal', cancel: 'Cancel' }, () => {})('demo');
         const { goto } = await import('/node_modules/@sveltejs/kit/src/runtime/app/navigation.js');
         await goto('/settings/access-mode');
         const remove = FileSystemDirectoryHandle.prototype.removeEntry;
@@ -43,7 +43,8 @@ try {
         await page.locator('#am-passphrase-confirm').fill(secret);
         await page.locator('[data-access-submit]').click();
       }
-      await page.waitForFunction(() => document.querySelector('[data-access-status]')?.textContent.trim());
+      await page.locator('[data-confirm-current-protection]').click();
+      await page.waitForFunction(() => document.querySelector('[data-protection-status]')?.textContent.trim());
       const incomplete = await page.evaluate(async () => {
         const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
         const { readKeystoreSource } = await import('/src/lib/data/keystore-file.ts');
@@ -53,17 +54,19 @@ try {
           mode: bootState.accessMode,
           durableMode: await readKeystoreSource(),
           leftover: await deviceBoundJournalExists(),
-          refusal: document.querySelector('[data-access-status]').textContent.trim() === m.am_change_failed(),
+          refusal: document.querySelector('[data-protection-status]').textContent.trim() === m.am_change_failed(),
           changed: document.body.textContent.includes(m.am_changed_toast())
         };
       });
-      assert.deepEqual(incomplete, { mode: 'device-bound', durableMode: mode, leftover: true, refusal: true, changed: false });
+      assert.deepEqual(incomplete, { mode, durableMode: mode, leftover: true, refusal: true, changed: false });
       await page.evaluate(() => { window.allowDeviceCleanup = true; });
+      assert.equal(await page.locator('[data-protection-web-exception]').count(), 0);
       if (mode === 'pin') {
-        await page.locator('[data-access-secret-back]').click();
-        await page.locator('[data-access-continue]').click();
-        for (const digit of secret + secret) await page.locator(`[data-key="${digit}"]`).click();
-      } else await page.locator('[data-access-submit]').click();
+        for (const digit of secret) await page.locator('[data-current-protection]').locator(`[data-key="${digit}"]`).click();
+      } else {
+        await page.locator('#current-protection-secret').fill(secret);
+        await page.locator('[data-confirm-current-protection]').click();
+      }
       await page.waitForURL('**/settings/security');
       const complete = await page.evaluate(async ({ mode, secret }) => {
         const { bootState } = await import('/src/lib/stores/boot.svelte.ts');

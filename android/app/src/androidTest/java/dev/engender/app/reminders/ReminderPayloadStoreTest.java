@@ -72,7 +72,13 @@ public class ReminderPayloadStoreTest {
         assertTrue("the pending occurrence is not wrapped", pendingAt > System.currentTimeMillis());
         assertFalse("the pending occurrence is readable on disk", onDisk.contains(Long.toString(pendingAt)));
         JSONObject expected = payload();
-        expected.getJSONArray("reminders").getJSONObject(0).put(ReminderScheduler.PENDING_AT, pendingAt);
+        java.time.ZonedDateTime occurrence = java.time.Instant.ofEpochMilli(pendingAt)
+            .atZone(java.time.ZoneId.systemDefault());
+        expected.getJSONArray("reminders").getJSONObject(0)
+            .put(ReminderScheduler.PENDING_AT, pendingAt)
+            .put(ReminderScheduler.PENDING_DAY, occurrence.toLocalDate().toEpochDay())
+            .put(ReminderScheduler.PENDING_ZONE, occurrence.getZone().getId());
+        assertFalse("the pending zone is readable on disk", onDisk.contains(occurrence.getZone().getId()));
         assertEquals(expected.toString(), loaded.toString());
     }
 

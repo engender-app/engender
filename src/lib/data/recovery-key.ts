@@ -27,7 +27,7 @@ import { readRecoveryWrapFile, removeRecoveryWrapFile, writeRecoveryWrapFile } f
 
 interface RecoveryKeyPorts {
   read(): Promise<RecoveryWrap | null>;
-  write(wrap: RecoveryWrap): Promise<void>;
+  write(wrap: RecoveryWrap, current?: () => void): Promise<void>;
   remove(): Promise<void>;
 }
 
@@ -61,15 +61,23 @@ export async function mintRecoveryKey(
   dataKey: Uint8Array<ArrayBuffer>,
   ports: RecoveryKeyPorts = filePorts
 ): Promise<string> {
-  return changeCredentials(async () => {
-    const display = generateRecoveryKey();
-    /* Minted through the parser rather than beside it: a generator that
-       produced something the gate would reject is a journal nobody can
-       recover, and this makes that impossible rather than unlikely. */
-    const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(display));
-    await ports.write(wrap);
-    return display;
-  });
+  return changeCredentials(() => mintRecoveryKeyOwned(dataKey, () => {}, ports));
+}
+
+/** The authenticated operation already owns credential serialization. */
+export async function mintRecoveryKeyOwned(
+  dataKey: Uint8Array<ArrayBuffer>,
+  current: () => void,
+  ports: RecoveryKeyPorts = filePorts
+): Promise<string> {
+  const display = generateRecoveryKey();
+  /* Minted through the parser rather than beside it: a generator that
+     produced something the gate would reject is a journal nobody can
+     recover, and this makes that impossible rather than unlikely. */
+  const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(display));
+  current();
+  await ports.write(wrap, current);
+  return display;
 }
 
 /** Opens the journal's data key with whatever somebody typed.

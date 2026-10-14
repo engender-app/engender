@@ -162,3 +162,20 @@ test('stale biometric setup does not enrol another credential', async () => {
   expect(world.stored()).toEqual(original);
   await expect(unlockJournalBiometric(world)).resolves.toEqual(key);
 });
+
+test('revocation during authenticator enrollment cannot publish a replacement credential', async () => {
+  const world = ports(device());
+  const dataKey = await setupJournalBiometric(world);
+  const previous = serializeKeystore(world.stored()!);
+  let owned = true;
+  const enrol = world.authenticator.enrol.bind(world.authenticator);
+  world.authenticator.enrol = async salt => {
+    const result = await enrol(salt);
+    owned = false;
+    return result;
+  };
+  await expect(addJournalBiometric(dataKey, world, () => {
+    if (!owned) throw new Error('approval revoked during enrollment');
+  })).rejects.toThrow('approval revoked during enrollment');
+  expect(serializeKeystore(world.stored()!)).toBe(previous);
+});

@@ -6,6 +6,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
+// Public certificate digests recorded from rc.1 artifacts and Play Console.
+// Keep the GitHub APK and AAB upload roles separate even while they match.
+export const RELEASE_SIGNERS = Object.freeze({
+  apk: '093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86',
+  aab: '093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86'
+});
+
 /**
  * @param {string} version
  */
@@ -191,6 +198,59 @@ function commandExists(command) {
   }
 }
 
+/** Verify signatures and require exactly the recorded certificate per artifact.
+ * The optional pins let tests use disposable signing keys; the CLI always uses
+ * RELEASE_SIGNERS and offers no environment override.
+ * @param {{apk: string, aab: string}} artifacts
+ * @param {{apk: string, aab: string}} expected
+ */
+export function androidSignatureProblems({ apk, aab }, expected = RELEASE_SIGNERS) {
+  const problems = [];
+  /** @param {string} role @param {string[]} fingerprints @param {string} pin */
+  function checkSigner(role, fingerprints, pin) {
+    if (fingerprints.length !== 1 || fingerprints[0] !== pin) {
+      problems.push(`${role} signer SHA-256 mismatch: expected ${pin}; found ${fingerprints.join(', ') || 'none'}`);
+    }
+  }
+  if (!commandExists('apksigner')) {
+    problems.push('apksigner is not available on PATH');
+  } else {
+    try {
+      const result = run('apksigner', ['verify', '--print-certs', apk]);
+      const fingerprints = [...result.matchAll(/^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$/gm)]
+        .map(match => match[1]);
+      checkSigner('APK', fingerprints, expected.apk);
+    } catch {
+      problems.push(`APK signature verification failed: ${apk}`);
+    }
+  }
+
+  if (!commandExists('jarsigner') || !commandExists('keytool')) {
+    problems.push('jarsigner and keytool are required on PATH');
+  } else {
+    try {
+      // Android certificates are self-signed, so CA trust is not required.
+      // jarsigner exits zero for unsigned archives and partially signed ones.
+      // Require verification and reject unchecked entries in a fixed language.
+      const result = run('jarsigner', ['-J-Duser.language=en', '-J-Duser.country=US', '-verify', aab]);
+      if (!result.includes('jar verified.') || result.includes('unsigned entries')) {
+        throw new Error('AAB contains unsigned payload');
+      }
+      const certificates = run('keytool', ['-J-Duser.language=en', '-J-Duser.country=US',
+        '-printcert', '-jarfile', aab]);
+      // The recorded upload certificate is self-signed. Reject additional
+      // certificates as well as missing ones instead of accepting any match.
+      const fingerprints = [...certificates.matchAll(/^\s*SHA256: ((?:[A-F0-9]{2}:){31}[A-F0-9]{2})$/gm)]
+        .map(match => match[1].replaceAll(':', '').toLowerCase());
+      checkSigner('AAB', fingerprints, expected.aab);
+    } catch {
+      problems.push(`AAB signature verification failed: ${aab}`);
+    }
+  }
+
+  return problems;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const version = process.env.ENGENDER_VERSION?.trim();
   const versionCode = Number.parseInt(process.env.ENGENDER_VERSION_CODE ?? '', 10);
@@ -206,36 +266,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   const problems = releaseArtifactProblems({ version, releaseDir, androidBuildDir, versionCode });
 
-  if (!commandExists('apksigner')) {
-    problems.push('apksigner is not available on PATH');
-  } else {
-    try {
-      run('apksigner', ['verify', '--print-certs', apk]);
-    } catch {
-      problems.push(`APK signature verification failed: ${apk}`);
-    }
-  }
-
-  if (!commandExists('jarsigner')) {
-    problems.push('jarsigner is not available on PATH');
-  } else {
-    try {
-      // Android certificates are self-signed, so CA trust is not required.
-      // jarsigner exits zero for unsigned archives and partially signed ones.
-      // Require verification and reject unchecked entries in a fixed language.
-      const result = run('jarsigner', ['-J-Duser.language=en', '-J-Duser.country=US', '-verify', aab]);
-      if (!result.includes('jar verified.') || result.includes('unsigned entries')) {
-        throw new Error('AAB contains unsigned payload');
-      }
-    } catch {
-      problems.push(`AAB signature verification failed: ${aab}`);
-    }
-  }
+  problems.push(...androidSignatureProblems({ apk, aab }));
 
   for (const problem of problems) console.log(`FAIL ${problem}`);
   if (problems.length) {
     console.log(`\n${problems.length} release-artifact failure(s).`);
     process.exit(1);
   }
-  console.log('PASS release artifacts have expected names, checksums, signatures, Android permissions and version metadata.');
+  console.log('PASS release artifacts have expected names, checksums, pinned signers, Android permissions and version metadata.');
 }

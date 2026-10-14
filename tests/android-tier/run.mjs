@@ -34,11 +34,13 @@
    probe bundle they serve, brings the emulators up and turns the
    instrumentation output into those lines. */
 
+import { beginAndroidTier, androidBuildIdentity, writeAndroidTierEvidence } from '../../scripts/android-tier-evidence.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtempSync, openSync, closeSync, cpSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { offlineOcrStage } from './offline-ocr-stage.mjs';
 import { lockedProcessDeath } from './locked-process-death.mjs';
 import { installationRecovery } from './archive/recovery.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
@@ -47,7 +49,14 @@ import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './em
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
 const androidDir = join(repo, 'android');
-const { ok, fail, finish } = createReporter();
+const reporter = createReporter();
+const finish = reporter.finish;
+const startEvidence = beginAndroidTier(repo);
+const evidenceRuns = [];
+let activeRun;
+let failureCount = 0;
+const ok = (name) => { activeRun?.completedChecks.push(name); reporter.ok(name); };
+const fail = (name, detail) => { failureCount++; reporter.fail(name, detail); };
 
 /* Headless runs use software graphics with Vulkan disabled. */
 const LOCK_ONLY = process.env.ANDROID_TIER_LOCK_ONLY === '1';
@@ -150,9 +159,13 @@ async function startEmulator(avd, port) {
     .replace(/^sdcard.path=.*\n?/m, '');
   writeFileSync(join(clone, 'config.ini'), config);
   writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
-  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
+  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-no-metrics', '-crash-report-mode', 'disabled', '-wipe-data'];
   if (LOCK_ONLY && !HEADLESS) args.push('-gpu', 'host');
-  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
+  // The API 26 goldfish kernel panics while mapping graphics DMA buffers.
+  // Keep its native checks running without the emulator's GLDMA transport.
+  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature',
+    NATIVE_ONLY.has(avd) ? '-Vulkan,-GLDMA' : '-Vulkan');
+  else if (NATIVE_ONLY.has(avd)) args.push('-feature', '-GLDMA');
   ownedEmulator = await startOwnedEmulator({
     name: disposableName, query: queryDevice, timeout: BOOT_TIMEOUT_MS,
     launch: () => {
@@ -174,7 +187,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal'])) {
+for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal', 'ocr'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -236,6 +249,12 @@ const BENCHMARK_TEST = 'dev.engender.app.longjournal.LongJournalBenchmarkTest';
 for (const avd of AVDS) {
   try {
     await startEmulator(avd, port);
+    const api = Number(device(['shell', 'getprop', 'ro.build.version.sdk']).stdout.trim());
+    if (!Number.isInteger(api) || api < 26) throw new Error('Android runtime API identity unavailable');
+    activeRun = { avd, serial, api, nativeOnly: NATIVE_ONLY.has(avd),
+      kind: LOCK_ONLY ? 'locked-process-death' : RECOVERY_ONLY ? 'archive-recovery' : BACKUP_ONLY || BACKUP_STAGES.size ? 'backup-selection' : 'core',
+      completedStages: [], completedChecks: [] };
+    const failuresBefore = failureCount;
     ok(`${avd} booted`);
 
     const nativeOnly = NATIVE_ONLY.has(avd);
@@ -256,7 +275,9 @@ for (const avd of AVDS) {
         const installed = device(['install', '-r', join(androidDir, 'app/build/outputs/apk', apk)], { timeout: 120000 });
         if (installed.status !== 0 || installed.error || installed.signal) throw new Error('locked journal APK install failed');
       }
+      activeRun.build = androidBuildIdentity(repo);
       await lockedProcessDeath({ device, pkg: LOCK_PACKAGE, evidenceDir, reporter: { ok, fail } });
+      if (failureCount === failuresBefore) { activeRun.completedStages.push('locked-process-death'); evidenceRuns.push(activeRun); }
       continue;
     }
 
@@ -270,7 +291,8 @@ for (const avd of AVDS) {
       });
       writeFileSync(join(evidenceDir, `${avd}-backup-assemble.log`), `${built.stdout ?? ''}${built.stderr ?? ''}\nexit=${built.status}\n`);
       if (built.status !== 0 || built.signal || built.error) throw new Error('backup APK build failed');
-    } else await runInstrumentation({
+    } else {
+      const passedInstrumentation = await runInstrumentation({
       label: avd,
       resultsDir: RESULTS_DIR,
       reporter: { ok, fail },
@@ -283,7 +305,7 @@ for (const avd of AVDS) {
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest,dev.engender.app.ocr.OcrOfflineRecognitionTest`])
           ],
           {
             cwd: androidDir,
@@ -296,6 +318,9 @@ for (const avd of AVDS) {
         return result;
       }
     });
+      if (passedInstrumentation) activeRun.completedStages.push('instrumentation');
+    }
+    activeRun.build = androidBuildIdentity(repo);
     if (existsSync(RESULTS_DIR)) cpSync(RESULTS_DIR, join(evidenceDir, `${avd}-results`), { recursive: true });
     {
       // connectedDebugAndroidTest removes both packages when its invocation ends.
@@ -312,9 +337,11 @@ for (const avd of AVDS) {
         ok(`${avd}: install ${name} APK for PIN wait stages`);
       }
       if (!nativeOnly && !BACKUP_ONLY) {
+        const beforeRecovery = failureCount;
         await installationRecovery({ device, repo, evidenceDir, avd, reporter: { ok, fail } });
+        if (failureCount === beforeRecovery) activeRun.completedStages.push('archive-recovery');
       } else if (RECOVERY_ONLY) throw new Error('selected Archive recovery requires a supported Android WebView');
-      if (RECOVERY_ONLY) continue;
+      if (RECOVERY_ONLY) { if (failureCount === failuresBefore) evidenceRuns.push(activeRun); continue; }
       const stage = (name, method = 'deadlineSurvivesActualProcessDeath') => {
         const result = device(['shell', 'am', 'instrument', '-w', '-r',
           '-e', 'class', `${PIN_WAIT_TEST}#${method}`, '-e', 'pinWaitStage', name,
@@ -324,8 +351,9 @@ for (const avd of AVDS) {
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}-process.log`), `${proofLog.stdout ?? ''}${proofLog.stderr ?? ''}`);
         return reportStage(`${avd}: PIN wait ${name}`, result, { ok, fail });
       };
+      const beforePin = failureCount;
       if (!BACKUP_ONLY) try {
-        stage('preferences', 'preferenceDeadlineSurvivesANewOwnerAndNewBoot');
+        stage('preferences', 'nativeDeadlineSurvivesANewOwnerAndNewBoot');
         if (stage('seed')) {
           const killed = device(['shell', 'am', 'force-stop', 'dev.engender.app']);
           const pid = device(['shell', 'pidof', 'dev.engender.app']);
@@ -338,6 +366,8 @@ for (const avd of AVDS) {
           }
         }
       } finally { stage('cleanup'); }
+      if (!BACKUP_ONLY && failureCount === beforePin) activeRun.completedStages.push('pin-wait');
+      const beforeBackup = failureCount;
       const backupStage = (name, method = 'persistentDeliverySurvivesLifecycle') => {
         if (BACKUP_STAGES.size && !BACKUP_STAGES.has(name)) { console.log(`SKIP ${avd}: native backup ${name} (selected stages)`); return false; }
         executedBackupStages.add(name);
@@ -349,6 +379,7 @@ for (const avd of AVDS) {
         return reportStage(`${avd}: native backup ${name}`, result, { ok, fail });
       };
       try {
+        backupStage('cleanup');
         if (backupStage('defer')) {
           const killed = device(['shell', 'am', 'kill', 'dev.engender.app']);
           const absent = device(['shell', 'pidof', 'dev.engender.app']);
@@ -502,7 +533,7 @@ for (const avd of AVDS) {
               'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
             writeFileSync(join(evidenceDir, `${avd}-backup-reset-transfers.log`),
               `${reset.stdout ?? ''}${reset.stderr ?? ''}\nexit=${reset.status} signal=${reset.signal} error=${reset.error ?? ''}\n`);
-            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail });
+            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail }, 4);
           }
           if (!BACKUP_STAGES.size || BACKUP_STAGES.has('existing-manual')) {
           executedBackupStages.add('existing-manual');
@@ -515,10 +546,38 @@ for (const avd of AVDS) {
           }
         } else console.log(`SKIP ${avd}: staged Archive production needs a supported WebView`);
       } finally { backupStage('cleanup'); }
+      if (failureCount === beforeBackup) activeRun.completedStages.push(BACKUP_STAGES.size ? 'selected-native-backup' : 'native-backup');
     }
+    if (!nativeOnly && activeRun.kind === 'core') {
+      // The test provider has a fixed authority; remove the completed core
+      // instrumentation package before installing the isolated OCR pair.
+      for (const pkg of ['dev.engender.app.test', 'dev.engender.app']) {
+        const removed = device(['uninstall', pkg]);
+        if (removed.status !== 0 || removed.error || removed.signal || !removed.stdout.includes('Success')) {
+          throw new Error(`could not remove completed core package before offline OCR: ${pkg}`);
+        }
+      }
+      const pkg = 'dev.engender.app.test.offlineocr';
+      const init = join(evidenceDir, 'ocr-package.gradle');
+      writeFileSync(init, `allprojects { afterEvaluate { p -> if (p.path == ':app') p.android.defaultConfig.applicationId = '${pkg}' } }`);
+      const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2', '-I', init], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600000
+      });
+      writeFileSync(join(evidenceDir, `${avd}-ocr-assemble.log`), `${built.stdout ?? ''}${built.stderr ?? ''}`);
+      if (built.status !== 0 || built.error || built.signal) throw new Error('offline OCR APK build failed');
+      const ocrBuild = androidBuildIdentity(repo);
+      await offlineOcrStage({ device, pkg, avd, evidenceDir,
+        apk: join(androidDir, 'app/build/outputs/apk/debug/app-debug.apk'),
+        testApk: join(androidDir, 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk') });
+      activeRun.completedStages.push('offline-ocr');
+      activeRun.offlineOcr = { package: pkg, build: ocrBuild };
+      ok(`${avd}: fresh English and Polish OCR in airplane mode`);
+    }
+    if (failureCount === failuresBefore) evidenceRuns.push(activeRun);
   } catch (e) {
     fail(`${avd}: emulator`, e.message ?? String(e));
   } finally {
+    activeRun = undefined;
     await stopEmulator();
     await sleep(3000);
   }
@@ -526,4 +585,13 @@ for (const avd of AVDS) {
 
 for (const stage of BACKUP_STAGES) if (!executedBackupStages.has(stage)) fail(`selected Android backup stage ${stage}`, 'selected stage never executed');
 const failures = finish(BACKUP_STAGES.size ? 'ALL SELECTED ANDROID BACKUP STAGES PASS' : 'ALL ANDROID-TIER CHECKS PASS');
+if (!failures) {
+  try {
+    writeAndroidTierEvidence(repo, startEvidence, evidenceRuns);
+    console.log('PASS Android-tier evidence written to scripts/progressive-release-record.json');
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+}
 process.exit(failures ? 1 : 0);

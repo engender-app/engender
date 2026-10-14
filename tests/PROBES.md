@@ -283,6 +283,14 @@ Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vi
 
 `backup-power-cut` (`tests/android-tier/backup-power-cut.mjs`) exercises foreground automatic delivery and actual scheduled `BackupWork` against Android's system local storage provider. It repeats retained seeds 2311–2314 and ten additional seeds per path with 40 MiB of synthetic attachments. After each QEMU power cut, the five newest retained verified backups must restore all 3300 rows and attachment bytes; at least one preceding good backup must remain. Older ownership receipts may survive a cut between pruning and the retention metadata update, and are recorded separately. `BackupDeliveryDurabilityTest` exercises both owners against full storage, truncated read-back, a pipe and a cloud cache with a regular file descriptor. A release-only capability class refuses the instrumentation fixture unconditionally.
 
+`mounted-status` uses the Settings language control and checks concealed export
+gates, native delivery refresh and Polish status text. Its deferred-text case
+clears the saved password through the native API, re-enables the destination
+and lets WorkManager produce the deferral. Without a saved password,
+foreground capture cannot immediately consume that state. The separate
+`defer`, `verify-deferred` and `catch-up` stages prove cold execution with a
+saved password and authenticated recovery.
+
 `reset-transfers`, selectable with `ANDROID_TIER_BACKUP_STAGES`, runs
 `ExportResetTest` through the actual `resetApp` and WebView reload. It requests
 Start over while native key derivation is pending, during a delayed attachment
@@ -859,6 +867,18 @@ PIN pad and contain no private fixture text in the DOM. The dedicated fixture
 and notification helpers run only in an isolated package. See
 `tests/android-tier/README.md` for runtime requirements and limits.
 
+`tests/android-tier/evidence.test.ts` and `check-progressive-release.test.ts`
+use synthetic records to check dirty-source refusal, record-only commit
+equivalence, stale timestamps, missing build/stage identity and optional-stage
+claims. They do not substitute for an Android runtime run. The runner records
+actual completed checks and APK hashes only after a clean passing run. Current
+Android must also complete isolated first-use OCR in airplane mode with its own
+APK identity. `offline-ocr-stage.test.ts` uses fake device replies to verify
+fresh installs, failure cleanup and restoration of network settings.
+`installed-upgrade-evidence.test.ts` checks four-APK provenance for a CDP-only
+upgrade, refuses mismatched sources and fabricated control roles, and keeps
+optional-only evidence insufficient for the core release gate.
+
 ## Node calendar zones
 
 CI runs the full Node suite under both `TZ=UTC` and `TZ=Europe/Warsaw`.
@@ -878,3 +898,78 @@ For a local portability check, run `npm test -- --maxWorkers=2` with each
 of `UTC`, `Europe/Warsaw`, `America/Los_Angeles`, `Australia/Lord_Howe`,
 `Asia/Kolkata`, `Pacific/Chatham` and `Pacific/Kiritimati` in `TZ`. Local
 durations are not measurements of the hosted CI runner.
+
+## Retained hidden-read research
+
+`tests/retained-door-cost/README.md` describes the isolated physical Android
+comparison and its web observer control. The recorded result is in
+`tests/retained-door-cost/RESULTS.md`: write completion, visible read readiness
+and dirty warm revisit settlement have separate boundaries. The disposable
+activity gate changes only the probe build; it is not production scheduling.
+Actual-shell captures retain the existing paint hold, last-result DOM, opacity
+floor, reduced-motion and lock-concealment assertions.
+
+## Release signing certificates
+
+`tests/check-release-artifacts.test.ts` generates disposable signing keys and
+signed APK/AAB fixtures. It runs `apksigner`, `jarsigner` and `keytool` through
+the release verifier, checks the expected certificate for each role, and rejects
+valid signatures from other certificates or an extra AAB signer. Existing
+unsigned, partially signed and tampered AAB checks remain active. Production
+pins come from the public record in [SECURITY.md](../SECURITY.md#android-signing-certificates).
+
+This Node test needs a JDK (`jar`, `keytool`, `jarsigner` on PATH) and an Android
+SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
+`android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
+device is used. Temporary keys and artifacts are removed after the tests.
+
+`manual-export` is an opt-in physical-device probe, outside default Android
+instrumentation discovery. Build the ordinary web bundle and sync Capacitor,
+then compile isolated APKs with:
+
+```sh
+npm run build
+npx cap sync android
+android/gradlew -p android -I "$PWD/tests/manual-export/isolate.gradle" --no-daemon --max-workers=2 :app:assembleDebug :app:assembleDebugAndroidTest
+ANDROID_SERIAL=<owned-phone-serial> python3 tests/manual-export/run.py
+```
+
+The runner takes the shared phone lease and uses only
+`dev.engender.app.test.picker77`, its test package and forward9377. It requires
+an unlocked phone with English Developer options and DocumentsUI already
+pointing at local Download/Downloads. It changes the actual Don't keep
+activities switch, records the caller's DESTROYED state, saves through the real
+picker and verifies exact bytes and SHA-256. The payload is an Archive packed
+with the released KDF profile; the pulled file must decrypt and restore its
+entry, preferences and photo bytes. Both APK package IDs are checked before
+installation. An instrumentation case separately
+counts one restored Capacitor result. Provider cases assert saved, cancelled,
+truncated and refused-write outcomes, exact owned-target deletion, unrelated
+file preservation, and a denied cleanup record surviving until access returns.
+The host kills the app after the provider records its first partial write;
+restart must remove that target without removing the unrelated file. The
+runner restores the switch and setting, removes its UUID document, packages
+and forward, and releases the lease. It records both APK hashes. No emulator
+or provider-cloud durability claim follows from these checks.
+
+`restored-file-delivery.test.ts` keeps restored results behind journal gates,
+rejects old process/reset identities and held status replies crossing journal
+replacement, and deduplicates each transfer. Native `FileResetOwnershipTest`
+checks that retained staging contains no Activity or plugin owner and that
+reset closes its in-memory key. Existing reset and scheduled-backup tests
+remain unchanged.
+
+`tests/protection-change-check.mjs` exercises mounted current-protection prompts
+against synthetic journals, real browser storage and the shipped cryptography.
+It covers PIN, passphrase and a fake WebAuthn PRF authenticator, refused and
+cancelled approval, minting, replacement, rejection of the old recovery key and
+single-operation approval. Post-recovery setup consumes its proof once; a failed
+publication keeps the old PIN and requires the existing recovery key for retry.
+The fixture does not verify biometric hardware. Node tests cover Android biometric
+outcomes and existing-recovery-key approval through fake ports, plus credential,
+lock, cancellation, reset and session ownership races. The credential-change
+probe holds OPFS publication before close and requires a lock/reset-invalidated
+operation to abort, then verifies a new authenticated operation and cold unlock.
+The cleanup probe requires the published secret on retry after old-binding
+cleanup fails. Browser swap close and native bridge dispatch are the respective
+publication admission boundaries; later cancellation cannot undo committed data.

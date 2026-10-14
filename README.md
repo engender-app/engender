@@ -165,6 +165,12 @@ your journal: clearing browser storage, wiping app data or losing a device
 can remove the only local copy. The maintainer cannot recover passwords
 or keys.
 
+Creating or replacing a recovery key and changing access mode ask for the
+current PIN, passphrase or biometrics again. Web device-bound mode instead
+explains that the unlocked browser has this authority. Android unlocked mode
+requires biometrics or an existing recovery key and blocks the change without
+either. A recovery unlock approves one immediate protection setup only.
+
 CSV, JSON, journal books, clinician summaries and exported images or videos
 are readable files. Anyone who receives them can read their contents.
 Choose an encrypted Archive when you need a private backup.
@@ -365,10 +371,27 @@ npm run release:tag -- 1.2.3 --dry-run
 npm run release:tag -- 1.2.3
 ```
 
-The script requires a clean main branch and notes for the version in
-[CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
+Before tagging, run `npm run test:android` on the clean candidate. A passing
+run writes its source revision, device/API identities, APK hashes and completed
+stages into `scripts/progressive-release-record.json`. The required roster is
+API 26 native instrumentation, PIN-wait persistence and native backup deferral,
+plus current-Android instrumentation, PIN-wait persistence, Archive recovery
+and native backup lifecycle stages. Current Android also runs fresh English and
+Polish OCR in airplane mode under an isolated package, with separate APK hashes.
+Commit the record after the run. Only that
+record may differ from the tested candidate source.
+
+Focused backup, recovery and locked-process-death runs do not replace the core
+roster. The record names optional stages as completed or absent; the core pass
+count does not claim an installed-upgrade or locked-process-death run.
+
+The script requires a clean main branch, matching Android-tier evidence and
+notes for the version in [CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
+The release gate rejects signatures from unexpected certificates.
+[Android signing guidance](SECURITY.md#android-signing-certificates) records
+the GitHub APK, AAB upload and Play app-signing fingerprints.
 Release notes state schema changes, Archive format changes, security
 migrations and the minimum supported version. The stable section uses
 `{{schema}}`, resolved from the candidate migration list by the notes generator
