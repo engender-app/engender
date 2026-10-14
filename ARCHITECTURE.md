@@ -96,7 +96,7 @@ The browser's SAHPool holds exclusive access handles, and the production driver
 opens one connection per database path. `scripts/patch-sqlite-wasm.mjs` pins two
 corrections to the installed 2.2.4 bundle: failed initialization preserves pool
 files, and the reserved-lock answer follows the file's current SQLite lock.
-On reopen, SQLite can then roll back a hot journal left by an interrupted write.
+On reopen, SQLite can then roll back a hot journal left by an interrupted write. Retained pagehide delegates live worker release to the wrapped driver close, which waits for admitted transactions. The session still bounds stalled drains through synchronous disposal; ordinary reload releases handles directly. New connections wait for that release to settle before acquiring the pool.
 The browser tier checks recovery after cache spill and contention with another
 worker. This does not prove durability through a power cut.
 
