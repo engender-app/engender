@@ -1,6 +1,13 @@
 package dev.engender.app.webview;
 
+import android.app.Activity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+
 import androidx.test.core.app.ActivityScenario;
+
+import org.json.JSONObject;
 
 import dev.engender.app.MainActivity;
 
@@ -45,19 +52,43 @@ public final class WebViewProbe {
         CountDownLatch evaluated = new CountDownLatch(1);
         scenario.onActivity(
             activity ->
-                activity
-                    .getBridge()
-                    .getWebView()
-                    .evaluateJavascript(
-                        expression,
-                        result -> {
-                            value.set(result);
-                            evaluated.countDown();
-                        }));
+                webView(activity).evaluateJavascript(
+                    expression,
+                    result -> {
+                        value.set(result);
+                        evaluated.countDown();
+                    }));
         if (!evaluated.await(ANSWER_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             throw new AssertionError("the WebView stopped answering");
         }
         return value.get();
+    }
+
+    /** Finds the app WebView through framework APIs that remain in an optimized release. */
+    public static WebView webView(Activity activity) {
+        WebView view = findWebView(activity.getWindow().getDecorView());
+        if (view == null) throw new AssertionError("the activity has no WebView");
+        return view;
+    }
+
+    private static WebView findWebView(View root) {
+        if (root instanceof WebView) return (WebView) root;
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                WebView found = findWebView(group.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    /** Loads a local probe through Capacitor's existing same-origin file handler. */
+    public void loadFile(String path) throws InterruptedException {
+        awaitTrue("!!window.Capacitor && typeof window.Capacitor.convertFileSrc === 'function'");
+        String url = string(evaluate("window.Capacitor.convertFileSrc(" + JSONObject.quote(path) + ")"));
+        if (url == null || url.isEmpty()) throw new AssertionError("Capacitor did not resolve the probe file");
+        scenario.onActivity(activity -> webView(activity).loadUrl(url));
     }
 
     /** Polls {@code expression} until it equals {@code wanted}, then returns what it last saw. */
