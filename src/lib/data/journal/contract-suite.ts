@@ -30,6 +30,10 @@ import { openJournal } from './journal.ts';
 import { observeWrites } from '../live/writes.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
+import { purgeExpiredTrash } from './entries.ts';
+import { journalIsBusy } from '../journal-busy.ts';
+import { boot } from '../sqlite/boot.ts';
+import { noopFileOps } from '../sqlite/test-support/noop-file-ops.ts';
 import { restoreArchive } from './restore.ts';
 import { answerTotal, entrySearchFiltersOf, savedQuestionInputOf, starredPhotosAsked } from '../savedQuestionQuery.ts';
 import type { EntrySearchFilters } from './entries.ts';
@@ -674,6 +678,94 @@ export async function runJournalContract(
     });
   });
 
+  r.checks.push(...await runBootHousekeepingContract(driver, files));
+  return r.checks;
+}
+
+/** The same Replace/boot contention fixture runs over Node, native files
+    and OPFS. Restore the caller's rows afterwards so contract markers stay. */
+export async function runBootHousekeepingContract(driver: SqliteDriver, files: PhotoFileStore): Promise<ContractCheck[]> {
+  const r = recorder();
+  const baseJournal = openJournal(driver, files);
+  await baseJournal.reconcileBuiltIns();
+  const baseline = await baseJournal.archive.snapshot();
+  const baselineFiles = await Promise.all(baseline.files.map(async (file) => ({
+    name: file.name, bytes: await baseline.readFile(file.name)
+  })));
+  let resume = () => {};
+  const gate = new Promise<void>((resolve) => { resume = resolve; });
+  let hold = false;
+  const contended: SqliteDriver = {
+    ...driver,
+    async transaction(work) {
+      if (hold) await gate;
+      return driver.transaction(work);
+    }
+  };
+  const journal = observeWrites(openJournal(contended, files), () => {});
+  let reconciliation: Promise<unknown> | undefined;
+  try {
+    const kept = await journal.entries.upsertEntry({ epochDay: 31000, mood: 4 });
+    const expired = await journal.entries.upsertEntry({ epochDay: 31001, mood: 4 });
+    const photo = { full: new Uint8Array([1, 3, 5]), thumb: new Uint8Array([2, 4]) };
+    await journal.photos.attach({ entryId: kept }, photo);
+    await journal.photos.attach({ entryId: expired }, photo);
+    const [keptRow] = await driver.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [kept]);
+    const [expiredRow] = await driver.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [expired]);
+    const incoming = await journal.archive.snapshot();
+    const incomingFiles = await Promise.all(incoming.files.map(async (file) => ({
+      name: file.name, bytes: await incoming.readFile(file.name)
+    })));
+    const oldOnly = await journal.entries.upsertEntry({ epochDay: 31002, mood: 4 });
+    await journal.photos.attach({ entryId: oldOnly }, photo);
+    await journal.archive.replace({ journal: incoming.journal, files: (async function* () {
+      for (const file of incomingFiles) yield file;
+    })() });
+    await driver.run('UPDATE entry SET trashed_at = ? WHERE uuid = ?', [Date.now() - 31 * 86400000, expiredRow.uuid]);
+    const restored = await journal.archive.snapshot();
+    const owned = new Set(restored.files.map((file) => file.name));
+    const orphans = (await files.list()).filter((name) => !owned.has(name));
+    r.equal('Replace leaves proven old media for boot housekeeping', orphans.length >= 2, true);
+
+    hold = true;
+    reconciliation = journal.stock.reconcileRunOutReminders(31003);
+    r.equal('the stock reconciliation admits the contending write', journalIsBusy(), true);
+    let start = () => {};
+    let purged = 0;
+    const result = await boot({
+      createDriver: () => contended,
+      fileOps: noopFileOps(),
+      purgeExpiredTrash: async (opened) => { purged = await purgeExpiredTrash(opened, files); },
+      sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, files),
+      scheduleHousekeeping: (run) => { start = run; }
+    });
+    if (result.phase !== 'ready') throw result.error;
+    start();
+    hold = false;
+    resume();
+    await reconciliation;
+    await result.housekeeping;
+    r.equal('first eligible boot purges the expired Replace entry', purged >= 1, true);
+    r.equal('expired Replace row is removed from SQLite',
+      await driver.query('SELECT uuid FROM entry WHERE uuid = ?', [expiredRow.uuid]), []);
+    r.equal('first eligible boot removes every proven Replace orphan',
+      await Promise.all(orphans.map((name) => files.read(name).then((bytes) => bytes === null))),
+      orphans.map(() => true));
+    const [keptFile] = await driver.query<{ file_path: string }>(
+      'SELECT p.file_path FROM photo p JOIN entry e ON e.id = p.entry_id WHERE e.uuid = ?', [keptRow.uuid]
+    );
+    r.equal('boot preserves committed full photo bytes', [...(await files.read(keptFile.file_path))!], [...photo.full]);
+    r.equal('boot preserves committed thumbnail bytes', [...(await files.read(thumbFileName(keptFile.file_path)))!], [...photo.thumb]);
+  } catch (error) {
+    r.equal('Replace boot housekeeping contract completes', String(error), 'no failure');
+  } finally {
+    hold = false;
+    resume();
+    await reconciliation;
+    await baseJournal.archive.replace({ journal: baseline.journal, files: (async function* () {
+      for (const file of baselineFiles) yield file;
+    })() });
+  }
   return r.checks;
 }
 
