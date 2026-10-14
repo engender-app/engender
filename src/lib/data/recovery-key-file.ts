@@ -4,9 +4,8 @@
    Everything in it survives disclosure without the key itself
    (crypto/recoveryWrap.ts), so like the keystore it needs no protection of
    its own - what it needs is to be readable before the database opens, and
-   to go when a reset empties the OPFS root. `data/reset.ts` already removes
-   everything under that root recursively, so this file needs no line there
-   and deliberately does not get one.
+   to go when a reset empties the OPFS root. `data/reset.ts` removes this wrap
+   after the other journal files, preserving recovery if data deletion fails.
 
    Same three functions as `keystore-file.ts`, and kept as small as that one
    is for the same reason: Android keeps the identical serialized form, so
@@ -14,8 +13,7 @@
 
 import { parseRecoveryWrap, serializeRecoveryWrap, type RecoveryWrap } from '../crypto/recoveryWrap';
 
-/* RECOVERY_KEY_FILE stays exported only for reset.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* Reset keeps this recovery wrap until the other journal files are gone. */
 export const RECOVERY_KEY_FILE = 'recovery-key.json';
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';

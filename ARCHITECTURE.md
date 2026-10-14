@@ -491,6 +491,14 @@ stateDiagram-v2
 
 A boot sweep reclaims orphaned media files. Android's photo listing excludes dotfiles, so `.nomedia` survives the sweep, and native file operations accept only the photo directory or named test directories in debug builds. Both native photo-write transports sync their file before acknowledging success. Reset ([data/reset.ts](src/lib/data/reset.ts), and `DeviceResetPlugin` on Android) wipes everything the installation holds: OPFS, the boot mirror, the device-key IndexedDB and the PIN bindings. It never touches an archive made earlier (ADR-0014).
 
+Web reset starts ordinary browser-mirror cleanup before asynchronous file
+deletion and removes credential wrap files after the other OPFS entries. A
+failed data deletion keeps the remaining ways to open that data. On the next
+boot, a web survey with no credentials or legacy journal discards this app's
+mirrors and restores default preferences before onboarding. This is a logical
+recovery boundary: Web Storage exposes no fsync operation, and the app does
+not promise removal of old physical browser log bytes.
+
 ### 6.7 Media files
 
 Photos, thumbnails, voice recordings, video notes and documents live outside SQLite in one file store. The UI reads it through [stores/photoFiles.ts](src/lib/stores/photoFiles.ts); boot installs and clears that holder once, and recording/video readers share it. The file names are opaque uuids, such as `<uuid>.webm` for a recording. `encryptedFileStore()` in [data/photos/encrypted-file-store.ts](src/lib/data/photos/encrypted-file-store.ts) wraps the platform store (OPFS on the web, app-private files on Android). Each file is stored as a nonce followed by its AES-256-GCM ciphertext under the data key, with the file name as AAD. Photos are normalized and stripped of metadata on import (ADR-0008, ADR-0015). A photo pick can bring back several images in one trip on both platforms (Android asks the system picker for up to `MediaStore.getPickImagesMaxLimit()`). Photo picks accept source files up to 32 MiB before normalization; document picks keep their own 25 MiB ceiling. Both native read transports enforce the source ceiling when a provider omits or understates its size. Every photo is browsed in one library, but each table still owns its own photos (ADR-0085).

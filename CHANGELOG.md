@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+A browser restart after an interrupted Start over discards the erased
+journal's mirrors before onboarding. Reset keeps credential wraps until the
+other journal files are removed, so a refused data deletion keeps their key.
+
 Archive Merge keeps an entry's current revisit when an older Archive carries
 a different one. Archives with two revisits for one entry are refused before
 they can change the journal.

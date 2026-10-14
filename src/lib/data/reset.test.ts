@@ -1,6 +1,8 @@
 import { test, expect } from 'vitest';
 import { androidResetTargets, clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData, type LocalDataTargets } from './reset.ts';
 import { RECOVERY_KEY_FILE } from './recovery-key-file.ts';
+import { KEYSTORE_FILE } from './keystore-file.ts';
+import { DEVICE_BOUND_FILE } from './journal-initialization.ts';
 import { BOOT_ACCESS_MODE_KEY, BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
@@ -58,11 +60,11 @@ test('closes the database, empties its storage, then drops the mirror', async ()
   await wipeLocalData(deps);
 
   expect(log).toEqual([
+    'clear mirrors',
     'close',
     'remove engender.sqlite3 (recursive)',
     'remove engender.sqlite3.pre-migration-backup (recursive)',
     'remove photos (recursive)',
-    'clear mirrors',
     'clear cache'
   ]);
 });
@@ -300,5 +302,22 @@ test('on Android the reset reaches every native store through its bridge', async
     clearBrowserMirrors: () => log.push('mirrors'),
     clearBootCache: () => log.push('boot cache')
   });
-  expect(log).toEqual(['close', 'delete database', 'delete photos', 'erase key', 'wipe prefs and alarms', 'mirrors', 'boot cache']);
+  expect(log).toEqual(['mirrors', 'close', 'delete database', 'delete photos', 'erase key', 'wipe prefs and alarms', 'boot cache']);
 });
+
+
+test('ordinary mirrors leave before asynchronous deletion, while the boot mirror stays until success', async () => {
+  const { deps, log } = targets();
+  await wipeLocalData(deps);
+  expect(log.indexOf('clear mirrors')).toBeLessThan(log.indexOf('remove engender.sqlite3 (recursive)'));
+  expect(log.at(-1)).toBe('clear cache');
+});
+
+test.each([KEYSTORE_FILE, DEVICE_BOUND_FILE, RECOVERY_KEY_FILE])(
+  'failed data removal preserves %s even when the directory lists it first', async (credential) => {
+    const { deps, log } = targets({ entries: [credential, 'photos'], removeFails: 'photos' });
+    await expect(wipeLocalData(deps)).rejects.toThrow('still open');
+    expect(log).not.toContain(`remove ${credential} (recursive)`);
+    expect(log).not.toContain('clear cache');
+  }
+);

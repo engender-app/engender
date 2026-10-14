@@ -1,5 +1,16 @@
 # The probes in tests/*.mjs
 
+`node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
+profile and SIGKILLs only its owned process group at testing-09 seeds
+6501 through 6530, within 160 ms of the reset action. Erased cuts must return
+to onboarding with no old app-owned mirrors or preference projection.
+Interrupted partial-data cases are recorded separately and must retain an
+explicit recovery action. A persisted old-mirror control checks the boot
+boundary even when a particular crash happens after browser storage flushes.
+Unrelated origin storage must survive. `reset.test.ts` checks credential-last
+file deletion and refusal ordering; `boot-machine.test.ts` keeps cleanup on
+the absent-journal path.
+
 `src/lib/data/journal/restore.test.ts` uses real SQLite to guard roadmap Merge
 status separately from visibility. A hidden unchecked goal accepts the incoming
 status, keeps the local hidden flag through repeated Merge, and retains the
