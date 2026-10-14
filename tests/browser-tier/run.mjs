@@ -17,6 +17,7 @@ import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { builtArchiveRecovery } from './archive-built-recovery.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
+import { entryContextualText } from './entry-contextual-text.mjs';
 import { coldUnlock } from './cold-unlock.mjs';
 import { firstRunSetup } from './first-run-setup.mjs';
 import { firstRunBuiltSetup } from './first-run-built-setup.mjs';
@@ -2522,6 +2523,11 @@ await block('ticket 29 browser tier', 7, async () => {
       'one benchmark and a figure never measured read as two different empty cards',
       JSON.stringify({ single: [single.plots, single.empty], neverMeasured: [neverMeasured.plots, neverMeasured.empty] })
     );
+});
+
+await block('entry contextual text survives typing and clears before save', 1, async () => {
+  await entryContextualText(page, `http://localhost:${port}`);
+  ok('new and existing entries preserve typed spaces and newlines, trim on save, and save cleared recovery without a note');
 });
 
 // --- Phase 8 audit ticket 25: a screen's own decision, read as a value -----

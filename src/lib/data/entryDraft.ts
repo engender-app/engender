@@ -316,9 +316,16 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         removeVideoIds: this.removedVideoIds,
         presentationId: this.presentationId
       };
-      if (this.tryoutFeltSense) payload.tryoutFeltSense = this.tryoutFeltSense;
+      if (this.tryoutFeltSense) {
+        payload.tryoutFeltSense = { ...this.tryoutFeltSense, note: this.tryoutFeltSense.note?.trim() || null };
+      }
       if (this.doseLog) payload.doseLog = this.doseLog;
-      if (this.procedureRecovery) payload.procedureRecovery = this.procedureRecovery;
+      if (this.procedureRecovery) {
+        const notes = this.procedureRecovery.notes?.trim() || undefined;
+        if (notes || this.procedureRecovery.photo) {
+          payload.procedureRecovery = { ...this.procedureRecovery, notes };
+        }
+      }
       if (this.effectMarkers.length > 0) payload.effectMarkers = this.effectMarkers;
       if (this.cycleEvent) payload.cycleEvent = this.cycleEvent;
       return payload;
