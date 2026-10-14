@@ -99,6 +99,15 @@ VFS reserved-lock method at each lock level. Another production worker must fail
 to acquire the live writer's pool. Worker termination proves recovery from that
 interruption; it does not model a storage power cut.
 
+`browser-tier/housekeeping.html` runs seven shared Replace/boot checks on
+real encrypted SQLite and OPFS. It holds the production stock-reconciliation
+write, then verifies the first eligible housekeeping run purges expired
+Trash, removes every proven orphan and keeps committed photo bytes. The same
+fixture runs in the Node and Android driver contract suites; native checks
+use the Photos plugin's test directory. Idle waits keep the existing
+mid-pass write guards. OPFS file deletion is checked separately from storage
+allocation estimates, which can remain after readable files are removed.
+
 ## Walkthrough groups
 
 `search-return-privacy` (`tests/search-return-privacy.mjs`) runs after
