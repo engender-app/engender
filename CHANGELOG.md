@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android always asks keyboards not to learn words typed in the app. Keyboard
+support controls whether the request works; previously learned words remain.
+
 A scheduled Android backup failure posts one notice across later checks and
 app restarts. Quiet-hours holds survive restarts; a later failure can notify
 again after a successful backup or a destination change.

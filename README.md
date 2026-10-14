@@ -104,8 +104,9 @@ Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
 Journal text fields turn off browser autofill and session restoration on the
-web. Android keeps its existing keyboard suggestions. Text saved by earlier
-app versions is not removed from browser profiles.
+web. Android always asks keyboards not to learn from the app's text fields;
+the keyboard decides whether to honor that request. Text saved by earlier
+versions is not removed from browser profiles or keyboard storage.
 
 The layout adapts to the space available, with a bottom navigation bar on
 narrow screens and a rail on wider ones. The app uses bundled fonts and

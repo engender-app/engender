@@ -154,8 +154,9 @@ Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google.
 Google Safe Browsing pozostaje domyślnie włączone w WebView. Do sprawdzania
 stron może korzystać z własnego dostępu do sieci usług Google Play.
 
-Na Androidzie podpowiedzi klawiatury działają jak dotychczas. To, czego
-klawiatura się uczy i co zapisuje, zależy od niej i jej ustawień.
+Na Androidzie aplikacja zawsze prosi klawiaturę, żeby nie zapamiętywała
+wpisywanych słów. Służy do tego flaga `IME_FLAG_NO_PERSONALIZED_LEARNING`.
+Klawiatura może zignorować tę prośbę. Nie usuwa to słów zapamiętanych wcześniej.
 Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe
 niezależnie od engender.
 

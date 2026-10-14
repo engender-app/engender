@@ -1,5 +1,21 @@
 # The probes in tests/*.mjs
 
+`JournalWebViewInputTest` focuses real note, text, search and password controls
+in MainActivity's WebView and reads their native input connections. Each must
+carry `IME_FLAG_NO_PERSONALIZED_LEARNING`, while multiline input and keyboard
+actions remain intact. It runs in the Android tier on a supported WebView;
+the native-only selection on the old API 26 image excludes WebView probes.
+
+Keyboard learning needs a separate physical check with a phone lease and an
+isolated test package. With FUTO, first check that a fresh synthetic word is
+absent from another app's suggestions. Type it three times through the actual
+on-screen keyboard in the entry note, then check that the other app offers it.
+With the repaired build, repeat with a different fresh word and require it to
+remain absent. Remove only the test's own learned word and restore any changed
+settings; never reset the keyboard dictionary. Retain only synthetic matches,
+not unrelated suggestions. FUTO behavior does not prove what other keyboards
+do with this advisory flag.
+
 `auto-export-scheduler.test.ts` reports one synthetic native backup failure
 across ticks and a fresh scheduler module with the same stored preferences.
 It checks quiet-hours holds, notification refusal, disabled notices, clock
