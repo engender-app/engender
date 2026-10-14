@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { holdSearch, takeHeldSearch, type SearchSnapshot } from './searchReturn';
+import { handOverQuery, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from './searchReturn';
 
 const snapshot: SearchSnapshot = {
   query: 'cold', selectedTagIds: ['a'], selectedMoods: [2], startDate: '', endDate: '',
@@ -15,7 +15,11 @@ function stubStorage() {
   });
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  takeHeldSearch();
+  takeHandedQuery();
+  vi.unstubAllGlobals();
+});
 
 it('hands back what search held, once', () => {
   stubStorage();
@@ -25,8 +29,29 @@ it('hands back what search held, once', () => {
   expect(takeHeldSearch()).toBeNull();
 });
 
-it('comes back empty rather than throwing where there is no storage', () => {
+it('restores the held search even when storage is blocked', () => {
   vi.stubGlobal('sessionStorage', { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() {} });
   expect(() => holdSearch(snapshot)).not.toThrow();
-  expect(takeHeldSearch()).toBeNull();
+  expect(takeHeldSearch()).toEqual(snapshot);
+});
+
+it('never writes held journal text to either Web Storage owner', () => {
+  const localWrite = vi.fn();
+  const sessionWrite = vi.fn();
+  vi.stubGlobal('localStorage', { setItem: localWrite });
+  vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: sessionWrite, removeItem() {} });
+  holdSearch(snapshot);
+  handOverQuery('private search');
+  expect(localWrite).not.toHaveBeenCalled();
+  expect(sessionWrite).not.toHaveBeenCalled();
+});
+
+it('keeps the snapshot independent of subsequent edits to its filters', () => {
+  stubStorage();
+  const changing = { ...snapshot, selectedTagIds: [...snapshot.selectedTagIds], selectedMoods: [...snapshot.selectedMoods] };
+  holdSearch(changing);
+  changing.query = 'changed';
+  changing.selectedTagIds.push('b');
+  changing.selectedMoods.push(4);
+  expect(takeHeldSearch()).toEqual(snapshot);
 });

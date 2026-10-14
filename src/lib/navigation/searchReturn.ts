@@ -2,12 +2,11 @@
    way back (editor Save, Delete or the back control) so the list returns
    with the same query and filters instead of an empty box.
 
-   Kept in sessionStorage, not in memory: the editor can be reloaded before
-   it is left, and the person's own typing should still be there. It lives
-   no longer than the tab, and reading it spends it. A lock takes it too,
-   with the query More hands over in memory below (after-release ticket 10). */
+   Kept in memory: Web Storage can leave search text on disk after a lock.
+   Reading spends it; a lock or reload drops it along with the query More
+   hands over below. */
 
-import { forgetOnLock, HELD_SEARCH_KEY as KEY } from '../lock/forget-content.ts';
+import { forgetOnLock } from '../lock/forget-content.ts';
 
 export interface SearchSnapshot {
   query: string;
@@ -25,21 +24,21 @@ export const EMPTY_SEARCH: SearchSnapshot = {
   hasNote: false, hasPhoto: false, starredOnly: false
 };
 
+let heldSearch: SearchSnapshot | null = null;
+
 export function holdSearch(snapshot: SearchSnapshot): void {
-  try {
-    sessionStorage.setItem(KEY, JSON.stringify(snapshot));
-  } catch { /* no storage: the search comes back empty */ }
+  heldSearch = {
+    ...snapshot,
+    selectedTagIds: [...snapshot.selectedTagIds],
+    selectedMoods: [...snapshot.selectedMoods]
+  };
 }
 
 /** The held snapshot, once: reading it spends it. */
 export function takeHeldSearch(): SearchSnapshot | null {
-  try {
-    const raw = sessionStorage.getItem(KEY);
-    sessionStorage.removeItem(KEY);
-    return raw ? { ...EMPTY_SEARCH, ...JSON.parse(raw) } : null;
-  } catch {
-    return null;
-  }
+  const snapshot = heldSearch;
+  heldSearch = null;
+  return snapshot;
 }
 
 /* A query typed into More's search, on its way to the Search screen
@@ -60,8 +59,8 @@ export function takeHandedQuery(): string | null {
   return query;
 }
 
-/* A lock drops the query on its way; forget-content.ts removes the held
-   snapshot itself, since a reload can leave one with this module unloaded. */
+/* Both searches belong to this unlocked page only. */
 forgetOnLock(() => {
+  heldSearch = null;
   handedQuery = null;
 });
