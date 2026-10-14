@@ -87,7 +87,7 @@ Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vi
 Run `ulimit -c 0` before starting this runner. Build the `auto-export` probe with `ANDROID_TIER_PROBE=auto-export npx vite build --config tests/android-tier/android-tier.vite.config.ts` after the production build and Capacitor sync. Supply `BACKUP_POWER_CUT_AVD`, `BACKUP_POWER_CUT_PACKAGE`, `BACKUP_POWER_CUT_APK` and `BACKUP_POWER_CUT_TEST_APK` for an owned temporary API-35 AVD and an isolated `dev.engender.app.test.*` package. `--setup-only` measures the selected system folder's sync boundary; `--skip-faults` skips the separately runnable native fault test. Use `BACKUP_POWER_CUT_PATHS` and `BACKUP_POWER_CUT_SEEDS` to replay selected cases. The proof covers the tested emulator filesystem and provider, not cloud uploads or every physical storage device. Remove the test packages and AVD after delivery.
 
 `stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with
-`npm run test:browser`. It withholds real preference and reference-read replies
+`npm run test:browser`. It withholds real schema, preference and reference-read replies
 during unlock, then verifies bounded worker disposal, a usable retry without
 reload, preserved journal content and harmless late replies. Visibility events
 are synthetic; the application, encrypted worker and OPFS are real.
@@ -98,6 +98,15 @@ COMMIT response or injects a worker error after COMMIT, then reopens the
 encrypted journal and checks rows and attachment bytes before and after the
 orphan sweep. It also checks confirmed rollback and graceful lock disposal.
 Faults are synthetic; SQLite, OPFS, encrypted files and session disposal are real.
+
+`warm-schema-check` (`tests/warm-schema-check.mjs`) runs in `test:browser` and
+directly after runtime generation. It releases the real encrypted OPFS connection,
+advances its version through another driver, and requires refusal before private
+preference/reference reads or journal/key publication on unlock and retained return.
+The old-page fixture uses the released schema-88 baseline and ceiling; current-code
+cases follow the current migration list. A real schema-88 pre-migration copy is
+restored beneath a suspended current page, which must migrate it before reopening.
+Navigation events are injected here; actual BFCache belongs to the lifecycle tier.
 
 `browser-tier/hot-journal.html` runs in `npm run test:browser`. It terminates the
 production SQLite worker with an uncommitted transaction after cache spill,
