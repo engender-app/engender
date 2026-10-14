@@ -3,6 +3,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store';
 import { migratedDb } from '../sqlite/test-support/migrated-db';
 import { openPreferences } from '../prefs/preferences';
 import { openJournal } from './journal';
+import type { SqliteDriver } from '../sqlite/driver';
 
 async function fixture() {
   const sourceDriver = await migratedDb();
@@ -56,5 +57,28 @@ test('Merge retains destination preferences even when contents carries incoming 
     await target.archive.merge(contents);
     expect((await target.archive.snapshot()).journal.entries).toHaveLength(2);
     expect(await targetDriver.query('SELECT key, value FROM pref ORDER BY key')).toEqual(before);
+  } finally { await sourceDriver.close(); await targetDriver.close(); }
+});
+
+
+test('refusing the authoritative preference snapshot rolls rows and preferences back before COMMIT', async () => {
+  const { targetDriver, sourceDriver, contents } = await fixture();
+  const query = targetDriver.query.bind(targetDriver);
+  const rejecting: SqliteDriver = {
+    ...targetDriver,
+    transaction: <T>(work: (driver: SqliteDriver) => T | Promise<T>) => targetDriver.transaction(async (within) => work({
+      ...within,
+      query: async <Row extends Record<string, unknown>>(sql: string, params?: unknown[]) => {
+        if (sql === 'SELECT key, value FROM pref') throw new Error('synthetic prepared read refusal');
+        return within.query<Row>(sql, params);
+      }
+    }))
+  };
+  const target = openJournal(rejecting, fakeFileStore());
+  try {
+    const before = await query('SELECT key, value FROM pref ORDER BY key');
+    await expect(target.archive.replace(contents)).rejects.toThrow('synthetic prepared read refusal');
+    expect((await target.archive.snapshot()).journal.entries[0].note).toBe('Original synthetic entry');
+    expect(await query('SELECT key, value FROM pref ORDER BY key')).toEqual(before);
   } finally { await sourceDriver.close(); await targetDriver.close(); }
 });

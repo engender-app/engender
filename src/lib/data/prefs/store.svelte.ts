@@ -96,12 +96,19 @@ export async function setPreferenceDurably<K extends PreferenceKey>(
     prefs[key] = value;
     return;
   }
+  const current = backing;
+  const landed = current.set(key, value as never);
+  const settled = landed.catch(() => {});
+  inFlight.add(settled);
   try {
-    await backing.set(key, value as never);
+    await landed;
   } catch (error) {
     console.error(`Could not save the "${key}" preference`, error);
     return;
+  } finally {
+    inFlight.delete(settled);
   }
+  if (backing !== current) return;
   // Straight onto the projection rather than through the proxy: the write
   // above is the one this would otherwise queue a second time.
   values[key] = value as never;
@@ -135,25 +142,26 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   }
 }
 
-/** Archive Replace committed its portable preferences with its rows. Reload
-    the authoritative table and its boot mirror, then refresh this projection
-    without queuing duplicate writes. A lock or newer attach owns publication. */
-export async function refreshPreferences(): Promise<boolean> {
+/** Prepare publication before Replace starts. Capture its authoritative
+    snapshot inside the transaction, then publish after success without SQL.
+    A lock or newer attachment owns both projection and boot mirror. */
+export function preparePreferencePublication() {
   const current = backing;
-  if (!current) return false;
-  await flushPreferences();
-  if (backing !== current) return false;
-  try {
-    await current.reload();
-  } catch (error) {
-    if (backing !== current) return false;
-    throw error;
-  }
-  if (backing !== current) return false;
-  for (const [key, value] of Object.entries(current.all()) as [PreferenceKey, never][]) {
-    values[key] = value;
-  }
-  return true;
+  let commitValues: (() => void) | null = null;
+  return {
+    capture(snapshot: PreferenceValues) {
+      if (current && backing === current) commitValues = current.prepareCommittedValues(snapshot);
+    },
+    async publish(): Promise<boolean> {
+      await flushPreferences();
+      if (!current || backing !== current || !commitValues) return false;
+      commitValues();
+      for (const [key, value] of Object.entries(current.all()) as [PreferenceKey, never][]) {
+        values[key] = value;
+      }
+      return true;
+    }
+  };
 }
 
 /** The locale strategy keeps its own choice; SQLite owns the preference.
