@@ -28,6 +28,11 @@ Journal text fields now disable browser autofill and session restoration on
 the web. Android keeps its existing keyboard suggestions. Text already kept
 in browser profiles is not removed.
 
+Archive restore and verification now refuse rows with missing identity,
+wrong scalar types or unsafe integers. Merge and Replace reject these rows
+before touching journal files or starting a transaction, so a malformed
+Archive cannot leave new rows that prevent later exports.
+
 - Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Released schema 88 journals upgrade through schema 89 and 90 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.

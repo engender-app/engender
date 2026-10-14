@@ -165,8 +165,6 @@ export async function runJournalContract(
     const first = await journal.entries.upsertEntry({ epochDay: 29000, mood: 3, note: 'merge first' });
     const last = await journal.entries.upsertEntry({ epochDay: 29001, mood: 3, note: 'merge last' });
     const snapshot = await journal.archive.snapshot();
-    const bad = { ...snapshot.journal, entries: snapshot.journal.entries.map((entry) =>
-      entry.epochDay === 29001 ? { ...entry, epochDay: null } : entry) };
     await driver.run('DELETE FROM entry WHERE id IN (?, ?)', [first, last]);
     let entered!: () => void;
     let release!: () => void;
@@ -177,10 +175,11 @@ export async function runJournalContract(
       transaction: (work) => driver.transaction(async (scope) => {
         entered();
         await held;
-        return work(scope);
+        await work(scope);
+        throw new Error('deliberate Merge rollback');
       })
     }, files, 'merge', {
-      journal: bad as typeof snapshot.journal, files: (async function* () {})()
+      journal: snapshot.journal, files: (async function* () {})()
     }).then(() => '', (error) => String(error.message));
     await started;
     const saving = journal.hairRemoval.upsertSession({
@@ -188,7 +187,7 @@ export async function runJournalContract(
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     release();
-    r.equal('the invalid Merge refuses an entry without a day', (await restoring).includes('entry.epoch_day'), true);
+    r.equal('the Merge reports its own rollback', await restoring, 'deliberate Merge rollback');
     const sessionId = await saving;
     r.equal('a fulfilled hair-removal save survives the failed Merge rollback',
       await driver.query('SELECT uuid FROM hair_removal_session WHERE uuid = ?', [sessionId]), [{ uuid: sessionId }]);
