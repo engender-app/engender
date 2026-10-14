@@ -1,2 +1,5 @@
 # Merge the message catalogues by key, not by line (scripts/merge-catalogue.mjs).
 messages/*.json merge=catalogue
+
+# Root evidence paths are private local work, never source-package inputs.
+/evidence* export-ignore
