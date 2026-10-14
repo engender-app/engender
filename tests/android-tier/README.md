@@ -99,4 +99,11 @@ network settings and removes both packages when the phase ends or fails.
 explicitly absent until their stages complete. A focused lock run can add its
 completed result to earlier core evidence only when both runs used equivalent
 source. The installed-upgrade stage remains unavailable until its runner lands.
+A CDP-only installed-upgrade run records four application APKs: the released
+rc.1 build, the healthy candidate, and the two named migration controls. Each
+APK has its actual SHA-256, source revision, package ID and version metadata;
+control APKs also name their fixture patch. The healthy APK hash must match the
+run's target hash, and its source and both control sources must match the tested
+revision. Core and other instrumentation runs retain their test-APK hashes.
+An installed-upgrade result alone leaves the required core roster incomplete.
 The release workflow reads the committed record from the publication checkout.

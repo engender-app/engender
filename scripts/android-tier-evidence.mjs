@@ -4,7 +4,9 @@ import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** @typedef {{revision: string, startedAt: string}} AndroidStart */
-/** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: {apkSha256: string, testApkSha256: string}, offlineOcr?: {package: string, build: {apkSha256: string, testApkSha256: string}}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
+/** @typedef {{sha256: string, sourceRevision: string, versionName: string, versionCode: number, packageId: string, patch: null | 'loss-migration-measurement' | 'loss-migration'}} UpgradeApk */
+/** @typedef {{apkSha256: string, testApkSha256?: string, upgradeApks?: {previous: UpgradeApk, healthy: UpgradeApk, rowDeleting: UpgradeApk, failing: UpgradeApk}}} AndroidBuild */
+/** @typedef {{avd: string, serial: string, api: number, nativeOnly: boolean, kind: string, completedStages: string[], completedChecks: string[], build: AndroidBuild, offlineOcr?: {package: string, build: {apkSha256: string, testApkSha256: string}}, revision?: string, startedAt?: string, passedAt?: string}} AndroidRun */
 /** @typedef {{revision: string, startedAt: string, passedAt: string, runs: AndroidRun[], optionalStages: Record<string, string | null>}} AndroidEvidence */
 
 export const ANDROID_CORE_STAGES = ['instrumentation', 'pin-wait', 'native-backup'];
@@ -13,6 +15,38 @@ const sha = /^[a-f0-9]{40}$/;
 const digest = /^[a-f0-9]{64}$/;
 /** @param {string} cwd @param {...string} args */
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+
+/** @param {AndroidBuild} build @param {string} revision @param {string} cwd */
+export function installedUpgradeBuildProblems(build, revision, cwd) {
+  const apks = build?.upgradeApks;
+  if (!apks) return ['Installed-upgrade evidence lacks complete four-APK provenance.'];
+  const roles = [apks.previous, apks.healthy, apks.rowDeleting, apks.failing];
+  if (roles.some((apk) => !apk || !digest.test(apk.sha256 ?? '') || !sha.test(apk.sourceRevision ?? '') ||
+      typeof apk.versionName !== 'string' || !apk.versionName.trim() || !Number.isInteger(apk.versionCode) ||
+      apk.versionCode < 1 || apk.versionCode > 2147483647 || apk.packageId !== 'dev.engender.app.test.upgrade40') ||
+      new Set(roles.map((apk) => apk.sha256)).size !== 4) {
+    return ['Installed-upgrade evidence lacks complete four-APK provenance.'];
+  }
+  const problems = [];
+  let released;
+  try { released = git(cwd, 'rev-parse', 'v1.0.0-rc.1^{commit}'); } catch {}
+  if (apks.previous.sourceRevision !== released || apks.previous.versionName !== '1.0.0-rc.1') {
+    problems.push('Installed-upgrade previous APK does not name the released rc.1 source.');
+  }
+  if (apks.healthy.sha256 !== build.apkSha256 || apks.healthy.sourceRevision !== revision ||
+      apks.rowDeleting.sourceRevision !== revision || apks.failing.sourceRevision !== revision) {
+    problems.push('Installed-upgrade target hash or derivative source differs from the tested candidate.');
+  }
+  if (apks.previous.patch !== null || apks.healthy.patch !== null ||
+      apks.rowDeleting.patch !== 'loss-migration-measurement' || apks.failing.patch !== 'loss-migration') {
+    problems.push('Installed-upgrade APK patch roles are missing or mismatched.');
+  }
+  if (apks.healthy.versionCode <= apks.previous.versionCode ||
+      apks.rowDeleting.versionCode < apks.healthy.versionCode || apks.failing.versionCode < apks.healthy.versionCode) {
+    problems.push('Installed-upgrade APK version codes do not describe an upgrade.');
+  }
+  return problems;
+}
 
 /** @param {string} cwd @param {unknown} revision @param {string} [head] */
 export function sameAndroidSource(cwd, revision, head = 'HEAD') {
@@ -61,9 +95,16 @@ export function androidTierProblems(evidence, candidateRevision, cwd) {
       problems.push('Android-tier run lacks matching source revision or completion timestamps.');
     }
     if (!run || typeof run !== 'object' || !run.avd || !run.serial || !Number.isInteger(run.api) ||
-        !digest.test(run.build?.apkSha256 ?? '') || !digest.test(run.build?.testApkSha256 ?? '') ||
+        !digest.test(run.build?.apkSha256 ?? '') || (run.kind !== 'installed-upgrade' && !digest.test(run.build?.testApkSha256 ?? '')) ||
         !Array.isArray(run.completedStages) || !Array.isArray(run.completedChecks) || !run.completedChecks.length) {
       problems.push('Android-tier run lacks device, build or completed-stage identity.');
+    }
+    const upgradeStage = Array.isArray(run?.completedStages) && run.completedStages.includes('installed-upgrade');
+    if (run?.kind === 'installed-upgrade' || upgradeStage) {
+      if (run?.kind !== 'installed-upgrade' || !upgradeStage) {
+        problems.push('Installed-upgrade evidence needs its own run kind and completed stage.');
+      }
+      problems.push(...installedUpgradeBuildProblems(run?.build, run?.revision ?? '', cwd));
     }
   }
   /** @param {AndroidRun} run */
@@ -94,6 +135,14 @@ export function writeAndroidTierEvidence(cwd, start, runs) {
   }
   if (!runs.length || runs.some((run) => !run.completedStages.length || !run.completedChecks.length)) {
     throw new Error('Android run has no completed stages; no passing evidence was written.');
+  }
+  for (const run of runs) {
+    if (run.kind === 'installed-upgrade' || run.completedStages.includes('installed-upgrade')) {
+      const problems = installedUpgradeBuildProblems(run.build, start.revision, cwd);
+      if (run.kind !== 'installed-upgrade' || !run.completedStages.includes('installed-upgrade') || problems.length) {
+        throw new Error('Installed-upgrade evidence is incomplete; no passing evidence was written.');
+      }
+    }
   }
   const path = join(cwd, RECORD);
   const record = JSON.parse(readFileSync(path, 'utf8'));

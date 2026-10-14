@@ -848,6 +848,9 @@ actual completed checks and APK hashes only after a clean passing run. Current
 Android must also complete isolated first-use OCR in airplane mode with its own
 APK identity. `offline-ocr-stage.test.ts` uses fake device replies to verify
 fresh installs, failure cleanup and restoration of network settings.
+`installed-upgrade-evidence.test.ts` checks four-APK provenance for a CDP-only
+upgrade, refuses mismatched sources and fabricated control roles, and keeps
+optional-only evidence insufficient for the core release gate.
 
 ## Node calendar zones
 

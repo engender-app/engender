@@ -26,10 +26,10 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class JournalWebViewInputTest {
     private static final String FIELDS = "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        + "<textarea id='note' autocorrect='on' spellcheck='true'></textarea>"
-        + "<input id='name' type='text' enterkeyhint='go' autocorrect='on' spellcheck='true'>"
-        + "<input id='search' type='search' enterkeyhint='search'>"
-        + "<input id='password' type='password'>";
+        + "<textarea id='note' autocorrect='on' spellcheck='true'>NN</textarea>"
+        + "<input id='name' type='text' value='NNNN' enterkeyhint='go' autocorrect='on' spellcheck='true'>"
+        + "<input id='search' type='search' value='NNNNNN' enterkeyhint='search'>"
+        + "<input id='password' type='password' value='NNNNNNNN'>";
 
     @Test public void noteRequestsNoLearningAndKeepsMultilineInput() throws Exception { check("note"); }
     @Test public void textRequestsNoLearningAndKeepsItsAction() throws Exception { check("name"); }
@@ -57,16 +57,20 @@ public class JournalWebViewInputTest {
                             CapacitorWebView view = baseline.get();
                             view.requestFocus();
                             view.evaluateJavascript("(function(){var field=document.getElementById('" + field
-                                + "');if(!field)return false;field.focus();return document.activeElement===field})()", result -> {
-                                if (!"true".equals(result)) return;
+                                + "');if(!field)return false;field.focus();field.setSelectionRange(field.value.length,field.value.length);return field.value.length})()", result -> {
+                                if ("false".equals(result)) return;
+                                int marker = Integer.parseInt(result);
                                 EditorInfo info = new EditorInfo();
                                 if (view.onCreateInputConnection(info) != null
-                                    && (info.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT) seen.set(info);
+                                    && (info.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT
+                                    && info.initialSelStart == marker && info.initialSelEnd == marker) seen.set(info);
                             });
                         });
                         if (seen.get() == null) Thread.sleep(250);
                     }
                     assertNotNull("baseline focused field has no input connection: " + field, seen.get());
+                    if ("name".equals(field)) assertEquals(EditorInfo.IME_ACTION_GO, seen.get().imeOptions & EditorInfo.IME_MASK_ACTION);
+                    if ("search".equals(field)) assertEquals(EditorInfo.IME_ACTION_SEARCH, seen.get().imeOptions & EditorInfo.IME_MASK_ACTION);
                     System.out.println("Capacitor baseline " + field + ": inputType=" + seen.get().inputType
                         + " imeOptions=" + seen.get().imeOptions + " action=" + (seen.get().imeOptions & EditorInfo.IME_MASK_ACTION));
                 }
@@ -93,7 +97,8 @@ public class JournalWebViewInputTest {
             });
             WebViewProbe page = new WebViewProbe(scenario, 10);
             page.awaitTrue("Boolean(document.getElementById('password'))");
-            page.evaluate("document.getElementById('" + field + "').focus()");
+            int marker = Integer.parseInt(page.evaluate("(function(){var field=document.getElementById('" + field
+                + "');field.focus();field.setSelectionRange(field.value.length,field.value.length);return field.value.length})()"));
             page.awaitTrue("document.activeElement.id === '" + field + "'");
             AtomicReference<EditorInfo> seen = new AtomicReference<>();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
@@ -103,7 +108,9 @@ public class JournalWebViewInputTest {
                     view.requestFocus();
                     EditorInfo info = new EditorInfo();
                     InputConnection connection = view.onCreateInputConnection(info);
-                    if (connection != null) seen.set(info);
+                    // DOM focus can precede the native editor update. Each
+                    // field's selection endpoint identifies its current state.
+                    if (connection != null && info.initialSelStart == marker && info.initialSelEnd == marker) seen.set(info);
                 });
                 if (seen.get() == null) Thread.sleep(250);
             }
