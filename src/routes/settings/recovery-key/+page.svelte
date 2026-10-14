@@ -17,7 +17,15 @@
   import { m } from '$lib/paraglide/messages';
   import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
-  import { journalDataKey } from '$lib/stores/boot.svelte';
+  import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
+  import { isLockedNow } from '$lib/stores/lock.svelte';
+  import {
+    forgetHeldRecoveryKey,
+    holdShownRecoveryKey,
+    openHeldRecoveryKey,
+    recoveryKeyHeld
+  } from '$lib/data/recovery-key-held';
+  import { onDestroy } from 'svelte';
   import { copyRecoveryKey } from '$lib/data/recovery-key-clipboard';
   import { isAndroid } from '$lib/platform';
   import { printCurrentPage } from '$lib/print/print';
@@ -29,7 +37,8 @@
   import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
 
   /** The minted key, present only between minting and leaving the screen.
-      Held in one place and never written anywhere else. */
+      Never written anywhere; the copy that outlives a lock is sealed
+      (data/recovery-key-held.ts). */
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
   let busy = $state(false);
@@ -48,7 +57,10 @@
          the journal opens, and this screen can be reached by a goto that
          beats it. journalDataKey() is the same door the entry-draft mirror
          goes through. */
-      shown = await mintRecoveryKey(await journalDataKey());
+      const dataKey = await journalDataKey();
+      const minted = await mintRecoveryKey(dataKey);
+      holdShownRecoveryKey(minted, dataKey);
+      shown = minted;
       await refreshRecoveryKeyPresence();
       confirming = null;
     } catch {
@@ -97,13 +109,38 @@
      reload, a closed tab or an external navigation. */
   const guard = leaveGuard({
     holding: () => shown !== null,
-    onDiscard: () => { shown = null; }
+    onDiscard: () => {
+      shown = null;
+      forgetHeldRecoveryKey();
+    }
+  });
+
+  /* A lock is the one departure that cannot ask: it unmounts this screen
+     and, since replacing had already killed the old key, used to take the
+     only copy of the new one with it (last-audit UI 09). A key the lock took
+     before Done is shown again once the journal is open, and the screen
+     waits for that answer before it draws anything, so it never says "a key
+     is active" first and then swaps. Any other way off the screen has been
+     through the guard above, and forgets it. */
+  let heldRead = $state(!recoveryKeyHeld());
+  if (recoveryKeyHeld()) {
+    journalDataKey()
+      .then(openHeldRecoveryKey)
+      .then((held) => { shown = held; })
+      .catch((error) => {
+        console.error('could not open the recovery key held across the lock', error);
+        forgetHeldRecoveryKey();
+      })
+      .finally(() => { heldRead = true; });
+  }
+  onDestroy(() => {
+    if (!isLockedNow(bootState.accessMode)) forgetHeldRecoveryKey();
   });
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
   let presenceRevealed = $state(false);
   $effect.pre(() => {
-    if (recoveryKeyPresence.known) presenceRevealed = true;
+    if (recoveryKeyPresence.known && heldRead) presenceRevealed = true;
   });
   const presenceEstimate = readReserve('recovery-key');
   const presenceRemember = (px: number) => rememberReserve('recovery-key', px);
@@ -145,6 +182,7 @@
           onclick={() => {
             guard.keep();
             shown = null;
+            forgetHeldRecoveryKey();
             toast(m.rk_made_toast());
           }}>{m.rk_done()}</button
         >

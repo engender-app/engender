@@ -27,6 +27,31 @@ async function keepWriting(expectedKey) {
   assert.equal(new URL(page.url()).pathname, '/settings/recovery-key');
 }
 
+// The demo journal is a passphrase journal; a hidden page under "immediately"
+// is the same lock switching apps triggers.
+async function lockImmediately() {
+  await page.evaluate(async () => {
+    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+    window.rkLockAfter ??= prefs.lockAfter;
+    prefs.lockAfter = 'immediately';
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.locator('[data-applock]').waitFor();
+  await page.waitForFunction(async () => {
+    const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+    return bootState.journal === null;
+  });
+}
+
+async function unlock() {
+  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('[data-session-submit]').click();
+  await page.locator('[data-applock]').waitFor({ state: 'detached' });
+}
+
 try {
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
@@ -37,7 +62,7 @@ try {
 
   await navigate('/settings/recovery-key');
   await page.locator('[data-make-recovery-key]').click();
-  const shown = (await page.locator('[data-recovery-key]').innerText()).trim();
+  let shown = (await page.locator('[data-recovery-key]').innerText()).trim();
 
   await page.locator('[data-screen-back]').click();
   assert.match(await page.locator('[data-sheet]').last().innerText(), /reload this page or close the app/);
@@ -59,6 +84,55 @@ try {
   const stored = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
   assert.equal(stored.includes(shown), false);
   console.log('PASS displayed recovery key is absent from web storage');
+
+  // A lock is the one departure that cannot ask (last-audit UI 09): leaving
+  // the app under "immediately" unmounts the screen, and the key used to go
+  // with it while the screen came back saying a key was active.
+  await lockImmediately();
+  assert.equal((await page.content()).includes(shown), false, 'the locked gate holds no key text');
+  const lockedStorage = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  assert.equal(lockedStorage.includes(shown), false);
+  console.log('PASS the locked gate and web storage hold no recovery key text');
+
+  // Recorded from the unlock on: the screen must come back to the key
+  // without first drawing the active-key rows it would otherwise fall to.
+  await page.evaluate(() => {
+    window.rkPaintedBeforeKey = [];
+    const watch = () => {
+      if (document.querySelector('[data-recovery-key]')) return;
+      for (const selector of ['[data-list-row="replace-recovery-key"]', '[data-make-recovery-key]']) {
+        if (document.querySelector(selector)) window.rkPaintedBeforeKey.push(selector);
+      }
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
+  await unlock();
+  await page.locator('[data-recovery-key]').waitFor();
+  assert.equal((await page.locator('[data-recovery-key]').innerText()).trim(), shown, 'the same key comes back after unlocking');
+  assert.equal(new URL(page.url()).pathname, '/settings/recovery-key');
+  assert.deepEqual(await page.evaluate(() => window.rkPaintedBeforeKey), [], 'no frame drew the active-key state first');
+  console.log(`PASS unlocking returns the same unacknowledged key (focus on ${await page.evaluate(() => document.activeElement?.tagName)})`);
+
+  await page.locator('[data-screen-back]').click();
+  await keepWriting(shown);
+  console.log('PASS the returned key keeps its departure guard');
+
+  await page.locator('[data-recovery-key-done]').click();
+  await page.locator('[data-recovery-key]').waitFor({ state: 'detached' });
+  await lockImmediately();
+  await unlock();
+  await page.locator('[data-list-row="replace-recovery-key"]').waitFor();
+  assert.equal(await page.locator('[data-recovery-key]').count(), 0);
+  console.log('PASS an acknowledged key does not come back after another lock');
+  await page.evaluate(async () => {
+    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+    prefs.lockAfter = window.rkLockAfter;
+  });
+
+  await page.locator('[data-list-row="replace-recovery-key"]').click();
+  await page.locator('[data-confirm-replace]').click();
+  shown = (await page.locator('[data-recovery-key]').innerText()).trim();
 
   await page.locator('[data-recovery-key-done]').click();
   await page.locator('[data-screen-back]').click();
