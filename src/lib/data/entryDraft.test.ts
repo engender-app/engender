@@ -543,3 +543,23 @@ test('effect markers toggle on and off, keep their order, and never double up (t
     ['hair_changes', 'breast_development']
   );
 });
+
+test('contextual text keeps its draft whitespace and trims only the save payload', () => {
+  const draft = createEntryDraft(19000);
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 4, note: '  felt like me  ' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: '  felt like me\nmore today  ' });
+  const payload = draft.toUpsert();
+  assert.equal(payload.tryoutFeltSense?.note, 'felt like me');
+  assert.equal(payload.procedureRecovery?.notes, 'felt like me\nmore today');
+  assert.equal(draft.tryoutFeltSense?.note, '  felt like me  ');
+  assert.equal(draft.procedureRecovery?.notes, '  felt like me\nmore today  ');
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 4, note: '  ' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: ' \n ' });
+  assert.equal(draft.toUpsert().tryoutFeltSense?.note, null);
+  assert.equal(draft.toUpsert().procedureRecovery, undefined);
+  const recoveryPhoto = photo(1);
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: ' \n ', photo: recoveryPhoto });
+  assert.deepEqual(draft.toUpsert().procedureRecovery, {
+    procedureId: 'proc-1', notes: undefined, photo: recoveryPhoto
+  });
+});

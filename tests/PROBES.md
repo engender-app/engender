@@ -1,5 +1,11 @@
 # Verification probes and focused regressions
 
+The browser tier's `entry-contextual-text.mjs` types `felt like me` key by key
+into the real entry editor over encrypted SQLite, for new and existing entries.
+It checks spaces and recovery-note line breaks before saving, trimmed saved
+values, and deletion of a typed recovery note before saving.
+`entryDraft.test.ts` checks that save normalization leaves draft text intact.
+
 Archive validation tests cover single-read export length changes, malformed
 payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
 positive header fields and exact JSON/chunk ceilings (`container.test.ts`),

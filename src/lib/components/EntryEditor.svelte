@@ -587,7 +587,7 @@
 
   function updateProcedureRecovery() {
     if (!recoveringProcedure) return;
-    const notes = procRecoveryNote.trim() || entryDraft.procedureRecovery?.notes;
+    const notes = procRecoveryNote;
     if (!notes && !procRecoveryPhoto) {
       entryDraft.setProcedureRecovery(null);
     } else {
@@ -1277,7 +1277,7 @@
                 entryDraft.setTryoutFeltSense({
                   tryoutId: activeTryout.id,
                   mood: opt.step,
-                  note: tryoutReflection.trim() || null,
+                  note: tryoutReflection,
                   epochDay: day
                 });
               }
@@ -1293,11 +1293,11 @@
           class="input contextual-input"
           placeholder={m.entry_tryout_reflection_placeholder()}
           bind:value={tryoutReflection}
-          oninput={() => {
+          oninput={(event) => {
             if (entryDraft.tryoutFeltSense) {
               entryDraft.setTryoutFeltSense({
                 ...entryDraft.tryoutFeltSense,
-                note: tryoutReflection.trim() || null
+                note: event.currentTarget.value
               });
             }
           }}
@@ -1367,7 +1367,10 @@
         rows="2"
         placeholder={m.entry_procedure_recovery_notes_placeholder()}
         bind:value={procRecoveryNote}
-        oninput={updateProcedureRecovery}
+        oninput={(event) => {
+          procRecoveryNote = event.currentTarget.value;
+          updateProcedureRecovery();
+        }}
       ></textarea>
       <div class="procedure-photo-row">
         {#if procRecoveryPhoto}
