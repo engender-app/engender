@@ -16,6 +16,9 @@ Android reminders reschedule after clock changes and exact-alarm permission
 grants, even while the journal is closed. After permission is revoked, the next
 app launch or boot restores inexact alarms, including when launch stops at
 the journal gate.
+A pending reminder missed while the phone is off is delivered once at boot,
+with quiet hours and title hiding preserved. Recurring reminders then resume
+at the next future occurrence; one-off reminders stay one-off.
 
 An open web page keeps its cached release assets when another page applies an
 update. Deferred screens and journal reopening continue offline; retained

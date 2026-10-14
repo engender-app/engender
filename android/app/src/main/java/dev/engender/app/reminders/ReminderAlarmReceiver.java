@@ -51,11 +51,10 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
     private void handleReminder(Context context, JSONObject payload, String reminderId) {
         if (reminderId == null || reminderId.isBlank()) return;
 
-        JSONObject reminder = findReminder(payload.optJSONArray("reminders"), reminderId);
+        JSONObject reminder = ReminderScheduler.findReminder(payload, reminderId);
         if (reminder == null || !reminder.optBoolean("enabled", false)) return;
 
-        postReminderNotification(context, payload, reminder);
-        ReminderScheduler.scheduleOneReminder(context, payload, reminder, ZonedDateTime.now());
+        ReminderScheduler.deliverReminder(context, payload, reminder, ZonedDateTime.now());
     }
 
     private void handleCheckIn(Context context, JSONObject payload) {
@@ -75,7 +74,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         ReminderScheduler.scheduleCheckIn(payload, now, scheduleAlarm);
     }
 
-    private void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
+    static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
         if (!notificationsAllowed(context)) return;
 
         String title = resolveNotificationTitle(payload, reminder);
@@ -166,17 +165,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         return reminder.optString("title", fallbackTitle);
     }
 
-    private JSONObject findReminder(JSONArray reminders, String reminderId) {
-        if (reminders == null) return null;
-        for (int i = 0; i < reminders.length(); i++) {
-            JSONObject reminder = reminders.optJSONObject(i);
-            if (reminder == null) continue;
-            if (reminderId.equals(reminder.optString("id", ""))) return reminder;
-        }
-        return null;
-    }
-
-    private boolean notificationsAllowed(Context context) {
+    private static boolean notificationsAllowed(Context context) {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true;
         return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)

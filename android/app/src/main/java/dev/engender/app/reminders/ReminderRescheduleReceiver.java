@@ -21,6 +21,7 @@ public class ReminderRescheduleReceiver extends BroadcastReceiver {
         ) {
             return;
         }
-        ReminderScheduler.rescheduleFromStore(context);
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action)) ReminderScheduler.rescheduleAfterBoot(context);
+        else ReminderScheduler.rescheduleFromStore(context);
     }
 }
