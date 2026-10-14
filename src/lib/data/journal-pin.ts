@@ -49,6 +49,7 @@ import {
   type DeviceBinding
 } from './device-secret';
 import { androidPinBinding } from './pin-binding-bridge';
+import { androidPinAttempts } from '../lock/lock-timing-bridge';
 
 /** Where a PIN keystore's two halves live. Defaults to this platform's own;
     the tests hand in memory. */
@@ -67,6 +68,11 @@ export interface PinPorts {
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  /** Android admits durably before derivation; web counts at its gate. */
+  attempts?: {
+    begin(): Promise<string>;
+    finish(token: string, successful: boolean): Promise<void>;
+  };
 }
 
 const keystoreFile = { journalExists: journalAccessExists, readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
@@ -77,6 +83,7 @@ const platformPorts = (): PinPorts =>
         binding: keystoreDeviceBinding(androidPinBinding),
         bindingKind: 'keystore',
         legacyBinding: browserDeviceBinding(browserKeySlot(PIN_BINDING_SLOT)),
+        attempts: androidPinAttempts,
         ...keystoreFile
       }
     : {
@@ -155,30 +162,39 @@ export async function unlockJournalPin(
 ): Promise<Uint8Array<ArrayBuffer>> {
   return authenticateCredentials(async () => {
     current();
-    const dataKey = await unlockPin(pin, ports);
-    try {
-      current();
-      return dataKey;
-    } catch (error) {
-      dataKey.fill(0);
-      throw error;
-    }
+    return unlockPin(pin, ports, current);
   });
 }
 
-async function unlockPin(pin: string, ports: PinPorts): Promise<Uint8Array<ArrayBuffer>> {
+async function unlockPin(pin: string, ports: PinPorts, current: () => void): Promise<Uint8Array<ArrayBuffer>> {
   const metadata = await requirePinKeystore(ports);
   const wrappedUnder = metadata.pinBinding ?? 'browser';
-  if (wrappedUnder !== ports.bindingKind) return rebindOnUnlock(metadata, pin, ports);
-
-  const dataKey = await unlockKeystore(metadata, combinePinWithDevice(pin, await ports.binding.read()));
-  /* A migration that wrote its keystore and then lost the process before
-     clearing the old key leaves one behind, and on a phone the whole point
-     of this ticket is that no PIN key sits in the WebView's store. It opens
-     nothing now, so this is tidying rather than repair - but tidying that
-     nothing else would ever do. */
-  await forgetLegacyBinding(ports);
-  return dataKey;
+  const rebinding = wrappedUnder !== ports.bindingKind;
+  const binding = rebinding ? requireLegacyBinding(metadata, ports) : ports.binding;
+  const secret = combinePinWithDevice(requireValidPin(pin), await binding.read());
+  current(); // Metadata, binding and cancellation refusals do not admit a guess.
+  const token = await ports.attempts?.begin();
+  let dataKey: Uint8Array<ArrayBuffer> | undefined;
+  let settled = false;
+  try {
+    dataKey = await unlockKeystore(metadata, secret);
+    current();
+    if (rebinding) await rebindOnUnlock(dataKey, pin, ports);
+    await forgetLegacyBinding(ports);
+    current();
+    if (token !== undefined) {
+      settled = true;
+      await ports.attempts!.finish(token, true);
+    }
+    current();
+    return dataKey;
+  } catch (error) {
+    dataKey?.fill(0);
+    // An interrupted or cancelled derivation remains accounted for. A failed
+    // durable settlement must not escape as an acknowledged wrong PIN.
+    if (token !== undefined && !settled) await ports.attempts!.finish(token, false);
+    throw error;
+  }
 }
 
 /** An Android PIN journal from before ticket sec-02-06, rewrapped under the
@@ -191,19 +207,12 @@ async function unlockPin(pin: string, ports: PinPorts): Promise<Uint8Array<Array
     journal that opens under the old binding, and one after it leaves a
     journal that opens under the new one. Never neither. */
 async function rebindOnUnlock(
-  metadata: KeystoreMetadata,
+  dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
   ports: PinPorts
-): Promise<Uint8Array<ArrayBuffer>> {
-  /* Unwrapped under the old binding first, so a wrong PIN throws with the
-     keystore on disk exactly as it was and the old key still the one that
-     opens it. */
-  const legacySecret = combinePinWithDevice(pin, await requireLegacyBinding(metadata, ports).read());
-  const dataKey = await unlockKeystore(metadata, legacySecret);
+): Promise<void> {
   const secret = combinePinWithDevice(pin, await ports.binding.create());
   await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
-  await forgetLegacyBinding(ports);
-  return dataKey;
 }
 
 /** Rewraps the same data key under a new PIN (the journal is never

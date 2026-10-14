@@ -12,6 +12,10 @@ Source packages exclude root local-evidence paths, and CI rejects them if they
 are tracked. Application evidence routes and intentional fixtures remain in
 the source package.
 
+Android saves each PIN attempt before checking it. Closing or restarting the app
+keeps the count and its growing wait. A correct PIN clears both; missing access
+settings or device keys still do not count as guesses.
+
 Android no longer requests unused network-state and foreground-service
 permissions. Scheduled encrypted backups retain their wake lock, which both
 privacy policies now explain. Release checks inspect the complete APK

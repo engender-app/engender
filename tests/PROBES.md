@@ -110,6 +110,27 @@ storage and compatibility checks.
 
 Build with `ANDROID_TIER_PROBE=credential-power-cut npx vite build --config tests/android-tier/android-tier.vite.config.ts`, after `npm run build && npx cap sync android`. Build app and instrumentation APKs with an isolated application ID, then supply `CREDENTIAL_POWER_CUT_AVD`, `CREDENTIAL_POWER_CUT_PACKAGE`, `CREDENTIAL_POWER_CUT_APK` and `CREDENTIAL_POWER_CUT_TEST_APK`. The runner owns only its supplied emulator process and CDP forward. Remove its test package and AVD after delivery.
 
+`pin-count` (`tests/android-tier/pin-count/run.mjs`) mounts the production PIN
+pad and authenticates a disposable native-bound PIN against a SQLCipher record.
+It cuts the isolated app before unlock, after durable admission and after an
+acknowledged wrong PIN, over fresh and already-durable counts. SIGKILL, force-stop,
+actual activity dismissal and reboot have separate evidence; reboot checks a
+changed boot ID. A separate case keeps the real KDF worker and holds its reply
+before terminating the app, so the derivation call has not completed. It verifies surviving counts, the next escalation, staging-write
+refusals and a durable successful reset despite a stale local mirror. The fixture
+uses a small KDF to isolate accounting, so this does not measure guessing speed
+or establish behavior on untested Android/WebView versions.
+
+After `npm run build && npx cap sync android`, build the fixture with
+`ANDROID_TIER_PROBE=pin-count npx vite build --config tests/android-tier/android-tier.vite.config.ts`
+and build isolated app/test APKs. Run with `--resources <owned emulator JSON>
+--output <evidence directory>`. The resource record must name `pid`, `serial`,
+`avd`, `package` and `cdpPort`; the runner verifies the live QEMU command and AVD
+before each device command. It removes its CDP forward and stops its instrumentation
+client and isolated app. Remove its packages and owned AVD after delivery.
+`PinAttemptWaitTest` covers failed persistence, migration and stale completions;
+`PinAttemptWaitPersistenceTest` also checks native serialization and reboot state.
+
 `ocr-offline` (`tests/android-tier/ocr-offline.mjs`) runs the production Tesseract engine and lab parser on synthetic English and Polish images in a fresh Android test installation. It enables airplane mode and disables Wi-Fi before installing the app, then checks recognition, numeric/date extraction, real progress and lazy startup. The native fixture copies OCR files unchanged from the installed APK into its Capacitor local-server probe, rather than fetching or substituting an engine.
 
 Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vite build --config tests/android-tier/android-tier.vite.config.ts`. Build isolated app/test APKs and supply `OCR_OFFLINE_AVD`, `OCR_OFFLINE_PACKAGE`, `OCR_OFFLINE_APK`, `OCR_OFFLINE_TEST_APK`; the package must be `dev.engender.app.test.*`. Set `ulimit -c 0` before the runner and use a disposable AVD. It records emulator ownership, restores its network settings, uninstalls its two packages and stops its emulator. Delete the owned AVD after delivery. This proves the tested Android WebView and real recognition engine; it does not replace physical-device or PWA installation checks.
