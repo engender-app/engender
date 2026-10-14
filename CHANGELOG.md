@@ -67,6 +67,10 @@ Imports made in rc.1 on a device west of UTC landed one day early. Already
 imported rows keep their dates; remove the affected imports and import the
 original Day One export again to correct them.
 
+Search queries held for returning from an entry stay in memory and are
+cleared on lock. They no longer leave plaintext copies in browser storage.
+Reloading an entry clears the held query and filters.
+
 - Schema changes: the first release establishes schema 86; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
 - Archive format changes: the first release establishes archive format 2. Archives from development builds are not a supported restore path.
 - Security migrations: none for this first release. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
