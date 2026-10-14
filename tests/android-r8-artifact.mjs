@@ -3,6 +3,14 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+const runtimeAnnotations = [
+  { name: 'com.getcapacitor.PluginMethod', methods: ['returnType'] },
+  { name: 'com.getcapacitor.annotation.CapacitorPlugin', methods: ['name', 'permissions', 'requestCodes'] },
+  { name: 'com.getcapacitor.annotation.Permission', methods: ['alias', 'strings'] },
+  { name: 'com.getcapacitor.annotation.ActivityCallback', methods: [] },
+  { name: 'com.getcapacitor.annotation.PermissionCallback', methods: [] }
+];
+
 /**
  * Inspect the artifact, rather than assuming minifyEnabled ran R8.
  * @param {string} mapping
@@ -22,6 +30,16 @@ export function verifyR8Mapping(mapping, plugins) {
       current = { target: header[2], members: [] };
       classes.set(header[1], current);
     } else if (current && /^\s/.test(line)) current.members.push(line);
+  }
+  for (const { name, methods } of runtimeAnnotations) {
+    const annotation = classes.get(name);
+    assert.equal(annotation?.target, name, `runtime annotation removed or renamed: ${name}`);
+    for (const method of methods) {
+      // R8 omits unchanged abstract members from the mapping.
+      const members = annotation.members.filter((line) => line.includes(` ${method}(`));
+      assert(members.every((line) => line.endsWith(` -> ${method}`)),
+        `runtime annotation member renamed: ${name}.${method}`);
+    }
   }
   for (const { name, methods } of plugins) {
     const plugin = classes.get(name);

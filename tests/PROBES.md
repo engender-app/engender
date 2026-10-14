@@ -328,8 +328,12 @@ allocation estimates, which can remain after readable files are removed.
 `android-r8-artifact` checks the release R8 mapping against the native plugin
 registry and source annotations. Run after an Android release build with
 `node tests/android-r8-artifact.mjs [mapping.txt]`. It rejects removed or renamed
-bridge methods and callbacks, requires an R8 compiler/version stamp, and checks
-that app helpers were obfuscated. It does not prove runtime behavior, Play's
+bridge methods, callbacks and runtime annotation interfaces. It also rejects
+renamed annotation members reported in the mapping; R8 omits unchanged abstract
+members. These interfaces must stay instantiable in R8 full mode: annotation
+attributes alone did not preserve permission lookup through the bridge.
+The guard requires an R8 compiler/version stamp and obfuscated app helpers.
+It does not prove runtime behavior, Play's
 optimization percentages, or a byte-identical rebuild from a signed tag.
 
 ## Walkthrough groups
