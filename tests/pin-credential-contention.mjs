@@ -192,7 +192,7 @@ try {
   const gates = process.argv.includes('--adapter-only') ? [] : ['cold', 'session', 'settings'];
   for (const locale of ['en', 'pl']) for (const gate of gates) {
     await block(`PIN ${gate}: ${locale}`, 15, async () => {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce', locale });
       await context.addInitScript((locale) => localStorage.setItem('PARAGLIDE_LOCALE', locale), locale);
       const page = await context.newPage();
       const errors = [];

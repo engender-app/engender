@@ -29,7 +29,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, RESET_PERSONA_EXPRESSION } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -225,7 +225,7 @@ try {
     }
     if (!only || only.includes('nav')) {
       for (const lang of ['en', 'pl']) for (const text of NAV_TEXT) {
-        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), lang);
+        await setAppLanguage(page, lang);
         await settlePage(page, base, '/', 'light');
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         await settle(page, '[data-app-nav] [data-nav-item]');
@@ -240,7 +240,7 @@ try {
         results.nav.push({ lang, width, text, ...nav });
         console.log(`${label}: bar ${nav.bar.height}px${nav.layout ? ` (${nav.layout})` : ''}, ${nav.rows.map((r) => `${r.name} ${r.w}x${r.h} ${r.lines}l${r.clipped ? ' CLIPPED' : ''}`).join(', ')}`);
       }
-      await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+      await setAppLanguage(page, 'en');
     }
   }
 

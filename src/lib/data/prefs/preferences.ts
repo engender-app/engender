@@ -15,6 +15,8 @@
    as authoritative. */
 
 import type { SqliteDriver } from '../sqlite/driver.ts';
+import type { PortablePreferences } from '../archive/payload';
+import { portablePreferencePatch } from './portableShape';
 import {
   BOOT_KEYS,
   PREFERENCE_DEFAULTS,
@@ -40,10 +42,29 @@ export interface Preferences {
   all(): PreferenceValues;
   get<K extends PreferenceKey>(key: K): PreferenceValues[K];
   set<K extends PreferenceKey>(key: K, value: PreferenceValues[K]): Promise<void>;
+  /** Refresh after a bulk operation committed directly through SQLite. */
+  reload(): Promise<void>;
   /** True when the table held no preferences at the moment this handle
       opened: a genuinely fresh install, as distinct from one whose
       preferences all happen to sit at their defaults. */
   openedEmpty(): boolean;
+}
+
+/** Called with the scoped driver inside Archive Replace's row transaction. */
+export async function restorePortablePreferencesWithin(
+  driver: SqliteDriver,
+  portable: Partial<PortablePreferences> | null | undefined
+): Promise<void> {
+  for (const [key, value] of Object.entries(portablePreferencePatch(portable))) {
+    await writePreference(driver, key as PreferenceKey, value);
+  }
+}
+
+async function writePreference(driver: SqliteDriver, key: PreferenceKey, value: unknown): Promise<void> {
+  const serialized = JSON.stringify(value);
+  await driver.run('INSERT INTO pref (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = ?', [
+    key, serialized, serialized
+  ]);
 }
 
 function bootSubset(values: PreferenceValues): BootPreferences {
@@ -56,7 +77,7 @@ function bootSubset(values: PreferenceValues): BootPreferences {
   return boot;
 }
 
-export async function openPreferences(driver: SqliteDriver, cache?: PreferenceCache): Promise<Preferences> {
+async function readPreferences(driver: SqliteDriver) {
   const rows = await driver.query<{ key: string; value: string }>('SELECT key, value FROM pref');
   const values: PreferenceValues = { ...PREFERENCE_DEFAULTS };
 
@@ -78,20 +99,27 @@ export async function openPreferences(driver: SqliteDriver, cache?: PreferenceCa
   if (legacyLock && !rows.some((row) => row.key === 'lockAfter')) {
     values.lockAfter = JSON.parse(legacyLock.value) === true ? 'immediately' : 'restart';
   }
+  return { rows, values };
+}
 
+export async function openPreferences(driver: SqliteDriver, cache?: PreferenceCache): Promise<Preferences> {
+  const initial = await readPreferences(driver);
+  let values = initial.values;
   cache?.write(bootSubset(values));
 
   return {
     all: () => ({ ...values }),
     get: (key) => values[key],
-    openedEmpty: () => rows.length === 0,
+    openedEmpty: () => initial.rows.length === 0,
+
+    async reload() {
+      const refreshed = await readPreferences(driver);
+      values = refreshed.values;
+      cache?.write(bootSubset(values));
+    },
 
     async set(key, value) {
-      await driver.run('INSERT INTO pref (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = ?', [
-        key,
-        JSON.stringify(value),
-        JSON.stringify(value)
-      ]);
+      await writePreference(driver, key, value);
       values[key] = value;
       // Refreshed whole rather than per key: the cache is small, and a
       // partial refresh is how it drifts from the table it mirrors.

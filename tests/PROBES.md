@@ -492,3 +492,12 @@ controller, then checks interrupted update and first offline English/Polish
 scans after activation. The asset recipe ships the frozen runtime under
 `scripts/vendor/legacy-ocr/`. Node regressions check cache retention, staged
 fallback, release-copy identity and missing/changed-byte refusal.
+
+`restore-preferences-check` (`node tests/restore-preferences-check.mjs`) uses
+production Archive encryption and Replace against isolated persistent Chromium
+profiles. At seed 3204 it kills the recorded browser process before preference
+writes, between those writes, before COMMIT and after the real COMMIT reply.
+Cold boot must recover a complete row/preference pair with readable encrypted
+attachments. Healthy checks cover English, Polish and system-language restore,
+the Settings Language row, export/reopen parity and Merge's destination policy.
+The runner closes its own server and browsers and removes every profile.

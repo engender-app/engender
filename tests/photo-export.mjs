@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { PALETTES } from './palettes.mjs';
-import { launchChromium, fillDate, dateValue } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium, fillDate, dateValue } from './browser-harness.mjs';
 
 const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
@@ -286,7 +286,7 @@ try {
   assert.match(await page.locator('[data-app-savebar]').innerText(), /Selected photos: 0/);
   assert.equal(await page.getByRole('radiogroup', { name: 'What to make' }).count(), 1);
   if (gallery) await page.screenshot({ path: `${out}/empty-library.png` });
-  await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'pl'));
+  await setAppLanguage(page, 'pl');
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('[data-generate]').waitFor();
   assert.equal(await page.locator('[data-generate]').innerText(), 'Utwórz kolaż');

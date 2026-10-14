@@ -120,12 +120,12 @@ export async function runRestore(
     const { payload, files } = await openArchive(picked!.bytes(), password);
     // The manifest is what the stream is about to deliver, so the bar has a
     // denominator for its first half (restore.ts).
-    const contents = { journal: payload.journal, files, fileCount: payload.files.length };
+    const contents = { journal: payload.journal, preferences: payload.preferences, files, fileCount: payload.files.length };
 
     if (mode === 'replace') {
+      const { refreshPreferences, activateLanguagePreference } = await import('../prefs/store.svelte');
       await journal.archive.replace(contents, onProgress);
-      const { applyPortablePreferences } = await import('../prefs/store.svelte');
-      applyPortablePreferences(payload.preferences);
+      if (await refreshPreferences()) activateLanguagePreference();
     } else {
       await journal.archive.merge(contents, onProgress);
     }

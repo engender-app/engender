@@ -73,7 +73,7 @@ try {
   for (const language of ['en', 'pl']) {
     for (const width of [320, 390]) {
       const page = await browser.newPage({
-        viewport: { width, height: 844 },
+        viewport: { width, height: 844 }, locale: language,
         hasTouch: true,
         deviceScaleFactor: 2
       });
