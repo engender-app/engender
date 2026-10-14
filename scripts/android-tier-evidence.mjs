@@ -90,8 +90,12 @@ export function androidTierProblems(evidence, candidateRevision, cwd) {
   }
   const runs = Array.isArray(data.runs) ? data.runs : [];
   for (const run of runs) {
-    if (!sameAndroidSource(cwd, run?.revision) || !Number.isFinite(Date.parse(run?.startedAt ?? '')) ||
-        !Number.isFinite(Date.parse(run?.passedAt ?? '')) || Date.parse(run.passedAt ?? '') < Date.parse(run.startedAt ?? '')) {
+    const runStarted = Date.parse(run?.startedAt ?? '');
+    const runPassed = Date.parse(run?.passedAt ?? '');
+    let runCommitted = Infinity;
+    try { runCommitted = Number(git(cwd, 'show', '-s', '--format=%ct', run?.revision ?? '')) * 1000; } catch {}
+    if (!sameAndroidSource(cwd, run?.revision) || !Number.isFinite(runStarted) || !Number.isFinite(runPassed) ||
+        runStarted < runCommitted || runPassed < runStarted || runPassed > passed || runPassed > Date.now()) {
       problems.push('Android-tier run lacks matching source revision or completion timestamps.');
     }
     if (!run || typeof run !== 'object' || !run.avd || !run.serial || !Number.isInteger(run.api) ||

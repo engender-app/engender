@@ -58,6 +58,22 @@ it('keeps optional stages absent until actual completed stage records exist', ()
   expect(androidTierProblems(evidence, start.revision, root)).toContain('Android tier requires completed current-Android core stages and Archive recovery.');
 });
 
+it('preserves earlier core run timestamps across a record-only optional follow-up', () => {
+  const start = beginAndroidTier(root);
+  const first = writeAndroidTierEvidence(root, start, androidTierFixture(start.revision).runs);
+  git('add', '.');
+  git('commit', '-qm', 'Record fixture core evidence');
+  const followup = beginAndroidTier(root);
+  const optional = { ...androidTierFixture(followup.revision).runs[1], kind: 'locked-process-death', completedStages: ['locked-process-death'] };
+  const merged = writeAndroidTierEvidence(root, followup, [optional]);
+  expect(merged.runs.slice(0, 2)).toEqual(first.runs);
+  expect(merged.runs[2].revision).toBe(followup.revision);
+  expect(merged.runs[2].startedAt).toBe(followup.startedAt);
+  git('add', '.');
+  git('commit', '-qm', 'Record fixture optional evidence');
+  expect(androidTierProblems(merged, start.revision, root)).toEqual([]);
+});
+
 it('refuses current core evidence without fresh isolated offline OCR identity', () => {
   const start = beginAndroidTier(root);
   const evidence = androidTierFixture(start.revision);
@@ -67,3 +83,25 @@ it('refuses current core evidence without fresh isolated offline OCR identity', 
   evidence.runs[1].completedStages = evidence.runs[1].completedStages.filter(stage => stage !== 'offline-ocr');
   expect(androidTierProblems(evidence, start.revision, root)).toContain('Android tier requires fresh isolated offline OCR with APK identity on current Android.');
 });
+
+for (const invalid of ['before-commit', 'future', 'after-aggregate']) {
+  it(`refuses ${invalid} run timestamps even with valid aggregate timestamps`, () => {
+    const start = beginAndroidTier(root);
+    const evidence = androidTierFixture(start.revision);
+    evidence.startedAt = start.startedAt;
+    evidence.passedAt = start.startedAt;
+    evidence.runs.forEach(run => {
+      run.startedAt = start.startedAt;
+      run.passedAt = start.startedAt;
+    });
+    const run = evidence.runs[0];
+    if (invalid === 'before-commit') run.startedAt = run.passedAt = '2000-01-01T00:00:00Z';
+    else if (invalid === 'future') run.passedAt = new Date(Date.now() + 60_000).toISOString();
+    else {
+      evidence.passedAt = new Date(Date.now() - 1).toISOString();
+      evidence.startedAt = evidence.passedAt;
+      run.passedAt = new Date().toISOString();
+    }
+    expect(androidTierProblems(evidence, start.revision, root)).toContain('Android-tier run lacks matching source revision or completion timestamps.');
+  });
+}

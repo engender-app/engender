@@ -7,7 +7,9 @@ import { offlineOcrStage } from './offline-ocr-stage.mjs';
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
-function fixture(passed: boolean) {
+const complete = 'INSTRUMENTATION_STATUS: current=1\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_STATUS: current=1\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS_CODE: 0\nOK (1 test)\nINSTRUMENTATION_CODE: -1';
+
+function fixture(passed: boolean, instrumentation = passed ? complete : 'FAILURES!!!') {
   const evidenceDir = mkdtempSync(join(tmpdir(), 'offline-ocr-stage-'));
   roots.push(evidenceDir);
   const calls: string[][] = [];
@@ -17,7 +19,7 @@ function fixture(passed: boolean) {
     if (args.join(' ').includes('settings get global airplane_mode_on')) stdout = calls.some(call => call.includes('enable')) ? '1' : '0';
     if (args.join(' ').includes('settings get global wifi_on')) stdout = '1';
     if (args.join(' ').includes('cmd wifi status')) stdout = 'Wifi is disabled';
-    if (args.includes('instrument')) stdout = passed ? 'OK (1 test)' : 'FAILURES!!!';
+    if (args.includes('instrument')) stdout = instrumentation;
     if (args.includes('System.out:I')) stdout = `Offline OCR evidence: ${JSON.stringify({ passed, scans: [{}, {}] })}`;
     return { status: 0, signal: null, stdout, stderr: '' };
   };
@@ -35,6 +37,15 @@ it('uses fresh isolated installs after disabling networks and restores settings'
   expect(calls.at(-1)).toEqual(['shell', 'svc', 'wifi', 'enable']);
   expect(JSON.parse(readFileSync(join(options.evidenceDir, 'owned-ocr-result.json'), 'utf8'))).toMatchObject({ freshInstallation: true, onlineWarmup: false });
 });
+
+for (const output of ['OK (1 test)', 'OK (1 test)\nINSTRUMENTATION_FAILED: process crashed', `${complete}\nINSTRUMENTATION_ABORTED: crash`]) {
+  it(`refuses incomplete or crashed instrumentation despite recognition evidence: ${output}`, async () => {
+    const { options, calls } = fixture(true, output);
+    await expect(offlineOcrStage(options)).rejects.toThrow('real offline OCR recognition failed');
+    expect(calls.slice(-4, -2)).toEqual([['uninstall', options.pkg], ['uninstall', `${options.pkg}.test`]]);
+    expect(calls.at(-1)).toEqual(['shell', 'svc', 'wifi', 'enable']);
+  });
+}
 
 it('refuses failed recognition and still uninstalls both packages and restores settings', async () => {
   const { options, calls } = fixture(false);

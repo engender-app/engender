@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { reportStage } from './instrumentation.mjs';
 
 /** @typedef {{status: number | null, signal: string | null, error?: Error, stdout: string, stderr?: string}} DeviceResult */
 /**
@@ -49,7 +50,8 @@ export async function offlineOcrStage({ device, pkg, apk, testApk, evidenceDir, 
     const evidence = line ? JSON.parse(line.slice('Offline OCR evidence: '.length)) : null;
     writeFileSync(join(evidenceDir, `${avd}-ocr-result.json`), JSON.stringify({ pkg, network,
       freshInstallation: true, onlineWarmup: false, evidence }, null, 2));
-    if (!output.includes('OK (1 test)') || !evidence?.passed || evidence.scans?.length !== 2) throw new Error('real offline OCR recognition failed');
+    const completed = reportStage('offline OCR', { status: 0, stdout: output }, { ok: () => {}, fail: () => {} });
+    if (!completed || !evidence?.passed || evidence.scans?.length !== 2) throw new Error('real offline OCR recognition failed');
   } finally {
     device(['shell', 'am', 'force-stop', pkg]);
     const cleanup = { app: device(['uninstall', pkg]), instrumentation: device(['uninstall', `${pkg}.test`]),
