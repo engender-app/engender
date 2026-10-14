@@ -275,6 +275,11 @@ the English and Polish catalogues and prevents the number of untranslated
 literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
+`npm test` includes 480 seeded importer and sniffer fuzz cases. Run
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 24,000 cases. Failures keep their exact
+inputs and seed/index receipts in `ci-logs/fuzz/`; see
+[tests/PROBES.md](tests/PROBES.md) for replay and strict typed-refusal checks.
+
 The screen and walkthrough suites use Chromium. Set `CHROMIUM_PATH` if its
 executable is not at the harness's default location. They cover storage
 contracts, rendered screens, complete user flows and offline startup of the
