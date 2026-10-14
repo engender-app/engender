@@ -12,10 +12,12 @@
      node scripts/journal-release.mjs rollback --previous [--root DIR] [--current LINK] [--force]
      node scripts/journal-release.mjs list [--root DIR] [--current LINK] */
 import {
+  chmodSync,
   cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   readlinkSync,
@@ -23,7 +25,8 @@ import {
   renameSync,
   rmSync,
   statSync,
-  symlinkSync
+  symlinkSync,
+  writeFileSync
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -136,6 +139,55 @@ function switchCurrent(current, targetPath) {
   renameSync(next, current);
 }
 
+/** A first PDF can request its old worker after either deploy or rollback.
+    Keep only the selected and previously active releases' original workers;
+    the fallback never becomes part of either immutable release tree. */
+function preparePdfNamespace(previous, target, root) {
+  const namespaces = join(root, '.pdf-workers');
+  mkdirSync(namespaces, { recursive: true });
+  chmodSync(namespaces, 0o755);
+  const namespace = mkdtempSync(join(namespaces, 'generation-'));
+  chmodSync(namespace, 0o755);
+  try {
+    for (const release of [previous, target]) {
+      if (!release) continue;
+      const workers = join(release, '_app/immutable/workers');
+      if (!existsSync(workers)) continue;
+      for (const entry of readdirSync(workers, { withFileTypes: true })) {
+        if (!entry.isFile() || !/^pdf-worker-[A-Za-z0-9_-]+\.js(?:\.br|\.gz)?$/.test(entry.name)) continue;
+        const bytes = readFileSync(join(workers, entry.name));
+        const destination = join(namespace, entry.name);
+        if (existsSync(destination) && !bytes.equals(readFileSync(destination))) {
+          throw new Error(`PDF worker identity collision: ${entry.name}`);
+        }
+        writeFileSync(destination, bytes);
+        chmodSync(destination, 0o644);
+      }
+    }
+    return namespace;
+  } catch (error) {
+    rmSync(namespace, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function switchRelease(current, target, root, pdfNamespace) {
+  const pdfCurrent = join(root, '.pdf-current');
+  try {
+    // The union includes the outgoing release, so publishing it first is safe.
+    switchCurrent(pdfCurrent, pdfNamespace);
+    switchCurrent(current, target);
+  } finally {
+    if (!existsSync(pdfCurrent) || realpathSync(pdfCurrent) !== pdfNamespace) {
+      rmSync(pdfNamespace, { recursive: true, force: true });
+    }
+  }
+  for (const entry of readdirSync(join(root, '.pdf-workers'))) {
+    const obsolete = join(root, '.pdf-workers', entry);
+    if (obsolete !== pdfNamespace) rmSync(obsolete, { recursive: true, force: true });
+  }
+}
+
 /** Keep exact OCR generations reachable after the release symlink switches.
     Root URLs belong to pre-generation pages and keep their original bytes. */
 function retainOcrAssets(previous, staging) {
@@ -231,14 +283,20 @@ function deploy(source, options) {
   }
 
   const staging = join(options.root, `.staging-${name}-${Date.now()}-${process.pid}`);
+  let pdfNamespace;
 
   try {
     cpSync(sourcePath, staging, { recursive: true, errorOnExist: true, force: false });
     retainOcrAssets(previous, staging);
+    pdfNamespace = preparePdfNamespace(previous, staging, options.root);
     renameSync(staging, targetPath);
-    switchCurrent(options.current, targetPath);
+    switchRelease(options.current, targetPath, options.root, pdfNamespace);
   } finally {
     rmSync(staging, { recursive: true, force: true });
+    const pdfCurrent = join(options.root, '.pdf-current');
+    if (pdfNamespace && (!existsSync(pdfCurrent) || realpathSync(pdfCurrent) !== pdfNamespace)) {
+      rmSync(pdfNamespace, { recursive: true, force: true });
+    }
   }
 
   console.log(`Deployed ${name}`);
@@ -286,7 +344,8 @@ function rollback(options) {
     );
   }
 
-  switchCurrent(options.current, target);
+  const pdfNamespace = preparePdfNamespace(current, target, options.root);
+  switchRelease(options.current, target, options.root, pdfNamespace);
   console.log(`Rolled back to ${basename(target)}`);
   console.log(`Current -> ${target}`);
 }

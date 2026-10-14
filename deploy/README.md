@@ -234,8 +234,24 @@ What deploy enforces:
 - source `release.json` must name a release version (not `0.0.0-dev...`) unless `--allow-development-version` is passed deliberately
 - full directory copy lands before the symlink switch
 - previous release directory stays in place
+- PDF workers from the selected and outgoing releases remain reachable through
+  a separate namespace; neither original release tree is changed
 - deployment refuses a lower `schemaMax` or an older stable version; use the
   explicit rollback command for a deliberate rollback
+
+The operator stages PDF workers in `releases/.pdf-workers/` and atomically
+publishes `releases/.pdf-current` before switching `current`. The nginx snippet
+uses that sibling namespace only when a PDF worker is absent from the selected
+release. Install the updated snippet before using this operator version.
+Original release files and `release.json` stay unchanged. Identical worker
+names must have identical bytes, or the switch is refused.
+
+The network window covers two release sets: the selected release and the one
+active immediately before the switch, including explicit rollback. Superseded
+namespace snapshots are removed after a successful switch. A worker from an
+earlier release may remain available in a browser's retained cache, but the
+server does not promise its uncached first open after another switch. PDF
+workers still load on demand; an uncached first open needs a network.
 
 For explicit non-release checks only:
 

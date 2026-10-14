@@ -1,13 +1,14 @@
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { gunzipSync } from 'node:zlib';
 import legacyOcr from '../src/lib/pwa/legacy-ocr-assets.json';
-import { describe, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 
 const ROOT = mkdtempSync(join(tmpdir(), 'gd-release-switch-'));
 const SCRIPT = join(process.cwd(), 'scripts/journal-release.mjs');
+afterAll(() => rmSync(ROOT, { recursive: true, force: true }));
 
 function makeRelease(path: string, version: string, buildId: string, schemaMax: number) {
   mkdirSync(join(path, '_app'), { recursive: true });
@@ -22,6 +23,83 @@ function run(args: string[], cwd: string) {
 }
 
 describe('journal-release deploy and rollback', () => {
+  test('bounds the PDF namespace to selected and previously active original releases, including rollback', () => {
+    const directory = join(ROOT, 'pdf');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    mkdirSync(join(root, 'unrelated'), { recursive: true });
+    writeFileSync(join(root, 'unrelated/keep.txt'), 'operator file');
+    const sources = ['a', 'b', 'c'].map((id, index) => {
+      const source = join(directory, id);
+      makeRelease(source, `2.0.${index}`, id, 90);
+      const workers = join(source, '_app/immutable/workers');
+      mkdirSync(workers, { recursive: true });
+      writeFileSync(join(workers, `pdf-worker-${id}.js`), `PDF ${id}`);
+      writeFileSync(join(workers, `pdf-worker-${id}.js.br`), `compressed PDF ${id}`);
+      writeFileSync(join(workers, `sqlite3-worker1-bundler-friendly-${id}.js`), 'unused');
+      return source;
+    });
+    const deploy = (source: string) => run(['deploy', source, '--root', root, '--current', current], ROOT);
+    const namespace = () => readdirSync(join(root, '.pdf-current')).sort();
+    expect(deploy(sources[0]).status).toBe(0);
+    const a = readlinkSync(current);
+    const originalA = readFileSync(join(a, 'release.json'));
+    expect(deploy(sources[1]).status).toBe(0);
+    const b = readlinkSync(current);
+    const originalB = readFileSync(join(b, 'release.json'));
+    expect(namespace()).toEqual(['pdf-worker-a.js', 'pdf-worker-a.js.br', 'pdf-worker-b.js', 'pdf-worker-b.js.br']);
+    expect(existsSync(join(b, '_app/immutable/workers/pdf-worker-a.js'))).toBe(false);
+    expect(readFileSync(join(root, '.pdf-current/pdf-worker-a.js'), 'utf8')).toBe('PDF a');
+    expect(deploy(sources[2]).status).toBe(0);
+    expect(namespace()).toEqual(['pdf-worker-b.js', 'pdf-worker-b.js.br', 'pdf-worker-c.js', 'pdf-worker-c.js.br']);
+    expect(readdirSync(join(root, '.pdf-workers'))).toHaveLength(1);
+    expect(run(['rollback', '2.0.0--a', '--root', root, '--current', current], ROOT).status).toBe(0);
+    expect(readlinkSync(current)).toBe(a);
+    expect(namespace()).toEqual(['pdf-worker-a.js', 'pdf-worker-a.js.br', 'pdf-worker-c.js', 'pdf-worker-c.js.br']);
+    expect(readdirSync(join(root, '.pdf-workers'))).toHaveLength(1);
+    expect(readFileSync(join(a, 'release.json'))).toEqual(originalA);
+    expect(readFileSync(join(b, 'release.json'))).toEqual(originalB);
+    expect(readdirSync(join(a, '_app/immutable/workers')).sort()).toEqual(readdirSync(join(sources[0], '_app/immutable/workers')).sort());
+    expect(readFileSync(join(a, '_app/immutable/workers/pdf-worker-a.js'), 'utf8')).toBe('PDF a');
+    expect(readFileSync(join(b, '_app/immutable/workers/pdf-worker-b.js'), 'utf8')).toBe('PDF b');
+    expect(readFileSync(join(root, 'unrelated/keep.txt'), 'utf8')).toBe('operator file');
+  });
+
+  test('refuses different bytes under one PDF worker identity before switching either namespace', () => {
+    const directory = join(ROOT, 'pdf-collision');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    for (const [id, version] of [['a', '2.0.0'], ['b', '2.0.1']]) {
+      const source = join(directory, id);
+      makeRelease(source, version, id, 90);
+      const workers = join(source, '_app/immutable/workers');
+      mkdirSync(workers, { recursive: true });
+      writeFileSync(join(workers, 'pdf-worker-same.js'), id);
+    }
+    expect(run(['deploy', join(directory, 'a'), '--root', root, '--current', current], ROOT).status).toBe(0);
+    const selected = readlinkSync(current), namespace = readlinkSync(join(root, '.pdf-current'));
+    const result = run(['deploy', join(directory, 'b'), '--root', root, '--current', current], ROOT);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('PDF worker identity collision');
+    expect(readlinkSync(current)).toBe(selected);
+    expect(readlinkSync(join(root, '.pdf-current'))).toBe(namespace);
+    expect(readdirSync(join(root, '.pdf-workers'))).toHaveLength(1);
+  });
+
+  test('deploys and rolls back when the PDF worker identity has not changed', () => {
+    const directory = join(ROOT, 'pdf-unchanged');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    for (const [id, version] of [['a', '2.0.0'], ['b', '2.0.1']]) {
+      const source = join(directory, id);
+      makeRelease(source, version, id, 90);
+      const workers = join(source, '_app/immutable/workers');
+      mkdirSync(workers, { recursive: true });
+      writeFileSync(join(workers, 'pdf-worker-same.js'), 'unchanged PDF worker');
+      expect(run(['deploy', source, '--root', root, '--current', current], ROOT).status).toBe(0);
+    }
+    expect(readdirSync(join(root, '.pdf-current'))).toEqual(['pdf-worker-same.js']);
+    expect(run(['rollback', '2.0.0--a', '--root', root, '--current', current], ROOT).status).toBe(0);
+    expect(readFileSync(join(root, '.pdf-current/pdf-worker-same.js'), 'utf8')).toBe('unchanged PDF worker');
+  });
+
   test.each([
     ['3.0.0', 2, 'schemaMax'],
     ['1.9.9', 3, 'over newer']
@@ -142,7 +220,7 @@ describe('journal-release deploy and rollback', () => {
     expect(result.status).toBe(1); expect(result.stderr).toContain('Missing legacy OCR runtime');
     expect(readlinkSync(current)).toBe(previous);
     expect(readFileSync(join(previous, 'release.json'))).toEqual(before);
-    expect(readdirSync(root)).toEqual(['2.0.0--a']);
+    expect(readdirSync(root)).toEqual(['.pdf-current', '.pdf-workers', '2.0.0--a']);
   });
 
   test.each([false, true])('uses the verified staged fallback with previous release=%s', (withPrevious) => {
@@ -176,7 +254,7 @@ describe('journal-release deploy and rollback', () => {
     mkdirSync(join(runtime, '..'), { recursive: true }); writeFileSync(runtime, 'altered');
     const result = run(['deploy', next, '--root', root, '--current', current], ROOT);
     expect(result.status).toBe(1); expect(result.stderr).toContain('Legacy OCR identity mismatch');
-    expect(readlinkSync(current)).toBe(previous); expect(readdirSync(root)).toEqual(['2.0.0--a']);
+    expect(readlinkSync(current)).toBe(previous); expect(readdirSync(root)).toEqual(['.pdf-current', '.pdf-workers', '2.0.0--a']);
   });
 
   test('refuses a legacy metadata path outside public chunks', () => {
