@@ -80,3 +80,48 @@ test('Android rejects an unavailable durable ledger instead of restoring a weake
   native.getPinWait.mockRejectedValue(new Error('could not read PIN accounting'));
   await expect(createPinThrottle(emptyStore)).rejects.toThrow('could not read');
 });
+
+test('a wrong web PIN keeps its elapsed wait when the gate remounts', async () => {
+  platform.isAndroid.mockReturnValue(false);
+  const { createPinThrottle } = await import('./pin-throttle');
+  let elapsed = 0;
+  vi.stubGlobal('performance', { now: () => elapsed });
+  vi.spyOn(Date, 'now').mockReturnValue(1000);
+  let state: ReturnType<AttemptStore['read']> = null;
+  const store: AttemptStore = {
+    read: () => state,
+    write: (next) => void (state = { ...next }),
+    clear: () => void (state = null)
+  };
+  const before = await createPinThrottle(store);
+  await before.recordWrong(1000);
+  await before.recordWrong(1000);
+  elapsed = 100;
+  vi.mocked(Date.now).mockReturnValue(86_400_000);
+  const after = await createPinThrottle(store);
+  expect(after.remainingMs(86_400_000)).toBe(900);
+  expect(state).toEqual({ wrongAttempts: 2, acceptingFrom: 2000 });
+  await after.reset();
+  expect((await createPinThrottle(store)).remainingMs(86_400_000)).toBe(0);
+  expect(native.getPinWait).not.toHaveBeenCalled();
+  expect(native.setPinWait).not.toHaveBeenCalled();
+  expect(native.resetPinWait).not.toHaveBeenCalled();
+});
+
+test('Android mirrors the native wait exactly and refreshes without admitting another attempt', async () => {
+  platform.isAndroid.mockReturnValue(true);
+  const { createPinThrottle } = await import('./pin-throttle');
+  vi.stubGlobal('performance', { now: () => 0 });
+  vi.spyOn(Date, 'now').mockReturnValue(1000);
+  native.getPinWait.mockResolvedValue({ remainingMs: 2000, fullDelayMs: 2000, wrongAttempts: 3, adopted: true });
+  const write = vi.fn();
+  const throttle = await createPinThrottle({ ...emptyStore, write });
+  expect(write).toHaveBeenLastCalledWith({ wrongAttempts: 3, acceptingFrom: 3000 });
+  expect(throttle.remainingMs(86_400_000)).toBe(2000);
+  native.getPinWait.mockResolvedValue({ remainingMs: 0, fullDelayMs: 2000, wrongAttempts: 3, adopted: true });
+  await throttle.refresh();
+  expect(write).toHaveBeenLastCalledWith({ wrongAttempts: 3, acceptingFrom: 0 });
+  expect(throttle.remainingMs(86_400_000)).toBe(0);
+  expect(native.setPinWait).not.toHaveBeenCalled();
+  expect(native.resetPinWait).not.toHaveBeenCalled();
+});
