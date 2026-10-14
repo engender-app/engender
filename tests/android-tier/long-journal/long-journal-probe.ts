@@ -27,6 +27,7 @@ import { addJournalPassphrase, unlockJournalPassphrase } from '../../../src/lib/
 import { sweepOrphanPhotos } from '../../../src/lib/data/journal/photos.ts';
 import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS } from '../../long-journal/generate.ts';
 import { compareJournalSizes } from '../../long-journal/scaling.ts';
+import { prepareMountedLookBack } from '../../long-journal/mount-look-back.svelte';
 import { measureLongJournal } from '../../long-journal/measure.ts';
 import type { NormalizedPhoto } from '../../../src/lib/data/journal/photos.ts';
 import type { Measurement } from '../../long-journal/measure.ts';
@@ -293,7 +294,8 @@ async function run(days: number) {
   const measurements = await measureLongJournal(reopenedJournal, reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
-    recorder
+    recorder,
+    prepareLookBack: (journal, today) => prepareMountedLookBack(journal, today, recorder)
   });
 
   reopenedJournal.archive.snapshot = originalSnapshot;

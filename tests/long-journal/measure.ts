@@ -74,6 +74,7 @@ export interface MeasureOptions {
       optional: a run that quietly produced no mount measurements would
       leave budgets.json describing measurements nobody takes. */
   recorder: RecordingDriver;
+  prepareLookBack?: (journal: Journal, today: number) => Promise<() => Promise<{ result: unknown; detail: string; crossings?: { statements: number; bytes: number } }>>;
   mountHome?: (journal: Journal) => Promise<{ result: unknown; detail: string; crossings?: { statements: number; bytes: number } }>;
 }
 
@@ -883,8 +884,11 @@ export async function measureLongJournal(
     };
   });
 
-  await mount('mount-stats', 'the stats tab at its default range, every card on it', async () => {
-    /* The default range, which is what arriving costs: 30 days for every
+  const mountedLookBack = await options.prepareLookBack?.(journal, today);
+  await mount('mount-stats', 'Look back mounted at its default range, including Words', async () => {
+    if (mountedLookBack) return mountedLookBack();
+    /* Node-only harness fallback. Browser and Android probes mount /stats.
+       The default range, which is what arriving costs: 30 days for every
        card that takes the picker. The two interval cards do not take it -
        they read the whole journal deliberately, since an injection interval
        rarely recurs three times inside even the 90-day preset - and that is
@@ -893,6 +897,7 @@ export async function measureLongJournal(
     const [xKey, yKey] = dimensionKeys;
 
     const reads = await together({
+      notes: journal.entries.noteEntries(),
       annotations: journal.chartAnnotations.getAnnotations(from, today, today),
       series: Promise.all(CHARTED_METRICS.map((key) => journal.stats.dayAverages(key, from, today))),
       insights: journal.stats.tagInsights(STATS_METRIC, from, today),
