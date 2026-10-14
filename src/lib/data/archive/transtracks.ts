@@ -158,6 +158,8 @@ export async function transTracksPreview(bytes: Uint8Array, existing: ArchiveJou
       (key) => !(KNOWN_TOP_LEVEL_KEYS as readonly string[]).includes(key)
     );
 
+    if (payload.milestones !== undefined && !Array.isArray(payload.milestones)) throw new TransTracksBackupError('milestones is not an array');
+    if (payload.photos !== undefined && !Array.isArray(payload.photos)) throw new TransTracksBackupError('photos is not an array');
     const rawMilestones = Array.isArray(payload.milestones) ? (payload.milestones as RawMilestone[]) : [];
     const rawPhotos = Array.isArray(payload.photos) ? (payload.photos as RawPhoto[]) : [];
 

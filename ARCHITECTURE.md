@@ -579,6 +579,8 @@ The ZIP reader reports malformed container bytes through `ZipFormatError`.
 Daylio backup, Day One and TransTracks translate that error into their own
 import failure types, including attachment reads deferred until commit.
 Consumed JSON fields are checked before string and collection operations.
+Absent optional TransTracks collections remain empty; present collections
+must be arrays.
 Preview refuses incoming identity collisions before they can reach SQLite
 uniqueness checks or attachment writes.
 Known JSON and encoding refusals receive the same importer classification;

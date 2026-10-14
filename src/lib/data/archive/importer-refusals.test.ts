@@ -61,6 +61,21 @@ test('TransTracks owns null row refusals', async () => {
   }
 });
 
+for (const collection of ['photos', 'milestones'] as const) {
+  for (const value of [null, {}, 'synthetic', 123, false]) {
+    test(`TransTracks refuses a present non-array ${collection} collection: ${JSON.stringify(value)}`, async () => {
+      const payload = { photos: [], milestones: [], [collection]: value };
+      await assert.rejects(transTracksPreview(zipSync({ 'data.json': strToU8(JSON.stringify(payload)) }), emptyArchiveJournal()), TransTracksBackupError);
+    });
+  }
+}
+
+test('TransTracks preserves empty defaults for absent optional collections', async () => {
+  const result = await transTracksPreview(zipSync({ 'data.json': strToU8(JSON.stringify({ settings: {} })) }), emptyArchiveJournal());
+  assert.equal(result.milestoneCount, 0);
+  assert.equal(result.photoCount, 0);
+});
+
 test('Daylio owns damaged deferred attachment reads', async () => {
   const bytes = await makeDaylioBackup();
   const result = await daylioBackupPreview(bytes, emptyArchiveJournal(), naming);
