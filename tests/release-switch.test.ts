@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -23,6 +23,172 @@ function run(args: string[], cwd: string) {
 }
 
 describe('journal-release deploy and rollback', () => {
+  test('previous follows active history after rollback and another deploy, regardless of mtimes', () => {
+    const directory = join(ROOT, 'active-history');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const sources = ['one', 'two', 'three'].map((id, index) => {
+      const source = join(directory, id);
+      makeRelease(source, `1.0.${index}`, id, 90);
+      return source;
+    });
+    const command = (...args: string[]) => run([...args, '--root', root, '--current', current], ROOT);
+    expect(command('deploy', sources[0]).status).toBe(0);
+    const first = readlinkSync(current);
+    expect(command('deploy', sources[1]).status).toBe(0);
+    const pulled = readlinkSync(current);
+    expect(command('rollback', '1.0.0--one').status).toBe(0);
+    const deployment = command('deploy', sources[2]);
+    expect(deployment.status).toBe(0);
+    expect(deployment.stdout).toContain(`Previous kept at ${first}`);
+    utimesSync(first, new Date('2020-01-01'), new Date('2020-01-01'));
+    utimesSync(pulled, new Date('2030-01-01'), new Date('2030-01-01'));
+    const listed = command('list');
+    expect(listed.status).toBe(0);
+    expect(listed.stdout).toContain('< 1.0.0--one');
+    expect(listed.stdout).not.toContain('< 1.0.1--two');
+
+    const rollback = command('rollback', '--previous');
+    expect(rollback.status).toBe(0);
+    expect(readlinkSync(current)).toBe(first);
+    expect(command('list').stdout).toContain('* 1.0.0--one');
+    expect(command('list').stdout).toContain('< 1.0.2--three');
+    expect(command('rollback', '--previous').status).toBe(0);
+    expect(readlinkSync(current)).toContain('1.0.2--three');
+  });
+
+  test.each(['history-stage', 'history-publish', 'pdf-publish', 'current-rename'])(
+    'restores history and the active PDF namespace after %s fails', (point) => {
+      const directory = join(ROOT, `history-failure-${point}`);
+      const root = join(directory, 'releases'), current = join(directory, 'current');
+      const sources = ['a', 'b', 'c'].map((id, index) => {
+        const source = join(directory, id);
+        makeRelease(source, `2.0.${index}`, id, 90);
+        mkdirSync(join(source, '_app/immutable/workers'), { recursive: true });
+        writeFileSync(join(source, `_app/immutable/workers/pdf-worker-${id}.js`), `PDF ${id}`);
+        return source;
+      });
+      const args = ['--root', root, '--current', current];
+      for (const source of sources.slice(0, 2)) expect(run(['deploy', source, ...args], ROOT).status).toBe(0);
+      const selected = readlinkSync(current), history = `${current}.history.json`;
+      const priorHistory = readFileSync(history), priorPdf = readlinkSync(join(root, '.pdf-current'));
+      const originalMetadata = readFileSync(join(selected, 'release.json'));
+      const fault = join(directory, 'fault.mjs');
+      writeFileSync(fault, `
+        import fs from 'node:fs';
+        import { syncBuiltinESMExports } from 'node:module';
+        let injected = false;
+        const fail = () => { injected = true; throw new Error('injected ${point} failure'); };
+        const write = fs.writeFileSync;
+        fs.writeFileSync = (path, ...args) => {
+          const result = write(path, ...args);
+          if (!injected && ${JSON.stringify(point)} === 'history-stage'
+            && String(path).startsWith(${JSON.stringify(history + '.next-')})) fail();
+          return result;
+        };
+        const rename = fs.renameSync;
+        fs.renameSync = (from, to) => {
+          const target = ${JSON.stringify(point)} === 'history-publish' ? ${JSON.stringify(history)}
+            : ${JSON.stringify(point)} === 'pdf-publish' ? ${JSON.stringify(join(root, '.pdf-current'))}
+            : ${JSON.stringify(current)};
+          if (!injected && ${JSON.stringify(point)} !== 'history-stage' && to === target) fail();
+          return rename(from, to);
+        };
+        syncBuiltinESMExports();
+      `);
+      const result = spawnSync('node', ['--import', fault, SCRIPT, 'deploy', sources[2], ...args], {
+        cwd: ROOT, encoding: 'utf8'
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(`injected ${point} failure`);
+      expect(readlinkSync(current)).toBe(selected);
+      expect(readFileSync(history)).toEqual(priorHistory);
+      expect(readlinkSync(join(root, '.pdf-current'))).toBe(priorPdf);
+      expect(readdirSync(join(root, '.pdf-current')).sort()).toEqual(['pdf-worker-a.js', 'pdf-worker-b.js']);
+      expect(readdirSync(join(root, '.pdf-workers'))).toHaveLength(1);
+      expect(readdirSync(directory).some(name => name.includes('.next-'))).toBe(false);
+      expect(readdirSync(root).some(name => name.startsWith('.staging-'))).toBe(false);
+      expect(readFileSync(join(selected, 'release.json'))).toEqual(originalMetadata);
+      expect(run(['rollback', '--previous', ...args], ROOT).status).toBe(0);
+      expect(readlinkSync(current)).toContain('2.0.0--a');
+    }
+  );
+
+  test('legacy roots require a named rollback to establish active history', () => {
+    const directory = join(ROOT, 'legacy-history');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const a = join(root, '2.0.0--a'), b = join(root, '2.0.1--b');
+    makeRelease(a, '2.0.0', 'a', 90); makeRelease(b, '2.0.1', 'b', 90);
+    symlinkSync(b, current);
+    const args = ['--root', root, '--current', current];
+    const refused = run(['rollback', '--previous', ...args], ROOT);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('No recorded previous release');
+    expect(readlinkSync(current)).toBe(b);
+    expect(run(['list', ...args], ROOT).stdout).not.toContain('< ');
+    expect(run(['rollback', '2.0.0--a', ...args], ROOT).status).toBe(0);
+    expect(run(['rollback', '--previous', ...args], ROOT).status).toBe(0);
+    expect(readlinkSync(current)).toBe(b);
+  });
+
+  test.each(['stale', 'malformed', 'removed'])('refuses %s history without guessing another release', (state) => {
+    const directory = join(ROOT, `invalid-history-${state}`);
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const args = ['--root', root, '--current', current];
+    for (const [index, id] of ['a', 'b'].entries()) {
+      const source = join(directory, id);
+      makeRelease(source, `2.0.${index}`, id, 90);
+      expect(run(['deploy', source, ...args], ROOT).status).toBe(0);
+    }
+    if (state === 'stale') {
+      const c = join(root, '2.0.2--c');
+      makeRelease(c, '2.0.2', 'c', 90);
+      rmSync(current); symlinkSync(c, current);
+    } else if (state === 'malformed') writeFileSync(`${current}.history.json`, '{bad json');
+    else rmSync(join(root, '2.0.0--a'), { recursive: true });
+    const before = readlinkSync(current);
+    const result = run(['rollback', '--previous', ...args], ROOT);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('No recorded previous release');
+    expect(readlinkSync(current)).toBe(before);
+    expect(run(['list', ...args], ROOT).stdout).not.toContain('< ');
+  });
+
+  test('a named rollback to current preserves its history and retained PDF namespace', () => {
+    const directory = join(ROOT, 'already-current');
+    const root = join(directory, 'releases'), current = join(directory, 'custom-current');
+    const args = ['--root', root, '--current', current];
+    for (const [index, id] of ['a', 'b'].entries()) {
+      const source = join(directory, id);
+      makeRelease(source, `2.0.${index}`, id, 90);
+      expect(run(['deploy', source, ...args], ROOT).status).toBe(0);
+    }
+    const history = readFileSync(`${current}.history.json`), pdf = readlinkSync(join(root, '.pdf-current'));
+    expect(run(['rollback', '2.0.1--b', ...args], ROOT).status).toBe(0);
+    expect(readFileSync(`${current}.history.json`)).toEqual(history);
+    expect(readlinkSync(join(root, '.pdf-current'))).toBe(pdf);
+    expect(run(['list', ...args], ROOT).stdout).toContain('< 2.0.0--a');
+  });
+
+  test('a recorded previous release still needs the existing schema override', () => {
+    const directory = join(ROOT, 'history-schema');
+    const root = join(directory, 'releases'), current = join(directory, 'current');
+    const args = ['--root', root, '--current', current];
+    for (const [index, id] of ['a', 'b'].entries()) {
+      const source = join(directory, id);
+      makeRelease(source, `2.0.${index}`, id, index + 2);
+      expect(run(['deploy', source, ...args], ROOT).status).toBe(0);
+    }
+    makeRelease(join(root, '2.0.2--unselected'), '2.0.2', 'unselected', 3);
+    const history = readFileSync(`${current}.history.json`), selected = readlinkSync(current);
+    const refused = run(['rollback', '--previous', ...args], ROOT);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('schemaMax 2 is lower than current 3');
+    expect(readlinkSync(current)).toBe(selected);
+    expect(readFileSync(`${current}.history.json`)).toEqual(history);
+    expect(run(['rollback', '--previous', '--force', ...args], ROOT).status).toBe(0);
+    expect(readlinkSync(current)).toContain('2.0.0--a');
+  });
+
   test('bounds the PDF namespace to selected and previously active original releases, including rollback', () => {
     const directory = join(ROOT, 'pdf');
     const root = join(directory, 'releases'), current = join(directory, 'current');
@@ -289,17 +455,13 @@ describe('journal-release deploy and rollback', () => {
     expect(result.stderr).toContain('Refusing rollback');
   });
 
-  test('rollback --previous switches to the last compatible release', () => {
+  test('rollback --previous switches to the recorded previous release', () => {
     const root = join(ROOT, 'previous', 'releases');
     const current = join(ROOT, 'previous', 'current');
-    const first = join(root, '2.0.0--a');
-    const second = join(root, '2.0.1--b');
-
-    mkdirSync(first, { recursive: true });
-    mkdirSync(second, { recursive: true });
-    makeRelease(first, '2.0.0', 'a', 4);
-    makeRelease(second, '2.0.1', 'b', 4);
-    symlinkSync(second, current);
+    const firstSource = join(ROOT, 'previous', 'a'), secondSource = join(ROOT, 'previous', 'b');
+    makeRelease(firstSource, '2.0.0', 'a', 4); makeRelease(secondSource, '2.0.1', 'b', 4);
+    expect(run(['deploy', firstSource, '--root', root, '--current', current], ROOT).status).toBe(0);
+    expect(run(['deploy', secondSource, '--root', root, '--current', current], ROOT).status).toBe(0);
 
     const result = run(['rollback', '--previous', '--root', root, '--current', current], ROOT);
     expect(result.status).toBe(0);

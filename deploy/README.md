@@ -3,10 +3,12 @@
 Ticket 05 serves the Journal from one decided origin:
 `app.engender.barankiewicz.dev`.
 
-The VPS keeps immutable release directories and one symlink:
+The VPS keeps immutable release directories, a serving symlink and switch
+history:
 
 - `/home/journal/releases/<version>--<buildId>/` - complete static release
 - `/home/journal/current` - symlink nginx serves from
+- `/home/journal/current.history.json` - selected and previously active targets
 
 Nginx resolves the symlink per request, so replacing it is enough to switch
 traffic with no reload and no half-copied release state.
@@ -272,6 +274,24 @@ Previous release rollback:
 ```bash
 node scripts/journal-release.mjs rollback --previous
 ```
+
+`--previous` selects the release that was active immediately before the last
+successful deploy or rollback. Directory timestamps do not determine that
+choice. For example, deploy 1.0.0, deploy 1.0.1, roll back to 1.0.0, then
+deploy 1.0.2: `--previous` returns to 1.0.0.
+
+Each switch writes `<current-link>.history.json` beside the configured current
+link. The receipt names both the selected and outgoing targets. `list` marks
+the selected release with `*` and its recorded previous release with `<`.
+The deploy message names that same previous target. A rollback to the already
+selected release leaves the history and PDF namespace unchanged.
+
+The operator publishes complete history before changing `current`. On a
+caught switch failure it restores the prior receipt and PDF namespace. If
+an interruption leaves a receipt that does not match `current`, `--previous`
+refuses to guess. A missing, malformed or stale receipt, or a removed target,
+requires a named rollback. Existing installations without switch history
+start recording it on the next deploy or named rollback.
 
 By default rollback refuses a target with lower `schemaMax` than the currently
 served release. That guard stops selecting code that cannot safely open journals
