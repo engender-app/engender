@@ -747,3 +747,14 @@ back two days, or loading a stale stored deadline cannot pay the wait.
 The unlocked control also checks leave-lock on short, long and backwards
 clock changes. Playwright changes system time while elapsed time keeps its
 own course. The runner closes its browser and server in `finally`.
+
+
+Dose draft and schedule unit tests preserve saved route, site, trimmed unit
+and drug fields. They check distant weekday amount cycles, route aliases,
+injection boundaries, passed slots, nearest-slot ties and auto-log rhythm
+guards. Epoch-day tests cover year-boundary borrowing and one-day custom
+ranges. Run:
+
+```sh
+npx vitest run src/lib/data/doseDraft.test.ts src/lib/data/doseSchedule.test.ts src/lib/data/epochDay.test.ts
+```
