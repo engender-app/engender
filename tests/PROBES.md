@@ -44,6 +44,10 @@ lock/unlock, rejects overlapping changes and resets from both pages, then
 restarts and verifies the original entries and encrypted attachment bytes.
 The dev app supplies synthetic demo data; credential storage and UI paths are real.
 
+`credential-power-cut` (`tests/android-tier/credential-power-cut.mjs`) drives the production Android PIN/passphrase change functions from a bundled WebView probe. It requires an owned temporary API-35 AVD and an isolated `dev.engender.app.test.*` package. It kills the owned QEMU process at 20 seeded offsets per credential type, then checks which credential opens the same SQLCipher record after boot. Half of each batch waits for the production change promise to resolve before cutting power; released OPFS adoption is exercised too. `CredentialWrapStoreTest` checks staged interruption, write failure, directory-sync failure and removal/adoption. The runner also injects post-rename directory-sync failure with real PIN/passphrase wraps, cuts QEMU, starts a separate instrumentation process, then verifies authority and the unchanged SQLCipher record. Use `--failure-restart` for just those combined cases. This proves the emulator's filesystem behavior, not a physical phone or web power-loss durability.
+
+Build with `ANDROID_TIER_PROBE=credential-power-cut npx vite build --config tests/android-tier/android-tier.vite.config.ts`, after `npm run build && npx cap sync android`. Build app and instrumentation APKs with an isolated application ID, then supply `CREDENTIAL_POWER_CUT_AVD`, `CREDENTIAL_POWER_CUT_PACKAGE`, `CREDENTIAL_POWER_CUT_APK` and `CREDENTIAL_POWER_CUT_TEST_APK`. The runner owns only its supplied emulator process and CDP forward. Remove its test package and AVD after delivery.
+
 `stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with
 `npm run test:browser`. It withholds real preference and reference-read replies
 during unlock, then verifies bounded worker disposal, a usable retry without

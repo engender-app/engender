@@ -85,7 +85,7 @@ The hosted origin serves only static files: the app shell, chunks, fonts, icons,
 | Shell | Static bundle from nginx ([deploy/nginx/](deploy/nginx)) | Same bundle in the APK, `https://localhost` origin |
 | SQLite | SQLite3MultipleCiphers WASM (`@evolu/sqlite-wasm`) over the OPFS SAHPool VFS, in a worker ([src/lib/data/sqlite/mc-worker.ts](src/lib/data/sqlite/mc-worker.ts)) | SQLCipher 4.9.0 through a local Capacitor plugin (`android/.../sqlite/`) |
 | Files (photos, voice, video, documents) | OPFS, AES-GCM per file | App-private files, AES-GCM per file |
-| Data-key storage | Wraps in OPFS JSON files; device-bound key in IndexedDB | Wraps in OPFS JSON files; device key wrapped by an Android Keystore key pair |
+| Data-key storage | Wraps in OPFS JSON files; device-bound key in IndexedDB | PIN/passphrase wrap in a durable app-private file; recovery wrap in OPFS; device key wrapped by an Android Keystore key pair |
 | Unlock options | Passphrase, PIN, WebAuthn PRF biometric, device-bound | Passphrase, PIN, device lock or biometric prompt, unlocked |
 | Offline | Service worker, one cache per release (ADR-0021) | Bundle is local |
 | Updates | New release waits until the journal is idle | App update |
@@ -601,6 +601,8 @@ flowchart TD
 - **Reminder payloads** on Android are wrapped under their own Keystore key (ADR-0047), so an alarm can fire without the journal being open.
 
 ### 7.3 Access modes and boot
+
+Android PIN/passphrase metadata lives in `journal-credential.json`, owned by [CredentialWrapStore.java](android/app/src/main/java/dev/engender/app/keystore/CredentialWrapStore.java). A write syncs its staged file, atomically replaces the authoritative record, then syncs the parent directory before returning. Failure prevents confirmation; interruption leaves the old or new wrap. There is no fallback to a previous credential generation. The first read adopts a validated released OPFS wrap before removing it. A durable removal marker prevents that old OPFS copy from becoming active again after a mode switch or reset. Web OPFS writes remain safe from process interruption without promising persistence through power loss.
 
 `JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material, so a crash midway through changing modes can't downgrade the journal. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
 

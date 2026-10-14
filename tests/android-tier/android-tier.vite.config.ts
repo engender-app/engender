@@ -25,6 +25,7 @@ import { join } from 'node:path';
 const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
+  'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
   /** Ticket 11: the shared journal contract suite over the native driver. */
   'auto-export': { root: 'auto-export', outDir: `${ASSETS}/auto-export-probe` },
   contract: { root: '.', outDir: `${ASSETS}/probe` },
