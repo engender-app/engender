@@ -40,6 +40,11 @@ const preferences = { ...PREFERENCE_DEFAULTS, name: 'Backup proof' };
 const probe = {
   result: null as unknown,
   ready: false,
+  async pickPowerCutDestination() {
+    const picked = await androidAutoExport.pickDestination();
+    await androidAutoExport.configure({ enabled: true, schedule: 'weekly' });
+    return picked;
+  },
   async run(count: number, scheduled = false) {
     probe.ready = false;
     let recorded: number | null = null;

@@ -33,10 +33,7 @@ import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -374,8 +371,6 @@ public class AutoExportPlugin extends Plugin {
     @PluginMethod
     public synchronized void finishBackup(PluginCall call) {
         synchronized (BackupWork.OWNER) {
-            DocumentFile target = null;
-            boolean destinationVerified = false;
             try {
                 StagedBackup backup = requireTransfer(call);
                 long expectedLength = byteCount(call, "byteLength");
@@ -404,22 +399,9 @@ public class AutoExportPlugin extends Plugin {
                 if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
 
                 // Always create a new document. Never truncate a recoverable backup.
-                target = folder.createFile("application/octet-stream", pendingFileName);
+                DocumentFile target = folder.createFile("application/octet-stream", pendingFileName);
                 if (target == null) throw new IllegalStateException("destination-unavailable");
-                ContentResolver resolver = getContext().getContentResolver();
-                try (InputStream input = new FileInputStream(backup.file);
-                     OutputStream output = resolver.openOutputStream(target.getUri(), "w")) {
-                    if (output == null) throw new IllegalStateException("destination-unavailable");
-                    byte[] buffer = new byte[8192];
-                    int read;
-                    while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-                    output.flush();
-                }
-                try (InputStream input = resolver.openInputStream(target.getUri())) {
-                    if (input == null) throw new IllegalStateException("destination-unavailable");
-                    StagedBackup.verify(input, expectedLength, sha256);
-                    destinationVerified = true;
-                }
+                DeliveredBackup.writeAndVerify(getContext(), folder, target, backup.file, expectedLength, sha256);
 
                 // Cleanup failure must never remove the newly verified backup.
                 try { clearPendingBackup(); }
@@ -432,9 +414,6 @@ public class AutoExportPlugin extends Plugin {
                 BackupWork.schedule(getContext());
                 call.resolve(result);
             } catch (Exception e) {
-                if (target != null && !destinationVerified) {
-                    try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
-                }
                 rejectDelivery(call, e);
             }
         }

@@ -208,6 +208,11 @@ zapisywana przez Androida według harmonogramu w wybranym folderze, jest
 szyfrowana algorytmem AES-GCM hasłem, które ustalasz. Bez tego hasła nikt jej
 nie odczyta.
 
+Automatyczne kopie na Androidzie wymagają systemowego dostawcy pamięci lokalnej.
+Zapis jest uznawany za zakończony po synchronizacji pliku i folderu oraz
+sprawdzeniu zapisanych bajtów. Inni dostawcy nie mogą otrzymać takiego
+potwierdzenia. Nie oznacza ono sprawdzenia przesłania pliku do chmury.
+
 ### Eksporty do czytania
 
 Niektóre eksporty celowo nie są szyfrowane, bo służą do czytania,
