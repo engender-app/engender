@@ -104,8 +104,9 @@ Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
 Journal text fields turn off browser autofill and session restoration on the
-web. Android keeps its existing keyboard suggestions. Text saved by earlier
-app versions is not removed from browser profiles.
+web. Android always asks keyboards not to learn from the app's text fields;
+the keyboard decides whether to honor that request. Text saved by earlier
+versions is not removed from browser profiles or keyboard storage.
 
 The layout adapts to the space available, with a bottom navigation bar on
 narrow screens and a rail on wider ones. The app uses bundled fonts and
@@ -164,6 +165,12 @@ your journal: clearing browser storage, wiping app data or losing a device
 can remove the only local copy. The maintainer cannot recover passwords
 or keys.
 
+Creating or replacing a recovery key and changing access mode ask for the
+current PIN, passphrase or biometrics again. Web device-bound mode instead
+explains that the unlocked browser has this authority. Android unlocked mode
+requires biometrics or an existing recovery key and blocks the change without
+either. A recovery unlock approves one immediate protection setup only.
+
 CSV, JSON, journal books, clinician summaries and exported images or videos
 are readable files. Anyone who receives them can read their contents.
 Choose an encrypted Archive when you need a private backup.
@@ -185,8 +192,7 @@ in the APK, so the first scan can run offline.
 
 The web app needs a secure context for browser storage, the service worker
 and authentication APIs. HTTPS is required when hosting it; localhost works
-for development. Android needs WebView version 87 or newer and shows an
-update explanation if its WebView is too old.
+for development. Android needs WebView version 104 or newer.
 
 To host your own web app, follow the
 [self-hosting guide](deploy/SELF-HOSTING.md). It covers Docker and nginx,
@@ -293,9 +299,13 @@ npm run verify:build
 
 The browser capability matrix also runs
 Firefox and automated WebKit against the built app. Run
-`npm run verify:capabilities` after a production build, then
-`npm run verify:capabilities:lifecycle` against the same build. Automated WebKit
-provides engine evidence; actual Safari and iOS PWA remain unverified.
+`npm run build && npm run verify:capabilities` runs both production and
+lifecycle checks, with a pinned matching Playwright container for WebKit.
+The combined matrix records source/build identity, current BFCache controls,
+splash defect controls, engine limitations and duration. It is a pre-release
+check outside routine CI. Podman and host Chromium/Playwright Firefox are
+required. Automated WebKit provides engine evidence; actual Safari and iOS
+PWA remain unverified. See `tests/PROBES.md` for output and runtime options.
 
 
 The hosting check needs Docker running and accessible to your user. It tests
@@ -366,12 +376,34 @@ npm run release:tag -- 1.2.3 --dry-run
 npm run release:tag -- 1.2.3
 ```
 
-The script requires a clean main branch and notes for the version in
-[CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
+Before tagging, run `npm run test:android` on the clean candidate. A passing
+run writes its source revision, device/API identities, APK hashes and completed
+stages into `scripts/progressive-release-record.json`. The required roster is
+API 26 native instrumentation, PIN-wait persistence and native backup deferral,
+plus current-Android instrumentation, PIN-wait persistence, Archive recovery
+and native backup lifecycle stages. Current Android also runs fresh English and
+Polish OCR in airplane mode under an isolated package, with separate APK hashes.
+Commit the record after the run. Only that
+record may differ from the tested candidate source.
+
+Focused backup, recovery and locked-process-death runs do not replace the core
+roster. The record names optional stages as completed or absent; the core pass
+count does not claim an installed-upgrade or locked-process-death run.
+
+The script requires a clean main branch, matching Android-tier evidence and
+notes for the version in [CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
+The release gate rejects signatures from unexpected certificates.
+[Android signing guidance](SECURITY.md#android-signing-certificates) records
+the GitHub APK, AAB upload and Play app-signing fingerprints.
 Release notes state schema changes, Archive format changes, security
-migrations and the minimum supported version.
+migrations and the minimum supported version. The stable section uses
+`{{schema}}`, resolved from the candidate migration list by the notes generator
+and shared with `release.json`. Generation rejects stale schema or minimum
+version facts. The released-format tests migrate a copy of the rc.1 schema-88
+fixture and check retained row counts; they do not replace the human exercise
+of updating an installed release or set release-matrix success flags.
 
 Keep private local evidence in the ignored working directories or root paths
 starting with `evidence`. CI rejects those root paths if they enter the index;

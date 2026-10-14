@@ -52,6 +52,8 @@ jobs:
 
       - name: Collect every Node check
         id: node-checks
+        env:
+          TZ: UTC
         run: |
           mkdir -p ci-logs
           node scripts/run-ci-checks.mjs --tier node 2>&1 | tee ci-logs/node-checks.log
@@ -159,6 +161,12 @@ jobs:
             entry: tests/browser-tier/run.mjs
           - name: update-handover
             entry: tests/update-handover-check.mjs
+          - name: credential-change
+            entry: tests/credential-change-check.mjs
+          - name: protection-change
+            entry: tests/protection-change-check.mjs
+          - name: stalled-reopen
+            entry: tests/stalled-reopen-check.mjs
           - name: restore-commit
             entry: tests/restore-commit-check.mjs
           - name: walkthrough-journal

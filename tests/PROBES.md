@@ -1,4 +1,73 @@
-# The probes in tests/*.mjs
+# Verification probes and focused regressions
+
+Archive validation tests cover single-read export length changes, malformed
+payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
+positive header fields and exact JSON/chunk ceilings (`container.test.ts`),
+and v1 preset migration without a presets section (`payload.test.ts`). The
+existing `kdf-cost-cap.test.ts` and `archive-row-validation.test.ts` keep the
+KDF refusal and row identity proofs with their production owners.
+
+`src/lib/data/archive/header-shape.test.ts` sends the retained JSON `null`
+header frame and other non-object headers through `openArchive`. Corrupt-file
+classification must precede key derivation. Newer and invalid format versions
+keep their existing unsupported-file classifications.
+
+`JournalWebViewInputTest` focuses real note, text, search and password controls
+in MainActivity's WebView and reads their native input connections. Each must
+carry `IME_FLAG_NO_PERSONALIZED_LEARNING`, while multiline input and keyboard
+actions remain intact. It runs in the Android tier on a supported WebView;
+the native-only selection on the old API 26 image excludes WebView probes.
+
+Keyboard learning needs a separate physical check with a phone lease and an
+isolated test package. With FUTO, first check that a fresh synthetic word is
+absent from another app's suggestions. Type it three times through the actual
+on-screen keyboard in the entry note, then check that the other app offers it.
+With the repaired build, repeat with a different fresh word and require it to
+remain absent. Remove only the test's own learned word and restore any changed
+settings; never reset the keyboard dictionary. Retain only synthetic matches,
+not unrelated suggestions. FUTO behavior does not prove what other keyboards
+do with this advisory flag.
+
+`auto-export-scheduler.test.ts` reports one synthetic native backup failure
+across ticks and a fresh scheduler module with the same stored preferences.
+It checks quiet-hours holds, notification refusal, disabled notices, clock
+correction and new failures after success or destination changes.
+`preferences.test.ts` reopens real SQLite to verify the receipt and held flag;
+`catalogue.test.ts` keeps the receipt out of Archives and the boot mirror.
+
+`node tests/entry-capture-check.mjs` drives the real entry routes and lock
+shell in Chromium with synthetic camera and microphone tracks. EN/PL keyboard
+activation, duplicate taps, navigation and actual visibility-triggered PIN
+concealment must leave no recorder, live track, preview or delayed feedback.
+`--gallery` records the pending controls beside their idle state in the trans
+palette, light and dark. It checks stable control geometry and retained focus.
+The browser tier's `entry-capture-probe.ts` mounts production EntryEditor over
+encrypted SQLite and attachment storage. It checks cancelled late opens,
+recorder failures, refusal retries, saved playback and the actual 30-second
+video cap. Node capture tests check failure cleanup and cap timer ownership.
+
+`src/lib/data/sqlite/migration-runner.test.ts` checks that the FTS5 probe
+actually attempts a virtual-table creation before reading versions or copying
+files. Wrapped driver errors keep their cause and fail as unavailable FTS5.
+Repeated probes leave no temporary tables and never change the main schema.
+
+`KeystorePromptLifecycleTest` calls the real Android unlock and confirmation
+paths with saved fragment state. Both must answer without a key; an invalid
+modern prompt must reject instead of leaving its call pending. These checks
+run in the Android tier, including its native-only emulator selection.
+
+`node tests/android-tier/key-gate/run.mjs --resources <owned-emulator.json>
+--output <evidence-directory>` requires an isolated test package, an owned
+emulator with synthetic PIN 1234 and enrolled fingerprint 1, and the built
+`key-gate` probe and APKs. It seeds a real encrypted journal, cold-launches
+its production boot and gate, presses Home, and mounts the gate only after
+native fragment state is saved. The existing cancelled state must enable
+retry; a real fingerprint then reopens the saved entry. Ordinary cancel and
+fingerprint lockout must also release busy. The runner captures the gate
+in trans light and dark. Only mount timing is controlled; the native bridge,
+Keystore, journal and gate remain production code. Resources name `serial`,
+`avd`, emulator `pid`, isolated `package` and an owned `cdpPort`. The runner
+clears only that package and removes its own forward when finished.
 
 `tests/fuzz/fuzz.test.ts` runs in `npm test` without a new dependency. Seed 1
 produces 40 cases for each of 12 targets: five Archive variants, Daylio CSV,
@@ -44,6 +113,19 @@ boundary even when a particular crash happens after browser storage flushes.
 Unrelated origin storage must survive. `reset.test.ts` checks credential-last
 file deletion and refusal ordering; `boot-machine.test.ts` keeps cleanup on
 the absent-journal path.
+
+`release-switch.test.ts` drives the real operator against disposable release
+roots. It checks active rollback history across deploy/rollback/deploy, list
+markers and deploy messages, stale timestamps, missing or invalid history,
+schema refusal and same-current no-ops. Filesystem failure controls cover
+history staging/publication, PDF publication and the current-link rename;
+the old receipt, current target and exact retained PDF namespace must survive.
+
+`webview-floor.test.ts` checks source JavaScript APIs, computed CSS transform
+properties and selector syntax against `minWebViewVersion`. Its controls
+cover direct and aliased style reads, bracket notation, shared selector
+constants, and DOM `querySelector` and `matches` calls. It checks source
+requirements rather than claiming to run a historical WebView engine.
 
 `src/lib/data/journal/restore.test.ts` uses real SQLite to guard roadmap Merge
 status separately from visibility. A hidden unchecked goal accepts the incoming
@@ -167,16 +249,20 @@ probe. Unit cache and registration receipts run in the Node tier.
 
 `update-handover-check` (`tests/update-handover-check.mjs`) runs with
 `npm run test:browser`, or directly with `node tests/update-handover-check.mjs`.
+Set `BROWSER_ENGINE=firefox` for Firefox. Navigation requires the fixture API
+within 60 seconds. Recovery accepts same-URL interruptions only after schema
+refusal at the requested URL. A held SQLite worker verifies delayed readiness and deadline failure.
 It holds public journal writes against worker takeover and activation timeout,
 checks encrypted persistence after reload, and preserves failed-write draft
 recovery followed by an explicit update retry. Fixture and platform limits are
 in [update-handover/README.md](update-handover/README.md).
 
-`credential-change-check` (`tests/credential-change-check.mjs`) runs with
-`npm run test:browser`. It holds credential publication across a real Settings
-lock/unlock, rejects overlapping changes and resets from both pages, then
-restarts and verifies the original entries and encrypted attachment bytes.
-The dev app supplies synthetic demo data; credential storage and UI paths are real.
+`credential-change-check` (`tests/credential-change-check.mjs`) runs with `npm
+run test:browser` and in its own required CI browser job. It holds credential
+publication across a real Settings lock/unlock, rejects overlapping changes and
+resets from both pages, then restarts and verifies the original entries and
+encrypted attachment bytes. The dev app supplies synthetic demo data; credential
+storage and UI paths are real.
 
 `pin-credential-contention` (`tests/pin-credential-contention.mjs`) mounts the
 real cold-start, session and current-PIN Settings gates in English and Polish.
@@ -223,13 +309,34 @@ client and isolated app. Remove its packages and owned AVD after delivery.
 `PinAttemptWaitTest` covers failed persistence, migration and stale completions;
 `PinAttemptWaitPersistenceTest` also checks native serialization and reboot state.
 
-`ReminderSchedulerStoreTest.alarmsComeBackAfterEveryRescheduleEventWithTheJournalNeverOpened` checks native stored-rule recovery after boot, zone changes, package replacement, clock changes and exact-alarm grants. Its unrelated-action control includes null intents. `ReminderSchedulerPermissionTest` checks each alarm against current permission and covers revocation between the check and exact admission. Shared reminder-rule fixtures retain the spring-forward 02:30-to-03:30 case. `ReminderBootCatchUpTest` checks the durable pending record, one catch-up after a long absence, second-boot and one-off controls, persistence failure, and quiet-hour deferral through foreground sync. `ReminderBootCatchUpStoreTest` exercises the real wrapped store and hidden notification title, then clears the notification before proving that a second boot does not post it again. Its quiet-hours case checks that an elapsed one-off leaves no notification and has a real alarm at the held delivery time. `ReminderPayloadStoreTest` also checks that the pending timestamp is wrapped; `RemindersQuietHoursBoundaryTest` pins the unchanged policy while its pending record advances. The legacy migration regression keeps its seven-day anchor while allowing pending records to advance.
+`ReminderSchedulerStoreTest.alarmsComeBackAfterEveryRescheduleEventWithTheJournalNeverOpened` checks native stored-rule recovery after boot, zone changes, package replacement, clock changes and exact-alarm grants. Its unrelated-action control includes null intents. `ReminderSchedulerPermissionTest` checks each alarm against current permission and covers revocation between the check and exact admission. Shared reminder-rule fixtures retain the spring-forward 02:30-to-03:30 case. `ReminderBootCatchUpTest` checks the durable pending record, one catch-up after a long absence, second-boot and one-off controls, persistence failure, and quiet-hour deferral through foreground sync. `ReminderBootCatchUpStoreTest` exercises the real wrapped store and hidden notification title, then clears the notification before proving that a second boot does not post it again. Its quiet-hours case checks that an elapsed one-off leaves no notification and has a real alarm at the held delivery time. `ReminderPayloadStoreTest` also checks that the pending timestamp is wrapped; `RemindersQuietHoursBoundaryTest` pins the unchanged policy while its pending record advances. The legacy migration regression keeps its seven-day anchor while allowing pending records to advance. `ReminderZoneChangeTest` covers Warsaw to New York after payload reload, foreground sync, future slots, another reminder, no zone change, the 12-hour boundary, stale alarms, boot and the original slot date under quiet hours. `ReminderZoneChangeStoreTest` splits first delivery and zone-change recovery into separate instrumentation invocations with a force-stop between them. It uses synthetic dates and zones with the real encrypted store and notifications, without changing device clock or zone. Its default invocation runs both stages and cleans up. For process-restart proof, run the test with instrumentation argument `zoneStage=first`, force-stop the isolated package, then run it with `zoneStage=second`. The second stage cleans up the stored fixture and notifications.
 
 `ocr-offline` (`tests/android-tier/ocr-offline.mjs`) runs the production Tesseract engine and lab parser on synthetic English and Polish images in a fresh Android test installation. It enables airplane mode and disables Wi-Fi before installing the app, then checks recognition, numeric/date extraction, real progress and lazy startup. The native fixture copies OCR files unchanged from the installed APK into its Capacitor local-server probe, rather than fetching or substituting an engine.
 
 Build and sync the app, then build the probe with `ANDROID_TIER_PROBE=ocr npx vite build --config tests/android-tier/android-tier.vite.config.ts`. Build isolated app/test APKs and supply `OCR_OFFLINE_AVD`, `OCR_OFFLINE_PACKAGE`, `OCR_OFFLINE_APK`, `OCR_OFFLINE_TEST_APK`; the package must be `dev.engender.app.test.*`. Set `ulimit -c 0` before the runner and use a disposable AVD. It records emulator ownership, restores its network settings, uninstalls its two packages and stops its emulator. Delete the owned AVD after delivery. This proves the tested Android WebView and real recognition engine; it does not replace physical-device or PWA installation checks.
 
 `backup-power-cut` (`tests/android-tier/backup-power-cut.mjs`) exercises foreground automatic delivery and actual scheduled `BackupWork` against Android's system local storage provider. It repeats retained seeds 2311–2314 and ten additional seeds per path with 40 MiB of synthetic attachments. After each QEMU power cut, the five newest retained verified backups must restore all 3300 rows and attachment bytes; at least one preceding good backup must remain. Older ownership receipts may survive a cut between pruning and the retention metadata update, and are recorded separately. `BackupDeliveryDurabilityTest` exercises both owners against full storage, truncated read-back, a pipe and a cloud cache with a regular file descriptor. A release-only capability class refuses the instrumentation fixture unconditionally.
+
+`mounted-status` uses the Settings language control and checks concealed export
+gates, native delivery refresh and Polish status text. Its deferred-text case
+clears the saved password through the native API, re-enables the destination
+and lets WorkManager produce the deferral. Without a saved password,
+foreground capture cannot immediately consume that state. The separate
+`defer`, `verify-deferred` and `catch-up` stages prove cold execution with a
+saved password and authenticated recovery.
+
+`reset-transfers`, selectable with `ANDROID_TIER_BACKUP_STAGES`, runs
+`ExportResetTest` through the actual `resetApp` and WebView reload. It requests
+Start over while native key derivation is pending, during a delayed attachment
+read, and during a scheduled read that never settles. Each case checks the
+retained native plugin, creates a new encrypted journal, and completes its first
+manual backup and scheduled snapshot in the same process. Each backup has its
+own 30-second completion wait after preparation. The probe records native
+method durations and saves both Archives for separate restore verification.
+The companion `FileDeliveryTest` case checks stale-slot takeover and an old abort arriving
+after a new file starts. JVM tests cover reset epochs and ownerless picker
+callbacks. Node tests cover scheduler cancellation and pending-read cleanup.
+The read delays are synthetic timing controls, not physical storage timings.
 
 `BackupManifestContractTest` inspects all installed permissions and the native
 backup components through PackageManager. It requires the delayed-job and
@@ -239,11 +346,12 @@ set through `aapt2`; source declarations alone do not satisfy that gate.
 
 Run `ulimit -c 0` before starting this runner. Build the `auto-export` probe with `ANDROID_TIER_PROBE=auto-export npx vite build --config tests/android-tier/android-tier.vite.config.ts` after the production build and Capacitor sync. Supply `BACKUP_POWER_CUT_AVD`, `BACKUP_POWER_CUT_PACKAGE`, `BACKUP_POWER_CUT_APK` and `BACKUP_POWER_CUT_TEST_APK` for an owned temporary API-35 AVD and an isolated `dev.engender.app.test.*` package. `--setup-only` measures the selected system folder's sync boundary; `--skip-faults` skips the separately runnable native fault test. Use `BACKUP_POWER_CUT_PATHS` and `BACKUP_POWER_CUT_SEEDS` to replay selected cases. The proof covers the tested emulator filesystem and provider, not cloud uploads or every physical storage device. Remove the test packages and AVD after delivery.
 
-`stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with
-`npm run test:browser`. It withholds real schema, preference and reference-read replies
-during unlock, then verifies bounded worker disposal, a usable retry without
-reload, preserved journal content and harmless late replies. Visibility events
-are synthetic; the application, encrypted worker and OPFS are real.
+`stalled-reopen-check` (`tests/stalled-reopen-check.mjs`) also runs with `npm
+run test:browser` and in its own required CI browser job. It withholds real
+schema, preference and reference-read replies during unlock, then verifies
+bounded worker disposal, a usable retry without reload, preserved journal
+content and harmless late replies. Visibility events are synthetic; the
+application, encrypted worker and OPFS are real.
 
 `restore-commit-check` (`tests/restore-commit-check.mjs`) runs with
 `npm run test:browser` and in its own CI browser job. It holds a successful
@@ -552,6 +660,7 @@ on this page ran green on 2026-09-23.
 
 Imported or read by the probes above, never run on their own:
 `browser-harness` (Chromium launch, reporting, `settlePage`), `serve-build` (build/ as production serves it),
+`build-requests` (context request observer for the build origin),
 `cold-screen-sampler` (shared frame capture), `measurement-notice-observation` (notice travel and observation completeness),
 `probe-handshake`, `palettes`, `png-decode`, `pdf-fixture`, `photo-fixture`,
 `prep-fixture`, `media-fixtures`, `fake-microphone`, `motion-sampling`,
@@ -690,3 +799,192 @@ app. Assemble with an isolated `dev.engender.app.test.*` application ID before
 running the instrumentation class; the test refuses other packages. The regular
 emulator tier reports this physical-device gate as excluded. ADR-0013 records
 the chosen tuple and measured phone result.
+
+`src/lib/crypto/recoveryKey.test.ts` pins the written recovery key for fixed
+random bytes and checks every I/L spelling against a key containing 1.
+`keystore.test.ts` and `data/recovery-key.test.ts` reject null JSON, unknown
+KDF names and byte fields that would otherwise coerce into base64. Refusals
+use the matching unreadable-file error. `key-clearing.test.ts`
+checks that a fresh data key is zeroed when derivation or encryption fails.
+`argon2id.test.ts` uses isolated worker stand-ins to check module startup,
+prewarm reuse, termination and event suppression. Load failures derive the
+known key on the main thread; workers that ran and failed refuse without
+retrying. These checks run in `npm test`; the stand-ins do not prove browser
+worker loading or Android behavior.
+
+
+`attempt-store.test.ts` checks the browser attempt key, hostile stored values,
+count clamping and unavailable storage. The throttle tests keep a pending
+wait on disk while it is polled and preserve elapsed time across gate
+remounts. Android gate tests display the native ledger without admitting or
+resetting attempts. Leave-lock tests cover ordinary versus persisted history,
+disposal, optional lifecycle targets, backwards clocks under restart and
+mixed native leaves when timing changes to immediately.
+
+`node tests/browser-tier/pin-wait-clock-jump.mjs` mounts the production PIN
+gate over a synthetic encrypted journal in Chromium. A reload must owe the
+full pending minute. Moving the wall clock forward one hour or ten years,
+back two days, or loading a stale stored deadline cannot pay the wait.
+The unlocked control also checks leave-lock on short, long and backwards
+clock changes. Playwright changes system time while elapsed time keeps its
+own course. The runner closes its browser and server in `finally`.
+
+`node tests/build-requests-check.mjs` checks the request observer used by
+`verify-build.mjs`. A synthetic service worker fetches another local origin.
+Without CSP, the context observer records the request while the page observer
+misses it. With the nginx CSP header, the sink receives nothing. The build
+server reads that policy directly from `deploy/nginx/journal-headers.conf`
+and sends it on documents, service workers and error responses.
+
+Dose draft and schedule unit tests preserve saved route, site, trimmed unit
+and drug fields. They check distant weekday amount cycles, route aliases,
+injection boundaries, passed slots, nearest-slot ties and auto-log rhythm
+guards. Epoch-day tests cover year-boundary borrowing and one-day custom
+ranges. Run:
+
+```sh
+npx vitest run src/lib/data/doseDraft.test.ts src/lib/data/doseSchedule.test.ts src/lib/data/epochDay.test.ts
+```
+
+`npm run build && npm run verify:capabilities` runs the production and lifecycle
+matrix sequentially in Chromium, Firefox and automated WebKit. WebKit runs in
+the Playwright 1.63.0 Noble container pinned by digest in
+`tests/browser-tier/capability-run.mjs`; its version must match the installed
+`playwright-core`. The host needs Podman (or `CONTAINER_RUNTIME`), Chromium,
+Playwright Firefox, and network access for the container's media tools.
+`CAPABILITY_OUTPUT` selects a new evidence directory. Reused directories are
+refused. Each engine's JSON and the combined `matrix.json` retain source
+revision, dirty status, release/build identity, engine version, duration,
+case results and invocation failures. A dirty source tree, stale build or failed app check exits
+nonzero. This is a pre-release check, outside routine CI. `npm run verify:capabilities:lifecycle` runs only
+the lifecycle portion through the same container owner.
+
+The lifecycle matrix first measures fresh static BFCache controls in the same
+runtime. Chromium must restore the plain page and refuse the unload-blocked
+page before exercising the app's actual retained return. Other engines mark
+that app row unsupported only when their current plain control cannot restore;
+a future capable runtime runs the app check. These controls are automation
+evidence, not proof of Safari or installed iOS PWA behavior.
+
+`tests/browser-tier/splash-check.mjs` retains three fresh runs of the splash
+cap, first tap during/after fading, concealed input and hidden-boot checks in
+each engine. Every check must reject its own injected defect: retained splash,
+blocked taps, input admitted under the splash, or disabled hold cap. Hidden
+visibility and suspended animation frames are emulated. Missing authenticator,
+camera, microphone and native cases retain their explicit not-run or
+unsupported results; splash checks do not supply that coverage.
+
+`ANDROID_TIER_LOCK_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`
+keeps the locked-journal process-death probe. It visits all four retained doors,
+kills the background process, then returns separately through recents, the
+launcher and a real reminder notification. Each fresh process must show the
+PIN pad and contain no private fixture text in the DOM. The dedicated fixture
+and notification helpers run only in an isolated package. See
+`tests/android-tier/README.md` for runtime requirements and limits.
+
+`tests/android-tier/evidence.test.ts` and `check-progressive-release.test.ts`
+use synthetic records to check dirty-source refusal, record-only commit
+equivalence, stale timestamps, missing build/stage identity and optional-stage
+claims. They do not substitute for an Android runtime run. The runner records
+actual completed checks and APK hashes only after a clean passing run. Current
+Android must also complete isolated first-use OCR in airplane mode with its own
+APK identity. `offline-ocr-stage.test.ts` uses fake device replies to verify
+fresh installs, failure cleanup and restoration of network settings.
+`installed-upgrade-evidence.test.ts` checks four-APK provenance for a CDP-only
+upgrade, refuses mismatched sources and fabricated control roles, and keeps
+optional-only evidence insufficient for the core release gate.
+
+## Node calendar zones
+
+CI runs the full Node suite under both `TZ=UTC` and `TZ=Europe/Warsaw`.
+The check collector reports each run's duration in the job summary and log;
+a failed UTC run does not skip Warsaw. A failed build blocks both runs.
+
+`src/lib/data/epochDay.dst.test.ts` retains the testing audit's six Warsaw
+controls for the 2026 autumn and 2027 spring clock changes: day lengths,
+wall-clock times, repeated and missing hours, reminder recurrence, midnight
+waits and calendar-day boundaries. The test file selects Warsaw and restores
+the original zone afterward, so these controls also run on hosts without DST.
+`epochDay.test.ts` likewise always exercises Warsaw and Los Angeles spring
+forward. Fixture timestamps in draft, cycle and legacy reminder tests use
+local calendar times rather than elapsed hours from UTC or local midnight.
+
+For a local portability check, run `npm test -- --maxWorkers=2` with each
+of `UTC`, `Europe/Warsaw`, `America/Los_Angeles`, `Australia/Lord_Howe`,
+`Asia/Kolkata`, `Pacific/Chatham` and `Pacific/Kiritimati` in `TZ`. Local
+durations are not measurements of the hosted CI runner.
+
+## Retained hidden-read research
+
+`tests/retained-door-cost/README.md` describes the isolated physical Android
+comparison and its web observer control. The recorded result is in
+`tests/retained-door-cost/RESULTS.md`: write completion, visible read readiness
+and dirty warm revisit settlement have separate boundaries. The disposable
+activity gate changes only the probe build; it is not production scheduling.
+Actual-shell captures retain the existing paint hold, last-result DOM, opacity
+floor, reduced-motion and lock-concealment assertions.
+
+## Release signing certificates
+
+`tests/check-release-artifacts.test.ts` generates disposable signing keys and
+signed APK/AAB fixtures. It runs `apksigner`, `jarsigner` and `keytool` through
+the release verifier, checks the expected certificate for each role, and rejects
+valid signatures from other certificates or an extra AAB signer. Existing
+unsigned, partially signed and tampered AAB checks remain active. Production
+pins come from the public record in [SECURITY.md](../SECURITY.md#android-signing-certificates).
+
+This Node test needs a JDK (`jar`, `keytool`, `jarsigner` on PATH) and an Android
+SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
+`android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
+device is used. Temporary keys and artifacts are removed after the tests.
+
+`manual-export` is an opt-in physical-device probe, outside default Android
+instrumentation discovery. Build the ordinary web bundle and sync Capacitor,
+then compile isolated APKs with:
+
+```sh
+npm run build
+npx cap sync android
+android/gradlew -p android -I "$PWD/tests/manual-export/isolate.gradle" --no-daemon --max-workers=2 :app:assembleDebug :app:assembleDebugAndroidTest
+ANDROID_SERIAL=<owned-phone-serial> python3 tests/manual-export/run.py
+```
+
+The runner takes the shared phone lease and uses only
+`dev.engender.app.test.picker77`, its test package and forward9377. It requires
+an unlocked phone with English Developer options and DocumentsUI already
+pointing at local Download/Downloads. It changes the actual Don't keep
+activities switch, records the caller's DESTROYED state, saves through the real
+picker and verifies exact bytes and SHA-256. The payload is an Archive packed
+with the released KDF profile; the pulled file must decrypt and restore its
+entry, preferences and photo bytes. Both APK package IDs are checked before
+installation. An instrumentation case separately
+counts one restored Capacitor result. Provider cases assert saved, cancelled,
+truncated and refused-write outcomes, exact owned-target deletion, unrelated
+file preservation, and a denied cleanup record surviving until access returns.
+The host kills the app after the provider records its first partial write;
+restart must remove that target without removing the unrelated file. The
+runner restores the switch and setting, removes its UUID document, packages
+and forward, and releases the lease. It records both APK hashes. No emulator
+or provider-cloud durability claim follows from these checks.
+
+`restored-file-delivery.test.ts` keeps restored results behind journal gates,
+rejects old process/reset identities and held status replies crossing journal
+replacement, and deduplicates each transfer. Native `FileResetOwnershipTest`
+checks that retained staging contains no Activity or plugin owner and that
+reset closes its in-memory key. Existing reset and scheduled-backup tests
+remain unchanged.
+
+`tests/protection-change-check.mjs` exercises mounted current-protection prompts
+against synthetic journals, real browser storage and the shipped cryptography.
+It covers PIN, passphrase and a fake WebAuthn PRF authenticator, refused and
+cancelled approval, minting, replacement, rejection of the old recovery key and
+single-operation approval. Post-recovery setup consumes its proof once; a failed
+publication keeps the old PIN and requires the existing recovery key for retry.
+The fixture does not verify biometric hardware. Node tests cover Android biometric
+outcomes and existing-recovery-key approval through fake ports, plus credential,
+lock, cancellation, reset and session ownership races. The credential-change
+probe holds OPFS publication before close and requires a lock/reset-invalidated
+operation to abort, then verifies a new authenticated operation and cold unlock.
+The cleanup probe requires the published secret on retry after old-binding
+cleanup fails. Browser swap close and native bridge dispatch are the respective
+publication admission boundaries; later cancellation cannot undo committed data.

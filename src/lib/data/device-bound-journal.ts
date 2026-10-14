@@ -134,11 +134,12 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
     journal, and the module does not offer it there. Ticket 53's notes carry
     that as the follow-up it is. The caller owns credential mutation through
     old-mode cleanup. */
-export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   const slot = browserDeviceKeySlot();
   const wrappingKey = await wrappingKeyFor(slot);
   const metadata = await wrapDeviceBoundDataKey(dataKey, wrappingKey);
-  await writeDeviceBoundMetadata(metadata);
+  current();
+  await writeDeviceBoundMetadata(metadata, current);
 }
 
 export async function deviceBoundJournalExists(): Promise<boolean> {
@@ -255,12 +256,13 @@ async function readDeviceBoundMetadata(): Promise<DeviceBoundMetadata | null> {
   }
 }
 
-async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata): Promise<void> {
+async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata, current: () => void = () => {}): Promise<void> {
   const root = await navigator.storage.getDirectory();
   const handle = await root.getFileHandle(DEVICE_BOUND_FILE, { create: true });
   const writable = await handle.createWritable();
   try {
     await writable.write(serializeDeviceBoundMetadata(metadata));
+    current();
     await writable.close();
   } catch (error) {
     await writable.abort().catch(() => {});

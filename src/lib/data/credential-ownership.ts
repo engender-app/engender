@@ -1,9 +1,19 @@
 import { isAndroid } from '../platform';
+import { UnlockCancelledError } from '../lock/unlock-attempt';
 
 // Keep the setup lock name so existing setup clients share this boundary.
 const LOCK_NAME = 'engender-journal-initialization';
 let nativeTurn: Promise<void> = Promise.resolve();
 let nativePending = 0;
+let generation = 0;
+
+/** Reset revokes outstanding prompts before waiting for credential ownership. */
+export function invalidateCredentialApprovals(): void { generation++; }
+
+export function currentCredentials(): () => void {
+  const mine = generation;
+  return () => { if (mine !== generation) throw new UnlockCancelledError(); };
+}
 
 export class CredentialsBusyError extends Error {
   constructor() {
@@ -42,5 +52,8 @@ export function authenticateCredentials<T>(work: () => Promise<T>): Promise<T> {
     rather than queue a change captured by a page that may lock or reset.
     Low-level wrap and binding helpers run inside this boundary, never nest it. */
 export async function changeCredentials<T>(work: () => Promise<T>): Promise<T> {
-  return ownCredentials(work, false);
+  return ownCredentials(async () => {
+    try { return await work(); }
+    finally { invalidateCredentialApprovals(); }
+  }, false);
 }

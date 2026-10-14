@@ -12,6 +12,46 @@ The Node test suite runs 480 seeded importer and sniffer fuzz cases. A
 24,000-case run is available with `FUZZ_LONG=1 FUZZ_SEED=7`. Failures retain
 their exact inputs and seed/index receipts for replay.
 
+Recovery-key creation, replacement and access-mode changes now require fresh
+current-protection approval. Web device-bound mode explains its unlocked-session
+exception; Android unlocked mode requires biometrics or an existing recovery key.
+Recovery unlock approves one immediate protection setup. Cancelled or stale
+prompts cannot publish a replacement wrap.
+
+Release verification rejects APKs and App Bundles signed by an unexpected
+certificate, even when the signature itself is valid.
+
+Android manual exports survive activity recreation while the save picker is
+open. Interrupted writes leave a cleanup record for the chosen destination;
+the app retries removal at its next start and reports when access is refused.
+
+Archive import identifies non-object JSON headers as corrupt files before
+key derivation, including a header containing only `null`.
+
+Android always asks keyboards not to learn words typed in the app. Keyboard
+support controls whether the request works; previously learned words remain.
+
+A scheduled Android backup failure posts one notice across later checks and
+app restarts. Quiet-hours holds survive restarts; a later failure can notify
+again after a successful backup or a destination change.
+
+Leaving or locking the entry editor cancels pending voice and video capture.
+Repeated taps open one stream, and video recorder failures close the camera
+and microphone. Failed captures offer a retry without attaching partial media.
+
+Web rollback with `--previous` returns to the release active before the
+last switch, including after an earlier rollback. Listing and deploy output
+identify the same target. Missing or stale history requires a named rollback;
+the schema safety guard remains in place.
+
+Android's key gate keeps its retry available when a cold start reaches the
+prompt after the app has gone into the background. Returning to the app no
+longer leaves the unlock button waiting for a prompt that never opened.
+
+Android requires WebView 104 or newer. The declared floor now covers the
+computed CSS transforms and door selectors used during navigation. The
+source guard checks those features alongside JavaScript API calls.
+
 Medication stock treats trimmed drug-name case variants as one count, including
 Unicode names. A refill updates the existing row and its run-out reminder.
 Schema 91 keeps the latest updated complete stock row when older journals
@@ -46,6 +86,8 @@ the journal gate.
 A pending reminder missed while the phone is off is delivered once at boot,
 with quiet hours and title hiding preserved. Recurring reminders then resume
 at the next future occurrence; one-off reminders stay one-off.
+After a time zone change, a daily slot already delivered less than 12 hours
+ago does not repeat. Future daily slots remain eligible, including after restart.
 
 An open web page keeps its cached release assets when another page applies an
 update. Deferred screens and journal reopening continue offline; retained
@@ -208,8 +250,8 @@ can close the journal as soon as you leave the app. Android reminders use a
 generic label by default. The Android build does not request the INTERNET
 permission.
 
-This is the first versioned release. Earlier development builds, including
-the August web beta, do not establish a supported update path. Export anything
+This stable release supports updates from 1.0.0-rc.1. Earlier development
+builds, including the August web beta, do not establish a supported update path. Export anything
 you want to keep before replacing a development build.
 
 Day One imports use the calendar day in each entry's recorded time zone.
@@ -221,7 +263,9 @@ Search queries held for returning from an entry stay in memory and are
 cleared on lock. They no longer leave plaintext copies in browser storage.
 Reloading an entry clears the held query and filters.
 
-- Schema changes: the first release establishes schema 86; pre-squash development journals are not supported. Export text or PDF from the old build before starting a new journal.
-- Archive format changes: the first release establishes archive format 2. Archives from development builds are not a supported restore path.
-- Security migrations: none for this first release. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
-- Minimum supported version: 1.0.0 is the first supported release; there is no earlier supported version to update from.
+Pre-squash development journals are not supported; export text or PDF from the old build before starting a new journal.
+
+- Schema changes: this release uses schema {{schema}}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.
+- Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore. Archives from development builds are not a supported restore path.
+- Security migrations: none. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
+- Minimum supported version: 1.0.0-rc.1.

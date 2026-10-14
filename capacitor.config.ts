@@ -35,13 +35,11 @@ const config: CapacitorConfig = {
        does not tell you what the app is running in. This is the number that
        decides whether it runs at all.
 
-       87 is where Vite compiles the bundle to - its default module target -
-       so below it the app is syntax the WebView cannot parse. Everything the
-       app needs at runtime is at or under that: OPFS at 86, Object.fromEntries
-       at 73. The one call that was above it, Object.hasOwn at 93, was
-       replaced in prefs/catalogue.ts rather than allowed to set the floor
-       six versions higher than the bundle needed. */
-    minWebViewVersion: 87
+       Navigation reads computed translate and scale, available from 104.
+       Shared door selectors also need :is() and complex :not() from 88.
+       Vite derives its Chromium syntax target from this same value;
+       webview-floor.test.ts checks runtime APIs, CSS reads and selectors. */
+    minWebViewVersion: 104
   },
   server: {
     androidScheme: 'https',

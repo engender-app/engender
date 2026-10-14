@@ -72,19 +72,24 @@ test(`epochDayFromTimestamp round-trips with epochDayFromLocalDate under TZ=${tz
   expect(epochDayFromTimestamp(d.getTime())).toBe(epochDayFromLocalDate(d));
 });
 
-test(`startOfDayTimestamp is not epochDay * 86400000 across a DST transition under TZ=${tz}`, () => {
-  // A UTC-anchored day is always exactly 86400000ms; a real local day is
-  // 23 or 25 hours on the day the clocks change. Skipped outside the two
-  // zones this ticket names, since other zones may not observe DST at all.
-  if (tz !== 'Europe/Warsaw' && tz !== 'America/Los_Angeles') return;
-  const springForward =
-    tz === 'Europe/Warsaw'
-      ? epochDayFromLocalDate(new Date(2024, 2, 31)) // last Sunday of March
-      : epochDayFromLocalDate(new Date(2024, 2, 10)); // second Sunday of March
-  const before = startOfDayTimestamp(springForward);
-  const after = startOfDayTimestamp(springForward + 1);
-  expect(after - before).toBe(23 * 3600000);
-});
+for (const [zone, month, day] of [
+  ['Europe/Warsaw', 2, 31],
+  ['America/Los_Angeles', 2, 10]
+] as const) {
+  test(`startOfDayTimestamp spans 23 hours across spring forward in ${zone}`, () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = zone;
+    try {
+      const springForward = epochDayFromLocalDate(new Date(2024, month, day));
+      const before = startOfDayTimestamp(springForward);
+      const after = startOfDayTimestamp(springForward + 1);
+      expect(after - before).toBe(23 * 3600000);
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+}
 
 test(`startOfDayTimestamp spans a full 86400000ms on an ordinary day under TZ=${tz}`, () => {
   const day = epochDayFromLocalDate(new Date(2024, 6, 15));
@@ -468,4 +473,20 @@ test('msUntilNextLocalMidnight lands on the next local midnight', () => {
   expect(after.getHours()).toBe(0);
   const morning = new Date(2026, 9, 5, 0, 0, 0);
   expect(epochDayFromLocalDate(new Date(morning.getTime() + msUntilNextLocalMidnight(morning)))).toBe(epochDayFromLocalDate(morning) + 1);
+});
+
+test('calendar duration borrows across a year boundary and keeps exact-month zero days', () => {
+  const day = (year: number, month: number, date: number) => epochDayFromCalendarDate(year, month, date)!;
+  expect(calendarDuration(day(2025, 11, 20), day(2026, 1, 10))).toEqual({ years: 0, months: 1, days: 21 });
+  expect(calendarDuration(day(2025, 12, 15), day(2026, 1, 15))).toEqual({ years: 0, months: 1, days: 0 });
+  expect(calendarDuration(day(2025, 12, 31), day(2026, 1, 1))).toEqual({ years: 0, months: 0, days: 1 });
+});
+
+test('custom inclusive range accepts one calendar day', () => {
+  expect(customInclusiveRange(20000, 20000)).toEqual({ start: 20000, end: 20000 });
+});
+
+test('a missing range end stays invalid before the Unix epoch', () => {
+  expect(customInclusiveRange(-1, null)).toBeNull();
+  expect(customInclusiveRange(0, null)).toBeNull();
 });

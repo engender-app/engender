@@ -40,3 +40,7 @@ corner mask. `render:mark` also updates the PWA and Apple touch icons.
 Review the screenshots and feature graphics before committing regenerated
 images. Text validation runs with `npm test -- tests/store-listing-assets.test.ts`.
 This directory contains assets only; nothing here uploads them to a store.
+
+The Android runtime requirement is Android 8.0 or newer with WebView 104
+or newer. WebView updates separately from Android; the OS version alone
+does not establish whether the app can run.

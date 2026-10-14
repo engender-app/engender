@@ -10,6 +10,9 @@ serial, and Gradle receives that serial
 through `ANDROID_SERIAL`. Choose an unused even port with `ANDROID_TIER_PORT`
 (default 5580). `ANDROID_TIER_HEADLESS=1` uses software graphics without Vulkan.
 
+The emulator runs with metrics and crash reporting disabled for that process,
+so a previous emulator crash cannot block startup on a consent dialog.
+
 Each run retains invocation logs, stage logs and disposable AVD files in a new
 directory under `.claude/android-tier/`. `ANDROID_TIER_LOG_DIR` overrides that
 parent directory. XML results are cleared before each invocation. Missing,
@@ -54,3 +57,56 @@ For an affected-phase rerun, set `ANDROID_TIER_BACKUP_STAGES` to a comma-separat
 list, for example `defer,verify-deferred,catch-up,cleanup`. The report names the
 selection. Unknown stages and selected stages that never execute fail the run;
 unselected stages are explicit skips. Omit the variable for the full roster.
+
+## Locked journal after process death
+
+Run `ANDROID_TIER_LOCK_ONLY=1 ANDROID_TIER_AVDS=tracker35 npm run test:android`
+for the opt-in lock probe. It builds an isolated `dev.engender.app.test.lockprobe`
+package on a disposable emulator. The fixture uses the production PIN setup and
+journal stores. Before each kill, it unlocks and visits Today, Calendar, Look
+back and More. It backgrounds the app, waits for its lock, runs `am kill`, and
+requires the process to disappear. Recents, the launcher and a posted reminder
+notification each return to a new process. Each arrival must show the PIN pad
+and contain no fixture text anywhere in the DOM, including hidden retained
+doors and form values. The reminder uses the production notification builder
+and authenticated PendingIntent. It does not substitute a route URL for a
+notification tap.
+
+The fixture helper is excluded from the ordinary instrumentation roster. This
+stage needs a supported WebView; selecting the native-only API 26 AVD fails.
+Invocation failures and missing arrival controls fail the command. The runner
+removes its forwards and isolated packages, then shuts down its owned emulator.
+Its evidence includes process IDs and one result for each arrival. This checks
+process death on an emulator, not permission revocation or physical-device
+behavior.
+
+The API 26 runner disables the emulator's GLDMA transport. Its old goldfish
+kernel panics while mapping graphics DMA buffers during Android startup.
+The native floor checks run after a fresh boot with that transport disabled.
+
+## Release evidence
+
+Start from a clean working tree. A passing run writes `androidTier` in
+`scripts/progressive-release-record.json` after checking that HEAD and the
+working tree stayed unchanged. It records each AVD, serial, API, APK hashes,
+completed stage groups and individual passing checks. Failed runs do not write
+passing evidence. Commit the record before tagging or running another tier.
+Tagging and publication require the API 26 and current-Android core rosters;
+focused runs cannot satisfy that requirement. The current-Android roster also
+requires fresh English and Polish OCR in airplane mode. The runner builds an
+isolated package for this phase, records its APK hashes separately, and restores
+network settings and removes both packages when the phase ends or fails.
+`offline-ocr-stage.mjs` owns this phase for both the core and standalone runners.
+
+`optionalStages.installedUpgrade` and `optionalStages.lockedProcessDeath` are
+explicitly absent until their stages complete. A focused lock run can add its
+completed result to earlier core evidence only when both runs used equivalent
+source. The installed-upgrade stage remains unavailable until its runner lands.
+A CDP-only installed-upgrade run records four application APKs: the released
+rc.1 build, the healthy candidate, and the two named migration controls. Each
+APK has its actual SHA-256, source revision, package ID and version metadata;
+control APKs also name their fixture patch. The healthy APK hash must match the
+run's target hash, and its source and both control sources must match the tested
+revision. Core and other instrumentation runs retain their test-APK hashes.
+An installed-upgrade result alone leaves the required core roster incomplete.
+The release workflow reads the committed record from the publication checkout.

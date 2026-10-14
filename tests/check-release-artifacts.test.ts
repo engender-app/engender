@@ -1,11 +1,11 @@
 import { spawnSync, execFileSync, type ExecFileSyncOptions } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash, X509Certificate } from 'node:crypto';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { strToU8, zipSync } from 'fflate';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { androidOcrAssetProblems, androidPermissionSetProblems, expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { androidOcrAssetProblems, androidPermissionSetProblems, androidSignatureProblems, RELEASE_SIGNERS, expectedArtifactNames, releaseArtifactProblems } from '../scripts/check-release-artifacts.mjs';
 
 // ZIP fixtures have no binary manifest. Supply the platform tool's receipt;
 // candidate verification invokes real aapt2 against the actual APK.
@@ -13,7 +13,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
   const { readFileSync } = await import('node:fs');
   return { ...actual, execFileSync(command: string, args: string[], options: ExecFileSyncOptions = {}) {
-    if (command === 'aapt2') return readFileSync(`${args[2]}.permissions`, 'utf8');
+    if (command === 'aapt2' && args[0] === 'dump') return readFileSync(`${args[2]}.permissions`, 'utf8');
     return actual.execFileSync(command, args, options);
   } };
 });
@@ -222,11 +222,109 @@ describe('AAB signature verification with platform tools', () => {
     expect(verification(root)).toContain(`AAB signature verification failed: ${aab}`);
   }, 15000);
 
-  it('accepts a bundle signed with a self-signed Android test key and rejects tampering', () => {
+  it('rejects a valid unrecorded self-signed certificate and still detects tampering', () => {
     const { root, aab } = signedFixture();
     expect(verification(root)).not.toContain('AAB signature verification failed:');
+    expect(verification(root)).toContain('AAB signer SHA-256 mismatch:');
     writeFileSync(join(root, 'payload.txt'), 'tampered bundle payload\n');
     execFileSync('jar', ['--update', '--file', aab, '-C', root, 'payload.txt']);
     expect(verification(root)).toContain(`AAB signature verification failed: ${aab}`);
   }, 15000);
+});
+
+
+describe('pinned Android signing certificates with platform tools', () => {
+  let root: string;
+  let apk: string;
+  let aab: string;
+  let apkPin: string;
+  let aabPin: string;
+
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'gd-release-signers-'));
+    const sdk = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
+    if (!sdk) throw new Error('Android SDK is required for signed APK fixtures (ANDROID_HOME).');
+    const versions = readdirSync(join(sdk, 'build-tools')).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    const buildTools = versions.map(version => join(sdk, 'build-tools', version))
+      .find(path => existsSync(join(path, 'apksigner')) && existsSync(join(path, 'aapt2')));
+    if (!buildTools) throw new Error('Android build-tools with apksigner and aapt2 are required.');
+    vi.stubEnv('PATH', `${buildTools}${delimiter}${process.env.PATH}`);
+    const platforms = readdirSync(join(sdk, 'platforms')).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    const androidJar = platforms.map(platform => join(sdk, 'platforms', platform, 'android.jar')).find(existsSync);
+    if (!androidJar) throw new Error('Android SDK platform android.jar is required.');
+    apk = join(root, 'fixture.apk');
+    aab = join(root, 'fixture.aab');
+    const manifest = join(root, 'AndroidManifest.xml');
+    writeFileSync(manifest, `<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.engender.signerfixture">
+      <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/><application/></manifest>`);
+    execFileSync('aapt2', ['link', '-o', apk, '-I', androidJar, '--manifest', manifest], { stdio: 'pipe' });
+    writeFileSync(join(root, 'payload.txt'), 'synthetic release bundle payload');
+    execFileSync('jar', ['--create', '--file', aab, '-C', root, 'payload.txt']);
+    function key(name: string) {
+      const keystore = join(root, `${name}.p12`);
+      execFileSync('keytool', ['-genkeypair', '-keystore', keystore, '-storetype', 'PKCS12',
+        '-alias', name, '-storepass', 'test-password', '-keyalg', 'RSA', '-validity', '2',
+        '-dname', `CN=Disposable ${name} fixture`], { stdio: 'pipe' });
+      const certificate = execFileSync('keytool', ['-exportcert', '-keystore', keystore,
+        '-storepass', 'test-password', '-alias', name], { stdio: 'pipe' });
+      const pin = createHash('sha256').update(new X509Certificate(certificate).raw).digest('hex');
+      return { keystore, pin };
+    }
+    const apkKey = key('apk');
+    const aabKey = key('upload');
+    apkPin = apkKey.pin;
+    aabPin = aabKey.pin;
+    execFileSync('apksigner', ['sign', '--ks', apkKey.keystore, '--ks-pass', 'pass:test-password',
+      '--v4-signing-enabled', 'false', apk], { stdio: 'pipe' });
+    execFileSync('jarsigner', ['-keystore', aabKey.keystore, '-storepass', 'test-password', aab, 'upload'], { stdio: 'pipe' });
+  }, 15000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+    if (root) rmSync(root, { recursive: true, force: true });
+  });
+
+  it('accepts valid artifacts with their expected certificates', () => {
+    expect(androidSignatureProblems({ apk, aab }, { apk: apkPin, aab: aabPin })).toEqual([]);
+  });
+
+  it('rejects valid signatures from the other artifact role', () => {
+    expect(execFileSync('apksigner', ['verify', '--print-certs', apk], { encoding: 'utf8' })).toContain(apkPin);
+    expect(execFileSync('jarsigner', ['-J-Duser.language=en', '-verify', aab], { encoding: 'utf8' })).toContain('jar verified.');
+    const problems = androidSignatureProblems({ apk, aab }, { apk: aabPin, aab: apkPin });
+    expect(problems).toHaveLength(2);
+    expect(problems[0]).toContain('APK signer SHA-256 mismatch:');
+    expect(problems[1]).toContain('AAB signer SHA-256 mismatch:');
+  });
+
+  it('defaults to the recorded release certificate for each role', () => {
+    expect(RELEASE_SIGNERS).toEqual({
+      apk: '093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86',
+      aab: '093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86'
+    });
+    expect(androidSignatureProblems({ apk, aab })).toHaveLength(2);
+  });
+
+  it('uses the fixed pins in the release CLI', () => {
+    const version = '1.0.0';
+    const releaseApk = join(root, `engender-android-release-${version}.apk`);
+    const releaseAab = join(root, `engender-android-release-${version}.aab`);
+    writeFileSync(releaseApk, readFileSync(apk));
+    writeFileSync(releaseAab, readFileSync(aab));
+    const result = spawnSync(process.execPath, ['scripts/check-release-artifacts.mjs'], {
+      encoding: 'utf8', env: { ...process.env, ENGENDER_VERSION: version,
+        ENGENDER_VERSION_CODE: '1000000999', ENGENDER_RELEASE_DIR: root, ENGENDER_ANDROID_BUILD_DIR: root }
+    });
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain(`APK signer SHA-256 mismatch: expected ${RELEASE_SIGNERS.apk}; found ${apkPin}`);
+    expect(result.stdout).toContain(`AAB signer SHA-256 mismatch: expected ${RELEASE_SIGNERS.aab}; found ${aabPin}`);
+    expect(result.stdout).not.toContain('signature verification failed:');
+  });
+
+  it('rejects an extra AAB signer even when the expected signer is present', () => {
+    execFileSync('jarsigner', ['-keystore', join(root, 'apk.p12'), '-storepass', 'test-password', aab, 'apk'], { stdio: 'pipe' });
+    expect(execFileSync('jarsigner', ['-J-Duser.language=en', '-verify', aab], { encoding: 'utf8' })).toContain('jar verified.');
+    expect(androidSignatureProblems({ apk, aab }, { apk: apkPin, aab: aabPin }))
+      .toEqual([expect.stringContaining('AAB signer SHA-256 mismatch:')]);
+  });
 });

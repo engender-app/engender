@@ -12,12 +12,15 @@
      rather than a decision this screen makes: only the wrap is stored
      (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
      sure I still have it". */
+  import { onDestroy } from 'svelte';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
+  import CurrentProtection from '$lib/components/CurrentProtection.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
+  import { revokeRecoveryKey } from '$lib/data/recovery-key';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
-  import { journalDataKey } from '$lib/stores/boot.svelte';
+  import { bootState, prepareRecoveryKeyChange } from '$lib/stores/boot.svelte';
   import { copyRecoveryKey } from '$lib/data/recovery-key-clipboard';
   import { isAndroid } from '$lib/platform';
   import { printCurrentPage } from '$lib/print/print';
@@ -40,22 +43,45 @@
 
   refreshRecoveryKeyPresence();
 
-  async function mint() {
-    if (busy) return;
+  let protection = $state.raw<{ run: ReturnType<typeof prepareRecoveryKeyChange>; controller: AbortController } | null>(null);
+  function cancelProtection() {
+    protection?.controller.abort();
+    protection = null;
+  }
+  onDestroy(cancelProtection);
+
+  function mint() {
+    if (busy || protection) return;
+    const controller = new AbortController();
+    const current = () => { if (controller.signal.aborted) throw new UnlockCancelledError(); };
+    protection = {
+      controller,
+      run: prepareRecoveryKeyChange({ title: m.protection_title(), subtitle: m.protection_biometric_body(), cancel: m.cancel() }, current)
+    };
+    confirming = null;
+  }
+
+  async function authenticateMint(secret: string, current: () => void) {
+    const operation = protection;
+    if (!operation) throw new UnlockCancelledError();
     busy = true;
     try {
-      /* Awaited rather than read: the key is announced once per page when
-         the journal opens, and this screen can be reached by a goto that
-         beats it. journalDataKey() is the same door the entry-draft mirror
-         goes through. */
-      shown = await mintRecoveryKey(await journalDataKey());
+      const minted = await operation.run(secret, current);
+      if (operation.controller.signal.aborted) return;
+      shown = minted;
+      protection = null;
       await refreshRecoveryKeyPresence();
-      confirming = null;
-    } catch {
-      toast(m.rk_failed());
-    } finally {
-      busy = false;
-    }
+    } catch (error) {
+      try {
+        current();
+        if (!operation.controller.signal.aborted) {
+          protection = null;
+          busy = false;
+          mint();
+        }
+      } catch { /* The owner left while authentication or publication was pending. */ }
+      throw error;
+    } finally { busy = false; }
   }
 
   async function revoke() {
@@ -214,6 +240,12 @@
       {m.cancel()}
     </button>
   </div>
+</Sheet>
+
+<Sheet open={protection !== null} title={m.protection_title()} onClose={cancelProtection}>
+  {#if protection !== null}
+    <CurrentProtection mode={bootState.accessMode} allowRecovery={recoveryKeyPresence.exists} onVerify={authenticateMint} onCancel={cancelProtection} />
+  {/if}
 </Sheet>
 
 <Sheet

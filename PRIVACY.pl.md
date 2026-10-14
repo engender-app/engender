@@ -101,6 +101,15 @@ papierze albo w menedżerze haseł na innym urządzeniu: każdy, kto ma ten kluc
 i dane dziennika, może odczytać dziennik. Klucz nie przywróci usuniętych
 danych.
 
+Utworzenie lub zastąpienie klucza odzyskiwania oraz zmiana sposobu dostępu
+wymagają ponownego podania obecnego PIN-u, hasła albo potwierdzenia biometrią.
+Tryb bez hasła w przeglądarce nie ma obecnego sekretu. Potwierdzenie wyjaśnia,
+że każda osoba z dostępem do odblokowanej przeglądarki może wprowadzić te zmiany.
+Na Androidzie tryb bez blokady wymaga biometrii lub obecnego klucza odzyskiwania.
+Bez nich zmiana jest niedostępna. Odblokowanie kluczem odzyskiwania zatwierdza
+jedną bezpośrednią konfigurację ochrony, nie inne zmiany w Ustawieniach.
+Weryfikacja odbywa się na urządzeniu. Dane do odblokowania nie trafiają do autora.
+
 Gdy kopiujesz klucz odzyskiwania w przeglądarce, aplikacja po minucie
 próbuje usunąć go ze schowka, jeśli nadal tam jest. Przeglądarka może na to
 nie pozwolić, a menedżer schowka albo synchronizacja mogą już mieć kopię.
@@ -154,8 +163,9 @@ Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google.
 Google Safe Browsing pozostaje domyślnie włączone w WebView. Do sprawdzania
 stron może korzystać z własnego dostępu do sieci usług Google Play.
 
-Na Androidzie podpowiedzi klawiatury działają jak dotychczas. To, czego
-klawiatura się uczy i co zapisuje, zależy od niej i jej ustawień.
+Na Androidzie aplikacja zawsze prosi klawiaturę, żeby nie zapamiętywała
+wpisywanych słów. Służy do tego flaga `IME_FLAG_NO_PERSONALIZED_LEARNING`.
+Klawiatura może zignorować tę prośbę. Nie usuwa to słów zapamiętanych wcześniej.
 Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe
 niezależnie od engender.
 
@@ -215,6 +225,15 @@ z sieci. Jeśli zapiszesz plik na dysku w chmurze albo u innego dostawcy
 dokumentów, ten dostawca może widzieć nazwę pliku, czas zapisu, rozmiar
 i dzienniki dostępu do twojego konta.
 
+Na Androidzie przerwany eksport ręczny może zostawić niepełny plik w wybranym
+miejscu. Aplikacja zapisuje jego położenie w swojej prywatnej pamięci, dopóki
+nie usunie niepełnego pliku albo nie zakończy eksportu. Po przerwaniu zapisu
+ponawia usuwanie przy następnym uruchomieniu. Dostawca plików może odmówić
+dostępu. Wtedy aplikacja zachowuje położenie do kolejnej próby i prosi o
+sprawdzenie miejsca zapisu. Wyczyszczenie danych aplikacji lub jej odinstalowanie
+usuwa też ten zapis. Aplikacja nie może usunąć pliku, zanim okno wyboru miejsca
+zapisu zwróci jego położenie.
+
 ### Zaszyfrowane kopie zapasowe
 
 Zaszyfrowana kopia zapasowa (`.ngndr`), eksportowana ręcznie albo
@@ -271,8 +290,8 @@ okresy przechowywania, opisane w tej polityce:
 - **W przeglądarce.** Wyczyszczenie danych strony
   `app.engender.barankiewicz.dev` usuwa dziennik i jego klucze.
 
-Żaden z tych sposobów nie usuwa plików, które wyeksportujesz albo
-udostępnisz, w tym kopii zapasowych zapisywanych według harmonogramu we
+Żaden z tych sposobów nie usuwa ukończonych eksportów ani udostępnionych
+plików, w tym kopii zapasowych zapisywanych według harmonogramu we
 wskazanym folderze. Je usuń tam, gdzie zostały zapisane.
 
 ## Utracone klucze i hasła

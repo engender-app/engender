@@ -66,3 +66,11 @@ test('raw stage summary without complete protocol fails', () => {
   expect(reportStage('stage', { status: 0, stdout: 'OK (1 test)' }, reporter())).toBe(false);
   expect(reportStage('stage', { status: 0, stdout: 'INSTRUMENTATION_STATUS: numtests=2\nINSTRUMENTATION_STATUS_CODE: 1\nOK (1 test)\nINSTRUMENTATION_CODE: -1' }, reporter())).toBe(false);
 });
+
+for (const completed of [3, 4, 5]) test(`four-test stage requires exactly four complete cases: ${completed}`, () => {
+  const output = Array.from({ length: completed }, (_, index) => [1, 0].map(status =>
+    `INSTRUMENTATION_STATUS: current=${index + 1}\nINSTRUMENTATION_STATUS: numtests=${completed}\nINSTRUMENTATION_STATUS_CODE: ${status}\n`
+  ).join('')).join('') + `OK (${completed} tests)\nINSTRUMENTATION_CODE: -1\n`;
+  expect(reportStage('reset transfers', { status: 0, stdout: output }, reporter(), 4)).toBe(completed === 4);
+  expect(reportStage('single stage', { status: 0, stdout: output }, reporter())).toBe(false);
+});

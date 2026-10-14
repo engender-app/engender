@@ -257,6 +257,8 @@ try {
   await clientRoute('/settings/access-mode');
   await page.locator('[data-access-modes] [data-list-row="device-bound"]').click();
   await page.locator('[data-access-submit]').click();
+  await page.locator('#current-protection-secret').fill(secret);
+  await page.locator('[data-confirm-current-protection]').click();
   await page.locator('[data-access-submit]').waitFor({ state: 'detached' });
   await calendar();
   await restore(); await ready(); await calendar();

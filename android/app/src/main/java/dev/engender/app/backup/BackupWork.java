@@ -19,6 +19,12 @@ public final class BackupWork extends Worker {
     static String foregroundTransferId;
     static long resetEpoch;
 
+    static void resetForegroundOwner() {
+        resetEpoch++;
+        foregroundPacking = false;
+        foregroundTransferId = null;
+    }
+
     public BackupWork(@NonNull Context context, @NonNull WorkerParameters parameters) {
         super(context, parameters);
     }

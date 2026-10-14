@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execute, writeSummary } from './check-process.mjs';
 
-/** @typedef {{ id: string, name: string, command: string, args: string[], requires?: string[], cwd?: string }} Check */
+/** @typedef {{ id: string, name: string, command: string, args: string[], requires?: string[], cwd?: string, env?: NodeJS.ProcessEnv }} Check */
 
 /** @type {Record<string, Check[]>} */
 export const CI_CHECKS = {
@@ -10,7 +10,8 @@ export const CI_CHECKS = {
     { id: 'ai-directories', name: 'Untracked docs, assistant notes and local evidence', command: 'npm', args: ['run', 'check:ai-directories'] },
     { id: 'build', name: 'Production build', command: 'npm', args: ['run', 'build'] },
     { id: 'types', name: 'Svelte and TypeScript', command: 'npm', args: ['run', 'check'], requires: ['build'] },
-    { id: 'node', name: 'Node tier', command: 'npm', args: ['test', '--', '--maxWorkers=2'], requires: ['build'] },
+    { id: 'node', name: 'Node tier (UTC)', command: 'npm', args: ['test', '--', '--maxWorkers=2'], env: { TZ: 'UTC' }, requires: ['build'] },
+    { id: 'node-warsaw', name: 'Node tier (Europe/Warsaw)', command: 'npm', args: ['test', '--', '--maxWorkers=2'], env: { TZ: 'Europe/Warsaw' }, requires: ['build'] },
     { id: 'copy', name: 'Message catalogues and user-facing literals', command: 'npm', args: ['run', 'check:copy'] },
     { id: 'licences', name: 'Dependency licences', command: 'npm', args: ['run', 'check:licences'] },
     { id: 'classes', name: 'screens.css single-consumer classes', command: 'npm', args: ['run', 'check:screens-classes'] },
@@ -40,7 +41,7 @@ export async function runChecks(checks, { run = execute, log = console.log, bloc
     }
     log(`\nCheck: ${check.name}`);
     const start = performance.now();
-    const code = await run(check.command, check.args, {}, check.cwd ? resolve(check.cwd) : process.cwd());
+    const code = await run(check.command, check.args, check.env ?? {}, check.cwd ? resolve(check.cwd) : process.cwd());
     results.push({ id: check.id, name: check.name, outcome: code === 0 ? 'passed' : 'failed', code, durationMs: performance.now() - start, reason: '' });
   }
   log('\nCI check results:');

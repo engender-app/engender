@@ -6,11 +6,12 @@ const PIECE_BYTES = 1024 * 1024;
 export async function deliverAndroidFile(file: {
   fileName: string;
   type: string;
+  recordBackup?: boolean;
   body: AsyncIterable<Uint8Array>;
 }): Promise<Delivery> {
   const { createSHA256 } = await import('hash-wasm');
   const digest = await createSHA256();
-  const { transferId } = await androidFileDelivery.beginFile({ fileName: file.fileName, type: file.type });
+  const { transferId } = await androidFileDelivery.beginFile({ fileName: file.fileName, type: file.type, recordBackup: file.recordBackup });
   try {
     let byteLength = 0;
     for await (const piece of file.body) {

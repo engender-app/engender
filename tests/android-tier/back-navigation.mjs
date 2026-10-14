@@ -129,6 +129,8 @@ try {
     await page.locator('[data-list-row="replace-recovery-key"]').click();
     await page.locator('[data-confirm-replace]').click();
   }
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   const recoveryKey = (await page.locator('[data-recovery-key]').innerText()).trim();
   await back();
   await page.locator('[data-keep-writing-recovery-key]').waitFor();
@@ -142,6 +144,8 @@ try {
   await navigate('/settings/recovery-key');
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   await page.locator('[data-recovery-key-done]').click();
   await back();
   await page.waitForURL((url) => url.pathname === '/');

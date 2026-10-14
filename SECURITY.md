@@ -38,14 +38,91 @@ boot. Cleanup checks the current credential owner before removing anything.
 
 Web journal text fields request `autocomplete="off"` to keep their contents out
 of browser autofill and session restoration. This does not erase copies left by
-older versions. Android retains its existing keyboard behavior; the keyboard
-and its settings control what it learns or stores.
+older versions. Android always sends `IME_FLAG_NO_PERSONALIZED_LEARNING` for
+text input, asking the keyboard not to learn. This is advisory: the keyboard
+controls its own storage, and previously learned words are not removed.
 
 An Archive header is checked before its password starts key derivation. It
 can request at most 64 MiB of Argon2id memory, six iterations, one lane and a
 32-byte output. Higher costs are refused as a corrupt Archive. Export keeps
 the released 64 MiB, three-iteration profile; the import ceiling allows twice
 its combined cost without increasing the memory request.
+
+## Authentication for recovery and access changes
+
+Creating or replacing a recovery key and changing access mode require a new
+successful check of the current protection. PIN mode verifies the current PIN
+with its existing attempt accounting; passphrase mode verifies the current
+passphrase; biometric protection requires a new successful biometric prompt.
+A proposed replacement credential and an earlier unlock do not approve a change.
+Android device-lock fallback is not offered for these operations.
+
+Each prompt belongs to one operation in one journal session. Cancellation,
+lock, reset, session replacement or credential changes invalidate pending
+approval. The operation checks the persisted credential and recovery-wrap
+identities again under credential serialization. It checks ownership after
+key derivation or authenticator enrolment and before publishing a wrap. Browser
+writes abort their swap file if approval is revoked before close; native writes
+check before bridge dispatch. A write already committed cannot be rolled back
+by a later cancellation. Existing atomic publication and old-binding cleanup
+remain in force. If cleanup fails after a new secret is published, the change
+reports failure and a retry verifies that published secret.
+
+Web device-bound mode has no current secret. Its confirmation explains that
+anyone holding the unlocked browser can create lasting access or replace the
+journal's protection. Choosing a new secret is not owner authentication. This
+session-authority exception applies only to web device-bound mode.
+
+Android unlocked mode requires a fresh biometric check or the existing recovery
+key. If neither is available, recovery-key and access-mode changes are blocked.
+This does not introduce a device-lock fallback or a new access mode.
+
+A successful recovery unlock approves only the immediate post-recovery
+protection setup, once, in that recovered session. It does not approve general
+Settings changes or recovery-key minting. If setup fails after consuming this
+proof, another attempt requires the existing recovery key again. No operation
+stores the typed key or adopts a newly verified key as another journal session.
+
+Replacement still asks for confirmation and warns that the old recovery key
+stops opening the journal. The separate interrupted-replacement protocol is
+unchanged. The policy was approved on 14 October 2026, including its explicit
+post-recovery and Android unlocked cases.
+
+## Android signing certificates
+
+The release verifier checks certificate SHA-256 fingerprints as well as
+cryptographic signature validity. It requires one signer per artifact and
+rejects a valid signature from any other certificate. These public fingerprints
+were verified on 14 October 2026 against the
+[v1.0.0-rc.1 artifacts](https://github.com/engender-app/engender/releases/tag/v1.0.0-rc.1)
+and the Play Console certificate records:
+
+| Certificate role | SHA-256 fingerprint |
+| --- | --- |
+| GitHub / Obtainium APK signer | `093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86` |
+| AAB upload signer | `093e1e2967ca72559e0bef57e0a99d2584f08b4ba4c662ffbca7101ac4446f86` |
+| Current Play app-signing certificate | `8fa369eb5555ade56c58622738f4f3f6f79b74926ac042340374dc73c86f0f05` |
+
+For a downloaded or installed APK, run `apksigner verify --print-certs app.apk`
+and compare `Signer #1 certificate SHA-256 digest` with the APK's channel above.
+Use the GitHub APK fingerprint in tools that verify Obtainium downloads. For
+an APK delivered by Play, use the current Play app-signing fingerprint and
+inspect the actual installed APK. Google signs Play-delivered APKs with a
+separate app-signing key; the AAB upload certificate does not establish their
+installed signer or update compatibility.
+
+For an AAB, run `jarsigner -verify app.aab` to check integrity, then
+`keytool -printcert -jarfile app.aab` to inspect the upload certificate. Compare
+the certificate's SHA-256 fingerprint, not the file checksum or public-key hash.
+The release gate pins the GitHub APK and AAB upload roles separately in
+`scripts/check-release-artifacts.mjs`; it does not accept the Play app-signing
+certificate for either release artifact.
+
+The current GitHub and Play certificates differ. Direct channel switching is
+not established, and a matching fingerprint alone would not prove that an
+installed update works. Before uninstalling to change an incompatible channel,
+export an Archive and verify its restore on a separate disposable installation.
+F-Droid uses its own signing key; its certificate is not recorded here.
 
 ## Report a vulnerability
 

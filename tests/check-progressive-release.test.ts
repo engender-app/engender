@@ -1,3 +1,4 @@
+import { androidTierFixture } from './fixtures/android-tier-evidence';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -263,7 +264,7 @@ describe('candidate publication evidence', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   function record() {
-    return { ...fullRecord(), candidateRevision: revision };
+    return { ...fullRecord(), candidateRevision: revision, androidTier: androidTierFixture(revision) };
   }
   function check(value: unknown, target: 'stable' | 'stage2' = 'stable', version = '2.2.0') {
     return publicationReleaseProblems(value, target, version, root);
@@ -280,7 +281,7 @@ describe('candidate publication evidence', () => {
   });
 
   function shipFirstRecord(version = '2.2.0') {
-    const evidence = { ...pendingRecord(), releaseVersion: version, candidateRevision: revision };
+    const evidence = { ...pendingRecord(), releaseVersion: version, candidateRevision: revision, androidTier: androidTierFixture(revision) };
     const passed = fullRecord();
     evidence.stages.stage1 = passed.stages.stage1;
     evidence.stages.stage2 = passed.stages.stage2;
@@ -312,6 +313,33 @@ describe('candidate publication evidence', () => {
     expect(check(evidence)).toContain('stage4.evidence.fdroidRebuildPassed must be true.');
   });
 
+  it('refuses missing, stale and incomplete Android-tier evidence', () => {
+    const evidence = record();
+    expect(check({ ...evidence, androidTier: undefined })).toContain('Missing Android-tier evidence; run npm run test:android on the clean candidate.');
+    evidence.androidTier.startedAt = '2019-12-31T23:59:59Z';
+    expect(check(evidence)).toContain('Android-tier timestamps are missing or stale for the tested revision.');
+    evidence.androidTier = androidTierFixture(revision);
+    evidence.androidTier.runs[1].completedStages = ['instrumentation'];
+    expect(check(evidence)).toContain('Android tier requires completed current-Android core stages and Archive recovery.');
+  });
+
+  it('refuses malformed or missing device/build identity instead of treating it as a pass', () => {
+    const evidence = record();
+    evidence.androidTier.runs[0].build.apkSha256 = '';
+    expect(check(evidence)).toContain('Android-tier run lacks device, build or completed-stage identity.');
+    evidence.androidTier.runs = [null] as any;
+    expect(check(evidence)).toContain('Android tier requires completed API 26 core stages.');
+  });
+
+  it('refuses dirty source and dirty evidence even when committed source matches', () => {
+    writeFileSync(join(root, 'source.txt'), 'dirty application');
+    expect(check(record())).toContain('Publication requires a clean working tree.');
+    git('checkout', '--', 'source.txt');
+    mkdirSync(join(root, 'scripts'));
+    writeFileSync(join(root, 'scripts/progressive-release-record.json'), JSON.stringify(record()));
+    expect(check(record())).toContain('Publication requires a clean working tree.');
+  });
+
   it('rejects source changes after the tested revision', () => {
     writeFileSync(join(root, 'source.txt'), 'untested application');
     git('add', '.');
@@ -338,7 +366,7 @@ describe('candidate publication evidence', () => {
   });
 
   it('requires completed stage2 for prereleases without requiring already-published stage3 artifacts', () => {
-    const evidence = { ...pendingRecord(), releaseVersion: '2.2.0-rc.1', candidateRevision: revision };
+    const evidence = { ...pendingRecord(), releaseVersion: '2.2.0-rc.1', candidateRevision: revision, androidTier: androidTierFixture(revision) };
     evidence.stages.stage1 = fullRecord().stages.stage1;
     evidence.channels.web = fullRecord().channels.web;
     expect(check(evidence, 'stage2', '2.2.0-rc.1')).toContain('stage2.evidence.androidApi26 must be true.');
