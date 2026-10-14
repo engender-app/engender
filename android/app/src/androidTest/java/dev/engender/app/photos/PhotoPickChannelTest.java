@@ -84,10 +84,29 @@ public class PhotoPickChannelTest {
             }
         };
         try {
-            PhotoPickChannel.readFully(oversized);
+            PhotoPickChannel.readFully(PhotoPickChannel.limit(oversized, CEILING));
             org.junit.Assert.fail("read exceeded 25 MB");
         } catch (java.io.IOException expected) {
-            assertEquals("selected file exceeds 25 MB", expected.getMessage());
+            assertEquals("too-large", expected.getMessage());
+        }
+    }
+
+    @Test public void aPhotoProviderCannotReadBeyond32MiB() throws Exception {
+        java.io.InputStream oversized = new java.io.InputStream() {
+            int remaining = 32 * 1024 * 1024 + 1;
+            public int read() { return remaining-- > 0 ? 0 : -1; }
+            public int read(byte[] buffer, int offset, int count) {
+                if (remaining == 0) return -1;
+                int read = Math.min(remaining, count);
+                remaining -= read;
+                return read;
+            }
+        };
+        try {
+            PhotoPickChannel.readFully(oversized);
+            org.junit.Assert.fail("read exceeded 32 MiB");
+        } catch (java.io.IOException expected) {
+            assertEquals("too-large", expected.getMessage());
         }
     }
 

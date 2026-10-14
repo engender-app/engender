@@ -29,12 +29,12 @@ try {
       await page.evaluate(async language => {
         const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
         const { setLocale } = await import('/src/lib/paraglide/runtime.js');
-        const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+        const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
         prefs.language = language;
         prefs.lockAfter = 'immediately';
         prefs.palette = 'trans';
         setLocale(language, { reload: false });
-        await changeAccessMode('pin', '1234');
+        await prepareAccessModeChange('pin', '1234', { title: 'Synthetic change', subtitle: 'Synthetic journal', cancel: 'Cancel' }, () => {})('demo');
         const open = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         const Recorder = window.MediaRecorder;
         window.MediaRecorder = new Proxy(Recorder, {

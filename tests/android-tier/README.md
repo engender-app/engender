@@ -10,6 +10,9 @@ serial, and Gradle receives that serial
 through `ANDROID_SERIAL`. Choose an unused even port with `ANDROID_TIER_PORT`
 (default 5580). `ANDROID_TIER_HEADLESS=1` uses software graphics without Vulkan.
 
+The emulator runs with metrics and crash reporting disabled for that process,
+so a previous emulator crash cannot block startup on a consent dialog.
+
 Each run retains invocation logs, stage logs and disposable AVD files in a new
 directory under `.claude/android-tier/`. `ANDROID_TIER_LOG_DIR` overrides that
 parent directory. XML results are cleared before each invocation. Missing,
@@ -76,3 +79,34 @@ removes its forwards and isolated packages, then shuts down its owned emulator.
 Its evidence includes process IDs and one result for each arrival. This checks
 process death on an emulator, not permission revocation or physical-device
 behavior.
+
+The API 26 runner disables the emulator's GLDMA transport. Its old goldfish
+kernel panics while mapping graphics DMA buffers during Android startup.
+The native floor checks run after a fresh boot with that transport disabled.
+
+## Release evidence
+
+Start from a clean working tree. A passing run writes `androidTier` in
+`scripts/progressive-release-record.json` after checking that HEAD and the
+working tree stayed unchanged. It records each AVD, serial, API, APK hashes,
+completed stage groups and individual passing checks. Failed runs do not write
+passing evidence. Commit the record before tagging or running another tier.
+Tagging and publication require the API 26 and current-Android core rosters;
+focused runs cannot satisfy that requirement. The current-Android roster also
+requires fresh English and Polish OCR in airplane mode. The runner builds an
+isolated package for this phase, records its APK hashes separately, and restores
+network settings and removes both packages when the phase ends or fails.
+`offline-ocr-stage.mjs` owns this phase for both the core and standalone runners.
+
+`optionalStages.installedUpgrade` and `optionalStages.lockedProcessDeath` are
+explicitly absent until their stages complete. A focused lock run can add its
+completed result to earlier core evidence only when both runs used equivalent
+source. The installed-upgrade stage remains unavailable until its runner lands.
+A CDP-only installed-upgrade run records four application APKs: the released
+rc.1 build, the healthy candidate, and the two named migration controls. Each
+APK has its actual SHA-256, source revision, package ID and version metadata;
+control APKs also name their fixture patch. The healthy APK hash must match the
+run's target hash, and its source and both control sources must match the tested
+revision. Core and other instrumentation runs retain their test-APK hashes.
+An installed-upgrade result alone leaves the required core roster incomplete.
+The release workflow reads the committed record from the publication checkout.

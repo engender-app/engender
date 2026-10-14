@@ -739,6 +739,19 @@ Android PIN/passphrase metadata lives in `journal-credential.json`, owned by [Cr
 
 `JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material. A mode change reports success only after the old device-bound wrap is removed. On the web, removal verifies that both the wrapping key and metadata are absent; the metadata stays until key removal is verified so a failed cleanup remains visible to boot. If boot surveys both wraps, a successful secret unlock retries cleanup under credential ownership and checks that a secret keystore still owns access. A cleanup failure leaves the journal usable and retries on the next boot. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
 
+Settings protection changes capture the current session, lock generation and
+credential generation when their prompt opens. `protection-change.ts` verifies
+the current protection, compares persisted credential and recovery-wrap identities
+under `changeCredentials`, and spends the operation before mutation. Publication
+owners check again after asynchronous derivation or enrolment. PIN verification
+uses the existing attempt store without rebinding credentials. A cleanup failure
+after secret publication reconciles boot's access mode to that persisted authority
+without reporting success; retry asks for that current secret. Recovery unlock
+holds one immediate-setup proof, using a weak reference so it cannot retain a
+locked browser session's key. Android unlocked mode accepts a fresh biometric
+check or an existing recovery key; only web device-bound mode permits unlocked
+session authority.
+
 ```mermaid
 stateDiagram-v2
   [*] --> booting
@@ -999,7 +1012,8 @@ The native features:
 - **Scheduled backups.** `AutoExportPlugin` derives the archive key natively (ADR-0042) and keeps the five newest verified automatic backups ([BackupRetention.java](android/app/src/main/java/dev/engender/app/backup/BackupRetention.java)). Foreground and `BackupWork` delivery share [DeliveredBackup.java](android/app/src/main/java/dev/engender/app/backup/DeliveredBackup.java): sync a regular destination file, sync its directory, close and reopen it, then check its length and SHA-256 before committing success and pruning. The supported production boundary is Android's system ExternalStorageProvider. SAF has no cloud-upload durability acknowledgement; an unknown provider or a pipe reports incomplete delivery and cannot trigger retention. Failed writes remove their partial target through this shared owner. A temporarily unavailable folder keeps its setting for a later retry. Changing or disabling the destination releases its persisted SAF grant. The scheduler admits one check at a time and reports failures from status lookup or snapshotting as well as packing and delivery. A device-local SQLite preference records the native failure timestamp after its notice posts, waits for quiet hours or is declined by the notice switch. The same timestamp identifies a failed run and later status checks, so ticks and cold starts cannot repeat it. Clearing the native failure after success or a destination change clears this receipt. A new failure can notify again, including after the device clock moves back.
 - **Retrospective notifications.** These are the Wrapped and On-this-day notifications (`RetrospectiveNotificationsPlugin`).
 - **Widgets.** `QuickLogWidgetProvider`, `TallyWidgetProvider` and `DoubtWidgetProvider` extend `DisguisableWidgetProvider`. Their taps are launch routes.
-- **Everything else** is one plugin per concern: file delivery to the share sheet with encrypted staging, the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.
+- **Manual file delivery.** `FileDeliveryPlugin` opens Android's system save picker. Encrypted staging and its in-memory key survive activity recreation while the picker is open; process death loses the key. Capacitor's restored result carries the transfer, process and reset identities. The shell reports it once after the journal gates clear, and checks the journal owner again after asynchronous status lookup. Only journal exports update the last-backup timestamp. Before writing, the plugin records the exact returned destination URI in app-private preferences and requests a persisted grant where supported. Failed or interrupted delivery deletes only that destination. A later app start retries cleanup; denied access keeps the record and reports that cleanup remains pending. Success removes the record and releases only a grant acquired for that transfer. No plaintext export or staging key is persisted for recovery.
+- **Everything else** is one plugin per concern: the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.
 
 ## 10. Testing
 

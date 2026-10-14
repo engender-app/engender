@@ -6,6 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { androidTierProblems } from './android-tier-evidence.mjs';
 import {
   CHANNEL_STAGE_GATE,
   RELEASE_MATRIX_CHECKS,
@@ -201,7 +202,7 @@ export function publicationReleaseProblems(record, target, version, cwd = proces
     problems.push(`Publication of ${version} requires at least ${minimum}.`);
   }
   if (!record || typeof record !== 'object') return problems;
-  const candidate = /** @type {{releaseVersion?: unknown, candidateRevision?: unknown, stages?: Record<string, {releaseMatrix?: {ranAt?: unknown}}>}} */ (record);
+  const candidate = /** @type {{releaseVersion?: unknown, candidateRevision?: unknown, androidTier?: unknown, stages?: Record<string, {releaseMatrix?: {ranAt?: unknown}}>}} */ (record);
   if (candidate.releaseVersion !== version) {
     problems.push(`releaseVersion must match publication version ${version}.`);
   }
@@ -218,6 +219,8 @@ export function publicationReleaseProblems(record, target, version, cwd = proces
       return problems;
     }
     git(['merge-base', '--is-ancestor', revision, 'HEAD']);
+    if (git(['status', '--porcelain'])) problems.push('Publication requires a clean working tree.');
+    problems.push(...androidTierProblems(candidate.androidTier, revision, cwd));
     const changed = git(['diff', '--name-only', revision, 'HEAD', '--', '.', ':(exclude)scripts/progressive-release-record.json']);
     if (changed) problems.push(`Publication source differs from candidateRevision: ${changed.split('\n').join(', ')}.`);
     const committedAt = Number(git(['show', '-s', '--format=%ct', revision])) * 1000;

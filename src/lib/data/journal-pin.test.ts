@@ -1,6 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import {
-  addJournalPin,
+  addJournalPin, verifyJournalPin,
   changeJournalPin,
   isValidPin,
   removeEveryPinBinding,
@@ -610,4 +610,23 @@ test('legacy rebinding uses the same durable admission and does not reset a fail
   expect(finish).toHaveBeenLastCalledWith('legacy-admission', true);
   expect(world.stored()?.pinBinding).toBe('keystore');
   key.fill(0);
+});
+
+test('fresh PIN verification preserves durable accounting without rebinding legacy credentials', async () => {
+  const world = bothPlatforms();
+  const dataKey = await setupJournalPin('1234', world.web);
+  const before = world.stored();
+  const create = vi.spyOn(world.phone.binding, 'create');
+  const write = vi.spyOn(world.phone, 'writeKeystore');
+  const begin = vi.fn(async () => 'fresh-check');
+  const finish = vi.fn(async () => {});
+  const ports = { ...world.phone, attempts: { begin, finish } };
+  await expect(verifyJournalPin('9999', () => {}, ports)).rejects.toThrow(DecryptionFailedError);
+  expect(finish).toHaveBeenLastCalledWith('fresh-check', false);
+  await expect(verifyJournalPin('1234', () => {}, ports)).resolves.toEqual(dataKey);
+  expect(finish).toHaveBeenLastCalledWith('fresh-check', true);
+  expect(begin).toHaveBeenCalledTimes(2);
+  expect(create).not.toHaveBeenCalled();
+  expect(write).not.toHaveBeenCalled();
+  expect(world.stored()).toEqual(before);
 });
