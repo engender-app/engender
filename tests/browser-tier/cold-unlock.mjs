@@ -55,10 +55,11 @@ export async function coldUnlock(browser, origin) {
         window.androidBridge = {};
         window.Capacitor = {
           PluginHeaders: [
-            { name: 'Keystore', methods: ['status', 'unlock'].map((name) => ({ name, rtype: 'promise' })) },
+            { name: 'Keystore', methods: ['status', 'unlock', 'readCredential'].map((name) => ({ name, rtype: 'promise' })) },
             { name: 'Sqlite', methods: [{ name: 'isPlaintextDatabase', rtype: 'promise' }] }
           ],
           nativePromise: async (_plugin, method) => {
+            if (method === 'readCredential') return { initialized: false };
             if (method === 'status') return { hasKey: true, authRequired: true };
             if (method === 'isPlaintextDatabase') return { plaintext: false };
             if (method === 'unlock') return new Promise((resolve) => { window.answerNative = resolve; });
