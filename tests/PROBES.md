@@ -56,7 +56,11 @@ those rules fails one test. The source checks in `reminders-surfaces.test.ts`,
 the watcher, Reminders to one notice per refused permission, and both
 screens to a could-not-check notice with Try again when the read itself fails. Grant-and-return
 on Android was shown on an API 35 emulator: the old build kept each notice
-after the grant, the fixed build removed it on return.
+after the grant, the fixed build removed it on return. Two tests in
+`src/lib/motion/reveal.test.ts` hold a notice arriving behind a leaving one
+to the top margin it will have in that place; on the emulator the swap
+between "Could not check permissions" and "Notifications are off" had ended
+20px off and jumped in one frame, and now ends at rest.
 
 Archive validation tests cover single-read export length changes, malformed
 payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
