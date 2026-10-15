@@ -28,6 +28,18 @@ export function backupIsStale(lastBackupAt: number | null, today: number = today
   return age !== null && age > BACKUP_STALE_DAYS;
 }
 
+/** Which of three things Export & import's last-backup row says (last-audit
+    UI 54). Not stale is not the same as backed up: a journal never exported
+    is not stale either, and the row drew its success tick for it beside "No
+    export recorded on this device". */
+export function backupStanding(
+  lastBackupAt: number | null,
+  today: number = todayEpochDay()
+): 'never' | 'recent' | 'stale' {
+  if (lastBackupAt === null) return 'never';
+  return backupIsStale(lastBackupAt, today) ? 'stale' : 'recent';
+}
+
 /** Whether Home says that this browser may clear the journal (after-release
     17, U2). The browser refusing persistent storage is not news a person
     can act on by itself; what they can do is keep a backup elsewhere, so
