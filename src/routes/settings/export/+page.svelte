@@ -4,7 +4,7 @@
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
   import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
-  import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
+  import { backupAgeDays, backupStanding } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
   import { resize } from '$lib/motion/reveal';
   import { scrollBehavior } from '$lib/motion/tokens';
@@ -48,7 +48,7 @@
 
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
-  let stale = $derived(backupIsStale(prefs.lastBackupAt));
+  let standing = $derived(backupStanding(prefs.lastBackupAt));
   let verifiedAge = $derived(backupAgeDays(prefs.lastVerifiedAt));
 
   let expPass = $state('');
@@ -795,14 +795,17 @@
       {#if !preferencesAttached()}
         <!-- Neither mark until the age is known: the tick was the half of the
              wrong answer that looked most sure of itself. -->
-      {:else if stale}
+      {:else if standing === 'stale'}
         <!-- The age beside it already says how long ago; the mark only says
              that it is long enough to act on. It used to be a badge reading
              "Over 30 days ago" under "34 days ago" (audit UX-11). -->
         <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()}><Icon name="alert" size={18} /></span>
-      {:else}
+      {:else if standing === 'recent'}
         <Icon name="check" size={20} />
       {/if}
+      <!-- Never exported draws no mark: the tick stood beside "No export
+           recorded on this device" because that journal is not stale either
+           (last-audit UI 54). -->
     </div>
     <div class="hr" style="margin:var(--space-3) 0"></div>
     <div class="spread">
