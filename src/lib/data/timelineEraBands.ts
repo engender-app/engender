@@ -112,9 +112,14 @@ function largestGap(top: number, bottom: number, rings: readonly (readonly [numb
     lengthened again at whichever end already has the more room, by exactly
     the shortfall: a name between two dots cannot be helped by moving the
     band's ends, and a stretch that already holds most of the name only
-    needs the rest. A band whose last row is today (`endsToday`) only ever
-    grows upwards here: below today is the future, and an era drawn into
-    the milestones still ahead would say it runs on into them. */
+    needs the rest. A band whose last row is today (`endsToday`) takes
+    this second lengthening upwards only: below today is the future, and
+    an era drawn into the milestones still ahead would say it runs on into
+    them. The first lengthening stays centred even then. That is the
+    drawing chosen for short bands on 2026-09-16, it reaches only half the
+    shortfall past today (12px on the demo journal), and moving all of it
+    above would bring the demo's "Full time" band to 0.6px of the name of
+    the era before it at 1280px. */
 export function placeEraLabel(
   band: { top: number; height: number },
   rings: readonly (readonly [number, number])[],
