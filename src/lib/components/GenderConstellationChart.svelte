@@ -56,6 +56,7 @@
      out behind the head, so the picture says which way the recent move went
      and the older marks stay marks. */
   import { untrack } from 'svelte';
+  import { createSubscriber } from 'svelte/reactivity';
   import { EASE_OUT, crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import {
     placeLabels,
@@ -247,10 +248,10 @@
 
   let headMode = $derived(modes.find((mode) => mode.id === at?.presentationId));
 
-  /* The label's own type, read off a hidden ruler set in it. A font
-     arriving and the text size changing both resize the ruler, which is
-     what makes this read again: its content box, in fractional pixels, so
-     a change smaller than a whole pixel still counts. */
+  /* The label's own type, read off a hidden ruler set in it. The text size
+     changing resizes the ruler, which is what makes this read again: its
+     content box, in fractional pixels, so a change smaller than a whole
+     pixel still counts. */
   let ruler: HTMLElement | undefined = $state();
   let rulerBox: DOMRectReadOnly | undefined = $state();
   let labelFont = $derived.by(() => {
@@ -260,10 +261,20 @@
     return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   });
 
+  /* A font arriving under the same name (Nunito swaps in over its
+     fallback) changes every day's width without changing the font string,
+     and need not change the ruler's size either; so the measurements start
+     over whenever the document finishes loading fonts. */
+  const fontsLoaded = createSubscriber((update) => {
+    document.fonts.addEventListener('loadingdone', update);
+    return () => document.fonts.removeEventListener('loadingdone', update);
+  });
+
   /** Each day's box in the label's type, measured once per font. Canvas
       rather than the drawn text, because a label has to be measured before
       there is anywhere to draw it. */
   let measureDay = $derived.by(() => {
+    fontsLoaded();
     const context = labelFont ? document.createElement('canvas').getContext('2d') : null;
     if (!context) return null;
     context.font = labelFont;
