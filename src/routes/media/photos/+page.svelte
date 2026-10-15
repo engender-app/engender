@@ -572,11 +572,17 @@
      differently-sized boxes - the outer button transparent and centred
      on the corner, the smaller ::before disc carrying the surface fill
      and the edge that separates it from whatever the photo underneath
-     happens to be. */
+     happens to be.
+
+     On the photograph's top-left corner, the one the selection tick
+     (.photo-check, top right) never takes. It was the bottom-left corner
+     until last-audit UI 52: that corner is the date caption's row, and
+     the disc covered the caption's first letter while the 48px target
+     took taps meant for the tile (audit U44). */
   .photo-cell-controls { position: relative; }
   .photo-view-action { width: 100%; margin-top: var(--space-3); }
   .photo-edit-day {
-    position: absolute; bottom: -8px; left: -8px;
+    position: absolute; top: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
     border: none; cursor: pointer; background: none; color: var(--text);
     display: flex; align-items: center; justify-content: center;

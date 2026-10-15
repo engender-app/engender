@@ -117,7 +117,7 @@
   {
     "name": "photo-browse-compare",
     "tier": "dev",
-    "holds": "browsing, selecting and wiping photos on a small library"
+    "holds": "browsing, selecting and wiping photos on a small library; the change-day button stays clear of every date caption at 320, 390 and 1280px"
   },
   {
     "name": "photo-grid-batching",

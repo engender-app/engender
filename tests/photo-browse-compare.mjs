@@ -53,6 +53,55 @@ try {
   const entry = fixture.ownerPhotos.find(p => p.source === 'entry');
   const hair = fixture.ownerPhotos.find(p => p.source === 'hair');
   const tile = id => page.locator(`[data-photo-key="${id}"] [data-photo-cell]`);
+  /* Ticket 52 (audit U44): the change-day action on an entry's or a
+     milestone's photograph sat on the tile's bottom-left corner and its
+     22px disc covered the first letter of the date under the photo. Every
+     owner-dated tile, phone to desktop: neither the action's 48px target
+     nor its disc may touch any tile's caption, every caption glyph must
+     still answer a tap as its own tile, and the action must answer at its
+     own centre. */
+  const ownerDated = fixture.ownerPhotos.filter(p => p.source === 'entry' || p.source === 'milestone');
+  assert.equal(ownerDated.length, 2);
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const photo of ownerDated) {
+      const wrap = page.locator(`[data-photo-key="${photo.id}"]`);
+      await wrap.scrollIntoViewIfNeeded();
+      // A view transition hit-tests as the root alone until it finishes.
+      await page.waitForFunction(() => document.elementFromPoint(innerWidth / 2, innerHeight / 2) !== document.documentElement);
+      const clash = await wrap.evaluate((el) => {
+        const action = el.querySelector('[data-photo-edit-day]');
+        if (!action) return 'no change-day action on an owner-dated tile';
+        const target = action.getBoundingClientRect();
+        const discSize = parseFloat(getComputedStyle(action, '::before').width);
+        const cx = target.left + target.width / 2, cy = target.top + target.height / 2;
+        const disc = { left: cx - discSize / 2, right: cx + discSize / 2, top: cy - discSize / 2, bottom: cy + discSize / 2 };
+        const hit = document.elementFromPoint(cx, cy)?.closest('[data-photo-edit-day]');
+        if (hit !== action) return `the action at ${cx},${cy} (viewport ${innerWidth}x${innerHeight}) answers as ${document.elementFromPoint(cx, cy)?.outerHTML.slice(0, 80)}`;
+        const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        for (const caption of document.querySelectorAll('[data-photo-cell] .photo-date')) {
+          const range = document.createRange();
+          range.selectNodeContents(caption);
+          const text = range.getBoundingClientRect();
+          if (overlaps(target, text)) return `target ${JSON.stringify(target)} covers caption "${caption.textContent}" ${JSON.stringify(text)}`;
+          if (overlaps(disc, text)) return `disc ${JSON.stringify(disc)} covers caption "${caption.textContent}" ${JSON.stringify(text)}`;
+          const own = caption.closest('[data-photo-cell]');
+          for (const x of [text.left + 1, text.left + text.width / 2, text.right - 1]) {
+            const at = document.elementFromPoint(x, text.top + text.height / 2);
+            if (at && !own.contains(at)) return `caption "${caption.textContent}" at x=${x} answers as ${at.outerHTML.slice(0, 80)}`;
+          }
+        }
+        return null;
+      });
+      assert.equal(clash, null, `${width}px, ${photo.source}: ${clash}`);
+      assert.equal(await wrap.locator('[data-photo-edit-day]').getAttribute('aria-label'), 'Edit day');
+    }
+  }
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.locator(`[data-photo-key="${ownerDated[0].id}"] [data-photo-edit-day]`).click();
+  await page.locator('[data-photo-day-edit-save]').waitFor();
+  await page.keyboard.press('Escape');
+  await page.locator('[data-photo-day-edit-save]').waitFor({ state: 'detached' });
   for (const photo of fixture.ownerPhotos.filter(p => p.source !== 'video')) {
     await tile(photo.id).focus();
     await page.keyboard.press('Enter');
