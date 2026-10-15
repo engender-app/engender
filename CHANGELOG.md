@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Arrow keys in the Language sheet move focus without changing the language or
+reloading the app. Enter, Space or a tap applies the choice.
+
 Disguise now covers the app name in Settings, About, recovery and unlock
 messages, boot failures and archive errors in both languages.
 

@@ -1,5 +1,11 @@
 # Verification probes and focused regressions
 
+`node tests/language-confirm-check.mjs` opens the real Settings Language sheet.
+Two Right presses must leave System selected and the English locale loaded,
+without reloading. Enter then applies Polish; Space applies English and a
+touch applies Polish. Each choice is checked again after the resulting reload.
+The check runs in `npm run test:browser`.
+
 `VITE_DEMO=1 npm run build && node tests/completed-history-check.mjs` drives
 the built SPA through real links, saves, deletes and browser Back. It checks
 custom scales, existing and new reminders, new and edited tryouts, documents

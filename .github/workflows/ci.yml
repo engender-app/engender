@@ -167,6 +167,8 @@ jobs:
             entry: tests/stalled-reopen-check.mjs
           - name: restore-commit
             entry: tests/restore-commit-check.mjs
+          - name: language-confirm
+            entry: tests/language-confirm-check.mjs
           - name: walkthrough-journal
             entry: tests/walkthrough.test.mjs
             args: --group journal
