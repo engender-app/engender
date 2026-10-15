@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Saving or deleting an entry returns to the list that opened it, including
+Voice recordings, margin-note search results, Today tiles and chart markers.
+Voice keeps its selected tab and the hormone curve keeps its day range.
+Saved questions show their results again on a warm return from an entry.
+
 Closing a changed margin note asks before discarding it. Keep editing returns
 to the same note; an untouched note closes without a question.
 

@@ -9,7 +9,8 @@
    - the date line sits clear of the header and is what a tap on it lands on,
      for a new and an existing entry at 390 and 1280;
    - Save and Delete on an entry opened from Calendar, Search, a day and
-     On this day return to that screen; Search comes back with its query;
+     On this day return to that screen; Search keeps its query in memory,
+     while a reload drops the query;
    - Delete says "Moved to trash" with Restore, Restore brings the entry
      back, and a failed delete says so on screen;
    - the header's field spans the same box as Care's and Day's, and the
@@ -302,10 +303,12 @@ try {
         await page.locator('a[href^="/entry/"]:not([href*="/new"])').first().click();
       },
       back: () => new URL(page.url()).pathname === '/search',
-      after: async () => {
+      after: async (reload) => {
         const value = await page.locator('input[type="search"], [data-search-input], input[name="q"]').first().inputValue();
-        if (value === 'the') ok('Search keeps its query after the editor');
-        else fail('Search keeps its query after the editor', `input holds "${value}"`);
+        const expected = reload ? '' : 'the';
+        const check = reload ? 'Search drops its in-memory query after a reload' : 'Search keeps its query after the editor';
+        if (value === expected) ok(check);
+        else fail(check, `input holds "${value}"`);
       }
     }
   ];
@@ -358,7 +361,7 @@ try {
         await page.waitForTimeout(1200);
         if (source.back()) ok(`${action} from ${source.name}${reloaded} lands back on ${source.name}`);
         else fail(`${action} from ${source.name}${reloaded} lands back on ${source.name}`, page.url());
-        if (source.after) await source.after();
+        if (source.after) await source.after(reload);
         if (action === 'delete') {
           const toast = page.locator('[data-toast-kind="trashed"]');
           if (await toast.count()) ok(`delete from ${source.name} says "Moved to trash"`);

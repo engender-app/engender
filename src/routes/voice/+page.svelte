@@ -24,9 +24,8 @@
      into the numbers - the delta states Hz and semitones and stops.
 
      The tab is local state, read once from `?tab=` so a search hit or a
-     Home tile can open the screen on the half it means. Switching tabs does
-     not write to history: three views of one feature are not three places a
-     back gesture should walk through.
+     Home tile can open the screen on the half it means. Switching tabs replaces the current address so returning from an entry
+     restores the selected tab without adding a history step.
 
      The picking list is still written out rather than built from ListRow's
      own checkbox semantics: a row here is one of two anchors being chosen,
@@ -36,6 +35,7 @@
      the actual pressable button and onto a wrapping div
      (appointment-prep's own note on the same conflict), which would break
      the exact contract this picker needs. */
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { onDestroy, tick } from 'svelte';
   import { EASE_OUT_CSS, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
@@ -309,6 +309,9 @@
   async function showTab(next: string) {
     if (next === tab) return;
     tab = next as Tab;
+    const target = new URL(page.url);
+    target.searchParams.set('tab', tab);
+    void replaceRoute(target, { noScroll: true, keepFocus: true });
     if (switching) return;
     switching = true;
     while (!destroyed && displayedTab !== tab) {

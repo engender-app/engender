@@ -1,5 +1,10 @@
 [
   {
+    "name": "entry-source-return-check",
+    "tier": "dev",
+    "holds": "entry Save and Delete return to Voice recordings, Search and margin-note hits, Today tiles, chart annotations and day lists with private query context"
+  },
+  {
     "name": "pending-unlock-lock-check",
     "tier": "dev",
     "holds": "a newer lock cancels pending authentication and its opening transition"

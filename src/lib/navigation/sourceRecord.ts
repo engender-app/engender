@@ -24,8 +24,16 @@ export function listReturnTo(url: URL): string | null {
 
 export function withListReturn(href: string, list: URL): string {
   const target = new URL(href, list.origin);
-  target.searchParams.set('from', list.pathname + list.search + list.hash);
+  const source = new URL(list);
+  // Legacy addresses may contain text; never copy it into another history entry.
+  for (const key of ['q', 'drug', 'lane']) source.searchParams.delete(key);
+  target.searchParams.set('from', source.pathname + source.search + source.hash);
   return target.pathname + target.search + target.hash;
+}
+
+/** Mixed lists also link to records whose editors own their own return rules. */
+export function withEntryListReturn(href: string, list: URL): string {
+  return /^\/entry\//.test(href) ? withListReturn(href, list) : href;
 }
 
 export function withSourceReturn(href: string, source: URL): string {
