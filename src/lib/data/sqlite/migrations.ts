@@ -42,5 +42,9 @@ CREATE UNIQUE INDEX idx_dose_event_auto_log_slot
   ON dose_event(auto_log_episode_uuid, auto_log_epoch_day, auto_log_index)
   WHERE auto_log_episode_uuid IS NOT NULL;
 ` },
-  { version: 91, sql: "ALTER TABLE medication_stock ADD COLUMN drug_key TEXT NOT NULL DEFAULT '';", apply: migrateStockIdentity }
+  { version: 91, sql: "ALTER TABLE medication_stock ADD COLUMN drug_key TEXT NOT NULL DEFAULT '';", apply: migrateStockIdentity },
+  { version: 92, sql: `
+DROP INDEX idx_entry_trashed_at;
+CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT NULL;
+` }
 ];

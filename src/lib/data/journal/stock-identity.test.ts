@@ -8,6 +8,7 @@ import { readCare } from '../careReads.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { runMigrations } from '../sqlite/migration-runner.ts';
 import { migrations } from '../sqlite/migrations.ts';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { migratedDb, noopFileOps } from '../sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
@@ -185,7 +186,7 @@ for (const version of [88, 90]) {
       await db.run(`INSERT INTO reminder(uuid, title, type, time, epoch_day, updated_at)
         VALUES ('manual', 'A manual reminder', 'med', '09:00', 20001, 400)`);
       await runMigrations(db, noopFileOps(), migrations);
-      assert.equal(db.getUserVersion(), 91);
+      assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
       assert.deepEqual(await db.query(`SELECT uuid, drug, drug_key, quantity, opened_epoch_day,
         in_use_window_days, lead_time_days, doses_per_unit, reminder_ever_created, reminder_dismissed
         FROM medication_stock ORDER BY id`), [
@@ -230,7 +231,7 @@ test('a failed identity repair rolls back stock, reminders and schema, then a re
     assert.deepEqual(await db.query('SELECT * FROM reminder ORDER BY id'), reminders);
     assert.equal((await db.query<{ name: string }>('PRAGMA table_info(medication_stock)')).some((row) => row.name === 'drug_key'), false);
     await runMigrations(db, noopFileOps(), migrations);
-    assert.equal(db.getUserVersion(), 91);
+    assert.equal(db.getUserVersion(), LATEST_SCHEMA_VERSION);
     assert.deepEqual(await db.query('SELECT uuid, quantity FROM medication_stock'), [{ uuid: 'last', quantity: 59 }]);
     assert.deepEqual(await db.query('SELECT uuid FROM reminder'), []);
   } finally { await db.close(); }

@@ -1057,3 +1057,12 @@ The native long-journal `photo-add` budget remains 3,135 ms.
 checks both fixture sizes against native crossing budgets and catches repeated
 schedule reads. Timings and the count-baseline change are recorded in
 [`long-journal/photo-and-return.md`](long-journal/photo-and-return.md).
+
+`src/lib/data/sqlite/trash-index.test.ts` migrates 3,653 days from released
+schema 88 through schema 92. It compares journal results before and after
+the index migration, checks that entries and unrelated saved rows survive,
+and checks the plans emitted by the real journal methods. Recent days,
+month counts, the latest written day and ranged mood averages use the day
+index; trash listing and expired-trash selection use the partial trash
+index. The test also purges expired entries and preserves fresh trash.
+These are Node SQLite checks, not Android bridge or frame measurements.
