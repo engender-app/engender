@@ -562,7 +562,7 @@
               class:is-target-lab={r.id === deepLinkedLabId}
               id={r.id}
               data-lab-result={r.id}
-              aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              aria-label={m.labs_result_aria({ analyte: r.analyte, value: `${r.value} ${r.unit}`, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
               onclick={() => record.openEditor(r)}
             >
               <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
