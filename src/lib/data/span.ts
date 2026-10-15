@@ -64,3 +64,13 @@ export function spanOverlapsRange(
   if (span.endEpochDay !== null && fromEpochDay !== null && span.endEpochDay < fromEpochDay) return false;
   return true;
 }
+
+/** Open bounds stay unbounded; equal bounds describe one inclusive day. */
+export function spanIsInverted(span: { startEpochDay: number | null; endEpochDay: number | null }): boolean {
+  return span.startEpochDay !== null && span.endEpochDay !== null && span.endEpochDay < span.startEpochDay;
+}
+
+/** Reject an inverted write without changing existing records or read semantics. */
+export function assertSpanOrdered(span: { startEpochDay: number | null; endEpochDay: number | null }): void {
+  if (spanIsInverted(span)) throw new Error('date range ends before it starts');
+}

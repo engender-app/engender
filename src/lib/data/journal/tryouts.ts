@@ -24,6 +24,7 @@
    bytes through the same file-before-row order, and removeFilesOf
    reclaims them the same way on delete. */
 
+import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -129,6 +130,7 @@ export function makeTryoutsArea(
     },
 
     async upsertTryout(input) {
+      assertSpanOrdered(input);
       const label = input.label.trim();
       if (label.length === 0) throw new Error('a tryout needs a label');
       const description = input.description?.trim() || null;
@@ -240,6 +242,7 @@ export function makeTryoutsArea(
       const tryout = toTryout(rows[0]);
 
       const endEpochDay = options?.endEpochDay ?? todayEpochDay();
+      assertSpanOrdered({ startEpochDay: tryout.startEpochDay, endEpochDay });
       const feltSenseRows = options?.createMilestone
         ? await driver.query<{ mood: number; note: string | null }>(
           `SELECT f.mood, f.note FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id

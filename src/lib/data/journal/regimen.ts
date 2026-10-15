@@ -13,6 +13,7 @@
    the curve, dose attribution and the clinician summary at once. The
    regimen screen asks `getHiddenEpisodes` for the way back. */
 
+import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { EpisodeEndReason, RegimenEpisode } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
@@ -97,6 +98,7 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
     },
 
     async upsertEpisode(input) {
+      assertSpanOrdered(input);
       // A reason with no end day is meaningless (ticket 43), so this is
       // the one place the invariant is enforced regardless of what a
       // caller passes - the same reason endEpisode below never trusts a
@@ -147,6 +149,11 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
     },
 
     async endEpisode(id, endEpochDay, endReason = null) {
+      const [episode] = await driver.query<{ start_epoch_day: number }>(
+        'SELECT start_epoch_day FROM regimen_episode WHERE uuid = ?', [id]
+      );
+      if (!episode) throw new Error(`unknown regimen episode: ${id}`);
+      assertSpanOrdered({ startEpochDay: episode.start_epoch_day, endEpochDay });
       const result = await driver.run(
         'UPDATE regimen_episode SET end_epoch_day = ?, end_reason = ?, updated_at = ? WHERE uuid = ?',
         [endEpochDay, endReason, now(), id]
