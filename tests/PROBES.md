@@ -970,4 +970,6 @@ Search query and starred filter on return. Repeated saved-question visits
 reuse warm answers, while changed criteria discard the previous hits.
 It also checks that Search spends
 its in-memory snapshot and that typed queries stay out of return URLs,
-history state and Web Storage. Run with `node tests/entry-source-return-check.mjs`.
+history state and Web Storage. The existing `entry-editor-return` guard also
+checks that reloading the editor drops the in-memory Search query while
+keeping its return route. Run with `node tests/entry-source-return-check.mjs`.
