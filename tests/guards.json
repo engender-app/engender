@@ -142,7 +142,7 @@
   {
     "name": "appointment-entry-check",
     "tier": "dev",
-    "holds": "appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff and deletion; English and Polish at 390px and 200% zoom"
+    "holds": "appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff, deletion and the next visit card's body face; English and Polish at 390px and 200% zoom"
   },
   {
     "name": "content-before-dates-check",

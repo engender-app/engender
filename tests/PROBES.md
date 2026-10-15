@@ -488,7 +488,7 @@ To run one on its own, use
 | `in-place-scroll-check` | opening and closing a photo and picking a chip keep the library's scroll within 1px; forward visits still open at the top and back still restores |
 | `photo-export` | the export format and count are stated before anything is selected |
 | `chosen-appointment` | history restores the room's question and answers; fresh visits start at question one, appointment answers stay separate, and web lock/unlock clears both |
-| `appointment-entry-check` | appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff and deletion; English and Polish at 390px and 200% zoom |
+| `appointment-entry-check` | appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff, deletion and the next visit card's body face; English and Polish at 390px and 200% zoom |
 | `content-before-dates-check` | milestone, side-effect, cycle and hair-stage field order, saved edits, photo and anchor retention, preparation handoff, cycle visibility and shared editor safety; English and Polish at 390px and 200% zoom |
 | `document-reader` | document identity, the enlarged reader, owner links and export, at 195/390/1280px |
 | `empty-reflection` | Safe space's empty and sparse states, and a comfort link above the fold at 320x568 |

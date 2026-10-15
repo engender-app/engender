@@ -18,6 +18,9 @@ instead of ending under it. The arrows fade in and out as the switcher
 scrolls. Wrapped's periods are one word each now (Week, Month, Year,
 Range), so the Polish ones fit whole at 200% zoom.
 
+The next appointment card on Appointments uses the app's own font. Its
+visit type, day and place had been showing in the system font.
+
 A double tap writes once when adding a custom effect type, an appointment prep
 item or a felt-sense reading, ticking or flagging a prep item, using Add to
 appointment prep, saving a dilation schedule, or starting or resuming a

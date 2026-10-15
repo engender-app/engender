@@ -696,6 +696,11 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
     color: var(--role-fill-ink);
+    /* A button takes the browser's own face, not the body's, unless told
+       to (last-audit UI 53). The face only: the lines keep the leading and
+       weight they were laid out at, so the block grows no more than
+       Nunito's own metrics make it. */
+    font-family: inherit;
     text-align: left;
     cursor: pointer;
     /* A block arrives by clipping open from its own left edge (rule 10,
