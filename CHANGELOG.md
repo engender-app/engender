@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+The calendar button on an entry's or a milestone's photo in the library now
+sits on the photo's top-left corner. It used to cover the start of the date
+under the photo, and a tap on that part of the date opened the day editor
+instead of the photo.
+
 A chosen switcher option scrolls clear of the arrow at the switcher's edge
 instead of ending under it. The arrows fade in and out as the switcher
 scrolls. Wrapped's periods are one word each now (Week, Month, Year,
