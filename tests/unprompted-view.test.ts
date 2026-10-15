@@ -182,7 +182,7 @@ describe('what only Android carries', () => {
     expect(pl).toContain('mniej więcej dobę');
     for (const text of [en, pl]) {
       expect(text).not.toMatch(/Hide sensitive titles|Ukryj wrażliwe tytuły/);
-      expect(text).not.toMatch(/delet|usuw|kasuj/i);
+      expect(text).not.toMatch(/delet|clear|eras|remov|usuw|usun|kasuj|czyś|czyszcz/i);
     }
   });
 });
