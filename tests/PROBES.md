@@ -599,11 +599,12 @@ checks held reads, pool visibility, row motion and navigation departures.
 Run `node tests/safe-space-row-check.mjs` for its twelve checks alone; the full
 browser tier runs the same suite. The late-reads suite holds Good moments'
 snapshot history and Tryouts' felt-sense readings, then samples every frame
-of the cold load, a saved snapshot and three deletes: nothing paints before
-its read answers, nothing is whole on its first frame, nothing leaves in one
-frame, and the panels a save or delete moves stay whole. Run
-`node tests/late-reads-check.mjs` for its nine checks and the per-frame
-tracks.
+of the cold load, a saved snapshot, three deletes and leaving the screen:
+nothing paints before its read answers, nothing is whole on its first frame,
+nothing leaves in one frame, and the panels a save or delete moves stay
+whole. It also checks an empty pool with snapshots and a refused snapshot
+read. Run `node tests/late-reads-check.mjs` for its twelve checks in light
+and dark and the per-frame tracks.
 
 `clinician-summary-access` reruns the clinician table audit against the ticket-owned axe assets and writes paired screenshots. Run it from the prepared ticket 31 evidence tree.
 
