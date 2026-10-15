@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Closing a changed margin note asks before discarding it. Keep editing returns
+to the same note; an untouched note closes without a question.
+
 Modes and Templates close when navigation changes the screen, including
 browser Back. Legacy manager links still open their sheet in Settings.
 

@@ -69,6 +69,11 @@
     ]
   },
   {
+    "name": "margin-note-dismissal-check",
+    "tier": "dev",
+    "holds": "changed margin notes ask before closing; keeping preserves the composer, untouched notes close silently, and failed or pending writes retain their admission"
+  },
+  {
     "name": "record-dismissal-check",
     "tier": "dev",
     "holds": "a cancelled dismissal keeps unsaved record edits and the sheet's position",
