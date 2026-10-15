@@ -980,7 +980,7 @@ sequenceDiagram
   participant RS as ReminderScheduler
   participant PS as platform-sync.ts
   participant L as +layout
-  N->>MA: PendingIntent: route + gd_route_nonce
+  N->>MA: PendingIntent (OPEN_ROUTE, via the live launcher alias): route + gd_route_nonce
   MA->>AL: authenticatedRoute(intent)
   AL-->>MA: route if nonce matches, else null
   MA->>RS: storeLaunchRoute(route)
@@ -992,6 +992,8 @@ sequenceDiagram
 ```
 
 Launcher aliases are exported, so a route extra by itself proves nothing about who sent it. The nonce in [AppLaunch.java](android/app/src/main/java/dev/engender/app/launch/AppLaunch.java) proves the app made the intent. The allowed route shapes are pinned on both sides by [src/lib/android/fixtures/launch-routes.json](src/lib/android/fixtures/launch-routes.json), and navigation waits until the app lock has cleared.
+
+A widget or notification tap names the action `dev.engender.app.action.OPEN_ROUTE` within this package, not MainActivity's class. Only the launcher aliases declare that action and one of them is enabled at a time, so the tap starts the alias the launcher would start, resolved when the tap lands. Recents and the window title TalkBack reads take their label and icon from that alias: Notes and the neutral icon under disguise, the chosen flag otherwise.
 
 The native features:
 

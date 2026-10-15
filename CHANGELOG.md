@@ -15,6 +15,11 @@ time, 72.5 had been saved as 572 and 0.5 as 50.
 Turning disguise on or off in Settings is saved before Android swaps the
 launcher icon and restarts the app, so the next launch no longer undoes it.
 
+With disguise on, an app opened from a widget, a reminder or the check-in
+notification shows Notes and the neutral icon in Recents, and a screen
+reader announces Notes. These had opened under the real name and icon. With
+disguise off, the same taps show the chosen flag rather than the default one.
+
 Release verification rejects APKs and App Bundles signed by an unexpected
 certificate, even when the signature itself is valid.
 
