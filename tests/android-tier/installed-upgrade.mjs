@@ -149,7 +149,7 @@ try {
   };
   for (const name of ['healthy', 'rowDeleting', 'failing']) {
     reset(); page = await launch(); await unlock(page);
-    const restored = await snapshot(page); assertUpgradeState(before, restored, 88);
+    const restored = await snapshot(page); save(`${name}-baseline-reset.json`, restored); assertUpgradeState(before, restored, 88);
     await disconnect();
     install(name);
     let alarmDump = device('shell', 'dumpsys', 'alarm');
@@ -173,9 +173,10 @@ try {
       const restoredHash = device('shell', 'run-as', packageId, 'sha256sum', 'databases/engender.sqlite3').trim().split(/\s+/)[0];
       save('restored-database-hashes.json', { copyHash, restoredHash });
       if (copyHash !== restoredHash) throw new Error('Restoring the migration copy did not restore its bytes');
-      await disconnect(); install('previous'); page = await launch(); await unlock(page);
+      // Credential adoption is one-way: the released binary cannot read the native wrap.
+      await disconnect(); install('healthy'); page = await launch(); await unlock(page);
       const after = await snapshot(page); save('restored.json', after);
-      save('restored-table.json', assertUpgradeState(before, after, 88));
+      save('restored-table.json', assertUpgradeState(before, after, manifest.expectedVersion));
       completedChecks.push('failed migration offers saved copy', 'saved copy restores filled rc.1 journal');
     } else {
       const after = await snapshot(page); save(`${name}-after.json`, after);

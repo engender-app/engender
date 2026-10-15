@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { chromium } from 'playwright-core';
 
 const [serial, avd, manifestPath, portText = '9340'] = process.argv.slice(2);
@@ -11,9 +12,11 @@ if (!/^emulator-\d+$/.test(serial ?? '') || !avd || !manifestPath || !/^\d+$/.te
 const packageId = 'dev.engender.app.test.upgrade40';
 const port = Number(portText);
 if (port < 1024 || port > 65535) throw new Error('Installed-upgrade CDP port must be 1024..65535');
-const sdk = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? join(process.env.HOME, 'Android/Sdk');
+const sdk = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? join(homedir(), 'Android/Sdk');
 const adb = join(sdk, 'platform-tools/adb');
+/** @param {...string} args */
 const run = (...args) => execFileSync(adb, ['-s', serial, ...args], { encoding: 'utf8', timeout: 120000, maxBuffer: 128 * 1024 * 1024 });
+/** @param {...string} args */
 const device = (...args) => {
   if (run('emu', 'avd', 'name').trim().split(/\r?\n/)[0] !== avd) throw new Error('Installed-upgrade emulator identity changed');
   return run(...args);
@@ -30,6 +33,7 @@ if (previous.packageId !== packageId || createHash('sha256').update(readFileSync
   throw new Error('Invalid synthetic rc.1 APK input');
 }
 const buildTools = readdirSync(join(sdk, 'build-tools')).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).at(-1);
+if (!buildTools) throw new Error('Install Android SDK build-tools before preparing the upgrade fixture');
 const badging = execFileSync(join(sdk, 'build-tools', buildTools, 'aapt'), ['dump', 'badging', apk], { encoding: 'utf8' });
 const metadata = /package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/.exec(badging);
 if (!metadata || metadata[1] !== packageId || Number(metadata[2]) !== previous.versionCode || metadata[3] !== '1.0.0-rc.1') {
@@ -43,6 +47,7 @@ if (packages.split(/\r?\n/).includes(`package:${packageId}`)) throw new Error('S
 device('install', apk);
 let browser;
 let forwarded = false;
+/** @param {number} ms */
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 try {
   if (Number(device('shell', 'getprop', 'ro.build.version.sdk').trim()) >= 33) device('shell', 'pm', 'grant', packageId, 'android.permission.POST_NOTIFICATIONS');
@@ -54,8 +59,11 @@ try {
     if (/^\d+$/.test(pid)) {
       try {
         device('forward', `tcp:${port}`, `localabstract:webview_devtools_remote_${pid}`); forwarded = true;
-        browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { noDefaults: true, timeout: 3000 }); break;
-      } catch { await pause(250); }
+        browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { noDefaults: true, timeout: 3000 });
+        const ready = browser.contexts()[0]?.pages()[0];
+        if (ready && await ready.locator('[data-app-root]').count()) break;
+        await browser.close(); browser = undefined;
+      } catch { await browser?.close(); browser = undefined; await pause(250); }
     } else await pause(250);
   }
   if (!browser) throw new Error('Synthetic rc.1 WebView unavailable');
@@ -64,9 +72,9 @@ try {
   for (let step = 0; step < 10; step++) {
     await page.locator('[data-list-row="pin"], [data-skip-step]').first().waitFor({ state: 'visible' });
     if (await page.locator('[data-list-row="pin"]').isVisible()) break;
-    const question = await page.locator('[data-setup-question]').innerText();
+    const question = await page.locator('[data-setup-question]:not([inert])').innerText();
     await page.locator('[data-skip-step]').first().click();
-    await page.waitForFunction((question) => document.querySelector('[data-setup-question]')?.textContent?.trim() !== question.trim(), question);
+    await page.waitForFunction((question) => document.querySelector('[data-setup-question]:not([inert])')?.textContent?.trim() !== question.trim(), question);
   }
   await page.locator('[data-list-row="pin"]').click(); await page.locator('[data-access-continue]').click();
   for (let repeat = 0; repeat < 2; repeat++) {
@@ -77,14 +85,15 @@ try {
   }
   await page.locator('[data-lock-after-choice="restart"]').click(); await page.locator('[data-next]').click();
   for (let step = 0; step < 10 && page.url().includes('onboarding'); step++) {
-    const choice = page.locator('[data-leave-setup], [data-skip-step], [data-next]').first();
+    const choice = page.locator('[data-leave-setup], [data-skip-step], [data-next], [data-finish]').first();
     await choice.waitFor({ state: 'visible' });
-    const question = await page.locator('[data-setup-question]').innerText();
+    const question = await page.locator('[data-setup-question]:not([inert])').innerText();
     await choice.click();
     await page.waitForFunction((question) => !location.pathname.includes('onboarding')
-      || document.querySelector('[data-setup-question]')?.textContent?.trim() !== question.trim(), question);
+      || document.querySelector('[data-setup-question]:not([inert])')?.textContent?.trim() !== question.trim(), question);
   }
   await page.locator('[data-nav-item="home"], [data-rail-item="home"]').first().waitFor({ state: 'attached' });
+  /** @param {string} path */
   const navigate = async (path) => {
     await page.evaluate((path) => { const link = document.createElement('a'); link.href = path; document.body.append(link); link.click(); link.remove(); }, path);
     await page.waitForURL((url) => url.pathname === path);
@@ -113,6 +122,16 @@ try {
   await page.locator('[data-segment="med"]').click(); await page.locator('#r-name').fill('Upgrade fixture');
   await page.locator('[data-segment="DAILY"]').click(); await page.locator('[data-save]').click();
   await page.waitForURL((url) => url.pathname === '/settings/reminders');
+  // Finish the return surface before capturing counts: it persists its first-visit preference.
+  await navigate('/coming-back');
+  await page.locator('[data-coming-back-done]').waitFor({ state: 'visible' });
+  await page.waitForFunction(async () => {
+    const Capacitor = /** @type {{ nativePromise(plugin: string, method: string, options: object): Promise<{ rows: unknown[] }> }} */ (Reflect.get(window, 'Capacitor'));
+    const result = await Capacitor.nativePromise('Sqlite', 'query', { session: 'upgrade40-preparation', seq: 0, sql: "SELECT value FROM pref WHERE key = 'comingBackSeenSince'", params: [] });
+    return result.rows.length === 1;
+  });
+  await page.locator('[data-coming-back-done]').click();
+  await page.locator('[data-home-header]').waitFor({ state: 'visible' });
   console.log(`Prepared filled rc.1 journal in ${packageId} on ${serial} (${avd})`);
 } catch (error) {
   device('uninstall', packageId); throw error;

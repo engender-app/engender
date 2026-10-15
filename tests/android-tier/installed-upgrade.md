@@ -41,7 +41,8 @@ npm run test:android:upgrade -- emulator-5590 upgrade40 .claude/android-upgrade-
 Preparation refuses an existing synthetic package, including retained data from
 an uninstalled copy. It creates PIN `2468`, feeds
 the synthetic Archive to the normal file input, imports through the released
-reader and encrypted stores, and enables daily check-in and medication alarms.
+reader and encrypted stores, and enables daily check-in and medication alarms. It also finishes the return
+surface and waits for its preference write before capturing the baseline.
 The file-input hook is fixture setup; it is not proof of the native picker.
 Preparation removes its package if it fails. Use an unused CDP port; both commands
 refuse an existing forward and remove only the forward they create.
@@ -60,7 +61,11 @@ The Keystore identity stays in place: this tests an installed update and migrati
 recovery, not transfer to a new installation. A measurement row must disappear
 only in the row-deleting control, and that comparison must reject it. The failing
 build must show the saved-copy action. Restoring must copy the encrypted database
-byte for byte; reopening with rc.1 must return the original filled journal.
+byte for byte; reopening with the healthy candidate must return the original
+filled journal through its normal migration. The current app adopts credential
+wraps into native durable storage and removes the old OPFS record, so the released
+rc.1 binary cannot unlock that adopted credential. The stage does not downgrade
+credentials or claim that reinstalling the old binary is supported.
 The command reuses `android-failed-migration.test.ts` for the closed-session Node
 regression rather than adding another fake failure scenario.
 
