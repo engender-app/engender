@@ -7,6 +7,7 @@
      hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
      also drops the row's cursor and its :active wash). */
   import { page } from '$app/state';
+  import { appWordmark } from '$lib/disguise/identity';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
@@ -466,7 +467,7 @@
   </ListCard>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
-    <span translate="no">{m.app_name()}</span> · {m.footer_note()}
+    <span translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span> · {m.footer_note()}
   </p>
 
   <Sheet bind:open={scalesSheet} title={m.gender_scales()}>
@@ -729,7 +730,7 @@
              left is the name in type, which is what every surface carrying
              the mark falls back to (ADR-0014). -->
         <h2 class="lockup about-lockup" translate="no">
-          <Mark size={40} crop="tile" /><span class="lockup-word">{m.app_name()}</span>
+          <Mark size={40} crop="tile" /><span class="lockup-word">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span>
         </h2>
         <p class="about-version">
           {m.version()}

@@ -838,6 +838,11 @@ without a binding name still use the browser binding.
 
 ### 7.5 Disguise
 
+Catalogue sentences that name the app take an `appName` parameter from
+`appWordmark()`, including gate bodies and archive failures. Only `app_name`
+contains the literal name. The identity tests guard catalogue entries and
+their consumers; the rendered wordmark probe checks both languages and modes.
+
 [disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Setup and the Settings switch both write disguise with `setPreferenceDurably`, which saves it to SQLite before the projection moves, because the projection moving is what flips the alias and restarts the app. Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, journey and wrapped export file names omit the person's name under disguise. Setup doesn't change with disguise and offers it last (ADR-0079).
 
 ### 7.6 Web hardening

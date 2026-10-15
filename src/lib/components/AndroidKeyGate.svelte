@@ -111,7 +111,7 @@
         : refusal.outcome === 'lockedOut'
           ? m.ak_locked_out()
           : refusal.outcome === 'unavailable'
-            ? m.ak_unavailable()
+            ? m.ak_unavailable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })
             : refusal.outcome === 'unenrolled'
               ? m.ak_unenrolled()
               : m.ak_failed()

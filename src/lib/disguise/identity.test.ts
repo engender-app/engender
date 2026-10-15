@@ -110,6 +110,8 @@ describe('where the decoy name is allowed to appear', () => {
        of the five sites nothing asserted at all, so a disguise that
        stopped reaching the desktop rail would have shipped green. */
     for (const path of [
+      'src/routes/settings/+page.svelte',
+      'src/lib/components/PrintLetterhead.svelte',
       'src/lib/components/AppNav.svelte',
       'src/routes/+page.svelte',
       /* The three gates whose title is the app's own name since redesign
@@ -127,4 +129,43 @@ describe('where the decoy name is allowed to appear', () => {
     }
     expect(readFileSync(root + 'src/routes/+layout.svelte', 'utf8')).toContain('tabIdentity({');
   });
+});
+
+describe('catalogued app names', () => {
+  const root = fileURLToPath(new URL('../../../', import.meta.url));
+  const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(entry =>
+    entry.name === 'paraglide' ? [] : entry.isDirectory() ? files(`${dir}/${entry.name}`)
+      : /\.(svelte|ts)$/.test(entry.name) && !entry.name.endsWith('.test.ts') ? [`${dir}/${entry.name}`] : []);
+  const sources = files(`${root}src`).map(path => ({ path, text: readFileSync(path, 'utf8') }));
+
+  it('routes every direct app-name lookup through the identity helpers', () => {
+    for (const { path, text } of sources) {
+      let remaining = text.replace(/<!--[^]*?-->|\/\*[^]*?\*\//g, '')
+        .replace(/appWordmark\(prefs\.disguise, m\.app_name\(\), m\.disguise_name\(\)\)/g, '');
+      if (path.endsWith('/src/routes/+layout.svelte')) {
+        remaining = remaining.replace(/tabIdentity\(\{[^]*?\}\)/g, '');
+      }
+      expect(remaining, path).not.toMatch(/m\.app_name\b/);
+    }
+  });
+
+  for (const locale of ['en', 'pl']) {
+    const catalogue = JSON.parse(readFileSync(`${root}messages/${locale}.json`, 'utf8')) as Record<string, string>;
+    it(`${locale}: only the identity entry contains the literal app name`, () => {
+      expect(Object.keys(catalogue).filter(key => /engender/i.test(catalogue[key]))).toEqual(['app_name']);
+    });
+
+    it(`${locale}: every named sentence receives the wordmark at its call site`, () => {
+      const keys = Object.keys(catalogue).filter(key => catalogue[key].includes('{appName}'));
+      expect(keys.length).toBeGreaterThan(0);
+      for (const key of keys) {
+        const uses = sources.flatMap(({ path, text }) => [...text.matchAll(new RegExp(`m\\.${key}\\b`, 'g'))]
+          .map(match => ({ path, call: text.slice(match.index) })));
+        expect(uses.length, key).toBeGreaterThan(0);
+        for (const { path, call } of uses) {
+          expect(call, `${path}: ${key}`).toMatch(/^m\.\w+\(\{\s*appName:\s*appWordmark\(prefs\.disguise, m\.app_name\(\), m\.disguise_name\(\)\)/);
+        }
+      }
+    });
+  }
 });

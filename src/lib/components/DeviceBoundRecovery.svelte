@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { appWordmark } from '$lib/disguise/identity';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { m } from '$lib/paraglide/messages';
   import { resetApp } from '$lib/stores/boot.svelte';
   import GateScreen from './GateScreen.svelte';
@@ -20,7 +22,7 @@
   });
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
-  let body = $derived(recoveryKeyPresence.exists ? m.dbr_body_recoverable() : m.dbr_body());
+  let body = $derived(recoveryKeyPresence.exists ? m.dbr_body_recoverable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }) : m.dbr_body({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }));
 
   async function confirmReset() {
     if (resetting) return;

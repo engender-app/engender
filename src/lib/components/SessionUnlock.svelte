@@ -202,7 +202,7 @@
       deviceRefused = true;
       error =
         result.outcome === 'unenrolled' ? m.ak_unenrolled()
-        : result.outcome === 'unavailable' ? m.ak_unavailable()
+        : result.outcome === 'unavailable' ? m.ak_unavailable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })
         : result.outcome === 'lockedOut' ? m.ak_locked_out()
         : result.outcome === 'cancelled' ? m.ak_cancelled()
         : m.ak_failed();
