@@ -1,5 +1,15 @@
 # Verification probes and focused regressions
 
+`npm run test:android:upgrade -- <serial> <avd> <manifest>` runs the opt-in
+[installed-upgrade stage](android-tier/installed-upgrade.md) on a named isolated
+emulator. It compares a filled rc.1 journal before and after the candidate,
+rejects a measurement-deleting control, and restores the saved copy after the
+retained milestone-deleting migration fails. The kit command rebuilds all APKs
+and a released-format synthetic Archive. `installed-upgrade-state.test.ts` checks
+the comparison's refusal cases; `android-failed-migration.test.ts` remains the
+single closed-session fake-plugin recovery regression. The shared Android record
+lists only stages and checks that actually completed.
+
 Archive validation tests cover single-read export length changes, malformed
 payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
 positive header fields and exact JSON/chunk ceilings (`container.test.ts`),
