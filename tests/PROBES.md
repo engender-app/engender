@@ -971,8 +971,12 @@ durations are not measurements of the hosted CI runner.
 `tests/retained-door-cost/README.md` describes the isolated physical Android
 comparison and its web observer control. The recorded result is in
 `tests/retained-door-cost/RESULTS.md`: write completion, visible read readiness
-and dirty warm revisit settlement have separate boundaries. The disposable
-activity gate changes only the probe build; it is not production scheduling.
+and dirty warm revisit settlement have separate boundaries. Production bounded
+admission delays hidden reads by at most 75 ms before dispatch and
+releases queued reads immediately when their door becomes visible.
+Each sample also switches to Look back immediately after a write, before
+hidden reads settle. The `current` baseline bypasses admission only in the
+probe build; `bounded` exercises the production owner.
 Actual-shell captures retain the existing paint hold, last-result DOM, opacity
 floor, reduced-motion and lock-concealment assertions.
 

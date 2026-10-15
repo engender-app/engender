@@ -23,13 +23,14 @@ import { setLastLookBackSpan } from '../../src/lib/data/lookBackSpan';
 import { generateLongJournal, TEN_YEARS_IN_DAYS } from '../long-journal/generate';
 import { photoMaker } from './photos';
 import { readOperations, setReadRecording } from './operation-recording';
+import { pendingAdmissions } from '../../src/lib/data/live/hiddenReadAdmission';
 import type { DoorPath } from '../../src/lib/navigation/RetainedDoors.svelte';
 
 declare const __RETAINED64_BUILD__: unknown;
 
 declare global {
   interface Window {
-    __retainedDoorExperiment?: 'current' | 'deferred';
+    __retainedDoorExperiment?: 'current' | 'deferred' | 'bounded';
     __retainedDoorResult?: unknown;
     __retainedDoorStage?: 'fixture' | 'awaiting-quiet' | 'measuring' | 'finished';
     __retainedDoorQuietGranted?: boolean;
@@ -102,7 +103,7 @@ async function main() {
     while (quiet < 5) {
       await tick();
       await frame();
-      quiet = pending === 0 && last === completions ? quiet + 1 : 0;
+      quiet = pending === 0 && pendingAdmissions() === 0 && last === completions ? quiet + 1 : 0;
       last = completions;
       if (performance.now() - start > 30_000) throw new Error('retained reads did not settle');
     }
@@ -117,18 +118,19 @@ async function main() {
   const samples = [];
   try {
     // Alternate modes to avoid giving one mode every colder run.
-    for (const [index, mode] of [
-      'current', 'deferred', 'deferred', 'current', 'current', 'deferred',
-      'current', 'deferred', 'deferred', 'current', 'current', 'deferred'
-    ].entries()) {
+    const modes = [
+      'current', 'bounded', 'bounded', 'current', 'current', 'bounded',
+      'current', 'bounded', 'bounded', 'current', 'current', 'bounded'
+    ] as const;
+    for (const [index, mode] of modes.entries()) {
       const traced = index >= 6;
       setReadRecording(traced);
       const measure = async <T>(operation: () => Promise<T>) => traced
         ? recorder.record(operation)
         : { result: await operation(), recording: null };
-      window.__retainedDoorExperiment = mode as 'current' | 'deferred';
+      window.__retainedDoorExperiment = mode;
       await raw.entries.upsertEntry({ id: entry.id, note: entry.note });
-      const marker = `retaineddoorfreshness${index}`;
+      let marker = `retaineddoorfreshness${index}`;
       let freshNotes = false;
       let notesCalls = 0;
       const noteEntries = raw.entries.noteEntries;
@@ -173,12 +175,7 @@ async function main() {
         assert(prior, 'Look back last result missing before revisit');
         const hiddenNotesCalls = notesCalls;
         const hiddenFreshNotes = freshNotes;
-        if (mode === 'deferred') {
-          assert(hiddenNotesCalls === 0, 'deferral still read hidden Words after save');
-          if (traced) assert(saveReadOperations.every(read => read.visible), 'deferral still admitted hidden live-query reads');
-        } else {
-          assert(hiddenNotesCalls > 0 && hiddenFreshNotes, 'current mode did not refresh retained Words');
-        }
+        assert(hiddenNotesCalls > 0 && hiddenFreshNotes, 'bounded or current mode did not refresh retained Words');
         notesCalls = 0;
         let firstPaint = {};
         const revisitStart = performance.now();
@@ -198,15 +195,44 @@ async function main() {
         raw.entries.noteEntries = noteEntries;
         assert(freshNotes, 'revisit failed to read saved note');
         assert((firstPaint as { sameReadingNode: boolean }).sameReadingNode, 'warm revisit replaced last-result DOM');
-        if (mode === 'deferred') assert(notesCalls > 0, 'deferred revisit did not refresh Words');
         assert(!target.querySelector('[data-retained-active] .read-group-members.is-held, [data-retained-active] [data-read-reserve-hold]'), 'arrival hold did not release');
         await visit('/calendar');
         assert(target.querySelector('[data-retained-active]')?.textContent?.includes(marker), 'Calendar revisit did not paint saved note');
-        samples.push({ mode, index, traced, saveCompletionMs: completionMs, saveSettledMs: saved.result,
+        const sample = { mode, index, traced, saveCompletionMs: completionMs, saveSettledMs: saved.result,
           saveStatements: saved.recording?.statements.length ?? null, saveBytes: saved.recording?.bytes ?? null,
           revisitSettledMs: revisited.result, revisitStatements: revisited.recording?.statements.length ?? null,
           revisitBytes: revisited.recording?.bytes ?? null, firstPaint, freshNotes, notesCalls, hiddenNotesCalls, hiddenFreshNotes,
-          saveReadOperations, revisitReadOperations });
+          saveReadOperations, revisitReadOperations };
+
+        // Revisit while dirty as well: waiting for settlement first hides a shifted refresh cost.
+        await visit('/');
+        marker = `retaineddoorimmediate${index}`;
+        freshNotes = false;
+        notesCalls = 0;
+        readOperations.length = 0;
+        const immediatePrior = target.querySelector('[data-retained-door="/stats"] [data-lookback-readings]');
+        let immediateWriteMs = 0;
+        let immediateStart = 0;
+        let immediateSameNode = false;
+        const immediateSaveStart = performance.now();
+        const immediate = await measure(async () => {
+          await journal.entries.upsertEntry({ id: entry.id, note: `${entry.note}\n${marker}` });
+          immediateWriteMs = performance.now() - immediateSaveStart;
+          immediateStart = performance.now();
+          setScreenRoute('/stats');
+          host.visit('/stats');
+          await tick();
+          immediateSameNode = immediatePrior === target.querySelector('[data-retained-active] [data-lookback-readings]');
+          await settle();
+          return performance.now() - immediateStart;
+        });
+        assert(immediateSameNode, 'immediate dirty revisit replaced retained reading DOM');
+        assert(freshNotes, 'immediate dirty revisit failed to read saved note');
+        samples.push({ ...sample, immediateDirtyRevisit: {
+          writeMs: immediateWriteMs, settledMs: immediate.result, sameReadingNode: immediateSameNode,
+          freshNotes, notesCalls, statements: immediate.recording?.statements.length ?? null,
+          bytes: immediate.recording?.bytes ?? null, readOperations: readOperations.splice(0)
+        } });
         host.visit(null);
         await tick();
         await unmount(host);

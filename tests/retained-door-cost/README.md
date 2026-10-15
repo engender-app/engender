@@ -1,9 +1,16 @@
 # Retained-door research probe
 
-This probe compares current live-query behavior with a disposable activity
-gate injected at build time. It does not change production query code.
-The experiment cancels effect generations when their door becomes inactive;
-its results alone do not establish a safe production scheduling policy.
+This probe compares the previous unbounded live-query behavior (`current`)
+with production bounded admission (`bounded`). The baseline bypass is injected
+at build time. Hidden reads wait at most 75 ms, and a door
+becoming visible releases its reads immediately. Dependency capture stays
+synchronous; a superseded generation cannot dispatch a delayed read. The
+75 ms bound was selected from the physical comparison in `RESULTS.md`; it is
+not a device-independent performance guarantee.
+
+The older blanket activity gate remains available as `deferred` for shell
+comparisons. Its 14 October result is retained in `RESULTS.md`; the native
+probe now compares `current` and `bounded`.
 
 The native probe uses the existing ten-year generator, encrypted media and
 the actual pipelined Android SQLite driver. It retains the shipped Today,
@@ -44,7 +51,7 @@ cd android
 ```
 
 Use the shared phone lease and only the isolated package. The instrumentation
-refuses every package except `dev.engender.app.test.retained64`. Wake the phone
+refuses every package except `dev.engender.app.test.retained81`. Wake the phone
 before launch; the test sets `KEEP_SCREEN_ON` for its Activity. Run only
 `dev.engender.app.longjournal.RetainedDoorCostTest` through AndroidJUnitRunner.
 
@@ -55,12 +62,16 @@ progress. The complete fixture pauses at `window.__retainedDoorStage ===
 and thermal state, then set `window.__retainedDoorQuietGranted = true` through
 the owned WebView connection. The quiet pause is bounded at ten minutes.
 
-Twelve rounds alternate current and deferred modes. The first six disable
+Twelve rounds alternate current and bounded modes. The first six disable
 read tracing and byte serialization; the last six attribute live-query reads
 to visible or hidden owners. Save completion ends when the write resolves.
 Save/revisit settlement also includes five quiet animation frames, so that
 number is a synchronization bound rather than the exact first painted frame.
+Each round also saves again and switches to Look back immediately after write
+completion. This dirty revisit does not wait for hidden refresh settlement.
 Fresh saved notes, retained reading DOM and lock cleanup are assertions.
+Settlement includes pending admission timers, so it cannot mistake a held
+read for an idle journal.
 
 The result includes source revision, probe/driver hashes, build timestamp,
 fixture summary and user agent. Read `window.__retainedDoorResult`, or copy
@@ -68,7 +79,8 @@ fixture summary and user agent. Read `window.__retainedDoorResult`, or copy
 cleans its fixture even on failure. Remove the owned packages and forward,
 then release the phone lease.
 
-`shell-motion.mjs` checks the separately built actual demo shell in both modes:
+`shell-motion.mjs` checks the separately built actual demo shell in current and
+bounded modes:
 last-result painting, authored arrival hold, the 0.004 opacity floor, reduced
 motion and lock concealment. Set `RETAINED64_CDP` to the owned WebView endpoint.
 Its demo journal differs from the native timing fixture; report that boundary.
@@ -85,6 +97,6 @@ shell deliberately has no retained door DOM.
 The physical result and follow-up decision are in [RESULTS.md](RESULTS.md).
 Synthetic native read receipts and compact shell assertions live in
 `evidence/`. Shell sample times must not be used as performance benchmarks;
-the twelve native comparison samples were recorded separately on a quiet
-host/device. The captured hashes identify the measured build, before the
+the twelve native comparison samples were recorded separately with this
+team's heavy host work paused. A peer emulator remained running. The captured hashes identify the measured build, before the
 final research documentation was added.

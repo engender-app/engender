@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Hidden tabs give visible journal refreshes a short head start after a save,
+then refresh their cached readings in the background.
+
 Photo normalization runs in a worker to avoid Android’s idle-encoder delay.
 Dose comparisons reuse schedules already read for the same operation.
 
