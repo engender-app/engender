@@ -15,6 +15,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.engender.app.MainActivity;
 import dev.engender.app.backup.LongJournalBackupSupport;
+import dev.engender.app.webview.WebViewProbe;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -28,9 +29,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Runs the ten-year Journal benchmark over the native Android driver.
@@ -72,10 +71,9 @@ public class LongJournalBenchmarkTest {
     /** The database the probe opens - deleted before each run so it starts empty. */
     private static final String PROBE_DATABASE = "long-journal-benchmark.sqlite3";
 
-    /** 60 minutes: the probe generates a decade of journal entries with photos on real device.
-        Device I/O and encryption overhead make this ~14x slower than headless Chrome (~44s).
-        Real device timing (Pixel 10a GrapheneOS): fixture 600s+, measurements 300+s. */
-    private static final long RESULT_TIMEOUT_SECONDS = 3600;
+    /** Physical one- and ten-year runs have taken over an hour including fixture setup.
+        This is a completion deadline, separate from every measured operation budget. */
+    private static final long RESULT_TIMEOUT_SECONDS = 10800;
 
     @Test
     public void longJournalMeasurementsAreWithinBudget() throws Exception {
@@ -96,6 +94,11 @@ public class LongJournalBenchmarkTest {
             scenario.onActivity(activity -> activity.getBridge().setServerBasePath(probeDir.getAbsolutePath()));
 
             String raw = awaitResult(scenario);
+            // Keep the complete result on-device even if the host loses USB or an assertion fails.
+            File receipt = new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getFilesDir(),
+                "long-journal-result.json");
+            java.nio.file.Files.write(receipt.toPath(), raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Log.i(TAG, "Complete result saved: " + receipt.getAbsolutePath());
             JSONObject result = new JSONObject(raw);
 
             if (result.has("error")) {
@@ -200,29 +203,12 @@ public class LongJournalBenchmarkTest {
     private String awaitResult(ActivityScenario<MainActivity> scenario) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(RESULT_TIMEOUT_SECONDS);
 
+        WebViewProbe probe = new WebViewProbe(scenario, RESULT_TIMEOUT_SECONDS);
         while (System.nanoTime() < deadline) {
-            serviceBackup(scenario);
-            AtomicReference<String> value = new AtomicReference<>();
-            CountDownLatch evaluated = new CountDownLatch(1);
-
-            scenario.onActivity(
-                activity ->
-                    activity
-                        .getBridge()
-                        .getWebView()
-                        .evaluateJavascript(
-                            "document.body && document.body.dataset.longJournalReady === 'true'"
-                                + " ? JSON.stringify(window.__longJournalResult) : ''",
-                            result -> {
-                                value.set(result);
-                                evaluated.countDown();
-                            }));
-
-            if (!evaluated.await(30, TimeUnit.SECONDS)) {
-                throw new AssertionError("the WebView stopped answering");
-            }
-
-            String json = unquote(value.get());
+            serviceBackup(probe);
+            String json = unquote(probe.evaluate(
+                "document.body && document.body.dataset.longJournalReady === 'true'"
+                    + " ? JSON.stringify(window.__longJournalResult) : ''"));
             if (json != null && !json.isEmpty()) return json;
             Thread.sleep(500);
         }
@@ -231,14 +217,9 @@ public class LongJournalBenchmarkTest {
             "the long-journal probe did not report within " + RESULT_TIMEOUT_SECONDS + "s; check logcat for errors");
     }
 
-    private void serviceBackup(ActivityScenario<MainActivity> scenario) throws Exception {
+    private void serviceBackup(WebViewProbe probe) throws Exception {
         if (!disposableBackups) return;
-        AtomicReference<String> value = new AtomicReference<>();
-        CountDownLatch evaluated = new CountDownLatch(1);
-        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "JSON.stringify(window.__backupBenchmarkRequest || null)", result -> { value.set(result); evaluated.countDown(); }));
-        assertTrue("benchmark request evaluation", evaluated.await(30, TimeUnit.SECONDS));
-        String raw = unquote(value.get());
+        String raw = unquote(probe.evaluate("JSON.stringify(window.__backupBenchmarkRequest || null)"));
         if (raw == null || raw.equals("null")) return;
         JSONObject request = new JSONObject(raw);
         int days = request.getInt("days");
@@ -253,7 +234,7 @@ public class LongJournalBenchmarkTest {
             deliveredDays = days;
             response = "window.__backupBenchmarkDelivered=" + new JSONObject().put("days", days).put("native", nativeResult);
         } else return;
-        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(response, null));
+        probe.evaluate(response);
     }
 
     private static String unquote(String evaluated) {
@@ -296,6 +277,7 @@ public class LongJournalBenchmarkTest {
     /** Deletes the benchmark database and photo directory so each run starts fresh. */
     private static void deleteProbeArtifacts() {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        new File(app.getFilesDir(), "long-journal-result.json").delete();
         app.deleteDatabase(PROBE_DATABASE);
         app.deleteDatabase("long-journal-benchmark-one-year.sqlite3");
 
