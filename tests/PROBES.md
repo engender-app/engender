@@ -408,6 +408,25 @@ use the Photos plugin's test directory. Idle waits keep the existing
 mid-pass write guards. OPFS file deletion is checked separately from storage
 allocation estimates, which can remain after readable files are removed.
 
+`android-r8-artifact` checks the release R8 mapping against the native plugin
+registry and source annotations. Run after an Android release build with
+`node tests/android-r8-artifact.mjs [mapping.txt]`. It rejects removed or renamed
+bridge methods, callbacks and runtime annotation interfaces. It also rejects
+renamed annotation members reported in the mapping; R8 omits unchanged abstract
+members. These interfaces must stay instantiable in R8 full mode: annotation
+attributes alone did not preserve permission lookup through the bridge.
+The guard requires an R8 compiler/version stamp and obfuscated app helpers.
+It does not prove runtime behavior, Play's
+optimization percentages, or a byte-identical rebuild from a signed tag.
+
+The release rules also preserve the native APIs called by the separate
+instrumentation APK. `android/app/native-test-api.pro` lists those members;
+`native-test-runtime-api.pro` lists the shared AndroidX runtime dependencies.
+Their names may change because AGP applies the app mapping to the test APK,
+but their descriptors and external subclass overrides must survive. These
+rules ship in every release channel. Add only a demonstrated binary dependency
+when a native test or AndroidX upgrade changes this contract.
+
 ## Walkthrough groups
 
 `search-return-privacy` (`tests/search-return-privacy.mjs`) runs after

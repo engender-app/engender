@@ -32,6 +32,47 @@ tokens and remaining delay.
 Parser and invocation regressions run in the Node tier through
 `tests/android-tier/instrumentation.test.ts`.
 
+## Optimized instrumentation
+
+Run `ANDROID_TIER_R8=1 npm run test:android` for the complete optimized tier.
+The runner builds and installs `dev.engender.app.test.r8`, uses the optimized
+variant for every stage including isolated offline OCR, and records that
+variant's APK hashes. Omitting `ANDROID_TIER_R8` retains the debug tier.
+The same switch also applies to the optional lock, recovery and backup runs.
+
+`r8.init.gradle` defines the opt-in `r8Instrumented` build type. It copies the
+release settings and ProGuard rules, uses local debug signing, and keeps R8 in
+release mode. It requires isolated application and test package IDs under
+`dev.engender.app.test.` and rejects configuration with the production package.
+The generated app and test manifests enable `run-as` and authenticate the test
+provider after processing; setting
+the build type itself to debuggable would disable R8 optimizations. Run the
+artifact guard against `app/build/outputs/mapping/r8Instrumented/mapping.txt`
+to check that helpers were obfuscated.
+
+Fault-injection tests need the existing debug `BackupProviderCapability`, which
+accepts only the installed instrumentation provider. The init script selects
+that one source file for this test variant. Production release builds keep the
+release implementation, which refuses instrumentation providers. A full run on
+this variant proves the optimized fault-injection tier; it does not prove
+delivery through a production release APK. Release provider refusal and delivery
+through Android's supported local provider need separate release controls.
+
+For an isolated APK built from the production `release` source set, run
+`BackupDeliveryDurabilityTest#releaseRefusesInstrumentationProviderForForegroundAndWorker`
+with instrumentation argument `releaseProviderRefusal=true`. It checks that
+foreground delivery and the scheduled worker reject the instrumentation provider
+with `destination-durability-unavailable`, remove partial documents, and publish
+no backup success. Verify the installed release APK hash before invocation;
+the test skips without the explicit argument. That skip supplies no
+release-provider evidence.
+
+The test APK uses the normal AndroidX dependency graph. Shipped member-level
+rules preserve its calls into shared runtime classes, while AGP applies the app's
+name mapping. Test-only ProGuard rules suppress the optional coroutine screenshot
+adapter and compile-only types outside this tier. The app shrinker does not use
+those suppressions.
+
 The opt-in [`test:android:upgrade` stage](installed-upgrade.md) installs a
 candidate over a filled rc.1 synthetic package on a named emulator. It compares
 the journal, media, SQLite and alarms, rejects a row-deleting control, and checks

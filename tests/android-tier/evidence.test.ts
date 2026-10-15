@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
-import { beginAndroidTier, writeAndroidTierEvidence, androidTierProblems } from '../../scripts/android-tier-evidence.mjs';
+import { beginAndroidTier, writeAndroidTierEvidence, androidTierProblems, androidBuildIdentity } from '../../scripts/android-tier-evidence.mjs';
 import { androidTierFixture } from '../fixtures/android-tier-evidence';
 
 let root: string;
@@ -21,6 +22,22 @@ beforeEach(() => {
   git('commit', '-qm', 'Test candidate');
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+it('hashes the selected optimized APK pair without borrowing the debug artifacts', () => {
+  const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+  for (const variant of ['debug', 'r8Instrumented'] as const) {
+    for (const test of [false, true]) {
+      const directory = join(root, 'android/app/build/outputs/apk', test ? 'androidTest' : '', variant);
+      mkdirSync(directory, { recursive: true });
+      writeFileSync(join(directory, `app-${variant}${test ? '-androidTest' : ''}.apk`), `${variant}:${test}`);
+    }
+    expect(androidBuildIdentity(root, variant)).toEqual({ variant,
+      apkSha256: hash(`${variant}:false`), testApkSha256: hash(`${variant}:true`) });
+  }
+  expect(androidBuildIdentity(root).variant).toBe('debug');
+  rmSync(join(root, 'android/app/build/outputs/apk/r8Instrumented/app-r8Instrumented.apk'));
+  expect(() => androidBuildIdentity(root, 'r8Instrumented')).toThrow();
+});
 
 it('refuses a dirty start, changed source and an empty completed run without writing evidence', () => {
   const start = beginAndroidTier(root);
