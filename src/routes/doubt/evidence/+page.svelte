@@ -231,8 +231,10 @@
                   </button>
                 </div>
                 {#each snap.items as item, i (i)}
+                  <!-- The separator as an expression: Svelte trims the space
+                       before a closing {/if}, which drew "good ·Mon 12 Oct". -->
                   <p class="kit-entry-note">
-                    {#if item.mood != null}<strong>{moodName(item.mood)}</strong> · {/if}{dayLabel(item.epochDay)}: {item.note}
+                    {#if item.mood != null}<strong>{moodName(item.mood)}</strong>{' · '}{/if}{dayLabel(item.epochDay)}: {item.note}
                   </p>
                 {/each}
               </div>
