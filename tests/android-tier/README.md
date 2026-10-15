@@ -58,6 +58,14 @@ this variant proves the optimized fault-injection tier; it does not prove
 delivery through a production release APK. Release provider refusal and delivery
 through Android's supported local provider need separate release controls.
 
+For an isolated APK built from the production `release` source set, run
+`BackupDeliveryDurabilityTest#releaseRefusesInstrumentationProviderForForegroundAndWorker`
+with instrumentation argument `releaseProviderRefusal=true`. It checks that
+foreground delivery and the scheduled worker reject the instrumentation provider
+with `destination-durability-unavailable`, remove partial documents, and publish
+no backup success. The test requires the release build type and skips without
+the explicit argument. That skip supplies no release-provider evidence.
+
 The test APK uses the normal AndroidX dependency graph. Shipped member-level
 rules preserve its calls into shared runtime classes, while AGP applies the app's
 name mapping. Test-only ProGuard rules suppress the optional coroutine screenshot
