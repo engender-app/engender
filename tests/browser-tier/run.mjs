@@ -157,6 +157,17 @@ await block('Safe space optional Good moments', 12, async () => {
   }
 });
 
+await block('late reads on Good moments and Tryouts, light and dark', 24, async () => {
+  for (const theme of ['light', 'dark']) {
+    const result = await load(`/screen-mount.html?late-reads=1&theme=${theme}`, 'screen-mount');
+    if (!Array.isArray(result.lateReads)) throw new Error(result.error ?? 'missing late-reads results');
+    for (const item of result.lateReads) {
+      if (item.passed) ok(`${theme}: ${item.name}`);
+      else fail(`${theme}: ${item.name}`, item.error ?? 'rendered late-reads contract failed');
+    }
+  }
+});
+
 await block('rendered screen contracts at 230px', 2, async () => {
   const previous = page.viewportSize();
   try {

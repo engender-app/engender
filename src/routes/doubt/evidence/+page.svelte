@@ -49,6 +49,7 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
@@ -86,6 +87,36 @@
   let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.rows);
 
+  /* The pool and the snapshot history arrive together (last-audit UI
+     ticket 20). The history is read from a lazily loaded part of the
+     journal, so it answered after the pool and outside any gate: the
+     screen faded in, then the panels appeared under it whole, in one
+     frame. So the gate waits for both reads, and the history's reserve
+     below opens on the same answer, which draws the screen once. Either
+     read failing is the screen's failure, the same call the day screen
+     makes for its chained reads. */
+  const evidenceRead: typeof counterevidenceQuery = {
+    get rows() {
+      return counterevidenceQuery.rows;
+    },
+    get loading() {
+      return counterevidenceQuery.loading || snapshotsQuery.loading;
+    },
+    get empty() {
+      return counterevidenceQuery.empty;
+    },
+    get failed() {
+      return counterevidenceQuery.failed || snapshotsQuery.failed;
+    },
+    get stale() {
+      return counterevidenceQuery.stale || snapshotsQuery.stale;
+    },
+    retry: () => {
+      counterevidenceQuery.retry();
+      snapshotsQuery.retry();
+    }
+  };
+
   const snapshotWrite = writer();
   async function saveSnapshot() {
     if (counterevidence.length === 0) return;
@@ -122,7 +153,7 @@
     screen="safe-space-evidence"
   />
 
-  <ReadGate read={counterevidenceQuery} variant="card" count={2}>
+  <ReadGate read={evidenceRead} variant="card" count={2}>
     {#snippet rows()}
       <EntryDays groups={shown} level={2} />
 
@@ -171,31 +202,51 @@
     {/snippet}
   </ReadGate>
 
-  {#if snapshots.length}
-    <SectionHeading text={m.doubt_snapshots_title()} />
-    <div class="stack-3">
-      {#each snapshots as snap (snap.id)}
-        <div class="kit-panel" data-kit-surface {...roleAttrs(roleAt(activeFlag.roles, 3))}>
-          <div class="spread">
-            <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
-            <button
-              type="button"
-              class="icon-btn"
-              aria-label={m.doubt_snapshot_delete_sheet()}
-              onclick={() => (snapshotDeleteTarget = snap)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-          {#each snap.items as item, i (i)}
-            <p class="kit-entry-note">
-              {#if item.mood != null}<strong>{moodName(item.mood)}</strong> · {/if}{dayLabel(item.epochDay)}: {item.note}
-            </p>
+  <!-- Under the gate, whichever answer the pool gave: a snapshot outlives
+       the pool it was taken from, so an empty pool still shows what was
+       kept. A reserve rather than a second part of the gate's rows,
+       because the panels move after they arrive: the section and each
+       panel open and close their own height (`disclose`), the way the
+       entry days above them do, and the gate's `resize` would clip that
+       growth while it lagged behind it, which cut a panel under a new one
+       to a fifth of itself in one frame. The reserve holds nothing while
+       the reads run (nothing sits under it to keep in place) and fades
+       its answer in on the frame the gate does. Both transitions are
+       local, so arriving is the reserve's fade and only a save or a
+       delete opens or closes a panel. -->
+  <ReadReserve ready={!evidenceRead.loading} estimate={0} data-evidence-history>
+    {#if snapshots.length}
+      <div class="snapshot-history" data-evidence-snapshots transition:disclose>
+        <SectionHeading text={m.doubt_snapshots_title()} />
+        <div>
+          {#each snapshots as snap (snap.id)}
+            <div class="snapshot" data-evidence-snapshot={snap.id} transition:disclose>
+              <div class="kit-panel" data-kit-surface {...roleAttrs(roleAt(activeFlag.roles, 3))}>
+                <div class="spread">
+                  <span class="kit-row-title">{dayLabel(snap.epochDay)} · {fmtTime(snap.timestamp)}</span>
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    aria-label={m.doubt_snapshot_delete_sheet()}
+                    onclick={() => (snapshotDeleteTarget = snap)}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                </div>
+                {#each snap.items as item, i (i)}
+                  <!-- The separator as an expression: Svelte trims the space
+                       before a closing {/if}, which drew "good ·Mon 12 Oct". -->
+                  <p class="kit-entry-note">
+                    {#if item.mood != null}<strong>{moodName(item.mood)}</strong>{' · '}{/if}{dayLabel(item.epochDay)}: {item.note}
+                  </p>
+                {/each}
+              </div>
+            </div>
           {/each}
         </div>
-      {/each}
-    </div>
-  {/if}
+      </div>
+    {/if}
+  </ReadReserve>
 
   <ConfirmDeleteSheet
     open={snapshotDeleteTarget !== null}
@@ -212,3 +263,21 @@
   />
 </div>
 
+<style>
+  /* The heading is first in its own box now, which `.kit-heading:first-child`
+     reads as first on the screen and gives a breath. It is not: it heads
+     an area under the pool, and asks for the 40 any section heading does. */
+  .snapshot-history > :global(.kit-heading:first-child) {
+    margin-top: var(--space-8);
+  }
+
+  /* The 20 two adjacent surfaces take (`[data-kit-surface] +
+     [data-kit-surface]`, kit.css), as a margin under every panel rather
+     than above the next (EntryDays says why): a margin travels with the
+     box `disclose` closes, where one between siblings would move to the
+     next panel in one frame. The last one's collapses into the 20 under
+     the section. */
+  .snapshot {
+    margin-bottom: var(--space-5);
+  }
+</style>

@@ -17,6 +17,7 @@ import More from '../../src/routes/more/+page.svelte';
 import Stats from '../../src/routes/stats/+page.svelte';
 import Care from '../../src/routes/care/+page.svelte';
 import Milestones from '../../src/routes/transition/milestones/+page.svelte';
+import Tryouts from '../../src/routes/transition/tryouts/+page.svelte';
 import SafeSpace from '../../src/routes/doubt/+page.svelte';
 import GoodMoments from '../../src/routes/doubt/evidence/+page.svelte';
 import '$lib/theme/fonts.css';
@@ -49,7 +50,8 @@ function componentFor(route: string): Component {
     '/care': Care,
     '/doubt': SafeSpace,
     '/doubt/evidence': GoodMoments,
-    '/transition/milestones': Milestones
+    '/transition/milestones': Milestones,
+    '/transition/tryouts': Tryouts
   };
   if (routes[path]) return routes[path];
   if (path.startsWith('/entry/new/')) return NewEntry;

@@ -58,6 +58,35 @@
   let feltQuery = liveQuery((j) => j.feltSense.byTryout());
   let feltByTryout = $derived(feltQuery.value ?? new Map<string, FeltSenseEntry[]>());
 
+  /* The gate waits for both (last-audit UI ticket 20). Gated on the
+     tryouts alone, a running card painted before its readings had
+     answered and said "No felt sense recorded yet" about a tryout that
+     had some, then swapped in the reading, the arc and the tally without
+     a transition. A card says what is true or is not drawn yet; either
+     read failing is the screen's failure rather than a card claiming no
+     readings. */
+  const tryoutsRead: typeof tryoutsQuery = {
+    get rows() {
+      return tryoutsQuery.rows;
+    },
+    get loading() {
+      return tryoutsQuery.loading || feltQuery.loading;
+    },
+    get empty() {
+      return tryoutsQuery.empty;
+    },
+    get failed() {
+      return tryoutsQuery.failed || feltQuery.failed;
+    },
+    get stale() {
+      return tryoutsQuery.stale || feltQuery.stale;
+    },
+    retry: () => {
+      tryoutsQuery.retry();
+      feltQuery.retry();
+    }
+  };
+
   let today = $derived(currentDay());
   let running = $derived(tryouts.filter((t) => t.endEpochDay == null));
   let ended = $derived(tryouts.filter((t) => t.endEpochDay != null));
@@ -103,7 +132,7 @@
     {/snippet}
   </ScreenHeader>
 
-  <ReadGate read={tryoutsQuery} variant="line" count={3}>
+  <ReadGate read={tryoutsRead} variant="line" count={3}>
     {#snippet rows()}
       {#if running.length}
         <SectionHeading text={m.tryout_running_heading()} />
