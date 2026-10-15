@@ -1,6 +1,7 @@
 /* Touch targets and whole navigation names (phase 15 after-release ticket
    18; accessibility audit A10, A11 and V13, and the 5 October audit's
-   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08).
+   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08; the 12 October UI audit's
+   U38 and U39, last-audit UI ticket 25).
 
    A target is measured the way a finger meets it, not by its box: from the
    control's centre, how far left, right, up and down `elementFromPoint`
@@ -17,6 +18,16 @@
    rem of). The bottom navigation is checked at 100%, 130% and 200%: every
    label shows its whole name, no word is broken across lines, and no tab
    is under 48px.
+
+   A scene marked `narrow` is also checked at 195px, the width a 390px
+   phone leaves at 200% zoom, with text at 100%: opened letters' rows and
+   the Words cloud, which the 12 October audit measured at 23px tall and
+   29 to 47px wide.
+
+   Before any scene, the measurement is run against two planted buttons,
+   one 47px and one 48px square, and the run stops unless it reads the
+   first as under the floor and the second as at it. A walk that cannot
+   see a 47px control proves nothing about the real ones.
 
    The calendar's date links are printed at 320 rather than failed: seven
    48px columns need 336px of row, which a 320px screen does not have
@@ -51,7 +62,7 @@ const SCENES = [
   { key: 'tally', path: '/tally', targets: '.segment' },
   { key: 'wear', path: '/body/wear', targets: '.segment, .tag-chip' },
   { key: 'body-map', path: '/body-map', targets: '.tag-chip' },
-  { key: 'letters', path: '/transition/letters', targets: '.letter-act' },
+  { key: 'letters', path: '/transition/letters', targets: '.letter-act, [data-letter-open]', narrow: true },
   { key: 'eras', path: '/transition/milestones', targets: '[data-tl-era]' },
   {
     /* At rest the year rail takes no pointer at all (it wakes on a scroll,
@@ -82,6 +93,7 @@ const SCENES = [
     }
   },
   { key: 'stats', path: '/stats/days', targets: '.kit-donut-item-btn' },
+  { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
   {
     key: 'templates',
@@ -95,6 +107,7 @@ const SCENES = [
 ];
 
 const WIDTHS = [320, 390];
+const NARROW = 195;
 const TEXT = [100, 200];
 const NAV_TEXT = [100, 130, 200];
 
@@ -203,11 +216,30 @@ try {
   if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('persona reset never reached Home');
   if (!(await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION))) throw new Error('fill every feature never reached /more');
 
-  for (const width of WIDTHS) {
+  /* The planted pair: the walk has to see the 1px between them. */
+  await page.evaluate(() => {
+    for (const size of [47, 48]) {
+      const b = document.createElement('button');
+      b.dataset.plantedTarget = String(size);
+      b.style.cssText = `position:fixed;z-index:2147483647;top:${size === 47 ? 100 : 200}px;left:100px;width:${size}px;height:${size}px;padding:0;border:0;margin:0`;
+      document.body.append(b);
+    }
+  });
+  const planted = await measure(page, '[data-planted-target]', true);
+  await page.evaluate(() => document.querySelectorAll('[data-planted-target]').forEach((b) => b.remove()));
+  const [small, whole] = planted;
+  const under = (row) => !row || row.covered || row.w < FLOOR - SLACK || row.h < FLOOR - SLACK;
+  if (planted.length !== 2 || !under(small) || under(whole)) {
+    throw new Error(`the walk cannot tell a 47px control from a 48px one: ${JSON.stringify(planted)}`);
+  }
+  console.log(`planted controls: 47px reads ${small.w}x${small.h} (under), 48px reads ${whole.w}x${whole.h} (at the floor)`);
+
+  for (const width of [...WIDTHS, NARROW]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const text of TEXT) {
+    for (const text of width === NARROW ? [100] : TEXT) {
       for (const scene of SCENES) {
         if (only && !only.includes(scene.key)) continue;
+        if (width === NARROW && !scene.narrow) continue;
         await settlePage(page, base, scene.path, 'light');
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         if (scene.open) await scene.open(page);
@@ -223,7 +255,7 @@ try {
         console.log(`${label}: ${rows.length} controls, ${rows.filter((r) => r.covered || r.w < FLOOR - SLACK || r.h < FLOOR - SLACK).length} under ${FLOOR}`);
       }
     }
-    if (!only || only.includes('nav')) {
+    if (width !== NARROW && (!only || only.includes('nav'))) {
       for (const lang of ['en', 'pl']) for (const text of NAV_TEXT) {
         await setAppLanguage(page, lang);
         await settlePage(page, base, '/', 'light');
