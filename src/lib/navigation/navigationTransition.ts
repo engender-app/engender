@@ -50,6 +50,8 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      is the right answer for every other way out of it too: a deep link, a
      notification, the back button. */
   ui.chooserOpen = false;
+  // Query cleanup on the same screen must preserve a legacy manager handoff.
+  if (navigation.from?.url.pathname !== navigation.to?.url.pathname) ui.raisedManager = null;
 
   /* Before the capture, while the outgoing screen can still be measured. */
   rememberScroll(navigation.from?.url.pathname);

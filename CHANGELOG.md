@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Modes and Templates close when navigation changes the screen, including
+browser Back. Legacy manager links still open their sheet in Settings.
+
 Screen readers announce lab values and units, crisis line numbers and web
 domains, and voice benchmark pitches. Measurement charts describe their
 measurement type, unit and date range instead of announcing an edit action.
