@@ -876,6 +876,12 @@ their consumers; the rendered wordmark probe checks both languages and modes.
 
 ### 8.2 The shell and route policy
 
+Successful custom-scale and reminder saves, new-tryout creation, and document
+or saved-question deletion replace the completed route through
+`navigation/smart-back.ts`'s `replaceRoute`. This keeps browser history and
+the app's navigation depth aligned. Ordinary Back still uses `smartBack`
+to return to the opening source; saving an existing tryout stays in place.
+
 Search return snapshots and queries handed over from More stay in module
 memory. Returning from an entry consumes the snapshot; lock or reload drops
 it. They never go to Web Storage, whose disk logs can retain removed text.

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import {
@@ -101,7 +101,7 @@
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
     toast(m.saved(), { kind: 'record-saved' });
-    goto('/settings/reminders');
+    await replaceRoute('/settings/reminders');
   }
 </script>
 

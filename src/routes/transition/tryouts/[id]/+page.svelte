@@ -12,7 +12,7 @@
      them, on the kit's split row, so a row is one control and the delete
      is another rather than a button floating inside a row that also opens
      something. */
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -115,7 +115,7 @@
   async function openCreatedTryout() {
     if (!creationId) return;
     try {
-      await goto(`/transition/tryouts/${creationId}`);
+      await replaceRoute(`/transition/tryouts/${creationId}`);
       navigationFailed = detail.isNew;
     } catch {
       navigationFailed = true;
