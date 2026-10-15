@@ -430,11 +430,12 @@
   // Capture before a retained door deactivates. Restore before it is shown,
   // while a non-retained route restores during its initial mount above.
   onNavigate((navigation) => {
+    if (sameUrl(navigation)) return;
     if (navigation.from?.url.pathname === '/calendar') {
       rememberJournalVisit(visitDepth, { year, month, recentDaysLimit });
     }
     if (navigation.to?.url.pathname !== '/calendar') return;
-    visitDepth = depthAfter(navigation.type, navigation.delta, sameUrl(navigation));
+    visitDepth = depthAfter(navigation.type, navigation.delta);
     const saved = restoreJournalVisit(visitDepth, navigation.type === 'popstate');
     const current = new Date();
     year = saved?.year ?? current.getFullYear();

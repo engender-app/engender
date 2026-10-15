@@ -106,6 +106,12 @@ try {
     await page.waitForFunction(count => document.querySelectorAll('.cal-days [data-day-card]').length === count, count);
   }
   await page.waitForFunction(() => !document.getAnimations().some(a => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity));
+  await page.locator('[data-cal-month-btn]').focus();
+  await follow('/calendar');
+  await page.waitForFunction(() => document.activeElement?.matches('h1'));
+  assert.equal(await month(), browsed, 'the already-lit Journal tab keeps this visit');
+  await page.waitForFunction(() => document.querySelectorAll('.cal-days [data-day-card]').length === 15);
+  console.log('PASS tapping the active Journal tab keeps month and expanded days');
   const entry = page.locator('.cal-days [data-entry-card]').last();
   await entry.scrollIntoViewIfNeeded();
   await page.waitForFunction(() => !document.getAnimations().some(a => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity));
