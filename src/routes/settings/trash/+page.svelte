@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { navigating } from '$app/state';
   import { focusAfterRemoval } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -41,12 +40,11 @@
 
   <ReadGate read={trashQuery} variant="line" count={3}>
     {#snippet rows(trashed)}
-      <!-- The list and the empty state each open and close their own
-           height, global because the gate's branch is what changes when
-           the last row is restored: a local transition would cut both, the
-           list gone and the empty state at full size in one frame. Cut on
-           navigation, as Notice does. -->
-      <div transition:collapse|global={{ skip: navigating.to !== null }}>
+      <!-- The list closes its own height when the last row is restored and
+           the gate swaps it for the empty state, which opens under it;
+           without these the list went and the empty state stood at full
+           size in one frame. -->
+      <div transition:collapse>
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.trash_intro()}</p>
         <ListCard>
           {#each trashed as entry (entry.id)}
@@ -60,13 +58,10 @@
                 subtitle={`${entry.note || m.entry()} · ${m.trash_days_left({ days: daysLeft(entry.trashedAt) })}`}
               >
                 {#snippet trailing()}
-                  <!-- aria-disabled rather than disabled while a restore is in
-                       flight: a disabled button drops focus to the page, and
-                       a restore that fails has to leave it here for the retry. -->
                   <button
                     class="btn btn-soft"
                     data-restore-entry={entry.id}
-                    aria-disabled={restoring.busy}
+                    disabled={restoring.busy}
                     onclick={(event) => restore(entry.id, event.currentTarget)}
                   >
                     <span>{m.trash_restore()}</span>
@@ -79,7 +74,7 @@
       </div>
     {/snippet}
     {#snippet empty()}
-      <div transition:collapse|global={{ skip: navigating.to !== null }}>
+      <div transition:collapse>
         <EmptyState title={m.trash_empty_title()} text={m.trash_empty_body()} level={2} />
       </div>
     {/snippet}

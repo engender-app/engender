@@ -19,6 +19,7 @@ import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult
 import { checkRadioGroup } from './radio-controls.mjs';
 import { entryContextualText } from './entry-contextual-text.mjs';
 import { focusSwaps } from './focus-swaps.mjs';
+import { trashRestore } from './trash-restore.mjs';
 import { focusArrival } from './focus-arrival.mjs';
 import { coldUnlock } from './cold-unlock.mjs';
 import { firstRunSetup } from './first-run-setup.mjs';
@@ -90,6 +91,11 @@ const reload = () => page.reload({ waitUntil: 'networkidle' });
 await block('named focus after content swaps', 40, async () => {
   for (const motion of ['reduce', 'full'])
     for (const result of await focusSwaps(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
+});
+
+await block('Trash restore admits one write, reports failure and collapses', 14, async () => {
+  for (const motion of ['reduce', 'full'])
+    for (const result of await trashRestore(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
 });
 
 await block('cold unlock focuses the arrived screen', 1, async () => {
