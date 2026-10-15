@@ -308,6 +308,11 @@
     "holds": "Two scales at once writes each date clear of every dot, the head's ring, the trail's joins, the readout and the other dates, inside the plot and at 4.5:1 on the card, with the head at the end and scrubbed back, at 390px and 1280px, light and dark, English and Polish, text at 100% and 200%; with motion on, no date arrives or leaves at full opacity in one frame across a play sweep and a keyboard scrub"
   },
   {
+    "name": "toast-stack-check",
+    "tier": "dev",
+    "holds": "two toasts up at once never overlap: deleting two entries inside one toast's four seconds leaves both Restore actions reachable at their centre and across a 48px target, each restoring its own entry; the earlier toast never moves while the newer arrives above it, and the later one travels into the gap over several frames when the earlier leaves; the stack centres on the content column at 1280px, failures over an open sheet stack at the top undimmed, reduced motion keeps the stack, and a lock clears it"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
     "holds": "real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"

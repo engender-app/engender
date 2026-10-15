@@ -730,7 +730,7 @@
      the whole width. Here rather than in components.css because .app and
      .is-chromeless are this file's own classes. */
   @container app (min-width: 1024px) {
-    .app:not(.is-chromeless) :global(.toast) {
+    .app:not(.is-chromeless) :global(.toast-stack) {
       left: calc(var(--rail-width) + var(--inset-left));
     }
   }
