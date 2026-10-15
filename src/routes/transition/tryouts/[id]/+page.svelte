@@ -15,9 +15,10 @@
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
@@ -87,6 +88,10 @@
     saving: () => saving
   });
   let draft = $derived(detail.draft);
+  let rangeInverted = $derived(spanIsInverted({
+    startEpochDay: epochDayFromDateInputValueOrToday(draft.start),
+    endEpochDay: epochDayFromDateInputValue(draft.end)
+  }));
   let saving = $state(false);
   let saveFailed = $state(false);
   let saved = $state(false);
@@ -124,7 +129,7 @@
   }
 
   async function saveTryout() {
-    if (saving || creationId && detail.isNew || !draft.label.trim()) return;
+    if (saving || creationId && detail.isNew || !draft.label.trim() || rangeInverted) return;
     const isNew = detail.isNew;
     saving = true;
     saveFailed = false;
@@ -403,9 +408,16 @@
     </Field>
     <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
       {#snippet children(id, describedBy)}
-        <DatePicker name="tr-end" bind:value={draft.end} {id} {describedBy} />
+        <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
       {/snippet}
     </Field>
+    <div aria-live="polite">
+      {#if rangeInverted}
+        <div class="disclosed" transition:disclose>
+          <p class="muted small" id="tr-range-error">{m.era_conflict_inverted()}</p>
+        </div>
+      {/if}
+    </div>
     {#if canAdopt}
       <button
         type="button"
@@ -422,7 +434,8 @@
       class:btn-primary={!canAdopt}
       class:btn-soft={canAdopt}
       data-save-tryout
-      disabled={draft.label.trim().length === 0}
+      disabled={draft.label.trim().length === 0 || rangeInverted}
+      aria-describedby={rangeInverted ? "tr-range-error" : undefined}
       onclick={saveTryout}
     >
       <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>

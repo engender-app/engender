@@ -24,6 +24,7 @@
    bytes through the same file-before-row order, and removeFilesOf
    reclaims them the same way on delete. */
 
+import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Tryout, TryoutKind, TryoutPhoto } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -129,6 +130,7 @@ export function makeTryoutsArea(
     },
 
     async upsertTryout(input) {
+      assertSpanOrdered(input);
       const label = input.label.trim();
       if (label.length === 0) throw new Error('a tryout needs a label');
       const description = input.description?.trim() || null;
@@ -232,23 +234,24 @@ export function makeTryoutsArea(
     },
 
     async adoptTryout(id, options) {
-      const rows = await driver.query<TryoutRow>(
-        'SELECT uuid, kind, label, description, start_epoch_day, end_epoch_day FROM tryout WHERE uuid = ?',
-        [id]
-      );
-      if (!rows[0]) throw new Error(`unknown tryout: ${id}`);
-      const tryout = toTryout(rows[0]);
-
-      const endEpochDay = options?.endEpochDay ?? todayEpochDay();
-      const feltSenseRows = options?.createMilestone
-        ? await driver.query<{ mood: number; note: string | null }>(
-          `SELECT f.mood, f.note FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
-           WHERE t.uuid = ? ORDER BY f.epoch_day DESC, f.id DESC`, [id])
-        : [];
-      const majorityMood = adoptionMood(feltSenseRows);
-      const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
-
       return driver.transaction(async (driver) => {
+        const rows = await driver.query<TryoutRow>(
+          'SELECT uuid, kind, label, description, start_epoch_day, end_epoch_day FROM tryout WHERE uuid = ?',
+          [id]
+        );
+        if (!rows[0]) throw new Error(`unknown tryout: ${id}`);
+        const tryout = toTryout(rows[0]);
+
+        const endEpochDay = options?.endEpochDay ?? todayEpochDay();
+        assertSpanOrdered({ startEpochDay: tryout.startEpochDay, endEpochDay });
+        const feltSenseRows = options?.createMilestone
+          ? await driver.query<{ mood: number; note: string | null }>(
+            `SELECT f.mood, f.note FROM felt_sense f JOIN tryout t ON t.id = f.tryout_id
+             WHERE t.uuid = ? ORDER BY f.epoch_day DESC, f.id DESC`, [id])
+          : [];
+        const majorityMood = adoptionMood(feltSenseRows);
+        const summaryNote = feltSenseRows.find((f) => f.note?.trim())?.note ?? null;
+
         const result = await driver.run(
           'UPDATE tryout SET end_epoch_day = ?, updated_at = ? WHERE uuid = ?',
           [endEpochDay, now(), id]

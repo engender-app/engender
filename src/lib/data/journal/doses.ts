@@ -16,6 +16,7 @@
    what the dose log screen and the long-journal benchmark each used to do
    their own way (phase 5 audit-deepening ticket 17). */
 
+import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type {
   DoseEvent,
@@ -853,6 +854,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async upsertPause(input) {
+      assertSpanOrdered(input);
       const episodeId = await episodeRowid(input.episodeId);
       const values = [input.startEpochDay, input.endEpochDay, input.reason, now()];
 
