@@ -60,7 +60,11 @@
      a reading order. The day cards do take their turn from the table, and
      take the one they took on Home, so an entry looks the same wherever it
      is drawn. */
-  import { flushSync } from 'svelte';
+  import { flushSync, untrack } from 'svelte';
+  import { onNavigate } from '$app/navigation';
+  import { navigating } from '$app/state';
+  import { depthAfter, navigationDepth, sameUrl } from '$lib/navigation/smart-back';
+  import { rememberJournalVisit, restoreJournalVisit } from '$lib/navigation/journalVisit';
   import { m } from '$lib/paraglide/messages';
   import { fmtDayBar, fmtMonthYear, fmtTime } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -102,9 +106,11 @@
   const doorActive = useDoorActivity();
   let visit = 0;
 
+  let visitDepth = untrack(() => navigating.type ? depthAfter(navigating.type, navigating.delta) : navigationDepth());
+  const restored = untrack(() => restoreJournalVisit(visitDepth, navigating.type === 'popstate'));
   const now = new Date();
-  let year = $state(now.getFullYear());
-  let month = $state(now.getMonth());
+  let year = $state(restored?.year ?? now.getFullYear());
+  let month = $state(restored?.month ?? now.getMonth());
 
   let monthLabel = $derived(fmtMonthYear(year, month));
 
@@ -157,7 +163,7 @@
      being asked for twice (ADR-0069's "batch" is the DOM's; this is still
      one bounded read per render). */
   const RECENT_DAYS_STEP = 5;
-  let recentDaysLimit = $state(RECENT_DAYS_STEP);
+  let recentDaysLimit = $state(restored?.recentDaysLimit ?? RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
   let dayGroups = $derived(entryDayGroups(recent.rows).slice(0, recentDaysLimit));
   let recentMonths = $derived(recentDayMonths(dayGroups));
@@ -421,10 +427,23 @@
      the way it went. A pick closes the sheet in the same step, so the label
      slides while the sheet is on its way down. */
   let jumpOpen = $state(false);
-  $effect.pre(() => {
+  // Capture before a retained door deactivates. Restore before it is shown,
+  // while a non-retained route restores during its initial mount above.
+  onNavigate((navigation) => {
+    if (sameUrl(navigation)) return;
+    if (navigation.from?.url.pathname === '/calendar') {
+      rememberJournalVisit(visitDepth, { year, month, recentDaysLimit });
+    }
+    if (navigation.to?.url.pathname !== '/calendar') return;
+    visitDepth = depthAfter(navigation.type, navigation.delta);
+    const saved = restoreJournalVisit(visitDepth, navigation.type === 'popstate');
     const current = new Date();
-    year = current.getFullYear();
-    month = current.getMonth();
+    year = saved?.year ?? current.getFullYear();
+    month = saved?.month ?? current.getMonth();
+    recentDaysLimit = saved?.recentDaysLimit ?? RECENT_DAYS_STEP;
+  });
+
+  $effect.pre(() => {
     if (doorActive()) {
       monthMotion = new AbortController();
       return () => {
@@ -434,6 +453,9 @@
       };
     }
     visit++;
+    const current = new Date();
+    year = current.getFullYear();
+    month = current.getMonth();
     jumpOpen = false;
     monthOpen = false;
     folding = false;

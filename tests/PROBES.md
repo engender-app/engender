@@ -947,3 +947,14 @@ isolated test package under the shared phone lease. Forward only that WebView's
 devtools socket, then run `WORDMARK_CDP=http://127.0.0.1:<port> node
 tests/disguise-wordmark-native-check.mjs`. It asserts 16 rendered outcomes and
 prints the WebView version and full sentences.
+
+`journal-history-check.mjs` checks Journal month and recent-day restoration,
+reachable scroll, fresh forward resets and separate history visits. The web
+case runs in `test:browser`. Run it
+with `node tests/journal-history-check.mjs` for the non-retained web route.
+For an owned emulator running a fresh isolated production APK, set
+`JOURNAL_HISTORY_ANDROID=emulator-NNNN` and `JOURNAL_HISTORY_CDP` to its owned
+WebView CDP endpoint. This mode completes setup and saves 16 dated entries
+through the editor, requires retained Journal and sends real
+Android Back key events. `journalVisit.test.ts` checks visit isolation and
+lock cleanup through the shared content-forgetting boundary.

@@ -882,6 +882,12 @@ or saved-question deletion replace the completed route through
 the app's navigation depth aligned. Ordinary Back still uses `smartBack`
 to return to the opening source; saving an existing tryout stays in place.
 
+Journal keeps its browsed month and recent-day limit per history depth in
+`navigation/journalVisit.ts`. It captures before retained-door deactivation
+and restores before activation or the web route's first render. Fresh forward
+arrivals use the current month and five days. Lock and reload drop these
+memory-only snapshots; sheets and month animations still end on departure.
+
 Search return snapshots and queries handed over from More stay in module
 memory. Returning from an entry consumes the snapshot; lock or reload drops
 it. They never go to Web Storage, whose disk logs can retain removed text.
@@ -893,7 +899,7 @@ Lock cleanup also removes the legacy search key written by older builds.
 |---|---|
 | [navigation/routeGates.ts](src/lib/navigation/routeGates.ts) | What the person is owed before the URL's screen: `onboarding`, `close-chooser` (an access mode after a recovery unlock), `coming-back` (the return moment, ADR-0062), or nothing |
 | [navigation/navigationTransition.ts](src/lib/navigation/navigationTransition.ts), [screen-transition.ts](src/lib/navigation/screen-transition.ts) | How one screen becomes another |
-| [navigation/smart-back.ts](src/lib/navigation/smart-back.ts), [sourceRecord.ts](src/lib/navigation/sourceRecord.ts), [searchReturn.ts](src/lib/navigation/searchReturn.ts), [scroll-region.ts](src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
+| [navigation/smart-back.ts](src/lib/navigation/smart-back.ts), [sourceRecord.ts](src/lib/navigation/sourceRecord.ts), [searchReturn.ts](src/lib/navigation/searchReturn.ts), [journalVisit.ts](src/lib/navigation/journalVisit.ts), [scroll-region.ts](src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
 | [data/backgroundSchedulers.ts](src/lib/data/backgroundSchedulers.ts) | When the Android auto-export and retrospective-notification checks run: on start, every 15 minutes and on return to the foreground |
 | [android/platform-sync.ts](src/lib/android/platform-sync.ts) | Everything that runs only on Android while the journal is open: reminder sync, stock run-out, launch routes, the back button, the disguise alias, the lock-timing mirror |
 
