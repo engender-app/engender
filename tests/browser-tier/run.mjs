@@ -157,7 +157,7 @@ await block('Safe space optional Good moments', 12, async () => {
   }
 });
 
-await block('late reads on Good moments and Tryouts', 8, async () => {
+await block('late reads on Good moments and Tryouts', 9, async () => {
   const result = await load('/screen-mount.html?late-reads=1', 'screen-mount');
   if (!Array.isArray(result.lateReads)) throw new Error(result.error ?? 'missing late-reads results');
   for (const item of result.lateReads) {

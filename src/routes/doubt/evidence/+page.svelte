@@ -49,6 +49,7 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import ConfirmDeleteSheet from '$lib/components/kit/ConfirmDeleteSheet.svelte';
@@ -86,14 +87,14 @@
   let snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(HISTORY_LIMIT));
   let snapshots = $derived(snapshotsQuery.rows);
 
-  /* The gate waits for the snapshot history too (last-audit UI ticket 20).
-     The history is read from a lazily loaded part of the journal, so it
-     answered about half a second after the pool, outside any gate: the
-     screen faded in and settled, then the panels appeared under it whole,
-     in one frame. Gating the two reads together draws the screen once,
-     history included, and leaves the panels only their own saves and
-     deletes to animate. Either read failing is the screen's failure, the
-     same call the day screen makes for its chained reads. */
+  /* The pool and the snapshot history arrive together (last-audit UI
+     ticket 20). The history is read from a lazily loaded part of the
+     journal, so it answered after the pool and outside any gate: the
+     screen faded in, then the panels appeared under it whole, in one
+     frame. So the gate waits for both reads, and the history's reserve
+     below opens on the same answer, which draws the screen once. Either
+     read failing is the screen's failure, the same call the day screen
+     makes for its chained reads. */
   const evidenceRead: typeof counterevidenceQuery = {
     get rows() {
       return counterevidenceQuery.rows;
@@ -188,8 +189,6 @@
           <EntryDays groups={held} arrive level={2} />
         {/if}
       </div>
-
-      {@render history()}
     {/snippet}
     {#snippet empty()}
       <Notice
@@ -200,18 +199,22 @@
         action={{ label: m.safe_space_browse_entries(), href: "/calendar", primary: true }}
       />
       <a class="btn btn-soft btn-block" href="/doubt/comfort">{m.comfort_list_title()}</a>
-
-      {@render history()}
     {/snippet}
   </ReadGate>
 
-  <!-- Inside the gate, under whichever answer the pool gave: a snapshot
-       outlives the pool it was taken from, so an empty pool still shows
-       what was kept. The section and each panel open and close their own
-       height (`disclose`), the way the entry days above them do, so a save
-       or a delete moves the panels under it rather than cutting them. Both
-       are local: the gate's own fade is the history's arrival. -->
-  {#snippet history()}
+  <!-- Under the gate, whichever answer the pool gave: a snapshot outlives
+       the pool it was taken from, so an empty pool still shows what was
+       kept. A reserve rather than a second part of the gate's rows,
+       because the panels move after they arrive: the section and each
+       panel open and close their own height (`disclose`), the way the
+       entry days above them do, and the gate's `resize` would clip that
+       growth while it lagged behind it, which cut a panel under a new one
+       to a fifth of itself in one frame. The reserve holds nothing while
+       the reads run (nothing sits under it to keep in place) and fades
+       its answer in on the frame the gate does. Both transitions are
+       local, so arriving is the reserve's fade and only a save or a
+       delete opens or closes a panel. -->
+  <ReadReserve ready={!evidenceRead.loading} estimate={0} data-evidence-history>
     {#if snapshots.length}
       <div class="snapshot-history" data-evidence-snapshots transition:disclose>
         <SectionHeading text={m.doubt_snapshots_title()} />
@@ -243,7 +246,7 @@
         </div>
       </div>
     {/if}
-  {/snippet}
+  </ReadReserve>
 
   <ConfirmDeleteSheet
     open={snapshotDeleteTarget !== null}
@@ -266,12 +269,6 @@
      an area under the pool, and asks for the 40 any section heading does. */
   .snapshot-history > :global(.kit-heading:first-child) {
     margin-top: var(--space-8);
-  }
-
-  /* Under the empty pool's link, which is inline-level: its own 20 does not
-     collapse into the heading's, so the heading asks for the rest. */
-  :global(.btn) + .snapshot-history > :global(.kit-heading:first-child) {
-    margin-top: var(--space-5);
   }
 
   /* The 20 two adjacent surfaces take (`[data-kit-surface] +

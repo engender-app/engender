@@ -17,18 +17,21 @@ import { m } from '$lib/paraglide/messages';
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, heldReads, today, type Result } from './screen-contracts/fixture';
 
-type Sample = { opacity: number; visible: number; height: number; text: string };
+type Sample = { opacity: number; visible: number; reach: number; text: string };
 type Frame = { t: number; samples: Map<number, Sample> };
 
 /** What of `element` is on screen this frame: its opacity with its
-    ancestors', and how much of its height no clipping ancestor inside the
-    screen cuts. The app frame around the screen is left out: it clips at
-    the window's edge, which is scrolling, not an arrival. */
+    ancestors', how much of its height inside the window no clipping
+    ancestor inside the screen cuts (`visible`), and how much of it is
+    inside the window at all (`reach`). The app frame around the screen is
+    left out, and so is anything below the window's edge: a part nobody
+    can see is not arriving or leaving, it is scrolled away. */
 function measure(element: Element): Omit<Sample, 'text'> {
   let opacity = 1;
   const box = element.getBoundingClientRect();
-  let top = box.top;
-  let bottom = box.bottom;
+  let top = Math.max(box.top, 0);
+  let bottom = Math.min(box.bottom, innerHeight);
+  const reach = Math.max(0, bottom - top);
   let inScreen = true;
   for (let at: Element | null = element; at && at !== document.body; at = at.parentElement) {
     const style = getComputedStyle(at);
@@ -40,7 +43,7 @@ function measure(element: Element): Omit<Sample, 'text'> {
       bottom = Math.min(bottom, clip.bottom);
     }
   }
-  return { opacity, visible: Math.max(0, bottom - top), height: box.height };
+  return { opacity, visible: Math.max(0, bottom - top), reach };
 }
 
 /** Samples every animation frame until stopped. Each tracked element keeps
@@ -67,19 +70,16 @@ function sampler(select: () => Element[], text: (element: Element) => string = (
   };
 }
 
-/** Each element's run, its painted share per frame measured against the
-    tallest it stood over the run: where an arrival lands, where a removal
-    stood. */
+/** Each element's run, its painted share per frame: its opacity times the
+    part of what is inside the window that nothing clips. Frames it spends
+    wholly outside the window are not counted. */
 type Track = { first: number; last: number; shares: number[]; firstShare: number; lastShare: number; ramp: number; end: number };
 function tracks(frames: Frame[]): Map<number, Track> {
-  const tallest = new Map<number, number>();
-  for (const frame of frames)
-    for (const [id, sample] of frame.samples) tallest.set(id, Math.max(tallest.get(id) ?? 0, sample.height));
   const out = new Map<number, Track>();
   frames.forEach((frame, index) => {
     for (const [id, sample] of frame.samples) {
-      const full = tallest.get(id)!;
-      const share = full > 0 ? sample.opacity * Math.min(1, sample.visible / full) : 0;
+      if (sample.reach === 0) continue;
+      const share = sample.opacity * (sample.visible / sample.reach);
       const track = out.get(id);
       if (!track) out.set(id, { first: index, last: index, shares: [share], firstShare: share, lastShare: share, ramp: 0, end: frames.length - 1 });
       else {
@@ -101,6 +101,10 @@ const settle = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
     that frame and climbing through at least three. */
 function arrivedSmoothly(track: Track): boolean {
   return track.first > 0 && track.firstShare < 0.5 && track.ramp >= 3;
+}
+/** Neither arriving nor leaving: whole on every frame. */
+function stayedWhole(track: Track): boolean {
+  return track.shares.every((share) => share > 0.95);
 }
 /** A departure: gone before the run ended, under half on its last
     painted frame, and fading or closing through at least three. */
@@ -158,6 +162,13 @@ export async function lateReadsContracts(): Promise<Result[]> {
     const arrivals = [...tracked.values()].filter((track) => track.first > 0);
     return arrivals.length === 1 && arrivals.every(arrivedSmoothly);
   });
+  /* The panels already there move down whole. Inside the gate, its
+     `resize` clipped the one under the new panel to a fifth of itself in
+     one frame while it lagged behind the growth. */
+  await check('the panels a save moves down stay whole on every frame', () => {
+    const stayed = [...tracked.values()].filter((track) => track.first === 0);
+    return stayed.length === 2 && stayed.every(stayedWhole);
+  });
 
   const heading = () =>
     [...document.querySelectorAll('#screens [data-section-heading]')].find(
@@ -181,7 +192,9 @@ export async function lateReadsContracts(): Promise<Result[]> {
   tracked = tracks(frames);
   await check('a deleted snapshot closes up through several frames rather than vanishing', () => {
     const departures = [...tracked.values()].filter((track) => track.last < track.end);
-    return departures.length === 1 && departures.every(leftSmoothly);
+    const stayed = [...tracked.values()].filter((track) => track.last === track.end);
+    /* The two panels left and the heading over them. */
+    return departures.length === 1 && departures.every(leftSmoothly) && stayed.length === 3 && stayed.every(stayedWhole);
   });
   /* Down to the last one, then the last: the section closes as one box,
      heading and panel together, so it is the box that is measured - the
@@ -246,8 +259,18 @@ export async function lateReadsContracts(): Promise<Result[]> {
     return arrivals.length === 2 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
   });
   await screen.remove();
+  /* Each run's tracks, for tests/late-reads-check.mjs to print. */
   (window as unknown as { __lateReadsFrames?: unknown }).__lateReadsFrames = Object.fromEntries(
-    Object.entries(runs).map(([name, run]) => [name, [...tracks(run).values()].map(({ shares, ...rest }) => ({ ...rest, shares: shares.map((s) => Math.round(s * 1000) / 1000) }))])
+    Object.entries(runs).map(([name, run]) => [
+      name,
+      [...tracks(run).values()].map(({ first, last, end, ramp, shares }) => ({
+        first,
+        last,
+        end,
+        ramp,
+        shares: shares.map((share) => Math.round(share * 1000) / 1000)
+      }))
+    ])
   );
   return results;
 }
