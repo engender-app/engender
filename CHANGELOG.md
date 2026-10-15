@@ -282,5 +282,5 @@ Pre-squash development journals are not supported; export text or PDF from the o
 
 - Schema changes: this release uses schema {{schema}}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore. Archives from development builds are not a supported restore path.
-- Security migrations: none. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
+- Security migrations: none. Play retains its separate signing key and update path. The planned F-Droid route preserves the GitHub APK developer signature, but switching between GitHub and F-Droid remains unverified pending reproducibility and installed-update checks. Before uninstalling to leave an incompatible channel, export an Archive and verify restoration on a separate disposable installation.
 - Minimum supported version: 1.0.0-rc.1.
