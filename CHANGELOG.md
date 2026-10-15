@@ -30,6 +30,11 @@ Range), so the Polish ones fit whole at 200% zoom.
 The next appointment card on Appointments uses the app's own font. Its
 visit type, day and place had been showing in the system font.
 
+Export & import no longer shows a tick beside "No export recorded on this
+device". The tick now means a backup was made in the last 30 days, and an
+older one keeps its warning mark. When an export changes the mark, the old
+one fades out and the new one fades in.
+
 A double tap writes once when adding a custom effect type, an appointment prep
 item or a felt-sense reading, ticking or flagging a prep item, using Add to
 appointment prep, saving a dilation schedule, or starting or resuming a
