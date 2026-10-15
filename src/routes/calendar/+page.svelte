@@ -690,6 +690,19 @@
     gap: var(--space-2);
   }
   .cal-field .cal-month { flex: 1; }
+  /* Under 240px (200% zoom on a 390px phone) the month and the search
+     control left the month 99px, and "October" and "październik" are each
+     wider than that at this size: the slot's walls cut the word, and the
+     button under them ran 2 to 46px into the search target (last-audit
+     UI 48). There the month takes the whole line and search moves to the
+     line under it, at the same trailing edge. Decided by the width, not by
+     the month's length, so stepping from May to October never moves the
+     control. */
+  @container app (max-width: 239px) {
+    .cal-field { flex-wrap: wrap; }
+    .cal-field .cal-month { flex-basis: 100%; }
+    .cal-field > a { margin-left: auto; }
+  }
 
   /* The section-heading size (rule 2), which is what rule 7 gives this door
      in place of a title: it names the month the strip under it is drawing,
