@@ -38,6 +38,7 @@ import {
   expectedSlots,
   pauseCoversDay,
   isInjectionDose,
+  isPositiveDoseAmount,
   isTopicalDose,
   slotToleranceDays,
   type Adherence,
@@ -642,6 +643,9 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     async upsertDose(input) {
       const { injectionSite, vehicle, applicationSite } = routeColumns(input);
       const status = input.status ?? 'taken';
+      if (status !== 'skipped' && !isPositiveDoseAmount(input.dose)) {
+        throw new RangeError('actual dose amount must be finite and positive');
+      }
       const scheduled = input.scheduled ?? null;
       const values = [
         input.timestamp,

@@ -934,6 +934,7 @@
   "done": "Gotowe",
   "dose_amount_label": "Dawka",
   "dose_amount_placeholder": "np. 4",
+  "dose_amount_positive_required": "Wpisz dawkę większą od zera.",
   "dose_amount_required": "Wpisz dawkę.",
   "dose_app_site_abdomen": "Brzuch",
   "dose_app_site_back": "Plecy",
