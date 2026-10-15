@@ -272,11 +272,13 @@
     margin-top: var(--space-5);
   }
 
-  /* A margin under every panel rather than between them (EntryDays says
-     why): a margin travels with the box `disclose` closes, where a gap
-     between siblings would move to the next panel in one frame. The last
-     one's collapses into the screen's 20 under the section. */
+  /* The 20 two adjacent surfaces take (`[data-kit-surface] +
+     [data-kit-surface]`, kit.css), as a margin under every panel rather
+     than above the next (EntryDays says why): a margin travels with the
+     box `disclose` closes, where one between siblings would move to the
+     next panel in one frame. The last one's collapses into the 20 under
+     the section. */
   .snapshot {
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-5);
   }
 </style>
