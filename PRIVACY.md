@@ -176,7 +176,9 @@ the app itself can send its own internal messages.
 
 Reminder and check-in notifications show only a generic label by default,
 even on a locked screen. A setting under Notifications turns that off and
-shows the real title instead.
+shows the real title instead. If notification history is on in Android's
+settings, Android keeps the titles shown there for about a day after the
+notification goes away. The app does not turn history on and cannot clear it.
 
 When you copy the recovery key on Android 13 or later, the app marks the
 clipboard entry as sensitive, which asks the keyboard to leave it out of its
