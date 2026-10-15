@@ -8,14 +8,28 @@ checks still apply.
 
 ## Source and measurement boundaries
 
-The physical comparison starts at backend integration `b43a81284`, schema 91.
-Final source also includes ticket 10 at `a5e3e1c96`, which adds schema 92's
-partial trash index. Node checks on schema 92 reproduce the same Care counts.
+The decade physical comparison starts at backend integration `b43a81284`,
+schema 91. The final one-year comparison uses `a4db9575a`, including ticket 10
+at `a5e3e1c96` and schema 92's partial trash index. Both use the same Care
+repair. Node checks on schema 92 reproduce the same Care counts.
 The physical device is
 the Pixel 10a, Android 17/API 37, fingerprint
 `google/stallion/stallion:17/CP3A.261005.005/2026100601:user/release-keys`, running
 Vanadium WebView `155.0.8059.79.0`. The isolated debug package is
 `dev.engender.app.test.ticket83`. No personal journal is involved.
+
+The preliminary one-year receipt was discarded: a failed scratch photo-directory
+attempt left one blank entry before its retry. The final one-year probe asserts
+an empty database before generation and verifies 322 stored entries afterwards,
+matching the generator summary. The decade fixture was generated in its own
+untouched database.
+
+Two attempts to launch the final probe through instrumentation stopped when an
+existing WebView callback timed out. Each failed fixture was removed. The
+successful run loads the same compiled probe through Capacitor's existing
+same-origin file handler in the normally launched isolated app. It uses the
+same native driver and records the complete before/after results. This does
+not certify the instrumentation launcher.
 
 Both fixtures use seed 1 and the existing generator and JPEG photo maker:
 365 days with 322 entries, and 3,653 days with 3,300 entries. Each database
