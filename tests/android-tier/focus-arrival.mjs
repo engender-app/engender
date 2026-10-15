@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
-import { firstRun, ready, clientRoute, JOURNAL_SECRET } from '../browser-tier/built-flow.mjs';
+import { reachAccessSetup, ready, clientRoute, JOURNAL_SECRET } from '../browser-tier/built-flow.mjs';
 
 const [serial, pkg] = process.argv.slice(2);
 if (!serial || !/^dev\.engender\.app\.test\.[a-z0-9]+$/.test(pkg ?? '')) {
@@ -18,7 +18,18 @@ try {
   const page = browser.contexts()[0].pages()[0];
   page.setDefaultTimeout(30000);
   const origin = new URL(page.url()).origin;
-  await firstRun(page, origin);
+  await reachAccessSetup(page, origin);
+  await page.locator('[data-list-row="passphrase"]').press('Enter');
+  await page.locator('[data-access-continue]').press('Enter');
+  await page.locator('#am-passphrase').fill(JOURNAL_SECRET);
+  await page.locator('#am-passphrase-confirm').fill(JOURNAL_SECRET);
+  await page.locator('[data-access-submit]').press('Enter');
+  await ready(page);
+  for (let step = 0; step < 12 && await page.locator('[data-next]').count(); step++) {
+    await page.locator('[data-next]').press('Enter');
+  }
+  await page.locator('[data-finish]').press('Enter');
+  await page.locator('[data-home-hello]').waitFor();
   await page.reload();
   await page.locator('#journal-passphrase').fill(JOURNAL_SECRET);
   await page.locator('[data-passphrase-submit]').press('Enter');
@@ -26,9 +37,20 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('[data-home-hero]'));
   console.log('PASS Android cold unlock focuses Today heading');
 
-  // Visit two doors so the assertions exercise the native retained tree.
-  await clientRoute(page, '/calendar');
-  await page.waitForFunction(() => document.querySelectorAll('[data-retained-door]').length >= 2);
+  // Retention starts on a route commit after idle preloading. Visit until
+  // two doors are mounted, checking focus on every navigation along the way.
+  for (let visit = 0; visit < 8; visit++) {
+    await clientRoute(page, visit % 2 === 0 ? '/calendar' : '/');
+    await page.evaluate(async () => {
+      await Promise.all(document.getAnimations().filter(animation =>
+        animation.effect?.getTiming().iterations !== Infinity
+      ).map(animation => animation.finished.catch(() => {})));
+      await new Promise(resolve => requestIdleCallback(resolve, { timeout: 1000 }));
+    });
+    await page.waitForFunction(() => document.activeElement?.matches('h1') && !document.activeElement.closest('[inert]'));
+    if (await page.locator('[data-retained-door]').count() >= 2) break;
+  }
+  assert.ok(await page.locator('[data-retained-door]').count() >= 2, 'two doors are retained');
   await page.waitForFunction(() => document.activeElement?.matches('[data-retained-active] h1'));
   await clientRoute(page, '/');
   await page.waitForFunction(() => document.activeElement?.matches('[data-home-hero]'));
