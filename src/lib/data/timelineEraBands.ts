@@ -66,3 +66,79 @@ export function timelineEraBands(
 
   return out;
 }
+
+/** How much band a name keeps between itself and a dot's ring (last-audit
+    UI 51). With none, the last letter of "Full time" ran into the today
+    dot's ring: the name had 51px between its band's top and the ring and
+    was 50px long, so a centred name ended a fraction of a pixel inside it. */
+export const ERA_LABEL_CLEARANCE_PX = 4;
+
+export interface EraLabelPlacement {
+  /** The band, in the same pixels as the rows that placed it. */
+  top: number;
+  height: number;
+  /** The stretch the name is centred in, relative to the band's own top. */
+  labelTop: number;
+  labelHeight: number;
+}
+
+/** The largest run of `[top, bottom]` that none of `rings` reaches into.
+    Falls back to the whole span when the rings cover all of it: a name
+    with nowhere to go is a worse failure than one that overlaps a ring. */
+function largestGap(top: number, bottom: number, rings: readonly (readonly [number, number])[]): [number, number] {
+  const sorted = [...rings].sort((a, b) => a[0] - b[0]);
+  let cursor = top;
+  let best: [number, number] = [top, top];
+  for (const [start, end] of sorted) {
+    if (start - cursor > best[1] - best[0]) best = [cursor, start];
+    cursor = Math.max(cursor, end);
+  }
+  if (bottom - cursor > best[1] - best[0]) best = [cursor, bottom];
+  return best[1] > best[0] ? best : [top, bottom];
+}
+
+/** Where an era's band and its name go, given where its rows put it.
+
+    `band` is the stretch from the band's first row to its last, `rings`
+    the dots on those rows with their cut-out rings, `nameLength` the
+    rendered length of the name and `minHeight` the shortest band the rail
+    draws for it. All of them in the same pixels.
+
+    A band shorter than `minHeight` is lengthened around its own middle,
+    so it still reads as centred on its rows. The name then goes in the
+    longest stretch of the band no ring reaches into, never the band's own
+    centre, which would run it through whichever dot sits there. When even
+    that stretch is too short for the name and its clearance, the band is
+    lengthened again at whichever end already has the more room, by exactly
+    the shortfall: a name between two dots cannot be helped by moving the
+    band's ends, and a stretch that already holds most of the name only
+    needs the rest. */
+export function placeEraLabel(
+  band: { top: number; height: number },
+  rings: readonly (readonly [number, number])[],
+  nameLength: number,
+  minHeight: number
+): EraLabelPlacement {
+  let { top, height } = band;
+  const grow = (by: number, above: number) => {
+    top -= above;
+    height += by;
+  };
+  if (height < minHeight) grow(minHeight - height, (minHeight - height) / 2);
+
+  const needed = nameLength + 2 * ERA_LABEL_CLEARANCE_PX;
+  let gap = largestGap(top, top + height, rings);
+  if (gap[1] - gap[0] < needed) {
+    if (rings.length === 0) {
+      grow(needed - height, (needed - height) / 2);
+    } else {
+      const roomAbove = Math.min(...rings.map(([start]) => start)) - top;
+      const roomBelow = top + height - Math.max(...rings.map(([, end]) => end));
+      if (roomAbove >= roomBelow) grow(needed - roomAbove, needed - roomAbove);
+      else grow(needed - roomBelow, 0);
+    }
+    gap = largestGap(top, top + height, rings);
+  }
+
+  return { top, height, labelTop: gap[0] - top, labelHeight: gap[1] - gap[0] };
+}

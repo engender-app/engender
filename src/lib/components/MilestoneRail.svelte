@@ -58,7 +58,7 @@
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
   import { timelineItems } from '$lib/data/timelineItems';
-  import { timelineEraBands } from '$lib/data/timelineEraBands';
+  import { placeEraLabel, timelineEraBands } from '$lib/data/timelineEraBands';
   import { fmtDay, fmtDuration } from '$lib/data/dates';
   import type { Era, Milestone } from '$lib/data/types';
   import { collapse } from '$lib/motion/reveal';
@@ -103,6 +103,10 @@
       `{#each}` below regardless of which of the three shapes that row
       takes - the only thing a band needs from a row is where it sits. */
   let itemEls = $state<(HTMLElement | undefined)[]>([]);
+  /** One hidden copy of each band's name, in `eraBandRanges` order, set in
+      the same type as the drawn name: what its rendered length is, measured
+      before the band it goes into is placed (last-audit UI 51). */
+  let rulerEls = $state<(HTMLElement | undefined)[]>([]);
 
   interface BandRect {
     id: string;
@@ -112,9 +116,10 @@
     role: Role | undefined;
     /** Where the name sits, relative to the band's own top - the largest
         stretch of the band no dot's ring reaches into, not the band's
-        full height. A band covering one milestone still has a top and a
-        bottom clear of that milestone's own dot; a band covering three
-        picks whichever of the gaps between them is biggest. */
+        full height (`placeEraLabel`). A band covering one milestone still
+        has a top and a bottom clear of that milestone's own dot; a band
+        covering three picks whichever of the gaps between them is
+        biggest. */
     labelTop: number;
     labelHeight: number;
   }
@@ -126,15 +131,23 @@
       bare circle's. */
   const DOT_RING_PX = 4;
 
+  /** `.tl-era-band`'s border. `labelTop` counts from the band's outer
+      edge, the way its rows were measured, but an absolutely placed child
+      counts from inside the border, so without this the name sat 1px
+      lower than the stretch it was placed in (last-audit UI 51). */
+  const BAND_EDGE_PX = 1;
+
   /** A rough vertical advance per character of a rotated `--text-xs` bold
       name (Alicja, 2026-09-16: an era too short for its own name has to be
       "artificially lengthened a little on the timeline" - "Full time"
-      read as a barely-legible knot rather than a band). Rough because an
-      exact figure would mean measuring the label's own rendered box before
-      deciding the band's height it then renders into - a second pass this
-      component does not make. Generous rather than tight: a band a few
-      pixels taller than its name strictly needs reads as a band with room
-      to breathe, and a band a few pixels short of it reads as broken. */
+      read as a barely-legible knot rather than a band). Generous rather
+      than tight: a band a few pixels taller than its name strictly needs
+      reads as a band with room to breathe, and a band a few pixels short
+      of it reads as broken. This sets how long a short band is drawn; the
+      name's measured length (`rulerEls`) is what decides whether the name
+      actually fits between the band's dots, which a whole band's length
+      says nothing about - "Full time" was 88px long and still ran into
+      the today dot that took 20px of it (last-audit UI 51). */
   const CHAR_HEIGHT_PX = 8;
   const LABEL_PADDING_PX = 16;
   /** Never under the touch floor either (`floor`, the --touch-target
@@ -144,24 +157,6 @@
     Math.max(floor, name.length * CHAR_HEIGHT_PX + LABEL_PADDING_PX);
 
   let bandRects = $state<BandRect[]>([]);
-
-  /** The largest run of `[0, height]` that none of `obstacles` reaches
-      into, as `[top, bottom]` relative to the same origin. Falls back to
-      the whole span when the obstacles cover all of it, which nothing
-      today produces - a band always has more height than one dot's ring
-      - but a label with nowhere to go is a worse failure than a label
-      that overlaps one anyway. */
-  function largestGap(height: number, obstacles: readonly [number, number][]): [number, number] {
-    const sorted = [...obstacles].sort((a, b) => a[0] - b[0]);
-    let cursor = 0;
-    let best: [number, number] = [0, 0];
-    for (const [start, end] of sorted) {
-      if (start - cursor > best[1] - best[0]) best = [cursor, start];
-      cursor = Math.max(cursor, end);
-    }
-    if (height - cursor > best[1] - best[0]) best = [cursor, height];
-    return best[1] > best[0] ? best : [0, height];
-  }
 
   function measureBands() {
     const el = rail;
@@ -178,41 +173,24 @@
       if (!first || !last) return;
       const a = first.getBoundingClientRect();
       const b = last.getBoundingClientRect();
-      let top = a.top - railTop;
-      let height = b.bottom - a.top;
 
-      const obstacles: [number, number][] = [];
+      const rings: [number, number][] = [];
       for (let i = band.startIndex; i <= band.endIndex; i += 1) {
         const dot = itemEls[i]?.querySelector('.tl-dot');
         if (!dot) continue;
         const dotRect = dot.getBoundingClientRect();
-        obstacles.push([dotRect.top - railTop - top - DOT_RING_PX, dotRect.bottom - railTop - top + DOT_RING_PX]);
+        rings.push([dotRect.top - railTop - DOT_RING_PX, dotRect.bottom - railTop + DOT_RING_PX]);
       }
 
-      // Stretched around its own middle rather than pinned to either end,
-      // so a lengthened band still reads as centred on the rows it covers.
-      const needed = minLabelHeight(band.name, floor);
-      if (height < needed) {
-        const grown = (needed - height) / 2;
-        top -= grown;
-        height = needed;
-        for (const obstacle of obstacles) {
-          obstacle[0] += grown;
-          obstacle[1] += grown;
-        }
-      }
+      const nameLength = rulerEls[index]?.getBoundingClientRect().height ?? 0;
+      const placed = placeEraLabel(
+        { top: a.top - railTop, height: b.bottom - a.top },
+        rings,
+        nameLength,
+        minLabelHeight(band.name, floor)
+      );
 
-      const [labelTop, labelBottom] = largestGap(height, obstacles);
-
-      next.push({
-        id: band.id,
-        name: band.name,
-        top,
-        height,
-        role: roleAt(bandRoles, index),
-        labelTop,
-        labelHeight: labelBottom - labelTop
-      });
+      next.push({ id: band.id, name: band.name, role: roleAt(bandRoles, index), ...placed });
     });
     bandRects = next;
   }
@@ -223,13 +201,17 @@
   $effect(() => {
     eraBandRanges;
     itemEls;
+    rulerEls;
     measureBands();
   });
+  /* A name's own length changes without the rail's when its font arrives
+     late or the text size setting changes, so the rulers are watched too. */
   $effect(() => {
     if (!rail) return;
     const el = rail;
     const observer = new ResizeObserver(() => measureBands());
     observer.observe(el);
+    for (const ruler of rulerEls) if (ruler) observer.observe(ruler);
     return () => observer.disconnect();
   });
 </script>
@@ -261,9 +243,14 @@
        `measureBands` places it in the band's biggest dot-free stretch
        instead (`largestGap`), never the band's own geometric centre, so
        the two only compete for space when a band is too short to give the
-       name anywhere else to be. Each band is a button rather than a link,
+       name anywhere else to be - and then the band is lengthened at its
+       roomier end until the name fits with room either side
+       (`placeEraLabel`, last-audit UI 51). Each band is a button rather than a link,
        the same reason the milestone rows below are: it opens a sheet on
        this screen's own address, not a destination. -->
+  {#each eraBandRanges as band, index (band.id)}
+    <span class="tl-era-ruler" aria-hidden="true" bind:this={rulerEls[index]}>{band.name}</span>
+  {/each}
   {#each bandRects as band (band.id)}
     <button
       type="button"
@@ -275,7 +262,7 @@
       onclick={() => onOpenEra(band.id)}
       {...roleAttrs(band.role)}
     >
-      <span class="tl-era-name" style:top="{band.labelTop}px" style:height="{band.labelHeight}px">{band.name}</span>
+      <span class="tl-era-name" style:top="{band.labelTop - BAND_EDGE_PX}px" style:height="{band.labelHeight}px">{band.name}</span>
     </button>
   {/each}
   {#each items as item, index (item.id)}
@@ -434,12 +421,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The name and its ruler share one type, so the length the ruler gives
+     is the length the name draws. The ruler takes its own length (no
+     height of its own, nothing to stretch it) and is never seen. */
+  .tl-era-name,
+  .tl-era-ruler {
     writing-mode: vertical-rl;
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  }
+
+  .tl-era-ruler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .tl-item {

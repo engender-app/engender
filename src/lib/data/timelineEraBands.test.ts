@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Era, Milestone } from './types';
 import { timelineItems } from './timelineItems';
-import { timelineEraBands } from './timelineEraBands';
+import { placeEraLabel, timelineEraBands } from './timelineEraBands';
 
 const TODAY = 20500;
 
@@ -68,5 +68,66 @@ describe('the milestone rail draws each era as a band behind its own rows', () =
       ['e1', 0, 0],
       ['e2', 1, 2]
     ]);
+  });
+});
+
+/* Pixels on the rail, worked by hand: a band is placed by its rows, a dot's
+   ring is the 12px circle plus its 4px cut-out, and a name needs its own
+   length plus 4px of band either side before it reads as clear of a ring. */
+describe("the milestone rail keeps an era's name clear of the dots on its band", () => {
+  it('lengthens the band at its open end when the name does not fit above a today dot', () => {
+    // "Full time" in the demo journal: a gap row and the today row, 64px,
+    // lengthened to 88 by the rough per-letter allowance. Today's ring sits
+    // at 42-62, which leaves 54px above it for a 50px name; it needs 58.
+    const placed = placeEraLabel({ top: 0, height: 64 }, [[42, 62]], 50, 88);
+    expect(placed).toEqual({ top: -16, height: 92, labelTop: 0, labelHeight: 58 });
+  });
+
+  it('leaves a band whose name already fits where its rows put it', () => {
+    expect(placeEraLabel({ top: 0, height: 200 }, [[80, 100]], 50, 48)).toEqual({
+      top: 0,
+      height: 200,
+      labelTop: 100,
+      labelHeight: 100
+    });
+  });
+
+  it('still lengthens a short band around its own middle', () => {
+    expect(placeEraLabel({ top: 100, height: 40 }, [], 50, 88)).toEqual({
+      top: 76,
+      height: 88,
+      labelTop: 0,
+      labelHeight: 88
+    });
+  });
+
+  it('lengthens at the bottom when the dot sits at the top', () => {
+    // A first milestone's dot near the band's top edge, its ring poking 2px
+    // above it: 82px below the ring for a 90px name that needs 98.
+    expect(placeEraLabel({ top: 0, height: 100 }, [[-2, 18]], 90, 48)).toEqual({
+      top: 0,
+      height: 116,
+      labelTop: 18,
+      labelHeight: 98
+    });
+  });
+
+  it('lengthens a band with no dots around its middle when large text outgrows it', () => {
+    // 200% text: the rough per-letter allowance gave 88px, the name is 100.
+    expect(placeEraLabel({ top: 0, height: 88 }, [], 100, 88)).toEqual({
+      top: -10,
+      height: 108,
+      labelTop: 0,
+      labelHeight: 108
+    });
+  });
+
+  it('moves a name squeezed between two dots out to an end of the band', () => {
+    expect(placeEraLabel({ top: 0, height: 100 }, [[10, 30], [70, 90]], 60, 48)).toEqual({
+      top: -58,
+      height: 158,
+      labelTop: 0,
+      labelHeight: 68
+    });
   });
 });
