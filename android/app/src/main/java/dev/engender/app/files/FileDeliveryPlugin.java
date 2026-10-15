@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
@@ -66,7 +67,7 @@ public final class FileDeliveryPlugin extends Plugin {
             JSObject out = new JSObject();
             out.put("transferId", transferId);
             call.resolve(out);
-        } catch (Exception error) { call.reject("export-staging-failed", error); }
+        } catch (Exception error) { call.reject("export-staging-failed", StorageFailure.code(error, StorageFailure.DEVICE_FULL), error); }
     }
 
     @PluginMethod public synchronized void appendFile(PluginCall call) {
@@ -80,7 +81,7 @@ public final class FileDeliveryPlugin extends Plugin {
             }
             staged.append(offset, Base64.decode(base64, Base64.NO_WRAP));
             call.resolve();
-        } catch (Exception error) { call.reject("export-transfer-failed", error); }
+        } catch (Exception error) { call.reject("export-transfer-failed", StorageFailure.code(error, StorageFailure.DEVICE_FULL), error); }
     }
 
     @PluginMethod public void finishFile(PluginCall call) {
@@ -109,7 +110,7 @@ public final class FileDeliveryPlugin extends Plugin {
             }
         } catch (Exception error) {
             synchronized (this) { if (staged == delivery) cleanup(); }
-            call.reject("export-prepare-failed", error);
+            call.reject("export-prepare-failed", StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
         }
     }
 
@@ -136,9 +137,19 @@ public final class FileDeliveryPlugin extends Plugin {
             return;
         }
         try {
-            try (InputStream input = delivery.openStream();
-                 OutputStream output = getContext().getContentResolver().openOutputStream(uri, "wt")) {
-                if (output == null) throw new IllegalStateException("destination-unavailable");
+            ParcelFileDescriptor destination = getContext().getContentResolver().openFileDescriptor(uri, "wt");
+            if (destination == null) throw new IllegalStateException("destination-unavailable");
+            try (OutputStream output = new ParcelFileDescriptor.AutoCloseOutputStream(destination);
+                 InputStream input = delivery.openStream()) {
+                /* The preflight (last-audit ui 37): refused only when the
+                   destination handed over a file whose own volume measured
+                   short. A cloud provider's pipe has nothing to measure and
+                   goes straight to the write, whose ENOSPC is still caught
+                   below. */
+                Long available = StorageFailure.availableBytes(destination);
+                if (StorageFailure.refuses(available, expectedLength)) {
+                    throw new StorageFailure.DestinationFull(expectedLength, available);
+                }
                 byte[] buffer = new byte[8192];
                 int read;
                 while ((read = input.read(buffer)) != -1) {
@@ -159,7 +170,7 @@ public final class FileDeliveryPlugin extends Plugin {
             try { DocumentsContract.deleteDocument(getContext().getContentResolver(), uri); }
             catch (Exception ignored) { /* Provider may refuse cleanup; delivery still fails. */ }
             synchronized (this) { if (staged == delivery) cleanup(); }
-            call.reject("export-delivery-failed", error);
+            call.reject("export-delivery-failed", StorageFailure.code(error, StorageFailure.DESTINATION_FULL), error);
         }
     }
 
