@@ -61,6 +61,11 @@
     "holds": "the yearly grid's days as a list: the painted cells out of the accessibility tree, every day's value (or \"Not logged\") read off it a month at a time, three tab stops, a tap or Enter to open and step, and the fold and a month change never moving anything in one frame"
   },
   {
+    "name": "year-month-labels",
+    "tier": "dev",
+    "holds": "Year wrapped's twelve month names stay apart, uncut and on their own month's days at 390px, 200% zoom and desktop in both languages"
+  },
+  {
     "name": "voice-task-names",
     "tier": "dev",
     "holds": "the voice task chooser's labels fit their segments in both languages"

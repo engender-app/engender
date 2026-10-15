@@ -474,6 +474,7 @@ To run one on its own, use
 | `body-map-figure-yank` | nothing on the body map's figure is painted at its destination first or in neither place |
 | `chart-tick-readout` | what a chart's tick says under a mouse and a finger, across grains, languages and widths |
 | `year-days-list` | the yearly grid's days as a list: the painted cells out of the accessibility tree, every day's value (or "Not logged") read off it a month at a time, three tab stops, a tap or Enter to open and step, and the fold and a month change never moving anything in one frame |
+| `year-month-labels` | Year wrapped's twelve month names stay apart, uncut and on their own month's days at 390px, 200% zoom and desktop in both languages |
 | `voice-task-names` | the voice task chooser's labels fit their segments in both languages |
 | `segmented-chosen-clear` | Wrapped's chosen cadence stays clear of the track's chevrons in both languages at 390px and 200% zoom, and the chevrons fade in and out with the scroll |
 | `android-door-motion` | outgoing Android door content fades; warm interruptions keep the intended screen, Back and reduced motion work, and gates remove journal content |
