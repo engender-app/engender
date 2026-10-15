@@ -39,6 +39,7 @@
   type OcrReviewRow
 } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -454,11 +455,13 @@
   }
 
   /* Ticket 11's other entry point into the appointment prep list: a one-tap
-     add, seeded from the analyte already on screen. */
+     add, seeded from the analyte already on screen. One add per tap, and a
+     failed one says so (UI 17); a later tap is a second add on purpose. */
+  const prepWrite = writer();
   async function addToAppointmentPrep(draft: LabDraft) {
     const resultAnalyte = analyteOf(draft);
     if (!resultAnalyte) return;
-    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte }));
+    if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte })), m.write_failed()))) return;
     toast(m.appointment_prep_added_toast());
   }
 </script>
@@ -713,7 +716,7 @@
       {/if}
     {/snippet}
     {#snippet extraActions(editor)}
-      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor)}>
+      <button class="btn btn-soft" data-add-to-appointment-prep disabled={prepWrite.busy} onclick={() => addToAppointmentPrep(editor)}>
         <span>{m.appointment_prep_add_button()}</span>
       </button>
     {/snippet}

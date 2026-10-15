@@ -102,7 +102,7 @@
   {
     "name": "save-and-failure-check",
     "tier": "dev",
-    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today"
+    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today; effect types, appointment prep add/tick/flag, Add to appointment prep, dilation schedule, felt sense and journaling pause write once per double tap and say a failure"
   },
   {
     "name": "recovery-key-departure-check",

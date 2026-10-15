@@ -81,6 +81,7 @@
   import { collapse } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { rowWriter, writer } from '$lib/stores/attempt.svelte';
 
   const today = $derived(currentDay());
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -256,19 +257,28 @@
     addSheet = true;
   }
 
+  /* One item per tap, and the sheet stays up with its text and a toast
+     when the add fails (UI 17). Two adds of the same words a moment apart
+     are still two questions; only the second tap of a double one is not. */
+  const itemWrite = writer();
   async function addItem() {
     const content = newItemText.trim();
     if (!content) return;
-    await journal.checklists.addToStandaloneChecklist(content);
+    if (!(await itemWrite.run(() => journal.checklists.addToStandaloneChecklist(content), m.write_failed()))) return;
     addSheet = false;
   }
 
+  /* A row's tick and flag each take one write at a time, read off the row
+     as it stands, so a double tap flips once rather than writing the same
+     value twice; a failure says so instead of failing silently (UI 17). */
+  const checkWrite = rowWriter();
+  const flagWrite = rowWriter();
   function toggleChecked(item: ChecklistItem) {
-    journal.checklists.setItemChecked(item.id, !item.checked);
+    checkWrite(item.id, () => journal.checklists.setItemChecked(item.id, !item.checked), m.write_failed());
   }
 
   function toggleCarriedForward(item: ChecklistItem) {
-    journal.checklists.setItemCarriedForward(item.id, !item.carriedForward);
+    flagWrite(item.id, () => journal.checklists.setItemCarriedForward(item.id, !item.carriedForward), m.write_failed());
   }
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
@@ -542,7 +552,7 @@
     {/if}
   </ReadReserve>
 
-  <Sheet open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
+  <Sheet busy={itemWrite.busy} open={addSheet} title={m.appointment_prep_new_sheet()} onClose={() => (addSheet = false)}>
     <h3>{m.appointment_prep_new_sheet()}</h3>
     <Field label={m.appointment_prep_new_sheet()} id="appointment-prep-input" hidden>
       {#snippet children(id)}
@@ -555,7 +565,7 @@
         />
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-save-appointment-item onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
+    <button class="btn btn-primary" data-save-appointment-item disabled={itemWrite.busy} onclick={addItem}><span>{m.appointment_prep_add()}</span></button>
   </Sheet>
 
   <RecordSheet

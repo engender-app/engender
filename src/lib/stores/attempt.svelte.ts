@@ -2,7 +2,7 @@
    write that fails says so in a toast, and a button that writes can hold
    itself disabled while its write is in flight. */
 import { toast } from './toasts.svelte';
-import { attemptWith, oneAtATime } from './writeOutcome';
+import { attemptWith, oneAtATime, oneAtATimeEach } from './writeOutcome';
 
 const sayFailed = (message: string) => toast(message, { kind: 'failed' });
 
@@ -23,6 +23,15 @@ export function writer() {
     },
     run
   };
+}
+
+/** One control repeated on every row of a list: `run(key, write, message)`
+    is `attempt` that refuses a second tap on the same row while that row's
+    write is in flight. Nothing is disabled meanwhile: the row's own state
+    answers once the write lands, and a fade on a write this short would
+    only flicker. */
+export function rowWriter() {
+  return oneAtATimeEach(sayFailed);
 }
 
 /** A delete behind ConfirmDeleteSheet, for a screen that holds its own

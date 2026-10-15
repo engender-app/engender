@@ -53,6 +53,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { OFFERS, answerOffer, type OfferAnswer, type TryoutAdoption } from '$lib/data/offers';
 
   /* Three areas below the form: how it has felt, what it looked like, and
@@ -253,14 +254,18 @@
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
+  /* One reading per tap, and a failed one keeps the mood and note and says
+     so (UI 17). Only what was sent is cleared: a mood or note changed while
+     the write ran is the next reading, not this one. */
+  const feelingWrite = writer();
   async function addFeeling() {
-    if (feelingMood == null) return;
-    await journal.feltSense.add(
-      { tryoutId: detail.id },
-      { epochDay: todayEpochDay(), mood: feelingMood, note: feelingNote.trim() || null }
-    );
-    feelingMood = null;
-    feelingNote = '';
+    const mood = feelingMood;
+    if (mood == null) return;
+    const typed = feelingNote;
+    const note = typed.trim() || null;
+    if (!(await feelingWrite.run(() => journal.feltSense.add({ tryoutId: detail.id }, { epochDay: todayEpochDay(), mood, note }), m.write_failed()))) return;
+    if (feelingMood === mood) feelingMood = null;
+    if (feelingNote === typed) feelingNote = '';
   }
 
   const feelingRecord = recordEditor<FeltSenseEntry>({
@@ -496,7 +501,7 @@
     <button
       class="btn btn-soft btn-block press"
       style="margin:var(--space-3) 0"
-      disabled={feelingMood == null}
+      disabled={feelingMood == null || feelingWrite.busy}
       data-add-feeling
       onclick={addFeeling}
     >

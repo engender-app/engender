@@ -12,6 +12,12 @@ A chosen switcher option, such as Last year in Wrapped, scrolls clear of
 the arrow at the switcher's edge instead of ending under it. The arrows
 fade in and out as the switcher scrolls.
 
+A double tap writes once when adding a custom effect type, an appointment prep
+item or a felt-sense reading, ticking or flagging a prep item, using Add to
+appointment prep, saving a dilation schedule, or starting or resuming a
+journaling pause. A failed write there now says so and keeps what was typed.
+Adding the same item again later still adds it.
+
 The hormone curve says "1 dose" when one logged dose has no curve.
 Dose counts use the catalogue's plural forms in English and Polish.
 
