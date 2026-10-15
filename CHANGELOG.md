@@ -89,6 +89,12 @@ Month names in Year wrapped no longer run together. A phone shows the months
 six to a row and 200% zoom four to a row, so names such as Sept and Oct stay
 apart. A wide window keeps all twelve in one row.
 
+A month counted from the 29th, 30th or 31st ends on the last day of a
+shorter month. "Last logged" lines, milestone gaps, sealed letters and photo
+comparisons say "1 month" from 31 January to 28 February, where they said
+"28 days", and "2 months" from 31 December to 28 February, where they said
+"1 month".
+
 Keyboard focus follows Today edits, access-mode and recovery-key steps,
 and successful Trash restores, word un-ignores and notice dismissals.
 Unlocking focuses the arrived screen's heading, including on Android with
