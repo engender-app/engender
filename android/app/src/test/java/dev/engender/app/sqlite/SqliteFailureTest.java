@@ -20,8 +20,10 @@ public class SqliteFailureTest {
        on a roomy disk, so it is a full disk only when the volume says so. */
     @Test public void cantOpenAndIoErrorsAreAFullDiskOnlyOnAFullVolume() {
         assertEquals("storage-full", SqliteFailure.storageCode("unable to open database file (code 14)", FULL));
-        assertEquals("storage-full", SqliteFailure.storageCode("disk I/O error (code 10)", 64 * 1024));
+        assertEquals("storage-full", SqliteFailure.storageCode("disk I/O error (code 10)", 16 * 1024));
         assertNull(SqliteFailure.storageCode("unable to open database file (code 14)", ROOMY));
+        // A volume with a little room left is not full: code 14 there has another cause.
+        assertNull(SqliteFailure.storageCode("unable to open database file (code 14)", 512 * 1024));
         assertNull(SqliteFailure.storageCode("disk I/O error (code 10)", ROOMY));
     }
 
