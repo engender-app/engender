@@ -55,6 +55,11 @@ measurement type, unit and date range instead of announcing an edit action.
 Arrow keys in the Language sheet move focus without changing the language or
 reloading the app. Enter, Space or a tap applies the choice.
 
+A failed Restore in Trash now says so and leaves the entry in the list to
+try again. A second tap while a restore is running does nothing. A restored
+row closes its height instead of vanishing, and restoring the last one hands
+the screen to the empty state the same way.
+
 Keyboard focus follows Today edits, access-mode and recovery-key steps,
 and successful Trash restores, word un-ignores and notice dismissals.
 Unlocking focuses the arrived screen's heading, including on Android with

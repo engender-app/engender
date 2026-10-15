@@ -31,6 +31,15 @@ the browser tier. Run either script directly for its focused check.
 then visits retained doors and checks that navigation and Today editing focus
 only the active door. Pass a device serial and the isolated package name.
 
+`browser-tier/trash-restore.mjs` taps Restore on the real Trash screen with
+the journal's restore held open, rejected and let through. A double tap writes
+once, a failure keeps the row and raises the catalogued toast, and a retry
+lands. It samples every row on each animation frame: under full motion the
+restored row and, for the last row, the whole list must close over several
+frames with no neighbour jumping, and under reduced motion both cut. It runs in
+the browser tier; pass `--dump <dir>` when running it directly to keep the
+frame samples.
+
 The browser tier's `entry-contextual-text.mjs` types `felt like me` key by key
 into the real entry editor over encrypted SQLite, for new and existing entries.
 It checks spaces and recovery-note line breaks before saving, trimmed saved
