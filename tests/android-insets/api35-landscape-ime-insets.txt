@@ -1,0 +1,14 @@
+WindowInsetsStateController
+      mDisplayFrame=Rect(0, 0 - 2400, 1080)
+      mDisplayCutout=DisplayCutout{insets=Rect(126, 0 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 414 - 126, 666), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.625} cutoutSpec={M 0,0 L -48, 0 L -44.3940446283, 36.0595537175 C -43.5582133885, 44.4178661152 -39.6, 48.0 -31.2, 48.0 L 31.2, 48.0 C 39.6, 48.0 43.5582133885, 44.4178661152 44.3940446283, 36.0595537175 L 48, 0 Z @dp} rotation={1} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}} sideOverrides={}}
+        InsetsSource id=8e830000 type=statusBars frame=[0,0][2400,63] visible=true flags= sideHint=TOP boundingRects=null
+        InsetsSource id=8e830005 type=mandatorySystemGestures frame=[0,0][2400,63] visible=true flags= sideHint=TOP boundingRects=null
+        InsetsSource id=8e830006 type=tappableElement frame=[0,0][2400,63] visible=true flags= sideHint=TOP boundingRects=null
+        InsetsSource id=3 type=ime frame=[126,520][2274,1080] visibleFrame=[126,520][2274,1080] visible=true flags= sideHint=BOTTOM boundingRects=null
+        InsetsSource id=7 type=displayCutout frame=[0,0][126,1080] visible=true flags= sideHint=LEFT boundingRects=null
+        InsetsSource id=50550001 type=navigationBars frame=[2274,0][2400,1080] visible=true flags=INSETS_ROUNDED_CORNER sideHint=RIGHT boundingRects=null
+        InsetsSource id=50550004 type=systemGestures frame=[0,0][0,0] visible=true flags= sideHint=NONE boundingRects=null
+        InsetsSource id=50550005 type=mandatorySystemGestures frame=[2274,0][2400,1080] visible=true flags= sideHint=RIGHT boundingRects=null
+        InsetsSource id=50550006 type=tappableElement frame=[2274,0][2400,1080] visible=true flags= sideHint=RIGHT boundingRects=null
+        InsetsSource id=50550024 type=systemGestures frame=[0,0][0,0] visible=true flags= sideHint=NONE boundingRects=null
+Control map:

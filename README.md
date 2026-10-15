@@ -281,6 +281,11 @@ the English and Polish catalogues and prevents the number of untranslated
 literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
+`npm test` includes 480 seeded importer and sniffer fuzz cases. Run
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 24,000 cases. Failures keep their exact
+inputs and seed/index receipts in `ci-logs/fuzz/`; see
+[tests/PROBES.md](tests/PROBES.md) for replay and strict typed-refusal checks.
+
 The screen and walkthrough suites use Chromium. Set `CHROMIUM_PATH` if its
 executable is not at the harness's default location. They cover storage
 contracts, rendered screens, complete user flows and offline startup of the
@@ -411,9 +416,19 @@ packages from including these paths; it does not rewrite published history.
 atomic switch between them and rollback checks. A rollback refuses code
 that cannot open the current journal schema by default.
 
-F-Droid rebuilds use F-Droid's signing key. Moving between that channel and
-an APK signed by this project's release workflow requires reinstalling and
-restoring an Archive, because the signatures are not update-compatible.
+GitHub and Obtainium use the same release APK. The planned F-Droid route
+preserves that APK's developer signature after F-Droid verifies a reproducible
+source build. GitHub/F-Droid switching is not yet verified: it requires that
+build evidence and installed-update checks in both directions with synthetic
+journals. A matching certificate alone is insufficient. Wait for a compatible
+equal-or-newer version at the destination; do not downgrade to change channels.
+
+Play keeps its current, separate app-signing key and existing update path.
+Direct switching between Play and the other channels is not supported. Before
+uninstalling to move between incompatible channels, export an Archive and
+verify its restore on a separate disposable installation. Uninstalling removes
+the local journal. See [channel verification](deploy/README.md#android-channel-verification)
+for the evidence required before claiming a supported switch.
 
 ## Support and licence
 

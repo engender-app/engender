@@ -1049,6 +1049,15 @@ The contract suite in [data/journal/contract-suite.ts](src/lib/data/journal/cont
 
 **Fixtures and the demo.** [data/demo/persona.ts](src/lib/data/demo/persona.ts) is "Alice", a seeded, deterministic persona about two and a half years into transition, generated relative to today. Every import of it sits behind `__DEMO__`, which a production build replaces with `false`. [verify-build.mjs](tests/browser-tier/verify-build.mjs) greps the built bundle to prove the persona is gone. `VITE_DEMO=1 npm run build` produces the demo build that guards and the walkthrough use. On a cold web load the database worker seeds the persona itself, in one transaction ([worker-seed.ts](src/lib/data/demo/worker-seed.ts)). While the sqlite wasm is still downloading, the worker draws the persona's photos ahead of time (`warmDemoPhotos`); the seed takes each one from that set, and draws on demand any photo the set does not hold. Photos depend on their seed alone, so the rows and bytes written do not change. [data/demo/fullFixture.ts](src/lib/data/demo/fullFixture.ts) fills every feature. The long-journal fixture is a separate generator ([tests/long-journal/generate.ts](tests/long-journal/generate.ts)).
 
+The Node tier also runs [tests/fuzz/](tests/fuzz/): 40 seeded mutations for
+each of 12 importer and sniffer targets. A separate child has a 1 GiB heap
+limit and a 30-second case watchdog. Refused cases must preserve row and file
+content hashes after orphan cleanup; accepted imports must pass SQLite
+integrity checks and read back through the journal. Exact failing inputs and
+seed/index receipts stay in ignored `ci-logs/fuzz/`. `FUZZ_LONG=1` raises the
+default to 2,000 cases per target. Untyped refusals are report-only unless
+`FUZZ_STRICT_TYPED=1`; crashes and invariant failures always fail the run.
+
 `docs/agents/verification.md` lists what each tier needs and its known noise.
 
 ## 11. Performance architecture
@@ -1158,7 +1167,7 @@ flowchart LR
 - **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022). [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
 - **Hosting.** `npm run deploy:release`, `deploy:rollback` and `deploy:list` drive immutable web releases ([deploy/README.md](deploy/README.md)). A sidecar receipt beside the current link records the outgoing target at each switch. `rollback --previous` uses that matching history, never directory age; missing or stale history requires a named target. Failed switches restore the prior receipt and PDF namespace. Rollback still refuses code that can't open the current schema.
 - **Progressive release.** Candidate checks in `stage1` and `stage2`, plus the `stable` matrix for stable versions, precede publication. Web and GitHub/Obtainium publish first; Play (`stage3`) and F-Droid (`stage4`) follow. Channel-live states record completed publication, so pending channels do not prevent a tag. Each required stage records update, migration, archive round trip, scheduled backup and rollback checks in [scripts/progressive-release-record.json](scripts/progressive-release-record.json). The tag command and release workflow validate the tested source revision and exact version before publication. See [candidate evidence](deploy/README.md#candidate-evidence-before-publication).
-- **F-Droid** rebuilds with its own key, so moving between channels means reinstalling and restoring an archive.
+- **Android channel signing.** Play retains its separate app-signing key. The planned F-Droid route verifies a reproducible source build and preserves the GitHub APK's developer signature. GitHub/F-Droid switching remains unverified until the actual rebuild and installed updates in both directions preserve synthetic journals. A matching certificate alone is insufficient. [Android channel verification](deploy/README.md#android-channel-verification) records the required proof and the Archive migration rule for incompatible channels.
 
 ## 13. Paradigms worth knowing before editing
 

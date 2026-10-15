@@ -28,6 +28,18 @@ settings; never reset the keyboard dictionary. Retain only synthetic matches,
 not unrelated suggestions. FUTO behavior does not prove what other keyboards
 do with this advisory flag.
 
+`node tests/android-insets/run.mjs <emulator-serial> <output-directory>`
+checks Home, the entry editor and a template sheet in the isolated demo package.
+Its API 33/35/36 matrix uses Android gesture/three-button navigation, trans
+light/dark, native cutout overlays, rotation and the actual IME. Native window
+insets and WebView bounds must leave header content and actions clear; the
+editor footer must stay above the keyboard, with a complete typed note line
+visible and navigation restored after keyboard dismissal. Each case retains screenshots,
+top/bottom crops and geometry before assertions. See [Android inset matrix](android-insets/README.md)
+for build, isolation and cleanup. This does not establish Play notice removal
+or physical-device timing. The existing `safe-area.test.ts` remains a declaration
+check, not a substitute for the native matrix.
+
 `auto-export-scheduler.test.ts` reports one synthetic native backup failure
 across ticks and a fresh scheduler module with the same stored preferences.
 It checks quiet-hours holds, notification refusal, disabled notices, clock
@@ -68,6 +80,40 @@ in trans light and dark. Only mount timing is controlled; the native bridge,
 Keystore, journal and gate remain production code. Resources name `serial`,
 `avd`, emulator `pid`, isolated `package` and an owned `cdpPort`. The runner
 clears only that package and removes its own forward when finished.
+
+`tests/fuzz/fuzz.test.ts` runs in `npm test` without a new dependency. Seed 1
+produces 40 cases for each of 12 targets: five Archive variants, Daylio CSV,
+Daylio backup, Day One, TransTracks, Track & Graph, Pixels and sniffers.
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` runs 2,000 cases per target. To run only
+the harness, use `npx vitest run tests/fuzz/fuzz.test.ts`. `FUZZ_COUNT`,
+`FUZZ_LONG_COUNT` and comma-separated `FUZZ_TARGETS` narrow diagnostic runs.
+The browser photo/PDF targets are outside this Node harness.
+
+Each child has a 1 GiB heap cap and a 30-second case watchdog. Environment
+overrides can lower these bounds, never raise them. A crash, timeout, changed
+row or file content after refusal, orphan surviving the sweep, failed SQLite
+integrity check, unreadable accepted snapshot, prototype pollution or throwing
+sniffer fails the test. Untyped refusals stay in the summary without failing
+unless `FUZZ_STRICT_TYPED=1`. There is no corrupt-input signature allow-list.
+`invariants.test.ts` plants partial writes, changed file bytes, orphan survivors,
+broken foreign keys and unreadable rows, plus sniffer throws and pollution.
+
+`FUZZ_OUT` selects the output directory, defaulting to ignored `ci-logs/fuzz/`.
+Summaries include seed, counts, wall time, child CPU time and peak RSS. Each
+defect or untyped refusal keeps a `case-seed<seed>-<target>-<index>.json`
+receipt and its exact `.bin` input. A killed child keeps the active input;
+startup or generation failures have a receipt without an input. Replay a saved
+receipt from the repository root with:
+
+```sh
+node --max-old-space-size=1024 tests/fuzz/child.mjs '{"root":".","artifact":"/absolute/path/case-seed1-daylio-csv-0.json","run":true}'
+```
+
+The retained `replay: "target:index"` option regenerates a case from its seed.
+Encrypted framing uses fresh nonces, so only an artifact replay reproduces the
+exact bytes. The optional shrinker cuts ciphertext and cannot meaningfully
+minimise encrypted targets. A future LAN receiver adds its damaged-frame target
+with the same refusal fingerprint rule when that receiver lands.
 
 `node tests/reset-restart-check.mjs` uses an isolated persistent Chromium
 profile and SIGKILLs only its owned process group at testing-09 seeds
@@ -933,6 +979,12 @@ This Node test needs a JDK (`jar`, `keytool`, `jarsigner` on PATH) and an Androi
 SDK (`ANDROID_HOME` or `ANDROID_SDK_ROOT`) with build-tools and a platform
 `android.jar`. It creates the fixture manifest with `aapt2`; no Gradle build or
 device is used. Temporary keys and artifacts are removed after the tests.
+
+`tests/ci-checks.test.ts` exercises the local F-Droid report with failed and
+different unsigned Gradle outputs. `scripts/fdroid-rebuild-report.mjs` reuses
+prepared web assets, so even identical unsigned APKs do not establish F-Droid
+reproducibility or installed-update compatibility. Those require the separate
+[channel verification evidence](../deploy/README.md#android-channel-verification).
 
 `manual-export` is an opt-in physical-device probe, outside default Android
 instrumentation discovery. Build the ordinary web bundle and sync Capacitor,
