@@ -15,10 +15,13 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { promoteDoorReads } from '$lib/data/live/hiddenReadAdmission';
   import { provideDoorActivity } from './doorActivity.svelte';
 
   let { path, active }: { path: DoorPath; active: boolean } = $props();
-  provideDoorActivity(() => active);
+  const activity = () => active;
+  provideDoorActivity(activity);
+  $effect(() => { if (active) promoteDoorReads(activity); });
   const Page = untrack(() => pages[path]);
 
   /* Shown again, the door's CSS animations start over: display none cancels

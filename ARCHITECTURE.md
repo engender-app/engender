@@ -1106,6 +1106,12 @@ flowchart LR
 - `batchWrites` coalesces bursts of writes into one round of re-runs.
 - A refresh that comes back equal leaves the screen untouched.
 - `lastResults` paints a warm revisit from memory in its first frame.
+- Hidden retained doors defer repository admission for up to 75 ms per query
+  attempt. Becoming visible releases pending reads immediately. The query still
+  captures dependencies synchronously; superseded attempts cannot dispatch
+  delayed reads. Hidden refresh continues after the bound, keeping warm caches
+  fresh. [The physical comparison](tests/retained-door-cost/RESULTS.md) records
+  the foreground gain and the longer full refresh settlement.
 
 Home also limits which questions it asks. [data/pinnedRows.ts](src/lib/data/pinnedRows.ts)'s
 `pinReadScope()` supplies the selected rows, last-write areas and forward facts;

@@ -1,0 +1,72 @@
+{
+  "baseSha": "a5e3e1c962597e9ae621f952b4d02cfba60d7407",
+  "device": "Pixel 10a, Android API 37, serial 64101JEA325797",
+  "artifacts": {
+    "shell-app.apk": "4c6090350287035e6f33f79f3872d767efdc3b429665e485d31e46126526805b",
+    "native-app.apk": "2e72d47de56270730ed73c932df286b539658179d187a42f994369076dbc26e6",
+    "instrumentation.apk": "ac8f933dc66bc12f2b55ec2eb6003f3809c4fd7988a35b20a9ae063785601623"
+  },
+  "beforeSamples": {
+    "stage": "awaiting-quiet",
+    "fixture": {
+      "summary": {
+        "firstEpochDay": 17024,
+        "lastEpochDay": 20676,
+        "entries": 3300,
+        "daysWithEntries": 2619,
+        "photos": 391,
+        "labResults": 136,
+        "milestones": 12,
+        "commonWord": "lustro",
+        "commonWordEntries": 1923,
+        "rareWord": "endokrynolog",
+        "rareWordEntries": 64,
+        "tagWord": "basen",
+        "tagWordEntries": 270,
+        "regionEuphoriaEntries": 242,
+        "hairStagings": 19,
+        "doseEvents": 1466,
+        "additionalDoseEvents": 491,
+        "measurements": 24,
+        "sizeRecords": 11,
+        "hairRemovalSessions": 15,
+        "roadmapChecks": 17,
+        "letters": 4,
+        "tryouts": 6,
+        "personalEffects": 13,
+        "wearSessions": 170,
+        "cycleEvents": 13,
+        "sideEffects": 10,
+        "stockEntries": 2,
+        "checklistItems": 6,
+        "voiceRecordings": 13,
+        "videoNotes": 31,
+        "appointments": 41,
+        "documents": 6,
+        "tryoutWideOpenStartEpochDay": 17514,
+        "lastSingleEpisodeEpochDay": 20525
+      },
+      "generatedInMs": 903352.1000000238
+    },
+    "actualRows": [
+      {
+        "total": 3300
+      }
+    ],
+    "fixtureRaf": null,
+    "framesBefore": 42014,
+    "framesAfter": 42014,
+    "visible": "visible",
+    "focused": true,
+    "userAgent": "Mozilla/5.0 (Linux; Android 10; K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36"
+  },
+  "environment": {
+    "thermalStatus": 0,
+    "batteryTemperatureC": 23.6,
+    "activity": "resumed",
+    "teamHeavyHostWork": "paused",
+    "peerEmulator": "ui37-api35 remained running, owned by another session"
+  },
+  "limits": "Twelve native samples on one fixture/device; separate actual demo shell current/bounded correctness. Probe debug APK, no release/R8 proof.",
+  "cleanup": "Own app/test packages and forward9381 removed; synthetic fixtures removed with packages. Timeout120000 and stay-on0 unchanged; phone released."
+}

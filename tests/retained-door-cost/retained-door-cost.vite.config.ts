@@ -23,12 +23,15 @@ export function queryExperiment(): Plugin {
         if (!id.endsWith('/src/lib/data/live/journal.svelte.ts')) return;
         const owner = '  const instance = ++queriesMade;';
         const admission = '    if (!started && !when()) return;';
-        if (!source.includes(owner) || !source.includes(admission)) throw new Error('retained query experiment owner changed');
-        return "import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';\nimport { recordReadOperations } from '/tests/retained-door-cost/operation-recording';\n" + source
-          .replace(owner, "  const doorActive = useDoorActivity();\n  const defer = window.__retainedDoorExperiment === 'deferred';\n" + owner)
+        const attempt = 'running = run(recordingJournal(admitted, dependOn, calls));';
+        const admit = 'const admitted = untrack(() => admitHiddenReads(ready, doorActive, () => mine === latest));';
+        if (![owner, admission, attempt, admit].every(part => source.includes(part))) throw new Error('retained query experiment owner changed');
+        return "import { recordReadOperations } from '/tests/retained-door-cost/operation-recording';\n" + source
+          .replace(owner, "  const defer = window.__retainedDoorExperiment === 'deferred';\n" + owner)
           .replace(admission, '    if (defer && !doorActive()) return;\n' + admission)
-          .replace('running = run(recordingJournal(ready, dependOn, calls));',
-            'running = run(recordReadOperations(recordingJournal(ready, dependOn, calls), doorActive));');
+          .replace(admit, `const admitted = window.__retainedDoorExperiment === 'bounded'
+          ? untrack(() => admitHiddenReads(ready, doorActive, () => mine === latest)) : ready;`)
+          .replace(attempt, 'running = run(recordReadOperations(recordingJournal(admitted, dependOn, calls), doorActive));');
       }
     };
 }

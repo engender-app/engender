@@ -7,8 +7,8 @@ import { chromium } from 'playwright-core';
 import { launchChromium } from '../browser-harness.mjs';
 
 const cdp = process.env.RETAINED64_CDP;
-const modes = cdp ? [process.env.RETAINED64_MODE] : ['current', 'deferred'];
-assert(modes.every(mode => mode === 'current' || mode === 'deferred'), 'native capture requires prepared RETAINED64_MODE');
+const modes = cdp ? [process.env.RETAINED64_MODE] : ['current', 'bounded'];
+assert(modes.every(mode => mode === 'current' || mode === 'deferred' || mode === 'bounded'), 'native capture requires prepared RETAINED64_MODE');
 const out = process.env.RETAINED64_MOTION_OUT ?? '.claude/retained64-shell-motion.json';
 let server;
 const browser = cdp ? await chromium.connectOverCDP(cdp, { noDefaults: true }) : await launchChromium();
@@ -115,7 +115,7 @@ try {
   await mkdir(new URL('../../.claude/', import.meta.url), { recursive: true });
   await writeFile(out, JSON.stringify({ platform: cdp ? 'physical Android WebView' : 'desktop Chromium Android shell path',
     driverSha256: createHash('sha256').update(readFileSync(new URL(import.meta.url))).digest('hex'), results }, null, 2));
-  console.log('PASS retained current/deferred shell last-result painting, arrival hold, opacity floor, reduced motion and lock cleanup');
+  console.log(`PASS retained ${modes.join('/')} shell last-result painting, arrival hold, opacity floor, reduced motion and lock cleanup`);
 } finally {
   if (cdp) await page.evaluate(() => window.__retained64Wake?.release()).catch(() => {});
   await browser.close();

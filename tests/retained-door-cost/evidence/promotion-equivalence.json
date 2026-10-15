@@ -1,0 +1,24 @@
+{
+  "measuredRevision": "a5e3e1c962597e9ae621f952b4d02cfba60d7407",
+  "checks": [
+    {
+      "file": "src/lib/data/live/journal.svelte.ts",
+      "measuredSha256": "8a8d94aece75d7fd99cc92505beb80b983b309a63cc5f0dcb480474a89d156e9",
+      "promotedSha256": "92e9f4b7552e42e2e21d512f15c9cd6b7735f665c9e931527fef79be2a93718a",
+      "equalAfterImportNormalization": true
+    },
+    {
+      "file": "src/lib/navigation/RetainedDoor.svelte",
+      "measuredSha256": "1c3330698d5a650ec68c87b1f42811f1a280d9e358d3be14a0555b3aa011deb9",
+      "promotedSha256": "0e516ecc586d59d638de164bc0aa3771cfb30c600c85848c601d7f6a268b2985",
+      "equalAfterImportNormalization": true
+    },
+    {
+      "file": "src/lib/data/live/hiddenReadAdmission.ts",
+      "measuredSha256": "d64f856a797748284bbae61c794fc69c410e2cacfc71eb286dfece7a9fad8d32",
+      "promotedSha256": "692cf2d6ac9aa0ea0bde1210e5a6a6133fdb16966c247982a8f52780bf131e23",
+      "equalAfterImportCommentErrorNormalization": true
+    }
+  ],
+  "scope": "Retained component admission and activity owners match the measured transform. The activity lookup additionally returns active for standalone effect roots when Svelte reports lifecycle_outside_component; those roots were not part of the physical retained-door workload. No timer, promotion, query-attempt or dispatch logic changed."
+}

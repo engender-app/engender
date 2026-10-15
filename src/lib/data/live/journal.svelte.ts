@@ -35,6 +35,8 @@
    resolution, which needs a real scheduler to be seen re-running at all. */
 
 import { untrack } from 'svelte';
+import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
+import { admitHiddenReads } from './hiddenReadAdmission';
 import { firstResult } from './firstResult';
 import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
@@ -342,6 +344,7 @@ function query<T>(
      read's skeleton and its reserve's crossfade would already be under way.
      The closure is run once against a journal that answers nothing, only to
      learn what it asks for. */
+  const doorActive = useDoorActivity();
   const instance = ++queriesMade;
   liveQueries.add(instance);
   const asked = site && journals.current ? recallFor(site, run, journals.current) : null;
@@ -419,7 +422,8 @@ function query<T>(
       calls = [];
       let running: Promise<T>;
       try {
-        running = run(recordingJournal(ready, dependOn, calls));
+        const admitted = untrack(() => admitHiddenReads(ready, doorActive, () => mine === latest));
+        running = run(recordingJournal(admitted, dependOn, calls));
       } catch (error) {
         running = Promise.reject(error);
       } finally {

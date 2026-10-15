@@ -7,5 +7,11 @@ export function provideDoorActivity(active: () => boolean): void {
 }
 
 export function useDoorActivity(): () => boolean {
-  return getContext<(() => boolean) | undefined>(KEY) ?? (() => true);
+  try {
+    return getContext<(() => boolean) | undefined>(KEY) ?? (() => true);
+  } catch (error) {
+    // Standalone effect roots have no component context or retained door.
+    if (!(error instanceof Error) || !error.message.includes('lifecycle_outside_component')) throw error;
+    return () => true;
+  }
 }
