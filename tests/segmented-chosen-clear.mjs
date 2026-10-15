@@ -248,6 +248,9 @@ try {
   console.log(`reduced motion: track moved in ${quietSteps} frame(s): ${quiet.rows.filter((row, i, all) => i === 0 || row !== all[i - 1]).join(' | ')}`);
   if (quietSteps > 1) failures.push(`reduced motion eased the track over ${quietSteps} frames`);
   await reduced.close();
+} catch (error) {
+  // A step that cannot run still reports what the steps before it found.
+  failures.push(`stopped early: ${error.message}`);
 } finally {
   await browser.close();
   await server.close();
