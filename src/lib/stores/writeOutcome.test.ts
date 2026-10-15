@@ -11,9 +11,11 @@ describe('attemptWith', () => {
 
   it('says the failure message and resolves false when the write rejects', async () => {
     const report = vi.fn();
-    const result = attemptWith(() => Promise.reject(new Error('disk full')), 'Could not save.', report);
+    const refused = new Error('database is locked');
+    const result = attemptWith(() => Promise.reject(refused), 'Could not save.', report);
     await expect(result).resolves.toBe(false);
-    expect(report).toHaveBeenCalledWith('Could not save.');
+    // The error goes along, so the toast can name a full disk (last-audit ui 37).
+    expect(report).toHaveBeenCalledWith('Could not save.', refused);
   });
 
   it('treats a write that throws before returning a promise as a failure too', async () => {
@@ -73,8 +75,9 @@ describe('oneAtATimeEach', () => {
   it('says a failure and admits the same row again for a retry', async () => {
     const report = vi.fn();
     const run = oneAtATimeEach(report);
-    expect(await run('a', () => Promise.reject(new Error('locked')), 'Could not save.')).toBe(false);
-    expect(report).toHaveBeenCalledWith('Could not save.');
+    const locked = new Error('locked');
+    expect(await run('a', () => Promise.reject(locked), 'Could not save.')).toBe(false);
+    expect(report).toHaveBeenCalledWith('Could not save.', locked);
     expect(await run('a', async () => {}, 'Could not save.')).toBe(true);
   });
 });

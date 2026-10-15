@@ -34,6 +34,7 @@ import {
   JournalBelowBaselineError,
   SchemaTooNewError
 } from '../data/sqlite/migration-runner.ts';
+import { spaceShortage } from '../data/spaceShortage.ts';
 import type { AndroidKeyResult } from '../lock/android-key.ts';
 import { bootStates, bootTransitions, type BootFailure, type BootState } from './boot-state.ts';
 
@@ -396,6 +397,7 @@ function classifyFailure(error: unknown): BootFailure {
   if (/older than this build's baseline/i.test(text)) return 'below-baseline';
   if (/not a database|SQLITE_NOTADB/i.test(text)) return 'unreadable';
   if (/database worker stopped|FTS5 is not available/i.test(text)) return 'engine';
+  if (spaceShortage(error) === 'device') return 'storage-full';
   return 'unknown';
 }
 

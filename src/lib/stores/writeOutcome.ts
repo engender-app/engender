@@ -4,7 +4,9 @@
    Framework-free so the node tier can drive it; attempt.svelte.ts binds it to
    the toast and to a reactive busy flag. */
 
-export type Report = (message: string) => void;
+/** `error` is what the write threw, so a report can say something truer than
+    `message` when it knows the failure (a full disk, last-audit ui 37). */
+export type Report = (message: string, error: unknown) => void;
 
 /** Runs a write. Resolves true once it lands; on a rejection (or a throw
     before it returned) it reports `failMessage` and resolves false, so the
@@ -15,7 +17,7 @@ export async function attemptWith(write: () => unknown, failMessage: string, rep
     return true;
   } catch (error) {
     console.error(error);
-    report(failMessage);
+    report(failMessage, error);
     return false;
   }
 }

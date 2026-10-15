@@ -41,6 +41,7 @@
   import { VIDEO_MAX_DURATION_MS } from '$lib/data/videoNotes/limits';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { spaceShortage } from '$lib/data/spaceShortage';
   import type { EntryTemplate, GenderDimension } from '$lib/data/types';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -834,7 +835,8 @@
     try { result = await session.save(); }
     catch (error) {
       console.error('could not save the entry', error);
-      toast(m.entry_save_failed());
+      // The draft stays either way, so Save is the retry once space is free.
+      toast(spaceShortage(error) ? m.storage_full_save() : m.entry_save_failed());
       return;
     }
     if (session.navigationFailed) {
