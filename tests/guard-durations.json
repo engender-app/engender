@@ -50,6 +50,7 @@
     "body-map-figure-yank": 12.37,
     "chart-tick-readout": 145.92,
     "year-days-list": 18.96,
+    "year-month-labels": 22.22,
     "voice-task-names": 70.88,
     "record-dismissal-check": 52.32,
     "letter-composition-check": 16.17,
@@ -156,6 +157,9 @@
     ],
     "year-days-list": [
       18.96
+    ],
+    "year-month-labels": [
+      22.22
     ],
     "voice-task-names": [
       70.88

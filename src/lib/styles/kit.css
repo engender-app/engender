@@ -2822,15 +2822,42 @@ button.kit-strip-day .kit-strip-cell {
 
 /* --- the year, a day at a time ---
 
-   Twelve month columns, names at the top and days below. February simply
-   stops short - a true thing about February and not a gap to fill. */
+   Month columns, names at the top and days below. February simply stops
+   short - a true thing about February and not a gap to fill.
+
+   Twelve abreast only where twelve names fit. A short month name is up to
+   27px of 12px bold ("Sept", "maj"), and a twelfth of the chart on a
+   390px phone is 25.6px, so Sept and Oct ran together into one word there
+   and at the 200% zoom floor every name ran over the next (last-audit UI
+   ticket 50). The months wrap into bands that divide the year instead:
+   four abreast where the chart is narrow (the zoom floor), six on a phone,
+   twelve where each column has 2.25rem for its name. The steps are in rem so a larger text
+   size moves them with the names. The narrow layout is the default, so a
+   WebView without container queries falls back to labels that fit. */
 .kit-year {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 3px;
+  container-type: inline-size;
 }
 
-.kit-year > [data-year-month] {
+.kit-year > [data-year-months] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4) 3px;
+}
+
+/* 6 x 2.25rem + 5 x 3px, and 12 x 2.25rem + 11 x 3px. */
+@container (min-width: 14.5rem) {
+  .kit-year > [data-year-months] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 29.25rem) {
+  .kit-year > [data-year-months] {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+.kit-year [data-year-month] {
   min-width: 0;
 }
 

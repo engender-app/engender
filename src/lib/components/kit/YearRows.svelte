@@ -16,6 +16,9 @@
      day nobody logged has always been on the calendar. It is not a day at
      the bottom of the scale.
 
+     The columns wrap into bands of six or four where twelve names do not
+     fit side by side (last-audit UI ticket 50); kit.css owns the steps.
+
      A picture only (phase 14 pre-release ticket 30, accessibility audit
      A06): a day's date and value lived in a `title`, which a screen reader
      does not reach and a finger or a keyboard cannot raise, and the steps
@@ -42,25 +45,27 @@
 </script>
 
 <div class="kit-year" data-chart="year-rows" aria-hidden="true">
-  {#each grid.months as month, i (month)}
-    <div data-year-month={month}>
-      <span class="kit-year-label">{monthName(month)}</span>
-      <!-- Fills in month by month rather than appearing whole: the grid has
-           no per-value motion of its own to borrow, so it takes the skeleton
-           cascade's own primitive for "several like things arriving as a
-           set" (.stagger-in, components.css). -->
-      <div class="kit-year-rows stagger-in" style="--stagger-i:{i}">
-        {#each grid.cells.filter((cell) => cell.month === month) as cell (cell.epochDay)}
-          <span
-            class="kit-year-cell"
-            class:is-empty={cell.step === 0}
-            data-year-cell={cell.epochDay}
-            data-year-step={cell.step}
-            title={dayLabel(cell.epochDay, cell.value)}
-            style={`background: ${fillAt(cell.step)}`}
-          ></span>
-        {/each}
+  <div data-year-months>
+    {#each grid.months as month, i (month)}
+      <div data-year-month={month}>
+        <span class="kit-year-label">{monthName(month)}</span>
+        <!-- Fills in month by month rather than appearing whole: the grid has
+             no per-value motion of its own to borrow, so it takes the skeleton
+             cascade's own primitive for "several like things arriving as a
+             set" (.stagger-in, components.css). -->
+        <div class="kit-year-rows stagger-in" style="--stagger-i:{i}">
+          {#each grid.cells.filter((cell) => cell.month === month) as cell (cell.epochDay)}
+            <span
+              class="kit-year-cell"
+              class:is-empty={cell.step === 0}
+              data-year-cell={cell.epochDay}
+              data-year-step={cell.step}
+              title={dayLabel(cell.epochDay, cell.value)}
+              style={`background: ${fillAt(cell.step)}`}
+            ></span>
+          {/each}
+        </div>
       </div>
-    </div>
-  {/each}
+    {/each}
+  </div>
 </div>
