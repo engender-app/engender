@@ -52,8 +52,12 @@ public class BackupDeliveryDurabilityTest extends BackupDeliveryTestSupport {
             assertEquals(staged.toString(), "staged", staged.getJSONObject("result").getString("outcome"));
             assertTrue(prefs.contains("encryptedStage"));
             assertFalse(prefs.contains("lastFailureAt"));
-            prefs.edit().putLong("lastSuccessAt", 17).commit();
-            BackupWork.schedule(app);
+            synchronized (BackupWork.OWNER) {
+                JSONObject stage = new JSONObject(prefs.getString("encryptedStage", "{}"));
+                prefs.edit().putLong("lastSuccessAt", 17).commit();
+                prefs.edit().putString("encryptedStage", stage.put("due", BackupWork.due(prefs)).toString()).commit();
+                BackupWork.schedule(app);
+            }
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
             while (!prefs.contains("lastFailureAt") && System.nanoTime() < deadline) Thread.sleep(50);
             assertTrue("worker did not refuse instrumentation provider", prefs.contains("lastFailureAt"));

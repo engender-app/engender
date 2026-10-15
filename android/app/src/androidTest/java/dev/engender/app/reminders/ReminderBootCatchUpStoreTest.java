@@ -114,10 +114,12 @@ public class ReminderBootCatchUpStoreTest {
         assertTrue("no held one-off alarm", scheduled);
     }
 
-    private Notification notification(String tag) {
-        for (StatusBarNotification notification : manager.getActiveNotifications()) {
-            if (tag.equals(notification.getTag())) return notification.getNotification();
-        }
-        return null;
+    private Notification notification(String tag) throws InterruptedException {
+        return ReminderNotificationPrivacyTest.await(() -> {
+            for (StatusBarNotification notification : manager.getActiveNotifications()) {
+                if (tag.equals(notification.getTag())) return notification.getNotification();
+            }
+            return null;
+        });
     }
 }
