@@ -2728,7 +2728,7 @@
   "rem_empty_body": "Imported reminders appear here.",
   "rem_empty_title": "No reminders yet",
   "rem_enable_aria": "Enable {title}",
-  "rem_hide_titles_sub": "Hide reminder names, affirmations and notification details. Reminder times and the check-in question remain visible, including on the lock screen.",
+  "rem_hide_titles_sub": "Hide reminder names, affirmations and notification details. Reminder times and the check-in question remain visible, including on the lock screen. With this off and Android's notification history on, reminder names and details stay there for about a day.",
   "rem_hide_titles_title": "Hide sensitive titles",
   "rem_inexact_body": "Exact alarms are off, so Android can deliver a reminder later than the time you set. That lasts until you allow them again. Turning exact alarms off cancels the reminders already set, and the app sets them again only when it next opens or the phone restarts.",
   "rem_inexact_title": "Reminders may be late",

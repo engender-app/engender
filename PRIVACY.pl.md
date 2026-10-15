@@ -188,7 +188,10 @@ wewnętrzne komunikaty aplikacji mogła wysyłać tylko ona sama.
 
 Przypomnienia i codzienne pytanie domyślnie pokazują tylko ogólny tytuł,
 nawet na zablokowanym ekranie. Ustawienie w sekcji Powiadomienia to wyłącza
-i pokazuje prawdziwy tytuł.
+i pokazuje prawdziwy tytuł. Jeśli w ustawieniach Androida włączona jest
+historia powiadomień, Android przechowuje pokazane tytuły przez mniej więcej
+dobę od zniknięcia powiadomienia. Aplikacja nie włącza tej historii i nie może
+jej wyczyścić.
 
 Na Androidzie 13 i nowszym aplikacja oznacza skopiowany klucz odzyskiwania
 jako wrażliwy. To prośba do klawiatury, żeby nie zapisywała go w historii

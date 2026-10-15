@@ -164,6 +164,28 @@ describe('what only Android carries', () => {
     // reminders screen would be two switches writing one preference.
     expect(read('src/routes/settings/reminders/+page.svelte')).not.toContain('hideNotificationTitles');
   });
+
+  it('says what Android notification history keeps when titles are shown (last-audit UI 39)', () => {
+    /* Testing 07 found a dismissed reminder's title in the Pixel's
+       notification history with hiding off. History is an Android setting,
+       off unless turned on, and AOSP prunes it after one day
+       (NotificationHistoryDatabase.HISTORY_RETENTION_DAYS = 1), so the
+       sentence is conditional on history and names that period. The app
+       deletes nothing there, so it must not say it does. */
+    const hideRow = screenMarkup.slice(screenMarkup.indexOf('data-hide-titles'));
+    expect(hideRow).toContain('m.rem_hide_titles_sub()');
+    const en = (JSON.parse(read('messages/en.json')) as Record<string, string>).rem_hide_titles_sub;
+    const pl = (JSON.parse(read('messages/pl.json')) as Record<string, string>).rem_hide_titles_sub;
+    // Titles reach history only while hiding is off, so the sentence says both.
+    expect(en).toMatch(/With this off and Android's notification history on/);
+    expect(en).toContain('about a day');
+    expect(pl).toMatch(/Gdy ta opcja jest wyłączona, a historia powiadomień Androida włączona/);
+    expect(pl).toContain('mniej więcej dobę');
+    for (const text of [en, pl]) {
+      expect(text).not.toMatch(/Hide sensitive titles|Ukryj wrażliwe tytuły/);
+      expect(text).not.toMatch(/delet|clear|eras|remov|usuw|usun|kasuj|czyś|czyszcz/i);
+    }
+  });
 });
 
 describe('the old address', () => {
