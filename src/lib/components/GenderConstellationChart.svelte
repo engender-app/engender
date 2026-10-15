@@ -249,13 +249,12 @@
 
   /* The label's own type, read off a hidden ruler set in it. A font
      arriving and the text size changing both resize the ruler, which is
-     what makes this read again. */
+     what makes this read again: its content box, in fractional pixels, so
+     a change smaller than a whole pixel still counts. */
   let ruler: HTMLElement | undefined = $state();
-  let rulerWidth = $state(0);
-  let rulerHeight = $state(0);
+  let rulerBox: DOMRectReadOnly | undefined = $state();
   let labelFont = $derived.by(() => {
-    void rulerWidth;
-    void rulerHeight;
+    void rulerBox;
     if (!ruler) return '';
     const style = getComputedStyle(ruler);
     return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
@@ -450,7 +449,7 @@
         </output>
       {/if}
 
-      <span class="cn-label-ruler" aria-hidden="true" bind:this={ruler} bind:offsetWidth={rulerWidth} bind:offsetHeight={rulerHeight}>
+      <span class="cn-label-ruler" aria-hidden="true" bind:this={ruler} bind:contentRect={rulerBox}>
         {dayLabel(points[0].day)}
       </span>
     </div>

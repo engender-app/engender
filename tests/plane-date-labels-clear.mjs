@@ -162,14 +162,50 @@ const circleGap = (box, c) => {
   const dy = Math.max(box.top - c.y, 0, c.y - box.bottom);
   return Math.hypot(dx, dy) - c.r;
 };
-/** How far a join's painted edge sits outside a box, sampled along it. */
-const joinGap = (box, j) => {
-  let nearest = Infinity;
-  for (let i = 0; i <= 64; i += 1) {
-    const t = i / 64;
-    nearest = Math.min(nearest, circleGap(box, { x: j.x1 + (j.x2 - j.x1) * t, y: j.y1 + (j.y2 - j.y1) * t, r: j.half }));
+/** Whether any part of a join's centre line lies inside a box, by clipping
+    the line to the box (Liang-Barsky). */
+const joinEnters = (box, j) => {
+  const dx = j.x2 - j.x1;
+  const dy = j.y2 - j.y1;
+  let lo = 0;
+  let hi = 1;
+  for (const [p, q] of [
+    [-dx, j.x1 - box.left],
+    [dx, box.right - j.x1],
+    [-dy, j.y1 - box.top],
+    [dy, box.bottom - j.y1]
+  ]) {
+    if (p === 0) {
+      if (q < 0) return false;
+    } else if (p < 0) lo = Math.max(lo, q / p);
+    else hi = Math.min(hi, q / p);
   }
-  return nearest;
+  return lo <= hi;
+};
+/** How far a join's painted edge sits outside a box: apart, the nearest
+    two points are an end of the join and the box, or a corner of the box
+    and the join. */
+const joinGap = (box, j) => {
+  if (joinEnters(box, j)) return -j.half;
+  const toJoin = (x, y) => {
+    const dx = j.x2 - j.x1;
+    const dy = j.y2 - j.y1;
+    const t = Math.max(0, Math.min(1, ((x - j.x1) * dx + (y - j.y1) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(x - (j.x1 + t * dx), y - (j.y1 + t * dy));
+  };
+  const corners = [
+    [box.left, box.top],
+    [box.right, box.top],
+    [box.right, box.bottom],
+    [box.left, box.bottom]
+  ];
+  return (
+    Math.min(
+      circleGap(box, { x: j.x1, y: j.y1, r: 0 }),
+      circleGap(box, { x: j.x2, y: j.y2, r: 0 }),
+      ...corners.map(([x, y]) => toJoin(x, y))
+    ) - j.half
+  );
 };
 
 /** Every date label on every animation frame, from a sampler started in
