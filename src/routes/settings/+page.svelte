@@ -655,6 +655,7 @@
         { value: 'pl', label: 'Polski' },
       ]}
       value={prefs.language}
+      selectOnArrow={false}
       onChange={setLanguage}
     />
   </Sheet>

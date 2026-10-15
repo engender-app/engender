@@ -46,6 +46,7 @@
     value,
     onChange,
     compact = false,
+    selectOnArrow = true,
     key
   }: {
     name: string;
@@ -66,6 +67,8 @@
         sliding says nothing about the set it is crossing (Alicja,
         2026-08-25). */
     compact?: boolean;
+    /** Disable when a selection changes context, such as a language reload. */
+    selectOnArrow?: boolean;
     /** The group's own identity for the walkthrough's handle (ADR-0029). */
     key?: string;
   } = $props();
@@ -375,7 +378,7 @@
       class:can-scroll={canScroll}
       data-segmented={key}
       role="radiogroup"
-      use:rovingRadio
+      use:rovingRadio={{ selectOnArrow }}
       tabindex="-1"
       aria-label={name}
       onpointerdown={onTrackPointerDown}
