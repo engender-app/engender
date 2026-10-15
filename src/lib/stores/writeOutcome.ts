@@ -24,16 +24,24 @@ export async function attemptWith(write: () => unknown, failMessage: string, rep
     writes nothing and resolves false. `onBusy` hears true before the write
     and false after it settles, either way, for `disabled={busy}`. */
 export function oneAtATime(report: Report, onBusy: (busy: boolean) => void = () => {}) {
-  let busy = false;
-  return async (write: () => unknown, failMessage: string): Promise<boolean> => {
-    if (busy) return false;
-    busy = true;
-    onBusy(true);
+  const run = oneAtATimeEach(report, (_key, busy) => onBusy(busy));
+  return (write: () => unknown, failMessage: string): Promise<boolean> => run('', write, failMessage);
+}
+
+/** `oneAtATime` for a control every row of a list repeats (a checkbox, a
+    flag): a tap on a row whose last write is still in flight writes nothing,
+    while another row's tap goes ahead. */
+export function oneAtATimeEach(report: Report, onBusy: (key: string, busy: boolean) => void = () => {}) {
+  const inFlight = new Set<string>();
+  return async (key: string, write: () => unknown, failMessage: string): Promise<boolean> => {
+    if (inFlight.has(key)) return false;
+    inFlight.add(key);
+    onBusy(key, true);
     try {
       return await attemptWith(write, failMessage, report);
     } finally {
-      busy = false;
-      onBusy(false);
+      inFlight.delete(key);
+      onBusy(key, false);
     }
   };
 }
