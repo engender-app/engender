@@ -2184,13 +2184,6 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 
 .toast {
-  /* Centred by its two insets and auto margins rather than by left: 50%
-     and a -50% translate (after-release 17, U2/UI-19). The translate was
-     the transform the arrival composes with, and at desktop width it
-     centred the toast on the window, 105px off the column it belongs to;
-     an inset can take the rail's width instead, and the right one the
-     scroll region's scrollbar gutter (+layout.svelte measures it). */
-  position: absolute; left: 0; right: var(--scroll-gutter, 0px); margin-inline: auto; bottom: var(--nav-clearance);
   transform: translateY(10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--r-block);
@@ -2207,8 +2200,9 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      spend the sheet gave up for a line below. A solid block over content
      with nothing beneath it is how Jobber and Riot Mobile draw the same
      thing (Mobbin, fifth pass). */
-  opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out);
-  z-index: 50;
+  /* translate is the stack's own travel when a toast above or below
+     leaves (Toasts.svelte); transform stays the arrival's. */
+  opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out), translate var(--dur-med) var(--ease-out);
   /* SF-002: nowrap let a longer translated string (Polish routinely runs
      longer than English) push past the viewport edge instead of wrapping. */
   max-width: min(92vw, 420px);
@@ -2600,9 +2594,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
-  /* Its left inset, the rail's width, is set by +layout.svelte, the one
-     file that knows whether a rail is drawn. */
-  .toast { bottom: var(--space-6); }
 }
 
 

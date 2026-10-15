@@ -544,6 +544,7 @@ To run one on its own, use
 | `milestone-era-handoff-check` | Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return |
 | `milestone-era-label-clear` | an era's name on the milestone rail is drawn whole and clear of every dot's ring, today's included, at 390px, 195px and 1280px, light and dark, English and Polish, text at 100% and 200%, and still opens its era |
 | `plane-date-labels-clear` | Two scales at once writes each date clear of every dot, the head's ring, the trail's joins, the readout and the other dates, inside the plot and at 4.5:1 on the card, with the head at the end and scrubbed back, at 390px and 1280px, light and dark, English and Polish, text at 100% and 200%; with motion on, no date arrives or leaves at full opacity in one frame across a play sweep and a keyboard scrub |
+| `toast-stack-check` | two toasts up at once never overlap: deleting two entries inside one toast's four seconds leaves both Restore actions reachable at their centre and across a 48px target, each restoring its own entry; the earlier toast never moves while the newer arrives above it, and the later one travels into the gap over several frames when the earlier leaves; the stack centres on the content column at 1280px, failures over an open sheet stack at the top undimmed, reduced motion keeps the stack, and a lock clears it |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
