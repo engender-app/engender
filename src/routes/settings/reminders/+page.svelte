@@ -26,7 +26,10 @@
   let isWeb = $derived(!isAndroid());
 
   let reminders = liveList((j) => j.reminders.getReminders());
-  let status = $state<AndroidReminderStatus>({ notifications: 'not-required', exactAlarms: 'not-required' });
+  /* 'unreadable' is a read the bridge refused (ticket 41): neither a grant
+     nor a refusal, so the screen says it could not check rather than
+     claiming either. */
+  let status = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
   let statusReady = $state(false);
 
   // Web's one write (ADR-0063): a reminder that can never ring on this
@@ -36,16 +39,11 @@
     findById: (id) => reminders.rows.find((r) => r.id === id)
   });
 
-  /* A status the bridge would not give shows both notices, each with the
-     way to the permission, rather than none (ticket 41): an unneeded
-     button costs a tap, a hidden refusal costs every reminder. */
-  const UNREADABLE_STATUS: AndroidReminderStatus = { notifications: 'denied', exactAlarms: 'denied' };
-
   /* Re-read whenever the screen comes back to the front, because both
      ways out of a refusal are Android's own settings screens (ticket 41,
      U30). Every read goes through the watcher, the ones after a request
      too, so a read from before the trip to settings cannot land last. */
-  let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus>> | null = null;
+  let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {
     try {
@@ -75,9 +73,9 @@
 
   $effect(() => {
     if (isWeb) return;
-    const watch = watchStatus<AndroidReminderStatus>({
+    const watch = watchStatus<AndroidReminderStatus | 'unreadable'>({
       read: () => androidReminders.getStatus(),
-      unreadable: UNREADABLE_STATUS,
+      unreadable: 'unreadable',
       apply: (next) => {
         status = next;
         statusReady = true;
@@ -229,8 +227,18 @@
          owns rather than in one frame. The inexact one states the accepted
          fallback after a revoke: Android cancels the exact alarms and the
          app sets them again only when it next opens or the phone restarts,
-         never sooner. -->
+         never sooner. A read Android refused says so and offers another
+         try, rather than calling either permission on or off. -->
     <ReadReserve ready={statusReady} estimate={permissionEstimate} onrest={permissionRemember}>
+      {#if status === 'unreadable'}
+        <Notice
+          icon="alert"
+          key="reminders-permissions-unknown"
+          title={m.perm_status_unknown_title()}
+          text={m.rem_status_unknown_body()}
+          action={{ label: m.read_retry(), onclick: () => void statusWatch?.refresh() }}
+        />
+      {:else}
       {#if status.notifications === 'denied'}
         <Notice
           icon="alert"
@@ -248,6 +256,7 @@
           text={m.rem_inexact_body()}
           action={{ label: m.rem_allow_exact_alarms(), onclick: requestExactAlarms }}
         />
+      {/if}
       {/if}
     </ReadReserve>
 

@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { watchStatus, type VisiblePage } from './watchStatus';
 
-type Status = 'granted' | 'denied';
+type Status = 'granted' | 'denied' | 'unknown';
 
 /** A document stand-in: one listener list and a visibility the test sets. */
 function fakePage() {
@@ -75,7 +75,7 @@ describe('watchStatus', () => {
     watch.stop();
   });
 
-  it('shows a refused read as the unreadable status, never as the last granted answer', async () => {
+  it('shows a refused read as the unreadable status, never as the last answer', async () => {
     const page = fakePage();
     let fail = false;
     const seen: Status[] = [];
@@ -84,7 +84,7 @@ describe('watchStatus', () => {
         if (fail) throw new Error('bridge refused');
         return 'granted';
       },
-      unreadable: 'denied',
+      unreadable: 'unknown',
       apply: (s) => seen.push(s),
       page
     });
@@ -93,7 +93,7 @@ describe('watchStatus', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     page.show();
     await settle();
-    expect(seen).toEqual(['granted', 'denied']);
+    expect(seen).toEqual(['granted', 'unknown']);
     watch.stop();
   });
 

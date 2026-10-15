@@ -71,12 +71,13 @@
 
   /* Every producer here posts through the same POST_NOTIFICATIONS
      permission, so one status/request pair covers the whole list. */
-  let notifyStatus = $state<AndroidRetrospectiveNotificationStatus>({ notifications: 'not-required' });
+  let notifyStatus = $state<AndroidRetrospectiveNotificationStatus | 'unreadable'>({ notifications: 'not-required' });
 
   /* Re-read whenever the screen comes back to the front, because the way
      out of a refusal is Android's settings screen (last-audit UI ticket 41,
-     U30). A read the bridge refuses shows the notice rather than hiding it. */
-  let statusWatch: ReturnType<typeof watchStatus<AndroidRetrospectiveNotificationStatus>> | null = null;
+     U30). A read the bridge refuses says it could not check, rather than
+     calling notifications either on or off. */
+  let statusWatch: ReturnType<typeof watchStatus<AndroidRetrospectiveNotificationStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {
     try {
@@ -89,9 +90,9 @@
 
   $effect(() => {
     if (isWeb) return;
-    const watch = watchStatus<AndroidRetrospectiveNotificationStatus>({
+    const watch = watchStatus<AndroidRetrospectiveNotificationStatus | 'unreadable'>({
       read: () => androidRetrospectiveNotifications.getStatus(),
-      unreadable: { notifications: 'denied' },
+      unreadable: 'unreadable',
       apply: (next) => {
         notifyStatus = next;
       }
@@ -222,7 +223,15 @@
   </ListCard>
 
   {#if !isWeb}
-    {#if notifyStatus.notifications === 'denied' && anyNotifyOn}
+    {#if notifyStatus === 'unreadable' && anyNotifyOn}
+      <Notice
+        icon="alert"
+        key="notify-unknown"
+        title={m.perm_status_unknown_title()}
+        text={m.notif_status_unknown_body()}
+        action={{ label: m.read_retry(), onclick: () => void statusWatch?.refresh() }}
+      />
+    {:else if notifyStatus !== 'unreadable' && notifyStatus.notifications === 'denied' && anyNotifyOn}
       <Notice
         icon="alert"
         key="notify-denied"

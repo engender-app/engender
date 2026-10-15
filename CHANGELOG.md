@@ -14,7 +14,8 @@ leave the "not allowed" notice up until you left the screen. Reminders now
 has one notice for each permission. When exact alarms are off, it says
 reminders may arrive late until they are allowed again, and that turning
 them off cancels reminders already set until the app next opens or the
-phone restarts.
+phone restarts. If Android does not answer when the app checks, both
+screens say so and offer to try again.
 
 The calendar button on an entry's or a milestone's photo in the library now
 sits on the photo's top-left corner. It used to cover the start of the date

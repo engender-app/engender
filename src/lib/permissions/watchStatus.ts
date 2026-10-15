@@ -10,11 +10,11 @@
 
    Three rules a screen should not have to remember:
 
-   - A read that fails shows `unreadable`, which callers set to the denied
-     shape. A notice offering a permission that may already be granted can
-     be ignored; one hidden over a refusal leaves reminders silent with
-     nothing on screen. It never keeps an older "granted" either, because
-     that answer is exactly what a failed read can no longer vouch for.
+   - A read that fails shows `unreadable`, never an older answer: a
+     remembered "granted" is exactly what a failed read can no longer vouch
+     for. Reminders and Notifications pass a value of its own and say they
+     could not check; the permissions list passes its denied rows, which
+     readGrantStates already settles a failed read to.
    - The newest read wins. A read started before the trip to settings can
      answer after the one started on the return, and must not put the stale
      answer back.

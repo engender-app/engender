@@ -48,12 +48,13 @@ values, and deletion of a typed recovery note before saving.
 
 `src/lib/permissions/watchStatus.test.ts` checks the permission-status watcher
 that Reminders, Notifications and the permissions list share: a re-read when
-the page becomes visible, a refused read shown as denied rather than a
-remembered grant, the newest read winning over an older one that answers
+the page becomes visible, a refused read shown as the caller's unreadable
+value rather than a remembered answer, the newest read winning over an older one that answers
 last, and no listener or late answer after teardown. Removing any one of
 those rules fails one test. The source checks in `reminders-surfaces.test.ts`,
 `unprompted-view.test.ts` and `settings-surfaces.test.ts` hold each screen to
-the watcher and Reminders to one notice per refused permission. Grant-and-return
+the watcher, Reminders to one notice per refused permission, and both
+screens to a could-not-check notice with Try again when the read itself fails. Grant-and-return
 on Android was shown on an API 35 emulator: the old build kept each notice
 after the grant, the fixed build removed it on return.
 

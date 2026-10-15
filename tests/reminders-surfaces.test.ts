@@ -73,6 +73,7 @@ describe('the reminders list on Android', () => {
        the web/Android branch, not at the first {:else} (the empty
        state's). */
     const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
+    expect(android).toContain("{#if status === 'unreadable'}");
     expect(android).toContain("{#if status.notifications === 'denied'}");
     expect(android).toContain('key="reminders-notifications-off"');
     expect(android).toContain('m.rem_notifications_off_title()');
@@ -92,8 +93,22 @@ describe('the reminders list on Android', () => {
        watchStatus owns the visibility listener, its teardown and the
        refused-read rule (src/lib/permissions/watchStatus.test.ts). */
     expect(list).toContain("from '$lib/permissions/watchStatus'");
-    expect(list).toMatch(/watchStatus<AndroidReminderStatus>\(\{[\s\S]*?read: \(\) => androidReminders\.getStatus\(\)/);
-    expect(list).toContain('unreadable: UNREADABLE_STATUS');
+    expect(list).toMatch(/watchStatus<AndroidReminderStatus \| 'unreadable'>\(\{[\s\S]*?read: \(\) => androidReminders\.getStatus\(\)/);
+    expect(list).toContain("unreadable: 'unreadable'");
     expect(list).not.toContain("addEventListener('visibilitychange'");
+  });
+
+  it('says it could not check when Android refuses the read, and offers another try', () => {
+    /* Ticket 41's spec review: a refused read is neither a grant nor a
+       refusal, so it gets its own notice rather than "Notifications are
+       off" over a permission that may be on. */
+    const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
+    const unknown = android.slice(android.indexOf("{#if status === 'unreadable'}"), android.indexOf('{:else}', android.indexOf("{#if status === 'unreadable'}")));
+    expect(unknown).toContain('key="reminders-permissions-unknown"');
+    expect(unknown).toContain('m.perm_status_unknown_title()');
+    expect(unknown).toContain('m.rem_status_unknown_body()');
+    expect(unknown).toContain('statusWatch?.refresh()');
+    expect(unknown).not.toContain('rem_notifications_off');
+    expect(unknown).not.toContain('rem_inexact');
   });
 });
