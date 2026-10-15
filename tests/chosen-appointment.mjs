@@ -23,6 +23,8 @@ async function visit(href) {
   }, href);
   await page.locator('#room-proof-link').click();
   await page.evaluate(() => document.querySelector('#room-proof-link')?.remove());
+  await page.waitForURL(new URL(href, page.url()).href);
+  await page.waitForFunction(() => !document.documentElement.dataset.nav);
 }
 async function choose(id) {
   await page.locator('[data-room-visit]').click();
@@ -50,7 +52,11 @@ try {
   const ids = await page.evaluate(async () => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     const { todayEpochDay } = await import('/src/lib/data/epochDay.ts');
-    await j.checklists.addToStandaloneChecklist('Ask about bloods');
+    const checklist = await j.checklists.getStandaloneChecklist();
+    if (checklist) await j.checklists.deleteChecklist(checklist.id);
+    for (const question of ['Ask about bloods', 'Ask about timing', 'Ask about follow-up']) {
+      await j.checklists.addToStandaloneChecklist(question);
+    }
     const input = { epochDay: todayEpochDay(), procedureId: null, place: 'Clinic', note: null };
     return [await j.appointments.upsertAppointment({ ...input, kind: 'Morning' }),
       await j.appointments.upsertAppointment({ ...input, kind: 'Afternoon' })];
@@ -61,6 +67,50 @@ try {
   assert.equal(await page.locator('[data-room-answer]').count(), 0);
   await choose(ids[0]);
   await page.locator('[data-room-answer]').fill('Morning answer');
+  await page.locator('[data-room-next]').click();
+  await page.locator('[data-room-next]').click();
+  await page.locator('[data-room-answer]').fill('Third answer');
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about follow-up');
+  await page.goBack();
+  await page.locator('[data-list-row="in-the-room"]').waitFor();
+  await page.goForward();
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about follow-up', 'Forward restores question three');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Third answer');
+  console.log('PASS question three and its answer survive Back/Forward');
+
+  await visit('/health/appointments');
+  await visit(`${room}?appointment=${ids[0]}`);
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about bloods', 'a fresh visit starts at question one');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Morning answer');
+  assert.equal(await page.locator('[data-room-previous]').isDisabled(), true);
+  await page.locator('[data-room-next]').click();
+  await page.locator('[data-room-answer]').fill('Second answer');
+  await page.goBack();
+  await page.locator('[data-list-row="in-the-room"]').waitFor();
+  await page.goBack();
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about follow-up', 'the earlier visit keeps question three');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Third answer');
+  assert.equal(await page.locator('[data-room-next]').isDisabled(), true);
+  await page.goForward();
+  await page.locator('[data-list-row="in-the-room"]').waitFor();
+  await page.goForward();
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about timing', 'the later visit keeps question two');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Second answer');
+  console.log('PASS fresh visits start at one; separate history visits keep their own question');
+  await choose(ids[1]);
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about timing', 'changing appointment keeps the standing-list question');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), '', 'the other appointment cannot inherit this answer');
+  await page.locator('[data-room-answer]').fill('Afternoon second answer');
+  await choose(ids[0]);
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about timing');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Second answer');
+  console.log('PASS appointment selection keeps the question but switches to its own answers');
+  await page.locator('[data-room-previous]').click();
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Morning answer');
   await choose(ids[1]);
   assert.equal(await page.locator('[data-room-answer]').inputValue(), '');
   await page.locator('[data-room-answer]').fill('Afternoon answer');
@@ -102,6 +152,38 @@ try {
   await page.locator('[data-room-answer]').waitFor();
   assert.equal(await page.locator('[data-room-visit]').count(), 0, 'one visit needs no choice');
   assert.equal(await page.locator('[data-room-answer]').inputValue(), 'Afternoon answer');
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about bloods', 'a different appointment opens at question one');
+  await page.locator('[data-room-next]').click();
+  await page.locator('[data-room-next]').click();
+  await page.locator('[data-room-answer]').fill('Private last answer');
+  await visit('/health/appointments');
+  await page.goBack();
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about follow-up');
+  await page.evaluate(async () => {
+    const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
+    prefs.lockAfter = 'immediately';
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.visibilityState;
+  });
+  await page.locator('[data-applock]').waitFor();
+  assert.equal(await page.locator('[data-room-question], [data-room-answer]').count(), 0, 'lock conceals the room');
+  await page.locator('#session-passphrase').fill('demo');
+  await page.locator('[data-applock] button[type="submit"]').click();
+  await page.locator('[data-applock]').waitFor({ state: 'detached' });
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-question]').innerText(), 'Ask about bloods', 'unlock forgets the question position');
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), '', 'unlock forgets the first answer');
+  await page.locator('[data-room-next]').click();
+  await page.locator('[data-room-next]').click();
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), '', 'unlock forgets the third answer');
+  await page.goForward();
+  await page.locator('[data-list-row="in-the-room"]').waitFor();
+  await page.goBack();
+  await page.locator('[data-room-answer]').waitFor();
+  assert.equal(await page.locator('[data-room-answer]').inputValue(), '', 'history after unlock cannot revive held answers');
+  console.log('PASS real web lock/unlock clears held positions and answers');
   await page.evaluate(async (id) => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     await journal.appointments.deleteAppointment(id);

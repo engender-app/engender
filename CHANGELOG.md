@@ -13,6 +13,10 @@ Voice recordings, margin-note search results, Today tiles and chart markers.
 Voice keeps its selected tab and the hormone curve keeps its day range.
 Saved questions show their results again on a warm return from an entry.
 
+History Back and Forward restore the question shown in In the room alongside
+its answers. A fresh visit starts at the first question; locking clears the
+held position and answers.
+
 Closing a changed margin note asks before discarding it. Keep editing returns
 to the same note; an untouched note closes without a question.
 

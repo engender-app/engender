@@ -127,7 +127,7 @@
   {
     "name": "chosen-appointment",
     "tier": "dev",
-    "holds": "the room's answers stay attached to the appointment they were given in"
+    "holds": "history restores the room's question and answers; fresh visits start at question one, appointment answers stay separate, and web lock/unlock clears both"
   },
   {
     "name": "appointment-entry-check",
