@@ -28,6 +28,18 @@ settings; never reset the keyboard dictionary. Retain only synthetic matches,
 not unrelated suggestions. FUTO behavior does not prove what other keyboards
 do with this advisory flag.
 
+`node tests/android-insets/run.mjs <emulator-serial> <output-directory>`
+checks Home, the entry editor and a template sheet in the isolated demo package.
+Its API 33/35/36 matrix uses Android gesture/three-button navigation, trans
+light/dark, native cutout overlays, rotation and the actual IME. Native window
+insets and WebView bounds must leave header content and actions clear; the
+editor footer must stay above the keyboard, with a complete typed note line
+visible and navigation restored after keyboard dismissal. Each case retains screenshots,
+top/bottom crops and geometry before assertions. See [Android inset matrix](android-insets/README.md)
+for build, isolation and cleanup. This does not establish Play notice removal
+or physical-device timing. The existing `safe-area.test.ts` remains a declaration
+check, not a substitute for the native matrix.
+
 `auto-export-scheduler.test.ts` reports one synthetic native backup failure
 across ticks and a fresh scheduler module with the same stored preferences.
 It checks quiet-hours holds, notification refusal, disabled notices, clock

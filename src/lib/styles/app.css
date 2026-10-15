@@ -68,7 +68,7 @@ body {
 }
 
 .app-viewport {
-  container: app / inline-size;
+  container: app / size;
   height: 100dvh;
   width: 100%;
   max-width: 100%;
@@ -244,6 +244,17 @@ body {
 .savebar-stack {
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* A landscape keyboard can leave 127px above it. Give the focused editor
+   room for its text and controls; navigation returns when the frame grows. */
+@container app (min-width: 640px) and (max-width: 1023px) and (max-height: 240px) {
+  .app:has(.editor) { --nav-clearance: var(--inset-bottom); }
+  .app:has(.editor) .app-nav { display: none; }
+  .app-savebar:has(.editor-save-row) {
+    padding-top: var(--space-1);
+    padding-bottom: calc(var(--inset-bottom) + var(--space-1));
+  }
 }
 
 /* What the floating bar occupies, measured from the bottom of the window:
@@ -1665,6 +1676,8 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     --inset-bottom: 0px;
     --inset-left: 0px;
   }
+
+  .app-viewport { container-type: inline-size; }
 
   .app-viewport,
   .app,

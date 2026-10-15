@@ -16,6 +16,11 @@ The Node test suite runs 480 seeded importer and sniffer fuzz cases. A
 24,000-case run is available with `FUZZ_LONG=1 FUZZ_SEED=7`. Failures retain
 their exact inputs and seed/index receipts for replay.
 
+The entry editor keeps Save, star and mood controls above the Android keyboard
+in landscape. Wide layouts use one footer row without shrinking touch targets.
+When the keyboard leaves too little height for both text and navigation, the
+editor hides the bottom navigation until the frame grows again.
+
 Recovery-key creation, replacement and access-mode changes now require fresh
 current-protection approval. Web device-bound mode explains its unlocked-session
 exception; Android unlocked mode requires biometrics or an existing recovery key.
