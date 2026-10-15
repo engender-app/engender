@@ -696,6 +696,9 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
     color: var(--role-fill-ink);
+    /* A button takes the browser's own face, not the body's, unless told
+       to (last-audit UI 53). */
+    font: inherit;
     text-align: left;
     cursor: pointer;
     /* A block arrives by clipping open from its own left edge (rule 10,

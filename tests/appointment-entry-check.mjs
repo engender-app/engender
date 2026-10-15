@@ -158,6 +158,31 @@ try {
   });
   const linkedRow = page.locator(`[data-appointment="${linked}"]`);
   await page.locator(`[data-visit-lead][data-appointment="${linked}"]`).waitFor();
+  /* The opening is a <button>, and a button takes the browser's own face
+     unless told otherwise (last-audit UI 53: Liberation Sans on Linux,
+     Roboto on Android). Its lines read in the body face; the gap alone keeps
+     the display face. */
+  const leadFaces = await page.locator('[data-visit-lead]').evaluate((lead) => {
+    const face = (value) => {
+      const probe = document.createElement('span');
+      probe.style.fontFamily = value;
+      document.body.append(probe);
+      const family = getComputedStyle(probe).fontFamily;
+      probe.remove();
+      return family;
+    };
+    return {
+      body: face('var(--font-body)'),
+      display: face('var(--font-display)'),
+      lines: [...lead.children].filter((line) => !line.hasAttribute('data-visit-gap'))
+        .map((line) => getComputedStyle(line).fontFamily),
+      gap: getComputedStyle(lead.querySelector('[data-visit-gap]')).fontFamily
+    };
+  });
+  assert.ok(leadFaces.lines.length >= 2, 'The opening has lines beside its gap');
+  for (const line of leadFaces.lines) assert.equal(line, leadFaces.body, 'The opening reads in the body face');
+  assert.equal(leadFaces.gap, leadFaces.display, 'The opening gap keeps the display face');
+  console.log('PASS the opening reads in the body face and its gap in the display face');
   await linkedRow.click();
   await page.locator('#appointment-kind').fill('Consultation updated');
   await fillDate(page, '#appointment-date', '2024-03-13');
