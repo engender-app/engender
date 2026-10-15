@@ -388,9 +388,9 @@
   /* Week, month and year, one tap each, to the cadence routes. Links, so
      the group is a nav and each is its own screen. */
   const QUICK_PICKS = [
-    { value: 'week', href: '/wrapped/week', label: () => m.wrapped_cadence_week() },
-    { value: 'month', href: '/wrapped/month', label: () => m.wrapped_cadence_month() },
-    { value: 'year', href: '/wrapped/year', label: () => m.wrapped_cadence_year() }
+    { value: 'week', href: '/wrapped/week', label: () => m.lookback_quick_week() },
+    { value: 'month', href: '/wrapped/month', label: () => m.lookback_quick_month() },
+    { value: 'year', href: '/wrapped/year', label: () => m.lookback_quick_year() }
   ];
 
   let shown = $derived(shownMetric(metricChoices()));
