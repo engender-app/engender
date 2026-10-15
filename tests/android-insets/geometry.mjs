@@ -56,7 +56,10 @@ export function safeScreenBounds(dump, width, height, keyboard) {
     assert.equal(sources.filter((source) => source.type === type).length, 1, `Exactly one native ${type} source must be present`);
   }
   assert.equal(sources.find((source) => source.type === 'ime')?.visible, keyboard, 'Native IME inset visibility agrees');
-  for (const source of sources.filter((source) => source.visible)) {
+  // The IME can exclude side navigation even when the dump lists it first.
+  const visible = sources.filter((source) => source.visible)
+    .sort((a, b) => Number(a.type === 'ime') - Number(b.type === 'ime'));
+  for (const source of visible) {
     assert.ok(source.right > source.left && source.bottom > source.top, `${source.type} inset has positive area`);
     if (source.left <= safe.left && source.right >= safe.right) {
       if (source.top === 0) safe.top = Math.max(safe.top, source.bottom);

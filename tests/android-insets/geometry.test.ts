@@ -43,6 +43,14 @@ describe('Android inset proof geometry', () => {
       .toThrow('Unsupported partial ime inset');
   });
 
+  it('applies side navigation before an IME that appears earlier in the native dump', () => {
+    const keyboard = readFileSync(new URL('./api35-landscape-ime-insets.txt', import.meta.url), 'utf8');
+    expect(safeScreenBounds(keyboard, 2400, 1080, true).safe)
+      .toEqual({ left: 126, top: 63, right: 2274, bottom: 520 });
+    expect(() => safeScreenBounds(keyboard.replace('frame=[126,520][2274,1080]', 'frame=[126,520][2273,1080]'), 2400, 1080, true))
+      .toThrow('Unsupported partial ime inset');
+  });
+
   it('reads only the isolated application WebView', () => {
     const hierarchy = '<node class="android.webkit.WebView" package="other" bounds="[0,0][900,900]" />'
       + '<node class="android.webkit.WebView" package="proof" bounds="[30,90][1110,2100]" />';

@@ -6,6 +6,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 import { assertInside, physicalBounds, safeScreenBounds, webViewBounds } from './geometry.mjs';
+import { dumpHierarchy } from './hierarchy.mjs';
 
 const serial = process.argv[2];
 if (!/^emulator-\d+$/.test(serial ?? '')) throw new Error('Pass an emulator serial');
@@ -34,6 +35,7 @@ const metadata = {
   apkSha256: createHash('sha256').update(await readFile(apkPath)).digest('hex'),
   driverSha256: createHash('sha256').update(await readFile(new URL('./run.mjs', import.meta.url))).digest('hex'),
   geometrySha256: createHash('sha256').update(await readFile(new URL('./geometry.mjs', import.meta.url))).digest('hex'),
+  hierarchySha256: createHash('sha256').update(await readFile(new URL('./hierarchy.mjs', import.meta.url))).digest('hex'),
   capturedAt: new Date().toISOString(), results: []
 };
 let browser;
@@ -55,6 +57,8 @@ async function navigate(path) {
     link.click();
     link.remove();
   }, path);
+  await page.waitForFunction((path) => location.pathname === path || !!document.querySelector('[data-discard-record]'), path);
+  if (await page.locator('[data-discard-record]').count()) await page.locator('[data-discard-record]').click();
   await page.waitForURL((url) => url.pathname === path);
 }
 
@@ -70,8 +74,9 @@ async function capture(name, selectors, keyboard = false) {
   const screenshot = `${out}/${name}.png`;
   await writeFile(screenshot, execFileSync('adb', ['-s', serial, 'exec-out', 'screencap', '-p'], { timeout: 30000 }));
   const [width, height] = execFileSync('magick', ['identify', '-format', '%w %h', screenshot], { encoding: 'utf8' }).split(' ').map(Number);
-  adb('shell', 'uiautomator', 'dump', '--compressed', `/sdcard/insets51.xml`);
-  const native = webViewBounds(adb('shell', 'cat', '/sdcard/insets51.xml'), pkg);
+  const hierarchy = await dumpHierarchy({ adb, path: '/sdcard/insets51.xml', packageName: pkg,
+    onRetry: (receipt) => writeFile(`${out}/${name}-hierarchy-retry.json`, JSON.stringify(receipt, null, 2) + '\n') });
+  const native = webViewBounds(hierarchy, pkg);
   const display = adb('shell', 'dumpsys', 'window', 'displays');
   const geometryLines = display.split('\n').filter((line) => /InsetsSource|DisplayCutout|mDisplayFrame|mRotation=/.test(line));
   const dom = await page.evaluate((selectors) => {

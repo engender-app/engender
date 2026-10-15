@@ -33,7 +33,8 @@ checks Home, the entry editor and a template sheet in the isolated demo package.
 Its API 33/35/36 matrix uses Android gesture/three-button navigation, trans
 light/dark, native cutout overlays, rotation and the actual IME. Native window
 insets and WebView bounds must leave header content and actions clear; the
-editor footer must stay above the keyboard. Each case retains screenshots,
+editor footer must stay above the keyboard, with a complete typed note line
+visible and navigation restored after keyboard dismissal. Each case retains screenshots,
 top/bottom crops and geometry before assertions. See [Android inset matrix](android-insets/README.md)
 for build, isolation and cleanup. This does not establish Play notice removal
 or physical-device timing. The existing `safe-area.test.ts` remains a declaration
