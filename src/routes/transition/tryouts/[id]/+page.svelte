@@ -255,15 +255,17 @@
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
   /* One reading per tap, and a failed one keeps the mood and note and says
-     so (UI 17). */
+     so (UI 17). Only what was sent is cleared: a mood or note changed while
+     the write ran is the next reading, not this one. */
   const feelingWrite = writer();
   async function addFeeling() {
     const mood = feelingMood;
     if (mood == null) return;
-    const note = feelingNote.trim() || null;
+    const typed = feelingNote;
+    const note = typed.trim() || null;
     if (!(await feelingWrite.run(() => journal.feltSense.add({ tryoutId: detail.id }, { epochDay: todayEpochDay(), mood, note }), m.write_failed()))) return;
-    feelingMood = null;
-    feelingNote = '';
+    if (feelingMood === mood) feelingMood = null;
+    if (feelingNote === typed) feelingNote = '';
   }
 
   const feelingRecord = recordEditor<FeltSenseEntry>({

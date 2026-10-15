@@ -130,12 +130,16 @@
   let scheduleCanSave = $derived(selectedProcedureId !== null && stagesToSave !== null);
 
   /* One save per tap (UI 17): a first schedule has no id yet, so a double
-     tap used to store two. A failed save keeps the editor open and says so. */
+     tap used to store two. A failed save keeps the editor open and says so,
+     and so does a save the fields changed under while it ran, so the newer
+     values are still there to save. */
   const scheduleWrite = writer();
+  const scheduleDraft = () => JSON.stringify([selectedProcedureId, startDayInput, stagesInput]);
   async function saveSchedule() {
     const procedureId = selectedProcedureId;
     const stages = stagesToSave;
     if (!procedureId || !stages) return;
+    const sent = scheduleDraft();
     const saved = await scheduleWrite.run(
       () =>
         journal.taper.upsertTaper({
@@ -146,7 +150,7 @@
         }),
       m.write_failed()
     );
-    if (saved) editingSchedule = false;
+    if (saved && scheduleDraft() === sent) editingSchedule = false;
   }
 
   /* The session log. An ordinary recordEditor/RecordSheet pair, the same

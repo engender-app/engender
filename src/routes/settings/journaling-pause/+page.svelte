@@ -109,7 +109,9 @@
           <span>{m.journaling_pause_resume()}</span>
         </button>
       {:else if newPause}
-        <div class="cd-endpoints">
+        <!-- Inert while the pause is being stored, so a date changed then is
+             not dropped when the form gives way to the running pause (UI 17). -->
+        <div class="cd-endpoints" inert={pauseWrite.busy}>
           <Field label={m.journaling_pause_start_label()} id="pause-start">
             {#snippet children(id)}
               <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
