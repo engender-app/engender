@@ -21,12 +21,28 @@ final class PhotoFiles {
     private PhotoFiles() {}
 
     static PhotoWriteOrder.Request reserveWrite(File target) {
-        return writes.reserve(target.getAbsolutePath(), bytes -> {
-            try (FileOutputStream out = new FileOutputStream(target, false)) {
-                out.write(bytes);
-                out.getFD().sync();
+        return writes.reserve(target.getAbsolutePath(), bytes -> writeWhole(target, bytes));
+    }
+
+    /**
+     * Writes and syncs the whole file, or leaves nothing under its name.
+     * Opening the stream creates the file before a byte lands, so a disk
+     * that refused the bytes (ENOSPC) used to leave an empty photo behind
+     * (last-audit ui 37). Removing it is safe because every caller writes a
+     * fresh name - a new uuid, or restore's fresh replacement - and no row
+     * names a file until its write has succeeded. The failure itself is
+     * rethrown untouched, so the WebView still reads ENOSPC in its message.
+     */
+    static void writeWhole(File target, byte[] bytes) throws IOException {
+        try (FileOutputStream out = new FileOutputStream(target, false)) {
+            out.write(bytes);
+            out.getFD().sync();
+        } catch (IOException | RuntimeException error) {
+            if (!target.delete() && target.exists()) {
+                error.addSuppressed(new IOException("could not remove " + target.getName()));
             }
-        });
+            throw error;
+        }
     }
 
     static File directory(Context context, String directoryName) {
