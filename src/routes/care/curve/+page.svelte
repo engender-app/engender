@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { withEntryListReturn } from '$lib/navigation/sourceRecord';
   /* Modelled or illustrative estradiol or testosterone between doses, on
      the surface and chart kits (phase 5 UX ticket 25).
 
@@ -39,6 +40,8 @@
      journal/hormoneCurve.ts's, where it has tests. What is left here is
      wording and marks. */
 
+  import { page } from '$app/state';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { dayRangeOptions } from '$lib/components/dayRangeOptions';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -78,7 +81,10 @@
   import QualitativeCurveChart from '$lib/components/QualitativeCurveChart.svelte';
 
   const WINDOWS = [30, 90, 180] as const;
-  let windowDays = $state<(typeof WINDOWS)[number]>(90);
+  const requestedWindow = Number(page.url.searchParams.get('days'));
+  let windowDays = $state<(typeof WINDOWS)[number]>(
+    WINDOWS.includes(requestedWindow as (typeof WINDOWS)[number]) ? requestedWindow as (typeof WINDOWS)[number] : 90
+  );
   const today = $derived(currentDay());
   let fromEpochDay = $derived(today - windowDays + 1);
 
@@ -247,6 +253,9 @@
      result now sits at that position. */
   function changeWindow(days: (typeof WINDOWS)[number]) {
     windowDays = days;
+    const target = new URL(page.url);
+    target.searchParams.set('days', String(days));
+    void replaceRoute(target, { noScroll: true, keepFocus: true });
     pickedMarker = {};
     picked = {};
   }
@@ -326,7 +335,7 @@
           {#each list as annotation (annotation.id)}
             <li>
               {#if annotation.href}
-                <a class="marker-link" href={annotation.href}>{annotationLine(annotation)}</a>
+                <a class="marker-link" href={withEntryListReturn(annotation.href, page.url)}>{annotationLine(annotation)}</a>
               {:else}
                 <span class="marker-link">{annotationLine(annotation)}</span>
               {/if}
@@ -349,7 +358,7 @@
     {#each mark.annotations as annotation (annotation.id)}
       <li>
         {#if annotation.href}
-          <a class="marker-link" href={annotation.href}>{annotationLine(annotation)}</a>
+          <a class="marker-link" href={withEntryListReturn(annotation.href, page.url)}>{annotationLine(annotation)}</a>
         {:else}
           <span class="marker-link">{annotationLine(annotation)}</span>
         {/if}

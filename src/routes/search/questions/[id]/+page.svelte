@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { withEntryListReturn } from '$lib/navigation/sourceRecord';
   import { journalTextAutocomplete } from '$lib/platform';
   /* One saved question, answered as a run (phase 8 features ticket 06,
      CONTEXT: "Saved question").
@@ -81,7 +82,7 @@
     const draw = drawRandomEntry(hits, drawnIds);
     if (!draw) return;
     drawnIds = draw.drawnIds;
-    void goto(`/entry/${draw.entry.id}`);
+    void goto(withEntryListReturn(`/entry/${draw.entry.id}`, page.url));
   }
 
   /* `question` is `questions.find(...)` over a liveList's rows, which are
@@ -147,9 +148,14 @@
     }).then((result) => ({ criteria, ...result }));
   });
 
+  // A warm liveQuery answer can retain the previous visit's criteria object.
+  // Its signature identifies the question even when the object is recalled.
+  const answersCurrentQuestion = (criteria: typeof stableSearch | undefined) =>
+    stableSearch !== null && criteria?.signature === stableSearch.signature;
+
   let results = $derived.by(() => {
     const value = search.value;
-    return value?.criteria === stableSearch ? value : NOTHING_ASKED;
+    return value && answersCurrentQuestion(value.criteria) ? value : NOTHING_ASKED;
   });
   let hits = $derived(results.hits);
   let total = $derived(results.total);
@@ -166,7 +172,7 @@
 
   let elsewhereResults = $derived.by(() => {
     const value = elsewhere.value;
-    return value?.criteria === stableSearch ? value : NOTHING_ELSEWHERE;
+    return value && answersCurrentQuestion(value.criteria) ? value : NOTHING_ELSEWHERE;
   });
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, stableSearch?.queryText.trim() ?? ''));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
@@ -182,7 +188,7 @@
   });
   let starredPhotos = $derived.by(() => {
     const value = photos.value;
-    return value?.criteria === stableSearch ? value.rows : [];
+    return value && answersCurrentQuestion(value.criteria) ? value.rows : [];
   });
   let photosShown = $derived(starredPhotos.length > 0);
 
@@ -195,9 +201,9 @@
   let resultsReady = $derived(
     !!stableSearch && stableSearch.signature === searchSignature &&
     searchAttempt === stableSearch && elsewhereAttempt === stableSearch && photosAttempt === stableSearch &&
-    (search.value?.criteria === stableSearch || (search.failed && !search.running)) &&
-    (elsewhere.value?.criteria === stableSearch || (elsewhere.failed && !elsewhere.running)) &&
-    (photos.value?.criteria === stableSearch || (photos.failed && !photos.running)) && !loading
+    (answersCurrentQuestion(search.value?.criteria) || (search.failed && !search.running)) &&
+    (answersCurrentQuestion(elsewhere.value?.criteria) || (elsewhere.failed && !elsewhere.running)) &&
+    (answersCurrentQuestion(photos.value?.criteria) || (photos.failed && !photos.running)) && !loading
   );
   let revealedCriteria = $state<typeof stableSearch>(null);
   $effect.pre(() => {
@@ -331,7 +337,7 @@
                   icon={row.icon}
                   title={row.excerpt}
                   subtitle={row.label}
-                  href={row.href}
+                  href={withEntryListReturn(row.href, page.url)}
                   data-search-hit={row.area}
                 >
                   {#snippet trailing()}

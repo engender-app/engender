@@ -454,6 +454,7 @@ To run one on its own, use
 
 | Probe | Holds |
 | --- | --- |
+| `entry-source-return-check` | entry Save and Delete return to Voice recordings, Search and margin-note hits, Today tiles, chart annotations and day lists with private query context |
 | `pending-unlock-lock-check` | a newer lock cancels pending authentication and its opening transition |
 | `feedback-concealment-check` | lock and disguise clear private live regions, pending announcements and toast actions; fresh feedback and keyboard actions still work |
 | `blind-edge-padding-check` | a padding-only change to a field still moves `--blind-edge` |
@@ -960,3 +961,13 @@ WebView CDP endpoint. This mode completes setup and saves 16 dated entries
 through the editor, requires retained Journal and sends real
 Android Back key events. `journalVisit.test.ts` checks visit isolation and
 lock cleanup through the shared content-forgetting boundary.
+
+`entry-source-return-check.mjs` drives the real router and editor through
+Save and Delete from Voice recordings, ordinary and margin-note Search
+results, a saved question, Today's revisit tile, a hormone-curve annotation
+and an ordinary day list. It checks the selected Voice tab, curve range,
+Search query and starred filter on return. Repeated saved-question visits
+reuse warm answers, while changed criteria discard the previous hits.
+It also checks that Search spends
+its in-memory snapshot and that typed queries stay out of return URLs,
+history state and Web Storage. Run with `node tests/entry-source-return-check.mjs`.

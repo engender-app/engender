@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { withEntryListReturn } from '$lib/navigation/sourceRecord';
   /* Today (phase 10 redesign ticket 13; ADR-0067, ADR-0073, ADR-0074).
 
      The first screen faces forward. It used to open by asking how you feel
@@ -886,7 +887,7 @@
             title={tile.title}
             value={tile.value}
             note={tile.note}
-            href={tile.href}
+            href={withEntryListReturn(tile.href, page.url)}
             action={tile.action}
             dismiss={tile.dismiss}
             {...tile.attrs}
@@ -1170,7 +1171,7 @@
             {#each quietListTiles as tile (tile.key)}
               <ListRow
                 key={tile.tileKey}
-                href={tile.href}
+                href={withEntryListReturn(tile.href, page.url)}
                 title={tile.title}
                 subtitle={tile.note}
                 {...tile.attrs}
