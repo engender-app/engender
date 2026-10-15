@@ -12,6 +12,8 @@
      rather than a decision this screen makes: only the wrap is stored
      (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
      sure I still have it". */
+  import { tick } from 'svelte';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -33,6 +35,16 @@
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
   let busy = $state(false);
+  let screen: HTMLElement;
+  let focusAfterConfirmation = false;
+  async function focusStep() {
+    await tick();
+    focusNamedTarget(screen.querySelector<HTMLElement>(shown === null ? 'h1' : '.rk-shown-title'));
+  }
+  function focusCommittedStep() {
+    if (confirming !== null) focusAfterConfirmation = true;
+    else void focusStep();
+  }
 
   /* Only the Android path marks the clip sensitive and takes it back, so
      only the Android path may promise either. */
@@ -50,6 +62,7 @@
          goes through. */
       shown = await mintRecoveryKey(await journalDataKey());
       await refreshRecoveryKeyPresence();
+      focusCommittedStep();
       confirming = null;
     } catch {
       toast(m.rk_failed());
@@ -64,6 +77,7 @@
     try {
       await revokeRecoveryKey();
       await refreshRecoveryKeyPresence();
+      focusCommittedStep();
       confirming = null;
       toast(m.rk_removed_toast());
     } catch {
@@ -109,7 +123,7 @@
   const presenceRemember = (px: number) => rememberReserve('recovery-key', px);
 </script>
 
-<div class="screen">
+<div class="screen" bind:this={screen}>
   <ScreenHeader title={m.rk_title()} back="/settings/security" />
 
   <!-- Held until the key's presence is known, then faded in (ux-carpet
@@ -145,6 +159,7 @@
           onclick={() => {
             guard.keep();
             shown = null;
+            void focusStep();
             toast(m.rk_made_toast());
           }}>{m.rk_done()}</button
         >
@@ -184,6 +199,11 @@
   open={confirming !== null}
   title={confirming === 'revoke' ? m.rk_revoke_title() : m.rk_replace_title()}
   onClose={() => (confirming = null)}
+  onClosed={() => {
+    if (!focusAfterConfirmation) return;
+    focusAfterConfirmation = false;
+    void focusStep();
+  }}
 >
   <!-- No "takes effect at the next start" line here, and the reason is
        worth keeping: this branch shipped one, and it was false. Revoking

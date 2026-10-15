@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { focusAfterRemoval } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { TRASH_WINDOW_DAYS } from '$lib/data/journal/entries';
@@ -19,8 +20,10 @@
     return Math.max(0, TRASH_WINDOW_DAYS - elapsedDays);
   }
 
-  async function restore(id: number) {
+  async function restore(id: number, control: HTMLElement) {
+    const returnFocus = focusAfterRemoval(control, '[data-restore-entry]');
     await journal.entries.restoreEntry(id);
+    returnFocus();
     toast(m.trash_restored_toast(), { kind: 'saved' });
   }
 </script>
@@ -39,7 +42,7 @@
             subtitle={`${entry.note || m.entry()} · ${m.trash_days_left({ days: daysLeft(entry.trashedAt) })}`}
           >
             {#snippet trailing()}
-              <button class="btn btn-soft" data-restore-entry={entry.id} onclick={() => restore(entry.id)}>
+              <button class="btn btn-soft" data-restore-entry={entry.id} onclick={(event) => restore(entry.id, event.currentTarget)}>
                 <span>{m.trash_restore()}</span>
               </button>
             {/snippet}

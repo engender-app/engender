@@ -38,7 +38,7 @@
      areas out of reading order say why. The notices take none, because the
      flag colours the areas of the journal and a notice is the app talking
      about itself. */
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
   import { replaceRoute } from '$lib/navigation/smart-back';
@@ -70,6 +70,7 @@
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -327,6 +328,12 @@
      nothing about a page somebody edited on Tuesday should still be in
      edit mode on Wednesday. */
   let editing = $state(false);
+  let pinnedSection: HTMLElement;
+  async function finishEditing() {
+    editing = false;
+    await tick();
+    if (doorActive()) focusNamedTarget(pinnedSection.querySelector<HTMLElement>('[data-edit-today]'));
+  }
   let pinReads = $derived(pinReadScope(prefs, editing));
   let pinReadKey = $derived(pinReads.rows.join('|'));
   let lastWritesQuery = liveQuery(async (j) => {
@@ -1205,7 +1212,7 @@
        somebody who unpinned everything with no way back. With nothing
        pinned it is the one row, and that row asks for the first pin rather
        than repeating the heading. -->
-  <div data-home-pinned>
+  <div data-home-pinned bind:this={pinnedSection}>
     {#if editing}
       <div transition:collapse={panel} data-home-editing>
         {#if editorReadsReady && doorActive()}
@@ -1214,7 +1221,7 @@
             {reading}
             nowMs={liveTiles.nowMs}
             role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
-            onDone={() => (editing = false)}
+            onDone={finishEditing}
           />
         {:else}
           <Skeleton variant="line" count={3} />

@@ -47,7 +47,8 @@
      area is hidden stays stored and draws nothing (`pinnedRows.ts`), so
      every write here is stated as row keys - "put this one where that one
      is" - and never as an index into what is on screen. */
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -124,15 +125,18 @@
   }
 
   async function unpin(key: string) {
+    const next = pinned[pinned.findIndex((row) => row.spec.key === key) + 1]?.spec.key;
     const before = beforeWrite();
     prefs.pinnedRows = withoutPin(arrangement(), key);
     await afterWrite(before);
+    focusNamedTarget(next ? listEl?.querySelector(`[data-edit-unpin="${next}"]`) : editor?.querySelector('h2'));
   }
 
   async function pin(key: HubRowKey) {
     const before = beforeWrite();
     prefs.pinnedRows = withPin(arrangement(), key);
     await afterWrite(before);
+    focusNamedTarget(listEl?.querySelector(`[data-edit-unpin="${key}"]`));
   }
 
   function move(key: string, targetKey: string) {
@@ -188,6 +192,9 @@
   }
 
   /* ---------- the drag ---------- */
+
+  let editor: HTMLElement;
+  onMount(() => focusNamedTarget(editor.querySelector('h2')));
 
   let listEl: HTMLElement | undefined = $state();
   /** The add list's own box, so a row leaving it closes the same way one
@@ -289,7 +296,7 @@
   }
 </script>
 
-<div class="today-editor" data-today-editor>
+<div class="today-editor" data-today-editor bind:this={editor}>
   <SectionHeading text={m.home_edit_heading()} />
   <p class="today-editor-hint" id="today-editor-hint">{m.home_edit_hint()}</p>
 

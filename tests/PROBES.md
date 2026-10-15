@@ -1,5 +1,15 @@
 # Verification probes and focused regressions
 
+`browser-tier/focus-swaps.mjs` presses Enter through Today editing, access-mode
+steps, recovery-key creation/replacement/revocation, Trash, Words and Notice
+removals. It checks named active elements, empty-list fallbacks and preserved
+Tab stops with full and reduced motion. `browser-tier/focus-arrival.mjs` drives
+first run and a cold unlock through the complete production shell. Both run in
+the browser tier. Run either script directly for its focused check.
+`android-tier/focus-arrival.mjs` repeats cold unlock in an isolated test APK,
+then visits retained doors and checks that navigation and Today editing focus
+only the active door. Pass a device serial and the isolated package name.
+
 The browser tier's `entry-contextual-text.mjs` types `felt like me` key by key
 into the real entry editor over encrypted SQLite, for new and existing entries.
 It checks spaces and recovery-note line breaks before saving, trimmed saved

@@ -19,7 +19,7 @@
 
   import { navigating, page } from '$app/state';
   import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
@@ -63,6 +63,7 @@
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
+  import { ACTIVE_DOOR_CONTENT } from '$lib/navigation/doorActivity';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
@@ -244,6 +245,28 @@
   $effect(() => {
     void bootState.status;
     markScreenArrival();
+  });
+
+  // Gate removal is an arrival even when the URL stays unchanged. A retained
+  // door can mount after the shell, so wait for its heading before handing over.
+  $effect(() => {
+    if (replacesApp || bootState.status !== 'ready') return;
+    let cancelled = false;
+    let observer: MutationObserver | undefined;
+    void tick().then(() => {
+      if (cancelled) return;
+      const region = document.getElementById('app-main');
+      if (!region) return;
+      const arrive = () => {
+        if (!region.querySelector(`h1${ACTIVE_DOOR_CONTENT}`)) return;
+        focusArrivedScreen(region);
+        observer?.disconnect();
+      };
+      observer = new MutationObserver(arrive);
+      observer.observe(region, { childList: true, subtree: true });
+      arrive();
+    });
+    return () => { cancelled = true; observer?.disconnect(); };
   });
 
   /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:

@@ -43,6 +43,7 @@
      how a screen stamps its own walkthrough handle without the kit learning
      what a backup is - `data-notice` names the surface and the handle beside
      it names the thing being said (ADR-0029). */
+  import { focusAfterRemoval } from '$lib/navigation/arrivalFocus';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
   import { roleAttrs } from './role';
@@ -149,7 +150,11 @@
       class="kit-notice-x press"
       data-notice-dismiss
       aria-label={dismiss.label}
-      onclick={dismiss.onclick}
+      onclick={(event) => {
+        const returnFocus = focusAfterRemoval(event.currentTarget, '[data-notice]');
+        dismiss?.onclick();
+        returnFocus();
+      }}
     >
       <Icon name="x" size={20} />
     </button>
