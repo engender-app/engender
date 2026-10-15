@@ -128,24 +128,34 @@ export interface CalendarDuration {
 /** The gap between two epoch days as whole calendar years, whole calendar
     months and remaining days — never `/365`, `/365.25` or `/30`, so
     `months` is always 0–11 and a same-length gap reads the same regardless
-    of which months it happens to cross. Order-independent. */
+    of which months it happens to cross. Order-independent.
+
+    The month rule (Alicja, 13 October 2026): a month from a day the
+    target month does not have ends on that month's last day. 31 January
+    plus one month is 28 February (29 in a leap year), so 31 January to
+    1 March is 1 month 1 day, and 29 February plus a year is 28 February.
+    The whole months are counted by stepping the start forward with that
+    clamp (`epochDayMonthsAgo`'s clamp, run forwards) and taking the most
+    that do not pass the later day; the days are whatever is left, counted
+    from the clamped date. Days are therefore never negative and never
+    more than 30.
+
+    The old rule borrowed the length of the month before the later date
+    once, which left days negative whenever the start day was longer than
+    that month: 31 January to 1 March came out as 1 month and -2 days
+    (last-audit UI 32). */
 export function calendarDuration(fromEpochDay: number, toEpochDay: number): CalendarDuration {
   const lo = Math.min(fromEpochDay, toEpochDay);
   const hi = Math.max(fromEpochDay, toEpochDay);
   const a = localDateFromEpochDay(lo);
   const b = localDateFromEpochDay(hi);
-  let years = b.getFullYear() - a.getFullYear();
-  let months = b.getMonth() - a.getMonth();
-  let days = b.getDate() - a.getDate();
-  if (days < 0) {
-    months -= 1;
-    days += new Date(b.getFullYear(), b.getMonth(), 0).getDate(); // days in the month before b
-  }
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-  return { years, months, days };
+  let totalMonths = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth();
+  if (epochDayMonthsAgo(lo, -totalMonths) > hi) totalMonths -= 1;
+  return {
+    years: Math.floor(totalMonths / 12),
+    months: totalMonths % 12,
+    days: hi - epochDayMonthsAgo(lo, -totalMonths)
+  };
 }
 
 export type DurationUnit = 'years' | 'months' | 'days';
@@ -210,11 +220,13 @@ export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpoc
 
 /** How many of a past milestone's anniversaries have arrived by
     `onEpochDay`: the year difference, less one while this year's is still
-    ahead. Not `calendarDuration().years`, which measures the gap and is
-    therefore a day short on a 29 February milestone's 28 February
-    anniversary - the one day the two disagree, and the day a milestone
-    would otherwise announce "0 years" while flagging itself as an
-    anniversary. Only meaningful for a milestone in the past. */
+    ahead. Counted from the anniversary itself rather than from
+    `calendarDuration().years`, so the count follows `anniversaryInYear`'s
+    clamp by construction. The two agree since `calendarDuration` clamps
+    the same way (last-audit UI 32); before that the gap was a day short on
+    a 29 February milestone's 28 February anniversary, and a milestone
+    announced "0 years" while flagging itself as an anniversary. Only
+    meaningful for a milestone in the past. */
 export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number): number {
   const m = localDateFromEpochDay(milestoneEpochDay);
   const refYear = localDateFromEpochDay(onEpochDay).getFullYear();
