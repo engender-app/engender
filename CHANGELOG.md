@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Safari tabs now offer installation advice: Add to Home Screen on iOS,
+Add to Dock on macOS. The notice keeps the encrypted-backup reminder and
+appears even when Safari grants persistent storage.
+
 Running out of storage space now says so. Saving an entry or a photo,
 opening a journal whose update needs room, and exporting each tell you to
 free up some space and try again, where they used to show a general error.

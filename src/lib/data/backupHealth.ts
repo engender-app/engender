@@ -46,12 +46,30 @@ export function backupStanding(
     the notice is that ask, said once: it goes for good with the first
     backup or a dismissal. After that the stale-backup notice is the
     reminder, and two notices asking for one export would be one too many.
+    Safari also offers installation advice independently of the persistence
+    answer, with these same backup and dismissal gates.
     It replaced a toast that covered the Welcome screen's buttons for four
     seconds on every cold web load. */
 export function storageNoticeShows(state: {
   persistDenied: boolean;
   dismissed: boolean;
   lastBackupAt: number | null;
+  safariInstallation?: 'ios' | 'mac' | null;
 }): boolean {
-  return state.persistDenied && !state.dismissed && state.lastBackupAt === null;
+  return (state.persistDenied || !!state.safariInstallation) && !state.dismissed && state.lastBackupAt === null;
+}
+
+/** macOS first offers Add to Dock in Safari 17.
+    iPad desktop mode identifies as Macintosh, but still uses Home Screen. */
+export function safariInstallationTarget(environment: {
+  userAgent: string;
+  standalone: boolean;
+  maxTouchPoints: number;
+}): 'ios' | 'mac' | null {
+  const { userAgent, standalone, maxTouchPoints } = environment;
+  if (standalone || !/Safari\//.test(userAgent) || /Chrome|Chromium|CriOS|FxiOS|Edg|OPR|OPiOS/.test(userAgent)) return null;
+  const version = /Version\/(\d+)/.exec(userAgent);
+  if (!version) return null;
+  if (/iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)) return 'ios';
+  return /Macintosh/.test(userAgent) && Number(version[1]) >= 17 ? 'mac' : null;
 }

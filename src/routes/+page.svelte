@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { withEntryListReturn } from '$lib/navigation/sourceRecord';
   /* Today (phase 10 redesign ticket 13; ADR-0067, ADR-0073, ADR-0074).
 
@@ -47,7 +48,7 @@
   import { TODAY_PHOTO_HREF } from '$lib/data/entrySections';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { backupAgeDays, backupIsStale, storageNoticeShows } from '$lib/data/backupHealth';
+  import { backupAgeDays, backupIsStale, storageNoticeShows, safariInstallationTarget } from '$lib/data/backupHealth';
   import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -520,12 +521,22 @@
      below it shoved down. Waiting means it arrives on a screen that has
      stopped moving, which is where a notice opening its own height reads as
      the change it is. Nothing about the read waits; only the appearing. */
-  /* The browser refused to keep the journal's storage (after-release 17).
+  const safariInstallation = browser
+    ? safariInstallationTarget({
+        userAgent: navigator.userAgent,
+        standalone: window.matchMedia('(display-mode: standalone)').matches ||
+          (navigator as Navigator & { standalone?: boolean }).standalone === true,
+        maxTouchPoints: navigator.maxTouchPoints
+      })
+    : null;
+  /* Safari installation advice also applies when persistence is granted.
+     Other browsers keep their persistence-refusal notice (after-release 17).
      It shows only before the first backup, and the stale-backup notice
      only after one, so the two never ask for an export together. */
   let showStorageNotice = $derived(
     storageNoticeShows({
       persistDenied: storageRisk.persistDenied,
+      safariInstallation,
       dismissed: prefs.storageNoticeDismissed,
       lastBackupAt: prefs.lastBackupAt
     }) && !ui.appOpening
@@ -1048,8 +1059,12 @@
       <Notice
         icon="download"
         key="storage"
-        title={m.storage_notice_title()}
-        text={m.storage_notice_body()}
+        title={safariInstallation ? m.storage_notice_safari_title() : m.storage_notice_title()}
+        text={safariInstallation === 'ios'
+          ? m.storage_notice_safari_ios_body()
+          : safariInstallation === 'mac'
+            ? m.storage_notice_safari_mac_body()
+            : m.storage_notice_body()}
         action={{ label: m.backup_now(), href: '/settings/export' }}
         dismiss={{ label: m.dismiss(), onclick: () => (prefs.storageNoticeDismissed = true) }}
         aria-live="polite"
