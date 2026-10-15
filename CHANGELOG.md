@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+The hormone curve says "1 dose" when one logged dose has no curve.
+Dose counts use the catalogue's plural forms in English and Polish.
+
 Saving or deleting an entry returns to the list that opened it, including
 Voice recordings, margin-note search results, Today tiles and chart markers.
 Voice keeps its selected tab and the hormone curve keeps its day range.

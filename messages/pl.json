@@ -610,7 +610,23 @@
   "curve_marker_clear": "Zamknij",
   "curve_marker_heading": "Zaznaczone tutaj",
   "curve_markers_note": "Znaczniki na dole to skutki uboczne, zastrzyki i dni, w których licznik albo odczyt ciała wyszedł ponad twój zakres z ostatniego pół roku. Nic tu nie mówi, że jedno spowodowało drugie.",
-  "curve_no_curve_note": "Dawki bez krzywej w tym przedziale: {count}. Dla ich estru lub drogi podania brakuje wystarczających danych z badań.",
+  "curve_no_curve_note": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} dawka bez krzywej w tym przedziale. Dla jej estru lub drogi podania brakuje wystarczających danych z badań.",
+        "countPlural=few": "{count} dawki bez krzywej w tym przedziale. Dla ich estru lub drogi podania brakuje wystarczających danych z badań.",
+        "countPlural=many": "{count} dawek bez krzywej w tym przedziale. Dla ich estru lub drogi podania brakuje wystarczających danych z badań.",
+        "countPlural=other": "{count} dawek bez krzywej w tym przedziale. Dla ich estru lub drogi podania brakuje wystarczających danych z badań."
+      }
+    }
+  ],
   "curve_off_axis_note": "Wyniki pominięte na wykresie, bo ich jednostka się nie przelicza: {count}.",
   "curve_point_aria": "{value} {unit}, {date}",
   "curve_point_clear": "Zamknij",

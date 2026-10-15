@@ -974,3 +974,15 @@ its in-memory snapshot and that typed queries stay out of return URLs,
 history state and Web Storage. The existing `entry-editor-return` guard also
 checks that reloading the editor drops the in-memory Search query while
 keeping its return route. Run with `node tests/entry-source-return-check.mjs`.
+
+## Curve dose-count wording
+
+`node tests/curve-dose-count-check.mjs` checks the compiled English and Polish
+catalogue functions at zero, one and multiple counts, including Polish few
+and many forms. It seeds real dose records and checks the note on both empty
+and populated curve screens. Zero stays hidden; the curve owner supplies the
+count and chart presence. `CURVE_COPY_SIGNOFF=/absolute/path` saves the
+one-dose note in the trans palette, light and dark.
+
+`tests/curve-dose-count.test.ts` guards the shared numeric plural contract.
+The curve model and journal tests continue to cover curve results and counts.
