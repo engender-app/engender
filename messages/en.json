@@ -926,6 +926,7 @@
   "done": "Done",
   "dose_amount_label": "Dose",
   "dose_amount_placeholder": "e.g. 4",
+  "dose_amount_positive_required": "Enter a dose amount greater than zero.",
   "dose_amount_required": "Enter a dose amount.",
   "dose_app_site_abdomen": "Abdomen",
   "dose_app_site_back": "Back",

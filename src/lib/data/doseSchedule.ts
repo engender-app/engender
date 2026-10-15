@@ -12,6 +12,10 @@ import { epochDayFromTimestamp, timestampAtLocalTime, weekdayOfEpochDay } from '
 import { spanCoversDay } from './span';
 import type { DoseEvent, DosePause, DoseRoute, DoseSchedule, DoseScheduleAmount } from './types';
 
+/** Actual medication taken must have a finite, positive amount. Skipped
+    slots carry expected amounts and do not use this constraint. */
+export const isPositiveDoseAmount = (dose: number): boolean => Number.isFinite(dose) && dose > 0;
+
 /** Which routes carry a rotated injection site and a vehicle, and which
     carry a plain application site.
 

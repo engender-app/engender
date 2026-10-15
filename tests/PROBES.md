@@ -495,6 +495,7 @@ To run one on its own, use
 | `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
 | `tryout-save-check` | tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes |
 | `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
+| `dose-amount-check` | taken and changed doses refuse non-positive or non-finite amounts; fractions, skipped zero and animated EN/PL feedback survive |
 | `range-editors-check` | regimen, dose-pause, journaling-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |

@@ -134,3 +134,21 @@ test('blank scheduled amount stays blank until a changed dose uses the actual am
   assert.equal(draft.scheduledDose, '');
   assert.equal(doseInputOfDraft({ ...draft, dose: '2', status: 'changed' })?.scheduled?.dose, 2);
 });
+
+
+test('actual dose drafts reject non-positive and non-finite amounts before saving', () => {
+  const draft = draftOfDose(injection);
+  for (const status of ['taken', 'changed'] as const) {
+    for (const dose of ['-2', '0', '', 'NaN', 'Infinity', '-Infinity']) {
+      assert.equal(doseInputOfDraft({ ...draft, status, dose }), null);
+    }
+    const saved = doseInputOfDraft({ ...draft, status, dose: '0.125' });
+    assert.equal(saved?.dose, 0.125);
+    assert.equal(saved?.route, 'im');
+    assert.ok(saved && 'injectionSite' in saved);
+    assert.equal(saved.injectionSite, 'thigh-left');
+    assert.deepEqual(saved.scheduled, status === 'changed' ? injection.scheduled : null);
+  }
+  assert.equal(doseInputOfDraft({ ...draft, status: 'skipped', dose: '0' })?.dose, 0);
+  assert.equal(draftOfDose({ ...injection, dose: -2 }).dose, '-2');
+});

@@ -41,6 +41,7 @@
   import {
     expectedAmountOn,
     isInjectionDose,
+    isPositiveDoseAmount,
     isTopicalDose,
     lastInjectionBefore,
     siteRecency,
@@ -346,7 +347,9 @@
     return at.length === 1 ? at[0] : null;
   });
 
-  let editorHasAmount = $derived(editor !== null && Number.isFinite(parseFloat(editor.dose)));
+  let editorHasAmount = $derived(editor !== null && (editor.status === 'skipped'
+    ? Number.isFinite(parseFloat(editor.dose))
+    : isPositiveDoseAmount(parseFloat(editor.dose))));
   let editorAmountText = $derived(
     editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_amount_label()
   );
@@ -817,6 +820,7 @@
                 <input
                   class="dose-amount-num"
                   type="number"
+                  step="any"
                   id="dose-amount"
                   name="dose-amount"
                   inputmode="decimal"
@@ -1047,7 +1051,7 @@
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
           <!-- The amount comes with the drug where a regimen sets one, so it
                is not asked for while the drug still is. -->
-          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{editor.status === 'skipped' ? m.dose_amount_required() : m.dose_amount_positive_required()}</p>{/if}
           {#if editorNeedsDrugPick}<p transition:disclose|local>{m.dose_drug_required()}</p>{/if}
           {#if editorIsInjection && !editor.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
           {#if editorIsTopical && !editor.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}

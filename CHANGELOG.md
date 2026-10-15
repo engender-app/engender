@@ -17,6 +17,10 @@ History Back and Forward restore the question shown in In the room alongside
 its answers. A fresh visit starts at the first question; locking clears the
 held position and answers.
 
+Taken and changed doses require an amount greater than zero. The editor
+explains invalid amounts, and the save boundary rejects them. Existing dose
+records and skipped slots keep their values.
+
 Closing a changed margin note asks before discarding it. Keep editing returns
 to the same note; an untouched note closes without a question.
 
