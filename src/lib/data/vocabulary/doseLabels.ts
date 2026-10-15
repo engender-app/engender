@@ -14,6 +14,7 @@
    sites, and the same trap waits in any language with agreement. */
 
 import { m } from '$lib/paraglide/messages';
+import { fmtDay } from '$lib/data/dates';
 import type { ApplicationSiteKey, InjectionSiteKey, RouteOption } from '$lib/data/doseSchedule';
 import type { DoseAttribution } from '$lib/data/regimenEpisode';
 import type { DoseEvent, DoseRoute, DoseStatus, EpisodeEndReason, InjectionVehicle, PauseReason } from '$lib/data/types';
@@ -134,6 +135,41 @@ export const regimenTemplateEster = (key: string): string | null =>
   REGIMEN_TEMPLATE_ESTER[key as RegimenTemplateKey]?.() ?? null;
 export const regimenTemplateRoute = (key: string): string =>
   routeLabel(REGIMEN_TEMPLATE_ROUTE[key as RegimenTemplateKey] ?? 'oral');
+
+/* A regimen episode's interval is free text (types.ts): a person types
+   their own ("every 2 weeks", "co 10 dni") and that is shown as written.
+   The demo journal stores the two English words below, though, and they
+   went out raw on a Polish screen (audit U50). Those two, and only as
+   stored, read through the catalogue; anything else is somebody's own
+   words. A Map rather than a record, so a typed "constructor" is not a
+   key it already has. */
+const REGIMEN_INTERVAL_LABELS = new Map<string, () => string>([
+  ['daily', m.regimen_interval_daily],
+  ['weekly', m.regimen_interval_weekly]
+]);
+
+export const regimenIntervalLabel = (interval: string): string =>
+  REGIMEN_INTERVAL_LABELS.get(interval)?.() ?? interval;
+
+/** What the editor's interval field saves. The field opens on
+    `regimenIntervalLabel`, so a stored "daily" shows as "codziennie" in
+    Polish; saving that untouched keeps "daily" rather than rewriting the
+    episode in whichever language it was last opened in. */
+export const regimenIntervalToStore = (draft: string, stored: string | null): string => {
+  const text = draft.trim();
+  return stored !== null && text === regimenIntervalLabel(stored) ? stored : text;
+};
+
+/** An episode's months on the regimen row: "Jan 2025 to Feb 2026", or
+    "from Feb 2026" while it has no end. The ongoing case is its own
+    sentence, not the word for ongoing dropped into the end of a range,
+    which in Polish read "lut 2026 do trwa" (audit U50). */
+export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | null): string => {
+  const month = (epochDay: number) => fmtDay(epochDay, { month: 'short', year: 'numeric' });
+  return endEpochDay === null
+    ? m.regimen_period_ongoing({ from: month(startEpochDay) })
+    : m.regimen_period_range({ from: month(startEpochDay), to: month(endEpochDay) });
+};
 
 /** Route options for a picker, in the order the ticket names them: the two
     oral-ish routes, the two injections, then the two topical ones. */

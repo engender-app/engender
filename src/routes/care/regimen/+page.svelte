@@ -24,7 +24,15 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { fmtNumber, fmtDay } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
-  import { episodeEndReasonLabel, pauseReasonLabel, routeLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
+  import {
+    episodeEndReasonLabel,
+    pauseReasonLabel,
+    regimenIntervalLabel,
+    regimenIntervalToStore,
+    regimenPeriodLabel,
+    routeLabel,
+    ROUTE_OPTIONS
+  } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DosePause, DoseRoute, DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
@@ -88,12 +96,6 @@
   let editorSchedule = $derived((schedulesQuery.rows).find((s) => s.episodeId === editor?.id) ?? null);
   let editorPauses = $derived((pausesQuery.rows).filter((p) => p.episodeId === editor?.id));
 
-  function rangeLabel(episode: RegimenEpisode): string {
-    const start = fmtDay(episode.startEpochDay, { month: 'short', year: 'numeric' });
-    const end = episode.endEpochDay === null ? m.regimen_ongoing() : fmtDay(episode.endEpochDay, { month: 'short', year: 'numeric' });
-    return m.regimen_period_range({ from: start, to: end });
-  }
-
   let editor = $state<{
     id?: string;
     drug: string;
@@ -102,6 +104,9 @@
     doseUnit: string;
     route: string;
     interval: string;
+    /** The interval as the loaded episode stores it, which the field above
+        shows through the catalogue (audit U50); null for a new episode. */
+    storedInterval: string | null;
     startDate: string;
     /** `''` while the episode is still ongoing (types.ts's null). */
     endDate: string;
@@ -133,7 +138,8 @@
           dose: String(episode.dose),
           doseUnit: episode.doseUnit,
           route: episode.route,
-          interval: episode.interval,
+          interval: regimenIntervalLabel(episode.interval),
+          storedInterval: episode.interval,
           startDate: dateInputValueFromEpochDay(episode.startEpochDay),
           endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay),
           endReason: episode.endReason
@@ -145,6 +151,7 @@
           doseUnit: '',
           route: template?.route ?? '',
           interval: '',
+          storedInterval: null,
           startDate: dateInputValueFromEpochDay(todayEpochDay()),
           endDate: '',
           endReason: null
@@ -251,7 +258,7 @@
       dose: parseFloat(String(draft.dose)),
       doseUnit: draft.doseUnit.trim(),
       route: draft.route.trim(),
-      interval: draft.interval.trim(),
+      interval: regimenIntervalToStore(draft.interval, draft.storedInterval),
       startEpochDay: epochDayFromDateInputValueOrToday(draft.startDate),
       endEpochDay: draft.endDate ? epochDayFromDateInputValue(draft.endDate) : null,
       endReason: draft.endReason
@@ -490,7 +497,7 @@
                 id={episode.id}
                 icon="pill"
                 title={episode.drug}
-                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: episode.interval, period: rangeLabel(episode) })}
+                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: regimenIntervalLabel(episode.interval), period: regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay) })}
                 chevron={false}
                 onclick={() => openEditor(episode)}
               >
@@ -565,7 +572,7 @@
               data-hidden-episode={episode.id}
               icon="pill"
               title={episode.drug}
-              subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
+              subtitle={`${fmtNumber(episode.dose)} ${episode.doseUnit} · ${regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay)}`}
               action={{
                 icon: 'eye',
                 label: m.regimen_show_aria({ drug: episode.drug }),
