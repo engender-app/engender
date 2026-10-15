@@ -119,6 +119,12 @@ whitespace is removed only when saving the draft.
 Letters opened from a link stay folded after closing. Saving a lab result
 after following a link keeps the selected analyte on screen.
 
+An opened letter's row takes a tap across its whole height, at least 48px,
+where an unread one had answered only on its 23px line of text. Words in
+Words that stand out are at least 48px wide, so a short word such as "cut"
+has more room around it and the cloud can run a line longer. The year tabs
+on the photo library's rail reach a full 48px; they were 47px.
+
 A new recovery key comes back on screen after unlocking when the app
 locked before "I have written it down" was tapped. Leaving the app to copy
 the key under the Immediately lock had lost it, and replacing a key had

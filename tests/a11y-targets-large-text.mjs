@@ -1,22 +1,41 @@
 /* Touch targets and whole navigation names (phase 15 after-release ticket
    18; accessibility audit A10, A11 and V13, and the 5 October audit's
-   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08).
+   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08; the 12 October UI audit's
+   U38 and U39, last-audit UI ticket 25).
 
    A target is measured the way a finger meets it, not by its box: from the
    control's centre, how far left, right, up and down `elementFromPoint`
    still lands on the control or something inside it. That counts a
    transparent `::after` extension the way a press does, and it counts
-   nothing a neighbour covers. It steps a quarter of a pixel at a time, so a
-   48px target with its centre between two pixels reads 48 rather than the
-   47 a whole-pixel walk gives it. Each extent is capped at 60px, so 120 is
-   "at least 48"; an extension reaching out on one side only (the photo
-   years') still counts whole.
+   nothing a neighbour covers. It steps a quarter of a pixel at a time.
+   Each extent is capped at 60px, so 120 is "at least 48"; an extension
+   reaching out on one side only (the photo years') still counts whole.
 
    Every listed control is checked at 320 and 390px wide with the page's
    text at 100% and 200% (the root font size, which every type token is a
    rem of). The bottom navigation is checked at 100%, 130% and 200%: every
    label shows its whole name, no word is broken across lines, and no tab
    is under 48px.
+
+   A scene marked `narrow` is also checked at 195px, the width a 390px
+   phone leaves at 200% zoom, with text at 100%: opened letters' rows and
+   the Words cloud, which the 12 October audit measured at 23px tall and
+   29 to 47px wide.
+
+   The walk alone cannot tell 47px from 48px. Chromium snaps a hit-test
+   point by up to a pixel, so a lone 47px button read 47.75 and a 48px
+   donut row with its neighbour flush below read 47.75 too; the old floor
+   of 48 less a quarter pixel passed both. So the size comes from layout,
+   which is exact: the control's box joined with any absolutely placed
+   `::before`/`::after` it draws inside itself (the .hit-floor extension).
+   The walk then only says what that misses: a side where it lands more
+   than a pixel short of the edge is covered by something and counts as
+   far as the walk got, and a side where it lands more than a pixel past
+   it has an extension layout did not find and counts as walked. Before
+   any scene the measure runs over two planted buttons, 47px and 48px
+   square, and the run stops unless it reads the first under the floor and
+   the second at it. A walk that cannot see a 47px control proves nothing
+   about the real ones.
 
    The calendar's date links are printed at 320 rather than failed: seven
    48px columns need 336px of row, which a 320px screen does not have
@@ -39,8 +58,6 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const FLOOR = 48;
-/** What a quarter-pixel walk can lose off a target's true extent. */
-const SLACK = 0.25;
 const out = flag('out', null);
 const only = flag('only', null)?.split(',');
 
@@ -51,7 +68,7 @@ const SCENES = [
   { key: 'tally', path: '/tally', targets: '.segment' },
   { key: 'wear', path: '/body/wear', targets: '.segment, .tag-chip' },
   { key: 'body-map', path: '/body-map', targets: '.tag-chip' },
-  { key: 'letters', path: '/transition/letters', targets: '.letter-act' },
+  { key: 'letters', path: '/transition/letters', targets: '.letter-act, [data-letter-open]', narrow: true },
   { key: 'eras', path: '/transition/milestones', targets: '[data-tl-era]' },
   {
     /* At rest the year rail takes no pointer at all (it wakes on a scroll,
@@ -82,6 +99,7 @@ const SCENES = [
     }
   },
   { key: 'stats', path: '/stats/days', targets: '.kit-donut-item-btn' },
+  { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
   {
     key: 'templates',
@@ -95,6 +113,7 @@ const SCENES = [
 ];
 
 const WIDTHS = [320, 390];
+const NARROW = 195;
 const TEXT = [100, 200];
 const NAV_TEXT = [100, 130, 200];
 
@@ -152,7 +171,27 @@ function measure(page, selector, sticky = false) {
       while (r < CAP && owns(cx + r + STEP, cy)) r += STEP;
       while (t < CAP && owns(cx, cy - t - STEP)) t += STEP;
       while (d < CAP && owns(cx, cy + d + STEP)) d += STEP;
-      rows.push({ name, box: `${Math.round(b.width)}x${Math.round(b.height)}`, w: l + r + STEP, h: t + d + STEP });
+      /* The box, joined with a pseudo-element extension placed against its
+         padding box (only a positioned control is that containing block). */
+      const own = getComputedStyle(e);
+      let { left, right, top, bottom } = b;
+      if (own.position !== 'static') {
+        for (const pseudo of ['::before', '::after']) {
+          const p = getComputedStyle(e, pseudo);
+          if (p.content === 'none' || p.display === 'none' || p.pointerEvents === 'none' || p.position !== 'absolute') continue;
+          const x = b.left + parseFloat(own.borderLeftWidth) + parseFloat(p.left);
+          const y = b.top + parseFloat(own.borderTopWidth) + parseFloat(p.top);
+          left = Math.min(left, x);
+          right = Math.max(right, x + parseFloat(p.width));
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y + parseFloat(p.height));
+        }
+      }
+      /* The layout edge, unless the walk is more than the snap away from it. */
+      const side = (walked, edge) => (Math.abs(walked - edge) > 1 ? walked : edge);
+      const w = side(l, cx - left) + side(r, right - cx);
+      const h = side(t, cy - top) + side(d, bottom - cy);
+      rows.push({ name, box: `${Math.round(b.width)}x${Math.round(b.height)}`, w, h });
     }
     return rows;
   }, [selector, sticky]);
@@ -203,11 +242,29 @@ try {
   if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('persona reset never reached Home');
   if (!(await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION))) throw new Error('fill every feature never reached /more');
 
-  for (const width of WIDTHS) {
+  /* The planted pair: the walk has to see the 1px between them. */
+  const bench = await context.newPage();
+  await bench.setContent(
+    '<body style="margin:0">' +
+      [47, 48].map((size, i) => `<button data-planted-target style="position:absolute;top:${100 + i * 100}px;left:100px;width:${size}px;height:${size}px;padding:0;border:0"></button>`).join('') +
+      '</body>'
+  );
+  const planted = await measure(bench, '[data-planted-target]', true);
+  await bench.close();
+  const [small, whole] = planted;
+  /* A layout unit (1/64px) of rounding is not a shortfall. */
+  const under = (row) => !row || row.covered || row.w < FLOOR - 1 / 64 || row.h < FLOOR - 1 / 64;
+  if (planted.length !== 2 || !under(small) || under(whole)) {
+    throw new Error(`the walk cannot tell a 47px control from a 48px one: ${JSON.stringify(planted)}`);
+  }
+  console.log(`planted controls: 47px reads ${small.w}x${small.h} (under), 48px reads ${whole.w}x${whole.h} (at the floor)`);
+
+  for (const width of [...WIDTHS, NARROW]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const text of TEXT) {
+    for (const text of width === NARROW ? [100] : TEXT) {
       for (const scene of SCENES) {
         if (only && !only.includes(scene.key)) continue;
+        if (width === NARROW && !scene.narrow) continue;
         await settlePage(page, base, scene.path, 'light');
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         if (scene.open) await scene.open(page);
@@ -217,13 +274,13 @@ try {
         if (!rows.length) failures.push(`${label}: no listed controls found`);
         for (const row of rows) {
           if (row.covered) failures.push(`${label}: "${row.name}" ${row.box}, centre covered by ${row.covered}`);
-          else if (row.w < FLOOR - SLACK || row.h < FLOOR - SLACK) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
+          else if (under(row)) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
         }
         results.scenes.push({ scene: scene.key, width, text, rows });
-        console.log(`${label}: ${rows.length} controls, ${rows.filter((r) => r.covered || r.w < FLOOR - SLACK || r.h < FLOOR - SLACK).length} under ${FLOOR}`);
+        console.log(`${label}: ${rows.length} controls, ${rows.filter(under).length} under ${FLOOR}`);
       }
     }
-    if (!only || only.includes('nav')) {
+    if (width !== NARROW && (!only || only.includes('nav'))) {
       for (const lang of ['en', 'pl']) for (const text of NAV_TEXT) {
         await setAppLanguage(page, lang);
         await settlePage(page, base, '/', 'light');

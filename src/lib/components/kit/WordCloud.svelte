@@ -114,7 +114,11 @@
   .kit-cloud button {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-height: var(--touch-target);
+    /* Wide as well as tall: "cut" at 15px drew a 29px button (last-audit
+       UI 25, audit U39). A short word sits in the middle of its target. */
+    min-width: var(--touch-target);
     padding: 0 var(--space-1);
     border: 0;
     border-radius: var(--r-block);
