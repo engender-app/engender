@@ -210,6 +210,10 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('[data-sheet-scrim]').waitFor({ state: 'detached' });
   ok(await page.evaluate(() => [...document.querySelectorAll('[data-toast]')].every((toast) => !toast.closest('[inert]'))), 'closing the sheet hands the toasts back');
+  ok(await page.evaluate(() => {
+    const toasts = [...document.querySelectorAll('[data-toast]')].map((toast) => toast.dataset.toastKind);
+    return toasts.join() === 'failed,failed,trashed';
+  }), 'the document reads the top failures before the bottom toast, as they are drawn');
   await clear();
   await clientRoute(page, '/');
 
@@ -234,7 +238,7 @@ try {
   ok(await page.locator('[data-toast]').count() === 0 && await page.locator('[data-toast-action]').count() === 0, 'a lock clears the whole stack');
 
   ok(errors.length === 0, `no uncaught page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
-  assert.equal(checks, 22, 'all toast stack checks ran');
+  assert.equal(checks, 23, 'all toast stack checks ran');
   console.log(`Toast stack passed: ${checks} checks`);
 } finally {
   await context.close();

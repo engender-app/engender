@@ -78,14 +78,15 @@
   </div>
 {/snippet}
 
-<div class="toast-stack" bind:this={lowStack}>
-  {#key toastLifetime.generation}
-    {#each lowered as t (t.id)}{@render item(t)}{/each}
-  {/key}
-</div>
+<!-- The top stack first, so the document reads top to bottom across both. -->
 <div class="toast-stack is-raised" bind:this={highStack}>
   {#key toastLifetime.generation}
     {#each raised as t (t.id)}{@render item(t)}{/each}
+  {/key}
+</div>
+<div class="toast-stack" bind:this={lowStack}>
+  {#key toastLifetime.generation}
+    {#each lowered as t (t.id)}{@render item(t)}{/each}
   {/key}
 </div>
 
