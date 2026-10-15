@@ -72,6 +72,12 @@ name mapping. Test-only ProGuard rules suppress the optional coroutine screensho
 adapter and compile-only types outside this tier. The app shrinker does not use
 those suppressions.
 
+The opt-in [`test:android:upgrade` stage](installed-upgrade.md) installs a
+candidate over a filled rc.1 synthetic package on a named emulator. It compares
+the journal, media, SQLite and alarms, rejects a row-deleting control, and checks
+failed-migration recovery. Its kit command rebuilds all four APKs and the old
+Archive fixture from source; historical APKs are not needed.
+
 ## Persistent automatic backups
 
 The standard runner also runs `NativeBackupSchedulingTest` in separate required

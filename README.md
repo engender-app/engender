@@ -325,6 +325,11 @@ on a machine that supports it.
 npm run test:android
 ```
 
+The opt-in [installed-upgrade stage](tests/android-tier/installed-upgrade.md)
+checks a candidate over a filled rc.1 synthetic package, including row loss and
+failed-migration recovery. Its documented kit and preparation commands rebuild
+the old APK, candidate controls and Archive fixture from source.
+
 ## Codebase
 
 SvelteKit, Svelte 5 runes and TypeScript provide the interface. The static

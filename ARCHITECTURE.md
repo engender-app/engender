@@ -1036,6 +1036,7 @@ flowchart TB
 | Built app | `npm run verify:build`, `verify:hosting` | Installed-PWA cold start, offline start, update and PIN; the nginx container's headers, cache rules and SPA routing. |
 | Benchmarks | `npm run benchmark:long-journal`, `test:return-floor` | A ten-year fixture against [tests/long-journal/budgets.json](tests/long-journal/budgets.json); the return-floor timing. |
 | Android | `npm run test:android` | Instrumentation tests on the `gd26` and `tracker35` emulators: native SQLite features, Keystore behaviour, the encryption claim test, the contract suite in a WebView. JVM unit tests run with `./gradlew :app:testDebugUnitTest`. |
+| Installed Android upgrade | `npm run test:android:upgrade -- <serial> <avd> <manifest>` | Opt-in update of a filled rc.1 synthetic package, journal/media/SQLite/alarm preservation, row-deleting control and failed-migration recovery. [Kit and fixture preparation](tests/android-tier/installed-upgrade.md) rebuild the APKs and Archive from source. |
 | Galleries | `npm run gallery:*`, `measure:*`, `sweep:*` | Renders and frame captures for review. Most of them gate nothing. |
 
 Screen contracts use [mount-screen.ts](tests/browser-tier/mount-screen.ts)
