@@ -332,6 +332,76 @@ async function rest(page, scene) {
   return room;
 }
 
+/** Observe the native transition without changing its timing or promises.
+    Mutation records catch a cleanup between frames; rAF covers the whole
+    second transition, including the interval after the first one finishes. */
+function watchTransitionOwnership() {
+  const root = document.documentElement;
+  const nativeStart = document.startViewTransition;
+  const transitions = [];
+  const pending = [];
+  const failures = [];
+  let current;
+  let frame;
+  const check = (at) => {
+    if (!current || current.finished) return;
+    current.checks++;
+    const pattern = root.dataset.nav;
+    const from = root.style.getPropertyValue('--blind-from');
+    const to = root.style.getPropertyValue('--blind-to');
+    if (pattern !== 'fade-through' || !from || !to) {
+      failures.push({ at, transition: transitions.length, pattern: pattern ?? null, from, to });
+    }
+  };
+  const observer = new MutationObserver(() => check('mutation'));
+  observer.observe(root, { attributes: true, attributeFilter: ['data-nav', 'style'] });
+  const tick = () => {
+    check('frame');
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+  document.startViewTransition = function (...args) {
+    const previous = current;
+    const record = { checks: 0, ready: false, finished: false, interrupted: !!previous && !previous.finished, supersededFinish: false };
+    const transition = nativeStart.apply(this, args);
+    transitions.push(record);
+    current = record;
+    check('start');
+    void transition.ready.then(() => {
+      record.ready = true;
+      check('ready');
+    }, () => {});
+    pending.push(transition.finished.catch(() => {}).then(() => {
+      record.finished = true;
+      if (current !== record && !current.finished) {
+        current.supersededFinish = true;
+        check('superseded finish');
+      }
+    }));
+    return transition;
+  };
+  window.__finishTransitionOwnership = async () => {
+    // The sun can outlast the pixel window. Observe until the native finish,
+    // while keeping that window and the application's animation timings intact.
+    let timeout;
+    await Promise.race([
+      Promise.all(pending),
+      new Promise((resolve) => {
+        timeout = setTimeout(() => {
+          failures.push({ at: 'timeout', reason: 'native transitions did not finish within 5 seconds after recording' });
+          resolve();
+        }, 5000);
+      })
+    ]);
+    clearTimeout(timeout);
+    observer.disconnect();
+    cancelAnimationFrame(frame);
+    document.startViewTransition = nativeStart;
+    delete window.__finishTransitionOwnership;
+    return { transitions, failures };
+  };
+}
+
 /** Records the page for the scene's length and reads both instruments. */
 async function measure(held, sceneIn) {
   let scene = sceneIn;
@@ -362,6 +432,8 @@ async function measure(held, sceneIn) {
         return field ? Math.round((field.getBoundingClientRect().top + (region?.scrollTop ?? 0)) * 10) / 10 : 0;
       })
     : 0;
+  const watchOwnership = !DEVICE && scene.name?.includes('interrupted at 140ms');
+  if (watchOwnership) await page.evaluate(watchTransitionOwnership);
   const sampled = page.evaluate(samplerExpression(scene.steps ?? [], scene.ms, edgeOffset));
   if (scene.resize) {
     await page.waitForTimeout(scene.resize.at);
@@ -371,10 +443,11 @@ async function measure(held, sceneIn) {
   if (RATE !== 1) await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
-  return { epoch, rows, cast };
+  const ownership = watchOwnership ? await page.evaluate(() => window.__finishTransitionOwnership()) : undefined;
+  return { epoch, rows, cast, ownership };
 }
 
-function analyse({ epoch, rows, cast }, { step = false, still = false, cuts = false } = {}) {
+function analyse({ epoch, rows, cast, ownership }, { step = false, still = false, cuts = false } = {}) {
   const series = step
     ? rows.filter((r) => r.step).map((r) => ({ t: r.t, edge: r.step.edge, parts: r.step.parts }))
     : rows.filter((r) => r.edge !== undefined).map((r) => ({ ...r }));
@@ -402,10 +475,20 @@ function analyse({ epoch, rows, cast }, { step = false, still = false, cuts = fa
   /* A navigation swaps the screen under the transition, so the real field's
      height changes when the outgoing one is removed: only a scene with no
      navigation in it reads the field's own height. */
-  return { geometry, ink, jumps: still ? jumps : [], series: series.length };
+  if (ownership) {
+    const second = ownership.transitions[1];
+    if (ownership.transitions.length !== 2 || !second?.ready || !second.finished || second.checks < 2) {
+      ownership.failures.push({ at: 'coverage', reason: 'both native transitions must run and the second must be sampled until it finishes' });
+    }
+    if (!cuts && (!second?.interrupted || !second.supersededFinish)) {
+      ownership.failures.push({ at: 'coverage', reason: 'the first transition must finish while the second owns the pattern and blind' });
+    }
+  }
+  return { geometry, ink, jumps: still ? jumps : [], series: series.length, ownership };
 }
 
 const failed = (r) =>
+  (r.ownership?.failures.length ?? 0) > 0 ||
   r.geometry.overspill.length > 0 ||
   r.geometry.teleports.length > 0 ||
   r.geometry.pops.length > 0 ||
@@ -427,6 +510,7 @@ async function keep(name, width, run, m) {
 
 function log(width, name, run, r, extra = '') {
   const bits = summarise(r);
+  if (r.ownership?.failures.length) bits.push(`transition ownership: ${JSON.stringify(r.ownership.failures[0])}`);
   const verdict = failed(r) || r.jumps.length ? 'FAIL' : 'ok  ';
   console.log(`${verdict} ${width} ${name}${RUNS > 1 ? ` #${run + 1}` : ''}${extra} ${bits.length ? '- ' + bits.join('; ') : ''}`);
 }
