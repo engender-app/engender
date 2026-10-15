@@ -214,7 +214,7 @@ count and restores unrelated missing entries. An existing stock uuid or trimmed,
 case-insensitive drug key keeps the destination's choice. Replace still restores the Archive's
 counts.
 
-- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Released schema 88 journals upgrade through schema 89, 90 and 91 without rewriting old dose rows.
+- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Schema 92 limits the trash index to trashed entries so live date-range reads use the day index. Released schema 88 journals upgrade through schema 89, 90, 91 and 92 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.
 - Minimum supported version: 1.0.0-rc.1.
