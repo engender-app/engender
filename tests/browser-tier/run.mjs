@@ -96,6 +96,11 @@ await block('cold unlock focuses the arrived screen', 1, async () => {
   for (const result of await focusArrival(browser)) ok(result);
 });
 
+await block('layout managers follow navigation and gates', 1, async () => {
+  await import('../manager-lifecycle-check.mjs');
+  ok('navigation, Back, legacy links, focus, chooser cleanup and lock/unlock');
+});
+
 await block('first-run credentials survive stale and simultaneous tabs', 8, async () => {
   for (const result of await firstRunSetup(browser, `http://localhost:${port}`)) {
     ok(`first-run ownership: ${JSON.stringify(result)}`);

@@ -1,5 +1,13 @@
 # Verification probes and focused regressions
 
+`npm run build && node tests/manager-lifecycle-check.mjs` opens both entry
+managers, leaves through navigation and browser Back, and checks they stay
+closed. It also covers legacy manager links, ordinary focus return, Quick add
+cleanup and web lock/unlock. Pass an emulator serial and an isolated
+`dev.engender.app.test.<suffix>` package to repeat the check in its production
+APK, including Android Home/resume and hidden retained doors. The web check
+also runs in the browser tier.
+
 `node tests/language-confirm-check.mjs` opens the real Settings Language sheet.
 Two Right presses must leave System selected and the English locale loaded,
 without reloading. Enter then applies Polish; Space applies English and a
