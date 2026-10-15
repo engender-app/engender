@@ -28,6 +28,7 @@
     recoveryKeyHeld
   } from '$lib/data/recovery-key-held';
   import { onDestroy } from 'svelte';
+  import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { copyRecoveryKey } from '$lib/data/recovery-key-clipboard';
   import { isAndroid } from '$lib/platform';
   import { printCurrentPage } from '$lib/print/print';
@@ -123,12 +124,17 @@
      before Done is shown again once the journal is open, and the screen
      waits for that answer before it draws anything, so it never says "a key
      is active" first and then swaps. Any other way off the screen has been
-     through the guard above, and forgets it. */
+     through the guard above, and forgets it. Unlocking is not a navigation,
+     so nothing else moves focus off the body; the returned key takes the
+     arrival focus a navigation would have given the screen. */
   let heldRead = $state(!recoveryKeyHeld());
   if (recoveryKeyHeld()) {
     journalDataKey()
       .then(openHeldRecoveryKey)
-      .then((held) => { shown = held; })
+      .then((held) => {
+        shown = held;
+        if (held !== null) focusArrivedScreen(document.getElementById('app-main'));
+      })
       .catch((error) => {
         console.error('could not open the recovery key held across the lock', error);
         forgetHeldRecoveryKey();

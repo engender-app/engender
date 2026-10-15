@@ -111,7 +111,20 @@ try {
   assert.equal((await page.locator('[data-recovery-key]').innerText()).trim(), shown, 'the same key comes back after unlocking');
   assert.equal(new URL(page.url()).pathname, '/settings/recovery-key');
   assert.deepEqual(await page.evaluate(() => window.rkPaintedBeforeKey), [], 'no frame drew the active-key state first');
-  console.log(`PASS unlocking returns the same unacknowledged key (focus on ${await page.evaluate(() => document.activeElement?.tagName)})`);
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.matches('#app-main h1') ?? false),
+    true,
+    'the returned key takes the screen heading as arrival focus'
+  );
+  console.log('PASS unlocking returns the same unacknowledged key, focus on the screen heading');
+
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = async (text) => { window.rkCopied = text; };
+  });
+  await page.locator('[data-copy-recovery-key]').click();
+  await page.waitForFunction(() => window.rkCopied !== undefined);
+  assert.equal(await page.evaluate(() => window.rkCopied), shown, 'Copy copies the returned key');
+  console.log('PASS Copy on the returned key copies the same characters');
 
   await page.locator('[data-screen-back]').click();
   await keepWriting(shown);
