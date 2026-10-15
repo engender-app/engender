@@ -543,6 +543,7 @@ To run one on its own, use
 | `leave-lock-check` | leaving locks and unmounts the journal under Immediately; two-finger swipes do not lock under any timing; Restart keeps the running journal open |
 | `milestone-era-handoff-check` | Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return |
 | `milestone-era-label-clear` | an era's name on the milestone rail is drawn whole and clear of every dot's ring, today's included, at 390px, 195px and 1280px, light and dark, English and Polish, text at 100% and 200%, and still opens its era |
+| `plane-date-labels-clear` | Two scales at once writes each date clear of every dot, the head's ring, the trail's joins, the readout and the other dates, inside the plot and at 4.5:1 on the card, with the head at the end and scrubbed back, at 390px and 1280px, light and dark, English and Polish, text at 100% and 200%; with motion on, no date arrives or leaves at full opacity in one frame across a play sweep and a keyboard scrub |
 
 ### `npm run test:guards:built` (demo build, then a production build)
 
