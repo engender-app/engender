@@ -6,17 +6,22 @@
    (components.css, .segmented-hint). Opening Last year at 390px used to
    scroll the track only until the segment's edge met the track's edge, so
    the end chevron's ground sat over its last letter: "Last yea". The same
-   in Polish and at the 200%-zoom width.
+   in Polish and at the 200%-zoom width. At that width "Miniony tydzień"
+   and "Miniony miesiąc" were 143px and 144px in a 145px track, wider than
+   the track less even one chevron, so the labels became one word each
+   (Week, Month, Year, Range; Alicja, 2026-10-15).
 
    What is held here, per language and width, for every cadence opened
    cold:
-   - the chosen segment's box is inside the track and outside both hints;
+   - the chosen segment's whole box is inside the track and outside both
+     hints, with no exceptions;
    - each hint is drawn exactly while there is a segment past its edge, at
      rest, at the far end of the scroll and back at its start.
-   Then, at 390px, the three ways of changing the track: a mouse click on a
-   tab, Enter on a focused tab, and a mouse drag across the track. A choice
-   that has to scroll the track eases there rather than jumping, sampled
-   per frame, and under reduced motion it lands in place instead.
+   Then, at the 200%-zoom width, where the track still scrolls, the three
+   ways of changing the track: a mouse click on a tab, Enter on a focused
+   tab, and a mouse drag across the track. A choice that has to scroll the
+   track eases there rather than jumping, sampled per frame, and under
+   reduced motion it lands in place instead.
 
    Run: node tests/segmented-chosen-clear.mjs   (dev server, no build needed) */
 import assert from 'node:assert/strict';
@@ -27,6 +32,9 @@ import { launchChromium, settlePage, setAppLanguage } from './browser-harness.mj
 const TRACK = '[data-segmented="wrapped-cadences"]';
 const CADENCES = ['week', 'month', 'year', 'range'];
 const WIDTHS = [390, 195];
+/* The 200%-zoom width: the one where the track is narrower than its four
+   segments, so choosing one can move it. */
+const NARROW = 195;
 
 const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
 await server.listen();
@@ -60,15 +68,7 @@ const readTrack = (page) =>
       return { left: r.left, right: r.right };
     };
     const segments = [...track.querySelectorAll('[data-segment]')];
-    const current = track.querySelector('[aria-current="page"]');
-    let label = null;
-    if (current) {
-      const range = document.createRange();
-      range.selectNodeContents(current);
-      label = box(range);
-    }
     return {
-      label,
       scrollLeft: track.scrollLeft,
       track: box(track),
       active: box(track.querySelector('[aria-current="page"]')),
@@ -80,40 +80,20 @@ const readTrack = (page) =>
     };
   }, TRACK);
 
-/* What has to stay clear of the chevrons, per case. The whole pill
-   wherever it fits between them. At the 200%-zoom width the track is 145px
-   and a middle segment has 93px between two 26px hints, so "Last month"
-   (113px), "Last year" (98px) and "Miniony rok" (115px) are centred and
-   only their words are held clear: the hints may cover pill padding. Two
-   Polish labels cannot be shown whole at that width at all, being 143px
-   and 144px wide - wider than the track less even one hint - so only the
-   chevron claims hold for them. The table is a floor: a case that does
-   better passes. */
-const FLOOR = {
-  'en 195px /wrapped/month': 'label',
-  'en 195px /wrapped/year': 'label',
-  'pl 195px /wrapped/year': 'label',
-  'pl 195px /wrapped/week': 'none',
-  'pl 195px /wrapped/month': 'none'
-};
-
 /** The claims about a track at rest, as failure messages. */
-function problems(state, where, floor = 'pill') {
+function problems(state, where) {
   const out = [];
-  const { track, startHint, endHint, first, last } = state;
-  if (!state.active) return [`${where}: no segment is marked current`];
-  const held = floor === 'label' ? state.label : state.active;
-  const what = floor === 'label' ? `the words "${state.activeLabel}"` : `"${state.activeLabel}"`;
-  if (floor !== 'none') {
-    if (held.left < track.left - 0.5 || held.right > track.right + 0.5) {
-      out.push(`${where}: ${what} (${held.left.toFixed(1)}-${held.right.toFixed(1)}) runs past the track (${track.left.toFixed(1)}-${track.right.toFixed(1)})`);
-    }
-    if (endHint && held.right > endHint.left + 0.5) {
-      out.push(`${where}: the end chevron covers ${(held.right - endHint.left).toFixed(1)}px of ${what}`);
-    }
-    if (startHint && held.left < startHint.right - 0.5) {
-      out.push(`${where}: the start chevron covers ${(startHint.right - held.left).toFixed(1)}px of ${what}`);
-    }
+  const { track, startHint, endHint, first, last, active } = state;
+  if (!active) return [`${where}: no segment is marked current`];
+  const what = `"${state.activeLabel}"`;
+  if (active.left < track.left - 0.5 || active.right > track.right + 0.5) {
+    out.push(`${where}: ${what} (${active.left.toFixed(1)}-${active.right.toFixed(1)}) runs past the track (${track.left.toFixed(1)}-${track.right.toFixed(1)})`);
+  }
+  if (endHint && active.right > endHint.left + 0.5) {
+    out.push(`${where}: the end chevron covers ${(active.right - endHint.left).toFixed(1)}px of ${what}`);
+  }
+  if (startHint && active.left < startHint.right - 0.5) {
+    out.push(`${where}: the start chevron covers ${(startHint.right - active.left).toFixed(1)}px of ${what}`);
   }
   const moreAfter = last.right > track.right + 1;
   const moreBefore = first.left < track.left - 1;
@@ -155,6 +135,19 @@ async function sampleScroll(page, act) {
   return { left: steps(0), start: steps(1), end: steps(2), rows };
 }
 
+/** A mouse click on the part of a segment a person can see and reach:
+    inside the track and off both chevrons. Not the locator's own click,
+    which scrolls the segment into view first, instantly, and so would
+    sample Playwright's scroll as the app's. */
+async function tapVisible(page, value) {
+  const state = await readTrack(page);
+  const segment = await page.locator(`${TRACK} [data-segment="${value}"]`).boundingBox();
+  const left = Math.max(segment.x, state.startHint ? state.startHint.right : state.track.left);
+  const right = Math.min(segment.x + segment.width, state.endHint ? state.endHint.left : state.track.right);
+  if (right - left < 8) throw new Error(`only ${(right - left).toFixed(1)}px of ${value} is reachable to tap`);
+  await page.mouse.click((left + right) / 2, segment.y + segment.height / 2);
+}
+
 const failures = [];
 let checked = 0;
 try {
@@ -172,8 +165,8 @@ try {
         await page.waitForSelector(`${TRACK} .segment-pill.is-shown`);
         const where = `${language} ${width}px /wrapped/${cadence}`;
         const rest = await readTrack(page);
-        failures.push(...problems(rest, where, FLOOR[where]));
-        console.log(`${where} [${FLOOR[where] ?? 'pill'}]: "${rest.activeLabel}" ${rest.active.left.toFixed(1)}-${rest.active.right.toFixed(1)} (words ${rest.label.left.toFixed(1)}-${rest.label.right.toFixed(1)}), track ${rest.track.left.toFixed(1)}-${rest.track.right.toFixed(1)}, start hint ${rest.startHint ? rest.startHint.right.toFixed(1) : '-'}, end hint ${rest.endHint ? rest.endHint.left.toFixed(1) : '-'}, scrollLeft ${rest.scrollLeft}`);
+        failures.push(...problems(rest, where));
+        console.log(`${where}: "${rest.activeLabel}" ${rest.active ? `${rest.active.left.toFixed(1)}-${rest.active.right.toFixed(1)}` : '-'}, track ${rest.track.left.toFixed(1)}-${rest.track.right.toFixed(1)}, start hint ${rest.startHint ? rest.startHint.right.toFixed(1) : '-'}, end hint ${rest.endHint ? rest.endHint.left.toFixed(1) : '-'}, scrollLeft ${rest.scrollLeft}`);
         checked += 1;
 
         await page.evaluate((selector) => document.querySelector(selector).scrollTo({ left: 1e6, behavior: 'instant' }), TRACK);
@@ -189,30 +182,29 @@ try {
   }
   assert.equal(checked, 16, 'every cadence in both languages at both widths');
 
-  /* Pointer and keyboard, English at 390px. Month opens with the track at
-     its start; Last year sits under the end chevron there, so choosing it
-     has to move the track. */
+  /* Pointer and keyboard, English at the narrow width. Week opens with the
+     track at its start and Month running under the end chevron, so tapping
+     the part of Month that shows has to move the track. */
   await setAppLanguage(page, 'en');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await settlePage(page, base, '/wrapped/month', 'light');
+  await page.setViewportSize({ width: NARROW, height: 844 });
+  await settlePage(page, base, '/wrapped/week', 'light');
   await page.waitForSelector(`${TRACK} .segment-pill.is-shown`);
   const before = await readTrack(page);
-  const yearTab = page.locator(`${TRACK} [data-segment="year"]`);
   const clicked = await sampleScroll(page, async () => {
-    await yearTab.click();
-    await page.waitForURL('**/wrapped/year');
+    await tapVisible(page, 'month');
+    await page.waitForURL('**/wrapped/month');
   });
   const afterClick = await readTrack(page);
-  failures.push(...problems(afterClick, 'en 390px, clicked Last year from month'));
+  failures.push(...problems(afterClick, `en ${NARROW}px, tapped Month from week`));
   const moved = Math.abs(afterClick.scrollLeft - before.scrollLeft);
   const biggest = Math.max(...clicked.left);
   const moving = clicked.left.filter((d) => d > 0).length;
   const hintJump = Math.max(...clicked.start, ...clicked.end);
   console.log(`click: track moved ${moved}px over ${moving} frames, largest single frame ${biggest}px; largest one-frame chevron opacity change ${hintJump.toFixed(2)}`);
   console.log(`click frames (scrollLeft startOpacity endOpacity): ${clicked.rows.filter((row, i, all) => i === 0 || row !== all[i - 1]).join(' | ')}`);
-  if (moved < 8) failures.push(`clicking Last year from month moved the track only ${moved}px; the case this samples no longer scrolls`);
-  if (moving < 3) failures.push(`clicking Last year moved the track ${moved}px in ${moving} frame(s): a jump, not a scroll`);
-  if (biggest > moved * 0.6) failures.push(`clicking Last year moved ${biggest}px of ${moved}px in one frame`);
+  if (moved < 8) failures.push(`tapping Month from week moved the track only ${moved}px; the case this samples no longer scrolls`);
+  if (moving < 3) failures.push(`tapping Month moved the track ${moved}px in ${moving} frame(s): a jump, not a scroll`);
+  if (biggest > moved * 0.6) failures.push(`tapping Month moved ${biggest}px of ${moved}px in one frame`);
   /* A chevron that a scroll brings in or takes away fades rather than
      appearing or vanishing in one frame. */
   if (hintJump > 0.5) failures.push(`a chevron changed opacity by ${hintJump.toFixed(2)} in one frame while the track scrolled`);
@@ -221,11 +213,11 @@ try {
   await page.locator(`${TRACK} [data-segment="range"]`).focus();
   await page.keyboard.press('Enter');
   await page.waitForURL('**/wrapped/range');
-  failures.push(...problems(await readTrack(page), 'en 390px, Enter on Range'));
+  failures.push(...problems(await readTrack(page), `en ${NARROW}px, Enter on Range`));
   await page.locator(`${TRACK} [data-segment="week"]`).focus();
   await page.keyboard.press('Enter');
   await page.waitForURL('**/wrapped/week');
-  failures.push(...problems(await readTrack(page), 'en 390px, Enter on Last week'));
+  failures.push(...problems(await readTrack(page), `en ${NARROW}px, Enter on Week`));
 
   // A mouse drag still scrolls the track and still chooses nothing.
   const box = await page.locator(TRACK).boundingBox();
@@ -241,21 +233,24 @@ try {
   await context.close();
 
   // Reduced motion: the same choice lands clear, in place rather than eased.
-  const reduced = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  const reduced = await browser.newContext({ viewport: { width: NARROW, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
   const still = await reduced.newPage();
   still.setDefaultTimeout(20000);
-  await settlePage(still, base, '/wrapped/month', 'light');
+  await settlePage(still, base, '/wrapped/week', 'light');
   assert.equal(await still.evaluate(() => document.documentElement.dataset.a11yMotion), 'reduce', 'the reduced-motion path is not active');
   await still.waitForSelector(`${TRACK} .segment-pill.is-shown`);
   const quiet = await sampleScroll(still, async () => {
-    await still.locator(`${TRACK} [data-segment="year"]`).click();
-    await still.waitForURL('**/wrapped/year');
+    await tapVisible(still, 'month');
+    await still.waitForURL('**/wrapped/month');
   });
   const quietSteps = quiet.left.filter((d) => d > 0).length;
-  failures.push(...problems(await readTrack(still), 'en 390px reduced motion, clicked Last year'));
-  console.log(`reduced motion: track moved in ${quietSteps} frame(s)`);
+  failures.push(...problems(await readTrack(still), `en ${NARROW}px reduced motion, tapped Month`));
+  console.log(`reduced motion: track moved in ${quietSteps} frame(s): ${quiet.rows.filter((row, i, all) => i === 0 || row !== all[i - 1]).join(' | ')}`);
   if (quietSteps > 1) failures.push(`reduced motion eased the track over ${quietSteps} frames`);
   await reduced.close();
+} catch (error) {
+  // A step that cannot run still reports what the steps before it found.
+  failures.push(`stopped early: ${error.message}`);
 } finally {
   await browser.close();
   await server.close();
@@ -263,5 +258,5 @@ try {
 
 for (const failure of failures) console.error('FAIL: ' + failure);
 if (failures.length) process.exit(1);
-console.log(`PASS: the chosen cadence is clear of both chevrons in ${checked} cold opens (EN/PL, 390 and 195px, floors as tabled), the chevrons match the scroll at rest and at both ends`);
-console.log('PASS: a click eases the track, Enter lands clear, a drag scrolls without choosing, reduced motion lands in place');
+console.log(`PASS: the whole chosen cadence is clear of both chevrons in ${checked} cold opens (EN/PL, 390 and 195px), the chevrons match the scroll at rest and at both ends`);
+console.log('PASS: a tap eases the track, Enter lands clear, a drag scrolls without choosing, reduced motion lands in place');

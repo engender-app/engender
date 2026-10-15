@@ -56,8 +56,9 @@ export function nearestScrollLeft(
 
   /* Whether that cleared it, with a hint assumed on every edge that is not
      an end of the range. A segment wider than the window less two hints
-     cannot clear both: Wrapped's "Miniony miesiąc" is 144px in a 145px
-     track at the 200%-zoom width. Centred, the two hints cover it evenly,
+     cannot clear both, as Wrapped's "Miniony miesiąc" could not at 144px
+     in a 145px track at the 200%-zoom width before its labels became one
+     word each. Centred, the two hints cover it evenly,
      which keeps its label whole wherever its own 18px of padding can
      absorb the overlap; pinned to one side, the other hint took all of it. */
   const startRoom = left > 0 ? SCROLL_HINT_WIDTH : 0;
