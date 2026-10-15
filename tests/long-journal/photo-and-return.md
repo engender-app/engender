@@ -142,6 +142,8 @@ The full desktop benchmark found an additional Care byte breach: 38,855 against
 bytes against 181,295, plus the same Care breach. Both occur before this repair
 on the source baseline. These are separate follow-up work; their budgets were
 not changed here. No complete native or desktop benchmark pass is claimed.
+The [Care and Look back follow-up](care-and-look-back.md) records their later
+investigation and corrected count budgets.
 
 The shared phone was released after removing both isolated packages, their
 fixtures and forward 9382. Screen timeout was restored to 120,000 ms; stay-on

@@ -1058,6 +1058,11 @@ checks both fixture sizes against native crossing budgets and catches repeated
 schedule reads. Timings and the count-baseline change are recorded in
 [`long-journal/photo-and-return.md`](long-journal/photo-and-return.md).
 
+`tests/long-journal/care-budget.test.ts` checks Care at both fixture sizes,
+including parity with exposure totals. The native `BudgetBreachesTest` keeps
+one-year, decade and scaling failures in the same report. Their count evidence
+is in [`long-journal/care-and-look-back.md`](long-journal/care-and-look-back.md).
+
 `src/lib/data/sqlite/trash-index.test.ts` migrates 3,653 days from released
 schema 88 through schema 92. It compares journal results before and after
 the index migration, checks that entries and unrelated saved rows survive,
