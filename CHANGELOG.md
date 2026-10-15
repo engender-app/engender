@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+An address the app does not know now opens a screen of its own. A stale
+bookmark used to land on a bare "404 Not Found" in English with nothing to
+press. It now has a header, one sentence in your language and a button to
+Today, and it never shows the address that failed.
+
 Running out of storage space now says so. Saving an entry or a photo,
 opening a journal whose update needs room, and exporting each tell you to
 free up some space and try again, where they used to show a general error.

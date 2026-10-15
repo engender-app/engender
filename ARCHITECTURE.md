@@ -138,7 +138,7 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](scripts/check-l
 ```text
 .
 ├── src/                 the app (SvelteKit)
-│   ├── routes/          69 screens (+page.svelte), root +layout.svelte
+│   ├── routes/          69 screens (+page.svelte), root +layout.svelte, root +error.svelte (unknown addresses)
 │   ├── lib/             everything else, see section 4
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
