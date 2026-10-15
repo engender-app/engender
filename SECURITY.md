@@ -11,7 +11,11 @@ device's biometric unlock closes its database, stops the worker that held
 the database key, and drops the app's references to that key. Unlocking
 derives the key again from your secret. While locked, the page keeps your
 settings, which the lock screen needs for its theme, language and timing,
-and an encrypted copy of an unsaved entry draft.
+an encrypted copy of an unsaved entry draft, and an encrypted copy of a new
+recovery key that was still on screen when the app locked. That copy lives
+in memory only, encrypted under the journal key, so it opens only when the
+journal does. After unlocking, the app shows the key again until you tap
+"I have written it down" or leave the screen. Closing the app loses it.
 
 Before a reopened web connection becomes available, the existing migration
 rules refuse a journal newer than the running build. Unlock and retained

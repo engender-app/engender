@@ -8,10 +8,12 @@
      leaving it is irreversible - so it gets its own branch rather than a
      flag on the second.
 
-     Nothing here can show a key again, and that is a property of the design
-     rather than a decision this screen makes: only the wrap is stored
-     (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
-     sure I still have it". */
+     Nothing here can show a key again once it is acknowledged or left, and
+     that is a property of the design rather than a decision this screen
+     makes: only the wrap is stored (crypto/recoveryWrap.ts), so replace is
+     the only answer to "I am not sure I still have it". The one exception
+     is a lock, which takes the screen without asking; the key it took comes
+     back sealed from memory after unlocking (data/recovery-key-held.ts). */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';

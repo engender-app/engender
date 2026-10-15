@@ -96,7 +96,10 @@ Możesz też utworzyć opcjonalny, 25-znakowy klucz odzyskiwania. Otwiera
 dziennik na tym samym urządzeniu i w tym samym profilu przeglądarki, gdy
 hasło, PIN albo biometria przestaną działać. Nie przeniesie danych na nowe
 urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz i przechowuje
-tylko zaszyfrowaną kopię klucza dziennika. Trzymaj klucz odzyskiwania na
+tylko zaszyfrowaną kopię klucza dziennika. Jeśli aplikacja zablokuje się,
+gdy nowy klucz jest na ekranie, po odblokowaniu pokaże ten sam klucz jeszcze
+raz. Do tego czasu klucz jest zaszyfrowany w pamięci i nigdzie się nie
+zapisuje. Trzymaj klucz odzyskiwania na
 papierze albo w menedżerze haseł na innym urządzeniu: każdy, kto ma ten klucz
 i dane dziennika, może odczytać dziennik. Klucz nie przywróci usuniętych
 danych.

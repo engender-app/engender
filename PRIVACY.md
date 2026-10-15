@@ -89,7 +89,9 @@ You can also make an optional 25-character recovery key. It opens the
 journal on the same device and browser profile if your passphrase, PIN or
 biometric authenticator stops working. It cannot move data to a new device
 or open an export. The app shows the key once and keeps only a sealed copy
-of the journal key. Keep the recovery key on paper or in a password manager
+of the journal key. If the app locks while a new key is on screen, it shows
+the same key again after you unlock. Until then the key is held encrypted
+in memory and is never saved. Keep the recovery key on paper or in a password manager
 on another device: anyone with it and the journal data can read the journal.
 It cannot bring back deleted data.
 
