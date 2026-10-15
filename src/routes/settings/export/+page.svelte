@@ -7,7 +7,7 @@
   import { backupAgeDays, backupStanding } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
   import { resize } from '$lib/motion/reveal';
-  import { scrollBehavior } from '$lib/motion/tokens';
+  import { crossfadeDuration, fadeOnly, scrollBehavior } from '$lib/motion/tokens';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
@@ -49,6 +49,10 @@
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
   let standing = $derived(backupStanding(prefs.lastBackupAt));
+  /* The last-backup mark comes and goes on this screen: a first export puts
+     a tick where there was none, a fresh one replaces the stale mark. Both
+     fade in place rather than cut in one frame. */
+  const markFade = (_node: Element) => fadeOnly(crossfadeDuration());
   let verifiedAge = $derived(backupAgeDays(prefs.lastVerifiedAt));
 
   let expPass = $state('');
@@ -792,20 +796,24 @@
           {/if}
         </span>
       </span>
-      {#if !preferencesAttached()}
-        <!-- Neither mark until the age is known: the tick was the half of the
-             wrong answer that looked most sure of itself. -->
-      {:else if standing === 'stale'}
-        <!-- The age beside it already says how long ago; the mark only says
-             that it is long enough to act on. It used to be a badge reading
-             "Over 30 days ago" under "34 days ago" (audit UX-11). -->
-        <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()}><Icon name="alert" size={18} /></span>
-      {:else if standing === 'recent'}
-        <Icon name="check" size={20} />
-      {/if}
-      <!-- Never exported draws no mark: the tick stood beside "No export
-           recorded on this device" because that journal is not stale either
-           (last-audit UI 54). -->
+      <!-- One slot that is always there, so a mark arriving or leaving never
+           moves the row; the two marks share its cell while they cross. -->
+      <span class="backup-mark-slot">
+        {#if !preferencesAttached()}
+          <!-- Neither mark until the age is known: the tick was the half of the
+               wrong answer that looked most sure of itself. -->
+        {:else if standing === 'stale'}
+          <!-- The age beside it already says how long ago; the mark only says
+               that it is long enough to act on. It used to be a badge reading
+               "Over 30 days ago" under "34 days ago" (audit UX-11). -->
+          <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()} transition:markFade><Icon name="alert" size={18} /></span>
+        {:else if standing === 'recent'}
+          <span class="backup-tick" data-backup-tick transition:markFade><Icon name="check" size={20} /></span>
+        {/if}
+        <!-- Never exported draws no mark: the tick stood beside "No export
+             recorded on this device" because that journal is not stale either
+             (last-audit UI 54). -->
+      </span>
     </div>
     <div class="hr" style="margin:var(--space-3) 0"></div>
     <div class="spread">
@@ -1261,6 +1269,22 @@
 </div>
 
 <style>
+  /* The stale mark's footprint, held whether a mark is in it or not. The
+     tick sits at the slot's end edge, where it sat before the slot. */
+  .backup-mark-slot {
+    display: grid;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-items: end;
+  }
+  .backup-mark-slot > * {
+    grid-area: 1 / 1;
+  }
+  .backup-tick {
+    display: flex;
+  }
   /* The same footprint as the tick it stands in for, on the warning ground. */
   .backup-stale-mark {
     display: grid;
