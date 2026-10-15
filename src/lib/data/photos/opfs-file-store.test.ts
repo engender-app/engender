@@ -79,3 +79,34 @@ test('a write the browser refuses leaves no empty file and keeps the refusal', a
   expect(abort).toHaveBeenCalledOnce();
   expect(close).not.toHaveBeenCalled();
 });
+
+test('a refusal to open the writable or to commit it also leaves no file', async () => {
+  const quota = new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+  for (const refuse of ['open', 'commit'] as const) {
+    const names = new Set<string>();
+    const directory = {
+      async getFileHandle(name: string, options?: { create?: boolean }) {
+        if (options?.create) names.add(name);
+        return {
+          createWritable: async () => {
+            if (refuse === 'open') throw quota;
+            return {
+              write: async () => {},
+              close: async () => {
+                throw quota;
+              },
+              abort: async () => {}
+            };
+          }
+        };
+      },
+      async removeEntry(name: string) {
+        names.delete(name);
+      }
+    };
+    vi.stubGlobal('navigator', { storage: { getDirectory: async () => ({ getDirectoryHandle: async () => directory }) } });
+
+    await expect(opfsPhotoFiles().write('a.jpg', new Uint8Array([1])), refuse).rejects.toBe(quota);
+    expect(names.has('a.jpg'), refuse).toBe(false);
+  }
+});
