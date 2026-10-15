@@ -516,7 +516,12 @@ test.for([
   ['2028-01-29', '2028-03-01', { years: 0, months: 1, days: 1 }],
   ['2028-01-30', '2028-03-01', { years: 0, months: 1, days: 1 }],
   ['2028-01-31', '2028-03-01', { years: 0, months: 1, days: 1 }],
-  // The 31st into a 30-day month.
+  // The 29th, 30th and 31st into a 30-day month. Only the 31st is missing
+  // from April, so the 29th and 30th are controls the old code also got right.
+  ['2026-03-29', '2026-04-30', { years: 0, months: 1, days: 1 }],
+  ['2026-03-30', '2026-04-30', { years: 0, months: 1, days: 0 }],
+  ['2026-03-30', '2026-05-01', { years: 0, months: 1, days: 1 }],
+  ['2026-03-29', '2026-04-28', { years: 0, months: 0, days: 30 }],
   ['2026-03-31', '2026-04-30', { years: 0, months: 1, days: 0 }],
   ['2026-03-31', '2026-05-01', { years: 0, months: 1, days: 1 }],
   ['2026-05-31', '2026-06-30', { years: 0, months: 1, days: 0 }],
