@@ -112,12 +112,15 @@ function largestGap(top: number, bottom: number, rings: readonly (readonly [numb
     lengthened again at whichever end already has the more room, by exactly
     the shortfall: a name between two dots cannot be helped by moving the
     band's ends, and a stretch that already holds most of the name only
-    needs the rest. */
+    needs the rest. A band whose last row is today (`endsToday`) only ever
+    grows upwards here: below today is the future, and an era drawn into
+    the milestones still ahead would say it runs on into them. */
 export function placeEraLabel(
   band: { top: number; height: number },
   rings: readonly (readonly [number, number])[],
   nameLength: number,
-  minHeight: number
+  minHeight: number,
+  { endsToday = false }: { endsToday?: boolean } = {}
 ): EraLabelPlacement {
   let { top, height } = band;
   const grow = (by: number, above: number) => {
@@ -134,7 +137,7 @@ export function placeEraLabel(
     } else {
       const roomAbove = Math.min(...rings.map(([start]) => start)) - top;
       const roomBelow = top + height - Math.max(...rings.map(([, end]) => end));
-      if (roomAbove >= roomBelow) grow(needed - roomAbove, needed - roomAbove);
+      if (endsToday || roomAbove >= roomBelow) grow(needed - roomAbove, needed - roomAbove);
       else grow(needed - roomBelow, 0);
     }
     gap = largestGap(top, top + height, rings);

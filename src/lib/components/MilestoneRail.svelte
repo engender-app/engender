@@ -187,7 +187,8 @@
         { top: a.top - railTop, height: b.bottom - a.top },
         rings,
         nameLength,
-        minLabelHeight(band.name, floor)
+        minLabelHeight(band.name, floor),
+        { endsToday: items[band.endIndex]?.kind === 'today' }
       );
 
       next.push({ id: band.id, name: band.name, role: roleAt(bandRoles, index), ...placed });

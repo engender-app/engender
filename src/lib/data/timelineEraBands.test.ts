@@ -130,4 +130,17 @@ describe("the milestone rail keeps an era's name clear of the dots on its band",
       labelHeight: 68
     });
   });
+
+  it('never lengthens a band that ends on the today row any further into the future', () => {
+    // An era that started after the last milestone covers only the 20px
+    // today row (dot ring at -2-18). Lengthened to 88 around its middle,
+    // it has 32px above the ring and 36 below; a 50px name needs 58. The
+    // roomier end is below, but below today is the future, so it grows up.
+    expect(placeEraLabel({ top: 0, height: 20 }, [[-2, 18]], 50, 88, { endsToday: true })).toEqual({
+      top: -60,
+      height: 114,
+      labelTop: 0,
+      labelHeight: 58
+    });
+  });
 });
