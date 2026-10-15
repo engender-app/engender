@@ -51,8 +51,14 @@
   let standing = $derived(backupStanding(prefs.lastBackupAt));
   /* The last-backup mark comes and goes on this screen: a first export puts
      a tick where there was none, a fresh one replaces the stale mark. Both
-     fade in place rather than cut in one frame. */
+     fade in place rather than cut in one frame. The leaving one is out of
+     the accessibility tree from its first frame, so a screen reader never
+     reads "Time for a new backup" beside "today" while it fades. */
   const markFade = (_node: Element) => fadeOnly(crossfadeDuration());
+  const markLeave = (node: Element) => {
+    node.setAttribute('aria-hidden', 'true');
+    return fadeOnly(crossfadeDuration());
+  };
   let verifiedAge = $derived(backupAgeDays(prefs.lastVerifiedAt));
 
   let expPass = $state('');
@@ -806,9 +812,9 @@
           <!-- The age beside it already says how long ago; the mark only says
                that it is long enough to act on. It used to be a badge reading
                "Over 30 days ago" under "34 days ago" (audit UX-11). -->
-          <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()} transition:markFade><Icon name="alert" size={18} /></span>
+          <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()} in:markFade out:markLeave><Icon name="alert" size={18} /></span>
         {:else if standing === 'recent'}
-          <span class="backup-tick" data-backup-tick transition:markFade><Icon name="check" size={20} /></span>
+          <span class="backup-tick" data-backup-tick in:markFade out:markLeave><Icon name="check" size={20} /></span>
         {/if}
         <!-- Never exported draws no mark: the tick stood beside "No export
              recorded on this device" because that journal is not stale either
