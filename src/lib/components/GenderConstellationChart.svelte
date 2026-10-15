@@ -58,10 +58,11 @@
   import { untrack } from 'svelte';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import {
-    labelOffset,
-    labeledSlots,
+    placeLabels,
     tracedThrough,
     type ConstellationPoint,
+    type Ink,
+    type LabelBox,
     type PlottedPoint
   } from '$lib/data/constellationData';
   import type { Role } from '$lib/theme/roles';
@@ -133,13 +134,17 @@
       end of either scale. */
   const PAD = 8;
   const DOT = 3;
-  /** No two point labels closer than this, in real pixels. A day label runs
-      up to about 45px wide and 14px tall, off-centre from its own point - so
-      the gap has to clear a label's whole box, not just the dot it is
-      anchored to (ticket CARPET-07; the pairwise check in
-      tests/constellation-gallery.mjs, deleted since, is what this was
-      tuned against). */
+  /** No two labelled dots closer than this, in real pixels, so a cluster
+      carries a few days rather than one per dot (ticket CARPET-07). Each
+      label's box is kept clear of the others and of every mark on its own
+      (placeLabels); this is only how sparse the days are. */
   const MIN_LABEL_GAP = 48;
+  /** How far each mark's paint reaches from its centre line, which is what
+      a label keeps clear of: a dot's radius and the outer pixel of its 2px
+      edge, the head's ring and half of its 4.5px casing, half a join. */
+  const DOT_REACH = DOT + 1;
+  const HEAD_REACH = DOT + 3 + 4.5 / 2;
+  const JOIN_REACH = 0.5;
 
   /* Which dataset this is, as cheaply as it can be asked. A live query
      hands back a fresh array on any journal write, and replaying the sweep
@@ -240,11 +245,66 @@
 
   let headMode = $derived(modes.find((mode) => mode.id === at?.presentationId));
 
-  /** Which of the drawn points also get their day written beside them
-      (ticket CARPET-07). Off the same `traced` window everything else on
-      the plot draws from, so a label never names a reading the plot itself
-      has scrolled past. */
-  let labeled = $derived(labeledSlots(traced, plot, PAD, MIN_LABEL_GAP));
+  /* The label's own type, read off a hidden ruler set in it. A font
+     arriving and the text size changing both resize the ruler, which is
+     what makes this read again. */
+  let ruler: HTMLElement | undefined = $state();
+  let rulerWidth = $state(0);
+  let rulerHeight = $state(0);
+  let labelFont = $derived.by(() => {
+    void rulerWidth;
+    void rulerHeight;
+    if (!ruler) return '';
+    const style = getComputedStyle(ruler);
+    return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  });
+
+  /** Each day's box in the label's type, measured once per font. Canvas
+      rather than the drawn text, because a label has to be measured before
+      there is anywhere to draw it. */
+  let measureDay = $derived.by(() => {
+    const context = labelFont ? document.createElement('canvas').getContext('2d') : null;
+    if (!context) return null;
+    context.font = labelFont;
+    const boxes = new Map<string, LabelBox>();
+    return (point: ConstellationPoint): LabelBox => {
+      const text = dayLabel(point.day);
+      let box = boxes.get(text);
+      if (!box) {
+        const metrics = context.measureText(text);
+        box = { width: metrics.width, ascent: metrics.fontBoundingBoxAscent, descent: metrics.fontBoundingBoxDescent };
+        boxes.set(text, box);
+      }
+      return box;
+    };
+  });
+
+  let readoutWidth = $state(0);
+  let readoutHeight = $state(0);
+
+  /** Which of the drawn points also get their day written beside them, and
+      where (ticket CARPET-07, last-audit UI 49). Off the same `traced`
+      window everything else on the plot draws from, so a label never names
+      a reading the plot itself has scrolled past, and clear of every mark
+      the plot paints: the dots, the head's ring, the trail's joins and the
+      readout laid over the corner. The head's own day is in the readout,
+      so it is not written a second time beside the ring. */
+  let labeled = $derived.by(() => {
+    if (!measureDay || !at) return new Map();
+    const ink: Ink[] = [
+      ...traced.map((point) => ({ x1: px(point), y1: py(point), x2: px(point), y2: py(point), reach: DOT_REACH })),
+      { x1: px(at), y1: py(at), x2: px(at), y2: py(at), reach: HEAD_REACH },
+      ...trail.map(({ from, to }) => ({ x1: px(from), y1: py(from), x2: px(to), y2: py(to), reach: JOIN_REACH }))
+    ];
+    return placeLabels(traced.slice(0, -1), {
+      plot,
+      pad: PAD,
+      minGap: MIN_LABEL_GAP,
+      ink,
+      keepOut: [{ left: size - readoutWidth, top: 0, right: size, bottom: readoutHeight }],
+      measure: measureDay
+    });
+  });
 </script>
 
 {#if points.length}
@@ -300,26 +360,23 @@
           </g>
         {/each}
 
-        <!-- One day per point that earned a label without landing on
-             another (labeledSlots, ticket CARPET-07), the head's own
-             excepted: it already has its date in the readout below, so
-             writing it twice over the same mark would be one fact said
-             twice rather than two facts. The day is what is written; the
+        <!-- One day per point that earned a label clear of every mark and
+             every other label (placeLabels, ticket CARPET-07, last-audit UI
+             49), the head's own excepted: it already has its date in the
+             readout below, so writing it twice over the same mark would be
+             one fact said twice rather than two facts. Drawn at full
+             strength whatever its point's weight: a faded 12px day is a day
+             nobody reads (it fell to 1.8:1 on the card at the weight floor),
+             and the dot beside it already says how old it is. The day is what is written; the
              `<title>` carries the whole reading - the same sentence the
              head's own visually-hidden span speaks - as a native tooltip
              for a pointer that lingers, so "a point's underlying data" is
              not only its date for anyone who can hover one. -->
         <g class="cn-labels" aria-hidden="true">
           {#each traced as point (point.slot)}
-            {#if labeled.has(point.slot) && point.slot !== at?.slot}
-              {@const offset = labelOffset(point)}
-              <text
-                class="cn-point-label"
-                x={px(point) + offset.dx}
-                y={py(point) + offset.dy}
-                text-anchor={offset.anchor}
-                opacity={point.weight}
-              >
+            {@const label = labeled.get(point.slot)}
+            {#if label}
+              <text class="cn-point-label" x={label.x} y={label.y} text-anchor={label.anchor}>
                 <title>{readingLabel(point)}</title>
                 {dayLabel(point.day)}
               </text>
@@ -355,7 +412,13 @@
       </svg>
 
       {#if at}
-        <output class="cn-readout" data-constellation-readout aria-live={sweeping ? 'off' : 'polite'}>
+        <output
+          class="cn-readout"
+          data-constellation-readout
+          aria-live={sweeping ? 'off' : 'polite'}
+          bind:offsetWidth={readoutWidth}
+          bind:offsetHeight={readoutHeight}
+        >
           <span class="visually-hidden">{readingLabel(at)}</span>
           <span aria-hidden="true">{dayLabel(at.day)}</span>
           {#if headMode}
@@ -363,6 +426,10 @@
           {/if}
         </output>
       {/if}
+
+      <span class="cn-label-ruler" aria-hidden="true" bind:this={ruler} bind:offsetWidth={rulerWidth} bind:offsetHeight={rulerHeight}>
+        {dayLabel(points[0].day)}
+      </span>
     </div>
 
     <!-- The x scale's two ends, under the plot and inset with it so each
@@ -560,10 +627,21 @@
   }
 
   /* Ink rather than a role, the same call the trail makes: a point's day is
-     a fact about when, which belongs to no mode. */
+     a fact about when, which belongs to no mode. Proportional figures, which
+     is what the canvas that measures a label sets: a label never changes
+     under the scrub, so tabular ones bought nothing. */
   .cn-point-label {
     fill: var(--text-2);
     font-size: var(--text-xs);
-    font-variant-numeric: tabular-nums;
+  }
+
+  .cn-label-ruler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    visibility: hidden;
+    pointer-events: none;
   }
 </style>

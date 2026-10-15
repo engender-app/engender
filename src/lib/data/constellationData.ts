@@ -153,58 +153,160 @@ export function tracedThrough(points: PlottedPoint[], index: number): Constellat
   }));
 }
 
-/** Where a point's label sits relative to its dot, in real pixels: up and to
-    the right by default, flipped toward the plot's interior once the point
-    sits close enough to the top or the right edge that the default offset
-    would carry it past the plot (ticket CARPET-07). The only two edges the
-    default can reach - `x`/`y` run 0 at a scale's low end, so the left and
-    bottom edges already have PAD of clearance the default offset moves
-    into rather than away from.
-
-    The one place this decides a label's position, read by both
-    `labeledSlots` below and the component that draws the text: measuring
-    collisions against the dot's position while drawing the label somewhere
-    else is exactly the gap that let two labels overlap near an edge where
-    the flip put them closer together than their dots ever were. */
-export function labelOffset(point: { x: number; y: number }): { dx: number; dy: number; anchor: 'start' | 'end' } {
-  return {
-    anchor: point.x > 0.85 ? 'end' : 'start',
-    dx: point.x > 0.85 ? -6 : 6,
-    dy: point.y > 0.9 ? 14 : -6
-  };
+/** A day label's measured box around its own baseline, in real pixels:
+    its advance across, and how far the font reaches above and below the
+    baseline. */
+export interface LabelBox {
+  width: number;
+  ascent: number;
+  descent: number;
 }
 
-/** Which points earn a label, in a square `plot` pixels wide inset by `pad`
-    on every side, with no two labels closer than `minGap` (ticket
-    CARPET-07). Every point still plots; this only decides which of them
-    also gets its day written beside it. Measured at each label's own
-    anchored position (`labelOffset`), not at the dot underneath it, so an
-    edge flip that pulls two labels toward each other is exactly what this
-    catches.
+/** Where a label is written: the baseline point and which end of the text
+    sits on it, which is what an SVG `<text>` takes. */
+export interface PlacedLabel {
+  x: number;
+  y: number;
+  anchor: 'start' | 'end';
+}
+
+/** Ink already painted on the plane, in real pixels: the segment from
+    (x1, y1) to (x2, y2) widened by `reach` on every side. A dot is one
+    whose two ends are its centre, with its radius and the outer half of
+    its stroke as the reach; a trail join is its two ends and half its
+    width. */
+export interface Ink {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  reach: number;
+}
+
+interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** How far a label's box sits from its own dot's centre: 6px across, 2px
+    up or down. A 3px dot with its 1px edge reaches 4px, so a box at that
+    corner clears it by 2.3px. */
+const LABEL_ACROSS = 6;
+const LABEL_UP = 2;
+/** The least room between a label and any ink, any box laid over the
+    plot, or another label. */
+const LABEL_CLEARANCE = 2;
+
+/** How far a point is from a rectangle, 0 inside it. */
+function pointToRect(x: number, y: number, r: Rect): number {
+  return Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+}
+
+/** How far a point is from a segment. */
+function pointToSegment(x: number, y: number, { x1, y1, x2, y2 }: Ink): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = dx * dx + dy * dy;
+  const t = length === 0 ? 0 : Math.min(1, Math.max(0, ((x - x1) * dx + (y - y1) * dy) / length));
+  return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
+}
+
+/** How far a segment is from a rectangle, 0 where it touches or crosses
+    it. Apart, the nearest two points are an end of the segment and the box,
+    or a corner of the box and the segment. Crossing is the segment's line
+    having corners on both sides of it within the segment's own extent. */
+function segmentToRect(ink: Ink, r: Rect): number {
+  const { x1, y1, x2, y2 } = ink;
+  const corners: [number, number][] = [
+    [r.left, r.top],
+    [r.right, r.top],
+    [r.right, r.bottom],
+    [r.left, r.bottom]
+  ];
+  const sides = corners.map(([cx, cy]) => Math.sign((x2 - x1) * (cy - y1) - (y2 - y1) * (cx - x1)));
+  const crosses =
+    sides.some((side) => side >= 0) &&
+    sides.some((side) => side <= 0) &&
+    Math.min(x1, x2) <= r.right &&
+    Math.max(x1, x2) >= r.left &&
+    Math.min(y1, y2) <= r.bottom &&
+    Math.max(y1, y2) >= r.top;
+  if (crosses) return 0;
+  return Math.min(
+    pointToRect(x1, y1, r),
+    pointToRect(x2, y2, r),
+    ...corners.map(([cx, cy]) => pointToSegment(cx, cy, ink))
+  );
+}
+
+const overlaps = (a: Rect, b: Rect, gap: number) =>
+  a.left < b.right + gap && b.left < a.right + gap && a.top < b.bottom + gap && b.top < a.bottom + gap;
+
+/** Which points get their day written beside them, and where, on a square
+    plane of `plot` pixels inset by `pad` (ticket CARPET-07, last-audit UI
+    49). Every point still plots; this only decides which of them also gets
+    a label.
+
+    A label tries four places around its dot - up and right, up and left,
+    down and right, down and left - and takes the first whose box stays
+    inside the plane and keeps LABEL_CLEARANCE from every mark in `ink`,
+    every box in `keepOut` and every label already placed. No place clear
+    means no label: a day written over a mark strikes the mark and the day
+    out together, which is what the audit found on the demo journal.
 
     Highest weight first, which is the same recency order the dots
-    themselves are already drawn at: a label lost to crowding is always the
-    fainter, older of the two marks it collided with, never the sharper one.
+    themselves are already drawn at, and no labelled dot within `minGap`
+    of another, so a cluster carries a few days rather than one per dot.
     Nothing here moves a point to make room - the same rule the plane
     itself is held to (see this file's header) - a label is dropped rather
     than a reading nudged. */
-export function labeledSlots(
+export function placeLabels(
   points: readonly ConstellationPoint[],
-  plot: number,
-  pad: number,
-  minGap: number
-): Set<number> {
+  plane: {
+    plot: number;
+    pad: number;
+    minGap: number;
+    ink: readonly Ink[];
+    keepOut: readonly Rect[];
+    measure: (point: ConstellationPoint) => LabelBox;
+  }
+): Map<number, PlacedLabel> {
+  const { plot, pad, minGap, ink, keepOut, measure } = plane;
+  const edge = plot + pad * 2;
   const byWeight = points.map((_, index) => index).sort((a, b) => points[b].weight - points[a].weight);
-  const placed: { x: number; y: number }[] = [];
-  const chosen = new Set<number>();
+  const dots: { x: number; y: number }[] = [];
+  const boxes: Rect[] = [];
+  const placed = new Map<number, PlacedLabel>();
   for (const index of byWeight) {
     const point = points[index];
-    const offset = labelOffset(point);
-    const x = pad + point.x * plot + offset.dx;
-    const y = pad + (1 - point.y) * plot + offset.dy;
-    if (placed.some((p) => Math.hypot(p.x - x, p.y - y) < minGap)) continue;
-    placed.push({ x, y });
-    chosen.add(point.slot);
+    const x = pad + point.x * plot;
+    const y = pad + (1 - point.y) * plot;
+    if (dots.some((d) => Math.hypot(d.x - x, d.y - y) < minGap)) continue;
+    const { width, ascent, descent } = measure(point);
+    for (const [right, up] of [
+      [true, true],
+      [false, true],
+      [true, false],
+      [false, false]
+    ]) {
+      const left = right ? x + LABEL_ACROSS : x - LABEL_ACROSS - width;
+      const top = up ? y - LABEL_UP - ascent - descent : y + LABEL_UP;
+      const box = { left, top, right: left + width, bottom: top + ascent + descent };
+      if (box.left < 0 || box.top < 0 || box.right > edge || box.bottom > edge) continue;
+      if (ink.some((mark) => segmentToRect(mark, box) < mark.reach + LABEL_CLEARANCE)) continue;
+      if (keepOut.some((r) => overlaps(r, box, LABEL_CLEARANCE))) continue;
+      if (boxes.some((r) => overlaps(r, box, LABEL_CLEARANCE))) continue;
+      dots.push({ x, y });
+      boxes.push(box);
+      placed.set(point.slot, {
+        x: right ? box.left : box.right,
+        y: box.top + ascent,
+        anchor: right ? 'start' : 'end'
+      });
+      break;
+    }
   }
-  return chosen;
+  return placed;
 }
