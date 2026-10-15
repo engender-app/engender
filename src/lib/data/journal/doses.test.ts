@@ -1199,3 +1199,25 @@ test('skipped expected amounts and historical non-positive actual rows remain un
   assert.equal((await journal.doses.getDoseById(id))?.dose, -2);
   assert.equal((await journal.doses.getDoses(19000, 19000)).find((dose) => dose.id === id)?.dose, -2);
 });
+
+test('invalid saved schedule amounts do not roll back valid due doses or rewrite schedules', async () => {
+  for (const invalid of [-2, 0, Infinity]) {
+    const { journal } = await journalWithBuiltIns();
+    const mixed = await episode(journal, 19000, 'mixed amounts');
+    const valid = await episode(journal, 19000, 'valid amounts');
+    for (const [episodeId, amounts] of [[mixed, [invalid, 0.125]], [valid, [0.25]]] as const) {
+      await journal.doses.upsertSchedule({
+        episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 1,
+        doseAmounts: amounts.map((dose) => ({ dose, doseUnit: 'mg' })), autoLogFromEpochDay: 19000
+      });
+    }
+    const schedules = await journal.doses.getSchedules();
+    assert.equal(await journal.doses.autoLogDueDoses(19002, []), 3);
+    const doses = await journal.doses.getDoses(19000, 19002);
+    assert.deepEqual(doses.map((dose) => dose.dose).sort(), [0.125, 0.25, 0.25]);
+    assert.deepEqual(doses.filter((dose) => dose.drug === 'mixed amounts').map((dose) => dose.autoLogSlot?.epochDay), [19001]);
+    assert.ok(doses.every((dose) => dose.status === 'taken' && dose.source === 'schedule'));
+    assert.equal(await journal.doses.autoLogDueDoses(19002, []), 0);
+    assert.deepEqual(await journal.doses.getSchedules(), schedules);
+  }
+});

@@ -978,6 +978,9 @@ async function dueDoseCandidates(
          amount removed after the switch went on would otherwise fail the
          whole pass. */
       const amount = slot.amount ?? { dose: episode.dose, doseUnit: episode.doseUnit };
+      // An old schedule may contain an invalid amount. Leave that slot
+      // open without preventing other valid doses from being logged.
+      if (!isPositiveDoseAmount(amount.dose)) continue;
       candidates.push({
         timestamp,
         route,

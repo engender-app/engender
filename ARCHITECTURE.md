@@ -353,7 +353,8 @@ erDiagram
 
 `doses.upsertDose` rejects non-finite or non-positive actual amounts for taken
 and changed doses before writing. The dose editor uses the same amount check.
-Skipped expected slots and historical reads are unchanged.
+Skipped expected slots and historical reads are unchanged. Auto-logging leaves
+slots with invalid saved amounts open while recording other valid due doses.
 
 `dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). Since schema 90, new automatic rows retain their episode UUID, slot day and position within that day. This provenance keeps one automatic row attached to one slot through a device zone change; the logged timestamp stays unchanged. Person-logged rows still resolve by timestamp. Existing rows receive no inferred identity, and existing duplicates are not merged or deleted. `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
 
