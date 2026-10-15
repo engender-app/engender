@@ -160,6 +160,10 @@ locked before "I have written it down" was tapped. Leaving the app to copy
 the key under the Immediately lock had lost it, and replacing a key had
 already stopped the old one from working.
 
+Copy on the recovery key works on Android. It used to fail every time with
+"Could not complete this action". The key now goes on the clipboard, and
+the app clears it a minute later, as the note under the button says.
+
 Measurement, lab result, wear duration and wear reminder fields keep a
 decimal point or a minus sign while it is being typed. Typed one key at a
 time, 72.5 had been saved as 572 and 0.5 as 50.
