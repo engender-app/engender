@@ -1,5 +1,6 @@
 {
   "sources": {
+    "range-editors-check": "Provisional 120-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
     "accessible-names-check": "Provisional 60-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
     "hosted": {
       "run": "https://github.com/engender-app/engender/actions/runs/37223138118",
@@ -33,6 +34,7 @@
     "built 6/6": 51.0
   },
   "guards": {
+    "range-editors-check": 120,
     "accessible-names-check": 60,
     "day-addresses": 45,
     "blind-edge-padding-check": 3.49,

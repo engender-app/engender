@@ -230,7 +230,7 @@
   {
     "name": "range-editors-check",
     "tier": "dev",
-    "holds": "regimen, dose-pause, journaling-pause and tryout editors reject inverted ranges, constrain end pickers and retain equal/open dates in English and Polish, with animated feedback"
+    "holds": "regimen, dose-pause, journaling-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops"
   },
   {
     "name": "regimen-editor-check",
