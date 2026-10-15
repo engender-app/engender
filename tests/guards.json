@@ -66,6 +66,11 @@
     "holds": "the voice task chooser's labels fit their segments in both languages"
   },
   {
+    "name": "segmented-chosen-clear",
+    "tier": "dev",
+    "holds": "Wrapped's chosen cadence stays clear of the track's chevrons in both languages at 390px and 200% zoom, and the chevrons fade in and out with the scroll"
+  },
+  {
     "name": "android-door-motion",
     "tier": "dev",
     "holds": "outgoing Android door content fades; warm interruptions keep the intended screen, Back and reduced motion work, and gates remove journal content",

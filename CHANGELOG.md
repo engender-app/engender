@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+A chosen switcher option, such as Last year in Wrapped, scrolls clear of
+the arrow at the switcher's edge instead of ending under it. The arrows
+fade in and out as the switcher scrolls.
+
 The hormone curve says "1 dose" when one logged dose has no curve.
 Dose counts use the catalogue's plural forms in English and Polish.
 

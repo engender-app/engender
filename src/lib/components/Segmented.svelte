@@ -2,6 +2,7 @@
   import { rovingRadio } from '$lib/components/rovingRadio';
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
+  import { scrollBehavior } from '$lib/motion/tokens';
   import {
     boxesMatch,
     insets,
@@ -237,9 +238,19 @@
        scrolled the screen down to the switcher before the person had
        touched anything (phase 8 features ticket 66). Moving the track's own
        scrollLeft is what this always meant, and it cannot move an ancestor
-       at all. */
-    if (track) track.scrollLeft = nearestScrollLeft(track, target);
+       at all.
+
+       Eased once the pill is placed (last-audit UI ticket 26). Keeping the
+       segment clear of the chevrons means a choice made beside one moves
+       the track by up to the chevron's 26px, and a strip jumping that far
+       in one frame under the person's finger is a teleport. The first
+       placement stays instant: the control starts where it is, as the pill
+       does. */
     if (!track) return;
+    const left = nearestScrollLeft(track, target);
+    if (Math.abs(track.scrollLeft - left) >= 1) {
+      track.scrollTo({ left, behavior: pill.shown ? scrollBehavior() : 'auto' });
+    }
     /* Named rather than inlined twice: the first-placement branch below
        measures again, a frame later, against whichever of `target`/`track`
        is current then - which is the same shape, at a different time, not a
@@ -328,8 +339,6 @@
       bind:this={track}
       class="segmented"
       class:is-compact={compact}
-      class:can-scroll-start={canScrollStart}
-      class:can-scroll-end={canScrollEnd}
       class:can-scroll={canScroll}
       data-segmented={key}
       aria-label={name}
@@ -373,8 +382,6 @@
       bind:this={track}
       class="segmented"
       class:is-compact={compact}
-      class:can-scroll-start={canScrollStart}
-      class:can-scroll-end={canScrollEnd}
       class:can-scroll={canScroll}
       data-segmented={key}
       role="radiogroup"
@@ -413,10 +420,14 @@
       {/each}
     </div>
   {/if}
-  {#if canScrollStart}
-    <span class="segmented-hint segmented-hint-start" aria-hidden="true"><Icon name="chevronLeft" size={14} /></span>
-  {/if}
-  {#if canScrollEnd}
-    <span class="segmented-hint segmented-hint-end" aria-hidden="true"><Icon name="chevronRight" size={14} /></span>
-  {/if}
+  <!-- Always in the page and faded by class rather than added and removed
+       (last-audit UI ticket 26): a choice that scrolls the track brings a
+       chevron in or takes one away, and an {#if} painted it whole in one
+       frame. -->
+  <span class="segmented-hint segmented-hint-start" class:is-shown={canScrollStart} aria-hidden="true"
+    ><Icon name="chevronLeft" size={14} /></span
+  >
+  <span class="segmented-hint segmented-hint-end" class:is-shown={canScrollEnd} aria-hidden="true"
+    ><Icon name="chevronRight" size={14} /></span
+  >
 </div>
