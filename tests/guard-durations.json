@@ -20,7 +20,8 @@
     "deep-link-consumption-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-15",
     "entry-source-return-check": "Provisional 120-second estimate pending hosted measurement; local Chromium source-return proof",
     "segmented-chosen-clear": "Local Fedora run on 2026-10-15, dev server; tests/segmented-chosen-clear.mjs",
-    "milestone-era-label-clear": "Local Fedora run on 2026-10-15, dev server; tests/milestone-era-label-clear.mjs"
+    "milestone-era-label-clear": "Local Fedora run on 2026-10-15, dev server; tests/milestone-era-label-clear.mjs",
+    "plane-date-labels-clear": "Local Fedora run on 2026-10-15, dev server; tests/plane-date-labels-clear.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -136,7 +137,8 @@
     "deep-link-consumption-check": 30,
     "entry-source-return-check": 120,
     "segmented-chosen-clear": 46.1,
-    "milestone-era-label-clear": 24.6
+    "milestone-era-label-clear": 24.6,
+    "plane-date-labels-clear": 23.3
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -407,6 +409,9 @@
     ],
     "milestone-era-label-clear": [
       24.6
+    ],
+    "plane-date-labels-clear": [
+      23.3
     ]
   }
 }

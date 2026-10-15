@@ -27,6 +27,12 @@ The last letter of an era ending today used to touch the dot's ring, and at
 200% text the name was cut off. A band that is too short for its name now
 grows a little at its roomier end.
 
+The dates on Two scales at once no longer sit under dots or trail lines, and
+every one is readable. A date used to be written up and to the right of its
+dot whatever was drawn there, and older dates faded with their dots until
+some were barely visible. A date now goes on whichever side of its dot is
+clear, is left out if no side is, and is drawn at full strength.
+
 A chosen switcher option scrolls clear of the arrow at the switcher's edge
 instead of ending under it. The arrows fade in and out as the switcher
 scrolls. Wrapped's periods are one word each now (Week, Month, Year,
