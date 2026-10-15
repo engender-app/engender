@@ -126,22 +126,29 @@
      is active" first and then swaps. Any other way off the screen has been
      through the guard above, and forgets it. Unlocking is not a navigation,
      so nothing else moves focus off the body; the returned key takes the
-     arrival focus a navigation would have given the screen. */
+     arrival focus a navigation would have given the screen. A screen that
+     is already gone when the answer comes (a second lock while it opened)
+     takes nothing: the sealed copy stays for the next unlock, and the
+     characters are not handed to a screen nobody can see. */
+  let gone = false;
   let heldRead = $state(!recoveryKeyHeld());
   if (recoveryKeyHeld()) {
     journalDataKey()
       .then(openHeldRecoveryKey)
       .then((held) => {
+        if (gone) return;
         shown = held;
         if (held !== null) focusArrivedScreen(document.getElementById('app-main'));
       })
       .catch((error) => {
+        if (gone) return;
         console.error('could not open the recovery key held across the lock', error);
         forgetHeldRecoveryKey();
       })
       .finally(() => { heldRead = true; });
   }
   onDestroy(() => {
+    gone = true;
     if (!isLockedNow(bootState.accessMode)) forgetHeldRecoveryKey();
   });
 
