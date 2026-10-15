@@ -734,7 +734,15 @@
   width: 26px;
   color: var(--text-2);
   pointer-events: none;
+  /* Faded in and out rather than added and removed (last-audit UI ticket
+     26): choosing a segment beside a chevron now scrolls the track clear
+     of it, which brings the opposite chevron in, and it used to land whole
+     in one frame. The width above is SCROLL_HINT_WIDTH in segmentedTrack.ts,
+     which a test holds to it. */
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
+.segmented-hint.is-shown { opacity: 1; }
 .segmented-hint-start {
   left: 0; justify-content: flex-start; padding-left: 4px;
   background: linear-gradient(to right, var(--surface-2) 22px, transparent);
@@ -744,10 +752,6 @@
   right: 0; justify-content: flex-end; padding-right: 4px;
   background: linear-gradient(to left, var(--surface-2) 22px, transparent);
   border-radius: 0 8px 8px 0;
-}
-.segmented.can-scroll-start.can-scroll-end {
-  mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
 }
 
 /* A flex scroll container drops its trailing padding at the end of the

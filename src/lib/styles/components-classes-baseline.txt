@@ -6,8 +6,6 @@ app-nav
 body-region-feeling
 cal-num
 can-scroll
-can-scroll-end
-can-scroll-start
 dim-head
 dim-name
 dim-readout

@@ -466,6 +466,7 @@ To run one on its own, use
 | `chart-tick-readout` | what a chart's tick says under a mouse and a finger, across grains, languages and widths |
 | `year-days-list` | the yearly grid's days as a list: the painted cells out of the accessibility tree, every day's value (or "Not logged") read off it a month at a time, three tab stops, a tap or Enter to open and step, and the fold and a month change never moving anything in one frame |
 | `voice-task-names` | the voice task chooser's labels fit their segments in both languages |
+| `segmented-chosen-clear` | Wrapped's chosen cadence stays clear of the track's chevrons in both languages at 390px and 200% zoom, and the chevrons fade in and out with the scroll |
 | `android-door-motion` | outgoing Android door content fades; warm interruptions keep the intended screen, Back and reduced motion work, and gates remove journal content |
 | `margin-note-dismissal-check` | changed margin notes ask before closing; keeping preserves the composer, untouched notes close silently, and failed or pending writes retain their admission |
 | `record-dismissal-check` | a cancelled dismissal keeps unsaved record edits and the sheet's position |

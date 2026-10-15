@@ -51,8 +51,17 @@ export function nearestScrollLeft(
 
   let left = track.scrollLeft;
   if (end > left + track.clientWidth - SCROLL_HINT_WIDTH) left = end + SCROLL_HINT_WIDTH - track.clientWidth;
-  /* Second, so a segment too wide to clear both hints keeps its start
-     clear, for the same reason as above. */
   if (start < left + SCROLL_HINT_WIDTH) left = start - SCROLL_HINT_WIDTH;
-  return clamp(left);
+  left = clamp(left);
+
+  /* Whether that cleared it, with a hint assumed on every edge that is not
+     an end of the range. A segment wider than the window less two hints
+     cannot clear both: Wrapped's "Miniony miesiąc" is 144px in a 145px
+     track at the 200%-zoom width. Centred, the two hints cover it evenly,
+     which keeps its label whole wherever its own 18px of padding can
+     absorb the overlap; pinned to one side, the other hint took all of it. */
+  const startRoom = left > 0 ? SCROLL_HINT_WIDTH : 0;
+  const endRoom = left < furthest ? SCROLL_HINT_WIDTH : 0;
+  const cleared = start >= left + startRoom && end <= left + track.clientWidth - endRoom;
+  return cleared ? left : clamp(start + segment.offsetWidth / 2 - track.clientWidth / 2);
 }

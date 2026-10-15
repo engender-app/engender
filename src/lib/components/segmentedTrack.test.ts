@@ -45,9 +45,15 @@ describe('nearestScrollLeft', () => {
     expect(nearestScrollLeft(track(0), segment(526))).toBe(400);
   });
 
-  it('keeps the leading edge clear when a segment cannot clear both chevrons', () => {
-    // 170px plus two 26px hints is more than the 200px window.
-    expect(nearestScrollLeft(track(0), segment(300, 170))).toBe(274);
+  it('centres a segment that cannot clear both chevrons, so they cover it evenly', () => {
+    /* 170px plus two 26px hints is more than the 200px window: centred,
+       each hint covers 11px of it rather than the end one covering 22px. */
+    expect(nearestScrollLeft(track(0), segment(300, 170))).toBe(285);
+  });
+
+  it('still needs only one chevron of room at either end of the scroll', () => {
+    // 150 + 26 fits a 200px window that starts at 0, where no start hint is drawn.
+    expect(nearestScrollLeft(track(100), segment(3, 150))).toBe(0);
   });
 
   it('shows the leading edge of a segment wider than the track', () => {
