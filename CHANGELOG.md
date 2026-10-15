@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Back from a day or entry restores the Journal month and expanded recent days
+on web and Android. Opening Journal afresh still starts at the current month
+and five days.
+
 Screen readers announce lab values and units, crisis line numbers and web
 domains, and voice benchmark pitches. Measurement charts describe their
 measurement type, unit and date range instead of announcing an edit action.

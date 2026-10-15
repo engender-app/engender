@@ -169,6 +169,8 @@ jobs:
             entry: tests/restore-commit-check.mjs
           - name: language-confirm
             entry: tests/language-confirm-check.mjs
+          - name: journal-history
+            entry: tests/journal-history-check.mjs
           - name: walkthrough-journal
             entry: tests/walkthrough.test.mjs
             args: --group journal
