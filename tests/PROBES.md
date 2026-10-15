@@ -46,6 +46,17 @@ It checks spaces and recovery-note line breaks before saving, trimmed saved
 values, and deletion of a typed recovery note before saving.
 `entryDraft.test.ts` checks that save normalization leaves draft text intact.
 
+`src/lib/permissions/watchStatus.test.ts` checks the permission-status watcher
+that Reminders, Notifications and the permissions list share: a re-read when
+the page becomes visible, a refused read shown as denied rather than a
+remembered grant, the newest read winning over an older one that answers
+last, and no listener or late answer after teardown. Removing any one of
+those rules fails one test. The source checks in `reminders-surfaces.test.ts`,
+`unprompted-view.test.ts` and `settings-surfaces.test.ts` hold each screen to
+the watcher and Reminders to one notice per refused permission. Grant-and-return
+on Android was shown on an API 35 emulator: the old build kept each notice
+after the grant, the fixed build removed it on return.
+
 Archive validation tests cover single-read export length changes, malformed
 payloads, empty files and trailing plaintext (`codec.test.ts`), refusal kinds,
 positive header fields and exact JSON/chunk ceilings (`container.test.ts`),
