@@ -678,6 +678,38 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.5)).not.toContain('height:');
   });
 
+  /* Last-audit UI ticket 41: one notice replacing another in the same spot
+     (Reminders' "Could not check" and "Notifications are off"). The arriving
+     notice stands behind the leaving one, so the kit's surface-after-surface
+     rule gives it a 20px top margin that is gone the frame the leaving node
+     is removed: measured on an API 35 emulator, the arriving notice ended at
+     top 260 and was drawn at 238 in the next frame. It takes the leaving
+     one's top margin instead, which is what its own will be once it stands
+     in that place. */
+  it('arriving behind a leaving surface, ends at the margin it will have in its place', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '20px' });
+    const leaving = { inert: true, hasAttribute: (name: string) => name === 'data-kit-surface' };
+    Object.assign(node, { previousElementSibling: leaving, hasAttribute: (name: string) => name === 'data-kit-surface' });
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as (el: unknown) => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === leaving ? { ...shared(el), marginTop: '0px' } : shared(el));
+    markScreenArrival(performance.now() - 1000);
+    const { css } = collapse(node, undefined, { direction: 'in' });
+    expect(frame(css!, 1)).toContain('margin-top: 0px');
+    expect(frame(css!, 0)).toContain('margin-top: -100px');
+  });
+
+  it('arriving behind a surface that stays, keeps its own top margin', () => {
+    const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '20px' });
+    const staying = { inert: false, hasAttribute: (name: string) => name === 'data-kit-surface' };
+    Object.assign(node, { previousElementSibling: staying, hasAttribute: (name: string) => name === 'data-kit-surface' });
+    const g = globalThis as Record<string, unknown>;
+    const shared = g.getComputedStyle as (el: unknown) => Record<string, string>;
+    g.getComputedStyle = (el: unknown) => (el === staying ? { ...shared(el), marginTop: '0px' } : shared(el));
+    markScreenArrival(performance.now() - 1000);
+    expect(frame(collapse(node, undefined, { direction: 'in' }).css!, 1)).toContain('margin-top: 20px');
+  });
+
   /* The margin under the arriving block grows with it: at full margin from
      the first frame the Transition door's empty results wrapper pushed the
      index under it 20px on the keystroke. */
