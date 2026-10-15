@@ -16,6 +16,8 @@ import { flushSync } from 'svelte';
 import { m } from '$lib/paraglide/messages';
 import { mountScreen, until } from './mount-screen';
 import { fixture, assertions, heldReads, today, type Result } from './screen-contracts/fixture';
+import { navigating } from './screen-router.svelte';
+import type { ScreenFixture } from './mount-screen';
 
 type Sample = { opacity: number; visible: number; reach: number; text: string };
 type Frame = { t: number; samples: Map<number, Sample> };
@@ -112,7 +114,7 @@ function leftSmoothly(track: Track): boolean {
   return track.last < track.end && track.lastShare < 0.5 && track.ramp >= 3;
 }
 
-export async function lateReadsContracts(): Promise<Result[]> {
+export async function lateReadsContracts(theme: 'light' | 'dark' = 'light'): Promise<Result[]> {
   const results: Result[] = [];
   const check = assertions(results);
   /* Every run's frames, for the probe that prints them. */
@@ -121,6 +123,7 @@ export async function lateReadsContracts(): Promise<Result[]> {
   /* ---------- Good moments ---------- */
   const f = await fixture('late-reads', 6);
   f.preferences!.a11yMotionReduce = false;
+  f.preferences!.theme = theme;
   await f.journal.doubtJournal.saveSnapshot(today - 3, [{ epochDay: today - 3, mood: 4, note: 'Kept from a good week' }]);
   await f.journal.doubtJournal.saveSnapshot(today - 2, [{ epochDay: today - 2, mood: 5, note: 'Kept the day after' }]);
 
@@ -219,11 +222,73 @@ export async function lateReadsContracts(): Promise<Result[]> {
     const steepest = Math.max(...painted.slice(1).map((px, i) => painted[i] - px));
     return !heading() && start > 0 && painted.at(-1) === 0 && between >= 3 && steepest < start * 0.5;
   });
+
+  /* Leaving is not a delete. Svelte can run an out-transition when the
+     page itself unmounts (reveal.ts, `disclose`), and a history closing
+     on the way out would read as the snapshots going. */
+  save.click();
+  await until(() => panels().length === 1, 'snapshot saved again');
+  await settle(900);
+  await check('leaving Good moments leaves its history standing on the way out', async () => {
+    const stopLeaving = sampler(() => [...panels(), ...(heading() ? [heading()!] : [])]);
+    await settle(50);
+    Object.assign(navigating, { to: { url: new URL('/doubt', location.origin) } });
+    try {
+      await screen.remove(true);
+      await settle(100);
+    } finally {
+      Object.assign(navigating, { to: null });
+    }
+    const left = tracks(stopLeaving());
+    return left.size === 2 && [...left.values()].every(stayedWhole);
+  });
+
+  /* A snapshot outlives the pool it was taken from. */
+  const e = await fixture('late-reads-empty', 0);
+  e.preferences!.a11yMotionReduce = false;
+  e.preferences!.theme = theme;
+  await e.journal.doubtJournal.saveSnapshot(today - 5, [{ epochDay: today - 5, mood: 3, note: 'Kept before the pool emptied' }]);
+  screen = await mountScreen('/doubt/evidence', e);
+  await check('an empty pool still shows the snapshots kept from it', async () =>
+    until(() => document.querySelector('#screens [data-notice="no-counterevidence"]') && panels().length === 1, 'empty pool with history'));
+  await screen.remove();
+
+  /* A history that could not be read is a failure, not an empty history:
+     the screen says so and offers the retry rather than drawing the pool
+     with nothing under it. */
+  const refusing: ScreenFixture = {
+    ...e,
+    journal: new Proxy(e.journal, {
+      get(target, key, receiver) {
+        const area = Reflect.get(target, key, receiver);
+        if (key !== 'doubtJournal') return area;
+        return new Proxy(area, {
+          get(operations, method) {
+            return method === 'getSnapshots'
+              ? async () => {
+                  throw new Error('refused for the contract');
+                }
+              : Reflect.get(operations, method);
+          }
+        });
+      }
+    })
+  };
+  screen = await mountScreen('/doubt/evidence', refusing);
+  await check('a refused snapshot read says so instead of drawing no history', async () => {
+    const status = await until(() => document.querySelector('#screens [role="status"]'), 'read failure notice');
+    return (
+      status.textContent?.includes(m.read_failed()) &&
+      panels().length === 0 &&
+      !document.querySelector('#screens [data-notice="no-counterevidence"]')
+    );
+  });
   await screen.remove();
 
   /* ---------- Tryouts ---------- */
   const g = await fixture('late-tryouts', 0);
   g.preferences!.a11yMotionReduce = false;
+  g.preferences!.theme = theme;
   const felt = await g.journal.tryouts.upsertTryout({
     kind: 'name',
     label: 'Robin',
