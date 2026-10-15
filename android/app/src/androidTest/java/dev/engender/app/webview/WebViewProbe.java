@@ -6,6 +6,7 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 
 import androidx.test.core.app.ActivityScenario;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -53,14 +54,15 @@ public final class WebViewProbe {
     public String evaluate(String expression) throws InterruptedException {
         AtomicReference<String> value = new AtomicReference<>();
         CountDownLatch evaluated = new CountDownLatch(1);
-        scenario.onActivity(
+        // Dispatch on the main thread so animated screens cannot block on global UI idleness.
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> scenario.onActivity(
             activity ->
                 webView(activity).evaluateJavascript(
                     expression,
                     result -> {
                         value.set(result);
                         evaluated.countDown();
-                    }));
+                    })));
         if (!evaluated.await(ANSWER_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             throw new AssertionError("the WebView stopped answering");
         }
