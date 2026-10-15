@@ -663,8 +663,11 @@
   }
   /* The drawn tab is 18px; the target is the 48px floor, reaching left
      over the grid's edge. Only a target, never paint, and only while the
-     rail is awake: at rest the rail takes no pointer at all. */
-  .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
+     rail is awake: at rest the rail takes no pointer at all. The insets
+     count from inside the tab's 1px border, so the right one takes the
+     border in and the left one starts 17px in: measured from the border's
+     outside edge they left a 47px target (last-audit UI 25). */
+  .photo-year::after { content: ''; position: absolute; inset: -2px -1px -2px calc(17px - var(--touch-target)); }
   .photo-year:hover { color: var(--text); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
