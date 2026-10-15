@@ -1,5 +1,7 @@
 package dev.engender.app.sqlite;
 
+import android.os.StatFs;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -73,7 +75,7 @@ public class SqlitePlugin extends Plugin {
                 connection.open(getContext(), name, call.getString("hexKey"));
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -97,7 +99,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("plaintext", SqliteConnection.isPlaintextDatabase(getContext(), name));
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -115,7 +117,7 @@ public class SqlitePlugin extends Plugin {
                 connection.exec(sql);
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -134,7 +136,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("rows", connection.query(sql, params(call)));
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -156,7 +158,7 @@ public class SqlitePlugin extends Plugin {
             try {
                 call.resolve(connection.run(sql, params(call)));
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -169,7 +171,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("version", connection.getUserVersion());
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -186,7 +188,7 @@ public class SqlitePlugin extends Plugin {
                 connection.setUserVersion(version);
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -217,7 +219,7 @@ public class SqlitePlugin extends Plugin {
                 connection.copyDatabaseFile();
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -231,7 +233,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("usable", connection.preMigrationCopyIsUsable());
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -244,7 +246,7 @@ public class SqlitePlugin extends Plugin {
                 connection.restorePreMigrationCopy();
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -256,7 +258,7 @@ public class SqlitePlugin extends Plugin {
                 connection.cleanupPreMigrationCopy();
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -276,7 +278,7 @@ public class SqlitePlugin extends Plugin {
                 connection.deleteDatabaseFiles(getContext(), name);
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -289,7 +291,7 @@ public class SqlitePlugin extends Plugin {
                 sequencer.finish(call.getString("session"));
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -299,7 +301,7 @@ public class SqlitePlugin extends Plugin {
             connection.transactionStep(step);
             call.resolve();
         } catch (Exception e) {
-            call.reject(message(e), e);
+            fail(call, e);
         }
     }
 
@@ -328,6 +330,22 @@ public class SqlitePlugin extends Plugin {
 
     /* Capacitor turns a null message into a null error on the JS side, which
        is how a real SQLite failure becomes "undefined" in a boot error. */
+    /** Every failure keeps SQLite's own text; a full disk also carries the
+        code {@code storage-full} (last-audit ui 37). */
+    private void fail(PluginCall call, Exception e) {
+        call.reject(message(e), SqliteFailure.storageCode(message(e), databaseVolumeAvailableBytes()), e);
+    }
+
+    /** Free bytes on the volume that holds the journal and its rollback
+        journal; unknown counts as plenty, so it never names a full disk. */
+    private long databaseVolumeAvailableBytes() {
+        try {
+            return new StatFs(getContext().getDatabasePath("journal").getParent()).getAvailableBytes();
+        } catch (Exception unknown) {
+            return Long.MAX_VALUE;
+        }
+    }
+
     private static String message(Exception e) {
         String detail = e.getMessage();
         return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;
