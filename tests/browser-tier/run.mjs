@@ -65,7 +65,7 @@ page.on('pageerror', (error) => onPageError?.(error));
     `name`'s result global off `window` (tests/probe-handshake.mjs derives
     both from `name`, the same way the probe page publishing them does).
     Reload the same page and call again to check persistence. */
-async function load(path, name) {
+async function load(path, name, timeout = 30_000) {
   const failure = new Promise((_resolve, reject) => {
     onPageError = reject;
   });
@@ -73,7 +73,7 @@ async function load(path, name) {
     await Promise.race([
       (async () => {
         await page.goto(`http://localhost:${port}${path}`, { waitUntil: 'networkidle' });
-        await page.waitForSelector(`body[${readyAttr(name)}]`, { state: 'attached' });
+        await page.waitForSelector(`body[${readyAttr(name)}]`, { state: 'attached', timeout });
       })(),
       failure
     ]);
@@ -2171,7 +2171,8 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
 });
 
 await block('entry capture ownership', 14, async () => {
-  const r = await load('/entry-capture.html', 'entry-capture-probe');
+  // This probe waits for the real 30-second video cap after its other capture cases.
+  const r = await load('/entry-capture.html', 'entry-capture-probe', 60_000);
   if (r.error) throw new Error(r.error);
   for (const row of r.late) {
     const closed = row.refusal || (row.tracks.length > 0 && row.tracks.every(state => state === 'ended'));
