@@ -50,13 +50,16 @@ const base = server.resolvedUrls.local[0];
 const browser = await launchChromium();
 const failures = [];
 
-/** The rail at rest: every band, name and dot where it was 600ms ago. */
+/** The rail at rest: every band, name and dot where it was 600ms ago.
+    A rail still moving after 15s is a failure, not a longer wait. */
 async function untilRailSettles(page) {
   await page.locator('[data-tl-era] .tl-era-name').first().waitFor();
   await page.evaluate(() => document.fonts.ready);
+  const deadline = Date.now() + 15000;
   let last = '';
   let since = Date.now();
   for (;;) {
+    if (Date.now() > deadline) throw new Error('the milestone rail never came to rest');
     const now = await page.evaluate(() =>
       JSON.stringify(
         [...document.querySelectorAll('[data-milestone-rail] [data-tl-era], [data-milestone-rail] .tl-era-name, [data-milestone-rail] .tl-dot')].map((el) => {
