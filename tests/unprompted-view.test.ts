@@ -177,3 +177,22 @@ describe('the old address', () => {
     expect(redirect).not.toContain('RegistryRow');
   });
 });
+
+describe('the notifications permission notice', () => {
+  it('re-reads permission status whenever the screen comes back to the front', () => {
+    /* Last-audit UI ticket 41 (U30): granting notifications in Android's
+       settings and swiping back left the denied notice up until the screen
+       was left and opened again. watchStatus owns the listener, its
+       teardown and the refused-read rule (watchStatus.test.ts). */
+    expect(screen).toContain("from '$lib/permissions/watchStatus'");
+    expect(screen).toMatch(/watchStatus<AndroidRetrospectiveNotificationStatus \| 'unreadable'>\(\{[\s\S]*?read: \(\) => androidRetrospectiveNotifications\.getStatus\(\)/);
+    expect(screen).toContain("unreadable: 'unreadable'");
+    // A refused read says it could not check, not that notifications are off.
+    const unknown = screenMarkup.slice(screenMarkup.indexOf("{#if notifyStatus === 'unreadable' && anyNotifyOn}"), screenMarkup.indexOf('key="notify-denied"'));
+    expect(unknown).toContain('key="notify-unknown"');
+    expect(unknown).toContain('m.perm_status_unknown_title()');
+    expect(unknown).toContain('m.notif_status_unknown_body()');
+    expect(unknown).toContain('statusWatch?.refresh()');
+    expect(screen).not.toContain("addEventListener('visibilitychange'");
+  });
+});

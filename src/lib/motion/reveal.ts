@@ -376,7 +376,8 @@ function collapsedTopMargin(node: Element, style: CSSStyleDeclaration): number {
 function arrivesFromAbove(node: Element): TransitionConfig {
   const style = getComputedStyle(node);
   const height = parseFloat(style.height) || 0;
-  const marginTop = parseFloat(style.marginTop) || 0;
+  const replaced = surfaceItReplaces(node);
+  const marginTop = parseFloat((replaced ? getComputedStyle(replaced) : style).marginTop) || 0;
   const marginBottom = parseFloat(style.marginBottom) || 0;
   /* The margin under the block grows with it from where the neighbours
      were meeting, the same arithmetic `disclose` uses on the way out: a
@@ -392,6 +393,19 @@ function arrivesFromAbove(node: Element): TransitionConfig {
       `margin-top: ${marginTop - u * height}px;` +
       `margin-bottom: ${restMargin + t * (marginBottom - restMargin)}px;`
   };
+}
+
+/** The kit surface on its way out that this one arrives directly behind,
+    if any: one notice replacing another in the same spot (last-audit UI
+    ticket 41). Svelte marks a node inert for its outro. While it leaves,
+    the kit's surface-after-surface rule gives the arriving one a top margin
+    that is gone the frame the leaving node is removed - 20px in one frame
+    at the end of the swap. Once it stands in that place its margin is the
+    one the leaving surface has there now, so that is where it ends. */
+function surfaceItReplaces(node: Element): Element | null {
+  const before = node.previousElementSibling as (Element & { inert?: boolean }) | null | undefined;
+  const surface = (el: Element) => el.hasAttribute?.('data-kit-surface') === true;
+  return before?.inert === true && surface(before) && surface(node) ? before : null;
 }
 
 /** How tall a panel may be and still arrive from above. A block does - a
