@@ -25,9 +25,9 @@ phone restarts. If Android does not answer when the app checks, both
 screens say so and offer to try again.
 
 Hide sensitive titles now says what happens to shown titles in Android's
-notification history. When the setting is off and history is on in Android's
-settings, the history keeps reminder names and details for about a day.
-Reminders still hide their titles by default.
+notification history. With the setting off and Android's notification history
+on, reminder names and details stay there for about a day. Reminders still
+hide their titles by default.
 
 The calendar button on an entry's or a milestone's photo in the library now
 sits on the photo's top-left corner. It used to cover the start of the date

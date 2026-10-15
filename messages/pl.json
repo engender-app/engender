@@ -2776,7 +2776,7 @@
   "rem_empty_body": "Tutaj pojawią się zaimportowane przypomnienia.",
   "rem_empty_title": "Nie ma jeszcze przypomnień",
   "rem_enable_aria": "Włącz {title}",
-  "rem_hide_titles_sub": "Ukryj nazwy przypomnień, afirmacje i szczegóły powiadomień. Godziny przypomnień i treść codziennego pytania pozostają widoczne, także na ekranie blokady. Gdy ta opcja jest wyłączona, a w ustawieniach Androida włączona jest historia powiadomień, nazwy i szczegóły przypomnień zostają w niej przez mniej więcej dobę.",
+  "rem_hide_titles_sub": "Ukryj nazwy przypomnień, afirmacje i szczegóły powiadomień. Godziny przypomnień i treść codziennego pytania pozostają widoczne, także na ekranie blokady. Gdy ta opcja jest wyłączona, a historia powiadomień Androida włączona, nazwy i szczegóły przypomnień zostają tam przez mniej więcej dobę.",
   "rem_hide_titles_title": "Ukryj wrażliwe tytuły",
   "rem_inexact_body": "Dokładne alarmy są wyłączone, więc Android może dostarczyć przypomnienie później, niż ustawiono. Tak zostanie, dopóki ich znów nie włączysz. Wyłączenie dokładnych alarmów kasuje już ustawione przypomnienia, a aplikacja ustawia je ponownie dopiero przy następnym otwarciu albo po restarcie telefonu.",
   "rem_inexact_title": "Przypomnienia mogą się spóźniać",
