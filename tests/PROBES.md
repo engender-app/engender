@@ -180,6 +180,16 @@ must retain the full-disk message and original error cause, plus the refused
 explicit rollback. Statement/commit controls keep both diagnostics, and the
 next queued transaction must still commit.
 
+`src/lib/data/spaceShortage.test.ts` drives the same SQLITE_FULL path and
+checks that the refused rollback's AggregateError is still named a full
+device. It also covers the Android ENOSPC wordings, a browser quota refusal,
+the export bridge's `storage-full` and `destination-full` codes, and failures
+that must stay unnamed. `StorageFailureTest` and `PhotoFilesTest` are the
+JVM halves: which native failures get a code, when the export preflight may
+refuse, and that a photo write failing after its open leaves no file. The
+gates fixture's `boot-failure-storage-full` scene is checked by
+`gates-say-what-happened` for its sentence and its retry.
+
 `src/lib/data/archive/importer-refusals.test.ts` checks damaged ZIP containers,
 malformed consumed JSON fields, Daylio PIN diagnostics and deferred attachment
 refusals through the production importers. `importer-infrastructure.test.ts` injects failures
