@@ -393,7 +393,7 @@
       />
       {#if futile}
         <p class="muted small curve-note" data-no-curve-note>
-          {m.curve_no_curve_note({ count: String(view.dosesNoCurveAnywhere) })}
+          {m.curve_no_curve_note({ count: view.dosesNoCurveAnywhere })}
         </p>
       {/if}
       {#if view.injectable.dosesWithoutMilligrams > 0}
@@ -690,7 +690,7 @@
            watch those doses vanish without a word. -->
       {#if view.dosesNoCurveAnywhere > 0}
         <p class="muted small curve-note" data-no-curve-note>
-          {m.curve_no_curve_note({ count: String(view.dosesNoCurveAnywhere) })}
+          {m.curve_no_curve_note({ count: view.dosesNoCurveAnywhere })}
         </p>
       {/if}
       {#if view.qualitative.dosesWithoutMilligrams > 0}
