@@ -477,6 +477,7 @@ To run one on its own, use
 | `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
 | `document-import-check` | document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish |
+| `accessible-names-check` | English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates; measurement images describe their chart |
 | `lab-entry-check` | lab result field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
 | `measurements-entry-check` | measurement field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish |
 | `wear-entry-check` | a wear session duration typed key by key keeps decimals and a minus, saves the hours typed and reopens as typed; empty and negative durations stay refused |

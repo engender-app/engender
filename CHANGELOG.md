@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Screen readers announce lab values and units, crisis line numbers and web
+domains, and voice benchmark pitches. Measurement charts describe their
+measurement type, unit and date range instead of announcing an edit action.
+
 Arrow keys in the Language sheet move focus without changing the language or
 reloading the app. Enter, Space or a tap applies the choice.
 

@@ -598,7 +598,8 @@
                   class="kit-row-main"
                   aria-pressed={orderedSelected.includes(b.id)}
                   aria-label={m.vc_benchmark_cell_aria({
-                    date: fmtDay(b.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                    pitch: m.vb_hz({ value: String(Math.round(b.f0MedianHz)) }),
+                    date: fmtDay(b.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })
                   })}
                   onclick={() => toggle(b.id)}
                 >

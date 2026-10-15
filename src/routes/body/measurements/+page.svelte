@@ -445,9 +445,11 @@
             to={ends.to}
             formatValue={fmtValue}
             scrubLabel={(point) => fmtDay(point.x, { day: 'numeric', month: 'short', year: 'numeric' })}
-            ariaLabel={m.measurement_row_aria({
+            ariaLabel={m.measurement_chart_aria({
               type: vocabulary.measurementTypeName(type),
-              date: fmtDay(chart.to, { day: 'numeric', month: 'long', year: 'numeric' })
+              unit: prefs.measurementUnit,
+              from: ends.from,
+              to: ends.to
             })}
           />
         {:else}
