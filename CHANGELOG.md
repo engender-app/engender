@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+History Back and Forward restore the question shown in In the room alongside
+its answers. A fresh visit starts at the first question; locking clears the
+held position and answers.
+
 Closing a changed margin note asks before discarding it. Keep editing returns
 to the same note; an untouched note closes without a question.
 

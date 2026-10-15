@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { holdRoomAnswers, restoreRoomAnswers, roomAnswersFor } from './inTheRoom';
+import { holdRoomAnswers, restoreRoomAnswers, roomAnswersFor, rememberRoomVisit, restoreRoomVisit } from './inTheRoom';
 import type { DebriefAnswer } from '../data/journal/debriefNote';
+import { forgetJournalContent } from '../lock/forget-content';
 
 const answer = (question: string, text: string) => ({ question, answer: text });
 
@@ -70,5 +71,38 @@ describe('restoring what a remounted room screen held', () => {
   it("never surfaces one appointment's local answers in another's room", () => {
     holdRoomAnswers({ appointmentId: 'appt-1', answers: [], byItemId: { 'item-1': 'staying as it is' } });
     expect(restoreRoomAnswers('appt-2', ['item-1'])).toEqual({});
+  });
+});
+
+describe('the question held for a history visit', () => {
+  it('restores each history visit only for its own appointment', () => {
+    rememberRoomVisit(1, 'morning', 2);
+    rememberRoomVisit(3, 'afternoon', 1);
+    expect(restoreRoomVisit(1, true, 'morning')).toBe(2);
+    expect(restoreRoomVisit(3, true, 'afternoon')).toBe(1);
+    expect(restoreRoomVisit(1, true, 'afternoon')).toBe(0);
+    expect(restoreRoomVisit(1, true, null)).toBe(0);
+  });
+
+  it('starts fresh when a new visit reuses an old history depth', () => {
+    rememberRoomVisit(1, 'morning', 2);
+    expect(restoreRoomVisit(1, false, 'morning')).toBe(0);
+    expect(restoreRoomVisit(1, true, 'morning')).toBe(0);
+  });
+
+  it('restores a rehearsal without giving it an appointment', () => {
+    rememberRoomVisit(4, null, 2);
+    expect(restoreRoomVisit(4, true, null)).toBe(2);
+    expect(restoreRoomVisit(4, true, 'morning')).toBe(0);
+  });
+
+  it('forgets question positions and answers together on lock', () => {
+    rememberRoomVisit(1, 'morning', 2);
+    rememberRoomVisit(3, 'afternoon', 1);
+    holdRoomAnswers({ appointmentId: 'morning', answers: [], byItemId: { first: 'Private answer' } });
+    forgetJournalContent();
+    expect(restoreRoomVisit(1, true, 'morning')).toBe(0);
+    expect(restoreRoomVisit(3, true, 'afternoon')).toBe(0);
+    expect(restoreRoomAnswers('morning', ['first'])).toEqual({});
   });
 });

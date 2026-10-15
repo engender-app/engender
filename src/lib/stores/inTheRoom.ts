@@ -34,6 +34,20 @@ interface HeldRoomAnswers {
 
 const held = new Map<string, HeldRoomAnswers>();
 
+// Like Journal's browsing state, question positions belong to history visits.
+// Appointment identity prevents a reused depth from restoring another room.
+const visits = new Map<number, { appointmentId: string | null; index: number }>();
+
+export function rememberRoomVisit(depth: number, appointmentId: string | null, index: number): void {
+  visits.set(depth, { appointmentId, index });
+}
+
+export function restoreRoomVisit(depth: number, returning: boolean, appointmentId: string | null): number {
+  if (!returning) visits.delete(depth);
+  const visit = visits.get(depth);
+  return visit?.appointmentId === appointmentId ? visit.index : 0;
+}
+
 /** Holds this appointment's answers, replacing only its own earlier entry.
     Still process-lifetime module state: nothing is written to the journal
     here and nothing is mirrored to storage, so what somebody said in a
@@ -53,6 +67,7 @@ export function holdRoomAnswers(entry: HeldRoomAnswers): void {
     holding. */
 export function forgetRoomAnswers(): void {
   held.clear();
+  visits.clear();
 }
 forgetOnLock(forgetRoomAnswers);
 

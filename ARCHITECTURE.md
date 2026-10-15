@@ -895,6 +895,13 @@ and restores before activation or the web route's first render. Fresh forward
 arrivals use the current month and five days. Lock and reload drop these
 memory-only snapshots; sheets and month animations still end on departure.
 
+In the room keeps its question position per history depth and appointment
+identity in `stores/inTheRoom.ts`, beside the held answers. History arrivals
+restore the position before rendering; fresh visits start at question one.
+Choosing another appointment while the room stays open keeps the current
+standing-list question and switches to that appointment's answers. Both
+positions and answers stay in memory and are cleared on lock.
+
 Search return snapshots and queries handed over from More stay in module
 memory. Returning from an entry consumes the snapshot; lock or reload drops
 it. They never go to Web Storage, whose disk logs can retain removed text.

@@ -35,15 +35,16 @@
      stays standing and shared (ADR-0066), and the answers and the debrief
      handoff key off the chosen appointment rather than off whichever row the
      journal happened to list first. */
-  import { goto } from '$app/navigation';
-  import { page } from '$app/state';
+  import { untrack } from 'svelte';
+  import { goto, onNavigate } from '$app/navigation';
+  import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { appointmentsOnDay, chosenAppointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
-  import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
-  import { smartBack, replaceRoute } from '$lib/navigation/smart-back';
+  import { holdRoomAnswers, restoreRoomAnswers, rememberRoomVisit, restoreRoomVisit } from '$lib/stores/inTheRoom';
+  import { smartBack, replaceRoute, depthAfter, navigationDepth } from '$lib/navigation/smart-back';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -111,7 +112,14 @@
   const nameOf = (appointment: { kind: string | null; procedureId: string | null }) =>
     appointment.kind ?? (appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined) ?? m.appointments_untitled();
 
-  let index = $state(0);
+  const visitDepth = untrack(() => navigating.type ? depthAfter(navigating.type, navigating.delta) : navigationDepth());
+  let index = $state(untrack(() => restoreRoomVisit(visitDepth, navigating.type === 'popstate', chosenAppointmentId)));
+
+  // Read the settled depth when leaving: automatic appointment selection
+  // can replace the route while its first arrival is still settling.
+  onNavigate(() => {
+    rememberRoomVisit(navigationDepth(), chosenAppointmentId, index);
+  });
   /* Keyed by item id rather than by position: the list is live, and an item
      deleted from the prep screen in another tab must not slide somebody
      else's answer onto a different question. */
