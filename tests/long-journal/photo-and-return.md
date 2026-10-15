@@ -100,6 +100,13 @@ reads; `e7c4f4312` batched the schedules. The fixture's last change is
 fixture changes are intended correctness/coverage work. Reading schedules again
 within the same comparison is unnecessary.
 
+For the reported one-year result, the 2,230-byte increase over the historical
+decade baseline is 2,849 bytes of provenance on 37 dose rows, minus 1,680 bytes
+from different dose-row counts/content, plus 125 schedule-ID bytes, the 921-byte
+duplicate schedule read and 15 bytes of changed last-write values. The fixture
+sizes differ, so the dose-row difference combines fixture content and the wider
+tolerance window. Removing the duplicate read alone clears its 217-byte breach.
+
 The dose owner now supplies the schedules it already holds to its shared slot
 read. Standalone slot reads still fetch their schedules. Comparison results and
 next-slot semantics retain the same SQL window and row mapping.
@@ -127,6 +134,8 @@ probe exercises real worker output, metadata stripping, orientation, typed
 refusals and preservation of the caller's bytes. `return-budget.test.ts` covers
 both one-year and ten-year crossing budgets. The existing native long-journal
 photo timing gate remains the performance regression check.
+The production-build probe also executes the precached normalization worker
+with the network unavailable and checks the decoded output dimensions.
 
 The full desktop benchmark found an additional Care byte breach: 38,855 against
 33,120. The unchanged native benchmark prefix also found Look back at 782,563
