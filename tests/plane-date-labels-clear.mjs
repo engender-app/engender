@@ -18,10 +18,15 @@
      to, and none sits under the readout box in the plot's corner;
    - every label's ink, its opacity composited over the card it is drawn
      on, reaches 4.5:1 (SCREENS.md's floor for body text);
-   - the plot still draws one dot per reading in the window, the scrub
-     still moves the readout's date, and the play control is there.
+   - the plot still draws its dots, the scrub still moves the readout's
+     date, and the play control is there;
+   - with motion on, across a play sweep and twenty arrow-key steps, no
+     date arrives or leaves at full opacity in one frame: the days fade out
+     while the head moves and back in once it rests, sampled on every
+     animation frame.
 
-   Fails on fc8d8512 (labels on dots and joins, labels at 1.5:1). Run with
+   Fails on fc8d8512 (labels on dots and joins, labels at 1.5:1, and 46
+   label arrivals in the sweep, each a cut). Run with
    `node tests/plane-date-labels-clear.mjs`. */
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
@@ -167,7 +172,64 @@ const joinGap = (box, j) => {
   return nearest;
 };
 
+/** Every date label on every animation frame, from a sampler started in
+    the page, across a play sweep and a keyboard scrub. */
+async function sampleLabelFrames(page) {
+  await page.evaluate(() => {
+    window.__labelFrames = [];
+    const loop = (t) => {
+      window.__labelFrames.push({
+        t,
+        labels: [...document.querySelectorAll('.cn-point-label')].map((el) => ({
+          key: `${el.lastChild.textContent.trim()}@${el.getAttribute('x')},${el.getAttribute('y')}`,
+          opacity: Number(getComputedStyle(el).opacity)
+        }))
+      });
+      if (!window.__labelFramesStop) requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  });
+  await page.locator('[data-constellation-play]').click();
+  await page.waitForTimeout(300);
+  await untilPlotSettles(page);
+  await page.locator('.cn-scrub [role="slider"]').focus();
+  for (let i = 0; i < 20; i += 1) {
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(60);
+  }
+  await untilPlotSettles(page);
+  return page.evaluate(() => {
+    window.__labelFramesStop = true;
+    return window.__labelFrames;
+  });
+}
+
 try {
+  {
+    const label = '390px light, motion on';
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, reducedMotion: 'no-preference' });
+    const page = await context.newPage();
+    page.setDefaultTimeout(30000);
+    await settlePage(page, base, 'stats/plane', 'light');
+    await untilPlotSettles(page);
+    const frames = await sampleLabelFrames(page);
+    let arrivals = 0;
+    for (let i = 1; i < frames.length; i += 1) {
+      const before = new Map(frames[i - 1].labels.map((l) => [l.key, l.opacity]));
+      const now = new Map(frames[i].labels.map((l) => [l.key, l.opacity]));
+      for (const [key, opacity] of now) {
+        if (before.has(key)) continue;
+        arrivals += 1;
+        if (opacity >= 0.95) failures.push(`${label}: ${key} arrives at ${opacity.toFixed(2)} in frame ${i} (${frames[i].t.toFixed(0)}ms)`);
+      }
+      for (const [key, opacity] of before)
+        if (!now.has(key) && opacity >= 0.95) failures.push(`${label}: ${key} leaves from ${opacity.toFixed(2)} in frame ${i} (${frames[i].t.toFixed(0)}ms)`);
+    }
+    if (arrivals === 0) failures.push(`${label}: no date arrived in ${frames.length} frames, so nothing was sampled`);
+    console.log(`${failures.length ? 'FAIL' : 'ok  '} ${label}: ${frames.length} frames, ${arrivals} date arrivals`);
+    await context.close();
+  }
+
   for (const c of CASES) {
     const label = `${c.width}px ${c.theme}${c.locale ? ` ${c.locale}` : ''}${c.text ? ` text ${c.text}%` : ''}`;
     const fail = (message) => {

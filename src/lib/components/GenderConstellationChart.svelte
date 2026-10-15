@@ -56,7 +56,7 @@
      out behind the head, so the picture says which way the recent move went
      and the older marks stay marks. */
   import { untrack } from 'svelte';
-  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT, crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import {
     placeLabels,
     tracedThrough,
@@ -145,6 +145,8 @@
   const DOT_REACH = DOT + 1;
   const HEAD_REACH = DOT + 3 + 4.5 / 2;
   const JOIN_REACH = 0.5;
+  /** How long the head stands still before the days are written. */
+  const LABEL_REST_MS = 150;
 
   /* Which dataset this is, as cheaply as it can be asked. A live query
      hands back a fresh array on any journal write, and replaying the sweep
@@ -279,6 +281,25 @@
     };
   });
 
+  /* The days are written on a plot at rest. While the head moves - the
+     sweep, a drag, a held arrow key - the marks a day has to clear move
+     with it, and placing the days again on every frame had them flicking
+     on and off and across their dots (last-audit UI 49). So the days fade
+     out when the head moves and back in once it has stood still for
+     LABEL_REST_MS. */
+  let restingAt = $state(-1);
+  $effect(() => {
+    const now = head;
+    const timer = setTimeout(() => (restingAt = now), LABEL_REST_MS);
+    return () => clearTimeout(timer);
+  });
+
+  /* A day comes, goes and changes sides as the plot settles, so each of
+     those is a fade rather than a cut, keyed on where it is written so a
+     move is one day fading out and the same day fading in. A crossfade
+     under reduced motion too, since it moves nothing. */
+  const dayFade = (_node: Element) => fadeOnly(crossfadeDuration());
+
   let readoutWidth = $state(0);
   let readoutHeight = $state(0);
 
@@ -290,19 +311,24 @@
       readout laid over the corner. The head's own day is in the readout,
       so it is not written a second time beside the ring. */
   let labeled = $derived.by(() => {
-    if (!measureDay || !at) return new Map();
+    if (!measureDay || !at || sweeping || restingAt !== head) return [];
     const ink: Ink[] = [
       ...traced.map((point) => ({ x1: px(point), y1: py(point), x2: px(point), y2: py(point), reach: DOT_REACH })),
       { x1: px(at), y1: py(at), x2: px(at), y2: py(at), reach: HEAD_REACH },
       ...trail.map(({ from, to }) => ({ x1: px(from), y1: py(from), x2: px(to), y2: py(to), reach: JOIN_REACH }))
     ];
-    return placeLabels(traced.slice(0, -1), {
+    const written = traced.slice(0, -1);
+    const placed = placeLabels(written, {
       plot,
       pad: PAD,
       minGap: MIN_LABEL_GAP,
       ink,
       keepOut: [{ left: size - readoutWidth, top: 0, right: size, bottom: readoutHeight }],
       measure: measureDay
+    });
+    return written.flatMap((point) => {
+      const label = placed.get(point.slot);
+      return label ? [{ key: `${point.slot} ${label.x} ${label.y}`, point, label }] : [];
     });
   });
 </script>
@@ -373,14 +399,11 @@
              for a pointer that lingers, so "a point's underlying data" is
              not only its date for anyone who can hover one. -->
         <g class="cn-labels" aria-hidden="true">
-          {#each traced as point (point.slot)}
-            {@const label = labeled.get(point.slot)}
-            {#if label}
-              <text class="cn-point-label" x={label.x} y={label.y} text-anchor={label.anchor}>
-                <title>{readingLabel(point)}</title>
-                {dayLabel(point.day)}
-              </text>
-            {/if}
+          {#each labeled as { key, point, label } (key)}
+            <text class="cn-point-label" x={label.x} y={label.y} text-anchor={label.anchor} transition:dayFade>
+              <title>{readingLabel(point)}</title>
+              {dayLabel(point.day)}
+            </text>
           {/each}
         </g>
 

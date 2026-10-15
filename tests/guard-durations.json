@@ -138,7 +138,7 @@
     "entry-source-return-check": 120,
     "segmented-chosen-clear": 46.1,
     "milestone-era-label-clear": 24.6,
-    "plane-date-labels-clear": 23.3
+    "plane-date-labels-clear": 30.5
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -411,7 +411,7 @@
       24.6
     ],
     "plane-date-labels-clear": [
-      23.3
+      30.5
     ]
   }
 }

@@ -31,7 +31,9 @@ The dates on Two scales at once no longer sit under dots or trail lines, and
 every one is readable. A date used to be written up and to the right of its
 dot whatever was drawn there, and older dates faded with their dots until
 some were barely visible. A date now goes on whichever side of its dot is
-clear, is left out if no side is, and is drawn at full strength.
+clear, is left out if no side is, and is drawn at full strength. While the
+path plays or you scrub it, the dates fade out, and they fade back in once
+it stops.
 
 A chosen switcher option scrolls clear of the arrow at the switcher's edge
 instead of ending under it. The arrows fade in and out as the switcher
