@@ -392,11 +392,14 @@ await block('ticket 12 browser tier', 3, async () => {
 });
 
 // --- Ticket 11: normalize() against a real canvas, and the OPFS store -----
-await block('ticket 11 browser tier', 22, async () => {
+await block('ticket 11 browser tier', 23, async () => {
   const r = await load('/photos.html', 'photos-probe');
   if (r.error) throw new Error(r.error);
 
   const size = (s) => `${s.width}x${s.height}`;
+
+  if (r.inputUnchanged) ok('normalization leaves the caller’s picked bytes intact');
+  else fail('normalization leaves the caller’s picked bytes intact');
 
   if (size(r.bigFull) === '2048x1536') ok('a 4000x3000 photo normalizes to 2048px on the long edge (ADR-0008)');
   else fail('a 4000x3000 photo normalizes to 2048px on the long edge (ADR-0008)', `got ${size(r.bigFull)}`);

@@ -69,3 +69,9 @@ Words from the mounted screen fails this ownership check even when the
 remaining reading group finishes. Node tests also cover omitted, repeated
 and empty reads. Node's synthetic mount remains a harness count check,
 not a substitute for the browser or Android screen measurement.
+
+The [15 October photo and return investigation](photo-and-return.md) records
+the Android idle-encoder regression and the evidence for the return surface’s
+updated count budgets. Photo timing budgets stay unchanged. A failed one-year
+Android budget assertion stops before the ten-year assertion, so inspect the
+logged ten-year measurements too.

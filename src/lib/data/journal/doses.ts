@@ -513,6 +513,22 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     return rows[0].id;
   };
 
+  const readDosesForSlots = async (
+    fromEpochDay: number, toEpochDay: number, schedules: DoseSchedule[]
+  ): Promise<DoseEvent[]> => {
+    const tolerance = widestTolerance(schedules);
+    const from = fromEpochDay - tolerance;
+    const to = toEpochDay + tolerance;
+    const rows = await driver.query<DoseRow>(
+      `SELECT ${DOSE_COLUMNS} FROM dose_event
+       WHERE (timestamp >= ? AND timestamp < ?)
+          OR (auto_log_epoch_day >= ? AND auto_log_epoch_day <= ?)
+       ORDER BY timestamp, id`,
+      [startOfDayTimestamp(from), startOfDayTimestamp(to + 1), from, to]
+    );
+    return rows.map(toDoseEvent);
+  };
+
   /* Named rather than returned anonymously so getComparison can ask this
      same area its three reads instead of restating their SQL. Not `this`: the
      write recorder wraps every operation as a plain function
@@ -534,22 +550,12 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
     },
 
     async getDosesForSlots(fromEpochDay, toEpochDay) {
-      const tolerance = widestTolerance(await area.getSchedules());
-      const from = fromEpochDay - tolerance;
-      const to = toEpochDay + tolerance;
-      const rows = await driver.query<DoseRow>(
-        `SELECT ${DOSE_COLUMNS} FROM dose_event
-         WHERE (timestamp >= ? AND timestamp < ?)
-            OR (auto_log_epoch_day >= ? AND auto_log_epoch_day <= ?)
-         ORDER BY timestamp, id`,
-        [startOfDayTimestamp(from), startOfDayTimestamp(to + 1), from, to]
-      );
-      return rows.map(toDoseEvent);
+      return readDosesForSlots(fromEpochDay, toEpochDay, await area.getSchedules());
     },
 
     async getNextUncoveredSlot(todayEpochDay, toEpochDay) {
       const [episodes, schedules, pauses] = await Promise.all([regimen.getEpisodes(), area.getSchedules(), area.getPauses()]);
-      const doses = await area.getDosesForSlots(todayEpochDay, toEpochDay);
+      const doses = await readDosesForSlots(todayEpochDay, toEpochDay, schedules);
       const active = activeEpisodesAt(episodes, startOfDayTimestamp(todayEpochDay));
       const slots = active.flatMap((episode) => {
         const schedule = schedules.find((candidate) => candidate.episodeId === episode.id);
@@ -887,7 +893,7 @@ export function makeDosesArea(driver: SqliteDriver, regimen: RegimenArea): Doses
       ]);
       /* After the schedules rather than beside them: how far past the range
          to read depends on their tolerance (compareDoseSchedule). */
-      const doses = await area.getDosesForSlots(fromEpochDay, toEpochDay);
+      const doses = await readDosesForSlots(fromEpochDay, toEpochDay, schedules);
       return compareDoseSchedule(episodes, doses, schedules, pauses, { fromEpochDay, toEpochDay, drug });
     }
   };
