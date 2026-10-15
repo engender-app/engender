@@ -38,6 +38,13 @@ records and skipped slots keep their values.
 Closing a changed margin note asks before discarding it. Keep editing returns
 to the same note; an untouched note closes without a question.
 
+Good moments and Tryouts draw once, when everything they show has loaded.
+Saved snapshots no longer appear a moment after the rest of Good moments,
+and a running tryout with readings no longer says "No felt sense recorded
+yet" first. A saved snapshot opens into the list and a deleted one closes up,
+instead of appearing or vanishing at once. A snapshot's mood is followed by
+a space again ("good · Mon 12 Oct").
+
 Modes and Templates close when navigation changes the screen, including
 browser Back. Legacy manager links still open their sheet in Settings.
 
