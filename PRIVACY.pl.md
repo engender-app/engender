@@ -95,11 +95,14 @@ albo utracie urządzenia tej kopii dziennika nie da się już odczytać.
 Możesz też utworzyć opcjonalny, 25-znakowy klucz odzyskiwania. Otwiera
 dziennik na tym samym urządzeniu i w tym samym profilu przeglądarki, gdy
 hasło, PIN albo biometria przestaną działać. Nie przeniesie danych na nowe
-urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz i przechowuje
-tylko zaszyfrowaną kopię klucza dziennika. Trzymaj klucz odzyskiwania na
-papierze albo w menedżerze haseł na innym urządzeniu: każdy, kto ma ten klucz
-i dane dziennika, może odczytać dziennik. Klucz nie przywróci usuniętych
-danych.
+urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz, przy
+tworzeniu, i przechowuje tylko zaszyfrowaną kopię klucza dziennika. Jedyny
+wyjątek to blokada: jeśli aplikacja zablokuje się, gdy nowy klucz jest na
+ekranie, po odblokowaniu pokaże ten sam klucz jeszcze raz. Do tego czasu
+klucz jest zaszyfrowany w pamięci i nigdzie się nie zapisuje. Trzymaj klucz
+odzyskiwania na papierze albo w menedżerze haseł na innym urządzeniu: każdy,
+kto ma ten klucz i dane dziennika, może odczytać dziennik. Klucz nie
+przywróci usuniętych danych.
 
 Gdy kopiujesz klucz odzyskiwania w przeglądarce, aplikacja po minucie
 próbuje usunąć go ze schowka, jeśli nadal tam jest. Przeglądarka może na to

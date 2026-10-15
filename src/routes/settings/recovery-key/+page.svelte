@@ -8,18 +8,27 @@
      leaving it is irreversible - so it gets its own branch rather than a
      flag on the second.
 
-     Nothing here can show a key again, and that is a property of the design
-     rather than a decision this screen makes: only the wrap is stored
-     (crypto/recoveryWrap.ts), so replace is the only answer to "I am not
-     sure I still have it". */
-  import { tick } from 'svelte';
-  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
+     Nothing here can show a key again once it is acknowledged or left, and
+     that is a property of the design rather than a decision this screen
+     makes: only the wrap is stored (crypto/recoveryWrap.ts), so replace is
+     the only answer to "I am not sure I still have it". The one exception
+     is a lock, which takes the screen without asking; the key it took comes
+     back sealed from memory after unlocking (data/recovery-key-held.ts). */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
-  import { journalDataKey } from '$lib/stores/boot.svelte';
+  import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
+  import { isLockedNow } from '$lib/stores/lock.svelte';
+  import {
+    forgetHeldRecoveryKey,
+    holdShownRecoveryKey,
+    openHeldRecoveryKey,
+    recoveryKeyHeld
+  } from '$lib/data/recovery-key-held';
+  import { onDestroy, tick } from 'svelte';
+  import { focusArrivedScreen, focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { copyRecoveryKey } from '$lib/data/recovery-key-clipboard';
   import { isAndroid } from '$lib/platform';
   import { printCurrentPage } from '$lib/print/print';
@@ -31,7 +40,8 @@
   import { leaveGuard } from '$lib/components/kit/leaveGuard.svelte';
 
   /** The minted key, present only between minting and leaving the screen.
-      Held in one place and never written anywhere else. */
+      Never written anywhere; the copy that outlives a lock is sealed
+      (data/recovery-key-held.ts). */
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
   let busy = $state(false);
@@ -60,7 +70,10 @@
          the journal opens, and this screen can be reached by a goto that
          beats it. journalDataKey() is the same door the entry-draft mirror
          goes through. */
-      shown = await mintRecoveryKey(await journalDataKey());
+      const dataKey = await journalDataKey();
+      const minted = await mintRecoveryKey(dataKey);
+      holdShownRecoveryKey(minted, dataKey);
+      shown = minted;
       await refreshRecoveryKeyPresence();
       focusCommittedStep();
       confirming = null;
@@ -111,13 +124,50 @@
      reload, a closed tab or an external navigation. */
   const guard = leaveGuard({
     holding: () => shown !== null,
-    onDiscard: () => { shown = null; }
+    onDiscard: () => {
+      shown = null;
+      forgetHeldRecoveryKey();
+    }
+  });
+
+  /* A lock is the one departure that cannot ask: it unmounts this screen
+     and, since replacing had already killed the old key, used to take the
+     only copy of the new one with it (last-audit UI 09). A key the lock took
+     before Done is shown again once the journal is open, and the screen
+     waits for that answer before it draws anything, so it never says "a key
+     is active" first and then swaps. Any other way off the screen has been
+     through the guard above, and forgets it. Unlocking is not a navigation,
+     so nothing else moves focus off the body; the returned key takes the
+     arrival focus a navigation would have given the screen. A screen that
+     is already gone when the answer comes (a second lock while it opened)
+     takes nothing: the sealed copy stays for the next unlock, and the
+     characters are not handed to a screen nobody can see. */
+  let gone = false;
+  let heldRead = $state(!recoveryKeyHeld());
+  if (recoveryKeyHeld()) {
+    journalDataKey()
+      .then(openHeldRecoveryKey)
+      .then((held) => {
+        if (gone) return;
+        shown = held;
+        if (held !== null) focusArrivedScreen(document.getElementById('app-main'));
+      })
+      .catch((error) => {
+        if (gone) return;
+        console.error('could not open the recovery key held across the lock', error);
+        forgetHeldRecoveryKey();
+      })
+      .finally(() => { heldRead = true; });
+  }
+  onDestroy(() => {
+    gone = true;
+    if (!isLockedNow(bootState.accessMode)) forgetHeldRecoveryKey();
   });
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
   let presenceRevealed = $state(false);
   $effect.pre(() => {
-    if (recoveryKeyPresence.known) presenceRevealed = true;
+    if (recoveryKeyPresence.known && heldRead) presenceRevealed = true;
   });
   const presenceEstimate = readReserve('recovery-key');
   const presenceRemember = (px: number) => rememberReserve('recovery-key', px);
@@ -128,8 +178,10 @@
 
   <!-- Held until the key's presence is known, then faded in (ux-carpet
        ticket 211): a cold open reads it after the first paint, and the panel
-       cut in at full opacity when it came back. -->
-  <ReadReserve ready={presenceRevealed} estimate={presenceEstimate} onrest={presenceRemember}>
+       cut in at full opacity when it came back. A key held across a lock
+       reserves nothing: it opens within the screen's first frame, and a
+       placeholder there only flashed and faded out over the key. -->
+  <ReadReserve ready={presenceRevealed} estimate={heldRead ? presenceEstimate : 0} onrest={presenceRemember}>
   {#if recoveryKeyPresence.known}
     {#if shown !== null}
       <!-- The one moment the characters exist. No back arrow out of this
@@ -159,6 +211,7 @@
           onclick={() => {
             guard.keep();
             shown = null;
+            forgetHeldRecoveryKey();
             void focusStep();
             toast(m.rk_made_toast());
           }}>{m.rk_done()}</button

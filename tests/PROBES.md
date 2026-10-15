@@ -471,7 +471,7 @@ To run one on its own, use
 | `record-dismissal-check` | a cancelled dismissal keeps unsaved record edits and the sheet's position |
 | `letter-composition-check` | letter dismissal, Back and navigation preserve text/date; validation, rejected and delayed storage, retry, single write, reading, lock uses real routes |
 | `save-and-failure-check` | a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today |
-| `recovery-key-departure-check` | every way off the recovery key screen asks before the key is lost |
+| `recovery-key-departure-check` | every way off the recovery key screen asks before the key is lost; a lock hides the key from the gate and storage and the same key comes back after unlocking, until it is acknowledged |
 | `photo-browse-compare` | browsing, selecting and wiping photos on a small library |
 | `photo-grid-batching` | the grid stays whole batches deep at 3000 photos |
 | `in-place-scroll-check` | opening and closing a photo and picking a chip keep the library's scroll within 1px; forward visits still open at the top and back still restores |

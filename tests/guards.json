@@ -102,7 +102,7 @@
   {
     "name": "recovery-key-departure-check",
     "tier": "dev",
-    "holds": "every way off the recovery key screen asks before the key is lost"
+    "holds": "every way off the recovery key screen asks before the key is lost; a lock hides the key from the gate and storage and the same key comes back after unlocking, until it is acknowledged"
   },
   {
     "name": "photo-browse-compare",
