@@ -7,17 +7,24 @@ import android.net.Uri;
 
 import java.util.UUID;
 
-import dev.engender.app.MainActivity;
 import dev.engender.app.reminders.ReminderScheduler;
 
 /**
- * Deep-link into an unlocked app route: an ACTION_VIEW PendingIntent at
- * MainActivity carrying the destination as a route extra. Generalized out
+ * Deep-link into an unlocked app route: a PendingIntent carrying the
+ * destination as a route extra. Generalized out
  * of ReminderAlarmReceiver's own openAppIntent (tickets 26, 33, 34 all need
  * it) - MainActivity only ever stores the route (ReminderScheduler.
  * storeLaunchRoute); the JS side decides when it is safe to navigate there,
  * after app lock's own gate has cleared. So this helper never bypasses app
  * lock, it just queues where to land once it does.
+ *
+ * <p>The intent names {@link #OPEN_ROUTE} within this package rather than
+ * MainActivity's class. Only the launcher aliases declare that action and
+ * exactly one of them is enabled, so the tap starts the same alias the
+ * launcher would, and Recents and the window title wear its label and icon:
+ * Notes under disguise. Resolution happens when the tap lands, so a widget
+ * or notification built before a disguise flip still opens the live alias
+ * (last-audit UI 04).
  */
 public final class AppLaunch {
 
@@ -26,6 +33,7 @@ public final class AppLaunch {
     private static final String PREFS = "engender-launch-auth";
     private static final String KEY_NONCE = "nonce";
     private static final String EXTRA_NONCE = "gd_route_nonce";
+    static final String OPEN_ROUTE = "dev.engender.app.action.OPEN_ROUTE";
 
     private static synchronized String nonce(Context context) {
         android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -44,8 +52,8 @@ public final class AppLaunch {
     }
 
     static Intent routeIntent(Context context, String route, String key) {
-        return new Intent(context, MainActivity.class)
-            .setAction(Intent.ACTION_VIEW)
+        return new Intent(OPEN_ROUTE)
+            .setPackage(context.getPackageName())
             .setData(Uri.parse("engender://open/" + Uri.encode(key)))
             .putExtra(ReminderScheduler.EXTRA_ROUTE, route)
             .putExtra(EXTRA_NONCE, nonce(context))
