@@ -18,6 +18,8 @@ import { builtArchiveRecovery } from './archive-built-recovery.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
 import { entryContextualText } from './entry-contextual-text.mjs';
+import { focusSwaps } from './focus-swaps.mjs';
+import { focusArrival } from './focus-arrival.mjs';
 import { coldUnlock } from './cold-unlock.mjs';
 import { firstRunSetup } from './first-run-setup.mjs';
 import { firstRunBuiltSetup } from './first-run-built-setup.mjs';
@@ -84,6 +86,15 @@ async function load(path, name) {
   return page.evaluate((key) => window[key], resultGlobal(name));
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
+
+await block('named focus after content swaps', 40, async () => {
+  for (const motion of ['reduce', 'full'])
+    for (const result of await focusSwaps(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
+});
+
+await block('cold unlock focuses the arrived screen', 1, async () => {
+  for (const result of await focusArrival(browser)) ok(result);
+});
 
 await block('first-run credentials survive stale and simultaneous tabs', 8, async () => {
   for (const result of await firstRunSetup(browser, `http://localhost:${port}`)) {

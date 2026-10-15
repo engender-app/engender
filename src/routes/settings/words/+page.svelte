@@ -22,6 +22,7 @@
      phase 8 ticket 33 moved it to the hub, so the redirect that carried
      /settings/words to /transition/words is gone and the old link is a real
      screen again. */
+  import { focusAfterRemoval } from '$lib/navigation/arrivalFocus';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
@@ -34,6 +35,14 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
+
+  async function unignore(word: string) {
+    const control = document.activeElement;
+    const returnFocus = control instanceof HTMLElement
+      ? focusAfterRemoval(control, '[data-unignore-word]') : () => {};
+    await journal.wordIgnore.setWordIgnored(word, false);
+    returnFocus();
+  }
 
   let ignoredQuery = liveQuery((j) => j.wordIgnore.getIgnoredWords());
   let words = $derived([...(ignoredQuery.value ?? new Set<string>())].sort());
@@ -74,7 +83,7 @@
             action={{
               icon: 'eye',
               label: m.words_unignore_aria({ word }),
-              onclick: () => journal.wordIgnore.setWordIgnored(word, false),
+              onclick: () => unignore(word),
               attrs: { 'data-unignore-word': word }
             }}
           />

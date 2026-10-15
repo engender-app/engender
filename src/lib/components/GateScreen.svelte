@@ -73,6 +73,7 @@
      the moment the whole screen exists for, and it is the one piece of motion
      in the product somebody sees hundreds of times. */
 
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import type { Snippet } from 'svelte';
 
   import { fieldPart } from '$lib/motion/navigation';
@@ -119,6 +120,11 @@
         {#key title}
           <h1
             class="gate-title"
+            {@attach focusNamedTarget}
+            onintroend={(event) => {
+              if (document.activeElement === document.body || document.activeElement?.closest('[inert]'))
+                focusNamedTarget(event.currentTarget);
+            }}
             data-gate-title
             data-field-part
             in:fieldPart={{ printed: true }}

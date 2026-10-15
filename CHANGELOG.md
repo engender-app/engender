@@ -15,6 +15,11 @@ measurement type, unit and date range instead of announcing an edit action.
 Arrow keys in the Language sheet move focus without changing the language or
 reloading the app. Enter, Space or a tap applies the choice.
 
+Keyboard focus follows Today edits, access-mode and recovery-key steps,
+and successful Trash restores, word un-ignores and notice dismissals.
+Unlocking focuses the arrived screen's heading, including on Android with
+other doors retained in the background.
+
 Disguise now covers the app name in Settings, About, recovery and unlock
 messages, boot failures and archive errors in both languages.
 
