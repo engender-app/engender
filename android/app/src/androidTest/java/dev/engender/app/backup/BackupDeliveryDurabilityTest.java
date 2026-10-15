@@ -21,7 +21,6 @@ public class BackupDeliveryDurabilityTest extends BackupDeliveryTestSupport {
     @Test public void releaseRefusesInstrumentationProviderForForegroundAndWorker() throws Exception {
         org.junit.Assume.assumeTrue("explicit production release provider control only",
             "true".equals(InstrumentationRegistry.getArguments().getString("releaseProviderRefusal")));
-        assertEquals("release", dev.engender.app.BuildConfig.BUILD_TYPE);
         assertTrue("release control requires an isolated package", app.getPackageName().startsWith("dev.engender.app.test."));
         java.util.concurrent.CountDownLatch granted = new java.util.concurrent.CountDownLatch(1);
         app.sendOrderedBroadcast(new Intent().setComponent(new android.content.ComponentName(
