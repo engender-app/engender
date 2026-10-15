@@ -35,3 +35,34 @@ describe('android recents preview follows the capture choice alone', () => {
     expect(activity).not.toMatch(/applyWindowFlags\(this,\s*false\)/);
   });
 });
+
+/* Last-audit UI 04. Recents names a task after the component that started
+   it, and so does the window title TalkBack reads on arrival. A widget or a
+   notification that started MainActivity by class showed "engender" and the
+   default flag even with disguise on. Route intents now name an action that
+   only the launcher aliases answer, so Android resolves each tap to the one
+   alias enabled at that moment - the same component the launcher starts. */
+describe('route launches resolve through the live launcher alias', () => {
+  const appLaunch = read('android/app/src/main/java/dev/engender/app/launch/AppLaunch.java');
+  const aliases = [...manifest.matchAll(/<activity-alias\b[\s\S]*?<\/activity-alias>/g)].map((m) => m[0]);
+  const routeFilter =
+    /<intent-filter>\s*<action android:name="dev\.engender\.app\.action\.OPEN_ROUTE"\s*\/>\s*<category android:name="android\.intent\.category\.DEFAULT"\s*\/>\s*<data android:scheme="engender" android:host="open"\s*\/>\s*<\/intent-filter>/;
+
+  it('gives every launcher alias the route filter', () => {
+    expect(aliases.length).toBeGreaterThan(1);
+    for (const alias of aliases) {
+      expect(alias, alias.match(/android:name="([^"]+)"/)?.[1]).toMatch(routeFilter);
+    }
+  });
+
+  it('keeps the route action off MainActivity, which no alias would then name', () => {
+    const main = manifest.match(/<activity\b[^>]*android:name="\.MainActivity"[\s\S]*?<\/activity>/)?.[0] ?? '';
+    expect(main).not.toContain('OPEN_ROUTE');
+  });
+
+  it('builds route intents by that action within this package, not by MainActivity class', () => {
+    expect(appLaunch).not.toMatch(/new Intent\(context, MainActivity\.class\)/);
+    expect(appLaunch).toMatch(/new Intent\(OPEN_ROUTE\)/);
+    expect(appLaunch).toMatch(/\.setPackage\(context\.getPackageName\(\)\)/);
+  });
+});
