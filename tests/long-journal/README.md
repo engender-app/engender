@@ -72,6 +72,8 @@ not a substitute for the browser or Android screen measurement.
 
 The [15 October photo and return investigation](photo-and-return.md) records
 the Android idle-encoder regression and the evidence for the return surface’s
-updated count budgets. Photo timing budgets stay unchanged. A failed one-year
-Android budget assertion stops before the ten-year assertion, so inspect the
-logged ten-year measurements too.
+updated count budgets. Photo timing budgets stay unchanged. Android collects
+budget failures from both fixture sizes and scaling before asserting, so a
+one-year failure cannot hide the decade result. The [Care and Look back
+investigation](care-and-look-back.md) records their count changes and the
+difference between the native recorder and the desktop worker boundary.

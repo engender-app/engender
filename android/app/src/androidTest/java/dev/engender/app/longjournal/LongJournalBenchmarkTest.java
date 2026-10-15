@@ -26,7 +26,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -134,12 +133,10 @@ public class LongJournalBenchmarkTest {
             Log.i(TAG, "Automatic backup one year: " + oneYear.getJSONObject("automaticBackup"));
             Log.i(TAG, "Automatic backup ten years: " + result.getJSONObject("automaticBackup"));
 
-            if (!unrecorded) {
-                checkBudgets(oneYear.getJSONArray("measurements"), budgetTable);
-                checkBudgets(measurements, budgetTable);
-            }
-            JSONArray growthBreaches = scaling.getJSONArray("breaches");
-            assertTrue("long-journal scaling exceeded: " + growthBreaches, growthBreaches.length() == 0);
+            List<String> breaches = BudgetBreaches.collect(oneYear.getJSONArray("measurements"), measurements,
+                budgetTable, scaling.getJSONArray("breaches"), !unrecorded);
+            assertTrue("long-journal benchmark exceeded " + breaches.size() + " budget(s): " + breaches,
+                breaches.isEmpty());
         } finally { if (backupConfigurationStarted) backups.cleanup(); }
     }
 
@@ -168,10 +165,9 @@ public class LongJournalBenchmarkTest {
             assertEquals("scaling measurement order", name, pair.getString("name"));
             Log.i(TAG, String.format("  %-55s 1y %.2fms  10y %.2fms  %.2fx%s", m.getString("what"),
                 pair.getDouble("oneYearMs"), pair.getDouble("tenYearMs"), pair.getDouble("ratio"), budget));
-            /* A screen mount's own line: what it crossed the driver seam for.
-               On this platform a statement is a Capacitor bridge call, so
-               the count is the reading and the
-               milliseconds beside it say what one call costs here. */
+            /* The native recorder sits above ordinary-read caching. These
+               counts describe requested reads and returned JSON; a cached
+               answer does not send another Capacitor bridge call. */
             if (m.has("statements")) {
                 String ceilings = budgetTable.has(name) && budgetTable.getJSONObject(name).has("statementBudget")
                     ? String.format("  budget %d statements, %d bytes",
@@ -198,57 +194,6 @@ public class LongJournalBenchmarkTest {
             Build.MODEL,
             Build.VERSION.SDK_INT,
             Build.FINGERPRINT);
-    }
-
-    /** Fails the test for each measurement that exceeds its budget. */
-    private static void checkBudgets(JSONArray measurements, JSONObject budgetTable) throws Exception {
-        List<String> breaches = new ArrayList<>();
-
-        for (int i = 0; i < measurements.length(); i++) {
-            JSONObject m = measurements.getJSONObject(i);
-            String name = m.getString("name");
-            long ms = Math.round(m.getDouble("ms"));
-
-            if (!budgetTable.has(name)) {
-                breaches.add(name + " has no budget - add one to android-budgets.json");
-                continue;
-            }
-
-            JSONObject budget = budgetTable.getJSONObject(name);
-            int budgetMs = budget.getInt("budgetMs");
-            if (ms > budgetMs) {
-                breaches.add(String.format("%s: %dms over a budget of %dms (baseline %dms)",
-                    name, ms, budgetMs, budget.getInt("baselineMs")));
-            }
-
-            /* The two count budgets a screen mount carries, judged the same
-               way budgets.mjs judges them: a count with no budget is a
-               breach rather than a pass, because the alternative is this
-               gate quietly not watching the one metric that tracks what a
-               bridge call costs. */
-            if (m.has("statements") != budget.has("statementBudget")) {
-                breaches.add(m.has("statements")
-                    ? name + " counts statements and has no budget for them - add one to android-budgets.json"
-                    : name + " has a statement budget and the run took no count for it");
-                continue;
-            }
-            if (m.has("statements")) {
-                int statements = m.getInt("statements");
-                int bytes = m.getInt("bytes");
-                if (statements > budget.getInt("statementBudget")) {
-                    breaches.add(String.format("%s: %d statements over a budget of %d (baseline %d)",
-                        name, statements, budget.getInt("statementBudget"), budget.getInt("statementBaseline")));
-                }
-                if (bytes > budget.getInt("byteBudget")) {
-                    breaches.add(String.format("%s: %d bytes over a budget of %d (baseline %d)",
-                        name, bytes, budget.getInt("byteBudget"), budget.getInt("byteBaseline")));
-                }
-            }
-        }
-
-        assertTrue(
-            "long-journal benchmark exceeded " + breaches.size() + " budget(s): " + breaches,
-            breaches.isEmpty());
     }
 
     /** Polls the WebView until the probe publishes its result. */
