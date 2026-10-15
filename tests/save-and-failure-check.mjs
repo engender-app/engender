@@ -328,6 +328,18 @@ try {
   const beforeSchedule = await doubleTapWhilePending(saveSchedule);
   await page.locator('[data-schedule]').waitFor();
   assert.equal(await calls(), beforeSchedule + 1, 'a double tap saves one schedule');
+  // A stage changed while the save runs is not closed away under it.
+  await page.locator('[data-schedule]').click();
+  await setMode('pending');
+  await saveSchedule.click();
+  await page.waitForFunction(() => window.fault.resolve);
+  await page.locator('[data-stage-duration="0"]').fill('45');
+  await page.evaluate(() => window.fault.resolve());
+  await page.waitForFunction(() => !document.querySelector('[data-save-schedule]')?.disabled);
+  assert.equal(await page.locator('[data-stage-duration="0"]').inputValue(), '45', 'the editor stays with the newer stage');
+  await setMode('pass');
+  await saveSchedule.click();
+  await page.locator('[data-schedule]').waitFor();
   await seed('no procedure', procedureId);
   console.log('PASS dilation schedule: failure keeps the editor, double tap saves one');
 
@@ -345,6 +357,15 @@ try {
   await page.waitForFunction(() => document.querySelector('#tr-feeling-note')?.value === '');
   assert.equal(await calls(), beforeFeeling + 1, 'a double tap saves one reading');
   await page.waitForFunction(() => document.querySelectorAll('[data-feeling]').length === 1);
+  // Only what was sent is cleared: a note typed while the write runs stays.
+  await page.locator('[data-mood="2"]').first().click();
+  await setMode('pending');
+  await addFeeling.click();
+  await page.waitForFunction(() => window.fault.resolve);
+  await page.locator('#tr-feeling-note').fill('Typed while saving');
+  await page.evaluate(() => window.fault.resolve());
+  await page.waitForFunction(() => document.querySelectorAll('[data-feeling]').length === 2);
+  assert.equal(await page.locator('#tr-feeling-note').inputValue(), 'Typed while saving', 'a note typed during the write is kept');
   console.log('PASS felt sense: failure keeps the reading, double tap saves one');
 
   // UI 17: a journaling pause, started and resumed.
@@ -353,7 +374,7 @@ try {
   await fault('journalingPauses', 'upsertPause');
   const confirmPause = page.locator('[data-confirm-pause]');
   await failsThenRetries(confirmPause);
-  const beforePause = await doubleTapWhilePending(confirmPause);
+  const beforePause = await doubleTapWhilePending(confirmPause, page.locator('#pause-start'));
   const resume = page.locator('[data-resume-pause]');
   await resume.waitFor();
   assert.equal(await calls(), beforePause + 1, 'a double tap starts one pause');
