@@ -356,6 +356,12 @@ Opening or closing a photo, picking a photo filter, zooming or paging a
 document and changing a comparison keep the screen where it was. They used to
 jump back to the top.
 
+Regimen rows show the interval in the app's language. In Polish they used to
+say "daily" and "weekly" in English, and an episode still running read "lut
+2026 do trwa". It now reads "od lut 2026", and an ended one "od sty 2025 do
+lut 2026". The clinician summary's interval column follows the same words.
+An interval you typed yourself is shown as you wrote it.
+
 - Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Released schema 88 journals upgrade through schema 89, 90 and 91 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.

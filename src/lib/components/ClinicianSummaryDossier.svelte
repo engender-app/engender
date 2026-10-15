@@ -20,6 +20,7 @@
     applicationSiteLabel,
     episodeEndReasonLabel,
     injectionSiteLabel,
+    regimenIntervalLabel,
     routeLabel,
     statusLabel,
     vehicleLabel
@@ -227,7 +228,7 @@
                   </td>
                   <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
                   <td data-label={m.regimen_route_label()}>{episodeRoute(ep.route)}</td>
-                  <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
+                  <td data-label={m.regimen_interval_label()}>{regimenIntervalLabel(ep.interval)}</td>
                   <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
@@ -267,7 +268,7 @@
                   </td>
                   <td data-label={m.regimen_dose_label()} class="num">{ep.dose} {ep.doseUnit}</td>
                   <td data-label={m.regimen_route_label()}>{episodeRoute(ep.route)}</td>
-                  <td data-label={m.regimen_interval_label()}>{ep.interval}</td>
+                  <td data-label={m.regimen_interval_label()}>{regimenIntervalLabel(ep.interval)}</td>
                   <td data-label={m.clinician_summary_dates_active()} class="num dossier-cell-wide">{episodeSpan(ep)}</td>
                 </tr>
               {/each}
