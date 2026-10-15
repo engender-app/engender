@@ -51,4 +51,10 @@ public class SensitiveClipboardArgumentsTest {
         assertNull(SensitiveClipboardPlugin.clearAfterMs(bridgeCall("{\"value\":\"K\"}")));
         assertNull(SensitiveClipboardPlugin.clearAfterMs(bridgeCall("{\"value\":\"K\",\"clearAfterMs\":\"60000\"}")));
     }
+
+    @Test
+    public void refusesAnIntervalThatWouldBeTruncatedOrWrapped() throws JSONException {
+        assertNull(SensitiveClipboardPlugin.clearAfterMs(bridgeCall("{\"value\":\"K\",\"clearAfterMs\":60000.5}")));
+        assertNull(SensitiveClipboardPlugin.clearAfterMs(bridgeCall("{\"value\":\"K\",\"clearAfterMs\":-18446744073709551615}")));
+    }
 }

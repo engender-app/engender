@@ -54,7 +54,7 @@ public class SensitiveClipboardPlugin extends Plugin {
     }
 
     /**
-     * The interval, read as whatever number type it arrived as. The bridge
+     * The interval, read as the integer type it arrived as. The bridge
      * parses the call with org.json, which makes 60000 an Integer and only
      * a value past Integer.MAX_VALUE a Long, while PluginCall.getLong answers
      * for a Long alone. Reading it with getLong turned every copy the
@@ -62,7 +62,9 @@ public class SensitiveClipboardPlugin extends Plugin {
      */
     static Long clearAfterMs(PluginCall call) {
         Object value = call.getData().opt("clearAfterMs");
-        return value instanceof Number ? ((Number) value).longValue() : null;
+        // Integer and Long only: longValue() on a fraction or a BigInteger
+        // truncates or wraps, which could shorten or lengthen the clear.
+        return value instanceof Integer || value instanceof Long ? ((Number) value).longValue() : null;
     }
 
     /**
