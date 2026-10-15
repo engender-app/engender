@@ -205,8 +205,11 @@ try {
     return Math.max(Math.abs(r - want[0]), Math.abs(g - want[1]), Math.abs(b - want[2])) <= 3;
   }, { shot, colour: ground.colour });
   ok(scrimZ, 'a raised failure is drawn over the dimmed sheet');
+  ok(await page.evaluate(() => [...document.querySelectorAll('[data-toast]')].every((toast) => toast.closest('[inert]'))),
+    'while the sheet is open every toast is inert with the rest of the background');
   await page.keyboard.press('Escape');
   await page.locator('[data-sheet-scrim]').waitFor({ state: 'detached' });
+  ok(await page.evaluate(() => [...document.querySelectorAll('[data-toast]')].every((toast) => !toast.closest('[inert]'))), 'closing the sheet hands the toasts back');
   await clear();
   await clientRoute(page, '/');
 
@@ -231,7 +234,7 @@ try {
   ok(await page.locator('[data-toast]').count() === 0 && await page.locator('[data-toast-action]').count() === 0, 'a lock clears the whole stack');
 
   ok(errors.length === 0, `no uncaught page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
-  assert.equal(checks, 20, 'all toast stack checks ran');
+  assert.equal(checks, 22, 'all toast stack checks ran');
   console.log(`Toast stack passed: ${checks} checks`);
 } finally {
   await context.close();

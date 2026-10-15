@@ -110,6 +110,11 @@ try again. A second tap while a restore is running does nothing. A restored
 row closes its height instead of vanishing, and restoring the last one hands
 the screen to the empty state the same way.
 
+Deleting a second entry while the first one's "Moved to trash" message is
+still up no longer covers the first Restore. The newer message now appears
+above the older one, so both Restore buttons can be tapped, and the older
+message stays where it was. When one goes, the other slides into its place.
+
 Month names in Year wrapped no longer run together. A phone shows the months
 six to a row and 200% zoom four to a row, so names such as Sept and Oct stay
 apart. A wide window keeps all twelve in one row.

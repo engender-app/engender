@@ -10,7 +10,14 @@
      already up never moves while somebody is reaching for it: at the
      bottom the newest goes above, at the top (a failure over a sheet) it
      goes below. Each stack is in the order it is drawn, top to bottom, so
-     Tab and a screen reader meet the toasts the way the eye does. */
+     Tab and a screen reader meet the toasts the way the eye does.
+
+     The two stacks are the shell's children now rather than each toast, so
+     a sheet's lockBackground (overlayLock.ts) makes them inert with the
+     rest of the background for as long as it is open. A toast still shows
+     over the scrim (z-index 50 against 40) and still speaks through the
+     announcer; its action waits for the sheet to close, as a toast already
+     up when the sheet opened always did. */
   const lowered = $derived(toasts.filter((t) => !t.raised).reverse());
   const raised = $derived(toasts.filter((t) => t.raised));
 
