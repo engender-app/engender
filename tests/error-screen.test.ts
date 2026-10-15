@@ -25,6 +25,12 @@ describe('+error.svelte', () => {
     expect(markup).toMatch(/<a class="btn btn-primary" href="\/"/);
   });
 
+  it('says "not found" for a 404 and the generic line for anything else', () => {
+    expect(script).toContain('page.status === 404');
+    expect(markup).toContain('notFound ? m.error_screen_not_found_title() : m.error_screen_failed_title()');
+    expect(markup).toContain('notFound ? m.error_screen_not_found_body() : m.error_screen_failed_body()');
+  });
+
   it('never shows the attempted address or the error text', () => {
     for (const leak of ['page.url', 'page.error', 'pathname', 'page.params', 'page.route', 'location', 'error.message']) {
       expect(markup + script, leak).not.toContain(leak);
