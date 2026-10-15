@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Photo normalization runs in a worker to avoid Android’s idle-encoder delay.
+Dose comparisons reuse schedules already read for the same operation.
+
 Android channel guidance retains Play's existing signing key and records the
 planned F-Droid route using the GitHub APK's developer signature. GitHub/F-Droid
 switching remains unverified pending reproducibility and installed-update proof.

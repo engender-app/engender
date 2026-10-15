@@ -1046,3 +1046,14 @@ operation to abort, then verifies a new authenticated operation and cold unlock.
 The cleanup probe requires the published secret on retry after old-binding
 cleanup fails. Browser swap close and native bridge dispatch are the respective
 publication admission boundaries; later cancellation cannot undo committed data.
+
+## Photo normalization and return-surface costs
+
+`tests/browser-tier/photos-probe.ts` checks real worker normalization, input-byte
+ownership, sizing, metadata removal and typed refusals.
+`tests/browser-tier/verify-build.mjs` also runs the precached worker offline.
+The native long-journal `photo-add` budget remains 3,135 ms.
+`tests/long-journal/return-budget.test.ts`
+checks both fixture sizes against native crossing budgets and catches repeated
+schedule reads. Timings and the count-baseline change are recorded in
+[`long-journal/photo-and-return.md`](long-journal/photo-and-return.md).

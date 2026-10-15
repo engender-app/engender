@@ -67,7 +67,11 @@ async function run() {
   const result: Record<string, unknown> = {};
 
   // --- normalize: size ----------------------------------------------------
-  const big = await normalizePhoto(await sourceJpeg(4000, 3000));
+  const pickedBytes = await sourceJpeg(4000, 3000);
+  const originalBytes = pickedBytes.slice();
+  const big = await normalizePhoto(pickedBytes);
+  result.inputUnchanged = pickedBytes.length === originalBytes.length &&
+    pickedBytes.every((byte, index) => byte === originalBytes[index]);
   result.bigFull = await sizeOf(big.full);
   result.bigThumb = await sizeOf(big.thumb);
   result.thumbIsSmallerFile = big.thumb.length < big.full.length;

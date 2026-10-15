@@ -248,6 +248,7 @@ flowchart LR
   Drv <-- "postMessage<br/>{id, op, args}" --> W[DB worker<br/>mc-worker.ts]
   W --> OPFS[(OPFS SAHPool)]
   UI <--> A2[Argon2id worker]
+  UI <--> Photo[Photo normalization worker]
   UI <--> PDF[pdf.js worker]
   UI <--> OCR[tesseract worker]
   UI <-- "skip-waiting,<br/>cache-on-demand" --> SW[Service worker]
@@ -267,6 +268,8 @@ Ordinary `SELECT` calls with identical SQL and scalar bindings share an answer w
 **Native plugins** are listed once in [src/lib/android/plugin-registry.ts](src/lib/android/plugin-registry.ts), each with the JS module that owns it: `Sqlite`, `Keystore`, `PinBinding`, `Photos`, `Reminders`, `AutoExport`, `FileDelivery`, `RetrospectiveNotifications`, `Disguise`, `LockTiming`, `ScreenCapture`, `DeviceReset`, `Print`, `SensitiveClipboard`, `Permissions` and `StatusBarAppearance`, plus `@capacitor/app` for the back button. Every required plugin is checked at startup. The Java side registers them in [AndroidPluginRegistry.java](android/app/src/main/java/dev/engender/app/AndroidPluginRegistry.java).
 
 **Write notifications.** The journal wrapper announces a successful write's declared tables. Known no-op results skip the announcement (section 6.4).
+
+**Photo normalization.** Each picked image is decoded and encoded in a short-lived module worker. The worker returns the normalized JPEG and thumbnail, then terminates. This avoids Android canvas encoding waiting for the page’s idle scheduler after a screen mount. Size limits, orientation handling and metadata removal are unchanged.
 
 **Service worker.** Update activation uses `engender:skip-waiting` in [src/lib/pwa/sw-messages.ts](src/lib/pwa/sw-messages.ts). The optional PDF worker uses `engender:cache-pdf-worker` in [src/lib/pwa/pdf-worker-cache.ts](src/lib/pwa/pdf-worker-cache.ts). OCR needs no download message.
 
