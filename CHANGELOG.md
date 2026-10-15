@@ -22,6 +22,11 @@ sits on the photo's top-left corner. It used to cover the start of the date
 under the photo, and a tap on that part of the date opened the day editor
 instead of the photo.
 
+An era's name on the Milestones timeline no longer runs into the today dot.
+The last letter of an era ending today used to touch the dot's ring, and at
+200% text the name was cut off. A band that is too short for its name now
+grows a little at its roomier end.
+
 A chosen switcher option scrolls clear of the arrow at the switcher's edge
 instead of ending under it. The arrows fade in and out as the switcher
 scrolls. Wrapped's periods are one word each now (Week, Month, Year,

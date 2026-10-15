@@ -298,6 +298,11 @@
     "holds": "Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return"
   },
   {
+    "name": "milestone-era-label-clear",
+    "tier": "dev",
+    "holds": "an era's name on the milestone rail is drawn whole and clear of every dot's ring, today's included, at 390px, 195px and 1280px, light and dark, English and Polish, text at 100% and 200%, and still opens its era"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
     "holds": "real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"
