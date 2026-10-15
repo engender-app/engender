@@ -8,6 +8,11 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android can open after an update even when storage is completely full.
+The backup scheduler used to crash before the journal could show its
+storage notice. A scheduler that cannot start reports a failed automatic
+backup; free space and reopen the app to restart scheduling.
+
 Running out of storage space now says so. Saving an entry or a photo,
 opening a journal whose update needs room, and exporting each tell you to
 free up some space and try again, where they used to show a general error.

@@ -16,13 +16,20 @@ public class BackupManifestContractTest {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         PackageInfo info = app.getPackageManager().getPackageInfo(app.getPackageName(),
             PackageManager.GET_PERMISSIONS | PackageManager.GET_SERVICES |
-            PackageManager.GET_RECEIVERS | PackageManager.GET_DISABLED_COMPONENTS);
+            PackageManager.GET_RECEIVERS | PackageManager.GET_DISABLED_COMPONENTS |
+            PackageManager.GET_PROVIDERS | PackageManager.GET_META_DATA);
         Set<String> expected = new HashSet<>();
         for (String name : new String[] { "CAMERA", "MODIFY_AUDIO_SETTINGS", "POST_NOTIFICATIONS",
             "RECEIVE_BOOT_COMPLETED", "RECORD_AUDIO", "SCHEDULE_EXACT_ALARM", "USE_BIOMETRIC",
             "USE_FINGERPRINT", "WAKE_LOCK" }) expected.add("android.permission." + name);
         expected.add(app.getPackageName() + ".DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION");
         assertEquals(expected, new HashSet<>(Arrays.asList(info.requestedPermissions)));
+        for (android.content.pm.ProviderInfo provider : info.providers) {
+            if ("androidx.startup.InitializationProvider".equals(provider.name) && provider.metaData != null) {
+                assertFalse("WorkManager must not initialize before journal boot",
+                    provider.metaData.containsKey("androidx.work.WorkManagerInitializer"));
+            }
+        }
         Set<String> services = new HashSet<>();
         for (android.content.pm.ServiceInfo service : info.services) services.add(service.name);
         assertTrue(services.contains("androidx.work.impl.background.systemjob.SystemJobService"));

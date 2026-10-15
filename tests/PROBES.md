@@ -368,6 +368,15 @@ after a new file starts. JVM tests cover reset epochs and ownerless picker
 callbacks. Node tests cover scheduler cancellation and pending-read cleanup.
 The read delays are synthetic timing controls, not physical storage timings.
 
+`WorkManagerStartupTest.refusedInitializationReportsFailureWithoutAdvertisingASchedule`
+runs in its own instrumentation invocation. It passes a synthetic initialization
+refusal through the application's WorkManager configuration, checks that scheduling
+rejects it, and reads the failure and absent next due time through the real
+AutoExport bridge. This tests the error path without filling storage. Device
+acceptance also requires an update with `/data` at zero available blocks,
+followed by the storage-full notice and its retry after freeing space. Run the
+base and candidate on the same disposable AVD; never fill a shared device.
+
 `BackupManifestContractTest` inspects all installed permissions and the native
 backup components through PackageManager. It requires the delayed-job and
 rescheduling owners while refusing the unused network proxy and foreground
