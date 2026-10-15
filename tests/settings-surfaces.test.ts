@@ -239,3 +239,16 @@ describe('what Settings is built from', () => {
     }
   });
 });
+
+describe('the permissions list', () => {
+  it('re-reads through the same watcher as Reminders and Notifications', () => {
+    /* Last-audit UI ticket 41: the list was the one surface that re-read on
+       the way back from Android's settings, with its own listener. The two
+       screens that did not now share one owner with it, so the listener,
+       its teardown and the newest-read-wins rule cannot drift apart. */
+    const list = read('src/lib/components/PermissionList.svelte');
+    expect(list).toContain("from '$lib/permissions/watchStatus'");
+    expect(list).toMatch(/watchStatus<GrantStates>\(\{[\s\S]*?read: readGrantStates/);
+    expect(list).not.toContain("addEventListener('visibilitychange'");
+  });
+});

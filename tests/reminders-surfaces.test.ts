@@ -64,17 +64,36 @@ describe('the reminder editor on web', () => {
 });
 
 describe('the reminders list on Android', () => {
-  it('keeps the granted, denied and battery explanations where they were', () => {
-    /* Ticket 13 moves nothing on Android: the denied notice keeps its two
-       request actions, and the battery note keeps its own link. The slice
-       starts at the Android check-in block, the first markup past the
-       web/Android branch, not at the first {:else} (the empty state's). */
+  it('keeps the denied and battery explanations, one notice per permission', () => {
+    /* Ticket 13 moves nothing on Android: each denied permission keeps its
+       own request action, and the battery note keeps its own link. Ticket
+       41 split the one shared notice in two, so each says only what its
+       own refusal costs and leaves with the collapse kit Notice owns. The
+       slice starts at the Android check-in block, the first markup past
+       the web/Android branch, not at the first {:else} (the empty
+       state's). */
     const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
-    expect(android).toContain("status.notifications === 'denied' || status.exactAlarms === 'denied'");
-    expect(android).toContain('m.rem_capabilities_title()');
-    expect(android).toContain('requestNotifications');
-    expect(android).toContain('requestExactAlarms');
+    expect(android).toContain("{#if status.notifications === 'denied'}");
+    expect(android).toContain('key="reminders-notifications-off"');
+    expect(android).toContain('m.rem_notifications_off_title()');
+    expect(android).toContain('onclick: requestNotifications');
+    expect(android).toContain("{#if status.exactAlarms === 'denied'}");
+    expect(android).toContain('key="reminders-inexact"');
+    expect(android).toContain('m.rem_inexact_title()');
+    expect(android).toContain('m.rem_inexact_body()');
+    expect(android).toContain('onclick: requestExactAlarms');
     expect(android).toContain('m.rem_battery_body()');
     expect(android).toContain('openBatterySettings');
+  });
+
+  it('re-reads permission status whenever the screen comes back to the front', () => {
+    /* Ticket 41 (U30): the way out of a refusal is Android's settings
+       screen, so a status read once at mount stays "denied" after the grant.
+       watchStatus owns the visibility listener, its teardown and the
+       refused-read rule (src/lib/permissions/watchStatus.test.ts). */
+    expect(list).toContain("from '$lib/permissions/watchStatus'");
+    expect(list).toMatch(/watchStatus<AndroidReminderStatus>\(\{[\s\S]*?read: \(\) => androidReminders\.getStatus\(\)/);
+    expect(list).toContain('unreadable: UNREADABLE_STATUS');
+    expect(list).not.toContain("addEventListener('visibilitychange'");
   });
 });

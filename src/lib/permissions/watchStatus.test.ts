@@ -11,22 +11,23 @@ type Status = 'granted' | 'denied';
 /** A document stand-in: one listener list and a visibility the test sets. */
 function fakePage() {
   const listeners = new Set<() => void>();
+  let state: DocumentVisibilityState = 'visible';
+  const turn = (to: DocumentVisibilityState) => {
+    state = to;
+    for (const listener of [...listeners]) listener();
+  };
   const page: VisiblePage & { show(): void; hide(): void; listening(): number } = {
-    visibilityState: 'visible' as DocumentVisibilityState,
+    get visibilityState() {
+      return state;
+    },
     addEventListener: (_type: 'visibilitychange', listener: () => void) => {
       listeners.add(listener);
     },
     removeEventListener: (_type: 'visibilitychange', listener: () => void) => {
       listeners.delete(listener);
     },
-    show() {
-      page.visibilityState = 'visible';
-      for (const listener of [...listeners]) listener();
-    },
-    hide() {
-      page.visibilityState = 'hidden';
-      for (const listener of [...listeners]) listener();
-    },
+    show: () => turn('visible'),
+    hide: () => turn('hidden'),
     listening: () => listeners.size
   };
   return page;

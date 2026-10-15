@@ -58,6 +58,7 @@
     type AndroidRetrospectiveNotificationStatus
   } from '$lib/retrospective/android-bridge';
   import { disclose } from '$lib/motion/reveal';
+  import { watchStatus } from '$lib/permissions/watchStatus';
   import { UNPROMPTED_ROWS, type BooleanPrefKey, type UnpromptedRow } from '$lib/unprompted/registry';
   import { isLiveTileKind } from '$lib/data/liveTiles';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -72,26 +73,34 @@
      permission, so one status/request pair covers the whole list. */
   let notifyStatus = $state<AndroidRetrospectiveNotificationStatus>({ notifications: 'not-required' });
 
-  async function refreshStatus() {
-    if (isWeb) return;
-    try {
-      notifyStatus = await androidRetrospectiveNotifications.getStatus();
-    } catch (error) {
-      console.error('Could not read notification status', error);
-    }
-  }
+  /* Re-read whenever the screen comes back to the front, because the way
+     out of a refusal is Android's settings screen (last-audit UI ticket 41,
+     U30). A read the bridge refuses shows the notice rather than hiding it. */
+  let statusWatch: ReturnType<typeof watchStatus<AndroidRetrospectiveNotificationStatus>> | null = null;
 
   async function requestNotifications() {
     try {
-      notifyStatus = await androidRetrospectiveNotifications.requestNotificationPermission();
+      await androidRetrospectiveNotifications.requestNotificationPermission();
     } catch (error) {
       console.error('Could not request notification permission', error);
     }
+    await statusWatch?.refresh();
   }
 
   $effect(() => {
     if (isWeb) return;
-    void refreshStatus();
+    const watch = watchStatus<AndroidRetrospectiveNotificationStatus>({
+      read: () => androidRetrospectiveNotifications.getStatus(),
+      unreadable: { notifications: 'denied' },
+      apply: (next) => {
+        notifyStatus = next;
+      }
+    });
+    statusWatch = watch;
+    return () => {
+      watch.stop();
+      statusWatch = null;
+    };
   });
 
   /* Both cascades from the two screens this merged, unchanged: turning a

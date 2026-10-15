@@ -20,6 +20,7 @@
   import { disclose } from '$lib/motion/reveal';
   import { isAndroid } from '$lib/platform';
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
+  import { watchStatus } from '$lib/permissions/watchStatus';
 
   const TYPE_ICON: Record<string, string> = { med: 'pill', injection: 'pill', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
@@ -35,23 +36,24 @@
     findById: (id) => reminders.rows.find((r) => r.id === id)
   });
 
-  async function refreshStatus() {
-    if (isWeb) return;
-    try {
-      status = await androidReminders.getStatus();
-    } catch (error) {
-      console.error('Could not read Android reminder status', error);
-    } finally {
-      statusReady = true;
-    }
-  }
+  /* A status the bridge would not give shows both notices, each with the
+     way to the permission, rather than none (ticket 41): an unneeded
+     button costs a tap, a hidden refusal costs every reminder. */
+  const UNREADABLE_STATUS: AndroidReminderStatus = { notifications: 'denied', exactAlarms: 'denied' };
+
+  /* Re-read whenever the screen comes back to the front, because both
+     ways out of a refusal are Android's own settings screens (ticket 41,
+     U30). Every read goes through the watcher, the ones after a request
+     too, so a read from before the trip to settings cannot land last. */
+  let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus>> | null = null;
 
   async function requestNotifications() {
     try {
-      status = await androidReminders.requestNotificationPermission();
+      await androidReminders.requestNotificationPermission();
     } catch (error) {
       console.error('Could not request notification permission', error);
     }
+    await statusWatch?.refresh();
   }
 
   async function requestExactAlarms() {
@@ -60,7 +62,7 @@
     } catch (error) {
       console.error('Could not request exact alarm permission', error);
     }
-    await refreshStatus();
+    await statusWatch?.refresh();
   }
 
   async function openBatterySettings() {
@@ -73,7 +75,19 @@
 
   $effect(() => {
     if (isWeb) return;
-    void refreshStatus();
+    const watch = watchStatus<AndroidReminderStatus>({
+      read: () => androidReminders.getStatus(),
+      unreadable: UNREADABLE_STATUS,
+      apply: (next) => {
+        status = next;
+        statusReady = true;
+      }
+    });
+    statusWatch = watch;
+    return () => {
+      watch.stop();
+      statusWatch = null;
+    };
   });
 
   /* Latched: a reserve must not put its placeholder back (ticket 211). */
@@ -209,23 +223,31 @@
       </div>
     </ReadReserve>
 
+    <!-- One kit Notice per refusal (ticket 41), so each says only what its
+         own permission costs and carries its one way out, and a grant made
+         in Android's settings takes its notice away by the collapse Notice
+         owns rather than in one frame. The inexact one states the accepted
+         fallback after a revoke: Android cancels the exact alarms and the
+         app sets them again only when it next opens or the phone restarts,
+         never sooner. -->
     <ReadReserve ready={statusReady} estimate={permissionEstimate} onrest={permissionRemember}>
-      {#if status.notifications === 'denied' || status.exactAlarms === 'denied'}
-        <div class="notice notice-warning">
-          <Icon name="alert" size={20} />
-          <div class="notice-body">
-            <span class="notice-title">{m.rem_capabilities_title()}</span>
-            {m.rem_capabilities_body()}
-            <div class="spread" style="margin-top:var(--space-2);gap:var(--space-2)">
-              {#if status.notifications === 'denied'}
-                <button class="btn btn-soft" onclick={requestNotifications}>{m.rem_allow_notifications()}</button>
-              {/if}
-              {#if status.exactAlarms === 'denied'}
-                <button class="btn btn-soft" onclick={requestExactAlarms}>{m.rem_allow_exact_alarms()}</button>
-              {/if}
-            </div>
-          </div>
-        </div>
+      {#if status.notifications === 'denied'}
+        <Notice
+          icon="alert"
+          key="reminders-notifications-off"
+          title={m.rem_notifications_off_title()}
+          text={m.rem_notifications_off_body()}
+          action={{ label: m.rem_allow_notifications(), onclick: requestNotifications }}
+        />
+      {/if}
+      {#if status.exactAlarms === 'denied'}
+        <Notice
+          icon="alert"
+          key="reminders-inexact"
+          title={m.rem_inexact_title()}
+          text={m.rem_inexact_body()}
+          action={{ label: m.rem_allow_exact_alarms(), onclick: requestExactAlarms }}
+        />
       {/if}
     </ReadReserve>
 

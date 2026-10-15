@@ -39,6 +39,7 @@
     type GrantStates
   } from '$lib/permissions/catalogue';
   import { openSystemSettings, readGrantStates, requestGrant } from '$lib/permissions/grant';
+  import { watchStatus } from '$lib/permissions/watchStatus';
 
   /* Setup draws the asks and nothing else (after-release 17, UX-10): the
      rows explaining the print dialog, the file picker and the clipboard are
@@ -68,10 +69,6 @@
   let grants = $derived(grantRows(platform, states, asked));
   let ambient = $derived(ambientRows(platform));
 
-  async function refresh() {
-    states = await readGrantStates();
-  }
-
   async function press(key: GrantKey) {
     const row = grants.find((r) => r.key === key);
     if (!row || busy) return;
@@ -98,20 +95,20 @@
     }
   }
 
-  $effect(() => {
-    void refresh();
-  });
-
   /* The way out of a refusal is a system screen, so the answer can change
      while the app is not looking. Re-read on the way back rather than
-     leaving a row claiming a permission that was granted a swipe ago. */
+     leaving a row claiming a permission that was granted a swipe ago; the
+     watcher is the one Reminders and Notifications use too (last-audit UI
+     ticket 41). readGrantStates already settles a failed read as denied. */
   $effect(() => {
-    if (typeof document === 'undefined') return;
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    const watch = watchStatus<GrantStates>({
+      read: readGrantStates,
+      unreadable: { ...NOTHING_GRANTED },
+      apply: (next) => {
+        states = next;
+      }
+    });
+    return () => watch.stop();
   });
 
   /* Written out rather than reached through `m[key]`: check-copy.mjs reads
