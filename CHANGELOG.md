@@ -8,6 +8,13 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Running out of storage space now says so. Saving an entry or a photo,
+opening a journal whose update needs room, and exporting each tell you to
+free up some space and try again, where they used to show a general error.
+An export says whether this device or the place you picked to save it is
+full, and it stops before writing when that place reports too little room.
+A photo that could not be written no longer leaves an empty file behind.
+
 Reminders and Notifications check again when you come back from Android's
 settings. Allowing notifications or exact alarms there and returning used to
 leave the "not allowed" notice up until you left the screen. Reminders now

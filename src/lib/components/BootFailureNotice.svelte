@@ -30,6 +30,7 @@
     'below-baseline': () => m.boot_failed_below_baseline({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }),
     'android-plaintext': m.ak_plaintext_journal,
     engine: m.boot_failed_engine,
+    'storage-full': m.boot_failed_storage_full,
     unknown: m.boot_failed_unknown
   };
 

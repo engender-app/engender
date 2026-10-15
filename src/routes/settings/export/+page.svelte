@@ -10,7 +10,7 @@
   import { crossfadeDuration, fadeOnly, scrollBehavior } from '$lib/motion/tokens';
   import { archivePasswordProblem } from '$lib/data/archive/password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
+  import { exportFailureMessage, importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
   import type { PickedArchive } from '$lib/data/archive/pick';
   import {
     pickForRestore,
@@ -456,7 +456,7 @@
         return;
       }
       console.error(`the ${path} export failed`, error);
-      toast(m.exp_failed());
+      toast(exportFailureMessage(error));
     } finally {
       running = null;
     }

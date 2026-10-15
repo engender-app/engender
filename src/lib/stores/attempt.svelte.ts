@@ -1,10 +1,15 @@
 /* The toast-bound half of writeOutcome.ts (after-release ticket 06): a
    write that fails says so in a toast, and a button that writes can hold
-   itself disabled while its write is in flight. */
+   itself disabled while its write is in flight. A write that failed because
+   storage is full says that instead of the caller's message, since freeing
+   space is the one fix the person can make (last-audit ui 37). */
+import { m } from '$lib/paraglide/messages';
+import { spaceShortage } from '$lib/data/spaceShortage';
 import { toast } from './toasts.svelte';
 import { attemptWith, oneAtATime, oneAtATimeEach } from './writeOutcome';
 
-const sayFailed = (message: string) => toast(message, { kind: 'failed' });
+const sayFailed = (message: string, error: unknown) =>
+  toast(spaceShortage(error) ? m.storage_full_save() : message, { kind: 'failed' });
 
 /** Runs a write; a rejection becomes a toast saying `failMessage`. Resolves
     whether the write landed, so the caller can confirm it. */

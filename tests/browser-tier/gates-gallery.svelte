@@ -84,6 +84,7 @@
     'boot-failure-unreadable',
     'boot-failure-below-baseline',
     'boot-failure-engine',
+    'boot-failure-storage-full',
     'boot-failure-unknown',
     'boot-failure-recoverable'
   ];
@@ -97,6 +98,7 @@
       raw: "Database schema version 50 is older than this build's baseline (78). It comes from a development build and cannot be migrated."
     },
     'boot-failure-engine': { kind: 'engine', raw: 'the database worker stopped: no message' },
+    'boot-failure-storage-full': { kind: 'storage-full', raw: 'database or disk is full' },
     'boot-failure-unknown': { kind: 'unknown', raw: 'table entry already exists' },
     'boot-failure-recoverable': { kind: 'unknown', raw: 'table entry already exists' }
   };

@@ -20,6 +20,7 @@ import { appWordmark } from '$lib/disguise/identity';
 import { prefs } from '$lib/data/prefs/store.svelte';
 import { m } from '$lib/paraglide/messages';
 import type { RestoreFailureKind, RestoreGuardKind } from '$lib/data/journal/restoreFlow';
+import { spaceShortage, type SpaceShortage } from '$lib/data/spaceShortage';
 
 /* The three the screen catches itself, before the container is read
    (restoreFlow.ts). Shared by both records below because they say the same
@@ -55,3 +56,16 @@ const VERIFY_MESSAGE: Record<RestoreFailureKind, () => string> = {
 export const importFailureMessage = (kind: RestoreFailureKind): string => IMPORT_MESSAGE[kind]();
 
 export const verifyFailureMessage = (kind: RestoreFailureKind): string => VERIFY_MESSAGE[kind]();
+
+/* An export that failed because storage ran out says which storage, since the
+   fix differs: space on this device for the staging copy, or space at the
+   place picked in the save dialog (last-audit ui 37). Anything else keeps
+   the general sentence, so a refusal that is not a full disk is never
+   called one. */
+const EXPORT_MESSAGE: Record<SpaceShortage | 'other', () => string> = {
+  device: m.exp_storage_full,
+  destination: m.exp_destination_full,
+  other: m.exp_failed
+};
+
+export const exportFailureMessage = (error: unknown): string => EXPORT_MESSAGE[spaceShortage(error) ?? 'other']();

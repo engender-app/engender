@@ -47,6 +47,7 @@ export async function verifyGatesSayWhatHappened(report = (line) => console.log(
       'boot-failure-unreadable': { retry: true, wayOut: true },
       'boot-failure-below-baseline': { retry: false, wayOut: true },
       'boot-failure-engine': { retry: true, wayOut: false },
+      'boot-failure-storage-full': { retry: true, wayOut: false },
       'boot-failure-unknown': { retry: true, wayOut: false }
     };
     for (const [name, want] of Object.entries(doors)) {

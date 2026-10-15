@@ -26,8 +26,11 @@ type BootStatus =
       encryption.
     - `engine`: the database itself never started - the worker or its wasm
       failed to load, or the SQLite build lacks FTS5.
+    - `storage-full`: the device ran out of space, usually while a migration
+      or its pre-migration copy was being written (last-audit ui 37). Freeing
+      space and trying again is the fix, so the retry stays.
     - `unknown`: anything nobody has named yet. */
-export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'unknown';
+export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'storage-full' | 'unknown';
 
 
 interface BootShape {

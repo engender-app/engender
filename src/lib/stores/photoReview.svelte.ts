@@ -6,6 +6,7 @@
    PhotoAlignmentReview.svelte knows anything about. */
 
 import { m } from '$lib/paraglide/messages';
+import { spaceShortage } from '$lib/data/spaceShortage';
 import { capturePhoto, type ReferencePhoto } from './photoPicking';
 import { toast } from './toasts.svelte';
 import type { NormalizedPhoto } from '../data/journal/photos';
@@ -68,7 +69,7 @@ export function photoReview(
       } catch (error) {
         // The shot stays under review, so Use photo is the retry.
         console.error('a reviewed photo could not be stored', error);
-        toast(m.photo_save_failed(), { kind: 'failed' });
+        toast(spaceShortage(error) ? m.storage_full_save() : m.photo_save_failed(), { kind: 'failed' });
         return;
       } finally {
         accepting = false;

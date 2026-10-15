@@ -381,6 +381,24 @@ test('a database that never starts is the engine failure', () => {
   ).toBe('engine');
 });
 
+test('a migration or a pre-migration copy that runs out of space is the storage failure, however it arrives', () => {
+  // SQLite's own words after the transactor kept them past a refused ROLLBACK.
+  const full = new AggregateError(
+    [new Error('database or disk is full'), new Error('cannot rollback - no transaction is active')],
+    'database or disk is full'
+  );
+  const failed = failedOpen(full);
+  expect(failed.machine.boot).toMatchObject({ failure: 'storage-full', error: 'database or disk is full' });
+  // Still asks the disk for the copy, so the restore stays offered.
+  expect(failed.effects).toEqual([{ type: 'check-pre-migration-copy' }]);
+  expect(
+    walk(started('web'), {
+      type: 'boot-failed',
+      message: '/data/user/0/dev.engender.app/databases/journal.db: No space left on device'
+    }).machine.boot.failure
+  ).toBe('storage-full');
+});
+
 test('a failure nobody has named yet is unknown, and still keeps its text for the bug report', () => {
   const failed = failedOpen(new Error('no such table: entry'));
   expect(failed.machine.boot).toMatchObject({ failure: 'unknown', error: 'no such table: entry' });
