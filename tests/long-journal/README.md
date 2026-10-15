@@ -54,6 +54,21 @@ Device timings require a supported WebView and are separate from desktop
 measurements. The native probe bundle and Java consumer can be compiled
 without running the device benchmark.
 
+The native fixture setup requests animation frames while encoding its photos,
+then cancels the loop before startup or operation measurements. WebView can
+otherwise defer idle canvas encoding for minutes. The encoder, dimensions and
+JPEG quality stay the same. Each fixture asserts an empty starting journal and
+an actual entry count matching the generator. Its result records both counts
+and verifies that setup frames did not continue during measurements.
+
+The native launcher allows three hours for fixture setup and the complete run;
+operation, count and scaling budgets remain separate. It uses the shared
+WebView probe dispatcher so global UI idleness cannot delay result polling.
+Before checking budgets it writes the complete result to the isolated app's
+`files/long-journal-result.json`, which survives a disconnected host. The next
+run removes that receipt before generation. Collect it before uninstalling the
+test package.
+
 `mount-stats` mounts the shipped Look back door, including the Words tile's
 whole-journal `noteEntries` read and word analysis. Reference hydration and
 the preceding read generation finish before the measured window opens.
