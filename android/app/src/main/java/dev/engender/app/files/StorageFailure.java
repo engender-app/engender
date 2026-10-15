@@ -70,6 +70,18 @@ final class StorageFailure {
         return unit > 0 ? availableBlocks * unit : null;
     }
 
+    /**
+     * Android's own on-device providers: shared storage and SD cards, and
+     * Downloads. Their descriptors are files on the volume the export lands
+     * on. Any other provider may be a cloud drive whose descriptor is a
+     * local cache, where the phone's free space says nothing about the
+     * destination, so it is never measured.
+     */
+    static boolean isLocalProvider(String authority) {
+        return "com.android.externalstorage.documents".equals(authority)
+            || "com.android.providers.downloads.documents".equals(authority);
+    }
+
     /** Only a destination that measured short is refused; an unknown one gets the write and its own answer. */
     static boolean refuses(Long available, long length) {
         return available != null && available < length;

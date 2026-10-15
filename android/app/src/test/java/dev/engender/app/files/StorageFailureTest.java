@@ -45,6 +45,15 @@ public class StorageFailureTest {
         assertNull(StorageFailure.availableBytes(true, -1, 4096, 4096));
     }
 
+    /* A cloud drive can hand over a regular file that is only its local
+       cache, so only Android's own on-device providers are measured. */
+    @Test public void measuresOnlyAndroidsOwnOnDeviceProviders() {
+        assertTrue(StorageFailure.isLocalProvider("com.android.externalstorage.documents"));
+        assertTrue(StorageFailure.isLocalProvider("com.android.providers.downloads.documents"));
+        assertFalse(StorageFailure.isLocalProvider("com.google.android.apps.docs.storage"));
+        assertFalse(StorageFailure.isLocalProvider(null));
+    }
+
     @Test public void refusesOnlyWhatIsKnownNotToFit() {
         assertTrue(StorageFailure.refuses(1_000L, 1_001L));
         assertFalse(StorageFailure.refuses(1_001L, 1_001L));
