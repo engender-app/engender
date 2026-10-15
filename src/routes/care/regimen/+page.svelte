@@ -16,13 +16,14 @@
      line, so this screen keeps only the one link still worth naming
      here. */
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { cycleTrackingVisible, testosteroneActive } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { fmtNumber, fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
   import { episodeEndReasonLabel, pauseReasonLabel, routeLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -192,7 +193,16 @@
   let episodeChanged = $derived(!sameDraft(episodeSnapshot, episodeBaseline));
   let scheduleChanged = $derived(!sameDraft(scheduleSnapshot, scheduleBaseline));
   let changed = $derived(episodeChanged || scheduleChanged || newPause !== null || pendingEndReason !== null);
+  let episodeRangeInverted = $derived(!!editor && spanIsInverted({
+    startEpochDay: epochDayFromDateInputValueOrToday(editor.startDate),
+    endEpochDay: epochDayFromDateInputValue(editor.endDate)
+  }));
+  let pauseRangeInverted = $derived(!!newPause && spanIsInverted({
+    startEpochDay: epochDayFromDateInputValue(newPause.start),
+    endEpochDay: epochDayFromDateInputValue(newPause.end)
+  }));
   let episodeRequirements = $derived([
+    ...(episodeRangeInverted ? [m.era_conflict_inverted()] : []),
     ...(!editor?.drug.trim() ? [m.regimen_drug_required()] : []),
     ...(!Number.isFinite(parseFloat(String(editor?.dose ?? ''))) ? [m.regimen_dose_required()] : [])
   ]);
@@ -384,7 +394,7 @@
   }
 
   async function addPause() {
-    if (!editor?.id || !newPause || saving) return;
+    if (!editor?.id || !newPause || pauseRangeInverted || saving) return;
     const startEpochDay = epochDayFromDateInputValue(newPause.start);
     if (startEpochDay === null) return;
     const values = {
@@ -638,13 +648,13 @@
             </Field>
             <Field label={m.regimen_end_label()} id="regimen-end">
               {#snippet children(id)}
-                <DatePicker name="regimen-end" bind:value={editor!.endDate} {id} />
+                <DatePicker name="regimen-end" min={dayRangeEndMin(editor!.startDate)} bind:value={editor!.endDate} {id} aria-invalid={episodeRangeInverted || undefined} describedBy={episodeRangeInverted ? "regimen-episode-requirements" : undefined} />
               {/snippet}
             </Field>
           </div>
           <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
           <div id="regimen-episode-requirements" class="muted small" aria-live="polite">
-            {#each episodeRequirements as requirement (requirement)}<p>{requirement}</p>{/each}
+            {#each episodeRequirements as requirement (requirement)}<p transition:collapse>{requirement}</p>{/each}
           </div>
           <button class="btn btn-primary" data-save-regimen disabled={episodeRequirements.length > 0} onclick={saveEpisode}>
             <span>{m.regimen_save()}</span>
@@ -875,7 +885,7 @@
                 </Field>
                 <Field label={m.regimen_pause_end_label()} id="pause-end">
                   {#snippet children(id)}
-                    <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
+                    <DatePicker name="pause-end" min={dayRangeEndMin(newPause!.start)} bind:value={newPause!.end} {id} aria-invalid={pauseRangeInverted || undefined} describedBy={pauseRangeInverted ? "regimen-pause-requirements" : undefined} />
                   {/snippet}
                 </Field>
               </div>
@@ -900,14 +910,16 @@
                   </div>
                 {/snippet}
               </Field>
-              {#if epochDayFromDateInputValue(newPause.start) === null}
-                <p class="muted small" id="regimen-pause-requirements">{m.regimen_pause_start_required()}</p>
-              {/if}
+              <div aria-live="polite">
+                {#if epochDayFromDateInputValue(newPause.start) === null || pauseRangeInverted}
+                  <p class="muted small" id="regimen-pause-requirements" transition:collapse>{pauseRangeInverted ? m.era_conflict_inverted() : m.regimen_pause_start_required()}</p>
+                {/if}
+              </div>
               <button
                 class="btn btn-soft"
                 data-add-pause
-                aria-describedby={epochDayFromDateInputValue(newPause.start) === null ? "regimen-pause-requirements" : undefined}
-                disabled={epochDayFromDateInputValue(newPause.start) === null}
+                aria-describedby={epochDayFromDateInputValue(newPause.start) === null || pauseRangeInverted ? "regimen-pause-requirements" : undefined}
+                disabled={epochDayFromDateInputValue(newPause.start) === null || pauseRangeInverted}
                 onclick={addPause}
               >
                 <span>{m.regimen_pause_add()}</span>

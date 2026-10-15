@@ -10,10 +10,11 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { pauseCoversDay } from '$lib/data/journalingPause';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -35,8 +36,13 @@
 
   let newPause = $state<{ start: string; end: string } | null>(null);
 
+  let rangeInverted = $derived(!!newPause && spanIsInverted({
+    startEpochDay: epochDayFromDateInputValue(newPause.start),
+    endEpochDay: epochDayFromDateInputValue(newPause.end)
+  }));
+
   async function startPause() {
-    if (!newPause) return;
+    if (!newPause || rangeInverted) return;
     const startEpochDay = epochDayFromDateInputValue(newPause.start);
     if (startEpochDay === null) return;
     await journal.journalingPauses.upsertPause({
@@ -109,17 +115,23 @@
           </Field>
           <Field label={m.journaling_pause_end_label()} id="pause-end">
             {#snippet children(id)}
-              <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
+              <DatePicker name="pause-end" min={dayRangeEndMin(newPause!.start)} bind:value={newPause!.end} {id} aria-invalid={rangeInverted || undefined} describedBy={rangeInverted ? "pause-range-error" : undefined} />
             {/snippet}
           </Field>
         </div>
         <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
           {m.journaling_pause_end_hint()}
         </p>
+        <div aria-live="polite">
+          {#if rangeInverted}
+            <p class="muted small" id="pause-range-error" transition:collapse>{m.era_conflict_inverted()}</p>
+          {/if}
+        </div>
         <button
           class="btn btn-primary"
           data-confirm-pause
-          disabled={epochDayFromDateInputValue(newPause.start) === null}
+          aria-describedby={rangeInverted ? "pause-range-error" : undefined}
+          disabled={epochDayFromDateInputValue(newPause.start) === null || rangeInverted}
           onclick={startPause}
         >
           <span>{m.journaling_pause_start()}</span>

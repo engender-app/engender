@@ -228,6 +228,11 @@
     "holds": "tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes"
   },
   {
+    "name": "range-editors-check",
+    "tier": "dev",
+    "holds": "regimen, dose-pause, journaling-pause and tryout editors reject inverted ranges, constrain end pickers and retain equal/open dates in English and Polish, with animated feedback"
+  },
+  {
     "name": "regimen-editor-check",
     "tier": "dev",
     "holds": "independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment"

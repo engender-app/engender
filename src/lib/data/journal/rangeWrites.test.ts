@@ -89,3 +89,28 @@ test('adopting a tryout refuses an earlier end before creating a milestone', asy
   await journal.tryouts.adoptTryout(id, { endEpochDay: 100 });
   assert.equal((await journal.tryouts.getTryouts())[0].endEpochDay, 100);
 });
+
+test('ending an episode cannot interleave its checked start with a concurrent date edit', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.regimen.upsertEpisode(episode);
+  await Promise.all([
+    journal.regimen.endEpisode(id, 100),
+    journal.regimen.upsertEpisode({ ...episode, id, startEpochDay: 200 })
+  ]);
+  const [row] = await journal.regimen.getEpisodes();
+  assert.equal(row.startEpochDay, 200);
+  assert.equal(row.endEpochDay, null);
+});
+
+test('adoption cannot interleave its checked start with a concurrent date edit', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const input = { kind: 'name' as const, label: 'Alex', startEpochDay: 100, endEpochDay: null };
+  const id = await journal.tryouts.upsertTryout(input);
+  await Promise.all([
+    journal.tryouts.adoptTryout(id, { endEpochDay: 100 }),
+    journal.tryouts.upsertTryout({ ...input, id, startEpochDay: 200 })
+  ]);
+  const [row] = await journal.tryouts.getTryouts();
+  assert.equal(row.startEpochDay, 200);
+  assert.equal(row.endEpochDay, null);
+});

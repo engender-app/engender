@@ -149,16 +149,18 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
     },
 
     async endEpisode(id, endEpochDay, endReason = null) {
-      const [episode] = await driver.query<{ start_epoch_day: number }>(
-        'SELECT start_epoch_day FROM regimen_episode WHERE uuid = ?', [id]
-      );
-      if (!episode) throw new Error(`unknown regimen episode: ${id}`);
-      assertSpanOrdered({ startEpochDay: episode.start_epoch_day, endEpochDay });
-      const result = await driver.run(
-        'UPDATE regimen_episode SET end_epoch_day = ?, end_reason = ?, updated_at = ? WHERE uuid = ?',
-        [endEpochDay, endReason, now(), id]
-      );
-      assertChanged(result, `regimen episode: ${id}`);
+      await driver.transaction(async (driver) => {
+        const [episode] = await driver.query<{ start_epoch_day: number }>(
+          'SELECT start_epoch_day FROM regimen_episode WHERE uuid = ?', [id]
+        );
+        if (!episode) throw new Error(`unknown regimen episode: ${id}`);
+        assertSpanOrdered({ startEpochDay: episode.start_epoch_day, endEpochDay });
+        const result = await driver.run(
+          'UPDATE regimen_episode SET end_epoch_day = ?, end_reason = ?, updated_at = ? WHERE uuid = ?',
+          [endEpochDay, endReason, now(), id]
+        );
+        assertChanged(result, `regimen episode: ${id}`);
+      });
     },
 
     async setEpisodeHidden(id, hidden) {

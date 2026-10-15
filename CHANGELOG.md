@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Regimen episodes, dose pauses, journaling pauses and tryouts refuse an end
+date before their start. Equal dates and an empty end date remain valid.
+Existing records are left as stored.
+
 Screen readers announce lab values and units, crisis line numbers and web
 domains, and voice benchmark pitches. Measurement charts describe their
 measurement type, unit and date range instead of announcing an edit action.

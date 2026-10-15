@@ -257,6 +257,13 @@ flowchart LR
 
 Vite emits workers as ES modules so demo worker imports can split into chunks. The development and preview servers set COOP/COEP headers for SQLite; production hosting supplies those headers itself.
 
+**Date range writes.** Regimen episodes, dose pauses, journaling pauses and
+tryouts share the ordering guard in [data/span.ts](src/lib/data/span.ts).
+Editors constrain the end picker and explain an inverted draft before saving.
+Journal writes reject inverted bounds independently, including episode ending
+and tryout adoption. Equal dates remain inclusive and null ends stay open.
+Reads and archive handling leave existing records unchanged.
+
 **Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Unrelated calls wait until the reserved transaction or snapshot ends. Transactions don't nest. Entry trash and restore, tryout adoption, procedure deletion and doubt-snapshot deletion commit their related writes together. A failed file cleanup after commit logs a warning and leaves reclamation to the boot sweep; the committed write still succeeds.
 
 Ordinary `SELECT` calls with identical SQL and scalar bindings share an answer within a driver read generation. The connection keeps at most 128 answers and returns separate row objects to each caller. Writes and transaction or snapshot boundaries discard those answers; scoped reads always reach SQLite, and rejected reads can retry. This saves repeated worker and Android bridge calls when several Home readers ask for the same rows.
