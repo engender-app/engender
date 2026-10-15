@@ -63,6 +63,7 @@
   import { crossfade } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
+  import { writer } from '$lib/stores/attempt.svelte';
 
   /* The strip's fill is a colour carrying a value, so it takes role 0
      (roles.ts) rather than the sessions' own stripe (ticket 44). Index 2 is
@@ -128,15 +129,24 @@
   let stagesToSave = $derived(stagesFromInput(stagesInput));
   let scheduleCanSave = $derived(selectedProcedureId !== null && stagesToSave !== null);
 
+  /* One save per tap (UI 17): a first schedule has no id yet, so a double
+     tap used to store two. A failed save keeps the editor open and says so. */
+  const scheduleWrite = writer();
   async function saveSchedule() {
-    if (!selectedProcedureId || !stagesToSave) return;
-    await journal.taper.upsertTaper({
-      id: taper?.id,
-      procedureId: selectedProcedureId,
-      startEpochDay: epochDayFromDateInputValueOrToday(startDayInput),
-      stages: stagesToSave
-    });
-    editingSchedule = false;
+    const procedureId = selectedProcedureId;
+    const stages = stagesToSave;
+    if (!procedureId || !stages) return;
+    const saved = await scheduleWrite.run(
+      () =>
+        journal.taper.upsertTaper({
+          id: taper?.id,
+          procedureId,
+          startEpochDay: epochDayFromDateInputValueOrToday(startDayInput),
+          stages
+        }),
+      m.write_failed()
+    );
+    if (saved) editingSchedule = false;
   }
 
   /* The session log. An ordinary recordEditor/RecordSheet pair, the same
@@ -320,7 +330,7 @@
         </button>
 
         <div class="stack-3 dilation-schedule-actions">
-          <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave} onclick={saveSchedule}>
+          <button class="btn btn-primary" data-save-schedule disabled={!scheduleCanSave || scheduleWrite.busy} onclick={saveSchedule}>
             <span>{m.dilation_schedule_save()}</span>
           </button>
           <button class="btn btn-ghost" onclick={() => (editingSchedule = false)}>
