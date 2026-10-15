@@ -690,15 +690,18 @@
     gap: var(--space-2);
   }
   .cal-field .cal-month { flex: 1; }
-  /* Under 240px (200% zoom on a 390px phone) the month and the search
-     control left the month 99px, and "October" and "październik" are each
-     wider than that at this size: the slot's walls cut the word, and the
-     button under them ran 2 to 46px into the search target (last-audit
-     UI 48). There the month takes the whole line and search moves to the
-     line under it, at the same trailing edge. Decided by the width, not by
-     the month's length, so stepping from May to October never moves the
-     control. */
-  @container app (max-width: 239px) {
+  /* Beside the search control the month has the app's width less 96px:
+     99px at 195px (200% zoom on a 390px phone), where "October" (109px)
+     and "październik" (153px) were cut by the slot's walls and the button
+     under them ran 2 to 46px into the search target (last-audit UI 48).
+     Where the longest month word would not fit beside it, the month takes
+     the whole line and search moves to the line under it, at the same
+     trailing edge. The bound is in em, the app's own text size, because
+     the words grow with it and the 96px does not: 15.75em is 252px at
+     100% text, where "październik" just fits beside, and 504px at 200%.
+     Decided by the width and the text size, never by which month is
+     showing, so stepping from May to October does not move the control. */
+  @container app (max-width: 15.75em) {
     .cal-field { flex-wrap: wrap; }
     .cal-field .cal-month { flex-basis: 100%; }
     .cal-field > a { margin-left: auto; }
@@ -770,6 +773,10 @@
        baseline is drawn outside them and never seen. */
     text-underline-offset: 2px;
     text-decoration-thickness: 2px;
+    /* The last resort, where even the whole line is narrower than one
+       word ("październik" is 307px with text at 200%): broken inside the
+       word rather than cut by the slot. */
+    overflow-wrap: anywhere;
   }
 
   /* The chevron turns over rather than being swapped for a second glyph:

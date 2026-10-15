@@ -47,9 +47,9 @@ instead of ending under it. The arrows fade in and out as the switcher
 scrolls. Wrapped's periods are one word each now (Week, Month, Year,
 Range), so the Polish ones fit whole at 200% zoom.
 
-At 200% zoom on a phone, Journal's month name is whole again. It used to lose
-its last letters ("Octobe") and run into the search button, which now sits on
-the line under the month. On Lab results, a saved question and Measurements,
+At 200% zoom on a phone, or with text at 200%, Journal's month name is whole
+again. It used to lose its last letters ("Octobe") and run into the search
+button, which now sits on the line under the month. On Lab results, a saved question and Measurements,
 the buttons beside Back move to their own line under it, so Back no longer
 sits partly under the first of them. A long word in an In the room question
 breaks onto the next line instead of running off the screen. And the bottom

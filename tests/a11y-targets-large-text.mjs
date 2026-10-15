@@ -231,7 +231,10 @@ function cut(page, selector) {
       const range = document.createRange();
       range.selectNodeContents(e);
       const t = range.getBoundingClientRect();
-      if (!t.width) continue;
+      if (!t.width) {
+        rows.push(`${sel} paints no text`);
+        continue;
+      }
       let by = t.left < -0.5 || t.right > innerWidth + 0.5 ? 'the viewport' : '';
       for (let a = e.parentElement; a && !by; a = a.parentElement) {
         if (getComputedStyle(a).overflowX === 'visible') continue;
