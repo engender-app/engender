@@ -129,7 +129,15 @@ export async function lateReadsContracts(): Promise<Result[]> {
   const panels = () => [...document.querySelectorAll('#screens .kit-panel[data-kit-surface]')];
   const pool = () => document.querySelector('#screens .entry-days');
   const skeleton = () => document.querySelector('#screens [data-gate-skeleton]');
-  let stop = sampler(() => [...panels(), ...(pool() ? [pool()!] : [])]);
+  /* Everything the screen draws once its reads answer: each block of the
+     gate's answer (the pool, the save control), the history's heading
+     and its panels. */
+  const answer = () => [
+    ...document.querySelectorAll('#screens .screen > .screen-part > :not([data-gate-skeleton])'),
+    ...document.querySelectorAll('#screens [data-section-heading]'),
+    ...panels()
+  ];
+  let stop = sampler(answer);
   let screen = await mountScreen('/doubt/evidence', heldSnapshots.fixture);
   await settle(700);
   flushSync();
@@ -140,10 +148,10 @@ export async function lateReadsContracts(): Promise<Result[]> {
   await settle(700);
   let frames = (runs.evidenceCold = stop());
   let tracked = tracks(frames);
-  await check('the pool and both snapshot panels arrive in one reveal, none whole on its first frame', () => {
+  await check('the pool, its control, the history heading and both panels arrive in one reveal, none whole on its first frame', () => {
     const arrivals = [...tracked.values()].filter((track) => track.first > 0);
     const firsts = new Set(arrivals.map((track) => track.first));
-    return arrivals.length === 3 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
+    return arrivals.length === 5 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
   });
 
   stop = sampler(panels);
@@ -237,7 +245,13 @@ export async function lateReadsContracts(): Promise<Result[]> {
   const cards = () => [...document.querySelectorAll('#screens [data-tryout-card]')];
   const said = (card: Element) =>
     `${card.getAttribute('data-tryout-card')}|${card.querySelector('[data-tryout-latest]')?.textContent?.trim() ?? ''}`;
-  stop = sampler(cards, said);
+  /* The gate's answer block by block (the section heading, the running
+     list) and the cards inside it. */
+  const tryoutsAnswer = () => [
+    ...document.querySelectorAll('#screens .screen > .screen-part > :not([data-gate-skeleton])'),
+    ...cards()
+  ];
+  stop = sampler(tryoutsAnswer, said);
   screen = await mountScreen('/transition/tryouts', heldFelt.fixture);
   await settle(700);
   flushSync();
@@ -253,10 +267,10 @@ export async function lateReadsContracts(): Promise<Result[]> {
     const shown = said(cards().find((card) => card.getAttribute('data-tryout-card') === felt)!);
     return shown !== none && frames.every((frame) => [...frame.samples.values()].every((sample) => sample.text !== none));
   });
-  await check('the running cards arrive in one reveal, none whole on its first frame', () => {
+  await check('the running heading, list and cards arrive in one reveal, none whole on its first frame', () => {
     const arrivals = [...tracked.values()].filter((track) => track.first > 0);
     const firsts = new Set(arrivals.map((track) => track.first));
-    return arrivals.length === 2 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
+    return arrivals.length === 4 && firsts.size === 1 && arrivals.every(arrivedSmoothly);
   });
   await screen.remove();
   /* Each run's tracks, for tests/late-reads-check.mjs to print. */
