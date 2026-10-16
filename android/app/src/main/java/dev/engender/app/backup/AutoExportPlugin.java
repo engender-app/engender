@@ -49,6 +49,7 @@ import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
 import dev.engender.app.R;
+import dev.engender.app.JournalApplication;
 
 /**
  * Android side of scheduled encrypted backup destination management: a SAF
@@ -602,7 +603,7 @@ public class AutoExportPlugin extends Plugin {
     public static void wipe(Context context) throws Exception {
         synchronized (BackupWork.OWNER) {
             BackupWork.resetForegroundOwner();
-            BackupWork.await(androidx.work.WorkManager.getInstance(context).cancelUniqueWork(BackupWork.NAME));
+            BackupWork.await(JournalApplication.workManager(context).cancelUniqueWork(BackupWork.NAME));
             PersistentBackup.clear(context);
             File[] pendingFiles = context.getCacheDir().listFiles((directory, name) ->
                 name.equals("auto-export.pending") || name.matches("auto-export-[a-f0-9-]{36}\\.pending"));
@@ -694,7 +695,7 @@ public class AutoExportPlugin extends Plugin {
 
     private void disableWithFailure(String reason) {
         PersistentBackup.clear(getContext());
-        androidx.work.WorkManager.getInstance(getContext()).cancelUniqueWork(BackupWork.NAME);
+        JournalApplication.workManager(getContext()).cancelUniqueWork(BackupWork.NAME);
         releaseDestinationGrant(destinationUri());
         long now = System.currentTimeMillis();
         preferences().edit()
@@ -737,10 +738,13 @@ public class AutoExportPlugin extends Plugin {
         out.put("lastSuccessAt", prefs.contains(KEY_LAST_SUCCESS_AT) ? prefs.getLong(KEY_LAST_SUCCESS_AT, 0) : JSObject.NULL);
         out.put("lastFailureAt", prefs.contains(KEY_LAST_FAILURE_AT) ? prefs.getLong(KEY_LAST_FAILURE_AT, 0) : JSObject.NULL);
 
-        String reason = prefs.getString(KEY_LAST_FAILURE_REASON, null);
+        long schedulingFailureAt = JournalApplication.schedulingFailureAt();
+        String reason = schedulingFailureAt != 0
+            ? "backup-scheduling-unavailable" : prefs.getString(KEY_LAST_FAILURE_REASON, null);
+        if (schedulingFailureAt != 0) out.put("lastFailureAt", schedulingFailureAt);
         out.put("lastFailureReason", reason == null ? JSObject.NULL : reason);
 
-        Long due = nextDueAt(prefs);
+        Long due = schedulingFailureAt != 0 ? null : nextDueAt(prefs);
         out.put("nextDueAt", due == null ? JSObject.NULL : due);
 
         return out;

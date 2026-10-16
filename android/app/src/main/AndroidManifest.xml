@@ -56,6 +56,7 @@
          the Android 11 and older half of the range, which starts at the
          app's floor of API 26. -->
     <application
+        android:name=".JournalApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
@@ -73,6 +74,11 @@
         <!-- BackupWork uses ordinary delayed jobs without network constraints
              or foreground execution. Keep WorkManager's job and rescheduling
              owners; omit the two components those unused features add. -->
+        <provider android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="merge">
+            <meta-data android:name="androidx.work.WorkManagerInitializer" tools:node="remove" />
+        </provider>
         <service android:name="androidx.work.impl.foreground.SystemForegroundService"
             tools:node="remove" />
         <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"

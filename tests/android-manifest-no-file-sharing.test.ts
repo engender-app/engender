@@ -14,7 +14,14 @@ const capacitorConfig = read('capacitor.config.ts');
 
 describe('android dead cordova/file-sharing surface', () => {
   it('shares only the disposable camera cache through a non-exported provider', () => {
-    const providers = [...manifest.matchAll(/<provider\b[\s\S]*?<\/provider>/g)];
+    const declared = [...manifest.matchAll(/<provider\b[\s\S]*?<\/provider>/g)];
+    const startup = declared.filter(([provider]) => provider.includes('android:name="androidx.startup.InitializationProvider"'));
+    expect(startup).toHaveLength(1);
+    expect(startup[0][0]).toContain('android:authorities="${applicationId}.androidx-startup"');
+    expect(startup[0][0]).toContain('tools:node="merge"');
+    expect(startup[0][0]).not.toContain('android:exported="true"');
+    expect(startup[0][0]).toContain('<meta-data android:name="androidx.work.WorkManagerInitializer" tools:node="remove" />');
+    const providers = declared.filter((provider) => provider !== startup[0]);
     expect(providers).toHaveLength(1);
     expect(providers[0][0]).toContain('androidx.core.content.FileProvider');
     expect(providers[0][0]).toContain('android:authorities="${applicationId}.camera-files"');
