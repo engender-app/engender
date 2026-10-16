@@ -398,6 +398,15 @@
     line-height: var(--leading-display);
     letter-spacing: var(--display-track);
     text-wrap: balance;
+    /* The words are the person's own, and a single one can be wider than
+       the screen: "spironolactone" at this size is wider than the 155px a
+       390px phone leaves at 200% zoom. As a flex item the question took that
+       word's width as its own floor and ran off the right edge, cutting
+       every line with it (last-audit UI 48). It breaks inside the word
+       instead, the rule .screen-title takes for the same reason; a question
+       whose words fit is untouched. */
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   /* Bigger than an ordinary input for the same reason the question is: this

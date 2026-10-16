@@ -298,6 +298,14 @@
      start left of the content edge for the arrow to look aligned with the
      title under it. The target keeps its full width; only the box moves. */
   margin-left: calc(-1 * var(--space-3));
+  /* Above the title's words for a press. The title is set solid at 0.95,
+     so its text runs taller than its own line and reached 5px up into the
+     bottom of the back control's target (12px with text at 200%), and the
+     title came later in the document, so a press there landed on the
+     heading and did nothing (last-audit UI 48, found by
+     a11y-targets-large-text.mjs). Positioned, the control takes its whole
+     48px back; nothing is drawn differently. */
+  position: relative;
 }
 /* A hidden title with no back control and no actions leaves the field
    nothing to hold, so the header collapses to nothing visible rather than
@@ -372,6 +380,25 @@
   margin-right: calc(-1 * var(--space-3));
 }
 .screen-header-row.has-back-actions .screen-title { grid-column: 1 / -1; }
+/* Under 240px (200% zoom on a 390px phone, 155px of row) that line runs
+   out: Lab results' back control and three actions need 208px, so the
+   back's target sat 24px deep under the gear's, and a saved question's
+   under Random's (last-audit UI 48). The actions take a line of their own
+   under the back control instead, still at the trailing edge, and wrap
+   there if a screen ever brings more than that line holds. The line is
+   decided by the width alone, never by how many actions are drawn: Search
+   and a saved question add theirs as answers arrive (SearchActions), and
+   a count-driven break would move the row under them in one frame. So it
+   keeps a target's height even while it is empty. */
+@container app (max-width: 239px) {
+  .screen-header-row.has-back-actions .header-action {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-height: var(--touch-target);
+  }
+}
 .screen-title {
   flex: 1;
   min-width: 0;

@@ -18,9 +18,20 @@
    is under 48px.
 
    A scene marked `narrow` is also checked at 195px, the width a 390px
-   phone leaves at 200% zoom, with text at 100%: opened letters' rows and
-   the Words cloud, which the 12 October audit measured at 23px tall and
-   29 to 47px wide.
+   phone leaves at 200% zoom, with text at 100%, in English and Polish:
+   opened letters' rows and the Words cloud, which the 12 October audit
+   measured at 23px tall and 29 to 47px wide, and the five screens its
+   U51, U52 and U54 found losing content or stacking targets there
+   (last-audit UI 48). Three more checks are theirs. A scene's `whole`
+   text has to show whole: the range of its words inside the viewport
+   and inside every ancestor that clips sideways, which is what Journal's
+   month ("Octobe", "paździe") and In the room's question ("spironolac")
+   failed. A scene marked `apart` has no two listed controls whose boxes
+   overlap, which is what Lab results' and a saved question's back
+   control did, 24px deep under the first action, and what Journal's
+   month button did under the search control. A scene whose `path` is a
+   function finds its address on the filled journal (a saved question's
+   id is not fixed).
 
    The walk alone cannot tell 47px from 48px. Chromium snaps a hit-test
    point by up to a pixel, so a lone 47px button read 47.75 and a 48px
@@ -99,6 +110,20 @@ const SCENES = [
     }
   },
   { key: 'stats', path: '/stats/days', targets: '.kit-donut-item-btn' },
+  { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
+  { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
+  {
+    key: 'saved-search',
+    path: async (page, base) => {
+      await settlePage(page, base, '/search?questions=1', 'light');
+      return page.locator('a[href^="/search/questions/"]').first().getAttribute('href');
+    },
+    targets: '[data-screen-back], .header-action > *',
+    apart: true,
+    narrow: true
+  },
+  { key: 'measurements', path: '/body/measurements', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
+  { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
   { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
   {
@@ -197,6 +222,49 @@ function measure(page, selector, sticky = false) {
   }, [selector, sticky]);
 }
 
+/** Words of each matching element that do not show whole: the range of
+    its text past the viewport or past an ancestor that clips sideways. */
+function cut(page, selector) {
+  return page.evaluate((sel) => {
+    const rows = [];
+    for (const e of document.querySelectorAll(sel)) {
+      const range = document.createRange();
+      range.selectNodeContents(e);
+      const t = range.getBoundingClientRect();
+      if (!t.width) {
+        rows.push(`${sel} paints no text`);
+        continue;
+      }
+      let by = t.left < -0.5 || t.right > innerWidth + 0.5 ? 'the viewport' : '';
+      for (let a = e.parentElement; a && !by; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === 'visible') continue;
+        const r = a.getBoundingClientRect();
+        if (t.left < r.left - 0.5 || t.right > r.right + 0.5) by = `${a.tagName.toLowerCase()}.${[...a.classList].join('.')}`;
+      }
+      if (by) rows.push(`"${e.textContent.trim().replace(/\s+/g, ' ').slice(0, 40)}" runs ${Math.round(t.width)}px wide, cut by ${by}`);
+    }
+    return rows;
+  }, selector);
+}
+
+/** Pairs of matching controls whose boxes overlap. */
+function stacked(page, selector) {
+  return page.evaluate((sel) => {
+    const boxes = [...document.querySelectorAll(sel)]
+      .filter((e) => e.getBoundingClientRect().width > 0 && !e.closest('[aria-hidden="true"],[inert]'))
+      .map((e) => [(e.getAttribute('aria-label') || e.textContent).trim().slice(0, 30), e.getBoundingClientRect()]);
+    const rows = [];
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const [an, a] = boxes[i];
+      const [bn, b] = boxes[j];
+      const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      if (x > 0.5 && y > 0.5) rows.push(`"${an}" and "${bn}" overlap ${x.toFixed(1)}x${y.toFixed(1)}`);
+    }
+    return rows;
+  }, selector);
+}
+
 /** Every nav label whole: no clipped text, no word split across lines, the
     label inside its own tab, and the tab itself at least 48px each way. */
 function measureNav(page) {
@@ -259,27 +327,37 @@ try {
   }
   console.log(`planted controls: 47px reads ${small.w}x${small.h} (under), 48px reads ${whole.w}x${whole.h} (at the floor)`);
 
+  for (const scene of SCENES) if (typeof scene.path === 'function') scene.path = await scene.path(page, base);
+
   for (const width of [...WIDTHS, NARROW]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const text of width === NARROW ? [100] : TEXT) {
-      for (const scene of SCENES) {
-        if (only && !only.includes(scene.key)) continue;
-        if (width === NARROW && !scene.narrow) continue;
-        await settlePage(page, base, scene.path, 'light');
-        await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
-        if (scene.open) await scene.open(page);
-        await settle(page, scene.targets);
-        const rows = await measure(page, scene.targets, scene.sticky);
-        const label = `${scene.key} ${width}px ${text}%`;
-        if (!rows.length) failures.push(`${label}: no listed controls found`);
-        for (const row of rows) {
-          if (row.covered) failures.push(`${label}: "${row.name}" ${row.box}, centre covered by ${row.covered}`);
-          else if (under(row)) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
+    for (const lang of width === NARROW ? ['en', 'pl'] : ['en']) {
+      if (width === NARROW) await setAppLanguage(page, lang);
+      for (const text of width === NARROW ? [100] : TEXT) {
+        for (const scene of SCENES) {
+          if (only && !only.includes(scene.key)) continue;
+          if (width === NARROW && !scene.narrow) continue;
+          await settlePage(page, base, scene.path, 'light');
+          await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
+          if (scene.open) await scene.open(page);
+          await settle(page, scene.targets);
+          const rows = await measure(page, scene.targets, scene.sticky);
+          const label = `${scene.key} ${width === NARROW ? `${lang} ` : ''}${width}px ${text}%`;
+          if (!rows.length) failures.push(`${label}: no listed controls found`);
+          for (const row of rows) {
+            if (row.covered) failures.push(`${label}: "${row.name}" ${row.box}, centre covered by ${row.covered}`);
+            else if (under(row)) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
+          }
+          const lost = scene.whole ? await cut(page, scene.whole) : [];
+          const overlaps = scene.apart ? await stacked(page, scene.targets) : [];
+          if (scene.whole && !(await page.locator(scene.whole).count())) lost.push(`no ${scene.whole} found`);
+          for (const line of [...lost, ...overlaps]) failures.push(`${label}: ${line}`);
+          results.scenes.push({ scene: scene.key, width, lang, text, rows, lost, overlaps });
+          console.log(`${label}: ${rows.length} controls, ${rows.filter(under).length} under ${FLOOR}${scene.whole ? `, ${lost.length} cut` : ''}${scene.apart ? `, ${overlaps.length} overlapping` : ''}`);
         }
-        results.scenes.push({ scene: scene.key, width, text, rows });
-        console.log(`${label}: ${rows.length} controls, ${rows.filter(under).length} under ${FLOOR}`);
       }
     }
+    if (width === NARROW) await setAppLanguage(page, 'en');
     if (width !== NARROW && (!only || only.includes('nav'))) {
       for (const lang of ['en', 'pl']) for (const text of NAV_TEXT) {
         await setAppLanguage(page, lang);
@@ -310,6 +388,49 @@ try {
     results.calendar = rows;
     const under = rows.filter((r) => r.covered || r.w < FLOOR || r.h < FLOOR);
     console.log(`calendar 320px (printed, not failed): ${rows.length} date links, ${under.length} under ${FLOOR}${under[0] ? `, e.g. ${under[0].box} hit ${under[0].w}x${under[0].h}` : ''}`);
+  }
+
+  /* Stepping through the months must not move the search control. Where a
+     month name cannot fit the line ("październik" at 200% text on 195px) it
+     breaks in two, and a slot sized by the label showing was a line taller
+     for that month alone: search jumped a line in one frame on the way in
+     and again on the way out. The top is read right after each step, while
+     both labels are still in the slot, and again once the swap has settled. */
+  if (!only || only.includes('journal-steps')) {
+    for (const [width, text] of [[195, 200], [320, 200], [390, 100]]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const lang of ['en', 'pl']) {
+        await setAppLanguage(page, lang);
+        await settlePage(page, base, '/calendar', 'light');
+        await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
+        await settle(page, '[data-cal-month-btn]');
+        /* Sampled on every animation frame, from before the first click to
+           after the last settle, so a one-frame jump between two reads
+           cannot slip through. */
+        await page.evaluate(() => {
+          window.__tops = [];
+          window.__sampling = true;
+          const tick = () => {
+            window.__tops.push(document.querySelector('.cal-field > a').getBoundingClientRect().top);
+            if (window.__sampling) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        for (let i = 0; i < 12; i++) {
+          await page.locator('[data-cal-step="next"]').click();
+          await page.waitForTimeout(450);
+        }
+        const tops = await page.evaluate(() => {
+          window.__sampling = false;
+          return window.__tops;
+        });
+        const label = `journal steps ${lang} ${width}px ${text}%`;
+        const moved = tops.filter((t) => Math.abs(t - tops[0]) > 0.5);
+        if (moved.length) failures.push(`${label}: search top moved while stepping through 12 months (${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')})`);
+        console.log(`${label}: search top ${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')} over ${tops.length} frames`);
+      }
+    }
+    await setAppLanguage(page, 'en');
   }
 } finally {
   await browser.close();
