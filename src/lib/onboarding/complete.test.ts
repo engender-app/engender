@@ -30,6 +30,19 @@ describe('finishing setup without turning disguise on', () => {
     expect(order).toEqual(['write', 'leave']);
   });
 
+  it('keeps completion pending until setup history has been replaced', async () => {
+    let leave!: () => void;
+    let completed = false;
+    const { completion } = recorder({ leaveSetup: () => new Promise<void>(resolve => { leave = resolve; }) });
+    const pending = completeSetup(completion).then(() => { completed = true; });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    leave();
+    await pending;
+    expect(completed).toBe(true);
+  });
+
   it('does not wait on SQLite for a branch it is not taking', async () => {
     /* A flush that never settles. The un-disguised path has nothing to
        race, so it must not be holding a person on the finish screen while

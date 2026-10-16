@@ -31,9 +31,10 @@
      everywhere else: a crisp flag is not deniable at a glance, and this
      screen is not an exception to that just because it comes first. */
 
-  import { goto } from '$app/navigation';
+  import { afterNavigate, pushState } from '$app/navigation';
   import { page } from '$app/state';
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
+  import { registerSetupBack } from '$lib/onboarding/back';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
@@ -220,6 +221,7 @@
      read off the gate: on a brand new install this page is what renders
      while `bootState` is still `needs-setup`, not JournalGate, so there is
      no other screen's state to share. */
+  let accessSetup: { back(): void } | undefined = $state();
   let accessChosen = $state<AccessSetupMode | null>(null);
   let accessBusy = $state(false);
   let accessError = $state('');
@@ -356,6 +358,51 @@
   function layer(_node: Element, params: { z: number }) {
     return { duration: motionDuration('--dur-authored'), css: () => `z-index: ${params.z}` };
   }
+
+  function previousStep(): boolean {
+    if (setupBusy || archiveBusy || accessBusy) return true;
+    if (awaitingAccessMode) {
+      accessSetup?.back();
+      return true;
+    }
+    if (step === 'welcome') return false;
+    if (step === 'restore') abandonRestore();
+    else go(stepBefore(steps, step));
+    return true;
+  }
+
+  let historyArmed = false;
+  let finishHistory: (() => Promise<void>) | undefined;
+  afterNavigate(() => {
+    if (historyArmed) return;
+    // Wait for the initial router entry, including a direct setup address.
+    pushState('', {});
+    historyArmed = true;
+  });
+  onMount(() => {
+    let active = true;
+    let finishing = false;
+    const popped = () => queueMicrotask(() => {
+      if (!active) return;
+      if (finishing) return;
+      previousStep();
+      pushState('', {});
+    });
+    window.addEventListener('popstate', popped);
+    const unregister = registerSetupBack(previousStep);
+    finishHistory = () => new Promise<void>((resolve) => {
+      finishing = true;
+      // Registered after the router, so it settles the pop before we navigate.
+      window.addEventListener('popstate', () => queueMicrotask(resolve), { once: true });
+      history.back();
+    });
+    return () => {
+      active = false;
+      unregister();
+      window.removeEventListener('popstate', popped);
+      finishHistory = undefined;
+    };
+  });
 
   function go(to: OnboardingStep) {
     step = to;
@@ -600,7 +647,10 @@
         flushWrites: flushPreferences,
         disguise,
         turnOnDisguise: () => setPreferenceDurably('disguise', true),
-        leaveSetup: () => void goto(onboardingDestination())
+        leaveSetup: async () => {
+          await finishHistory?.();
+          await replaceRoute(onboardingDestination());
+        }
       });
     } catch (error) {
       archiveBusy = false;
@@ -731,7 +781,7 @@
             data-back
             data-field-part
             aria-label={m.back()}
-            onclick={() => (step === 'restore' ? abandonRestore() : go(stepBefore(steps, step)))}
+            onclick={previousStep}
           >
             <Icon name="arrowLeft" />
           </button>
@@ -996,6 +1046,7 @@
                              this screen does is give them the foot's drawing, so
                              the eye meets the same shape it has met nine times. -->
                         <AccessModeSetup
+                          bind:this={accessSetup}
                           purpose="setup"
                           busy={accessBusy}
                           error={accessError}

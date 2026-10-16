@@ -265,6 +265,13 @@
 
   /** Screen two back to screen one, the mode still chosen (ticket 30) - only
       the typed-so-far secret is thrown away, not the choice that led here. */
+  /** Delegate setup's external Back to the same controls this module draws. */
+  export function back(): void {
+    if (busy) return;
+    if (screen.screen === 'secret') backFromSecret();
+    else if (screen.screen === 'detail') pickAnother();
+  }
+
   function backFromSecret() {
     screen = backToDetail(screen);
     resetSecretFields();
