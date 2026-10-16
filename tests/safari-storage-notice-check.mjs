@@ -34,7 +34,8 @@ try {
     const context = await newCapabilityContext(browser, { userAgent: c.userAgent, viewport: { width: 390, height: 900 }, locale: c.locale ?? 'en-US', reducedMotion: c.reducedMotion ?? 'no-preference' });
     try {
       await context.addInitScript(({ denied, standalone, legacyStandalone, touch }) => {
-        navigator.storage.persist = async () => !denied;
+        // WebKit's later storage access must keep the simulated answer.
+        Object.defineProperty(Object.getPrototypeOf(navigator.storage), 'persist', { value: async () => !denied, configurable: true });
         if (touch) Object.defineProperty(navigator, 'maxTouchPoints', { value: touch });
         if (legacyStandalone) Object.defineProperty(navigator, 'standalone', { value: true });
         if (standalone) {
@@ -46,9 +47,18 @@ try {
       page.setDefaultTimeout(60000);
       page.on('pageerror', error => console.error('PAGEERROR', error.stack));
       await firstRun(page, origin).catch(async error => { console.error('DOCUMENT', await page.locator('body').innerText()); throw error; });
+      assert.equal(await page.evaluate(() => navigator.storage.persist()), !c.denied, 'persistence simulation must match case');
       await page.locator('[data-home-reserve="below"] [data-read-reserve-body]').waitFor({ state: 'attached' });
       await page.evaluate(() => document.fonts.ready);
-      await page.waitForFunction(() => !document.getAnimations().some(a => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity));
+      await page.waitForFunction(() => {
+        const body = document.querySelector('[data-home-reserve="below"] [data-read-reserve-body]');
+        if (!body || document.documentElement.dataset.nav) return false;
+        for (let node = document.querySelector('[data-storage-notice]') ?? body; node; node = node.parentElement) {
+          if (Number(getComputedStyle(node).opacity) < 1 || node.getAnimations().some(a =>
+            a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity)) return false;
+        }
+        return true;
+      });
       const notice = page.locator('[data-storage-notice]');
       if (c.target || c.denied) {
         await notice.waitFor();
