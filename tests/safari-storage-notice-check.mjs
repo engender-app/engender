@@ -46,7 +46,7 @@ try {
       page.setDefaultTimeout(60000);
       page.on('pageerror', error => console.error('PAGEERROR', error.stack));
       await firstRun(page, origin).catch(async error => { console.error('DOCUMENT', await page.locator('body').innerText()); throw error; });
-      await page.locator('[data-home-reserve="below"] [data-read-reserve-body]').waitFor();
+      await page.locator('[data-home-reserve="below"] [data-read-reserve-body]').waitFor({ state: 'attached' });
       await page.evaluate(() => document.fonts.ready);
       await page.waitForFunction(() => !document.getAnimations().some(a => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity));
       const notice = page.locator('[data-storage-notice]');
