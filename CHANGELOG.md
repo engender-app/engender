@@ -13,6 +13,10 @@ bookmark used to land on a bare "404 Not Found" in English with nothing to
 press. It now has a header, one sentence in your language and a button to
 Today, and it never shows the address that failed.
 
+Safari tabs now offer installation advice: Add to Home Screen on iOS,
+Add to Dock on macOS. The notice keeps the encrypted-backup reminder and
+appears even when Safari grants persistent storage.
+
 Running out of storage space now says so. Saving an entry or a photo,
 opening a journal whose update needs room, and exporting each tell you to
 free up some space and try again, where they used to show a general error.

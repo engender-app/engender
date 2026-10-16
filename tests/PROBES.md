@@ -1033,3 +1033,15 @@ one-dose note in the trans palette, light and dark.
 
 `tests/curve-dose-count.test.ts` guards the shared numeric plural contract.
 The curve model and journal tests continue to cover curve results and counts.
+
+### Safari storage notice
+
+`node tests/safari-storage-notice-check.mjs` checks the built production app.
+Set `BROWSER_ENGINE=webkit` for WebKit and `NOTICE_RESULTS` for a JSON receipt.
+`NOTICE_SHOTS` saves notice-only trans light/dark crops; `--before` captures
+the generic notice on the dispatch base. Cases cover iOS/macOS Safari with
+persistence granted or denied, both standalone signals, other browsers,
+Polish, reduced motion, the backup link and dismissal. This is Linux engine
+emulation with Safari user agents, not Safari eviction proof or Apple hardware
+verification. Apple menu sources: [iPhone](https://support.apple.com/guide/iphone/iph42ab2f3a7/ios)
+and [macOS](https://support.apple.com/104996).

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { startOfDayTimestamp } from './epochDay.ts';
-import { BACKUP_STALE_DAYS, backupAgeDays, backupIsStale, backupStanding, storageNoticeShows } from './backupHealth.ts';
+import { BACKUP_STALE_DAYS, backupAgeDays, backupIsStale, backupStanding, storageNoticeShows, safariInstallationTarget } from './backupHealth.ts';
 
 test('a journal never exported has no age, and is not stale either', () => {
   assert.equal(backupAgeDays(null, 20676), null);
@@ -36,7 +36,7 @@ test('a backup made today is nought days old, not one', () => {
 /* After-release 17 (U2): the browser's refusal to keep storage used to be a
    toast over the Welcome screen on every cold load. It is a Home notice
    now, and only while it asks for something the person has not done. */
-test('the storage notice shows only where the browser refused and no backup was ever made', () => {
+test('other browsers show the storage notice only after persistence refusal and before a first backup', () => {
   const recent = startOfDayTimestamp(20676 - 3);
   assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: null }), true);
   assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: recent }), false);
@@ -52,4 +52,35 @@ test('the storage notice does not come back when the backup that answered it goe
   const old = startOfDayTimestamp(today - BACKUP_STALE_DAYS - 1);
   assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: old }), false);
   assert.equal(backupIsStale(old, today), true);
+});
+
+const iosSafari = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1';
+const macSafari = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15';
+
+test('Safari installation advice is selected independently of the persistence answer', () => {
+  for (const [userAgent, target] of [[iosSafari, 'ios'], [macSafari, 'mac']] as const) {
+    const safariInstallation = safariInstallationTarget({ userAgent, standalone: false, maxTouchPoints: 0 });
+    assert.equal(safariInstallation, target);
+    for (const persistDenied of [false, true]) {
+      assert.equal(storageNoticeShows({ persistDenied, dismissed: false, lastBackupAt: null, safariInstallation }), true);
+      assert.equal(storageNoticeShows({ persistDenied, dismissed: true, lastBackupAt: null, safariInstallation }), false);
+      assert.equal(storageNoticeShows({ persistDenied, dismissed: false, lastBackupAt: 123, safariInstallation }), false);
+    }
+  }
+});
+
+test('installed Safari and other browsers receive no Safari installation advice', () => {
+  for (const userAgent of [iosSafari, macSafari]) {
+    assert.equal(safariInstallationTarget({ userAgent, standalone: true, maxTouchPoints: 0 }), null);
+  }
+  for (const userAgent of [
+    iosSafari.replace('Version/18.0', 'CriOS/130.0'),
+    iosSafari.replace('Version/18.0', 'FxiOS/130.0'),
+    macSafari.replace('Version/18.0', 'Chrome/130.0'),
+    macSafari.replace('Version/18.0', 'Version/16.0'),
+    'Mozilla/5.0 (Linux; Android 14) Chrome/130.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0'
+  ]) assert.equal(safariInstallationTarget({ userAgent, standalone: false, maxTouchPoints: 0 }), null);
+  assert.equal(safariInstallationTarget({ userAgent: macSafari, standalone: false, maxTouchPoints: 5 }), 'ios');
+  assert.equal(safariInstallationTarget({ userAgent: iosSafari.replace('Version/18.0', 'Version/16.4'), standalone: false, maxTouchPoints: 5 }), 'ios');
 });

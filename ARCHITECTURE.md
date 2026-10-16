@@ -57,7 +57,7 @@ repository root. Copy-coverage data lives under `messages/`.
 
 engender is a private journal for a gender transition. One SvelteKit codebase ships to two places:
 
-- **The web app (PWA).** A static SPA served by nginx from its own origin, cached by a service worker, with the journal kept in the browser's origin-private file system (OPFS).
+- **The web app (PWA).** A static SPA served by nginx from its own origin, cached by a service worker, with the journal kept in the browser's origin-private file system (OPFS). Today offers Safari tabs installation advice for iOS Home Screen or macOS Dock (Safari 17+) regardless of the persistent-storage answer. It uses the storage notice's existing first-backup and dismissal gates; installed windows get no installation advice.
 - **The Android app.** The same static bundle inside a Capacitor 8 shell ([capacitor.config.ts](capacitor.config.ts), appId `dev.engender.app`), served from `https://localhost` inside the APK. The database and files live in app-private storage, and Android Keystore protects the keys.
 
 There are no accounts and no backend for journal data. Nothing leaves the device unless the person exports or shares it.
