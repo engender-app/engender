@@ -69,9 +69,9 @@ export interface PinPorts {
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
-  /** Drops a new recovery key nobody confirmed once a changed PIN lands
-      (last-audit UI 42). Optional so the tests' in-memory ports need not
-      carry a recovery store. */
+  /** Drops a new recovery key nobody confirmed before a changed PIN is
+      written (last-audit UI 42). Optional so the tests' in-memory ports need
+      not carry a recovery store. */
   discardPendingRecoveryKey?(): Promise<void>;
   /** Android admits durably before derivation; web counts at its gate. */
   attempts?: {
@@ -261,22 +261,23 @@ export async function changeJournalPin(
        deriving the same wrap twice. */
     const nextDevice = rebinding ? await ports.binding.create() : currentDevice;
 
-    await ports.writeKeystore(
-      bindingNamed(
-        await rewrapKeystore(
-          metadata,
-          combinePinWithDevice(current, currentDevice),
-          combinePinWithDevice(next, nextDevice),
-          undefined,
-          'pin'
-        ),
-        ports
-      )
+    const rewrapped = bindingNamed(
+      await rewrapKeystore(
+        metadata,
+        combinePinWithDevice(current, currentDevice),
+        combinePinWithDevice(next, nextDevice),
+        undefined,
+        'pin'
+      ),
+      ports
     );
+    /* After the current PIN is proven and before the new one is written: a
+       recovery key nobody confirmed does not outlive the protection it was
+       made under (last-audit UI 42), and a discard that fails stops the
+       change here, with nothing written, rather than after it. */
+    await ports.discardPendingRecoveryKey?.();
+    await ports.writeKeystore(rewrapped);
     if (rebinding) await forgetLegacyBinding(ports);
-    await ports.discardPendingRecoveryKey?.().catch((error) => {
-      console.warn('could not discard an unconfirmed recovery key after changing the PIN', error);
-    });
   });
 }
 

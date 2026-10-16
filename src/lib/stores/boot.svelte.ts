@@ -797,7 +797,10 @@ export async function changeAccessMode(target: Exclude<JournalAccessMode, null>,
     await changeAccessModeOwned(target, secret);
     /* After the new mode has landed, never before: a recovery key nobody
        confirmed does not outlive the protection it was made under
-       (last-audit UI 42), and failing to drop it leaves the change made. */
+       (last-audit UI 42), but a prompt cancelled halfway through must not
+       take it either. Failing to drop it leaves the change made and the
+       key still waiting, which Home and Settings go on saying, with the
+       choice to discard it. */
     await discardPendingRecoveryKeyOwned().catch((error) => {
       console.warn('could not discard an unconfirmed recovery key after changing access mode', error);
     });

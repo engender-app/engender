@@ -291,11 +291,12 @@ describe('revocation and what is stored', () => {
 
 /* The file ports, over an OPFS root kept in memory: enough of the API for
    the keystore and both recovery files. */
-function opfsRoot() {
+function opfsRoot(options: { removeFails?: string } = {}) {
   const files: Record<string, string> = {};
   const notFound = () => Object.assign(new Error('not found'), { name: 'NotFoundError' });
   const root = {
     async removeEntry(name: string) {
+      if (name === options.removeFails) throw new Error('remove refused');
       if (!(name in files)) throw notFound();
       delete files[name];
     },
@@ -338,5 +339,17 @@ describe('a credential change while a new key waits', () => {
     expect(RECOVERY_KEY_FILE in files).toBe(true);
     expect(await openWithRecoveryKey(old)).toEqual(dataKey);
     await expect(openWithRecoveryKey(unseen)).rejects.toThrow(DecryptionFailedError);
+  });
+
+  test('a discard that fails stops the passphrase change with nothing written', async () => {
+    const files = opfsRoot({ removeFails: PENDING_RECOVERY_KEY_FILE });
+    const { metadata, dataKey } = await createKeystore('the current passphrase');
+    files[KEYSTORE_FILE] = serializeKeystore(metadata);
+    const unseen = await mintRecoveryKey(dataKey);
+    const keystore = files[KEYSTORE_FILE];
+
+    await expect(changeJournalPassphrase('the current passphrase', 'a new passphrase')).rejects.toThrow('remove refused');
+    expect(files[KEYSTORE_FILE]).toBe(keystore);
+    expect(await openWithRecoveryKey(unseen)).toEqual(dataKey);
   });
 });

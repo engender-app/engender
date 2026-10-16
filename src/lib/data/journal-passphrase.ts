@@ -51,14 +51,15 @@ export async function unlockJournalPassphrase(passphrase: string): Promise<Uint8
     of passphrase never re-encrypts the Journal). Throws
     DecryptionFailedError when the current passphrase is wrong, before
     anything is written. A new recovery key nobody confirmed is discarded
-    once the new passphrase has landed (last-audit UI 42). */
+    once the current passphrase is proven and before the new one is written
+    (last-audit UI 42). */
 export async function changeJournalPassphrase(current: string, next: string): Promise<void> {
   return changeCredentials(async () => {
     const metadata = await readKeystoreFile();
     if (metadata === null) throw new Error('no keystore to rewrap');
-    await writeKeystoreFile(await rewrapKeystore(metadata, current, next));
-    await discardPendingRecoveryKeyOwned().catch((error) => {
-      console.warn('could not discard an unconfirmed recovery key after changing the passphrase', error);
-    });
+    const rewrapped = await rewrapKeystore(metadata, current, next);
+    // Proven, then discarded, then written: a failed discard changes nothing.
+    await discardPendingRecoveryKeyOwned();
+    await writeKeystoreFile(rewrapped);
   });
 }

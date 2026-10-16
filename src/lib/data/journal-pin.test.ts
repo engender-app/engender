@@ -293,7 +293,7 @@ test('changing the PIN keeps the journal and stops the old PIN working', async (
 
 /* Last-audit UI 42: a new recovery key nobody confirmed does not outlive
    the protection it was made under, and a refused change keeps it. */
-test('changing the PIN discards an unconfirmed recovery key, and only once the new PIN has landed', async () => {
+test('changing the PIN discards an unconfirmed recovery key once the current PIN is proven, before the new one is written', async () => {
   const order: string[] = [];
   const base = ports();
   const world = {
@@ -310,7 +310,18 @@ test('changing the PIN discards an unconfirmed recovery key, and only once the n
   await expect(changeJournalPin('9999', '5678', world)).rejects.toThrow(DecryptionFailedError);
   expect(order).toEqual([]);
   await changeJournalPin('1234', '5678', world);
-  expect(order).toEqual(['keystore', 'discard']);
+  expect(order).toEqual(['discard', 'keystore']);
+});
+
+test('a discard that fails stops the PIN change with nothing written', async () => {
+  const base = ports();
+  const world = { ...base, discardPendingRecoveryKey: async () => { throw new Error('remove refused'); } };
+  const dataKey = await setupJournalPin('1234', world);
+  const before = world.stored();
+
+  await expect(changeJournalPin('1234', '5678', world)).rejects.toThrow('remove refused');
+  expect(world.stored()).toBe(before);
+  expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
 });
 
 test('changing the PIN with the wrong current PIN writes nothing', async () => {
