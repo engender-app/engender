@@ -22,7 +22,8 @@
     "segmented-chosen-clear": "Local Fedora run on 2026-10-15, dev server; tests/segmented-chosen-clear.mjs",
     "milestone-era-label-clear": "Local Fedora run on 2026-10-15, dev server; tests/milestone-era-label-clear.mjs",
     "plane-date-labels-clear": "Local Fedora run on 2026-10-15, dev server; tests/plane-date-labels-clear.mjs",
-    "toast-stack-check": "Local Fedora run on 2026-10-15, dev server; tests/toast-stack-check.mjs"
+    "toast-stack-check": "Local Fedora run on 2026-10-15, dev server; tests/toast-stack-check.mjs",
+    "update-notice-check": "Local Fedora run on 2026-10-16, dev server; tests/update-notice-check.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -140,7 +141,8 @@
     "segmented-chosen-clear": 46.1,
     "milestone-era-label-clear": 24.6,
     "plane-date-labels-clear": 34.5,
-    "toast-stack-check": 12.2
+    "toast-stack-check": 12.2,
+    "update-notice-check": 9.9
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -417,6 +419,9 @@
     ],
     "toast-stack-check": [
       12.2
+    ],
+    "update-notice-check": [
+      9.9
     ]
   }
 }
