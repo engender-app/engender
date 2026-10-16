@@ -30,7 +30,7 @@ async function seed(page, recovery) {
     await journal.photos.attach({ entryId: id }, { full: bytes, thumb: bytes });
     if (recovery === 'none' || recovery === 'unreadable') return null;
     const key = await keys.mintRecoveryKey(await journalDataKey());
-    if (recovery === 'active') await keys.finishRecoveryKey(key);
+    if (recovery === 'active' || recovery.startsWith('device-')) await keys.finishRecoveryKey(key);
     return key;
   }, recovery);
 }
@@ -57,6 +57,12 @@ async function loseAccess(page, malformed, recovery) {
       const file = await root.getFileHandle('keystore.json');
       const write = await file.createWritable(); await write.write('{broken'); await write.close();
     } else await root.removeEntry('keystore.json');
+    if (recovery.startsWith('device-')) {
+      const file = await root.getFileHandle('device-key.json', { create: true });
+      const write = await file.createWritable();
+      await write.write(recovery === 'device-null' ? 'null' : JSON.stringify({ version: 1, kind: 'device-bound', nonce: '!', wrappedKey: 'AA==' }));
+      await write.close();
+    }
     if (recovery === 'unreadable') {
       const file = await root.getFileHandle('recovery-key.json', { create: true });
       const write = await file.createWritable(); await write.write('{broken'); await write.close();
@@ -70,16 +76,16 @@ async function loseAccess(page, malformed, recovery) {
   }, { malformed, recovery });
 }
 
-async function assertGate(page) {
+async function assertGate(page, missingAccess = true) {
   await page.locator('[data-app-root][data-boot="needs-device-recovery"]').waitFor({ state: 'attached' });
   await page.locator('[data-device-bound-recovery]').waitFor();
-  assert.match(await page.locator('[data-gate-title]').innerText(), /needs recovery/);
+  assert.match(await page.locator('[data-gate-title]').innerText(), missingAccess ? /needs recovery/ : /tied to this device/);
   assert.equal(await page.locator('[data-home-hello], [data-app-rail], [data-entry-card], [data-next]').count(), 0);
   assert.equal(await page.getByText('retained journal fixture', { exact: true }).count(), 0);
 }
 
 try {
-  for (const recovery of ['active', 'pending', 'none', 'unreadable']) {
+  for (const recovery of ['active', 'pending', 'none', 'unreadable', 'device-null', 'device-base64']) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: recovery === 'active' ? 'no-preference' : 'reduce' });
     const page = await context.newPage(); page.setDefaultTimeout(30000);
     page.on('pageerror', e => errors.push(e.message));
@@ -98,7 +104,7 @@ try {
     assert.deepEqual(await loseAccess(page, malformed, recovery), { refused: true, hasAccess: malformed });
     pass(`${recovery}: stale setup refuses key creation with retained ciphertext`);
     await page.reload({ waitUntil: 'networkidle' });
-    await assertGate(page);
+    await assertGate(page, !recovery.startsWith('device-'));
     pass(`${recovery}: cold boot offers recovery without journal data or Welcome`);
     if (recovery === 'none') {
       assert.equal(await page.locator('[data-flag-sun], [data-app-wordmark]').count(), 0);
