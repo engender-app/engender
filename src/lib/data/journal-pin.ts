@@ -26,6 +26,7 @@
    ADR-0018 requires. */
 
 import { authenticateCredentials, changeCredentials } from './credential-ownership';
+import { discardPendingRecoveryKeyOwned } from './recovery-key';
 import {
   createKeystore,
   rewrapKeystore,
@@ -68,6 +69,10 @@ export interface PinPorts {
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  /** Drops a new recovery key nobody confirmed once a changed PIN lands
+      (last-audit UI 42). Optional so the tests' in-memory ports need not
+      carry a recovery store. */
+  discardPendingRecoveryKey?(): Promise<void>;
   /** Android admits durably before derivation; web counts at its gate. */
   attempts?: {
     begin(): Promise<string>;
@@ -75,7 +80,12 @@ export interface PinPorts {
   };
 }
 
-const keystoreFile = { journalExists: journalAccessExists, readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
+const keystoreFile = {
+  journalExists: journalAccessExists,
+  readKeystore: readKeystoreFile,
+  writeKeystore: writeKeystoreFile,
+  discardPendingRecoveryKey: () => discardPendingRecoveryKeyOwned()
+};
 
 const platformPorts = (): PinPorts =>
   isAndroid()
@@ -264,6 +274,9 @@ export async function changeJournalPin(
       )
     );
     if (rebinding) await forgetLegacyBinding(ports);
+    await ports.discardPendingRecoveryKey?.().catch((error) => {
+      console.warn('could not discard an unconfirmed recovery key after changing the PIN', error);
+    });
   });
 }
 

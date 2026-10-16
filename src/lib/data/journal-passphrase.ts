@@ -9,6 +9,7 @@
    required again after the browser process ends. */
 
 import { changeCredentials } from './credential-ownership';
+import { discardPendingRecoveryKeyOwned } from './recovery-key';
 import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithSecret } from '../crypto/keystore';
 import { initializeJournal } from './journal-initialization';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
@@ -49,11 +50,15 @@ export async function unlockJournalPassphrase(passphrase: string): Promise<Uint8
 /** Rewraps the same data key under a new passphrase (ticket 09: a change
     of passphrase never re-encrypts the Journal). Throws
     DecryptionFailedError when the current passphrase is wrong, before
-    anything is written. */
+    anything is written. A new recovery key nobody confirmed is discarded
+    once the new passphrase has landed (last-audit UI 42). */
 export async function changeJournalPassphrase(current: string, next: string): Promise<void> {
   return changeCredentials(async () => {
     const metadata = await readKeystoreFile();
     if (metadata === null) throw new Error('no keystore to rewrap');
     await writeKeystoreFile(await rewrapKeystore(metadata, current, next));
+    await discardPendingRecoveryKeyOwned().catch((error) => {
+      console.warn('could not discard an unconfirmed recovery key after changing the passphrase', error);
+    });
   });
 }

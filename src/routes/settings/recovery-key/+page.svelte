@@ -1,12 +1,20 @@
 <script lang="ts">
   /* The recovery key, from Settings (ADR-0054, ticket sec-01).
 
-     Three states and they are the whole screen: this journal has no
-     recovery key, it has one, or one has just been minted and is on screen
-     for the only time it ever will be. The third is not a variant of the
-     second - it is the only moment the characters exist anywhere, and
-     leaving it is irreversible - so it gets its own branch rather than a
-     flag on the second.
+     Four states and they are the whole screen: this journal has no
+     recovery key, it has one, one has just been minted and is on screen
+     for the only time it ever will be, or one was minted and the screen
+     never got to its confirmation (last-audit UI 42). The third is not a
+     variant of the second - it is the only moment the characters exist
+     anywhere - so it gets its own branch rather than a flag on the second.
+
+     The confirmation is the commit. Minting writes the new key beside the
+     old one (data/recovery-key.ts), and "I have written it down" is what
+     makes it the key and the old one stop working. Anything else that takes
+     the screen away - a reload, a closed app, a process the system killed,
+     Leave - leaves the new key waiting, and the fourth state says so with
+     the three ways out the protocol allows: type the new key to finish,
+     make another, or keep the old one.
 
      Nothing here can show a key again once it is acknowledged or left, and
      that is a property of the design rather than a decision this screen
@@ -17,7 +25,17 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
-  import { mintRecoveryKey, revokeRecoveryKey } from '$lib/data/recovery-key';
+  import {
+    RecoveryKeyNotPendingError,
+    discardPendingRecoveryKey,
+    finishRecoveryKey,
+    mintRecoveryKey,
+    revokeRecoveryKey
+  } from '$lib/data/recovery-key';
+  import { RecoveryKeyMistypedError } from '$lib/crypto/recoveryKey';
+  import { DecryptionFailedError } from '$lib/crypto/aesGcm';
+  import { crossfade, resize } from '$lib/motion/reveal';
+  import RecoveryKeyField from '$lib/components/RecoveryKeyField.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
   import { isLockedNow } from '$lib/stores/lock.svelte';
@@ -45,11 +63,30 @@
   let shown = $state<string | null>(null);
   let confirming = $state<'replace' | 'revoke' | null>(null);
   let busy = $state(false);
+  /** Typing the new key to finish an interrupted replacement. */
+  let finishing = $state(false);
+  let typed = $state('');
+  let finishError = $state('');
+  let step = $derived(
+    shown !== null
+      ? 'shown'
+      : recoveryKeyPresence.pending
+        ? finishing
+          ? 'finishing'
+          : 'unfinished'
+        : recoveryKeyPresence.active
+          ? 'active'
+          : 'none'
+  );
   let screen: HTMLElement;
   let focusAfterConfirmation = false;
+  /* The last match, because a step that is leaving still fades out in front
+     of the one arriving, and Svelte inserts the arriving one after it. */
   async function focusStep() {
     await tick();
-    focusNamedTarget(screen.querySelector<HTMLElement>(shown === null ? 'h1' : '.rk-shown-title'));
+    const target = step === 'finishing' ? '#rk-finish-key' : step === 'shown' || step === 'unfinished' ? '.rk-shown-title' : 'h1';
+    const matches = screen.querySelectorAll<HTMLElement>(target);
+    focusNamedTarget(matches[matches.length - 1]);
   }
   function focusCommittedStep() {
     if (confirming !== null) focusAfterConfirmation = true;
@@ -74,9 +111,101 @@
       const minted = await mintRecoveryKey(dataKey);
       holdShownRecoveryKey(minted, dataKey);
       shown = minted;
+      finishing = false;
       await refreshRecoveryKeyPresence();
       focusCommittedStep();
       confirming = null;
+    } catch {
+      toast(m.rk_failed());
+    } finally {
+      busy = false;
+    }
+  }
+
+  /* The commit. Finished with the characters on screen, so the wrap that
+     becomes the key is the one these characters open and nothing else. A
+     key that is no longer waiting (a credential change discarded it, or
+     another tab made a newer one) opens nothing, so it leaves the screen
+     with a sentence that says so rather than as a key somebody keeps. */
+  async function confirmWritten() {
+    if (busy || shown === null) return;
+    busy = true;
+    try {
+      await finishRecoveryKey(shown);
+      leaveShown(m.rk_made_toast());
+    } catch (error) {
+      if (error instanceof RecoveryKeyNotPendingError || error instanceof DecryptionFailedError) {
+        leaveShown(m.rk_not_waiting());
+      } else {
+        toast(m.rk_failed());
+      }
+    } finally {
+      busy = false;
+    }
+  }
+
+  function leaveShown(said: string) {
+    guard.keep();
+    shown = null;
+    forgetHeldRecoveryKey();
+    void refreshRecoveryKeyPresence().then(focusStep);
+    toast(said);
+  }
+
+  async function submitFinish(event: SubmitEvent) {
+    event.preventDefault();
+    if (busy) return;
+    finishError = '';
+    busy = true;
+    try {
+      await finishRecoveryKey(typed);
+      typed = '';
+      finishing = false;
+      await refreshRecoveryKeyPresence();
+      void focusStep();
+      toast(m.rk_made_toast());
+    } catch (error) {
+      if (error instanceof RecoveryKeyNotPendingError) {
+        typed = '';
+        finishing = false;
+        await refreshRecoveryKeyPresence();
+        void focusStep();
+        toast(m.rk_not_waiting());
+        return;
+      }
+      finishError =
+        error instanceof RecoveryKeyMistypedError
+          ? m.rke_mistyped()
+          : error instanceof DecryptionFailedError
+            ? m.rk_finish_wrong()
+            : m.rk_failed();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function openFinish() {
+    finishing = true;
+    finishError = '';
+    void focusStep();
+  }
+
+  function closeFinish() {
+    finishing = false;
+    typed = '';
+    void focusStep();
+  }
+
+  /* "Keep the old key", or for a first key that never finished, not having
+     one: the waiting key goes and whatever was confirmed stays. */
+  async function discard() {
+    if (busy) return;
+    busy = true;
+    try {
+      await discardPendingRecoveryKey();
+      await refreshRecoveryKeyPresence();
+      void focusStep();
+      toast(m.rk_discarded_toast());
     } catch {
       toast(m.rk_failed());
     } finally {
@@ -131,8 +260,8 @@
   });
 
   /* A lock is the one departure that cannot ask: it unmounts this screen
-     and, since replacing had already killed the old key, used to take the
-     only copy of the new one with it (last-audit UI 09). A key the lock took
+     and used to take the only copy of the new key with it, at a time when
+     minting had already killed the old one (last-audit UI 09). A key the lock took
      before Done is shown again once the journal is open, and the screen
      waits for that answer before it draws anything, so it never says "a key
      is active" first and then swaps. Any other way off the screen has been
@@ -183,7 +312,14 @@
        placeholder there only flashed and faded out over the key. -->
   <ReadReserve ready={presenceRevealed} estimate={heldRead ? presenceEstimate : 0} onrest={presenceRemember}>
   {#if recoveryKeyPresence.known}
-    {#if shown !== null}
+    <!-- One step at a time, crossfading in place while the box travels to
+         the new height (last-audit UI 42): the old step fades out of flow
+         under the new one, which fades up where it rests. Mounted with the
+         reserve's own fade the first time, so only a change plays this. -->
+    <div class="rk-steps" use:resize>
+    {#key step}
+    <div class="screen-part" transition:crossfade data-recovery-key-step={step}>
+    {#if step === 'shown'}
       <!-- The one moment the characters exist. No back arrow out of this
            branch beyond the header's, and the primary action is the
            acknowledgement rather than anything that mints again. -->
@@ -208,16 +344,48 @@
           class="btn btn-primary"
           type="button"
           data-recovery-key-done
-          onclick={() => {
-            guard.keep();
-            shown = null;
-            forgetHeldRecoveryKey();
-            void focusStep();
-            toast(m.rk_made_toast());
-          }}>{m.rk_done()}</button
+          disabled={busy}
+          onclick={confirmWritten}>{m.rk_done()}</button
         >
       </div>
-    {:else if recoveryKeyPresence.exists}
+    {:else if step === 'unfinished' || step === 'finishing'}
+      <!-- An interrupted replacement or first key (last-audit UI 42): the
+           one notice, then its three choices, or the field that finishes. -->
+      <div class="kit-panel" data-kit-surface data-recovery-key-unfinished>
+        <h2 class="rk-shown-title">
+          {recoveryKeyPresence.active ? m.rk_unfinished_replace_title() : m.rk_unfinished_make_title()}
+        </h2>
+        <p class="ob-text">
+          {recoveryKeyPresence.active ? m.rk_unfinished_replace_body() : m.rk_unfinished_make_body()}
+        </p>
+      </div>
+      {#if step === 'finishing'}
+        <form class="rk-finish" onsubmit={submitFinish} data-recovery-key-finish>
+          <p class="ob-text">{m.rke_body()}</p>
+          <RecoveryKeyField id="rk-finish-key" label={m.rk_finish_label()} bind:value={typed} disabled={busy} />
+          <p class="pin-status small" role="alert" data-recovery-key-finish-error>{finishError}</p>
+          <div class="rk-finish-actions">
+            <button class="btn btn-primary" type="submit" data-submit-finish-recovery-key disabled={busy}>
+              {m.rk_finish_submit()}
+            </button>
+            <button class="btn btn-ghost" type="button" data-cancel-finish-recovery-key disabled={busy} onclick={closeFinish}>
+              {m.cancel()}
+            </button>
+          </div>
+        </form>
+      {:else}
+        <ListCard>
+          <ListRow key="finish-recovery-key" icon="key" title={m.rk_unfinished_have()} onclick={openFinish} />
+          <ListRow key="make-another-recovery-key" icon="repeat" title={m.rk_unfinished_another()} onclick={mint} />
+          <ListRow
+            key="discard-pending-recovery-key"
+            icon="x"
+            title={recoveryKeyPresence.active ? m.rk_unfinished_keep_old() : m.rk_unfinished_discard()}
+            onclick={discard}
+          />
+        </ListCard>
+      {/if}
+    {:else if step === 'active'}
       <div class="kit-panel" data-kit-surface>
         <p class="ob-text">{m.rk_active_body()}</p>
       </div>
@@ -244,6 +412,9 @@
         {m.rk_make()}
       </button>
     {/if}
+    </div>
+    {/key}
+    </div>
   {/if}
   </ReadReserve>
 </div>
@@ -260,8 +431,8 @@
 >
   <!-- No "takes effect at the next start" line here, and the reason is
        worth keeping: this branch shipped one, and it was false. Revoking
-       removes the file and replacing overwrites it, so in both cases the old
-       key stops opening the journal at once. What survives unchanged is the
+       removes the file at once, and replacing kills the old key the moment
+       the new one is confirmed (last-audit UI 42). What survives unchanged is the
        session already open, which holds the data key in memory and consults
        neither file again - and that is not what somebody at this confirm is
        asking about. The two bodies already say what stops working, and
@@ -269,8 +440,8 @@
        rotated, so a copy of the journal's files taken earlier still opens
        with the old key. -->
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
-  <!-- Danger, with a way back: both confirms make the written key stop
-       opening the journal at once, and the sheet used to offer them as the
+  <!-- Danger, with a way back: both confirms lead to the written key no
+       longer opening the journal, and the sheet used to offer them as the
        primary action with only a drag or the scrim to say no (after-release
        ticket 09). -->
   <div class="stack-3" style="margin-top:var(--space-4)">
@@ -350,6 +521,18 @@
     font-size: var(--text-sm);
     line-height: 1.5;
     margin: 0 0 var(--space-4);
+  }
+
+  /* An outgoing step fades out of flow (motion/reveal.ts, crossfade), so
+     the box it leaves has to be the one it is positioned in. */
+  .rk-steps {
+    position: relative;
+  }
+
+  .rk-finish-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .rk-departure-actions {

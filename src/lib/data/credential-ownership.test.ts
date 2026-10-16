@@ -2,12 +2,21 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { authenticateCredentials, changeCredentials, initializeCredentials, CredentialsBusyError } from './credential-ownership';
 import { changeJournalPin } from './journal-pin';
 import { changeJournalPassphrase } from './journal-passphrase';
-import { mintRecoveryKey, revokeRecoveryKey } from './recovery-key';
+import {
+  discardPendingRecoveryKey,
+  finishRecoveryKey,
+  inMemoryRecoveryKeyPorts,
+  mintRecoveryKey,
+  recoveryKeyState,
+  revokeRecoveryKey
+} from './recovery-key';
 
 afterEach(() => vi.unstubAllGlobals());
 
 test.each([false, true])('credential mutation excludes other operations across page lifetimes (native: %s)', async (native) => {
   if (native) vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  const recovery = inMemoryRecoveryKeyPorts();
+  const waiting = await mintRecoveryKey(new Uint8Array(32), recovery);
   let release!: () => void;
   let entered!: () => void;
   const started = new Promise<void>(resolve => { entered = resolve; });
@@ -23,6 +32,10 @@ test.each([false, true])('credential mutation excludes other operations across p
     await expect(changeJournalPassphrase('old password', 'new password')).rejects.toThrow(CredentialsBusyError);
     await expect(mintRecoveryKey(new Uint8Array(32))).rejects.toThrow(CredentialsBusyError);
     await expect(revokeRecoveryKey()).rejects.toThrow(CredentialsBusyError);
+    // Confirming or discarding a waiting recovery key is a credential change too (UI 42).
+    await expect(finishRecoveryKey(waiting, recovery)).rejects.toThrow(CredentialsBusyError);
+    await expect(discardPendingRecoveryKey(recovery)).rejects.toThrow(CredentialsBusyError);
+    expect(await recoveryKeyState(recovery)).toEqual({ active: false, pending: true });
     expect(competing).not.toHaveBeenCalled();
   } finally { release(); await first; }
   await changeCredentials(competing);

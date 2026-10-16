@@ -93,8 +93,10 @@
       toast(m.am_changed_toast());
       /* Device-bound and unlocked modes create an unrecoverable state,
          so they get the offer rather than the navigation - and only where
-         there is nothing already covering it. */
-      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.exists) {
+         there is nothing already covering it. `active`, not `exists`:
+         the change has just discarded any key nobody confirmed (last-audit
+         UI 42). */
+      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.active) {
         offering = 'device-bound';
         return;
       }
@@ -150,8 +152,9 @@
       toast(m.pin_changed_toast());
       /* A changed PIN rewraps the same data key, so an existing recovery key
          still works and there is nothing to regenerate. What is worth one
-         line is the case where there is none. */
-      if (!recoveryKeyPresence.exists) {
+         line is the case where there is none. An unconfirmed key was
+         discarded by the change (last-audit UI 42). */
+      if (!recoveryKeyPresence.active) {
         changingPin = false;
         offering = 'secret-changed';
         return;

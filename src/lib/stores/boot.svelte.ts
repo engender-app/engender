@@ -69,7 +69,7 @@ import {
 import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
 import { changeCredentials } from '../data/credential-ownership';
 import { removeKeystoreFile } from '../data/keystore-file';
-import { openWithRecoveryKey } from '../data/recovery-key';
+import { discardPendingRecoveryKeyOwned, openWithRecoveryKey } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
@@ -793,7 +793,15 @@ export async function submitAccessModeSetup(
     device-bound material - so an interruption anywhere in here leaves a
     journal that still opens, under one mode or the other, never neither. */
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
-  return changeCredentials(() => changeAccessModeOwned(target, secret));
+  return changeCredentials(async () => {
+    await changeAccessModeOwned(target, secret);
+    /* After the new mode has landed, never before: a recovery key nobody
+       confirmed does not outlive the protection it was made under
+       (last-audit UI 42), and failing to drop it leaves the change made. */
+    await discardPendingRecoveryKeyOwned().catch((error) => {
+      console.warn('could not discard an unconfirmed recovery key after changing access mode', error);
+    });
+  });
 }
 
 async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {

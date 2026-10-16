@@ -49,6 +49,7 @@
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { backupAgeDays, backupIsStale, storageNoticeShows, safariInstallationTarget } from '$lib/data/backupHealth';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -541,6 +542,15 @@
       lastBackupAt: prefs.lastBackupAt
     }) && !ui.appOpening
   );
+  /* A recovery key replacement (or first key) the screen never got to
+     confirm, after a reload or a killed process (last-audit UI 42). Home is
+     where an unlock lands, so this is where the person learns that the old
+     key still works and the new one cannot be shown again; the choices live
+     on the recovery key screen. Read with the fold, so it arrives with the
+     other notices rather than after them. */
+  let recoveryKeyRead = $state(false);
+  void refreshRecoveryKeyPresence().then(() => (recoveryKeyRead = true));
+  let showRecoveryKeyNotice = $derived(recoveryKeyPresence.known && recoveryKeyPresence.pending && !ui.appOpening);
   let showBackupNotice = $derived(
     backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
   );
@@ -592,6 +602,7 @@
     !read.loading && (read.failed || (read.value !== undefined && askedWith(read.value)));
   let foldReadsAgree = $derived(
     liveTiles.ready &&
+      recoveryKeyRead &&
       !agendaQuery.loading &&
       !appointmentsQuery.loading &&
       settledFor(debriefStateQuery, (answer) => answer.appointmentId === lastAppointmentId) &&
@@ -1055,6 +1066,18 @@
        real preferences, which land when the journal opens, and drawn then
        it shoved the pinned rows 179px in the frame boot went ready. -->
   <ReadReserve ready={foldRevealed} estimate={reserveBelow} onrest={rememberBelow} data-home-reserve="below">
+    {#if showRecoveryKeyNotice}
+      <Notice
+        icon="key"
+        key="recovery-key-unfinished"
+        title={recoveryKeyPresence.active ? m.rk_unfinished_replace_title() : m.rk_unfinished_make_title()}
+        text={recoveryKeyPresence.active ? m.rk_unfinished_replace_body() : m.rk_unfinished_make_body()}
+        action={{ label: m.rk_unfinished_open(), href: '/settings/recovery-key' }}
+        aria-live="polite"
+        data-recovery-key-notice=""
+      />
+    {/if}
+
     {#if showStorageNotice}
       <Notice
         icon="download"
