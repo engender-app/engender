@@ -58,7 +58,7 @@ try {
     await until(async () => nativePrompt() || await page.locator('[data-key-retry]:enabled, [data-key-device-credential]:enabled').count(), 'authentication outcome');
     if (nativePrompt()) back();
     await until(() => foreground(), 'return from authentication');
-    await page.locator('[data-key-retry]:enabled, [data-key-device-credential]:enabled').waitFor();
+    await page.locator('[data-key-retry]:enabled, [data-key-device-credential]:enabled').first().waitFor();
   }
   assert.equal(await page.locator('[data-nav-item="home"]:visible, [data-rail-item="home"]:visible').count(), 0);
   const coldRoute = route();
