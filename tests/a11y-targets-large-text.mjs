@@ -389,6 +389,37 @@ try {
     const under = rows.filter((r) => r.covered || r.w < FLOOR || r.h < FLOOR);
     console.log(`calendar 320px (printed, not failed): ${rows.length} date links, ${under.length} under ${FLOOR}${under[0] ? `, e.g. ${under[0].box} hit ${under[0].w}x${under[0].h}` : ''}`);
   }
+
+  /* Stepping through the months must not move the search control. Where a
+     month name cannot fit the line ("październik" at 200% text on 195px) it
+     breaks in two, and a slot sized by the label showing was a line taller
+     for that month alone: search jumped a line in one frame on the way in
+     and again on the way out. The top is read right after each step, while
+     both labels are still in the slot, and again once the swap has settled. */
+  if (!only || only.includes('journal-steps')) {
+    for (const [width, text] of [[195, 200], [320, 200], [390, 100]]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const lang of ['en', 'pl']) {
+        await setAppLanguage(page, lang);
+        await settlePage(page, base, '/calendar', 'light');
+        await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
+        await settle(page, '[data-cal-month-btn]');
+        const searchTop = () => page.evaluate(() => document.querySelector('.cal-field > a').getBoundingClientRect().top);
+        const tops = [await searchTop()];
+        for (let i = 0; i < 12; i++) {
+          await page.locator('[data-cal-step="next"]').click();
+          tops.push(await searchTop());
+          await page.waitForTimeout(450);
+          tops.push(await searchTop());
+        }
+        const label = `journal steps ${lang} ${width}px ${text}%`;
+        const moved = tops.filter((t) => Math.abs(t - tops[0]) > 0.5);
+        if (moved.length) failures.push(`${label}: search top moved while stepping through 12 months (${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')})`);
+        console.log(`${label}: search top ${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')} over 25 reads`);
+      }
+    }
+    await setAppLanguage(page, 'en');
+  }
 } finally {
   await browser.close();
   await app?.httpServer.close();

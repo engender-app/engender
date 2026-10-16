@@ -113,6 +113,9 @@
   let month = $state(restored?.month ?? now.getMonth());
 
   let monthLabel = $derived(fmtMonthYear(year, month));
+  /* Every month of the showing year, for the slot's sizer: the slot is as
+     tall as the tallest of them, whichever one is showing. */
+  let monthSizers = $derived(Array.from({ length: 12 }, (_, i) => fmtMonthYear(year, i)));
 
   /* Whether this journal has anything in it at all, which decides whether
      the month and the week draw (phase 8 UX ticket 01, and Home's own rule):
@@ -498,6 +501,9 @@
       <div class="cal-field">
         <h2 class="cal-month" data-cal-month aria-live="polite">
           <span class="cal-month-slot">
+            <span class="cal-month-sizer" aria-hidden="true">
+              {#each monthSizers as label (label)}<span>{label}</span>{/each}
+            </span>
             {#key monthLabel}
               <span in:labelIn out:labelOut>
                 <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
@@ -739,6 +745,33 @@
     min-width: 0;
   }
   .cal-month-slot > * { grid-area: 1 / 1; }
+
+  /* Holds the slot at the height of the tallest month name. Where a name
+     cannot fit the line ("październik" at 200% text on 195px) it breaks in
+     two, and the slot would be a line taller for that month alone, moving
+     the search control under it by a line in one frame when the month
+     changes. Every name is stacked in one cell, in the button's own font
+     and box, hidden and unread, so the height never depends on which month
+     is showing (last-audit UI 48). */
+  .cal-month-sizer {
+    display: grid;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .cal-month-sizer > span {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    text-align: left;
+    /* A button does not inherit the heading's tracking; the sizer has to
+       break its words where the button does. */
+    letter-spacing: normal;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 2px;
+    overflow-wrap: anywhere;
+  }
 
   /* The label is the affordance, so it reads as one: underlined the way the
      app's text actions are not, but only by a hair - the chevron on the
