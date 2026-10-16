@@ -48,17 +48,17 @@ try {
   }, 'WebView debugging endpoint');
   page.setDefaultTimeout(30000);
   const route = () => new URL(page.url()).pathname;
-  const gate = page.locator(mode === 'pin' ? '[data-key="1"]' : '[data-key-retry]');
+  const gate = page.locator(mode === 'pin' ? '[data-key="1"]' : '[data-key-status]');
   await gate.waitFor();
   evidence.webRelease = await page.evaluate(async () => (await fetch('/release.json')).json());
   if (mode === 'key') {
     // The initial native biometric prompt is separate from app Back.
     const nativePrompt = () => adb('shell', 'dumpsys', 'window', 'windows').split('\n')
       .some(line => line.includes('mCurrentFocus') && line.includes('com.android.systemui'));
-    await until(async () => nativePrompt() || await page.locator('[data-key-retry]:enabled').count(), 'authentication outcome');
+    await until(async () => nativePrompt() || await page.locator('[data-key-retry]:enabled, [data-key-device-credential]:enabled').count(), 'authentication outcome');
     if (nativePrompt()) back();
     await until(() => foreground(), 'return from authentication');
-    await page.locator('[data-key-retry]:enabled').waitFor();
+    await page.locator('[data-key-retry]:enabled, [data-key-device-credential]:enabled').waitFor();
   }
   assert.equal(await page.locator('[data-nav-item="home"]:visible, [data-rail-item="home"]:visible').count(), 0);
   const coldRoute = route();
