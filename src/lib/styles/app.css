@@ -894,13 +894,21 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 ::view-transition-group(nav) { z-index: 2; }
 /* The update notice sits inside the column now (last-audit UI ticket 21),
    so in the screen's snapshot it would fade and scale with every
-   navigation, though it is the same notice on both sides. Its own group,
-   above everything a screen's field can send up, shows the new picture
-   throughout: the band holds still while the screens cross under it. */
+   navigation, though it is the same notice on both sides. It gets a group
+   of its own instead, above everything a screen's field can send up, and
+   is treated the way the bar's is: the old and new pictures crossfade over
+   --dur-fast, and since they are the same picture the browser's
+   plus-lighter blend paints the notice unchanged while the screens cross
+   under it. A notice on one side only - closing as a navigation starts, or
+   a release turning up in the middle of one - fades rather than cutting. */
 .update-band { view-transition-name: update-notice; }
 ::view-transition-group(update-notice) { z-index: 6; }
-::view-transition-old(update-notice) { opacity: 0; animation: none; }
-::view-transition-new(update-notice) { opacity: 1; animation: none; }
+::view-transition-old(update-notice),
+::view-transition-new(update-notice) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+}
 /* The bar does not move between two tabs, so there is nothing for it to
    animate; it holds still while the screens cross behind it. Where a
    navigation does hide it - into a gate, out of one - the pair is absent on

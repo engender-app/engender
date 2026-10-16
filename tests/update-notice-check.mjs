@@ -190,33 +190,84 @@ try {
   await settled();
 
   /* A navigation while the notice is up. It has its own view-transition
-     group, so the screens cross under it while it shows the same picture
-     throughout rather than fading and scaling with the screen's snapshot. */
+     group, so the screens cross under it while its picture stays as it was,
+     rather than fading and scaling with the screen's snapshot. Proven in
+     pixels: the notice's box is shot at rest and twice while the screens
+     are crossing, and the three are compared. */
+  const rest = await layout();
+  const clip = { x: rest.notice.left, y: rest.notice.top, width: rest.notice.right - rest.notice.left, height: rest.notice.bottom - rest.notice.top };
+  const restShot = await page.screenshot({ clip });
   await page.evaluate(() => {
     window.vtFrames = [];
     window.vtSampling = true;
     const tick = () => {
       const pseudos = document.getAnimations().map((a) => a.effect?.pseudoElement ?? '');
-      const node = document.querySelector('[data-update-notice]');
       window.vtFrames.push({
         crossing: pseudos.some((p) => p.includes('(screen)')),
         ownGroup: pseudos.some((p) => p === '::view-transition-group(update-notice)'),
-        noticeAnimations: pseudos.filter((p) => /(old|new)\(update-notice\)/.test(p)).length,
-        opacity: Number(getComputedStyle(document.documentElement, '::view-transition-new(update-notice)').opacity),
-        top: node?.getBoundingClientRect().top ?? null
+        top: document.querySelector('[data-update-notice]')?.getBoundingClientRect().top ?? null
       });
       if (window.vtSampling) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   });
+  const crossingNow = () => page.evaluate(() => document.getAnimations().some((a) => (a.effect?.pseudoElement ?? '').includes('(screen)') && a.playState === 'running'));
   await page.locator('[data-rail-item="calendar"]').click();
+  await page.waitForFunction(() => document.getAnimations().some((a) => (a.effect?.pseudoElement ?? '').includes('(screen)')));
+  const midShots = [];
+  for (let i = 0; i < 2; i++) {
+    const shot = await page.screenshot({ clip });
+    if (await crossingNow()) midShots.push(shot);
+  }
   await page.waitForURL(/\/calendar/);
   await settled();
   const crossing = (await page.evaluate(() => { window.vtSampling = false; return window.vtFrames; })).filter((f) => f.crossing);
-  ok(crossing.length > 3 && crossing.some((f) => f.ownGroup) && crossing.every((f) => f.noticeAnimations === 0 && f.opacity === 1 && f.top !== null && near(f.top, crossing[0].top)),
-    `a navigation crosses the screens under the notice for ${crossing.length} frames while it holds still at full opacity`);
+  /* Decoded on a blank page of its own, which carries no CSP. */
+  const scratch = await context.newPage();
+  const diffs = await scratch.evaluate(async ([restShot, midShots]) => {
+    const pixels = async (b64) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${b64}`;
+      await image.decode();
+      const canvas = new OffscreenCanvas(image.width, image.height);
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0);
+      return context.getImageData(0, 0, image.width, image.height).data;
+    };
+    const at = await pixels(restShot);
+    return Promise.all(midShots.map(async (shot) => {
+      const mid = await pixels(shot);
+      let worst = 0;
+      for (let i = 0; i < at.length; i++) worst = Math.max(worst, Math.abs(at[i] - mid[i]));
+      return worst;
+    }));
+  }, [restShot.toString('base64'), midShots.map((shot) => shot.toString('base64'))]);
+  await scratch.close();
+  ok(crossing.length > 3 && crossing.some((f) => f.ownGroup) && crossing.every((f) => f.top !== null && near(f.top, crossing[0].top)) &&
+    diffs.length > 0 && diffs.every((d) => d <= 2),
+    `a navigation crosses the screens under the notice for ${crossing.length} frames, and ${diffs.length} shots mid-crossing match it at rest (largest channel difference ${diffs.join(', ')})`);
   await page.locator('[data-rail-item="home"]').click();
   await page.waitForURL((url) => url.pathname === '/');
+  await settled();
+
+  /* On one side of a transition only, the notice's picture fades over
+     --dur-fast rather than cutting: a transition taken with the band on
+     screen and gone from the new state, then the reverse. */
+  const lone = (show) => page.evaluate(async (show) => {
+    const band = document.querySelector('[data-update-band]') ?? document.querySelector('[data-update-notice]');
+    band.style.display = show ? 'none' : '';
+    const transition = document.startViewTransition(() => { band.style.display = show ? '' : 'none'; });
+    await transition.ready;
+    const fades = document.getAnimations().filter((a) => /(old|new)\(update-notice\)/.test(a.effect?.pseudoElement ?? ''))
+      .map((a) => ({ name: a.animationName, duration: a.effect.getComputedTiming().duration }));
+    await transition.finished;
+    band.style.display = '';
+    return fades;
+  }, show);
+  const loneOut = await lone(false);
+  const loneIn = await lone(true);
+  ok(loneOut.some((a) => /fade-out/.test(a.name) && a.duration >= 100) && loneIn.some((a) => /fade-in/.test(a.name) && a.duration >= 100),
+    `a notice on one side of a transition fades (${JSON.stringify(loneOut)} out, ${JSON.stringify(loneIn)} in)`);
   await settled();
 
   // The arrival: nothing painted at full size in its first frame, and the screen moves down rather than sideways.
@@ -304,7 +355,7 @@ try {
 
   ok(errors.length === 0, `no uncaught page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
   assert.deepEqual(failures, [], 'every update notice check passed');
-  assert.equal(checks, 29, 'all update notice checks ran');
+  assert.equal(checks, 30, 'all update notice checks ran');
   console.log(`Update notice passed: ${checks} checks`);
 } finally {
   await context.close();
