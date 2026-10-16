@@ -69,6 +69,15 @@ async function files() {
   });
 }
 
+async function noPendingWrap() {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    if (!(await files()).includes(PENDING)) return;
+    await page.waitForTimeout(50);
+  }
+  assert.fail('the pending recovery wrap was not removed');
+}
+
 /** Whether `key` opens the journal right now, asked without promoting
     anything: the gate's own read order, on copies of the two files. */
 async function opens(key) {
@@ -244,10 +253,7 @@ try {
   await restart();
   await noNotice();
   // Tidied by the first read, or as soon as the boot lets go of the credentials.
-  await page.waitForFunction(async () => {
-    for await (const name of (await navigator.storage.getDirectory()).keys()) if (name === 'recovery-key-pending.json') return false;
-    return true;
-  }, null, { timeout: 10000 });
+  await noPendingWrap();
   assert.equal(await opens(promoted), true);
   assert.equal(await opens(next), false);
   console.log('PASS cut inside the confirmation: the new key is the key and the restart only tidies');
@@ -395,14 +401,8 @@ try {
   await page.locator('[data-use-recovery-key]').click();
   await page.locator('[data-recovery-key-input]').fill(atGate);
   await page.locator('[data-submit-recovery-key]').click();
-  await page.waitForFunction(async () => {
-    const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
-    return bootState.journal !== null;
-  });
-  await page.waitForFunction(async () => {
-    for await (const name of (await navigator.storage.getDirectory()).keys()) if (name === 'recovery-key-pending.json') return false;
-    return true;
-  });
+  await page.locator('[data-app-root][data-boot="ready"]').waitFor();
+  await noPendingWrap();
   assert.equal(await opens(atGate), true);
   assert.equal(await opens(confirmed), false);
   console.log('PASS the waiting key opens the journal at the gate and becomes the key');
