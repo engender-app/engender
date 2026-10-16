@@ -77,11 +77,13 @@ export async function setupJournalBiometric(ports: BiometricPorts = browserPorts
     The caller owns credential mutation through old-mode cleanup. */
 export async function addJournalBiometric(
   dataKey: Uint8Array<ArrayBuffer>,
-  ports: BiometricPorts = browserPorts()
+  ports: BiometricPorts = browserPorts(),
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
   const prfSalt = randomPrfSalt();
   const { credentialId, secret } = await ports.authenticator.enrol(prfSalt);
   const metadata = await wrapDataKeyWithSecret(dataKey, secret, undefined, 'biometric');
+  beforeCredentialWrite();
   await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } });
 }
 

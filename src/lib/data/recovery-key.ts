@@ -146,13 +146,28 @@ async function promoteOwned(opened: RecoveryWrap, ports: RecoveryKeyPorts): Prom
 
     Throws RecoveryKeyMistypedError for input that cannot be a key,
     DecryptionFailedError for a key that is not the pending one, and
-    RecoveryKeyNotPendingError when no new key is waiting. */
+    RecoveryKeyNotPendingError when no new key is waiting and the supplied
+    key is not already active. */
 export async function finishRecoveryKey(typed: string, ports: RecoveryKeyPorts = filePorts): Promise<void> {
   const canonical = canonicalRecoveryKey(typed);
-  const pending = await readReadable(ports.pending);
-  if (pending === null) throw new RecoveryKeyNotPendingError();
-  (await unwrapDataKeyWithRecoveryKey(pending, canonical)).fill(0);
-  await changeCredentials(() => promoteOwned(pending, ports));
+  await changeCredentials(async () => {
+    const pending = await readReadable(ports.pending);
+    if (pending === null) {
+      // Another tab or a restart may already have completed this exact key.
+      // Never accept the active key while a different replacement is pending.
+      const active = await readReadable(ports.active);
+      if (active === null) throw new RecoveryKeyNotPendingError();
+      try {
+        (await unwrapDataKeyWithRecoveryKey(active, canonical)).fill(0);
+      } catch (error) {
+        if (error instanceof DecryptionFailedError) throw new RecoveryKeyNotPendingError();
+        throw error;
+      }
+      return;
+    }
+    (await unwrapDataKeyWithRecoveryKey(pending, canonical)).fill(0);
+    await promoteOwned(pending, ports);
+  });
 }
 
 /** Opens the journal's data key with whatever somebody typed: the active

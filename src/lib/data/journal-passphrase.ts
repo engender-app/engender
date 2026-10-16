@@ -34,9 +34,12 @@ export async function setupJournalPassphrase(passphrase: string): Promise<Uint8A
 /** The access-mode operation owns credential mutation through cleanup. */
 export async function addJournalPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
-  passphrase: string
+  passphrase: string,
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
-  await writeKeystoreFile(await wrapDataKeyWithSecret(dataKey, passphrase));
+  const metadata = await wrapDataKeyWithSecret(dataKey, passphrase);
+  beforeCredentialWrite();
+  await writeKeystoreFile(metadata);
 }
 
 /** Every later run: throws DecryptionFailedError on a wrong passphrase,
@@ -58,6 +61,9 @@ export async function changeJournalPassphrase(current: string, next: string): Pr
     if (metadata === null) throw new Error('no keystore to rewrap');
     const rewrapped = await rewrapKeystore(metadata, current, next);
     // Proven first: a wrong passphrase touches nothing, the pending key included.
-    await withoutPendingRecoveryKeyOwned(() => writeKeystoreFile(rewrapped));
+    await withoutPendingRecoveryKeyOwned((doNotRestorePending) => {
+      doNotRestorePending();
+      return writeKeystoreFile(rewrapped);
+    });
   });
 }

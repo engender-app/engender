@@ -815,7 +815,12 @@ async function changeAccessModeOwned(
       const hexKey = Array.from(sessionDataKey)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
-      const wrapped = await androidKeystore.wrap({ hexKey, authRequired });
+      const wrapped = await androidKeystore.wrap({ hexKey, authRequired }).catch((error) => {
+        // Rejection can follow native publication. Only an explicit
+        // noDeviceCredential outcome guarantees nothing changed.
+        doNotRestorePending();
+        throw error;
+      });
       if (wrapped.outcome === 'noDeviceCredential') {
         throw new Error('device has no lock screen credentials');
       }
@@ -848,9 +853,9 @@ async function changeAccessModeOwned(
     return;
   }
 
-  if (target === 'pin') await addJournalPin(sessionDataKey, secret);
-  else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
-  else await addJournalPassphrase(sessionDataKey, secret);
+  if (target === 'pin') await addJournalPin(sessionDataKey, secret, undefined, doNotRestorePending);
+  else if (target === 'biometric') await addJournalBiometric(sessionDataKey, undefined, doNotRestorePending);
+  else await addJournalPassphrase(sessionDataKey, secret, doNotRestorePending);
   // The new secret wrap is authoritative even if removing old access fails.
   doNotRestorePending();
   // Keep the change retryable until the old no-secret access is gone.

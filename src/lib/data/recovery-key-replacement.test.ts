@@ -254,6 +254,18 @@ describe('the gate while a replacement waits', () => {
   });
 });
 
+test('confirming a key already promoted by another tab succeeds without changing its wrap', async () => {
+  const { disk, dataKey } = await journalWithKey();
+  const shown = await mintRecoveryKey(dataKey, disk);
+  await opens(shown, disk, dataKey);
+  const promoted = await storedText(disk);
+  await expect(finishRecoveryKey(shown, disk)).resolves.toBeUndefined();
+  expect(await storedText(disk)).toBe(promoted);
+  await mintRecoveryKey(dataKey, disk);
+  await expect(finishRecoveryKey(shown, disk)).rejects.toThrow(DecryptionFailedError);
+  expect((await recoveryKeyState(disk)).pending).toBe(true);
+});
+
 describe('credential changes and the waiting key', () => {
   test('a change that lands takes the waiting key with it', async () => {
     const { disk, dataKey, old } = await journalWithKey();
@@ -366,7 +378,7 @@ describe('revocation and what is stored', () => {
 
 /* The file ports, over an OPFS root kept in memory: enough of the API for
    the keystore and both recovery files. */
-function opfsRoot(options: { removeFails?: string } = {}) {
+function opfsRoot(options: { removeFails?: string; failAfterPublish?: boolean } = {}) {
   const files: Record<string, string> = {};
   const notFound = () => Object.assign(new Error('not found'), { name: 'NotFoundError' });
   const root = {
@@ -383,7 +395,7 @@ function opfsRoot(options: { removeFails?: string } = {}) {
           let next = '';
           return {
             write: async (data: string) => { next = data; },
-            close: async () => { files[name] = next; },
+            close: async () => { files[name] = next; if (name === KEYSTORE_FILE && options.failAfterPublish) throw new Error('directory sync failed after publication'); },
             abort: async () => {}
           };
         }
@@ -396,6 +408,19 @@ function opfsRoot(options: { removeFails?: string } = {}) {
 
 describe('a credential change while a new key waits', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  test('a passphrase write that publishes then rejects cannot restore the pending recovery key', async () => {
+    const files = opfsRoot({ failAfterPublish: true });
+    const { metadata, dataKey } = await createKeystore('current passphrase');
+    files[KEYSTORE_FILE] = serializeKeystore(metadata);
+    const old = await mintRecoveryKey(dataKey);
+    await finishRecoveryKey(old);
+    await mintRecoveryKey(dataKey);
+    await expect(changeJournalPassphrase('current passphrase', 'new passphrase')).rejects.toThrow('directory sync failed after publication');
+    expect(files[KEYSTORE_FILE]).not.toBe(serializeKeystore(metadata));
+    expect(PENDING_RECOVERY_KEY_FILE in files).toBe(false);
+    expect(await openWithRecoveryKey(old)).toEqual(dataKey);
+  });
 
   test('changing the passphrase discards the unconfirmed key and keeps the confirmed one', async () => {
     const files = opfsRoot();

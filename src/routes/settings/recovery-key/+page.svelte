@@ -125,9 +125,8 @@
 
   /* The commit. Finished with the characters on screen, so the wrap that
      becomes the key is the one these characters open and nothing else. A
-     key that is no longer waiting (a credential change discarded it, or
-     another tab made a newer one) opens nothing, so it leaves the screen
-     with a sentence that says so rather than as a key somebody keeps. */
+     key already promoted by another tab counts as confirmed. A discarded
+     or superseded key cannot confirm a different pending replacement. */
   async function confirmWritten() {
     if (busy || shown === null) return;
     busy = true;

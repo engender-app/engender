@@ -242,13 +242,30 @@ try {
 
   // Cut 5: after confirmation.
   await openRecoveryScreen();
-  const confirmed = await mintFromScreen('[data-list-row="replace-recovery-key"]');
+  let confirmed = await mintFromScreen('[data-list-row="replace-recovery-key"]');
   await confirmShown();
   await restart();
   await noNotice();
   assert.equal(await opens(confirmed), true);
   assert.equal(await opens(promoted), false);
   console.log('PASS cut after confirmation: the new key alone, nothing reported');
+
+  await openRecoveryScreen();
+  const alreadyPromoted = await mintFromScreen('[data-list-row="replace-recovery-key"]');
+  const peer = await context.newPage();
+  await peer.goto(base, { waitUntil: 'networkidle' });
+  await peer.waitForSelector('[data-app-root][data-boot="ready"]');
+  await peer.evaluate(async (key) => {
+    const { openWithRecoveryKey } = await import('/src/lib/data/recovery-key.ts');
+    (await openWithRecoveryKey(key)).fill(0);
+  }, alreadyPromoted);
+  await peer.close();
+  await confirmShown();
+  assert.equal(await opens(alreadyPromoted), true);
+  assert.deepEqual(await files(), ['recovery-key.json']);
+  console.log('PASS confirming in the original tab after another tab promoted the key stays successful');
+  // Later checks use the currently confirmed key.
+  confirmed = alreadyPromoted;
 
   // No key characters anywhere a restart could read them.
   const stored = await page.evaluate(async () => {
@@ -307,6 +324,32 @@ try {
   console.log('PASS cleanup failure after a committed access change never restores the waiting key');
   await restart();
 
+
+  // Credential publication itself can reject after it lands (native
+  // directory sync is one such boundary). Do not restore the waiting key.
+  await openRecoveryScreen();
+  const beforeRejectedPublication = await mintFromScreen('[data-list-row="replace-recovery-key"]');
+  const rejectedPublication = await page.evaluate(async () => {
+    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+    const create = FileSystemFileHandle.prototype.createWritable;
+    FileSystemFileHandle.prototype.createWritable = async function (...args) {
+      const writable = await create.apply(this, args);
+      if (this.name === 'keystore.json') {
+        const close = writable.close.bind(writable);
+        writable.close = async () => { await close(); throw new Error('sync failed after publication'); };
+      }
+      return writable;
+    };
+    try { await changeAccessMode('passphrase', 'demo'); return null; }
+    catch (error) { return error.message; }
+    finally { FileSystemFileHandle.prototype.createWritable = create; }
+  });
+  assert.equal(rejectedPublication, 'sync failed after publication');
+  assert.deepEqual(await files(), ['recovery-key.json']);
+  assert.equal(await opens(beforeRejectedPublication), false);
+  assert.equal(await opens(confirmed), true);
+  await restart();
+  console.log('PASS rejected credential publication cannot revive a waiting recovery key');
 
   // The gate: a waiting key typed at the recovery entry opens the journal and finishes the replacement.
   await openRecoveryScreen();

@@ -72,7 +72,7 @@ export interface PinPorts {
   /** Runs the write of a changed PIN with any recovery key nobody confirmed
       taken away (last-audit UI 42). Optional so the tests' in-memory ports
       need not carry a recovery store. */
-  withoutPendingRecoveryKey?<T>(work: () => Promise<T>): Promise<T>;
+  withoutPendingRecoveryKey?<T>(work: (doNotRestorePending: () => void) => Promise<T>): Promise<T>;
   /** Android admits durably before derivation; web counts at its gate. */
   attempts?: {
     begin(): Promise<string>;
@@ -84,7 +84,7 @@ const keystoreFile = {
   journalExists: journalAccessExists,
   readKeystore: readKeystoreFile,
   writeKeystore: writeKeystoreFile,
-  withoutPendingRecoveryKey: <T,>(work: () => Promise<T>) => withoutPendingRecoveryKeyOwned(work)
+  withoutPendingRecoveryKey: <T,>(work: (doNotRestorePending: () => void) => Promise<T>) => withoutPendingRecoveryKeyOwned(work)
 };
 
 const platformPorts = (): PinPorts =>
@@ -152,7 +152,8 @@ export async function setupJournalPin(pin: string, ports: PinPorts = platformPor
 export async function addJournalPin(
   dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
-  ports: PinPorts = platformPorts()
+  ports: PinPorts = platformPorts(),
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
   requireValidPin(pin);
   const existing = await ports.readKeystore();
@@ -168,7 +169,9 @@ export async function addJournalPin(
     } finally { opened.fill(0); }
   }
   const secret = combinePinWithDevice(pin, await ports.binding.create());
-  await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
+  const metadata = bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports);
+  beforeCredentialWrite();
+  await ports.writeKeystore(metadata);
 }
 
 /** Every later run. Throws DecryptionFailedError on a wrong PIN and
@@ -274,7 +277,10 @@ export async function changeJournalPin(
     /* After the current PIN is proven: a wrong PIN touches nothing, and a
        recovery key nobody confirmed does not outlive the PIN it was made
        under (last-audit UI 42). */
-    const write = () => ports.writeKeystore(rewrapped);
+    const write = (doNotRestorePending: () => void = () => {}) => {
+      doNotRestorePending();
+      return ports.writeKeystore(rewrapped);
+    };
     await (ports.withoutPendingRecoveryKey ? ports.withoutPendingRecoveryKey(write) : write());
     if (rebinding) await forgetLegacyBinding(ports);
   });

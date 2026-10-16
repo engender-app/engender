@@ -302,9 +302,9 @@ test('changing the PIN discards an unconfirmed recovery key once the current PIN
       await base.writeKeystore(metadata);
       order.push('keystore');
     },
-    withoutPendingRecoveryKey: async <T,>(work: () => Promise<T>) => {
+    withoutPendingRecoveryKey: async <T,>(work: (doNotRestorePending: () => void) => Promise<T>) => {
       order.push('discard');
-      return work();
+      return work(() => {});
     }
   };
   await setupJournalPin('1234', world);
@@ -314,6 +314,29 @@ test('changing the PIN discards an unconfirmed recovery key once the current PIN
   expect(order).toEqual([]);
   await changeJournalPin('1234', '5678', world);
   expect(order).toEqual(['discard', 'keystore']);
+});
+
+test('a PIN publication that rejects during sync keeps the pending recovery key discarded', async () => {
+  const { mintRecoveryKey, finishRecoveryKey, openWithRecoveryKey, inMemoryRecoveryKeyPorts,
+    recoveryKeyState, withoutPendingRecoveryKeyOwned } = await import('./recovery-key');
+  const base = ports();
+  const dataKey = await setupJournalPin('1234', base);
+  const recovery = inMemoryRecoveryKeyPorts();
+  const confirmed = await mintRecoveryKey(dataKey, recovery);
+  await finishRecoveryKey(confirmed, recovery);
+  await mintRecoveryKey(dataKey, recovery);
+  const world: PinPorts = {
+    ...base,
+    withoutPendingRecoveryKey: (work) => withoutPendingRecoveryKeyOwned(work, recovery),
+    writeKeystore: async (metadata) => {
+      await base.writeKeystore(metadata);
+      throw new Error('directory sync failed after publication');
+    }
+  };
+  await expect(changeJournalPin('1234', '5678', world)).rejects.toThrow('directory sync failed after publication');
+  expect(await unlockJournalPin('5678', base)).toEqual(dataKey);
+  expect(await recoveryKeyState(recovery)).toEqual({ active: true, pending: false });
+  expect(await openWithRecoveryKey(confirmed, recovery)).toEqual(dataKey);
 });
 
 test('a discard that fails stops the PIN change with nothing written', async () => {
