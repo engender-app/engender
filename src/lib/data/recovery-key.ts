@@ -27,7 +27,7 @@
    secret, so unlike PIN mode's binding there is nothing platform-specific
    to choose between. */
 
-import { changeCredentials, CredentialsBusyError } from './credential-ownership';
+import { authenticateCredentials, changeCredentials, CredentialsBusyError } from './credential-ownership';
 import {
   RecoveryWrapUnreadableError,
   parseRecoveryWrap,
@@ -212,13 +212,20 @@ export async function recoveryKeyState(
   const active = await readReadable(ports.active);
   const pending = await readReadable(ports.pending);
   if (active !== null && pending !== null && sameWrap(active, pending)) {
-    await changeCredentials(async () => {
-      const [nowActive, nowPending] = [await readReadable(ports.active), await readReadable(ports.pending)];
-      if (nowActive !== null && nowPending !== null && sameWrap(nowActive, nowPending)) await ports.pending.remove();
-    }).catch((error) => {
-      /* Busy means another change owns the files and will settle them; any
-         other failure leaves a harmless duplicate for the next read. */
-      if (!(error instanceof CredentialsBusyError)) console.warn('could not tidy a confirmed recovery key', error);
+    const tidy = () =>
+      changeCredentials(async () => {
+        const [nowActive, nowPending] = [await readReadable(ports.active), await readReadable(ports.pending)];
+        if (nowActive !== null && nowPending !== null && sameWrap(nowActive, nowPending)) await ports.pending.remove();
+      });
+    await tidy().catch((error) => {
+      /* Busy is a boot or another change owning the files right now: tidy
+         once it lets go, without holding this answer up for it. Any other
+         failure leaves a harmless duplicate for the next read. */
+      if (error instanceof CredentialsBusyError) {
+        void authenticateCredentials(async () => {}).then(tidy).catch(() => {});
+      } else {
+        console.warn('could not tidy a confirmed recovery key', error);
+      }
     });
     return { active: true, pending: false };
   }

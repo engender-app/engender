@@ -67,6 +67,7 @@
   let finishing = $state(false);
   let typed = $state('');
   let finishError = $state('');
+  let committing = $state(false);
   let step = $derived(
     shown !== null
       ? 'shown'
@@ -130,25 +131,33 @@
   async function confirmWritten() {
     if (busy || shown === null) return;
     busy = true;
+    /* Acknowledged at the press: the person has said they have it, so a
+       Back during the promotion leaves without asking again, and the
+       promotion finishes behind them. */
+    committing = true;
     try {
       await finishRecoveryKey(shown);
-      leaveShown(m.rk_made_toast());
+      await leaveShown(m.rk_made_toast());
     } catch (error) {
       if (error instanceof RecoveryKeyNotPendingError || error instanceof DecryptionFailedError) {
-        leaveShown(m.rk_not_waiting());
+        await leaveShown(m.rk_not_waiting());
       } else {
         toast(m.rk_failed());
       }
     } finally {
       busy = false;
+      committing = false;
     }
   }
 
-  function leaveShown(said: string) {
+  /* Presence first, so the screen goes from the key straight to the state
+     after it rather than through the unfinished notice for a frame. */
+  async function leaveShown(said: string) {
     guard.keep();
-    shown = null;
     forgetHeldRecoveryKey();
-    void refreshRecoveryKeyPresence().then(focusStep);
+    await refreshRecoveryKeyPresence();
+    shown = null;
+    void focusStep();
     toast(said);
   }
 
@@ -159,16 +168,16 @@
     busy = true;
     try {
       await finishRecoveryKey(typed);
+      await refreshRecoveryKeyPresence();
       typed = '';
       finishing = false;
-      await refreshRecoveryKeyPresence();
       void focusStep();
       toast(m.rk_made_toast());
     } catch (error) {
       if (error instanceof RecoveryKeyNotPendingError) {
+        await refreshRecoveryKeyPresence();
         typed = '';
         finishing = false;
-        await refreshRecoveryKeyPresence();
         void focusStep();
         toast(m.rk_not_waiting());
         return;
@@ -252,7 +261,7 @@
      the browser's own confirmation, because a sheet cannot wait across a
      reload, a closed tab or an external navigation. */
   const guard = leaveGuard({
-    holding: () => shown !== null,
+    holding: () => shown !== null && !committing,
     onDiscard: () => {
       shown = null;
       forgetHeldRecoveryKey();

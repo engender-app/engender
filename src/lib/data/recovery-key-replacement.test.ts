@@ -21,6 +21,7 @@ import {
 import { serializeRecoveryWrap } from '../crypto/recoveryWrap.ts';
 import { RecoveryKeyMistypedError, canonicalRecoveryKey } from '../crypto/recoveryKey.ts';
 import { DecryptionFailedError } from '../crypto/aesGcm.ts';
+import { changeCredentials } from './credential-ownership.ts';
 import { createKeystore, serializeKeystore } from '../crypto/keystore.ts';
 import { changeJournalPassphrase } from './journal-passphrase.ts';
 import { KEYSTORE_FILE } from './keystore-file.ts';
@@ -136,6 +137,28 @@ describe('replacing a key, killed at each cut', () => {
     await opens(shown, disk, dataKey);
     await expect(openWithRecoveryKey(old, disk)).rejects.toThrow(DecryptionFailedError);
   });
+});
+
+test('a duplicate left while another change owns the credentials is tidied once it lets go', async () => {
+  const { disk, dataKey } = await journalWithKey();
+  const shown = await mintRecoveryKey(dataKey, disk);
+  await expect(finishRecoveryKey(shown, dyingAfter(disk, 1))).rejects.toThrow(ProcessDied);
+  let release!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => { entered = resolve; });
+  const owner = changeCredentials(async () => {
+    entered();
+    await new Promise<void>((resolve) => { release = resolve; });
+  });
+  await started;
+
+  expect(await recoveryKeyState(disk)).toEqual({ active: true, pending: false });
+  expect(await disk.pending.read()).not.toBeNull();
+
+  release();
+  await owner;
+  await vi.waitFor(async () => expect(await disk.pending.read()).toBeNull());
+  await opens(shown, disk, dataKey);
 });
 
 describe("a journal's first key, killed at each cut", () => {
