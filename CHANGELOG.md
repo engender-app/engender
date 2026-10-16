@@ -8,6 +8,12 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+On a wide screen, the "A new version is ready" notice now sits above the
+screen instead of taking a column of its own beside the menu. At 1024px it
+used to leave the screen about a quarter of the window. Closing the notice
+now keeps it closed when the app locks and you unlock it; the next time you
+open the app it offers the update again.
+
 Back during first-run setup now returns to the previous step and keeps
 your answers. Finishing setup removes it from the way back from Today.
 
