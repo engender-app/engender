@@ -31,6 +31,7 @@ test('web first run asks for setup, not unlock', () => {
     describeWebBootPlan({
       keystoreSecretSource: null,
       deviceBoundKeystoreExists: false,
+      journalPresent: false,
       legacyStoragePresent: false,
     })
   ).toBe('needs-setup');
@@ -41,6 +42,7 @@ test('web device-bound mode cold-boots straight into an automatic local unlock',
     describeWebBootPlan({
       keystoreSecretSource: null,
       deviceBoundKeystoreExists: true,
+      journalPresent: false,
       legacyStoragePresent: false,
     })
   ).toBe('auto-unlock');
@@ -51,6 +53,7 @@ test('web passphrase mode cold-boots into the passphrase gate', () => {
     describeWebBootPlan({
       keystoreSecretSource: 'passphrase',
       deviceBoundKeystoreExists: false,
+      journalPresent: false,
       legacyStoragePresent: false,
     })
   ).toBe('needs-unlock');
@@ -61,6 +64,7 @@ test('web PIN mode cold-boots into a gate rather than unlocking itself', () => {
     describeWebBootPlan({
       keystoreSecretSource: 'pin',
       deviceBoundKeystoreExists: false,
+      journalPresent: false,
       legacyStoragePresent: false,
     })
   ).toBe('needs-unlock');
@@ -71,6 +75,7 @@ test('web refuses legacy storage before offering setup or unlock', () => {
     describeWebBootPlan({
       keystoreSecretSource: null,
       deviceBoundKeystoreExists: false,
+      journalPresent: false,
       legacyStoragePresent: true,
     })
   ).toBe('legacy-refused');
@@ -81,6 +86,7 @@ test('android first run becomes an explicit setup choice', () => {
     describeAndroidBootPlan({
       keystoreSecretSource: null,
       nativeDeviceKeyExists: false,
+      journalPresent: false,
       plaintextJournalPresent: false
     })
   ).toBe('needs-setup');
@@ -91,6 +97,7 @@ test('android journals already using the native device key keep their current co
     describeAndroidBootPlan({
       keystoreSecretSource: null,
       nativeDeviceKeyExists: true,
+      journalPresent: false,
       plaintextJournalPresent: false
     })
   ).toBe('needs-authentication');
@@ -102,6 +109,7 @@ test('android journals using unlocked native device key cold-boot into auto-unlo
       keystoreSecretSource: null,
       nativeDeviceKeyExists: true,
       nativeDeviceKeyAuthRequired: false,
+      journalPresent: false,
       plaintextJournalPresent: false
     })
   ).toBe('auto-unlock');
@@ -122,6 +130,7 @@ test('android passphrase mode cold-boots into the passphrase gate', () => {
     describeAndroidBootPlan({
       keystoreSecretSource: 'passphrase',
       nativeDeviceKeyExists: true,
+      journalPresent: false,
       plaintextJournalPresent: false
     })
   ).toBe('needs-unlock');
@@ -132,6 +141,7 @@ test('android PIN mode cold-boots into a gate too', () => {
     describeAndroidBootPlan({
       keystoreSecretSource: 'pin',
       nativeDeviceKeyExists: false,
+      journalPresent: false,
       plaintextJournalPresent: false
     })
   ).toBe('needs-unlock');
@@ -142,6 +152,7 @@ test('android still refuses a plaintext journal when there is no usable key mode
     describeAndroidBootPlan({
       keystoreSecretSource: null,
       nativeDeviceKeyExists: false,
+      journalPresent: false,
       plaintextJournalPresent: true
     })
   ).toBe('plaintext-error');
@@ -158,4 +169,19 @@ test('a mode has a secret to re-ask for only where one exists', () => {
   expect(accessModeHasSecret('unlocked', true)).toBe(false);
   expect(accessModeHasSecret('unlocked', false)).toBe(false);
   expect(accessModeHasSecret(null, true)).toBe(false);
+});
+
+test('surviving encrypted storage without access credentials requires recovery on both platforms', () => {
+  expect(describeWebBootPlan({ keystoreSecretSource: null, deviceBoundKeystoreExists: false,
+    legacyStoragePresent: false, journalPresent: true })).toBe('needs-recovery');
+  expect(describeAndroidBootPlan({ keystoreSecretSource: null, nativeDeviceKeyExists: false,
+    plaintextJournalPresent: false, journalPresent: true })).toBe('needs-recovery');
+});
+
+test('an unreadable secret wrap cannot downgrade to leftover device access', () => {
+  expect(chooseJournalAccessMode({ keystoreSecretSource: 'unreadable', deviceBoundKeystoreExists: true })).toBeNull();
+  expect(describeWebBootPlan({ keystoreSecretSource: 'unreadable', deviceBoundKeystoreExists: true,
+    legacyStoragePresent: false, journalPresent: true })).toBe('needs-recovery');
+  expect(describeAndroidBootPlan({ keystoreSecretSource: 'unreadable', nativeDeviceKeyExists: true,
+    plaintextJournalPresent: false, journalPresent: true })).toBe('needs-recovery');
 });

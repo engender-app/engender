@@ -1,6 +1,11 @@
-import { afterEach, expect, test, vi } from 'vitest';
+import { beforeEach, afterEach, expect, test, vi } from 'vitest';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { initializeJournal, journalAccessExists, JournalAlreadyExistsError } from './journal-initialization';
+
+const native = vi.hoisted(() => ({ readCredential: vi.fn(), storage: vi.fn() }));
+vi.mock('../android/plugin-registry', () => ({ androidPluginOwners: { keystore: 'keystore' }, registerAndroidPlugin: () => native }));
+vi.mock('./sqlite/android-driver', () => ({ inspectAndroidJournal: native.storage }));
+beforeEach(() => { native.readCredential.mockResolvedValue({ initialized: false }); native.storage.mockResolvedValue({ exists: false, plaintext: false }); });
 
 vi.mock('../lock/keystore-bridge', () => ({ androidKeystore: { status: vi.fn() } }));
 
@@ -76,4 +81,55 @@ test('a web runtime without cross-tab ownership cannot create credentials', asyn
   const create = vi.fn();
   await expect(initializeJournal(create, async () => false)).rejects.toThrow();
   expect(create).not.toHaveBeenCalled();
+});
+
+test('a stale web setup cannot mint a key when only the encrypted pool survives', async () => {
+  const getDirectoryHandle = vi.fn(async (name: string, options?: { create?: boolean }) => {
+    expect(name).toBe('mc-pool-16lluf4');
+    expect(options?.create).not.toBe(true);
+    return {};
+  });
+  vi.stubGlobal('navigator', { locks, storage: { getDirectory: async () => ({
+    getFileHandle: async () => { throw new DOMException('missing', 'NotFoundError'); }, getDirectoryHandle
+  }) } });
+  const create = vi.fn();
+  await expect(initializeJournal(create)).rejects.toThrow(JournalAlreadyExistsError);
+  expect(create).not.toHaveBeenCalled();
+  expect(getDirectoryHandle).toHaveBeenCalledOnce();
+});
+
+
+test.each(['database', 'credential'])('a stale native setup cannot mint over retained %s', async (retained) => {
+  vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => ({
+    getFileHandle: async () => { throw new DOMException('missing', 'NotFoundError'); }
+  }) } });
+  vi.mocked(androidKeystore.status).mockResolvedValue({ hasKey: false });
+  if (retained === 'database') native.storage.mockResolvedValue({ exists: true, plaintext: false });
+  else native.readCredential.mockResolvedValue({ initialized: true, serialized: '{broken' });
+  const create = vi.fn();
+  await expect(initializeJournal(create)).rejects.toThrow(JournalAlreadyExistsError);
+  expect(create).not.toHaveBeenCalled();
+});
+
+test('native survey failure refuses stale setup without minting a key', async () => {
+  vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  native.readCredential.mockResolvedValue({ initialized: true });
+  vi.mocked(androidKeystore.status).mockResolvedValue({ hasKey: false });
+  native.storage.mockRejectedValue(new Error('unreadable storage'));
+  const create = vi.fn();
+  await expect(initializeJournal(create)).rejects.toThrow('unreadable storage');
+  expect(create).not.toHaveBeenCalled();
+});
+
+test('an authoritative native tombstone does not readopt stale OPFS during a genuinely fresh setup', async () => {
+  vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  const readOpfs = vi.fn(() => { throw new Error('stale OPFS must stay ignored'); });
+  vi.stubGlobal('navigator', { storage: { getDirectory: readOpfs } });
+  native.readCredential.mockResolvedValue({ initialized: true });
+  vi.mocked(androidKeystore.status).mockResolvedValue({ hasKey: false });
+  native.storage.mockResolvedValue({ exists: false, plaintext: false });
+  const create = vi.fn(async () => 'new key');
+  await expect(initializeJournal(create)).resolves.toBe('new key');
+  expect(readOpfs).not.toHaveBeenCalled();
 });

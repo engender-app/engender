@@ -43,6 +43,7 @@ function surveyedWeb(survey: Partial<Extract<BootEvent, { type: 'web-surveyed' }
     keystoreSecretSource: null,
     deviceBoundKeystoreExists: false,
     legacyStoragePresent: false,
+    journalPresent: false,
     ...survey
   };
 }
@@ -55,6 +56,7 @@ function surveyedAndroid(
     keystoreSecretSource: null,
     nativeDeviceKeyExists: false,
     plaintextJournalPresent: false,
+    journalPresent: false,
     ...survey
   };
 }
@@ -649,4 +651,14 @@ test('an empty web survey discards erased-journal mirrors before setup', () => {
   const step = reduce(initialBoot('pin'), surveyedWeb());
   expect(step.machine.boot.status).toBe('needs-setup');
   expect(step.effects).toEqual([{ type: 'discard-erased-journal-mirrors' }]);
+});
+
+test.each(['web', 'android'] as const)('missing access with retained %s journal reaches recovery before setup or demo effects', (platform) => {
+  for (const demo of [false, true]) {
+    const event = platform === 'web' ? surveyedWeb({ journalPresent: true }) : surveyedAndroid({ journalPresent: true });
+    const result = walk(started(platform, demo), event);
+    expect(result.machine.boot.status).toBe('needs-device-recovery');
+    expect(result.machine.boot).toMatchObject({ recoveryReason: 'missing-access', journal: null });
+    expect(result.effects).toEqual([]);
+  }
 });

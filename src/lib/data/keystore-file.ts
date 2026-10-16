@@ -2,7 +2,7 @@
    file on Android. The native store becomes authoritative before an old
    OPFS record is removed; a native tombstone prevents adopting it again. */
 
-import { parseKeystore, serializeKeystore, type JournalSecretSource, type KeystoreMetadata } from '../crypto/keystore';
+import { KeystoreUnreadableError, parseKeystore, serializeKeystore, type JournalSecretSource, type KeystoreMetadata } from '../crypto/keystore';
 import { isAndroid } from '../platform';
 import { androidPluginOwners, registerAndroidPlugin } from '../android/plugin-registry';
 
@@ -19,6 +19,23 @@ const androidWraps = registerAndroidPlugin<CredentialWrapBridge>(androidPluginOw
 export const KEYSTORE_FILE = 'keystore.json';
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';
+
+/** Presence is a setup refusal, including malformed metadata. Native
+    tombstones stay authoritative; stale OPFS must not resurrect a wrap. */
+export async function keystoreFileExists(): Promise<boolean> {
+  if (isAndroid()) {
+    const native = await androidWraps.readCredential();
+    if (native.initialized) return native.serialized !== undefined;
+  }
+  const root = await navigator.storage.getDirectory();
+  try {
+    await root.getFileHandle(KEYSTORE_FILE);
+    return true;
+  } catch (error) {
+    if (isNotFound(error)) return false;
+    throw error;
+  }
+}
 
 /** The stored metadata, or null on a first run - which is what tells boot
     to offer setup rather than unlock. */
@@ -84,6 +101,19 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<voi
     rather than something tracked beside it, so there is nothing to drift. */
 export async function readKeystoreSource(): Promise<JournalSecretSource | null> {
   return (await readKeystoreFile())?.secretSource ?? null;
+}
+
+export type KeystoreBootSource = JournalSecretSource | 'unreadable' | null;
+
+/** Malformed authoritative metadata needs recovery, never setup or a weaker
+    leftover device credential. Unexpected storage failures still propagate. */
+export async function readKeystoreSourceForBoot(): Promise<KeystoreBootSource> {
+  try {
+    return await readKeystoreSource();
+  } catch (error) {
+    if (error instanceof KeystoreUnreadableError) return 'unreadable';
+    throw error;
+  }
 }
 
 /** Removes the keystore, for a move to device-bound mode where there is no

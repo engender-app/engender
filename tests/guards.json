@@ -120,6 +120,11 @@
     "holds": "a recovery key replacement interrupted at each cut leaves the old key working until the new one is confirmed, says so after the restart, and finishes, redoes or discards from the screen; the gate promotes a waiting key and no key characters are stored"
   },
   {
+    "name": "missing-access-recovery-check",
+    "tier": "dev",
+    "holds": "retained encrypted storage with missing or unreadable access refuses setup, reaches recovery or confirmed Archive/reset, and keeps entry/photo counts and decrypted media through a new access mode and another cold boot"
+  },
+  {
     "name": "photo-browse-compare",
     "tier": "dev",
     "holds": "browsing, selecting and wiping photos on a small library; the change-day button stays clear of every date caption at 320, 390 and 1280px"

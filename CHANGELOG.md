@@ -8,6 +8,12 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+If the journal remains on a device but its access information is missing
+or unreadable, the app now offers recovery instead of first-run setup.
+A retained recovery key opens the same journal and asks for a new access
+mode. Without a usable key, Archive recovery and reset still require
+confirmation. Setup also refuses to create a new key over retained data.
+
 The "A new version is ready" notice now sits under the coloured header of
 the screen you are on, as wide as the screen's content. On a wide screen it
 used to take a column of its own beside the menu and, at 1024px, leave the

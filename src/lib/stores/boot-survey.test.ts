@@ -1,13 +1,13 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
 const hooks = vi.hoisted(() => ({
-  own: vi.fn(), secret: vi.fn(), device: vi.fn(), legacy: vi.fn()
+  own: vi.fn(), secret: vi.fn(), device: vi.fn(), legacy: vi.fn(), presence: vi.fn()
 }));
 vi.mock('../data/credential-ownership', async (original) => ({
   ...await original<typeof import('../data/credential-ownership')>(), authenticateCredentials: hooks.own
 }));
 vi.mock('../data/keystore-file', async (original) => ({
-  ...await original<typeof import('../data/keystore-file')>(), readKeystoreSource: hooks.secret
+  ...await original<typeof import('../data/keystore-file')>(), readKeystoreSourceForBoot: hooks.secret
 }));
 vi.mock('../data/device-bound-journal', async (original) => ({
   ...await original<typeof import('../data/device-bound-journal')>(), deviceBoundJournalExists: hooks.device
@@ -15,10 +15,11 @@ vi.mock('../data/device-bound-journal', async (original) => ({
 vi.mock('../data/legacy-journal', async (original) => ({
   ...await original<typeof import('../data/legacy-journal')>(), legacyStoragePresent: hooks.legacy
 }));
+vi.mock('../data/journal-presence', () => ({ webJournalPresent: hooks.presence }));
 import { performPlatformEffect } from './boot-platform';
 import { initialBoot, reduce } from './boot-machine';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); hooks.presence.mockResolvedValue(false); });
 
 test('the web survey waits for credential ownership and dispatches cleanup before releasing it', async () => {
   let enter!: () => void;
@@ -39,7 +40,7 @@ test('the web survey waits for credential ownership and dispatches cleanup befor
   enter();
   await pending;
   expect(dispatch).toHaveBeenCalledWith({ type: 'web-surveyed', keystoreSecretSource: null,
-    deviceBoundKeystoreExists: false, legacyStoragePresent: false });
+    deviceBoundKeystoreExists: false, legacyStoragePresent: false, journalPresent: false });
   expect(owned).toBe(false);
 });
 
@@ -80,4 +81,29 @@ test('a setup queued by synchronous survey dispatch runs after ownership release
   });
   await queued;
   expect(created).toBe(true);
+});
+
+
+test('missing wraps with retained ciphertext survey into recovery without clearing mirrors', async () => {
+  hooks.own.mockImplementation(async (work: () => Promise<void>) => work());
+  hooks.secret.mockResolvedValue(null);
+  hooks.device.mockResolvedValue(false);
+  hooks.legacy.mockResolvedValue(false);
+  hooks.presence.mockResolvedValue(true);
+  const dispatch = vi.fn();
+  await performPlatformEffect({ type: 'survey-web' }, dispatch);
+  const result = reduce(initialBoot(), dispatch.mock.calls[0][0]);
+  expect(result.machine.boot.status).toBe('needs-device-recovery');
+  expect(result.effects).toEqual([]);
+});
+
+test('unexpected storage failures cannot publish a setup decision', async () => {
+  hooks.own.mockImplementation(async (work: () => Promise<void>) => work());
+  hooks.secret.mockResolvedValue(null);
+  hooks.device.mockResolvedValue(false);
+  hooks.legacy.mockResolvedValue(false);
+  hooks.presence.mockRejectedValue(new Error('storage denied'));
+  const dispatch = vi.fn();
+  await expect(performPlatformEffect({ type: 'survey-web' }, dispatch)).rejects.toThrow('storage denied');
+  expect(dispatch).not.toHaveBeenCalled();
 });

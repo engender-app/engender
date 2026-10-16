@@ -171,7 +171,7 @@ function browserStorage() {
   };
   vi.stubGlobal('indexedDB', indexedDB);
   vi.stubGlobal('navigator', { locks: navigator.locks, storage: { async getDirectory() {
-    return { async removeEntry(name: string) {
+    return { async getDirectoryHandle() { throw new DOMException('missing', 'NotFoundError'); }, async removeEntry(name: string) {
       if (faults.metadataRemove) throw new Error('metadata removal failed');
       if (!files.has(name)) throw new DOMException('missing', 'NotFoundError');
       if (!faults.metadataRemains) files.delete(name);
@@ -374,5 +374,16 @@ test('a fresh metadata write failure aborts instead of closing the partial file'
     await expect(setupDeviceBoundJournal()).rejects.toThrow('metadata write failed');
     expect(browser.abort).toHaveBeenCalledTimes(1);
     expect(browser.close).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('an unreadable device wrap remains a recovery case rather than first-run setup', async () => {
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => ({
+    getFileHandle: async () => ({ getFile: async () => ({ text: async () => '{broken' }) })
+  }) } });
+  const { deviceBoundJournalExists, unlockDeviceBoundJournal } = await import('./device-bound-journal');
+  try {
+    await expect(deviceBoundJournalExists()).resolves.toBe(true);
+    await expect(unlockDeviceBoundJournal()).rejects.toThrow(DeviceBoundKeyUnavailableError);
   } finally { vi.unstubAllGlobals(); }
 });

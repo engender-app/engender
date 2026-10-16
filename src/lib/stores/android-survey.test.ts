@@ -18,7 +18,7 @@ function held() {
     ports: {
       readKeystoreSource: ask<null>('keystore file'),
       keystoreStatus: ask<{ hasKey: boolean; authRequired?: boolean }>('keystore status'),
-      journalIsPlaintext: ask<boolean>('plaintext check')
+      inspectJournal: ask<{ exists: boolean; plaintext: boolean }>('plaintext check')
     }
   };
 }
@@ -33,14 +33,15 @@ test('all three questions are asked before any of them answers (ux-carpet 207)',
      the UI thread's queue. */
   assert.deepEqual(asked, ['keystore file', 'keystore status', 'plaintext check']);
 
-  answers['plaintext check'](false);
+  answers['plaintext check']({ exists: true, plaintext: false });
   answers['keystore status']({ hasKey: true, authRequired: false });
   answers['keystore file'](null);
   assert.deepEqual(await survey, {
     keystoreSecretSource: null,
     nativeDeviceKeyExists: true,
     nativeDeviceKeyAuthRequired: false,
-    plaintextJournalPresent: false
+    plaintextJournalPresent: false,
+    journalPresent: true
   });
 });
 
@@ -48,7 +49,7 @@ test('a key whose authentication requirement is unknown reads as requiring it', 
   const survey = await surveyAndroid({
     readKeystoreSource: async () => null,
     keystoreStatus: async () => ({ hasKey: true }),
-    journalIsPlaintext: async () => false
+    inspectJournal: async () => ({ exists: false, plaintext: false })
   });
   assert.equal(survey.nativeDeviceKeyAuthRequired, true);
 });

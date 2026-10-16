@@ -13,10 +13,11 @@
    throws into a failed boot, which is what the four sequences this replaced
    each ended in. */
 
-import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
+import { inspectAndroidJournal } from '../data/sqlite/android-driver';
 import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
-import { readKeystoreSource } from '../data/keystore-file';
+import { readKeystoreSource, readKeystoreSourceForBoot } from '../data/keystore-file';
 import { authenticateCredentials } from '../data/credential-ownership';
+import { webJournalPresent } from '../data/journal-presence';
 import { surveyAndroid } from './android-survey';
 import {
   deviceBoundJournalExists,
@@ -63,13 +64,14 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     case 'survey-web': {
       // Empty-journal cache cleanup must share ownership with setup and reset.
       await authenticateCredentials(async () => {
-        const keystoreSecretSource = await readKeystoreSource();
+        const keystoreSecretSource = await readKeystoreSourceForBoot();
         const deviceBoundKeystoreExists = await deviceBoundJournalExists();
         dispatch({
           type: 'web-surveyed',
           keystoreSecretSource,
           deviceBoundKeystoreExists,
-          legacyStoragePresent: await legacyStoragePresent()
+          legacyStoragePresent: await legacyStoragePresent(),
+          journalPresent: keystoreSecretSource === null && !deviceBoundKeystoreExists && await webJournalPresent()
         });
       });
       return;
@@ -81,9 +83,9 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     case 'survey-android': {
       /* All three at once (android-survey.ts says why). */
       const survey = await surveyAndroid({
-        readKeystoreSource,
+        readKeystoreSource: readKeystoreSourceForBoot,
         keystoreStatus: () => androidKeystore.status(),
-        journalIsPlaintext: () => androidJournalIsPlaintext(JOURNAL_DATABASE)
+        inspectJournal: () => inspectAndroidJournal(JOURNAL_DATABASE)
       });
       dispatch({ type: 'android-surveyed', ...survey });
       return;

@@ -759,15 +759,17 @@ flowchart TD
 
 Android PIN/passphrase metadata lives in `journal-credential.json`, owned by [CredentialWrapStore.java](android/app/src/main/java/dev/engender/app/keystore/CredentialWrapStore.java). A write syncs its staged file, atomically replaces the authoritative record, then syncs the parent directory before returning. Failure prevents confirmation; interruption leaves the old or new wrap. There is no fallback to a previous credential generation. The first read adopts a validated released OPFS wrap before removing it. A durable removal marker prevents that old OPFS copy from becoming active again after a mode switch or reset. Web OPFS writes remain safe from process interruption without promising persistence through power loss.
 
-`JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material. A mode change reports success only after the old device-bound wrap is removed. On the web, removal verifies that both the wrapping key and metadata are absent; the metadata stays until key removal is verified so a failed cleanup remains visible to boot. If boot surveys both wraps, a successful secret unlock retries cleanup under credential ownership and checks that a secret keystore still owns access. A cleanup failure leaves the journal usable and retries on the next boot. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
+`JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup or when a lost access wrap no longer identifies the mode. A secret-backed keystore always wins over leftover device-bound material. A mode change reports success only after the old device-bound wrap is removed. On the web, removal verifies that both the wrapping key and metadata are absent; the metadata stays until key removal is verified so a failed cleanup remains visible to boot. If boot surveys both wraps, a successful secret unlock retries cleanup under credential ownership and checks that a secret keystore still owns access. A cleanup failure leaves the journal usable and retries on the next boot. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
+
+Boot inspects storage without opening SQLite or creating a key. Android's existing file survey reports presence and the plaintext header separately; the web checks the journal's namespaced SAH pool directory. Even an empty retained pool is treated conservatively until an explicit reset removes it. Missing access with retained storage, or unreadable access metadata, reaches the recovery gate before setup or demo initialization. Unexpected storage errors fail boot. The same presence invariant runs under credential ownership in `initializeJournal`, so a stale setup action cannot mint over surviving ciphertext. Native credential presence respects the authoritative record and tombstone before considering legacy OPFS. Recovery uses the existing active/pending wrap owner and requires a new access mode before journal content appears. Archive replacement and reset retain their destructive confirmation.
 
 ```mermaid
 stateDiagram-v2
   [*] --> booting
-  booting --> needs_setup: no keystore
+  booting --> needs_setup: no access wrap or retained journal
   booting --> needs_unlock: secret wrap exists
   booting --> needs_authentication: Android key<br/>needs a prompt
-  booting --> needs_device_recovery: device key unusable
+  booting --> needs_device_recovery: device key unusable<br/>or access wrap missing/unreadable
   booting --> legacy_refused
   needs_unlock --> needs_authentication
   needs_unlock --> legacy_refused

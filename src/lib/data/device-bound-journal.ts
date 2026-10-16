@@ -142,11 +142,21 @@ export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): P
 }
 
 export async function deviceBoundJournalExists(): Promise<boolean> {
-  return (await readDeviceBoundMetadata()) !== null;
+  try {
+    return (await readDeviceBoundMetadata()) !== null;
+  } catch (error) {
+    if (error instanceof DeviceBoundMetadataUnreadableError) return true;
+    throw error;
+  }
 }
 
 export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>> {
-  const metadata = await readDeviceBoundMetadata();
+  const metadata = await readDeviceBoundMetadata().catch((error) => {
+    if (error instanceof DeviceBoundMetadataUnreadableError) {
+      throw new DeviceBoundKeyUnavailableError('the stored device-bound journal metadata is unreadable');
+    }
+    throw error;
+  });
   if (metadata === null) {
     throw new DeviceBoundKeyUnavailableError('there is no device-bound journal metadata to unlock');
   }
