@@ -185,3 +185,12 @@ test('an unreadable secret wrap cannot downgrade to leftover device access', () 
   expect(describeAndroidBootPlan({ keystoreSecretSource: 'unreadable', nativeDeviceKeyExists: true,
     plaintextJournalPresent: false, journalPresent: true })).toBe('needs-recovery');
 });
+
+/* A malformed wrap can outlive an interrupted setup without a database.
+   Recovery copy must describe lost access, not claim journal data survives. */
+test('unreadable access still refuses setup when no journal file is present', () => {
+  expect(describeWebBootPlan({ keystoreSecretSource: 'unreadable', deviceBoundKeystoreExists: false,
+    legacyStoragePresent: false, journalPresent: false })).toBe('needs-recovery');
+  expect(describeAndroidBootPlan({ keystoreSecretSource: 'unreadable', nativeDeviceKeyExists: false,
+    plaintextJournalPresent: false, journalPresent: false })).toBe('needs-recovery');
+});
