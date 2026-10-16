@@ -92,7 +92,10 @@ or open an export. The app shows the key once, when you make it, and keeps
 only a sealed copy of the journal key. The one exception is a lock: if the
 app locks while a new key is on screen, it shows the same key again after
 you unlock. Until then the key is held encrypted in memory and is never
-saved. Keep the recovery key on paper or in a password manager on another
+saved. A new key replaces the old one only when you confirm you have
+written it down, and until then both open the journal. If the app closes
+before that, the old key keeps working and the app tells you the
+replacement did not finish. Keep the recovery key on paper or in a password manager on another
 device: anyone with it and the journal data can read the journal.
 It cannot bring back deleted data.
 

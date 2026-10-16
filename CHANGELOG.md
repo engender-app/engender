@@ -8,6 +8,12 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Replacing the recovery key no longer stops the old key working before
+you have the new one. The old key keeps opening the journal until you
+confirm the new key is written down. If the app closes or is killed
+first, the next unlock says the replacement did not finish, and you can
+type the new key to finish, make another, or keep the old one.
+
 Back during first-run setup now returns to the previous step and keeps
 your answers. Finishing setup removes it from the way back from Today.
 
