@@ -26,6 +26,7 @@
    ADR-0018 requires. */
 
 import { authenticateCredentials, changeCredentials } from './credential-ownership';
+import { withoutPendingRecoveryKeyOwned } from './recovery-key';
 import {
   createKeystore,
   rewrapKeystore,
@@ -68,6 +69,10 @@ export interface PinPorts {
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
   writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  /** Runs the write of a changed PIN with any recovery key nobody confirmed
+      taken away (last-audit UI 42). Optional so the tests' in-memory ports
+      need not carry a recovery store. */
+  withoutPendingRecoveryKey?<T>(work: (doNotRestorePending: () => void) => Promise<T>): Promise<T>;
   /** Android admits durably before derivation; web counts at its gate. */
   attempts?: {
     begin(): Promise<string>;
@@ -75,7 +80,12 @@ export interface PinPorts {
   };
 }
 
-const keystoreFile = { journalExists: journalAccessExists, readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
+const keystoreFile = {
+  journalExists: journalAccessExists,
+  readKeystore: readKeystoreFile,
+  writeKeystore: writeKeystoreFile,
+  withoutPendingRecoveryKey: <T,>(work: (doNotRestorePending: () => void) => Promise<T>) => withoutPendingRecoveryKeyOwned(work)
+};
 
 const platformPorts = (): PinPorts =>
   isAndroid()
@@ -142,7 +152,8 @@ export async function setupJournalPin(pin: string, ports: PinPorts = platformPor
 export async function addJournalPin(
   dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
-  ports: PinPorts = platformPorts()
+  ports: PinPorts = platformPorts(),
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
   requireValidPin(pin);
   const existing = await ports.readKeystore();
@@ -158,7 +169,9 @@ export async function addJournalPin(
     } finally { opened.fill(0); }
   }
   const secret = combinePinWithDevice(pin, await ports.binding.create());
-  await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
+  const metadata = bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports);
+  beforeCredentialWrite();
+  await ports.writeKeystore(metadata);
 }
 
 /** Every later run. Throws DecryptionFailedError on a wrong PIN and
@@ -251,18 +264,24 @@ export async function changeJournalPin(
        deriving the same wrap twice. */
     const nextDevice = rebinding ? await ports.binding.create() : currentDevice;
 
-    await ports.writeKeystore(
-      bindingNamed(
-        await rewrapKeystore(
-          metadata,
-          combinePinWithDevice(current, currentDevice),
-          combinePinWithDevice(next, nextDevice),
-          undefined,
-          'pin'
-        ),
-        ports
-      )
+    const rewrapped = bindingNamed(
+      await rewrapKeystore(
+        metadata,
+        combinePinWithDevice(current, currentDevice),
+        combinePinWithDevice(next, nextDevice),
+        undefined,
+        'pin'
+      ),
+      ports
     );
+    /* After the current PIN is proven: a wrong PIN touches nothing, and a
+       recovery key nobody confirmed does not outlive the PIN it was made
+       under (last-audit UI 42). */
+    const write = (doNotRestorePending: () => void = () => {}) => {
+      doNotRestorePending();
+      return ports.writeKeystore(rewrapped);
+    };
+    await (ports.withoutPendingRecoveryKey ? ports.withoutPendingRecoveryKey(write) : write());
     if (rebinding) await forgetLegacyBinding(ports);
   });
 }

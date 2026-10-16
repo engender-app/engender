@@ -115,6 +115,11 @@
     "holds": "every way off the recovery key screen asks before the key is lost; a lock hides the key from the gate and storage and the same key comes back after unlocking, until it is acknowledged"
   },
   {
+    "name": "recovery-key-replacement-check",
+    "tier": "dev",
+    "holds": "a recovery key replacement interrupted at each cut leaves the old key working until the new one is confirmed, says so after the restart, and finishes, redoes or discards from the screen; the gate promotes a waiting key and no key characters are stored"
+  },
+  {
     "name": "photo-browse-compare",
     "tier": "dev",
     "holds": "browsing, selecting and wiping photos on a small library; the change-day button stays clear of every date caption at 320, 390 and 1280px"

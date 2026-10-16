@@ -40,6 +40,15 @@ Changing the passphrase or replacing the recovery key rewraps the same
 data key. A copy of the journal's files taken before the change still
 opens with the old passphrase or recovery key.
 
+A new recovery key is written beside the old one and replaces it only when
+the person confirms it is written down. Until then both keys open the
+journal, so a key replaced because its paper was seen keeps working until
+that confirmation. If the app is closed or killed first, the old key still
+works and the next unlock says the replacement did not finish; the person
+finishes it by typing the new key, makes another, or keeps the old one.
+Revoking removes both, and changing the passphrase, PIN or access mode
+discards a key nobody confirmed. The key's characters are never stored.
+
 Moving from device-bound access to a secret reports success only after the
 old device-bound wrap is removed. The web verifies removal of both its key
 and metadata. If an interrupted change leaves both wraps, the next successful
@@ -93,7 +102,8 @@ warning. Synthetic-journal tests must cover successful operations, wrong
 credentials, biometric failure and cancellation, single-operation approval,
 and invalidation races, as well as the web device-bound exception. The separate
 recovery replacement protocol decision remains outside this authentication
-policy; this decision does not settle interrupted replacement behavior.
+policy; interrupted replacement is described above (ADR-0054, last-audit UI
+42).
 
 ## Android signing certificates
 

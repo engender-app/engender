@@ -11,7 +11,7 @@
 
 import { KEYSTORE_FILE } from './keystore-file';
 import { DEVICE_BOUND_FILE } from './journal-initialization';
-import { RECOVERY_KEY_FILE } from './recovery-key-file';
+import { PENDING_RECOVERY_KEY_FILE, RECOVERY_KEY_FILE } from './recovery-key-file';
 import { BOOT_MIRROR_KEYS } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
@@ -115,7 +115,7 @@ export async function wipeLocalData(targets: LocalDataTargets): Promise<void> {
 
   const root = await targets.storageRoot();
   const credentials: string[] = [];
-  const credentialFiles = new Set<string>([KEYSTORE_FILE, DEVICE_BOUND_FILE, RECOVERY_KEY_FILE]);
+  const credentialFiles = new Set<string>([KEYSTORE_FILE, DEVICE_BOUND_FILE, RECOVERY_KEY_FILE, PENDING_RECOVERY_KEY_FILE]);
   for await (const name of root.keys()) {
     if (credentialFiles.has(name)) credentials.push(name);
     else await root.removeEntry(name, { recursive: true });

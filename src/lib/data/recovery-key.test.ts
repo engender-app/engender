@@ -1,10 +1,13 @@
 import { test, expect } from 'vitest';
 import {
   RecoveryKeyAbsentError,
+  RecoveryKeyNotPendingError,
+  discardPendingRecoveryKey,
+  finishRecoveryKey,
   inMemoryRecoveryKeyPorts,
   mintRecoveryKey,
   openWithRecoveryKey,
-  recoveryKeyExists,
+  recoveryKeyState,
   revokeRecoveryKey
 } from './recovery-key.ts';
 import {
@@ -18,6 +21,16 @@ import { DecryptionFailedError } from '../crypto/aesGcm.ts';
 import { createKeystore, rewrapKeystore, unlockKeystore } from '../crypto/keystore.ts';
 
 const aDataKey = (): Uint8Array<ArrayBuffer> => crypto.getRandomValues(new Uint8Array(32));
+
+/** A key made and confirmed as written down, the way the screen does it. */
+async function confirmedKey(dataKey: Uint8Array<ArrayBuffer>, ports = inMemoryRecoveryKeyPorts()) {
+  const written = await mintRecoveryKey(dataKey, ports);
+  await finishRecoveryKey(written, ports);
+  return written;
+}
+
+const recoveryKeyExists = async (ports: ReturnType<typeof inMemoryRecoveryKeyPorts>) =>
+  (await recoveryKeyState(ports)).active;
 
 test('a minted key opens the journal back to the same data key', async () => {
   const ports = inMemoryRecoveryKeyPorts();
@@ -61,18 +74,19 @@ test('a journal with no recovery key says so, rather than calling the key wrong'
 test('a mistyped key is refused before the stored wrap is even read', async () => {
   let reads = 0;
   const ports = inMemoryRecoveryKeyPorts();
-  const counting = { ...ports, read: async () => (reads++, ports.read()) };
+  const count = (slot: typeof ports.active) => ({ ...slot, read: async () => (reads++, slot.read()) });
+  const counting = { active: count(ports.active), pending: count(ports.pending) };
 
   await expect(openWithRecoveryKey('nonsense', counting)).rejects.toThrow(RecoveryKeyMistypedError);
   expect(reads).toBe(0);
 });
 
-test('minting again replaces the key: the old one stops working, the journal does not change', async () => {
+test('a confirmed replacement replaces the key: the old one stops working, the journal does not change', async () => {
   const ports = inMemoryRecoveryKeyPorts();
   const dataKey = aDataKey();
 
-  const first = await mintRecoveryKey(dataKey, ports);
-  const second = await mintRecoveryKey(dataKey, ports);
+  const first = await confirmedKey(dataKey, ports);
+  const second = await confirmedKey(dataKey, ports);
   expect(second).not.toBe(first);
 
   expect(await openWithRecoveryKey(second, ports)).toEqual(dataKey);
@@ -83,7 +97,7 @@ test('existence is answerable before anything is typed, and revoking is idempote
   const ports = inMemoryRecoveryKeyPorts();
   expect(await recoveryKeyExists(ports)).toBe(false);
 
-  await mintRecoveryKey(aDataKey(), ports);
+  await confirmedKey(aDataKey(), ports);
   expect(await recoveryKeyExists(ports)).toBe(true);
 
   await revokeRecoveryKey(ports);
@@ -207,7 +221,7 @@ test('a damaged salt fails by name rather than as a platform base64 error', asyn
    propagating an error into a screen with no action on it. */
 test('an unreadable recovery file reads as no recovery key', async () => {
   const ports = inMemoryRecoveryKeyPorts();
-  const broken = { ...ports, read: async () => { throw new RecoveryWrapUnreadableError('mangled'); } };
+  const broken = { ...ports, active: { ...ports.active, read: async () => { throw new RecoveryWrapUnreadableError('mangled'); } } };
 
   expect(await recoveryKeyExists(broken)).toBe(false);
 });
@@ -217,7 +231,8 @@ test('a recovery file damaged on disk, not just mocked, reads as no recovery key
   const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(generateRecoveryKey()));
   const damaged = JSON.parse(serializeRecoveryWrap(wrap)) as Record<string, unknown>;
   damaged.salt = 'not base64 !!!';
-  const ports = { ...inMemoryRecoveryKeyPorts(), read: async () => parseRecoveryWrap(JSON.stringify(damaged)) };
+  const memory = inMemoryRecoveryKeyPorts();
+  const ports = { ...memory, active: { ...memory.active, read: async () => parseRecoveryWrap(JSON.stringify(damaged)) } };
 
   expect(await recoveryKeyExists(ports)).toBe(false);
 });

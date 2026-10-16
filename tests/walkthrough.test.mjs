@@ -9104,7 +9104,7 @@ try {
      What covers that screen instead: its two states are shot in the gates
      gallery (`device-recovery-with-key` beside `device-recovery`), against a
      real recovery wrap rather than a prop, and the condition behind them is
-     one read of `recoveryKeyExists`, which the node tier owns. What only a
+     one read of `recoveryKeyState`, which the node tier owns. What only a
      real gate could prove - that a written key opens a journal whose secret
      is gone, and that the app then refuses to go anywhere until a new one is
      set - is what the steps above are. */

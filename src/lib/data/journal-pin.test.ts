@@ -291,6 +291,65 @@ test('changing the PIN keeps the journal and stops the old PIN working', async (
   await expect(unlockJournalPin('1234', world)).rejects.toThrow(DecryptionFailedError);
 });
 
+/* Last-audit UI 42: a new recovery key nobody confirmed does not outlive
+   the protection it was made under, and a refused change keeps it. */
+test('changing the PIN discards an unconfirmed recovery key once the current PIN is proven, before the new one is written', async () => {
+  const order: string[] = [];
+  const base = ports();
+  const world = {
+    ...base,
+    writeKeystore: async (metadata: KeystoreMetadata) => {
+      await base.writeKeystore(metadata);
+      order.push('keystore');
+    },
+    withoutPendingRecoveryKey: async <T,>(work: (doNotRestorePending: () => void) => Promise<T>) => {
+      order.push('discard');
+      return work(() => {});
+    }
+  };
+  await setupJournalPin('1234', world);
+  order.length = 0;
+
+  await expect(changeJournalPin('9999', '5678', world)).rejects.toThrow(DecryptionFailedError);
+  expect(order).toEqual([]);
+  await changeJournalPin('1234', '5678', world);
+  expect(order).toEqual(['discard', 'keystore']);
+});
+
+test('a PIN publication that rejects during sync keeps the pending recovery key discarded', async () => {
+  const { mintRecoveryKey, finishRecoveryKey, openWithRecoveryKey, inMemoryRecoveryKeyPorts,
+    recoveryKeyState, withoutPendingRecoveryKeyOwned } = await import('./recovery-key');
+  const base = ports();
+  const dataKey = await setupJournalPin('1234', base);
+  const recovery = inMemoryRecoveryKeyPorts();
+  const confirmed = await mintRecoveryKey(dataKey, recovery);
+  await finishRecoveryKey(confirmed, recovery);
+  await mintRecoveryKey(dataKey, recovery);
+  const world: PinPorts = {
+    ...base,
+    withoutPendingRecoveryKey: (work) => withoutPendingRecoveryKeyOwned(work, recovery),
+    writeKeystore: async (metadata) => {
+      await base.writeKeystore(metadata);
+      throw new Error('directory sync failed after publication');
+    }
+  };
+  await expect(changeJournalPin('1234', '5678', world)).rejects.toThrow('directory sync failed after publication');
+  expect(await unlockJournalPin('5678', base)).toEqual(dataKey);
+  expect(await recoveryKeyState(recovery)).toEqual({ active: true, pending: false });
+  expect(await openWithRecoveryKey(confirmed, recovery)).toEqual(dataKey);
+});
+
+test('a discard that fails stops the PIN change with nothing written', async () => {
+  const base = ports();
+  const world = { ...base, withoutPendingRecoveryKey: async () => { throw new Error('remove refused'); } };
+  const dataKey = await setupJournalPin('1234', world);
+  const before = world.stored();
+
+  await expect(changeJournalPin('1234', '5678', world)).rejects.toThrow('remove refused');
+  expect(world.stored()).toBe(before);
+  expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
+});
+
 test('changing the PIN with the wrong current PIN writes nothing', async () => {
   const world = ports();
   await setupJournalPin('1234', world);

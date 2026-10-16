@@ -99,7 +99,11 @@ urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz, przy
 tworzeniu, i przechowuje tylko zaszyfrowaną kopię klucza dziennika. Jedyny
 wyjątek to blokada: jeśli aplikacja zablokuje się, gdy nowy klucz jest na
 ekranie, po odblokowaniu pokaże ten sam klucz jeszcze raz. Do tego czasu
-klucz jest zaszyfrowany w pamięci i nigdzie się nie zapisuje. Trzymaj klucz
+klucz jest zaszyfrowany w pamięci i nigdzie się nie zapisuje. Nowy klucz
+zastępuje stary dopiero wtedy, gdy potwierdzisz, że jest zapisany, a do
+tego czasu oba otwierają dziennik. Jeśli aplikacja zamknie się wcześniej,
+stary klucz nadal działa, a aplikacja powie, że wymiana się nie skończyła.
+Trzymaj klucz
 odzyskiwania na papierze albo w menedżerze haseł na innym urządzeniu: każdy,
 kto ma ten klucz i dane dziennika, może odczytać dziennik. Klucz nie
 przywróci usuniętych danych.
