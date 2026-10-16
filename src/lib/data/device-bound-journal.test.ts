@@ -377,13 +377,23 @@ test('a fresh metadata write failure aborts instead of closing the partial file'
   } finally { vi.unstubAllGlobals(); }
 });
 
-test('an unreadable device wrap remains a recovery case rather than first-run setup', async () => {
+test.each(['{broken', 'null', '[]', JSON.stringify({ version: 1, kind: 'device-bound', nonce: '!', wrappedKey: 'AA==' }), JSON.stringify({ version: 1, kind: 'device-bound', nonce: 'AA==', wrappedKey: '!' })])('an unreadable device wrap remains recoverable: %s', async (serialized) => {
   vi.stubGlobal('navigator', { storage: { getDirectory: async () => ({
-    getFileHandle: async () => ({ getFile: async () => ({ text: async () => '{broken' }) })
+    getFileHandle: async () => ({ getFile: async () => ({ text: async () => serialized }) })
   }) } });
   const { deviceBoundJournalExists, unlockDeviceBoundJournal } = await import('./device-bound-journal');
   try {
     await expect(deviceBoundJournalExists()).resolves.toBe(true);
     await expect(unlockDeviceBoundJournal()).rejects.toThrow(DeviceBoundKeyUnavailableError);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('unexpected device-wrap read failures remain storage failures', async () => {
+  const failure = new Error('storage denied');
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => { throw failure; } } });
+  const { deviceBoundJournalExists, unlockDeviceBoundJournal } = await import('./device-bound-journal');
+  try {
+    await expect(deviceBoundJournalExists()).rejects.toBe(failure);
+    await expect(unlockDeviceBoundJournal()).rejects.toBe(failure);
   } finally { vi.unstubAllGlobals(); }
 });

@@ -238,6 +238,10 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not JSON');
   }
 
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not an object');
+  }
+
   if (raw.version !== DEVICE_BOUND_VERSION || raw.kind !== 'device-bound') {
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is from a format this build cannot read');
   }
@@ -246,12 +250,16 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is missing fields');
   }
 
-  return {
-    version: DEVICE_BOUND_VERSION,
-    kind: 'device-bound',
-    nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey)
-  };
+  try {
+    return {
+      version: DEVICE_BOUND_VERSION,
+      kind: 'device-bound',
+      nonce: fromBase64(raw.nonce),
+      wrappedKey: fromBase64(raw.wrappedKey)
+    };
+  } catch {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata has invalid base64');
+  }
 }
 
 async function readDeviceBoundMetadata(): Promise<DeviceBoundMetadata | null> {
