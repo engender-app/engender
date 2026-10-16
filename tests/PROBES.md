@@ -1052,8 +1052,8 @@ and [macOS](https://support.apple.com/104996).
 uses hardware Back events against the production app. Seed the PIN variant
 with `LockedJournalProcessDeathTest#seed`; it checks a cold PIN gate and
 normal history, then locks a deep route, backgrounds it with Back, returns
-and unlocks on the same route. For `key`, seed device-bound access with the
-key-gate fixture, restore the production assets and cold-launch. The probe
+and unlocks on the same route. For `key`, complete production first-run setup with device-bound access,
+then cold-launch. The key-gate instrumentation fixture is emulator-only. The probe
 cancels an initial native authentication prompt before checking app Back.
 Physical devices require the shared phone lease before any adb command.
 The package must be isolated; this probe does not seed or clear data.

@@ -1,6 +1,6 @@
 /* Uses real Android Back against an isolated, already seeded production APK.
    PIN fixture: LockedJournalProcessDeathTest#seed (1234, immediate lock).
-   Device-key fixture: key-gate probe seed, then restore production assets. */
+   Device-key fixture: complete production first-run setup with device-bound access. */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
@@ -24,12 +24,16 @@ async function until(check, label) {
   throw Error(`Timed out: ${label}`);
 }
 let connection, forward;
-const evidence = { serial, package: pkg, mode, sourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), checks: [] };
+const evidence = { serial, package: pkg, mode, probeSourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), checks: [] };
 try {
+  adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP');
   adb('shell', 'am', 'force-stop', pkg);
   launch();
   let pid;
-  await until(() => { pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0]; return Boolean(pid); }, 'app process');
+  await until(() => {
+    try { pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0]; return Boolean(pid); }
+    catch { return false; }
+  }, 'app process');
   forward = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();
   let page;
   await until(async () => {
@@ -45,6 +49,7 @@ try {
   const route = () => new URL(page.url()).pathname;
   const gate = page.locator(mode === 'pin' ? '[data-key="1"]' : '[data-key-retry]');
   await gate.waitFor();
+  evidence.webRelease = await page.evaluate(async () => (await fetch('/release.json')).json());
   if (mode === 'key') {
     // The initial native biometric prompt is separate from app Back.
     const nativePrompt = () => adb('shell', 'dumpsys', 'window', 'windows').split('\n')
