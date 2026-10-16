@@ -193,6 +193,9 @@
 
   $effect.pre(() => {
     if (locked || browserSession.recovering) retainedSession = Symbol();
+    // The gate cuts journal DOM immediately. End panel outros before that
+    // removal, or a quick unlock can resume their detached route subtree.
+    if (locked) markScreenArrival();
   });
   $effect(() => {
     if (locked) dropJournalScreens();
@@ -631,25 +634,6 @@
          part of the screen, and left outside <main> it would be a group of
          controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
-      <!-- Only over a Journal that is open and unlocked. The notice is not
-           urgent enough to sit above a passphrase gate or a lock screen, and
-           those two screens have one job each.
-
-           Here, at the top of the column, rather than as a child of `.app`:
-           `.app` is a row at desktop width, and a notice placed there was a
-           third column between the rail and the screen, squeezing the screen
-           to 248px at 1024 (last-audit UI ticket 21). In the column it is a
-           band above the screen on every width. -->
-      {#if isReadyState(bootState) && !locked && !browserSession.recovering}
-        <!-- Loaded after boot rather than with it, like the schema gate below:
-             neither is drawn on a first visit, and the first-load budget had
-             no room left for the live regions after-release 21 added. The
-             service worker precaches every chunk of a release, so both still
-             load offline. -->
-        {#await import('$lib/components/UpdateNotice.svelte') then { default: UpdateNotice }}
-          <UpdateNotice />
-        {/await}
-      {/if}
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter
         inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : undefined}>
         {#if schemaTooNew}

@@ -40,6 +40,7 @@
      areas out of reading order say why. The notices take none, because the
      flag colours the areas of the journal and a notice is the app talking
      about itself. */
+  import UpdateNoticeSlot from '$lib/components/UpdateNoticeSlot.svelte';
   import { tick, untrack } from 'svelte';
   import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
@@ -802,6 +803,9 @@
            still name the app under disguise; those are ticket 24's screen. -->
       <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</h1>
     </div>
+    <!-- Under the field and over the foot: a waiting release, if there is
+         one (UpdateNoticeSlot.svelte). -->
+    <UpdateNoticeSlot />
     <!-- The foot: one line of who and when, one of how much, and the gear at
          the line's end. On the page rather than the field because all three
          are small type (rule 3), and because a gear in the field's corner

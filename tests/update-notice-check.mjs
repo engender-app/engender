@@ -4,20 +4,24 @@
    The notice was a direct child of `.app`, which is a row at desktop width,
    so a waiting release drew it as a third column between the rail and the
    content and squeezed the screen. And its dismissal lived in the component,
-   which the layout unmounts at every lock, so unlocking brought back a
-   notice the person had already closed for this page.
+   which is unmounted at every lock, so unlocking brought back a notice the
+   person had already closed for this page. At sign-off Alicja placed it
+   under the screen's field at the width of the content
+   (UpdateNoticeSlot.svelte), so each screen draws its own.
 
    Drives the production update module (src/lib/pwa/update.ts) with a
    registration whose waiting worker is put there by hand, the way
    tests/browser-tier/update-probe.ts does: the dev server registers no
-   service worker. Measures the rail, the column and the notice at 390, 1024
-   and 1280, samples every animation frame while the notice arrives and
-   leaves, dismisses, locks and unlocks, applies the update through the real
-   handover, and reloads to confirm a fresh page offers it again. */
+   service worker. Measures the rail, the column, the field and the notice
+   at 390, 1024 and 1280, samples every animation frame while the notice
+   arrives, travels across a navigation and leaves, dismisses, locks and
+   unlocks, applies the update through the real handover, and reloads to
+   confirm a fresh page offers it again. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium, untilSplashLets } from './browser-harness.mjs';
+import { clientRoute } from './browser-tier/built-flow.mjs';
 
 const server = await createServer({
   cacheDir: '.svelte-kit/update-notice-vite',
@@ -38,8 +42,12 @@ const failures = [];
 function ok(value, message) { checks++; console.log(`${value ? 'PASS' : 'FAIL'} ${message}`); if (!value) failures.push(message); }
 
 const notice = page.locator('[data-update-notice]');
-const settled = () => page.waitForFunction(() => !document.documentElement.dataset.nav &&
-  document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity));
+const settled = async () => {
+  // Svelte can schedule its transition for the next rendering step.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForFunction(() => !document.documentElement.dataset.nav &&
+    document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity));
+};
 
 /** Puts a fake registration under the real update module. `arrive` puts a
     worker in `waiting` the way the browser does when a release installs
@@ -68,7 +76,8 @@ const watch = () => page.evaluate(async () => {
   });
 });
 
-/** The rail, the column, the scroll region and the notice, in CSS px. */
+/** The rail, the column, the scroll region, the screen, its field and the
+    notice, in CSS px. */
 const layout = () => page.evaluate(() => {
   const box = (selector) => {
     const node = document.querySelector(selector);
@@ -83,22 +92,29 @@ const layout = () => page.evaluate(() => {
     column: box('[data-app-column]'),
     scroll: box('[data-app-scroll-region]'),
     screen: box('[data-app-scroll-region] .screen'),
+    field: box('[data-app-scroll-region] [data-home-field], [data-app-scroll-region] [data-screen-field]'),
+    foot: box('[data-home-foot]'),
     notice: box('[data-update-notice]'),
-    inColumn: !!document.querySelector('[data-app-column] [data-update-notice]')
+    inHeader: !!document.querySelector('[data-home-header] [data-update-notice], [data-screen-header] [data-update-notice]')
   };
 });
 const near = (a, b, tolerance = 0.5) => Math.abs(a - b) <= tolerance;
+/** Under the field, in its header, 12px below its edge, at the content's width. */
+const underField = (l) => !!l.notice && !!l.field && l.inHeader && near(l.notice.top - l.field.bottom, 12, 1) &&
+  near(l.notice.left, l.screen.left + 20, 1) && near(l.notice.right, l.screen.right - 20, 1);
+const where = (l) => l.notice ? `notice ${l.notice.left}-${l.notice.right} x ${l.notice.top}-${l.notice.bottom}, field to ${l.field?.bottom}, content ${l.screen.left + 20}-${l.screen.right - 20}` : 'no notice';
 
 /* Every animation frame: how much of the notice's band is painted (its box
-   less the clip covering it from the top) and its opacity, and where the
-   scroll region stands. */
+   less the clip covering it from the top) and its opacity, and where Home's
+   foot - the line under the field, and so under the notice - stands. */
 const startSampling = () => page.evaluate(() => {
   window.noticeFrames = [];
   window.noticeSampling = true;
   const tick = (now) => {
+    if (!window.noticeSampling) return;
     // The band is what arrives (UpdateNotice.svelte); the unfixed tree had only the notice.
     const node = document.querySelector('[data-update-band]') ?? document.querySelector('[data-update-notice]');
-    const region = document.querySelector('[data-app-scroll-region]').getBoundingClientRect();
+    const foot = document.querySelector('[data-home-foot]').getBoundingClientRect();
     let painted = null;
     if (node) {
       const style = getComputedStyle(node);
@@ -106,11 +122,22 @@ const startSampling = () => page.evaluate(() => {
       const clipTop = Number(/inset\(([\d.]+)px/.exec(style.clipPath)?.[1] ?? 0);
       painted = { height: Math.max(0, r.height - clipTop), opacity: Number(style.opacity), top: r.top + clipTop };
     }
-    window.noticeFrames.push({ now, painted, regionTop: region.top, regionLeft: region.left, regionWidth: region.width });
+    window.noticeFrames.push({ now, painted, footTop: foot.top, footLeft: foot.left, footWidth: foot.width });
     if (window.noticeSampling) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
 });
+/* Counts each time the polite region starts saying the notice's title. */
+const listen = () => page.evaluate(() => {
+  window.updateSpoken = 0;
+  let saying = false;
+  new MutationObserver(() => {
+    const now = !!document.querySelector('[data-announce]')?.textContent.includes('A new version is ready');
+    if (now && !saying) window.updateSpoken++;
+    saying = now;
+  }).observe(document.body, { subtree: true, childList: true, characterData: true });
+});
+const spoken = () => page.evaluate(() => window.updateSpoken);
 const stopSampling = () => page.evaluate(() => { window.noticeSampling = false; return window.noticeFrames; });
 const steps = (values) => values.slice(1).map((v, i) => Math.abs(v - values[i]));
 
@@ -123,20 +150,16 @@ async function lockAndUnlock() {
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
     delete document.visibilityState;
+    document.dispatchEvent(new Event('visibilitychange'));
   });
   await page.locator('[data-applock]').waitFor();
   ok(await notice.count() === 0, 'the lock screen draws no update notice');
-  await page.evaluate(() => {
-    window.updateSpoken = 0;
-    new MutationObserver(() => {
-      if (document.querySelector('[data-announce]')?.textContent.includes('A new version is ready')) window.updateSpoken++;
-    }).observe(document.body, { subtree: true, childList: true, characterData: true });
-  });
+  await page.evaluate(() => { window.updateSpoken = 0; });
   await page.locator('#session-passphrase').fill('demo');
   await page.locator('[data-session-submit]').click();
   await page.locator('[data-applock]').waitFor({ state: 'detached' });
   await page.waitForSelector('[data-nav-item="home"], [data-rail-item="home"]');
-  /* The layout loads the notice behind a dynamic import; once the module is
+  /* The screen loads the notice behind a dynamic import; once the module is
      in and two frames have passed, a notice that is coming is on screen. */
   await page.evaluate(async () => {
     await import('/src/lib/components/UpdateNotice.svelte');
@@ -158,6 +181,7 @@ try {
   const quiet = await layout();
   ok(quiet.rail && near(quiet.column.left, quiet.rail.right), `1024px without an update: the column starts at the rail (${quiet.column.left} vs ${quiet.rail?.right})`);
 
+  await listen();
   await watch();
   await startSampling();
   await page.evaluate(() => window.releaseArrives());
@@ -170,85 +194,56 @@ try {
     await page.setViewportSize({ width, height: 768 });
     await settled();
     const shown = await layout();
-    ok(shown.inColumn, `${width}px: the notice is part of the content column`);
+    ok(underField(shown), `${width}px: the notice is under the field at the content's full width (${where(shown)})`);
     ok(near(shown.rail.left, shown.frame.left) && near(shown.rail.width, quiet.rail.width) &&
       near(shown.column.left, shown.rail.right) && near(shown.column.right, shown.frame.right),
       `${width}px: rail ${shown.rail.left}-${shown.rail.right} and column ${shown.column.left}-${shown.column.right} keep their places with an update waiting`);
     ok(near(shown.scroll.width, shown.frame.width - quiet.rail.width),
       `${width}px: the scroll region keeps everything beside the rail (${shown.scroll.width}px of ${shown.frame.width - quiet.rail.width})`);
-    ok(shown.notice.bottom <= shown.scroll.top + 0.5 && shown.notice.top >= shown.column.top,
-      `${width}px: the notice is a band above the screen (${shown.notice.top}-${shown.notice.bottom}, screen from ${shown.scroll.top})`);
-    ok(shown.screen && near(shown.notice.left, shown.screen.left + 20, 1) && near(shown.notice.right, shown.screen.right - 20, 1),
-      `${width}px: the notice lines up with the screen's content (${shown.notice.left}-${shown.notice.right})`);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await settled();
   const phone = await layout();
-  ok(!phone.rail && near(phone.column.left, 0) && near(phone.column.width, phone.frame.width) && phone.notice.bottom <= phone.scroll.top + 0.5,
-    `390px: the notice stays above the screen at the column's full width (${phone.notice.left}-${phone.notice.right})`);
+  ok(!phone.rail && near(phone.column.width, phone.frame.width) && underField(phone),
+    `390px: the same rule, under the field at the content's width (${where(phone)})`);
   await page.setViewportSize({ width: 1024, height: 768 });
   await settled();
 
   /* A navigation while the notice is up. It has its own view-transition
-     group, so the screens cross under it while its picture stays as it was,
-     rather than fading and scaling with the screen's snapshot. Proven in
-     pixels: the notice's box is shot at rest and twice while the screens
-     are crossing, and the three are compared. */
-  const rest = await layout();
-  const clip = { x: rest.notice.left, y: rest.notice.top, width: rest.notice.right - rest.notice.left, height: rest.notice.bottom - rest.notice.top };
-  const restShot = await page.screenshot({ clip });
+     group, so it is one object travelling from under Today's field to under
+     Journal's while the screens cross, rather than a picture in each
+     screen's snapshot fading and scaling with it. Sampled per frame: the
+     group's vertical offset. */
   await page.evaluate(() => {
     window.vtFrames = [];
     window.vtSampling = true;
     const tick = () => {
       const pseudos = document.getAnimations().map((a) => a.effect?.pseudoElement ?? '');
-      window.vtFrames.push({
-        crossing: pseudos.some((p) => p.includes('(screen)')),
-        ownGroup: pseudos.some((p) => p === '::view-transition-group(update-notice)'),
-        top: document.querySelector('[data-update-notice]')?.getBoundingClientRect().top ?? null
-      });
+      const transform = getComputedStyle(document.documentElement, '::view-transition-group(update-notice)').transform;
+      const y = /matrix\(([^)]+)\)/.exec(transform)?.[1].split(',').map(Number)[5];
+      window.vtFrames.push({ crossing: pseudos.some((p) => p.includes('(screen)')), ownGroup: pseudos.includes('::view-transition-group(update-notice)'), y: y ?? null });
       if (window.vtSampling) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   });
-  const crossingNow = () => page.evaluate(() => document.getAnimations().some((a) => (a.effect?.pseudoElement ?? '').includes('(screen)') && a.playState === 'running'));
+  const fromHome = await layout();
   await page.locator('[data-rail-item="calendar"]').click();
-  await page.waitForFunction(() => document.getAnimations().some((a) => (a.effect?.pseudoElement ?? '').includes('(screen)')));
-  const midShots = [];
-  for (let i = 0; i < 2; i++) {
-    const shot = await page.screenshot({ clip });
-    if (await crossingNow()) midShots.push(shot);
-  }
   await page.waitForURL(/\/calendar/);
   await settled();
   const crossing = (await page.evaluate(() => { window.vtSampling = false; return window.vtFrames; })).filter((f) => f.crossing);
-  /* Decoded on a blank page of its own, which carries no CSP. */
-  const scratch = await context.newPage();
-  const diffs = await scratch.evaluate(async ([restShot, midShots]) => {
-    const pixels = async (b64) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${b64}`;
-      await image.decode();
-      const canvas = new OffscreenCanvas(image.width, image.height);
-      const context = canvas.getContext('2d');
-      context.drawImage(image, 0, 0);
-      return context.getImageData(0, 0, image.width, image.height).data;
-    };
-    const at = await pixels(restShot);
-    return Promise.all(midShots.map(async (shot) => {
-      const mid = await pixels(shot);
-      let worst = 0;
-      for (let i = 0; i < at.length; i++) worst = Math.max(worst, Math.abs(at[i] - mid[i]));
-      return worst;
-    }));
-  }, [restShot.toString('base64'), midShots.map((shot) => shot.toString('base64'))]);
-  await scratch.close();
-  ok(crossing.length > 3 && crossing.some((f) => f.ownGroup) && crossing.every((f) => f.top !== null && near(f.top, crossing[0].top)) &&
-    diffs.length > 0 && diffs.every((d) => d <= 2),
-    `a navigation crosses the screens under the notice for ${crossing.length} frames, and ${diffs.length} shots mid-crossing match it at rest (largest channel difference ${diffs.join(', ')})`);
+  const onJournal = await layout();
+  const ys = crossing.filter((f) => f.ownGroup && f.y !== null).map((f) => f.y);
+  const travelled = ys.length ? ys.at(-1) - ys[0] : 0;
+  const ySteps = steps(ys);
+  const monotone = ys.slice(1).every((y, i) => Math.sign(y - ys[i]) * Math.sign(travelled) >= 0);
+  console.log('navigation', crossing.map((f) => f.y?.toFixed(1)).join(' '), 'home', fromHome.notice?.top, 'journal', onJournal.notice?.top);
+  ok(crossing.length > 3 && ys.length > 3 && monotone &&
+    near(travelled, onJournal.notice.top - fromHome.notice.top, 2) && Math.max(0, ...ySteps) <= Math.max(2, Math.abs(travelled) / 4) && underField(onJournal),
+    `a navigation carries the one notice from under Today's field (${fromHome.notice?.top}) to under Journal's (${onJournal.notice?.top}) over ${ys.length} frames, largest step ${Math.max(0, ...ySteps).toFixed(1)}px`);
   await page.locator('[data-rail-item="home"]').click();
   await page.waitForURL((url) => url.pathname === '/');
   await settled();
+  ok(await spoken() === 1, `the notice is announced once when the release arrives, not again by each screen that draws it (${await spoken()})`);
 
   /* On one side of a transition only, the notice's picture fades over
      --dur-fast rather than cutting: a transition taken with the band on
@@ -270,21 +265,20 @@ try {
     `a notice on one side of a transition fades (${JSON.stringify(loneOut)} out, ${JSON.stringify(loneIn)} in)`);
   await settled();
 
-  // The arrival: nothing painted at full size in its first frame, and the screen moves down rather than sideways.
+  // The arrival: nothing painted at full size in its first frame, and what is under it moves down rather than sideways.
   const arrived = frames.filter((f) => f.painted);
   const finalHeight = arrived.at(-1)?.painted.height ?? 0;
   ok(arrived.length > 5 && arrived[0].painted.height < finalHeight * 0.25,
     `the notice opens over ${arrived.length} frames (first painted ${arrived[0]?.painted.height.toFixed(1)} of ${finalHeight.toFixed(1)}px)`);
-  const tops = frames.map((f) => f.regionTop);
-  const lefts = frames.map((f) => f.regionLeft);
-  ok(Math.max(...steps(lefts)) < 0.5 && Math.max(...steps(frames.map((f) => f.regionWidth))) < 0.5,
-    `the screen never moves sideways while the notice arrives (largest step ${Math.max(...steps(lefts)).toFixed(1)}px)`);
+  const tops = frames.map((f) => f.footTop);
+  const lefts = frames.map((f) => f.footLeft);
+  ok(Math.max(...steps(lefts)) < 0.5 && Math.max(...steps(frames.map((f) => f.footWidth))) < 0.5,
+    `what is under the notice never moves sideways while it arrives (largest step ${Math.max(...steps(lefts)).toFixed(1)}px)`);
   const travel = tops.at(-1) - tops[0];
   const moving = steps(tops).filter((s) => s > 0.5);
-  console.log('arrival', frames.map((f) => `${f.now.toFixed(0)}:${f.regionTop.toFixed(1)}`).join(' '));
+  console.log('arrival', frames.map((f) => `${f.now.toFixed(0)}:${f.footTop.toFixed(1)}`).join(' '));
   ok(travel > 40 && moving.length >= 10 && Math.max(...moving) <= travel / 4,
-    `the screen travels ${travel.toFixed(1)}px down over ${moving.length} frames, largest step ${Math.max(...moving).toFixed(1)}px`);
-  ok(await page.locator('[data-announce]').textContent() === 'A new version is ready', 'the arriving notice is announced through the standing live region');
+    `the line under the field travels ${travel.toFixed(1)}px down over ${moving.length} frames, largest step ${Math.max(...moving).toFixed(1)}px`);
 
   // Dismiss: it leaves over several frames and the screen comes back up.
   await startSampling();
@@ -293,17 +287,18 @@ try {
   await page.waitForTimeout(100);
   frames = await stopSampling();
   const leaving = frames.filter((f) => f.painted);
-  const upTops = frames.map((f) => f.regionTop);
+  const upTops = frames.map((f) => f.footTop);
   const back = upTops[0] - upTops.at(-1);
   const rising = steps(upTops).filter((s) => s > 0.5);
-  console.log('dismissal', frames.map((f) => `${f.now.toFixed(0)}:${f.regionTop.toFixed(1)}`).join(' '));
-  ok(back > 40 && rising.length >= 10 && Math.max(...rising) <= back / 4 && near(upTops.at(-1), quiet.scroll.top),
+  console.log('dismissal', frames.map((f) => `${f.now.toFixed(0)}:${f.footTop.toFixed(1)}`).join(' '));
+  ok(back > 40 && rising.length >= 10 && Math.max(...rising) <= back / 4 && near(upTops.at(-1), quiet.foot.top),
     `the dismissed notice gives its ${back.toFixed(1)}px back over ${rising.length} frames, largest step ${Math.max(...rising).toFixed(1)}px`);
 
   // Lock and unlock: the same page keeps the dismissal, and says nothing about it.
   await lockAndUnlock();
+  ok(await page.locator('[data-home-header]').count() === 1, 'unlock remounts Home after a notice dismissal');
   ok(await notice.count() === 0, 'after lock and unlock the dismissed notice stays dismissed');
-  ok(await page.evaluate(() => window.updateSpoken) === 0, 'and the unlocked page does not announce it again');
+  ok(await spoken() === 0, 'and the unlocked page does not announce it again');
   ok(await page.evaluate(async () => (await import('/src/lib/pwa/update.ts')).updateReady()), 'the release is still waiting behind the dismissal');
 
   // A fresh page offers it again (the existing policy: dismissal is for this load).
@@ -316,15 +311,18 @@ try {
     await page.locator('[data-applock]').waitFor({ state: 'detached' });
   }
   await settled();
+  await listen();
   await watch();
   await page.evaluate(() => window.releaseArrives());
   await notice.waitFor();
-  ok(true, 'a fresh page offers the waiting release again');
+  await settled();
+  ok(underField(await layout()), 'a fresh page offers the waiting release again, under the field');
 
   // Lock with the notice open: unlocking brings it back, and Update now still hands over.
   await lockAndUnlock();
   await notice.waitFor();
-  ok(await page.evaluate(() => window.updateSpoken) >= 1, 'an undismissed notice is back after unlock and announced');
+  await settled();
+  ok(underField(await layout()), 'an undismissed notice is back under the field after unlock');
   await notice.locator('[data-update-apply]').click();
   await page.waitForFunction(() => window.updateReloads === 1);
   ok(await page.evaluate(() => window.updatePosted.length === 1 && window.updatePosted[0] === 'engender:skip-waiting'),
@@ -351,11 +349,20 @@ try {
   const cut = frames.filter((f) => f.painted);
   ok(cut.length > 0 && cut.every((f) => near(f.painted.height, cut.at(-1).painted.height)), 'reduced motion: the notice is cut in at its resting size');
   const reduced = await layout();
-  ok(reduced.inColumn && near(reduced.column.left, reduced.rail.right), 'reduced motion: the same band above the content');
+  ok(underField(reduced) && near(reduced.column.left, reduced.rail.right), 'reduced motion: the same place under the field');
+
+  // A gate still tears down the editor and restores its encrypted draft.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await clientRoute(page, '/entry/new/2026-10-05?seedMood=4');
+  const draft = 'Update notice lock regression: keep this unsaved note.';
+  await page.locator('#ed-note').fill(draft);
+  await lockAndUnlock();
+  await page.waitForFunction((text) => document.querySelector('#ed-note')?.value === text, draft);
+  ok(new URL(page.url()).pathname === '/entry/new/2026-10-05', 'unlock keeps the editor route and restores its unsaved note');
 
   ok(errors.length === 0, `no uncaught page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
   assert.deepEqual(failures, [], 'every update notice check passed');
-  assert.equal(checks, 30, 'all update notice checks ran');
+  assert.equal(checks, 29, 'all update notice checks ran');
   console.log(`Update notice passed: ${checks} checks`);
 } finally {
   await context.close();

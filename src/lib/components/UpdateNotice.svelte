@@ -1,11 +1,18 @@
 <script lang="ts" module>
-  /* Dismissal belongs to the page, not to this instance. The layout unmounts
-     the notice at every lock and mounts a new one at unlock, and a flag kept
-     in the component came back false each time, so a notice somebody had
-     closed reappeared and was announced again (last-audit UI ticket 21). A
-     reload starts the module afresh, which is the policy below: dismissed
-     for this load of the app, offered again on the next. */
+  /* Dismissal belongs to the page, not to an instance. Each screen draws
+     its own notice under its field (UpdateNoticeSlot.svelte), so a new one
+     mounts at every navigation and after every unlock, and a flag kept in
+     the component came back false each time: a notice somebody had closed
+     reappeared and was announced again (last-audit UI ticket 21). A reload
+     starts the module afresh, which is the policy below: dismissed for this
+     load of the app, offered again on the next.
+
+     The announcement is the page's for the same reason. Said once when a
+     release becomes ready, not again by every screen that draws the notice
+     afterwards; a release that stops being ready (an update being applied,
+     a write starting) and comes back is said again. */
   let dismissedThisPage = false;
+  let announcedThisPage = false;
 </script>
 
 <script lang="ts">
@@ -45,7 +52,12 @@
      after boot and an update can already be waiting, and a region that
      arrives holding its words is often not read (after-release 21). */
   $effect(() => {
-    if (ready && !dismissed) announce(m.update_ready_title());
+    if (!ready) {
+      announcedThisPage = false;
+    } else if (!dismissed && !announcedThisPage) {
+      announcedThisPage = true;
+      announce(m.update_ready_title());
+    }
   });
 
   async function apply() {
@@ -58,17 +70,18 @@
   }
 </script>
 
-<!-- The band is the notice's place in the column (+layout.svelte) and what
-     arrives and leaves: `collapse` brings it down from above and gives its
-     height back on a dismissal, so the screen under it travels instead of
-     jumping by the notice's height in one frame. Its padding rather than a
-     margin holds the space round the notice, because a flex item's margin
-     is not clipped and was a 12px step on the first frame.
+<!-- The band is the notice's place under the field (UpdateNoticeSlot.svelte)
+     and what arrives and leaves: `collapse` opens it down from the field's
+     edge and gives its height back on a dismissal, so the screen under it
+     travels instead of jumping by the notice's height in one frame. Its padding rather than a
+     margin holds the space above the notice, because a margin is not
+     clipped and would be a 12px step on the first frame.
 
      Local on purpose. It plays when this block changes - a release becoming
-     ready, a dismissal - and not when the layout takes the whole component
-     away for a lock, which has to be a cut: a notice closing over the lock
-     screen for 380ms is the journal still showing behind its gate. -->
+     ready, a dismissal - and not when the screen takes the whole component
+     away, for a lock above all, which has to be a cut: a notice closing over
+     the lock screen for 380ms is the journal still showing behind its
+     gate. -->
 {#if ready && !dismissed}
   <div class="update-band" data-update-band transition:collapse>
     <div class="notice notice-info" data-update-notice>
@@ -88,3 +101,9 @@
     </div>
   </div>
 {/if}
+
+<style>
+  /* Padding stays inside collapse's animated box, so the field's gap opens
+     with the notice instead of adding 12px in its first frame. */
+  .update-band { padding-top: var(--space-3); }
+</style>

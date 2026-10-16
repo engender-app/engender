@@ -892,17 +892,23 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 .app-nav { view-transition-name: nav; }
 ::view-transition-group(screen) { z-index: 1; }
 ::view-transition-group(nav) { z-index: 2; }
-/* The update notice sits inside the column now (last-audit UI ticket 21),
+/* The update notice sits under a screen's field (last-audit UI ticket 21),
    so in the screen's snapshot it would fade and scale with every
    navigation, though it is the same notice on both sides. It gets a group
-   of its own instead, above everything a screen's field can send up, and
-   is treated the way the bar's is: the old and new pictures crossfade over
-   --dur-fast, and since they are the same picture the browser's
-   plus-lighter blend paints the notice unchanged while the screens cross
-   under it. A notice on one side only - closing as a navigation starts, or
-   a release turning up in the middle of one - fades rather than cutting. */
+   of its own instead, above everything a screen's field can send up: the
+   one notice travels from under the old field to under the new one on the
+   clock the screen's content follows the field's edge with (blind-follow,
+   --blind-dur and --ease-out), while its two pictures - the same picture -
+   crossfade over --dur-fast under the browser's plus-lighter blend and so
+   paint it unchanged. A notice on one side only - closing as a navigation
+   starts, or a release turning up in the middle of one - fades rather than
+   cutting. */
 .update-band { view-transition-name: update-notice; }
-::view-transition-group(update-notice) { z-index: 6; }
+::view-transition-group(update-notice) {
+  z-index: 6;
+  animation-duration: var(--blind-dur, var(--dur-slow));
+  animation-timing-function: var(--ease-out);
+}
 ::view-transition-old(update-notice),
 ::view-transition-new(update-notice) {
   animation-duration: var(--dur-fast);
