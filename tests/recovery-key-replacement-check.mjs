@@ -16,7 +16,19 @@ import { createServer } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 
 const PENDING = 'recovery-key-pending.json';
-const server = await createServer({ server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } } });
+const server = await createServer({
+  server: { port: 0, fs: { allow: [process.cwd(), realpathSync('node_modules')] } },
+  plugins: [{
+    name: 'recovery-key-peer',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        if (request.url !== '/recovery-key-peer') return next();
+        response.setHeader('Content-Type', 'text/html');
+        response.end('<!doctype html><title>Recovery key peer</title>');
+      });
+    }
+  }]
+});
 await server.listen();
 const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -253,8 +265,7 @@ try {
   await openRecoveryScreen();
   const alreadyPromoted = await mintFromScreen('[data-list-row="replace-recovery-key"]');
   const peer = await context.newPage();
-  await peer.goto(base, { waitUntil: 'networkidle' });
-  await peer.waitForSelector('[data-app-root][data-boot="ready"]');
+  await peer.goto(base + 'recovery-key-peer', { waitUntil: 'networkidle' });
   await peer.evaluate(async (key) => {
     const { openWithRecoveryKey } = await import('/src/lib/data/recovery-key.ts');
     (await openWithRecoveryKey(key)).fill(0);
