@@ -1,5 +1,6 @@
 {
   "sources": {
+    "home-ambient-check": "Provisional 90-second estimate pending hosted measurement; two real 30-second idle deadlines",
     "dose-amount-check": "Provisional 60-second estimate pending hosted measurement",
     "margin-note-dismissal-check": "Provisional 60-second estimate pending hosted measurement",
     "range-editors-check": "Provisional 120-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
@@ -123,6 +124,7 @@
     "documents-rows-settle": 109.92,
     "tile-arrival-timing": 291.1,
     "home-idle-raster": 93.07,
+    "home-ambient-check": 90,
     "demo-worker-startup": 10,
     "boot-error-alone": 15.04,
     "restore-previous-journal": 41.98,

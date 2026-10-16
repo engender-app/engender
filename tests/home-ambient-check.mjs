@@ -40,6 +40,8 @@ try {
       assert(resumed[i].time >= held[i].time && resumed[i].time - held[i].time < 150,
         `Input jumped ${held[i].name}'s phase: ${held[i].time} to ${resumed[i].time}`);
     }
+    assert.equal(await page.evaluate(() => document.getAnimations().filter((animation) =>
+      animation.animationName === 'ring-in').length), 0, 'Input replayed the sun arrival');
     await page.waitForTimeout(250);
     assert(await page.evaluate(() => globalThis.__ambientLoops.some((animation) =>
       animation.animationName === 'breathe' && animation.playState === 'running')));

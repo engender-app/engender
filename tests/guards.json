@@ -565,7 +565,7 @@
   {
     "name": "home-ambient-check",
     "tier": "built",
-    "holds": "Home pauses ambient loops after 30 seconds, freezes their clocks, resumes on touch without phase reset, and respects reduced motion in light and dark"
+    "holds": "Home pauses its ambient loops after 30 seconds, keeps their clocks frozen, resumes on touch without replacement or phase reset, and respects reduced motion in light and dark"
   },
   {
     "name": "home-idle-raster",
