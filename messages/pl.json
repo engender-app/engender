@@ -2902,7 +2902,7 @@
   "rk_leave_title": "Wyjść bez zapisania klucza?",
   "rk_made_toast": "Utworzono klucz odzyskiwania.",
   "rk_make": "Utwórz klucz odzyskiwania",
-  "rk_not_waiting": "Ten klucz już nie otwiera dziennika. Utwórz nowy, jeśli go potrzebujesz.",
+  "rk_not_waiting": "Ten klucz nie oczekuje na potwierdzenie. Sprawdź bieżące ustawienia klucza odzyskiwania.",
   "rk_print": "Drukuj",
   "rk_removed_toast": "Usunięto klucz odzyskiwania.",
   "rk_replace": "Wymień klucz",

@@ -2852,7 +2852,7 @@
   "rk_leave_title": "Leave this recovery key behind?",
   "rk_made_toast": "Recovery key made.",
   "rk_make": "Make a recovery key",
-  "rk_not_waiting": "This key no longer opens the journal. Make a new one if you need it.",
+  "rk_not_waiting": "This key is not waiting for confirmation. Check the current recovery key settings.",
   "rk_print": "Print",
   "rk_removed_toast": "Recovery key removed.",
   "rk_replace": "Replace this key",

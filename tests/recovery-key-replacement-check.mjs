@@ -278,6 +278,27 @@ try {
   // Later checks use the currently confirmed key.
   confirmed = alreadyPromoted;
 
+  const promotedBeforeAnother = await mintFromScreen('[data-list-row="replace-recovery-key"]');
+  const anotherPeer = await context.newPage();
+  await anotherPeer.goto(base + 'recovery-key-peer', { waitUntil: 'networkidle' });
+  const newerPending = await anotherPeer.evaluate(async (key) => {
+    const { openWithRecoveryKey, mintRecoveryKey } = await import('/src/lib/data/recovery-key.ts');
+    const dataKey = await openWithRecoveryKey(key);
+    try { return await mintRecoveryKey(dataKey); } finally { dataKey.fill(0); }
+  }, promotedBeforeAnother);
+  await anotherPeer.close();
+  await page.locator('[data-recovery-key-done]').click();
+  await page.locator('[data-recovery-key-step="unfinished"]').waitFor();
+  assert.equal(await opens(promotedBeforeAnother), true, 'the earlier key remains active');
+  assert.equal(await opens(newerPending), true, 'the newer replacement remains pending');
+  await page.locator('[data-toast]').filter({ hasText: 'This key is not waiting for confirmation.' }).waitFor();
+  assert.equal(await page.getByText('This key no longer opens the journal.', { exact: false }).count(), 0);
+  await page.locator('[data-list-row="discard-pending-recovery-key"]').click();
+  await page.locator('[data-recovery-key-step="active"]').waitFor();
+  confirmed = promotedBeforeAnother;
+  assert.equal(await opens(newerPending), false);
+  console.log('PASS a later peer replacement never reports the still-active key as revoked');
+
   // No key characters anywhere a restart could read them.
   const stored = await page.evaluate(async () => {
     const texts = [JSON.stringify({ ...localStorage }), JSON.stringify({ ...sessionStorage })];
