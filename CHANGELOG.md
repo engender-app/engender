@@ -8,6 +8,10 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Today's sun and mood faces pause after 30 seconds without input. Touch,
+keyboard or assistive input resumes them from where they stopped. Hidden
+Today screens pause too. Reduced-motion settings still remove these loops.
+
 Back during first-run setup now returns to the previous step and keeps
 your answers. Finishing setup removes it from the way back from Today.
 

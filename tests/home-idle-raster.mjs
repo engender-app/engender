@@ -1,7 +1,9 @@
 /* Home at idle keeps its hands off the rasteriser (phase 12 ux-carpet
    ticket 227).
 
-   The flag sun breathes forever, on purpose. While each ring also carried its
+   The flag sun breathes during the first 30 seconds after input. This probe
+   samples that active period; home-ambient-check covers the later idle pause.
+   While each ring also carried its
    entrance animation, the two animated the same transform and Chromium ran
    the breath on the main thread, re-rastering the rings every frame: about
    300 raster tasks a second on a Home nobody was touching, on the web and on
@@ -20,8 +22,8 @@
    entrance to finish, then records five seconds of a Chromium trace and
    counts the raster tasks and the main frames in it. What legitimately
    rasters at idle is small: a running timer ticking once a second. The
-   compositor still draws every vsync, because the sun's breath never stops
-   moving; that costs no main frame. RUNS runs, each judged on its own.
+   compositor still draws every vsync, because the sun's breath keeps
+   moving during this sample; that costs no main frame. RUNS runs, each judged on its own.
 
    Run against a demo build:
      VITE_DEMO=1 npm run build

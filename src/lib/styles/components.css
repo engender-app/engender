@@ -2414,6 +2414,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
     breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+  animation-play-state: running, var(--sun-breathe-state, running);
 }
 @keyframes ring-in {
   from { scale: 0; }
@@ -2436,6 +2437,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      what breathe ends on is the identity scale written out. */
   transform: scale(1) translate(-50%, -50%);
   animation: breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+  animation-play-state: var(--sun-breathe-state, running);
 }
 /* MO-001: the global reduce rule clamps every animation's duration to 1ms,
    which turns breathe's infinite loop into a restart-every-millisecond

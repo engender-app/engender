@@ -33,6 +33,8 @@ async function settled() {
       activeDoors: document.querySelectorAll('[data-retained-active]').length,
       fields: fields.length, activeOwnsFields: fields.every((field) => active[0]?.contains(field)),
       hiddenSafe: hidden.every((door) => door.inert && getComputedStyle(door).display === 'none'),
+      hiddenHomePaused: hidden.every((door) => !door.querySelector('.home') ||
+        door.querySelector('.home').dataset.homeAmbient === 'paused'),
       hiddenFocus: !!document.activeElement?.closest('[data-retained-door]:not([data-retained-active])'),
       hiddenAnimations: document.getAnimations().filter((animation) =>
         animation.playState === 'running' && animation.effect?.target instanceof Element &&
@@ -44,6 +46,7 @@ async function settled() {
   assert(state.activeOwnsFields, 'visible field belongs to inactive screen');
   assert.equal(state.activeDoors, ['/', '/calendar', '/stats', '/more'].includes(state.path) ? 1 : 0);
   assert(state.hiddenSafe, 'inactive door lost display:none or inert');
+  assert(state.hiddenHomePaused, 'inactive Home lost its ambient pause');
   assert(!state.hiddenFocus, 'inactive door owns focus');
   assert.equal(state.hiddenAnimations, 0, 'inactive door keeps running motion');
   return state;

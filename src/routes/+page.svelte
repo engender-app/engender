@@ -72,6 +72,7 @@
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import { homeAmbient } from '$lib/motion/homeAmbient';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
@@ -759,7 +760,7 @@
   </span>
 {/snippet}
 
-<div class="screen home">
+<div class="screen home" data-home-ambient="running" {@attach homeAmbient}>
   <header class="home-header" data-home-header>
     <!-- The field (phase 10, DIRECTION.md rule 7; ADR-0075): a solid block
          of one of the flag's colours holding two things, the sun in its top
@@ -1452,6 +1453,10 @@
 </div>
 
 <style>
+  .home[data-home-ambient="paused"] {
+    --sun-breathe-state: paused;
+  }
+
   /* The pinned block owns the 20px below it. Its reserve's list margin
      collapses into that space at rest, but the closing wrapper's clipping
      holds another 20px inside for the first painted frame. */

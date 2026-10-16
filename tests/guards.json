@@ -563,9 +563,14 @@
     ]
   },
   {
+    "name": "home-ambient-check",
+    "tier": "built",
+    "holds": "Home pauses ambient loops after 30 seconds, freezes their clocks, resumes on touch without phase reset, and respects reduced motion in light and dark"
+  },
+  {
     "name": "home-idle-raster",
     "tier": "built",
-    "holds": "Home at idle rasters nothing beyond a timer's tick, and wakes the main thread only while a mood face moves: the flag sun's breath runs on the compositor, and the faces pause their loops between moves"
+    "holds": "During Home's first 30 seconds after input, sun breath runs on the compositor and faces wake only while moving; raster work stays within the timer-tick budget"
   },
   {
     "name": "demo-worker-startup",
