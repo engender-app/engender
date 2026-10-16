@@ -130,6 +130,16 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(pair).toBeGreaterThan(grid);
   });
 
+  /* The picks sit under the facts with no heading, so "Last" is what says
+     they look back. Wrapped's own switcher has a title naming the period
+     and took one-word labels (last-audit UI 26); the picks keep theirs. */
+  it('labels the quick picks with their own keys, not the Wrapped switcher\'s', () => {
+    for (const cadence of ['week', 'month', 'year']) {
+      expect(stats).toContain(`m.lookback_quick_${cadence}()`);
+      expect(stats).not.toContain(`m.wrapped_cadence_${cadence}()`);
+    }
+  });
+
   /* Nothing else: no card drawn in full, no section heading, no list of
      deeper readings, no journey caption. Every reading is a tile. */
   it('draws no card and no list on the door itself', () => {

@@ -149,7 +149,7 @@ test('a dose can be taken, skipped or changed; a changed one keeps the scheduled
   assert.deepEqual(changed.scheduled, { dose: 2, route: 'oral', timestamp: at(101, 8) });
 });
 
-test('a dose stores no regimen episode: attribution comes from its timestamp every time', async () => {
+test('a person-logged dose stores no episode or automatic-slot provenance', async () => {
   const { journal, db } = await journalWithBuiltIns();
   await episode(journal, 100, 'estradiol');
   await journal.doses.upsertDose({ timestamp: at(150), route: 'oral', dose: 2, doseUnit: 'mg' });
@@ -157,9 +157,11 @@ test('a dose stores no regimen episode: attribution comes from its timestamp eve
   const columns = await db.query<{ name: string }>('SELECT name FROM pragma_table_info(?)', ['dose_event']);
   const names = columns.map((c) => c.name);
   assert.ok(
-    !names.some((name) => name.includes('episode')),
-    `dose_event must not link to an episode, got: ${names.join(', ')}`
+    names.filter((name) => name.includes('episode')).every((name) => name === 'auto_log_episode_uuid'),
+    `only automatic provenance may name an episode, got: ${names.join(', ')}`
   );
+  const [stored] = await db.query('SELECT auto_log_episode_uuid, auto_log_epoch_day, auto_log_index FROM dose_event');
+  assert.deepEqual(stored, { auto_log_episode_uuid: null, auto_log_epoch_day: null, auto_log_index: null });
 });
 
 test('a corrective episode with a past start date changes which episode an already-logged dose resolves to', async () => {
@@ -1151,4 +1153,71 @@ test('on the day a late dose is logged, the agenda’s week behind already count
   assert.equal(comparison.reason, null);
   if (comparison.reason !== null) return;
   assert.equal(mostRecentPassedSlot(comparison.comparison, MONDAY + 1), null);
+});
+
+
+test('actual amounts reject -2 mg, zero and non-finite inserts and updates without writing', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const input = { timestamp: at(19000), route: 'oral' as const, dose: 0.25, doseUnit: 'mg' };
+  const id = await journal.doses.upsertDose(input);
+  const counted = countingDriver(db);
+  const doses = makeDosesArea(counted.driver, journal.regimen);
+  for (const status of [undefined, 'taken', 'changed'] as const) {
+    for (const dose of [-2, 0, NaN, Infinity, -Infinity]) {
+      for (const existingId of [undefined, id]) {
+        await assert.rejects(doses.upsertDose({ ...input, id: existingId, status, dose }),
+          /actual dose amount must be finite and positive/);
+      }
+    }
+  }
+  assert.equal(counted.roundTrips().run, 0);
+  assert.equal((await journal.doses.getDoses(19000, 19000)).length, 1);
+  assert.equal((await journal.doses.getDoseById(id))?.dose, 0.25);
+});
+
+test('fractional changed doses preserve actual route/site and scheduled values', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const input = {
+    timestamp: at(19000, 9), route: 'sc' as const, dose: 0.125, doseUnit: 'mg',
+    injectionSite: 'thigh-left' as const, vehicle: 'oil' as const, status: 'changed' as const,
+    scheduled: { dose: 2, route: 'oral' as const, timestamp: at(19000, 8) }
+  };
+  const id = await journal.doses.upsertDose(input);
+  assert.deepEqual(await journal.doses.getDoseById(id), { ...input, id, source: 'person', drug: null });
+  await journal.doses.upsertDose({ ...input, id, dose: 0.25 });
+  assert.equal((await journal.doses.getDoseById(id))?.dose, 0.25);
+});
+
+test('skipped expected amounts and historical non-positive actual rows remain unchanged on read', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  for (const dose of [0, -2, 2]) {
+    const id = await journal.doses.upsertDose({ timestamp: at(19000), route: 'oral', dose, doseUnit: 'mg', status: 'skipped' });
+    assert.equal((await journal.doses.getDoseById(id))?.dose, dose);
+  }
+  const id = await journal.doses.upsertDose({ timestamp: at(19000), route: 'oral', dose: 2, doseUnit: 'mg' });
+  await db.run('UPDATE dose_event SET dose = -2 WHERE uuid = ?', [id]);
+  assert.equal((await journal.doses.getDoseById(id))?.dose, -2);
+  assert.equal((await journal.doses.getDoses(19000, 19000)).find((dose) => dose.id === id)?.dose, -2);
+});
+
+test('invalid saved schedule amounts do not roll back valid due doses or rewrite schedules', async () => {
+  for (const invalid of [-2, 0, Infinity]) {
+    const { journal } = await journalWithBuiltIns();
+    const mixed = await episode(journal, 19000, 'mixed amounts');
+    const valid = await episode(journal, 19000, 'valid amounts');
+    for (const [episodeId, amounts] of [[mixed, [invalid, 0.125]], [valid, [0.25]]] as const) {
+      await journal.doses.upsertSchedule({
+        episodeId, recurrence: { kind: 'everyNDays', everyNDays: 1 }, dosesPerDay: 1,
+        doseAmounts: amounts.map((dose) => ({ dose, doseUnit: 'mg' })), autoLogFromEpochDay: 19000
+      });
+    }
+    const schedules = await journal.doses.getSchedules();
+    assert.equal(await journal.doses.autoLogDueDoses(19002, []), 3);
+    const doses = await journal.doses.getDoses(19000, 19002);
+    assert.deepEqual(doses.map((dose) => dose.dose).sort(), [0.125, 0.25, 0.25]);
+    assert.deepEqual(doses.filter((dose) => dose.drug === 'mixed amounts').map((dose) => dose.autoLogSlot?.epochDay), [19001]);
+    assert.ok(doses.every((dose) => dose.status === 'taken' && dose.source === 'schedule'));
+    assert.equal(await journal.doses.autoLogDueDoses(19002, []), 0);
+    assert.deepEqual(await journal.doses.getSchedules(), schedules);
+  }
 });

@@ -13,6 +13,8 @@
      a retry is pointless for a development build's journal, and putting the
      previous copy back would reopen that same journal, so that failure gets
      the start-over way out instead, like a journal the key cannot read. */
+  import { appWordmark } from '$lib/disguise/identity';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { m } from '$lib/paraglide/messages';
   import { bootState, restorePreviousJournal, retryBoot } from '$lib/stores/boot.svelte';
   import type { BootFailure } from '$lib/stores/boot-state';
@@ -25,9 +27,10 @@
 
   const SENTENCE: Record<BootFailure, () => string> = {
     unreadable: m.boot_failed_unreadable,
-    'below-baseline': m.boot_failed_below_baseline,
+    'below-baseline': () => m.boot_failed_below_baseline({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }),
     'android-plaintext': m.ak_plaintext_journal,
     engine: m.boot_failed_engine,
+    'storage-full': m.boot_failed_storage_full,
     unknown: m.boot_failed_unknown
   };
 

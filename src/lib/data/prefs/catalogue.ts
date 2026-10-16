@@ -242,6 +242,10 @@ export interface PreferenceValues {
       shift their own alarm, and the two retrospective checks re-run every
       fifteen minutes anyway, so skipping one is already a hold. */
   heldExportFailureNotice: boolean;
+  /** Native backup failure timestamp last posted, held or declined by the
+      notice switch. Device-local notification history survives scheduler
+      restarts without travelling in an Archive. */
+  lastExportFailureNotifiedAt: number | null;
   /** Whether quiet hours hold notifications at all (phase 6 ticket 04). One
       cross-class rule for every producer rather than a field per producer,
       which is what four schedulers each picking their own time amounted to
@@ -523,6 +527,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   wearElapsedEnabled: true,
   exportFailureNoticeEnabled: true,
   heldExportFailureNotice: false,
+  lastExportFailureNotifiedAt: null,
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
@@ -633,6 +638,7 @@ export const DEVICE_LOCAL_KEYS = [
   'wearElapsedEnabled',
   'exportFailureNoticeEnabled',
   'heldExportFailureNotice',
+  'lastExportFailureNotifiedAt',
   'quietHoursEnabled',
   'quietHoursStart',
   'quietHoursEnd',
@@ -659,7 +665,9 @@ export const DEVICE_LOCAL_KEYS = [
     resolves the locale from its own localStorage strategy (vite.config.ts)
     before any of this runs, and setLocale() reloads the page. This is the
     app's own record of the choice, which is what makes it portable in an
-    archive - paraglide's copy is not. */
+    archive - paraglide's copy is not. After durable preference attachment,
+    boot reconciles that strategy with SQLite so an interrupted Replace
+    cannot leave a restored choice beside the previous locale. */
 export const BOOT_KEYS = [
   'theme',
   'palette',

@@ -30,7 +30,7 @@ public class SensitiveClipboardPlugin extends Plugin {
             return;
         }
 
-        Long clearAfterMs = call.getLong("clearAfterMs");
+        Long clearAfterMs = clearAfterMs(call);
         if (clearAfterMs == null || clearAfterMs <= 0) {
             call.reject("a sensitive copy needs the interval it is cleared after");
             return;
@@ -51,6 +51,20 @@ public class SensitiveClipboardPlugin extends Plugin {
                         call.reject("could not reach the clipboard", e);
                     }
                 });
+    }
+
+    /**
+     * The interval, read as the integer type it arrived as. The bridge
+     * parses the call with org.json, which makes 60000 an Integer and only
+     * a value past Integer.MAX_VALUE a Long, while PluginCall.getLong answers
+     * for a Long alone. Reading it with getLong turned every copy the
+     * recovery key screen made into the reject below (last-audit UI 34).
+     */
+    static Long clearAfterMs(PluginCall call) {
+        Object value = call.getData().opt("clearAfterMs");
+        // Integer and Long only: longValue() on a fraction or a BigInteger
+        // truncates or wraps, which could shorten or lengthen the clear.
+        return value instanceof Integer || value instanceof Long ? ((Number) value).longValue() : null;
     }
 
     /**

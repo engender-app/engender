@@ -22,7 +22,8 @@ async function run() {
     type: 'web-surveyed' as const,
     legacyStoragePresent: await legacyStoragePresent(root),
     keystoreSecretSource: 'passphrase' as const,
-    deviceBoundKeystoreExists: true
+    deviceBoundKeystoreExists: true,
+    journalPresent: false
   };
   const refused = reduce(initialBoot(), event);
   const demo = reduce(reduce(initialBoot(), { type: 'started', platform: 'web', demo: true }).machine, event);

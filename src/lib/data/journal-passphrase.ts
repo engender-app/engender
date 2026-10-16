@@ -9,6 +9,7 @@
    required again after the browser process ends. */
 
 import { changeCredentials } from './credential-ownership';
+import { withoutPendingRecoveryKeyOwned } from './recovery-key';
 import { createKeystore, rewrapKeystore, unlockKeystore, wrapDataKeyWithSecret } from '../crypto/keystore';
 import { initializeJournal } from './journal-initialization';
 import { readKeystoreFile, writeKeystoreFile } from './keystore-file';
@@ -33,9 +34,12 @@ export async function setupJournalPassphrase(passphrase: string): Promise<Uint8A
 /** The access-mode operation owns credential mutation through cleanup. */
 export async function addJournalPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
-  passphrase: string
+  passphrase: string,
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
-  await writeKeystoreFile(await wrapDataKeyWithSecret(dataKey, passphrase));
+  const metadata = await wrapDataKeyWithSecret(dataKey, passphrase);
+  beforeCredentialWrite();
+  await writeKeystoreFile(metadata);
 }
 
 /** Every later run: throws DecryptionFailedError on a wrong passphrase,
@@ -49,11 +53,17 @@ export async function unlockJournalPassphrase(passphrase: string): Promise<Uint8
 /** Rewraps the same data key under a new passphrase (ticket 09: a change
     of passphrase never re-encrypts the Journal). Throws
     DecryptionFailedError when the current passphrase is wrong, before
-    anything is written. */
+    anything is written. A new recovery key nobody confirmed is discarded
+    with the change (last-audit UI 42). */
 export async function changeJournalPassphrase(current: string, next: string): Promise<void> {
   return changeCredentials(async () => {
     const metadata = await readKeystoreFile();
     if (metadata === null) throw new Error('no keystore to rewrap');
-    await writeKeystoreFile(await rewrapKeystore(metadata, current, next));
+    const rewrapped = await rewrapKeystore(metadata, current, next);
+    // Proven first: a wrong passphrase touches nothing, the pending key included.
+    await withoutPendingRecoveryKeyOwned((doNotRestorePending) => {
+      doNotRestorePending();
+      return writeKeystoreFile(rewrapped);
+    });
   });
 }

@@ -243,7 +243,8 @@ describe('the first run', () => {
     expect(onboardingMarkup).toContain('onclick={leave}');
     expect(onboarding).toMatch(/function leave\(\)[\s\S]*?complete\(\);/);
     expect(onboarding).toContain('prefs.onboarded = true;');
-    expect(onboarding).toContain('goto(onboardingDestination())');
+    expect(onboarding).toContain('replaceRoute(onboardingDestination())');
+    expect(onboarding).toContain('await finishHistory?.()');
   });
 
   it('applies the disguise through the module that orders it, never inline', () => {

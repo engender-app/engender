@@ -3,6 +3,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { platform, release, arch } from 'node:os';
 import { browserEngine, launchBrowser } from '../browser-harness.mjs';
+import { appVersion } from '../../scripts/app-version.mjs';
+import { measureBFCache } from './bfcache-control.mjs';
 import { invocationFailed, runCapabilityInvocation } from './capability-invocation.mjs';
 
 const tier = process.argv[2] ?? 'production';
@@ -12,9 +14,12 @@ const directory = resolve(process.env.CAPABILITY_OUTPUT ?? `.claude/browser-capa
 await mkdir(dirname(directory), { recursive: true });
 await mkdir(directory); // Refuse reused evidence directories and stale case JSON.
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).trim() !== '';
+const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], { encoding: 'utf8' }).trim() !== '';
 const build = JSON.parse(await readFile('build/release.json', 'utf8'));
-const matrix = { revision, dirty, tier, build, os: { platform: platform(), release: release(), arch: arch(), distribution: await readFile('/etc/os-release', 'utf8').catch(() => 'unavailable') },
+const expectedVersion = appVersion();
+const emittedBuildId = JSON.parse(await readFile('build/_app/version.json', 'utf8')).version;
+const buildMatchesSource = !dirty && build.version === expectedVersion && build.buildId === emittedBuildId;
+const matrix = { revision, dirty, tier, build, sourceIdentity: { expectedVersion, emittedBuildId, buildMatchesSource }, os: { platform: platform(), release: release(), arch: arch(), distribution: await readFile('/etc/os-release', 'utf8').catch(() => 'unavailable') },
   startedAt: new Date().toISOString(), results: [], invocations: [], limitations: [
     'Automated WebKit is engine evidence, not desktop Safari or an installed iOS PWA.',
     'Actual Safari and iOS PWA remain unverified. Apple hardware is not a prerequisite.',
@@ -31,10 +36,11 @@ const suites = tier === 'production' ? [
   { path: 'tests/update-handover-check.mjs', capabilities: ['schema-recovery-update', 'update-during-write'], mode: 'real-driver lifecycle probe' },
   { path: 'tests/pending-unlock-lock-check.mjs', capabilities: ['pending-unlock-later-lock'], mode: 'development demo' }
 ] : [
+  { path: 'tests/browser-tier/splash-check.mjs', capabilities: ['splash-leaves', 'splash-first-tap', 'splash-blocks-input', 'splash-hidden-boot'], mode: 'built production; emulated hidden tab', detailed: true },
   { path: 'tests/bfcache-journal-check.mjs', capabilities: ['actual-bfcache-return'], mode: 'built production' }
 ];
 function capabilities(engine, suite) {
-  return [...suite.capabilities, ...(engine === 'webkit' && suite.detailed ? ['private-context-opfs'] : [])];
+  return [...suite.capabilities, ...(engine === 'webkit' && suite.path.endsWith('built-capabilities.mjs') ? ['private-context-opfs'] : [])];
 }
 matrix.results = engines.flatMap(engine => suites.flatMap(suite => [
   ...capabilities(engine, suite),
@@ -47,11 +53,12 @@ function record(row) {
 async function checkpoint() {
   await writeFile(resolve(directory, 'matrix.json'), JSON.stringify(matrix, null, 2) + '\n');
 }
+if (!buildMatchesSource) for (const row of matrix.results) row.evidence = 'Source is dirty or build version/id does not match the current clean tip.';
 await checkpoint();
 
 
 try {
-  for (const engine of engines) {
+  for (const engine of buildMatchesSource ? engines : []) {
     process.env.BROWSER_ENGINE = engine;
     browserEngine();
     let version;
@@ -68,6 +75,21 @@ try {
     for (const row of matrix.results.filter(row => row.engine === engine)) row.version = version;
     await checkpoint();
     for (const [index, suite] of suites.entries()) {
+      if (suite.path.endsWith('bfcache-journal-check.mjs')) {
+        const control = await measureBFCache();
+        matrix.bfcacheControls ??= {};
+        matrix.bfcacheControls[engine] = control;
+        if (!control.supported && control.blockingControlRejected && engine !== 'chromium') {
+          record({ engine, version, capability: 'actual-bfcache-return', status: 'unsupported', mode: suite.mode, evidence: control });
+          await checkpoint();
+          continue;
+        }
+        if (!control.supported || !control.blockingControlRejected) {
+          record({ engine, version, capability: 'actual-bfcache-return', status: 'fail', mode: suite.mode, evidence: control });
+          await checkpoint();
+          continue;
+        }
+      }
       const prefix = `${engine}-${index}`;
       const log = resolve(directory, `${prefix}.log`);
       const resultsFile = resolve(directory, `${prefix}.json`);
@@ -89,9 +111,10 @@ try {
     }
   }
 } finally {
+  matrix.durationMs = Date.now() - Date.parse(matrix.startedAt);
   matrix.finishedAt = new Date().toISOString();
   await checkpoint();
   console.log('Capability evidence:', directory);
   for (const row of matrix.results) console.log(row.status.toUpperCase(), row.engine, row.version ?? 'unavailable', row.capability);
 }
-if (matrix.invocations.some(invocationFailed) || matrix.results.some(row => row.status === 'fail' || row.status === 'not-run' && !row.capability.includes('capture') && row.capability !== 'biometric-negotiation-refusal')) process.exitCode = 1;
+if (!buildMatchesSource || matrix.invocations.some(invocationFailed) || matrix.results.some(row => row.status === 'fail' || row.status === 'not-run' && !row.capability.includes('capture') && row.capability !== 'biometric-negotiation-refusal')) process.exitCode = 1;

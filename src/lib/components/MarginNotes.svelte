@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* A margin note: a visibly later layer under the entry it annotates
      (phase 8 features ticket 07, CONTEXT: "Margin note").
 
@@ -25,6 +26,8 @@
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
   import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
+  import DiscardSheet from './kit/DiscardSheet.svelte';
+  import { leaveGuard } from './kit/leaveGuard.svelte';
 
   let {
     entryId,
@@ -61,6 +64,11 @@
      sheet closes once the note is stored, and stays open with a toast when
      it is not. */
   const saving = writer();
+  const guard = leaveGuard({
+    holding: () => composeOpen && composeText !== (editing?.text ?? ''),
+    busy: () => composeOpen && saving.busy,
+    onDiscard: () => { composeOpen = false; }
+  });
   async function save() {
     const text = composeText.trim();
     if (!text) return;
@@ -112,9 +120,14 @@
   </button>
 {/if}
 
-<Sheet busy={saving.busy} bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
+<Sheet
+  busy={saving.busy}
+  bind:open={composeOpen}
+  title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}
+  onRequestClose={() => guard.request(() => { composeOpen = false; })}
+>
   <h3>{editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}</h3>
-  <textarea
+  <textarea autocomplete={journalTextAutocomplete()}
     class="input"
     rows="4"
     style="margin-top:var(--space-3)"
@@ -133,6 +146,8 @@
     </button>
   </div>
 </Sheet>
+
+<DiscardSheet {guard} />
 
 <ConfirmDeleteSheet
   open={deleting !== null}

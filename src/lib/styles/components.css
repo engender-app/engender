@@ -298,6 +298,14 @@
      start left of the content edge for the arrow to look aligned with the
      title under it. The target keeps its full width; only the box moves. */
   margin-left: calc(-1 * var(--space-3));
+  /* Above the title's words for a press. The title is set solid at 0.95,
+     so its text runs taller than its own line and reached 5px up into the
+     bottom of the back control's target (12px with text at 200%), and the
+     title came later in the document, so a press there landed on the
+     heading and did nothing (last-audit UI 48, found by
+     a11y-targets-large-text.mjs). Positioned, the control takes its whole
+     48px back; nothing is drawn differently. */
+  position: relative;
 }
 /* A hidden title with no back control and no actions leaves the field
    nothing to hold, so the header collapses to nothing visible rather than
@@ -372,6 +380,25 @@
   margin-right: calc(-1 * var(--space-3));
 }
 .screen-header-row.has-back-actions .screen-title { grid-column: 1 / -1; }
+/* Under 240px (200% zoom on a 390px phone, 155px of row) that line runs
+   out: Lab results' back control and three actions need 208px, so the
+   back's target sat 24px deep under the gear's, and a saved question's
+   under Random's (last-audit UI 48). The actions take a line of their own
+   under the back control instead, still at the trailing edge, and wrap
+   there if a screen ever brings more than that line holds. The line is
+   decided by the width alone, never by how many actions are drawn: Search
+   and a saved question add theirs as answers arrive (SearchActions), and
+   a count-driven break would move the row under them in one frame. So it
+   keeps a target's height even while it is empty. */
+@container app (max-width: 239px) {
+  .screen-header-row.has-back-actions .header-action {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-height: var(--touch-target);
+  }
+}
 .screen-title {
   flex: 1;
   min-width: 0;
@@ -734,7 +761,15 @@
   width: 26px;
   color: var(--text-2);
   pointer-events: none;
+  /* Faded in and out rather than added and removed (last-audit UI ticket
+     26): choosing a segment beside a chevron now scrolls the track clear
+     of it, which brings the opposite chevron in, and it used to land whole
+     in one frame. The width above is SCROLL_HINT_WIDTH in segmentedTrack.ts,
+     which a test holds to it. */
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
+.segmented-hint.is-shown { opacity: 1; }
 .segmented-hint-start {
   left: 0; justify-content: flex-start; padding-left: 4px;
   background: linear-gradient(to right, var(--surface-2) 22px, transparent);
@@ -744,10 +779,6 @@
   right: 0; justify-content: flex-end; padding-right: 4px;
   background: linear-gradient(to left, var(--surface-2) 22px, transparent);
   border-radius: 0 8px 8px 0;
-}
-.segmented.can-scroll-start.can-scroll-end {
-  mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
 }
 
 /* A flex scroll container drops its trailing padding at the end of the
@@ -1227,8 +1258,8 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      directly, and opacity because the dimming does. */
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
 }
-/* Standalone scale/translate shipped in Chrome 104; the WebView floor is
-   Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
+/* Standalone scale/translate shipped in Chrome 104; the former WebView floor
+   was Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
    gap) - seventeen versions short, so the whole magnifier silently did
    nothing there. No hover/press growth on any device at or under that
    floor is ticket 99 items 1 and 2's report, round two of the same "phase 5
@@ -2180,13 +2211,6 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 
 .toast {
-  /* Centred by its two insets and auto margins rather than by left: 50%
-     and a -50% translate (after-release 17, U2/UI-19). The translate was
-     the transform the arrival composes with, and at desktop width it
-     centred the toast on the window, 105px off the column it belongs to;
-     an inset can take the rail's width instead, and the right one the
-     scroll region's scrollbar gutter (+layout.svelte measures it). */
-  position: absolute; left: 0; right: var(--scroll-gutter, 0px); margin-inline: auto; bottom: var(--nav-clearance);
   transform: translateY(10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--r-block);
@@ -2203,8 +2227,9 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      spend the sheet gave up for a line below. A solid block over content
      with nothing beneath it is how Jobber and Riot Mobile draw the same
      thing (Mobbin, fifth pass). */
-  opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out);
-  z-index: 50;
+  /* translate is the stack's own travel when a toast above or below
+     leaves (Toasts.svelte); transform stays the arrival's. */
+  opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out), translate var(--dur-med) var(--ease-out);
   /* SF-002: nowrap let a longer translated string (Polish routinely runs
      longer than English) push past the viewport edge instead of wrapping. */
   max-width: min(92vw, 420px);
@@ -2389,6 +2414,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
     breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+  animation-play-state: running, var(--sun-breathe-state, running);
 }
 @keyframes ring-in {
   from { scale: 0; }
@@ -2411,6 +2437,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      what breathe ends on is the identity scale written out. */
   transform: scale(1) translate(-50%, -50%);
   animation: breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+  animation-play-state: var(--sun-breathe-state, running);
 }
 /* MO-001: the global reduce rule clamps every animation's duration to 1ms,
    which turns breathe's infinite loop into a restart-every-millisecond
@@ -2596,9 +2623,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
-  /* Its left inset, the rail's width, is set by +layout.svelte, the one
-     file that knows whether a rail is drawn. */
-  .toast { bottom: var(--space-6); }
 }
 
 

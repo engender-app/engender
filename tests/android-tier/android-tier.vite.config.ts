@@ -17,7 +17,8 @@
    SvelteKit's generated tsconfig includes every .js file under tests/, so a
    bundle left there becomes 400 svelte-check errors in generated code.
 
-   ANDROID_TIER_PROBE picks which one; run.mjs builds both. */
+   ANDROID_TIER_PROBE picks which one. run.mjs builds the regular tier's
+   bundles; kdf-budget is an explicit physical-Pixel measurement. */
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { join } from 'node:path';
@@ -25,6 +26,12 @@ import { join } from 'node:path';
 const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
+  'locked-journal': { root: 'locked-journal', outDir: `${ASSETS}/locked-journal-probe` },
+  'key-gate': { root: 'key-gate', outDir: `${ASSETS}/key-gate-probe` },
+  'kdf-budget': { root: 'kdf-budget', outDir: `${ASSETS}/kdf-budget-probe` },
+  ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
+  'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
+  'pin-count': { root: 'pin-count', outDir: `${ASSETS}/pin-count-probe` },
   /** Ticket 11: the shared journal contract suite over the native driver. */
   'auto-export': { root: 'auto-export', outDir: `${ASSETS}/auto-export-probe` },
   contract: { root: '.', outDir: `${ASSETS}/probe` },
@@ -48,12 +55,16 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
+      ...(name === 'long-journal' ? {
+        '$lib/stores/today.svelte': join(repo, 'tests/long-journal/today-stub.ts'),
+        '$lib/stores/boot.svelte': join(repo, 'tests/browser-tier/entry-editor-boot-stub.ts')
+      } : {}),
       $lib: join(repo, 'src/lib'),
       '$app/state': join(repo, 'tests/browser-tier/screen-router.svelte.ts'),
       '$app/navigation': join(repo, 'tests/browser-tier/app-navigation-stub.ts')
     }
   },
-  plugins: (name === 'auto-export' || name === 'archive-recovery') ? [svelte({ configFile: false })] : [],
+  plugins: ['auto-export', 'archive-recovery', 'pin-count', 'key-gate', 'long-journal'].includes(name) ? [svelte({ configFile: false })] : [],
   define: {
     __DEMO__: JSON.stringify(false),
     __APP_VERSION__: JSON.stringify('0.0.0-archive-recovery')

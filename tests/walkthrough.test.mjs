@@ -1942,11 +1942,8 @@ try {
   await page.locator('[data-import-lab]').click();
   await page.waitForSelector('[data-ocr-state="picking"]');
 
-  // The download notice phase 5 performance ticket 01 added: shipped, but
-  // unverifiable in its own sheet until this ticket (see verify-build.mjs).
-  const noticeText = await page.locator('[data-notice="labs-ocr-download"]').textContent();
-  if (!noticeText || !noticeText.includes('21 MB')) {
-    throw new Error(`download notice missing or reworded: ${noticeText}`);
+  if (await page.locator('[data-notice="labs-ocr-download"]').count()) {
+    throw new Error('installed OCR still shows an optional-download notice');
   }
 
   const slip = await labSlipImage(['Date 2026-08-12', 'Estradiol 123.4 pg/mL']);
@@ -1962,7 +1959,7 @@ try {
     // reacted to the transition at all rather than sitting on "picking".
     await page.locator('[data-ocr-retry]').click();
     await page.waitForSelector('[data-ocr-state="picking"]');
-    ok('the scanner opens, shows its download notice, and reacts through recognizing to no-rows on a real recognition pass');
+    ok('the scanner opens, uses its installed engine, and reacts through recognizing to no-rows on a real recognition pass');
   } else {
     // Rows in hand: overwritten with known values before saving, since the
     // point here is the review→save round trip, not grading Tesseract's
@@ -1989,7 +1986,7 @@ try {
       () => [...document.querySelectorAll('[data-toast]')].some((t) => t.textContent.includes('Results saved'))
     );
     await page.waitForSelector('[data-ocr-state]', { state: 'detached' });
-    ok('the scanner opens, shows its download notice, and a picked slip reaches review, save-validation-failed and saved in turn');
+    ok('the scanner opens, uses its installed engine, and a picked slip reaches review, save-validation-failed and saved in turn');
   }
 } catch (e) { fail('lab scanner import (ticket 44)', e); }
 });
@@ -3782,9 +3779,10 @@ try {
   await page.getByRole('button', { name: /Disguise/i }).click();
   await page.getByRole('switch', { name: 'Disguise app' }).click();
   await page.keyboard.press('Escape');
-  /* Waits on the mirror, not on the screen: the screen updates from the
-     in-memory projection immediately, while the write to SQLite and the
-     cache refresh behind it are a round-trip away. */
+  /* Waits on the mirror, not on the screen: palette and theme update the
+     screen from the in-memory projection immediately, disguise only once
+     its own write has landed, and the cache refresh behind every write is a
+     round-trip away. */
   await page.waitForFunction(() => {
     const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
     return boot.theme === 'dark' && boot.palette === 'lesbian' && boot.disguise === true;
@@ -9106,7 +9104,7 @@ try {
      What covers that screen instead: its two states are shot in the gates
      gallery (`device-recovery-with-key` beside `device-recovery`), against a
      real recovery wrap rather than a prop, and the condition behind them is
-     one read of `recoveryKeyExists`, which the node tier owns. What only a
+     one read of `recoveryKeyState`, which the node tier owns. What only a
      real gate could prove - that a written key opens a journal whose secret
      is gone, and that the app then refuses to go anywhere until a new one is
      set - is what the steps above are. */

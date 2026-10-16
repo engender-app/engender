@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.Context;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
@@ -23,6 +24,8 @@ import java.util.UUID;
 @CapacitorPlugin(name = "FileDelivery")
 public final class FileDeliveryPlugin extends Plugin {
     private static final String STAGING_FILE = "manual-export.pending";
+    private static final java.util.concurrent.atomic.AtomicLong resetEpoch = new java.util.concurrent.atomic.AtomicLong();
+    private long pendingResetEpoch;
     private StagedFile staged;
     private String transferId;
     private String fileName;
@@ -37,26 +40,34 @@ public final class FileDeliveryPlugin extends Plugin {
     }
 
     public static void wipe(Context context) throws IOException {
-        File file = new File(context.getCacheDir(), STAGING_FILE);
-        if (file.exists() && !file.delete()) throw new IOException("export-staging-cleanup-failed");
+        resetTransfers();
+        File[] files = context.getCacheDir().listFiles((directory, name) ->
+            name.equals(STAGING_FILE) || name.matches("manual-export-[a-f0-9-]{36}\\.pending"));
+        if (files != null) for (File file : files) {
+            if (!file.delete()) throw new IOException("export-staging-cleanup-failed");
+        }
     }
+
+    static File stagingFile(File cache, String id) { return new File(cache, "manual-export-" + id + ".pending"); }
 
     @PluginMethod public synchronized void beginFile(PluginCall call) {
         String name = call.getString("fileName");
         String mime = call.getString("type");
+        discardStaleFile();
         if (staged != null) { call.reject("export-in-progress"); return; }
         if (name == null || name.isEmpty() || name.contains("/") || name.contains("\\") || name.indexOf('\0') >= 0) {
             call.reject("invalid-export-name"); return;
         }
         try {
-            staged = StagedFile.encrypted(new File(getContext().getCacheDir(), STAGING_FILE));
+            pendingResetEpoch = resetEpoch.get();
             transferId = UUID.randomUUID().toString();
+            staged = StagedFile.encrypted(stagingFile(getContext().getCacheDir(), transferId));
             fileName = name;
             type = mime == null || mime.isEmpty() ? "application/octet-stream" : mime;
             JSObject out = new JSObject();
             out.put("transferId", transferId);
             call.resolve(out);
-        } catch (Exception error) { call.reject("export-staging-failed", error); }
+        } catch (Exception error) { call.reject("export-staging-failed", StorageFailure.code(error, StorageFailure.DEVICE_FULL), error); }
     }
 
     @PluginMethod public synchronized void appendFile(PluginCall call) {
@@ -70,7 +81,7 @@ public final class FileDeliveryPlugin extends Plugin {
             }
             staged.append(offset, Base64.decode(base64, Base64.NO_WRAP));
             call.resolve();
-        } catch (Exception error) { call.reject("export-transfer-failed", error); }
+        } catch (Exception error) { call.reject("export-transfer-failed", StorageFailure.code(error, StorageFailure.DEVICE_FULL), error); }
     }
 
     @PluginMethod public void finishFile(PluginCall call) {
@@ -87,7 +98,7 @@ public final class FileDeliveryPlugin extends Plugin {
             String hash = call.getString("sha256");
             delivery.prepare(length, hash);
             synchronized (this) {
-                if (staged != delivery || delivery.isClosed()) throw new IOException("export-aborted");
+                if (staged != delivery || pendingResetEpoch != resetEpoch.get() || delivery.isClosed()) throw new IOException("export-aborted");
                 byteLength = length;
                 sha256 = hash;
                 Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -99,7 +110,7 @@ public final class FileDeliveryPlugin extends Plugin {
             }
         } catch (Exception error) {
             synchronized (this) { if (staged == delivery) cleanup(); }
-            call.reject("export-prepare-failed", error);
+            call.reject("export-prepare-failed", StorageFailure.code(error, StorageFailure.DEVICE_FULL), error);
         }
     }
 
@@ -113,7 +124,8 @@ public final class FileDeliveryPlugin extends Plugin {
         final long expectedLength;
         final String expectedHash;
         synchronized (this) {
-            if (call == null) { cleanup(); return; }
+            // A callback with no transfer identity cannot release another owner.
+            if (call == null) return;
             try { requireTransfer(call); }
             catch (Exception error) { call.reject("unknown-export-transfer", error); return; }
             delivery = staged; expectedLength = byteLength; expectedHash = sha256;
@@ -125,13 +137,25 @@ public final class FileDeliveryPlugin extends Plugin {
             return;
         }
         try {
-            try (InputStream input = delivery.openStream();
-                 OutputStream output = getContext().getContentResolver().openOutputStream(uri, "wt")) {
-                if (output == null) throw new IllegalStateException("destination-unavailable");
+            ParcelFileDescriptor destination = getContext().getContentResolver().openFileDescriptor(uri, "wt");
+            if (destination == null) throw new IllegalStateException("destination-unavailable");
+            try (OutputStream output = new ParcelFileDescriptor.AutoCloseOutputStream(destination);
+                 InputStream input = delivery.openStream()) {
+                /* The preflight (last-audit ui 37): refused only when one of
+                   Android's on-device providers handed over a file whose own
+                   volume measured short. Any other provider, a cloud drive
+                   included, goes straight to the write, whose ENOSPC is
+                   still caught below. */
+                Long available = StorageFailure.isLocalProvider(uri.getAuthority())
+                    ? StorageFailure.availableBytes(destination)
+                    : null;
+                if (StorageFailure.refuses(available, expectedLength)) {
+                    throw new StorageFailure.DestinationFull(expectedLength, available);
+                }
                 byte[] buffer = new byte[8192];
                 int read;
                 while ((read = input.read(buffer)) != -1) {
-                    if (delivery.isClosed()) throw new IOException("export-aborted");
+                    if (pendingResetEpoch != resetEpoch.get() || delivery.isClosed()) throw new IOException("export-aborted");
                     output.write(buffer, 0, read);
                 }
             }
@@ -140,7 +164,7 @@ public final class FileDeliveryPlugin extends Plugin {
                 StagedFile.verify(input, expectedLength, expectedHash);
             }
             synchronized (this) {
-                if (staged != delivery || delivery.isClosed()) throw new IOException("export-aborted");
+                if (staged != delivery || pendingResetEpoch != resetEpoch.get() || delivery.isClosed()) throw new IOException("export-aborted");
                 cleanup();
                 JSObject out = new JSObject(); out.put("saved", true); call.resolve(out);
             }
@@ -148,7 +172,7 @@ public final class FileDeliveryPlugin extends Plugin {
             try { DocumentsContract.deleteDocument(getContext().getContentResolver(), uri); }
             catch (Exception ignored) { /* Provider may refuse cleanup; delivery still fails. */ }
             synchronized (this) { if (staged == delivery) cleanup(); }
-            call.reject("export-delivery-failed", error);
+            call.reject("export-delivery-failed", StorageFailure.code(error, StorageFailure.DESTINATION_FULL), error);
         }
     }
 
@@ -157,8 +181,20 @@ public final class FileDeliveryPlugin extends Plugin {
         call.resolve();
     }
 
+    static void resetTransfers() { resetEpoch.incrementAndGet(); }
+
+    void discardStaleFile() {
+        if (staged != null && pendingResetEpoch != resetEpoch.get()) cleanup();
+    }
+
+    @PluginMethod public synchronized void abortPendingTransfers(PluginCall call) {
+        resetTransfers();
+        cleanup();
+        call.resolve();
+    }
+
     private void requireTransfer(PluginCall call) {
-        if (staged == null || transferId == null || !transferId.equals(call.getString("transferId"))) {
+        if (pendingResetEpoch != resetEpoch.get() || staged == null || transferId == null || !transferId.equals(call.getString("transferId"))) {
             throw new IllegalStateException("unknown-export-transfer");
         }
     }

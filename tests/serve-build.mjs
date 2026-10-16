@@ -8,7 +8,7 @@
    request, so the page a check loads is the page a person loads.
 
    What it copies from the production config
-   (deploy/nginx/snippets/engender-journal-site.conf): the two isolation
+   (deploy/nginx/snippets/engender-journal-site.conf): the production CSP and two isolation
    headers SQLite needs, a file served as itself, a missing file under
    /_app/immutable/ answered with 404, and anything else answered with the
    document, which is how this SPA's routes reach the client. It does not
@@ -33,7 +33,12 @@ const TYPES = {
   '.gz': 'application/gzip'
 };
 
+const nginxHeaders = readFileSync(new URL('../deploy/nginx/journal-headers.conf', import.meta.url), 'utf8');
+const csp = nginxHeaders.match(/^add_header\s+Content-Security-Policy\s+"([^"\n]+)"\s+always;/m)?.[1];
+if (!csp) throw new Error('Production nginx Content-Security-Policy header is missing');
+
 const ISOLATION = {
+  'Content-Security-Policy': csp,
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp'
 };
@@ -52,11 +57,12 @@ export function buildRequestHandler(root) {
     } catch {
       pathname = '/';
     }
-    const file = resolve(build, `.${pathname}`);
+    const legacyModel = /^\/tesseract\/lang-data\/(eng|pol)\.traineddata\.gz$/.exec(pathname);
+    const file = resolve(build, `.${legacyModel ? pathname.slice(0, -3) : pathname}`);
     const inside = file === build || file.startsWith(build + sep);
     const isFile = inside && existsSync(file) && statSync(file).isFile();
 
-    if (!isFile && pathname.startsWith('/_app/immutable/')) {
+    if (!isFile && (pathname.startsWith('/_app/immutable/') || pathname.startsWith('/tesseract/'))) {
       res.writeHead(404, { ...ISOLATION, 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('not found');
       return;

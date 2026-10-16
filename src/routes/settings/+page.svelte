@@ -7,15 +7,17 @@
      hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
      also drops the row's cursor and its :active wash). */
   import { page } from '$app/state';
+  import { appWordmark } from '$lib/disguise/identity';
   import { m } from '$lib/paraglide/messages';
-  import { setLocale, getLocale } from '$lib/paraglide/runtime';
+  import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
+  import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { replaceRoute } from '$lib/navigation/smart-back';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Mark from '$lib/components/Mark.svelte';
@@ -152,10 +154,30 @@
       .join(', ')
   );
 
-  function setLanguage(v: string) {
-    prefs.language = v as typeof prefs.language;
-    const target = v === 'system' ? ((navigator.language || 'en').startsWith('pl') ? 'pl' : 'en') : (v as 'en' | 'pl');
-    if (target !== getLocale()) setLocale(target); // reloads; all state is persisted
+  /* Durable first (last-audit UI ticket 02): on Android the projection
+     moving is what flips the launcher alias and closes the app, so
+     prefs.disguise changes only once SQLite has the answer. The switch
+     shows that answer while it saves and, like every tapped write, takes
+     no other until it has: a second write in flight would let the first
+     one's projection flip the alias, and close the app, under an answer
+     it then never saves. setPreferenceDurably logs a refused write and
+     leaves the projection alone, which is how this one knows to say so
+     and let the switch fall back to the stored value. */
+  const disguiseWrite = writer();
+  let disguiseAnswer = $state<boolean | null>(null);
+  async function setDisguise(on: boolean) {
+    if (disguiseWrite.busy) return;
+    disguiseAnswer = on;
+    await disguiseWrite.run(async () => {
+      await setPreferenceDurably('disguise', on);
+      if (prefs.disguise !== on) throw new Error('The disguise preference was not saved');
+    }, m.write_failed());
+    disguiseAnswer = null;
+  }
+
+  async function setLanguage(v: string) {
+    await setPreferenceDurably('language', v as typeof prefs.language);
+    activateLanguagePreference();
   }
 
   function pickPalette(key: string) {
@@ -445,7 +467,7 @@
   </ListCard>
 
   <p class="muted small" style="text-align:center;margin-top:var(--space-5)">
-    <span translate="no">{m.app_name()}</span> · {m.footer_note()}
+    <span translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span> · {m.footer_note()}
   </p>
 
   <Sheet bind:open={scalesSheet} title={m.gender_scales()}>
@@ -539,7 +561,7 @@
     </ListCard>
   </Sheet>
 
-  <Sheet bind:open={disguiseSheet} title={m.disguise_row()}>
+  <Sheet busy={disguiseWrite.busy} bind:open={disguiseSheet} title={m.disguise_row()}>
     <h3>{m.disguise_row()}</h3>
     <div class="stack-3">
       <div class="spread">
@@ -550,15 +572,13 @@
           </span>
         </span>
         <Switch
-          checked={prefs.disguise}
+          checked={disguiseAnswer ?? prefs.disguise}
           label={m.disguise_app_title()}
-          onChange={(v) => {
-            prefs.disguise = v;
-          }}
+          onChange={(v) => void setDisguise(v)}
         />
       </div>
       <!-- The same block setup's last question draws (ticket 32). -->
-      <DisguisePreview on={prefs.disguise} />
+      <DisguisePreview on={disguiseAnswer ?? prefs.disguise} />
     </div>
   </Sheet>
 
@@ -635,6 +655,7 @@
         { value: 'pl', label: 'Polski' },
       ]}
       value={prefs.language}
+      selectOnArrow={false}
       onChange={setLanguage}
     />
   </Sheet>
@@ -710,7 +731,7 @@
              left is the name in type, which is what every surface carrying
              the mark falls back to (ADR-0014). -->
         <h2 class="lockup about-lockup" translate="no">
-          <Mark size={40} crop="tile" /><span class="lockup-word">{m.app_name()}</span>
+          <Mark size={40} crop="tile" /><span class="lockup-word">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span>
         </h2>
         <p class="about-version">
           {m.version()}

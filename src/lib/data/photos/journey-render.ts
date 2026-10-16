@@ -58,9 +58,9 @@ interface JourneyRenderOptions {
 }
 
 /** The abort check, spelled out rather than taken from signal's own
-    throwIfAborted(): that landed in Chrome 100 and this app's floor is
-    WebView 87 (ADR-0023), which is exactly the trap Object.hasOwn set there.
-    `aborted` and the DOMException constructor are both far below it. */
+    throwIfAborted(): that landed in Chrome 100, above the former WebView 87
+    floor (ADR-0023). The explicit check remains compatible with the other
+    browser targets. Android's current floor is WebView 104. */
 function stopIfAsked(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new DOMException('the journey export was stopped', 'AbortError');
 }

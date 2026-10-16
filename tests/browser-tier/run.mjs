@@ -17,9 +17,14 @@ import { readyAttr, resultGlobal } from '../probe-handshake.mjs';
 import { builtArchiveRecovery } from './archive-built-recovery.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from './archive-recovery.mjs';
 import { checkRadioGroup } from './radio-controls.mjs';
+import { entryContextualText } from './entry-contextual-text.mjs';
+import { focusSwaps } from './focus-swaps.mjs';
+import { trashRestore } from './trash-restore.mjs';
+import { focusArrival } from './focus-arrival.mjs';
 import { coldUnlock } from './cold-unlock.mjs';
 import { firstRunSetup } from './first-run-setup.mjs';
 import { firstRunBuiltSetup } from './first-run-built-setup.mjs';
+import { verifyWarmSchema } from '../warm-schema-check.mjs';
 
 /** A probe's casingOf() reading (casing.ts) says the line is cased: the
     element under it is stroked in the role's edge, over the same geometry,
@@ -83,6 +88,25 @@ async function load(path, name) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
+await block('named focus after content swaps', 40, async () => {
+  for (const motion of ['reduce', 'full'])
+    for (const result of await focusSwaps(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
+});
+
+await block('Trash restore admits one write, reports failure and collapses', 14, async () => {
+  for (const motion of ['reduce', 'full'])
+    for (const result of await trashRestore(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
+});
+
+await block('cold unlock focuses the arrived screen', 1, async () => {
+  for (const result of await focusArrival(browser)) ok(result);
+});
+
+await block('layout managers follow navigation and gates', 1, async () => {
+  await import('../manager-lifecycle-check.mjs');
+  ok('navigation, Back, legacy links, focus, chooser cleanup and lock/unlock');
+});
+
 await block('first-run credentials survive stale and simultaneous tabs', 8, async () => {
   for (const result of await firstRunSetup(browser, `http://localhost:${port}`)) {
     ok(`first-run ownership: ${JSON.stringify(result)}`);
@@ -94,6 +118,10 @@ await block('cold authentication respects newer locks', 5, async () => {
   for (const mode of await coldUnlock(browser, `http://localhost:${port}`)) {
     ok(`${mode} cold authentication cancels after a newer lock and accepts a fresh attempt`);
   }
+});
+
+await block('private reopening checks schema before journal access', 5, async () => {
+  for (const result of await verifyWarmSchema()) ok(`warm schema: ${JSON.stringify(result)}`);
 });
 
 await block('Archive after browser installation loss', 2, async () => {
@@ -126,6 +154,17 @@ await block('Safe space optional Good moments', 12, async () => {
   for (const item of result.safeSpace) {
     if (item.passed) ok(item.name);
     else fail(item.name, item.error ?? 'rendered Safe space contract failed');
+  }
+});
+
+await block('late reads on Good moments and Tryouts, light and dark', 24, async () => {
+  for (const theme of ['light', 'dark']) {
+    const result = await load(`/screen-mount.html?late-reads=1&theme=${theme}`, 'screen-mount');
+    if (!Array.isArray(result.lateReads)) throw new Error(result.error ?? 'missing late-reads results');
+    for (const item of result.lateReads) {
+      if (item.passed) ok(`${theme}: ${item.name}`);
+      else fail(`${theme}: ${item.name}`, item.error ?? 'rendered late-reads contract failed');
+    }
   }
 });
 
@@ -200,6 +239,31 @@ await block('failed encrypted pool initialization preserves journal data', 8, as
   check(r.driver.preserved, 'the production worker leaves the old owner journal readable and persistent');
 });
 
+await block('interrupted encrypted writes recover their hot journal', 7, async () => {
+  const r = await load('/hot-journal.html', 'hot-journal');
+  if (r.error || r.locks.error) throw new Error(r.error ?? r.locks.error);
+  const recovery = r.recovery;
+  const path = '/hot-journal-synthetic.sqlite3';
+  const file = (slots, name) => slots.find((slot) => slot.name === name);
+  const check = (condition, label) => condition ? ok(label) : fail(label, JSON.stringify(r));
+  check(JSON.stringify(r.locks.locks) === '[0,0,1,1,0]', 'SAHPool reserved-lock answers follow idle, shared, reserved, spilled and rolled-back ownership');
+  check(recovery.contention, 'another worker cannot acquire the live writer pool');
+  check(recovery.inside[0].n === 512 && recovery.inside[0].bytes > 1000000, 'the interrupted transaction changes every synthetic row');
+  check(file(recovery.interrupted, `${path}-journal`)?.bytes > 4096 && file(recovery.interrupted, path)?.bytes > file(recovery.before, path)?.bytes && file(recovery.before, path)?.hash !== file(recovery.interrupted, path)?.hash, 'worker termination leaves a hot journal beside a database changed by cache spill');
+  check(recovery.after[0].n === 512 && recovery.after[0].bytes === 5012 && recovery.marked[0].n === 0, 'reopening restores all rows and bytes from before the interrupted transaction');
+  check(JSON.stringify(recovery.integrity) === '[{"integrity_check":"ok"}]', 'the recovered encrypted database passes integrity_check');
+  check(!file(recovery.recovered, `${path}-journal`) && file(recovery.before, path)?.bytes === file(recovery.recovered, path)?.bytes, 'SQLite removes the recovered journal and restores the database size');
+});
+
+await block('covered weekly dose slots agree across rendered screens', 2, async () => {
+  for (const dose of ['yesterday', 'today']) {
+    const r = await load(`/dose-slot-screens.html?dose=${dose}`, 'dose-slot-screens');
+    if (r.error) throw new Error(r.error);
+    if (r.results?.length !== 3 || r.next !== r.today + 7) throw new Error(JSON.stringify(r));
+    ok(`${dose} patch dose: Today panel/pin, Care and Transition state the next uncovered weekly slot`);
+  }
+});
+
 // --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
 await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');
@@ -238,6 +302,16 @@ await block('production foreign key enforcement', 4, async () => {
   else fail('session, procedure and checklist deletions remove their child rows', JSON.stringify(r.children));
   if (r.manifest.length === 0) ok('deleted session photos do not travel in the next archive');
   else fail('deleted session photos do not travel in the next archive', JSON.stringify(r.manifest));
+});
+
+await block('Replace boot housekeeping on encrypted OPFS', 7, async () => {
+  const result = await load('/housekeeping.html', 'housekeeping');
+  if (result.error) throw new Error(result.error);
+  for (const check of result.checks) {
+    if (check.ok) ok(check.name);
+    else fail(check.name, check.detail);
+  }
+  if (result.checks.length !== 7) throw new Error(`Expected 7 housekeeping checks, got ${result.checks.length}`);
 });
 
 // --- Ticket 04: the real driver + boot() against the real schema -----------
@@ -2130,6 +2204,35 @@ await block('phase 8 features ticket 09 voice figure', 8, async () => {
     );
 });
 
+await block('entry capture ownership', 14, async () => {
+  const r = await load('/entry-capture.html', 'entry-capture-probe');
+  if (r.error) throw new Error(r.error);
+  for (const row of r.late) {
+    const closed = row.refusal || (row.tracks.length > 0 && row.tracks.every(state => state === 'ended'));
+    if (row.requested === 1 && row.pending && closed && row.recorders === 0 &&
+        row.attachedToReplacement === 0 && row.delayedFeedback === 0)
+      ok(`${row.kind}: ${row.taps} pending taps and late ${row.refusal ? 'refusal' : 'permission'} leave no detached capture`);
+    else fail('pending entry capture owns its late result', JSON.stringify(row));
+  }
+  for (const row of r.failures) {
+    if (row.tracks.length >= 2 && row.tracks.every(state => state === 'ended') && row.retryEnabled &&
+        row.feedback === (row.failure === 'teardown-stop' ? 0 : 1) &&
+        (row.failure === 'teardown-stop' || row.retried))
+      ok(`video ${row.failure}: tracks close, current owner can retry, teardown reports no delayed feedback`);
+    else fail('video failure releases ownership', JSON.stringify(row));
+  }
+  for (const row of r.healthy) {
+    if (row.count === 1 && row.bytes > 0 && row.encrypted && row.storedPlayback && row.tracks.every(state => state === 'ended'))
+      ok(`${row.kind}: refusal retries into capture, playback, encrypted save and stored playback`);
+    else fail('healthy entry capture and save', JSON.stringify(row));
+  }
+  if (r.intervals === 0 && r.capTimers === 0) ok('entry capture leaves no countdown or cap timer');
+  else fail('entry capture timers stop', JSON.stringify({ intervals: r.intervals, capTimers: r.capTimers }));
+  if (r.cap.bytes > 0 && r.cap.tracks.length === 2 && r.cap.tracks.every(state => state === 'ended'))
+    ok('the actual 30-second video cap stops every track and retains capture bytes');
+  else fail('actual video duration cap', JSON.stringify(r.cap));
+});
+
 // --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
 await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
   const r = await load('/mic-teardown.html', 'mic-teardown-probe');
@@ -2453,6 +2556,11 @@ await block('ticket 29 browser tier', 7, async () => {
       'one benchmark and a figure never measured read as two different empty cards',
       JSON.stringify({ single: [single.plots, single.empty], neverMeasured: [neverMeasured.plots, neverMeasured.empty] })
     );
+});
+
+await block('entry contextual text survives typing and clears before save', 1, async () => {
+  await entryContextualText(page, `http://localhost:${port}`);
+  ok('new and existing entries preserve typed spaces and newlines, trim on save, and save cleared recovery without a note');
 });
 
 // --- Phase 8 audit ticket 25: a screen's own decision, read as a value -----

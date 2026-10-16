@@ -14,7 +14,8 @@
         replacements, including their derived thumbnails, so re-importing
         an archive cannot overwrite bytes the current journal still owns.
      2. In one transaction: reconcile the built-in vocabulary,
-        unconditionally and first, then swap the journal. Key identity makes
+        unconditionally and first, then swap the journal and its portable
+        preferences for Replace. Key identity makes
         the reconcile idempotent, and it runs before either mode applies
         because a Replace must not be able to leave the journal short of a
         built-in the archive's own rows reference. It is inside the same
@@ -52,31 +53,31 @@
    it discards is the registry's too, in the reverse of the order the inserts
    run in (ADR-0027): until phase 5 ticket 13 that was 51 statements
    hand-ordered in this file, the one list around here the registry did not
-   derive. Preferences are not the journal's (ADR-0003) and nothing here
-   touches the pref table, which is what leaves the PIN, the app-lock flags
-   and the disguise settings in place through the most destructive path in
-   the app.
+   derive. Full Archive Replace also writes validated portable preferences
+   in that transaction (ADR-0003). Device-local settings stay untouched,
+   including the PIN, app-lock flags and disguise. Row-only imports omit
+   preferences, and Merge keeps the destination's preferences.
 
-   What the rows contain is validated by the schema as they are written, which
-   is why every insert is inside the transaction: a value the columns refuse -
-   a reminder with no rule, an entry with no day - rolls the whole import back
-   and leaves the journal as it was. Only the payload's shape is checked up
-   front, because a section that is not an array would otherwise fail as a
-   TypeError that reads like a bug in this file rather than like a damaged
-   file on disk. */
+   Row identities, scalar types and safe numeric values are checked before
+   the file stream or transaction starts. The schema still enforces relational
+   and domain constraints inside the transaction, so a refused write rolls the
+   import back rather than leaving a partial journal. */
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
-import type { ArchiveJournal } from '../archive/payload';
+import type { ArchiveJournal, PortablePreferences } from '../archive/payload';
+import { restorePortablePreferencesWithin } from '../prefs/preferences';
+import type { PreferenceValues } from '../prefs/catalogue';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { filesOf } from '../photos/names';
 import { documentFilesOf } from './documents';
-import { readFileOwnership } from './fileOwnership';
+import { assertArchiveFileOwnership, readFileOwnership } from './fileOwnership';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
-import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
+import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS } from './archiveSections';
+import { assertArchiveRows } from './archiveRowValidation';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -86,6 +87,12 @@ export type RestoreMode = 'replace' | 'merge';
     of images. */
 export interface RestoreContents {
   journal: ArchiveJournal;
+  /** Portable preferences travel with a full Archive. Row-only callers omit
+      this property; an older Archive may provide undefined preferences. */
+  preferences?: Partial<PortablePreferences> | null;
+  /** Capture authoritative values while Replace still owns its transaction.
+      The caller publishes them only after this operation commits. */
+  onPreferencesPrepared?(values: PreferenceValues): void;
   files: AsyncIterable<{ name: string; bytes: Uint8Array }>;
   /** How many files that stream will deliver, when the caller knows - the
       manifest inside the payload says so, and an importer that has opened
@@ -267,8 +274,8 @@ async function restoreWithin(
   onProgress?: OnRestoreProgress,
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
+  assertRestorable(contents.journal);
   const original = aliasLegacyConsults(contents.journal);
-  assertRestorable(original);
   const existing = new Set(await files.list());
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
@@ -306,6 +313,10 @@ async function restoreWithin(
       await applyArchiveJournal({ driver, mode, journal, ts: Date.now() }, undefined, (done, total) =>
         onProgress?.({ stage: 'rows', done, total })
       );
+      if (mode === 'replace' && 'preferences' in contents) {
+        const preferences = await restorePortablePreferencesWithin(driver, contents.preferences);
+        contents.onPreferencesPrepared?.(preferences);
+      }
       if (commit && before) {
         const after = await countRows(driver, commit.counting);
         added = Object.fromEntries(Object.keys(before).map((name) => [name, after[name] - before[name]]));
@@ -357,7 +368,7 @@ export async function verifyArchive(
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const { payload, files } = await openArchive(source, password);
-  assertRestorable(aliasLegacyConsults(payload.journal));
+  assertRestorable(payload.journal);
 
   /* One stage, so a pair rather than a RestoreProgress: the whole drill is
      the drain, and the manifest already says how many files that is. */
@@ -370,7 +381,7 @@ export async function verifyArchive(
 /** Reject unknown sections before writing any files or rows, even when the
     archive declares a known format version. Ignoring a section would silently
     lose the data it carries. Known sections must be arrays before their apply
-    functions can read them. */
+    functions can read them; each row must satisfy its wire contract. */
 function assertRestorable(journal: ArchiveJournal): void {
   for (const section of Object.keys(journal ?? {})) {
     // ADR-0037 retired this known pre-release section and deliberately drops it.
@@ -378,11 +389,16 @@ function assertRestorable(journal: ArchiveJournal): void {
       throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
     }
   }
-  for (const section of ARCHIVE_SECTION_NAMES) {
+  for (const { name, flatTable } of ARCHIVE_SECTIONS) {
+    const section = name as keyof ArchiveJournal;
+    // Older archives lift validated procedure consults into this absent section.
+    if (section === 'appointments' && journal?.appointments === undefined) continue;
     if (!Array.isArray(journal?.[section])) {
       throw new CorruptArchiveError(`the archive's ${section} are not readable`);
     }
+    assertArchiveRows(section, journal[section], flatTable);
   }
+  assertArchiveFileOwnership(journal);
 }
 
 /** Every journal row this device has, gone: one operation, ordered by the

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { withEntryListReturn } from '$lib/navigation/sourceRecord';
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Search (phase 5 ticket 22), rebuilt on the kit.
 
      Three things were wrong with it as a screen, none of them about what it
@@ -317,7 +319,7 @@
     const draw = drawRandomEntry(hits, drawnIds);
     if (!draw) return;
     drawnIds = draw.drawnIds;
-    void goto(`/entry/${draw.entry.id}`);
+    void goto(withEntryListReturn(`/entry/${draw.entry.id}`, page.url));
   }
 
   /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
@@ -725,7 +727,7 @@
                     icon={row.icon}
                     title={row.excerpt}
                     subtitle={row.label}
-                    href={row.href}
+                    href={withEntryListReturn(row.href, page.url)}
                     data-search-hit={row.area}
                   >
                     {#snippet trailing()}
@@ -838,7 +840,7 @@
     <h3>{m.saved_question_save_sheet()}</h3>
     <Field label={m.saved_question_name_label()} id="saved-question-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="saved-question-name"

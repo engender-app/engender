@@ -64,6 +64,24 @@ describe('runAndroidAutoExport', () => {
     });
   });
 
+  test('abort frees the native slot while an attachment read remains pending', async () => {
+    const stop = new AbortController();
+    let reading!: () => void;
+    const started = new Promise<void>((resolve) => { reading = resolve; });
+    const source: ArchiveSnapshot = {
+      journal: emptyArchiveJournal(),
+      files: [{ name: 'held.jpg', length: 1 }],
+      readFile: async () => { reading(); return new Promise<Uint8Array>(() => {}); }
+    };
+    const pending = runAndroidAutoExport({ snapshot: source, preferences: PREFERENCE_DEFAULTS },
+      { watch: { signal: stop.signal }, recordBackup: vi.fn() });
+    await started;
+    stop.abort();
+    expect(await pending).toEqual({ outcome: 'cancelled' });
+    expect(androidAutoExport.abortBackup).toHaveBeenCalledWith({ transferId: 'transfer-1' });
+    expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
+  });
+
   test('streams bounded pieces before recording a verified backup', async () => {
     let recorded: number | null = null;
 

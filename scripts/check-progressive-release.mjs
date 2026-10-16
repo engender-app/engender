@@ -4,14 +4,15 @@
    exercises recorded before a channel is marked live on the landing site.
 */
 import { execFileSync } from 'node:child_process';
-import { RELEASE_VERSION_RE } from './cut-release-tag.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   CHANNEL_STAGE_GATE,
   RELEASE_MATRIX_CHECKS,
+  RELEASE_VERSION_RE,
   STAGE_EVIDENCE_KEYS,
   STAGE_ORDER,
+  requiredReleaseStages,
   stageIndex
 } from './progressive-release-gate-contract.mjs';
 
@@ -34,26 +35,35 @@ function parseIsoDate(value) {
   return Number.isNaN(t) ? null : t;
 }
 
+/** @param {unknown} record
+ * @returns {StageName[]}
+ */
+function claimedReleaseStages(record) {
+  if (!record || typeof record !== 'object') return [];
+  const { stages, channels } = /** @type {ProgressiveRecord} */ (record);
+  return /** @type {StageName[]} */ (STAGE_ORDER.filter((stage) => {
+    const data = /** @type {{passedAt?: unknown, releaseMatrix?: {ranAt?: unknown, checks?: Record<string, unknown>}, evidence?: Record<string, unknown>} | undefined} */ (stages?.[stage]);
+    return Boolean(data && (data.passedAt || data.releaseMatrix?.ranAt ||
+      Object.values(data.releaseMatrix?.checks ?? {}).includes(true) ||
+      Object.values(data.evidence ?? {}).includes(true))) ||
+      Object.entries(CHANNEL_STAGE_GATE).some(([channel, gate]) => gate === stage &&
+        (/** @type {{state?: unknown} | undefined} */ (channels?.[channel]))?.state === 'live');
+  }));
+}
+
 /** Infer claims from timestamps, exercise evidence, and live channels.
  * @param {unknown} record
  * @returns {StageName | null}
  */
 export function highestClaimedStage(record) {
-  if (!record || typeof record !== 'object') return null;
-  const { stages, channels } = /** @type {ProgressiveRecord} */ (record);
-  let highest = -1;
-  for (const [index, stage] of STAGE_ORDER.entries()) {
-    const data = /** @type {{passedAt?: unknown, releaseMatrix?: {ranAt?: unknown, checks?: Record<string, unknown>}, evidence?: Record<string, unknown>} | undefined} */ (stages?.[stage]);
-    if (data && (data.passedAt || data.releaseMatrix?.ranAt ||
-      Object.values(data.releaseMatrix?.checks ?? {}).includes(true) ||
-      Object.values(data.evidence ?? {}).includes(true))) highest = index;
-  }
-  for (const [channel, gate] of Object.entries(CHANNEL_STAGE_GATE)) {
-    if ((/** @type {{state?: unknown} | undefined} */ (channels?.[channel]))?.state === 'live') {
-      highest = Math.max(highest, stageIndex(gate));
-    }
-  }
-  return highest < 0 ? null : /** @type {StageName} */ (STAGE_ORDER[highest]);
+  return claimedReleaseStages(record).at(-1) ?? null;
+}
+
+/** @param {unknown} record
+ * @param {StageName | null} target
+ */
+function requiredStagesForRecord(record, target) {
+  return new Set([target, ...claimedReleaseStages(record)].flatMap(requiredReleaseStages));
 }
 
 /**
@@ -82,9 +92,10 @@ export function progressiveReleaseProblems(record, target = highestClaimedStage(
   /** @type {Record<string, number>} */
   const stagePassedAt = {};
 
+  const requiredStages = requiredStagesForRecord(record, target);
   for (let idx = 0; idx < STAGE_ORDER.length; idx += 1) {
-    const required = idx <= targetIdx;
     const stageName = /** @type {StageName} */ (STAGE_ORDER[idx]);
+    const required = requiredStages.has(stageName);
     const stageData = /** @type {Record<string, unknown>} */ (/** @type {Record<string, unknown>} */ (stages)[stageName]);
     if (!stageData || typeof stageData !== 'object') {
       problems.push(`Missing stage record: ${stageName}`);
@@ -156,10 +167,6 @@ export function progressiveReleaseProblems(record, target = highestClaimedStage(
     const gateIdx = stageIndex(gateStage);
     const gatePassedAt = stagePassedAt[gateStage];
 
-    if (targetIdx >= gateIdx && state !== 'live') {
-      problems.push(`channels.${channel}.state must be 'live' by ${gateStage}.`);
-    }
-
     if (targetIdx < gateIdx && state === 'live') {
       problems.push(`channels.${channel}.state cannot be 'live' before ${gateStage}.`);
     }
@@ -214,7 +221,7 @@ export function publicationReleaseProblems(record, target, version, cwd = proces
     const changed = git(['diff', '--name-only', revision, 'HEAD', '--', '.', ':(exclude)scripts/progressive-release-record.json']);
     if (changed) problems.push(`Publication source differs from candidateRevision: ${changed.split('\n').join(', ')}.`);
     const committedAt = Number(git(['show', '-s', '--format=%ct', revision])) * 1000;
-    for (const stage of STAGE_ORDER.slice(0, stageIndex(target) + 1)) {
+    for (const stage of requiredStagesForRecord(record, target)) {
       const ranAt = parseIsoDate(candidate.stages?.[stage]?.releaseMatrix?.ranAt);
       if (ranAt !== null && ranAt < committedAt) {
         problems.push(`${stage}.releaseMatrix.ranAt predates candidateRevision; rerun the matrix on this candidate.`);

@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { PALETTES } from './palettes.mjs';
-import { launchChromium } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium } from './browser-harness.mjs';
 
 const server = await createServer({ plugins: [{
   name: 'held-hair-completion',
@@ -168,7 +168,7 @@ try {
     }
   }
   for (const locale of ['en', 'pl']) {
-    await page.evaluate((locale) => localStorage.setItem('PARAGLIDE_LOCALE', locale), locale);
+    await setAppLanguage(page, locale);
     await page.reload({ waitUntil: 'networkidle' });
     await page.locator('[data-hair-collage]').waitFor();
     if (await page.locator('[data-hide-demo-bar]').count()) await page.locator('[data-hide-demo-bar]').click();

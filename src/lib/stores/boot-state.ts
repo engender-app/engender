@@ -26,8 +26,11 @@ type BootStatus =
       encryption.
     - `engine`: the database itself never started - the worker or its wasm
       failed to load, or the SQLite build lacks FTS5.
+    - `storage-full`: the device ran out of space, usually while a migration
+      or its pre-migration copy was being written (last-audit ui 37). Freeing
+      space and trying again is the fix, so the retry stays.
     - `unknown`: anything nobody has named yet. */
-export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'unknown';
+export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'storage-full' | 'unknown';
 
 
 interface BootShape {
@@ -78,6 +81,7 @@ type NeedsAuthenticationState = BootShape & {
 
 type NeedsDeviceRecoveryState = BootShape & {
   status: 'needs-device-recovery';
+  recoveryReason: 'device-key' | 'missing-access';
   error: null;
   recoverable: false;
   persistDenied: false;
@@ -209,12 +213,13 @@ function needsAuthentication(state: BootState, androidKey: AndroidKeyRefusal | n
   };
 }
 
-function needsDeviceRecovery(state: BootState): NeedsDeviceRecoveryState {
+function needsDeviceRecovery(state: BootState, recoveryReason: NeedsDeviceRecoveryState['recoveryReason'] = 'device-key'): NeedsDeviceRecoveryState {
   if (state.status !== 'booting' && state.status !== 'needs-unlock') {
     invalidTransition(state, 'needs-device-recovery');
   }
   return {
     status: 'needs-device-recovery',
+    recoveryReason,
     accessMode: state.accessMode,
     ...base()
   };
@@ -228,7 +233,9 @@ function legacyRefused(state: BootState): LegacyRefusedState {
 }
 
 function schemaTooNew(state: BootState): SchemaTooNewState {
-  if (state.status !== 'booting') invalidTransition(state, 'schema-too-new');
+  if (state.status !== 'booting' && !(state.status === 'ready' && state.journal === null)) {
+    invalidTransition(state, 'schema-too-new');
+  }
   return {
     status: 'schema-too-new',
     accessMode: state.accessMode,

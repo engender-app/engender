@@ -59,7 +59,8 @@
     try {
       await changeJournalPassphrase(current, next);
       toast(m.pp_changed_toast());
-      if (!recoveryKeyPresence.exists) {
+      // The change discarded any key nobody confirmed (last-audit UI 42).
+      if (!recoveryKeyPresence.active) {
         offering = true;
         return;
       }

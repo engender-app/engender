@@ -1,5 +1,10 @@
 {
   "sources": {
+    "home-ambient-check": "Provisional 90-second estimate pending hosted measurement; two real 30-second idle deadlines",
+    "dose-amount-check": "Provisional 60-second estimate pending hosted measurement",
+    "margin-note-dismissal-check": "Provisional 60-second estimate pending hosted measurement",
+    "range-editors-check": "Provisional 120-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
+    "accessible-names-check": "Provisional 60-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
     "hosted": {
       "run": "https://github.com/engender-app/engender/actions/runs/37223138118",
       "revision": "07d8347caa92f7b0ab8a4fc0788f4d46497289c5",
@@ -9,7 +14,19 @@
     "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/settings-scroll-check.mjs",
     "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs",
     "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
-    "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs"
+    "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs",
+    "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14",
+    "wear-entry-check": "Local Fedora run on 2026-10-14, excluding build; tests/wear-entry-check.mjs",
+    "in-place-scroll-check": "Local Fedora run on 2026-10-15, dev server; tests/in-place-scroll-check.mjs",
+    "deep-link-consumption-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-15",
+    "entry-source-return-check": "Provisional 120-second estimate pending hosted measurement; local Chromium source-return proof",
+    "segmented-chosen-clear": "Local Fedora run on 2026-10-15, dev server; tests/segmented-chosen-clear.mjs",
+    "milestone-era-label-clear": "Local Fedora run on 2026-10-15, dev server; tests/milestone-era-label-clear.mjs",
+    "plane-date-labels-clear": "Local Fedora run on 2026-10-15, dev server; tests/plane-date-labels-clear.mjs",
+    "toast-stack-check": "Local Fedora run on 2026-10-15, dev server; tests/toast-stack-check.mjs",
+    "update-notice-check": "Local Fedora run on 2026-10-16, dev server; tests/update-notice-check.mjs",
+    "recovery-key-replacement-check": "Local Fedora run on 2026-10-16, dev server; tests/recovery-key-replacement-check.mjs",
+    "missing-access-recovery-check": "Local Fedora run on 2026-10-16, real OPFS/SQLite with six access-loss cases; tests/missing-access-recovery-check.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -28,6 +45,10 @@
     "built 6/6": 51.0
   },
   "guards": {
+    "dose-amount-check": 60,
+    "margin-note-dismissal-check": 60,
+    "range-editors-check": 120,
+    "accessible-names-check": 60,
     "day-addresses": 45,
     "blind-edge-padding-check": 3.49,
     "dilation-schedule-action": 15.38,
@@ -36,12 +57,17 @@
     "body-map-figure-yank": 12.37,
     "chart-tick-readout": 145.92,
     "year-days-list": 18.96,
+    "year-month-labels": 22.22,
     "voice-task-names": 70.88,
     "record-dismissal-check": 52.32,
     "letter-composition-check": 16.17,
     "recovery-key-departure-check": 9.57,
+    "recovery-key-replacement-check": [
+      18.46
+    ],
     "photo-browse-compare": 9.68,
     "photo-grid-batching": 114.33,
+    "in-place-scroll-check": 11.0,
     "photo-export": 26.11,
     "chosen-appointment": 8.88,
     "appointment-entry-check": 18.05,
@@ -65,6 +91,7 @@
     "document-import-check": 14.12,
     "lab-entry-check": 17.73,
     "measurements-entry-check": 20.14,
+    "wear-entry-check": 6,
     "leave-lock-check": 11.66,
     "date-picker-check": 260.39,
     "date-picker-motion": 32.67,
@@ -103,6 +130,7 @@
     "documents-rows-settle": 109.92,
     "tile-arrival-timing": 291.1,
     "home-idle-raster": 93.07,
+    "home-ambient-check": 90,
     "demo-worker-startup": 10,
     "boot-error-alone": 15.04,
     "restore-previous-journal": 41.98,
@@ -113,7 +141,16 @@
     "bfcache-journal-check": 60,
     "android-door-motion": 24.61,
     "milestone-era-handoff-check": 9.72,
-    "hair-removal-interaction-check": 90.71
+    "hair-removal-interaction-check": 90.71,
+    "feedback-concealment-check": 30,
+    "deep-link-consumption-check": 30,
+    "entry-source-return-check": 120,
+    "segmented-chosen-clear": 46.1,
+    "milestone-era-label-clear": 24.6,
+    "plane-date-labels-clear": 34.5,
+    "toast-stack-check": 12.2,
+    "update-notice-check": 9.9,
+    "missing-access-recovery-check": 37.2
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -137,6 +174,9 @@
     "year-days-list": [
       18.96
     ],
+    "year-month-labels": [
+      22.22
+    ],
     "voice-task-names": [
       70.88
     ],
@@ -155,6 +195,9 @@
     ],
     "photo-grid-batching": [
       114.33
+    ],
+    "in-place-scroll-check": [
+      11.0
     ],
     "photo-export": [
       26.11
@@ -224,6 +267,9 @@
     ],
     "measurements-entry-check": [
       20.14
+    ],
+    "wear-entry-check": [
+      6
     ],
     "leave-lock-check": [
       11.66
@@ -369,6 +415,24 @@
     "hair-removal-interaction-check": [
       58.47,
       32.24
+    ],
+    "segmented-chosen-clear": [
+      46.1
+    ],
+    "milestone-era-label-clear": [
+      24.6
+    ],
+    "plane-date-labels-clear": [
+      34.5
+    ],
+    "toast-stack-check": [
+      12.2
+    ],
+    "update-notice-check": [
+      9.9
+    ],
+    "missing-access-recovery-check": [
+      37.2
     ]
   }
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Every dose, and how it sits against the schedule, on the surface kit
      (phase 5 UX ticket 25).
 
@@ -40,6 +41,7 @@
   import {
     expectedAmountOn,
     isInjectionDose,
+    isPositiveDoseAmount,
     isTopicalDose,
     lastInjectionBefore,
     siteRecency,
@@ -68,7 +70,7 @@
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
-  import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { careEpisodeId, careLaneReturnHref } from '$lib/navigation/sourceRecord';
   import Segmented from '$lib/components/Segmented.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
@@ -99,8 +101,9 @@
      one shows an explicit notice instead of scrolling to an unrelated row. */
   let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
   let targetSlotDate = $derived(page.url.searchParams.get('date'));
+  let sourceEpisodeId = $derived(careEpisodeId(page.url));
   /** The schedule view's regimen, picked on this visit (ticket 15); the
-      read weighs it against a Care spine link's `?drug=` and the stored
+      read weighs it against a Care spine link's episode UUID and the stored
       pick, so a link can outrank the preference without writing it. */
   let pickedRegimenDrug = $state<string | null>(null);
 
@@ -110,7 +113,7 @@
       fromEpochDay: from,
       toEpochDay: through,
       deepLinkedDoseId,
-      regimenClaims: [pickedRegimenDrug, page.url.searchParams.get('drug'), prefs.adherenceRegimenPick]
+      regimenClaims: [pickedRegimenDrug, sourceEpisodeId ? { episodeId: sourceEpisodeId } : null, prefs.adherenceRegimenPick]
     })
   );
   let {
@@ -268,10 +271,12 @@
        written - the loop the comment in openEditor below is about. A drug
        that is not one of the active ones falls through to the picker, same
        as arriving with no drug at all. */
-    openEditor(null, page.url.searchParams.get('drug'));
+    openEditor(null, activeEpisodes.find((episode) => episode.id === sourceEpisodeId)?.drug ?? null);
     // A shallow replacement leaves page.url unchanged and replays this arrival.
     const url = new URL(page.url);
     url.searchParams.delete('add');
+    url.searchParams.delete('drug');
+    url.searchParams.delete('lane');
     void replaceRoute(url, { noScroll: true, keepFocus: true });
   });
 
@@ -342,7 +347,9 @@
     return at.length === 1 ? at[0] : null;
   });
 
-  let editorHasAmount = $derived(editor !== null && Number.isFinite(parseFloat(editor.dose)));
+  let editorHasAmount = $derived(editor !== null && (editor.status === 'skipped'
+    ? Number.isFinite(parseFloat(editor.dose))
+    : isPositiveDoseAmount(parseFloat(editor.dose))));
   let editorAmountText = $derived(
     editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_amount_label()
   );
@@ -813,6 +820,7 @@
                 <input
                   class="dose-amount-num"
                   type="number"
+                  step="any"
                   id="dose-amount"
                   name="dose-amount"
                   inputmode="decimal"
@@ -824,7 +832,7 @@
                   value={editor.dose}
                   oninput={(event) => { editor.dose = event.currentTarget.value; }}
                 />
-                <input
+                <input autocomplete={journalTextAutocomplete()}
                   class="dose-amount-unit"
                   id="dose-unit"
                   name="dose-unit"
@@ -1043,7 +1051,7 @@
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
           <!-- The amount comes with the drug where a regimen sets one, so it
                is not asked for while the drug still is. -->
-          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{editor.status === 'skipped' ? m.dose_amount_required() : m.dose_amount_positive_required()}</p>{/if}
           {#if editorNeedsDrugPick}<p transition:disclose|local>{m.dose_drug_required()}</p>{/if}
           {#if editorIsInjection && !editor.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
           {#if editorIsTopical && !editor.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}

@@ -226,7 +226,7 @@ try {
     const active = group.querySelector('[aria-checked="true"]');
     const activeBox = active.getBoundingClientRect();
     const trackBox = group.getBoundingClientRect();
-    const hint = document.querySelector('#measurements-picker .segmented-hint-end, #measurements-picker .segmented-hint-start');
+    const hint = document.querySelector('#measurements-picker .segmented-hint-end.is-shown, #measurements-picker .segmented-hint-start.is-shown');
     return {
       canScroll: group.classList.contains('can-scroll'),
       hintPresent: Boolean(hint),

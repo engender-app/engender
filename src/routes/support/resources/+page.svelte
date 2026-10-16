@@ -83,7 +83,7 @@
                      the app - a bell is a reminder. A number reads as a
                      number. -->
                 <span class="resource-way">
-                  <a class="resource-link" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name })}>
+                  <a class="resource-link" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name, phone: resource.phone })}>
                     {resource.phone}
                   </a>
                   {#if resourceHours(resource.key)}
@@ -102,7 +102,7 @@
                   href={resource.url}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={m.resources_open({ name: resource.name })}
+                  aria-label={m.resources_open({ name: resource.name, domain: shownUrl(resource.url) })}
                 >
                   <Icon name="globe" size={16} />
                   <span>{shownUrl(resource.url)}</span>

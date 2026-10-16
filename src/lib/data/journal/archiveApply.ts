@@ -2,7 +2,7 @@
    into the registry by archiveSections.ts and run inside restore.ts's single
    transaction.
 
-   A flat area needs no function here at all: applyFlatTable() below writes it
+   A flat area with one identity needs no function here: applyFlatTable() writes it
    from the descriptor the registry declares (archiveTable.ts). What is left
    is the sections whose merge semantics are their own - a matched row a
    Replace overwrites in place, a child table walked in both modes, a rowid
@@ -22,6 +22,8 @@
    on the way in. */
 
 import { foldText } from '../fold';
+import { drugNameKey } from '../regimenEpisode';
+import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
 import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -134,6 +136,77 @@ export async function applyFlatTable<Row>(
       ts
     ])
   );
+}
+
+type KeyedStock = ArchiveJournal['medicationStock'][number] & { drugKey: string };
+
+async function incomingStock({ driver, journal }: Restoring): Promise<Map<string, KeyedStock>> {
+  const destination = await driver.query<{ uuid: string; drug_key: string }>(
+    'SELECT uuid, drug_key FROM medication_stock'
+  );
+  const uuids = new Set(destination.map((row) => row.uuid));
+  const keys = new Set(destination.map((row) => row.drug_key));
+  const incoming = new Map<string, KeyedStock>();
+  for (const row of journal.medicationStock) {
+    if (uuids.has(row.id)) continue;
+    const drugKey = drugNameKey(row.drug);
+    if (!keys.has(drugKey)) incoming.set(drugKey, { ...row, drugKey });
+  }
+  return incoming;
+}
+
+/** Runs before stock insertion, so destination stock and reminder owners keep
+    precedence. A legacy duplicate group carries only the chosen spelling's
+    automatic reminder. Without wire timestamps, the last matching reminder
+    wins too. Manual reminders and markers unrelated to incoming stock travel
+    through the ordinary uuid applier unchanged. */
+export async function applyReminders(
+  table: FlatTable<ArchiveJournal['reminders'][number]>,
+  restoring: Restoring
+): Promise<void> {
+  const incoming = await incomingStock(restoring);
+  const owners = new Map<string, Set<string>>();
+  for (const row of restoring.journal.medicationStock) {
+    const key = drugNameKey(row.drug);
+    const names = owners.get(key) ?? new Set<string>();
+    names.add(row.drug);
+    owners.set(key, names);
+  }
+  const present = await presentIds(restoring.driver, "SELECT auto_source AS id FROM reminder WHERE auto_source GLOB 'stock:*'");
+  const destinationKeys = new Set([...present].map((source) => drugNameKey(source.slice(STOCK_PREFIX.length))));
+  const keyOf = (row: ArchiveJournal['reminders'][number]) => row.autoSource?.startsWith(STOCK_PREFIX)
+    ? drugNameKey(row.autoSource.slice(STOCK_PREFIX.length)) : null;
+  const selected = new Map<string, ArchiveJournal['reminders'][number]>();
+  for (const row of restoring.journal.reminders) {
+    const key = keyOf(row);
+    if (key === null || !owners.has(key)) continue;
+    const owner = incoming.get(key);
+    if (!owner || destinationKeys.has(key)) continue;
+    if (owners.get(key)!.size > 1 && row.autoSource !== `${STOCK_PREFIX}${owner.drug}`) continue;
+    selected.set(key, row);
+  }
+  const rows = restoring.journal.reminders.flatMap((row) => {
+    const key = keyOf(row);
+    if (key === null || !owners.has(key)) return [row];
+    return selected.get(key) === row ? [{ ...row, autoSource: stockAutoSource(incoming.get(key)!.drug) }] : [];
+  });
+  await applyFlatTable(table, rows, restoring);
+}
+
+/** A stock rename keeps its uuid. Keep that destination row before the flat
+    applier also skips a different uuid already counting the same drug key.
+    Legacy siblings have no edit timestamp on the wire; their last complete
+    row in Archive order wins. Replace has cleared destination stock first. */
+export async function applyMedicationStock(
+  table: FlatTable<ArchiveJournal['medicationStock'][number]>,
+  restoring: Restoring
+): Promise<void> {
+  // The key is derived locally and never becomes an Archive wire field.
+  const keyedTable: FlatTable<KeyedStock> = {
+    ...table, identity: 'drug_key', columns: { ...table.columns, drug_key: 'drugKey' }
+  };
+  const incoming = await incomingStock(restoring);
+  await applyFlatTable(keyedTable, [...incoming.values()], restoring);
 }
 
 export async function applyDimensions({ driver, mode, journal, ts }: Restoring): Promise<void> {
@@ -651,25 +724,28 @@ export async function applyCounterevidenceSnapshots({ driver, journal, ts }: Res
   await insertRows(driver, 'INSERT INTO doubt_snapshot_entry (snapshot_id, order_index, epoch_day, mood, note)', itemRows);
 }
 
-/* Matched on the pack/goal pair rather than a uuid, the way applyDimensions
-   matches a built-in on its key: a status names a bundled goal, so the
-   same pair on two devices is the same status and a merge has nothing to
-   reconcile. A goal missing from the archive is left alone rather than
-   reset to unchecked - Replace already emptied the table before this ran,
-   and a merge must not undo a status this device recorded. For the same
-   reason a pair already present locally keeps its own status rather than
-   taking the archive's: two devices that recorded different statuses for
-   one goal resolve to whichever one is not overwritten, the same rule
-   that already governed a plain checked/unchecked disagreement before
-   this had a third state to disagree about. */
+/* Bundled goals match by pack/goal rather than uuid. A missing incoming
+   goal leaves local choices alone, and a locally recorded status wins.
+   An unchecked row exists only to hold visibility, so it can take the
+   Archive's status while keeping this device's hidden flag. Replace has
+   already emptied the table before this runs. */
 export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Promise<void> {
-  /* Two columns, so the present-set is built here rather than through
+  /* Two identity columns, so the present map is built here rather than through
      presentIds, which reads a single id column. A newline joins the pair
      because neither key can hold one. */
-  const rows = await driver.query<{ pack_key: string; goal_key: string }>(
-    'SELECT pack_key, goal_key FROM roadmap_check'
+  const rows = await driver.query<{ pack_key: string; goal_key: string; status: string }>(
+    'SELECT pack_key, goal_key, status FROM roadmap_check'
   );
-  const present = new Set(rows.map((row) => `${row.pack_key}\n${row.goal_key}`));
+  const present = new Map(rows.map((row) => [`${row.pack_key}\n${row.goal_key}`, row.status]));
+
+  for (const check of journal.roadmapChecks) {
+    if (check.status !== 'unchecked' && present.get(`${check.packKey}\n${check.goalKey}`) === 'unchecked') {
+      await driver.run(
+        'UPDATE roadmap_check SET status = ?, updated_at = ? WHERE pack_key = ? AND goal_key = ?',
+        [check.status, ts, check.packKey, check.goalKey]
+      );
+    }
+  }
 
   const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
   await insertRows(
@@ -820,9 +896,11 @@ export async function applyMarginNotes({ driver, journal, ts }: Restoring): Prom
 
 export async function applyRevisits({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM revisit');
+  const entriesWithRevisit = await presentIds(driver, 'SELECT entry_id AS id FROM revisit');
   const entryIds = await rowidsByUuid(driver, 'entry', journal.revisits.map((revisit) => revisit.entryId));
   const rows = journal.revisits
-    .filter((revisit) => !present.has(revisit.id) && entryIds.has(revisit.entryId))
+    // A destination entry keeps its revisit even when another device minted a different uuid.
+    .filter((revisit) => !present.has(revisit.id) && entryIds.has(revisit.entryId) && !entriesWithRevisit.has(revisit.entryId))
     .map((revisit) => [
       revisit.id, revisit.entryId, revisit.entryEpochDay, revisit.createdEpochDay, revisit.targetEpochDay, ts
     ]);

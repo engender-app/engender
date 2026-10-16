@@ -72,6 +72,7 @@
      nobody opens. */
 
   import { onMount } from 'svelte';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { PIN_LENGTH } from '$lib/crypto/params';
@@ -150,6 +151,11 @@
   let screen = $state<AccessModeScreen>({ screen: 'list' });
 
   let confirmingPin = $derived(chosenPin !== '');
+  let stepTitle = $derived(screen.screen === 'list'
+    ? (purpose === 'setup' ? m.am_setup_title() : m.am_change_title())
+    : screen.screen === 'secret' && screen.mode === 'pin'
+      ? (confirmingPin ? m.pin_again_title() : m.pin_choose_title())
+      : accessModeTitle(screen.mode));
 
   /* Asked of the browser once, when the module mounts, because the answer
      needs an await and a row cannot wait for one. False until it comes back,
@@ -259,6 +265,13 @@
 
   /** Screen two back to screen one, the mode still chosen (ticket 30) - only
       the typed-so-far secret is thrown away, not the choice that led here. */
+  /** Delegate setup's external Back to the same controls this module draws. */
+  export function back(): void {
+    if (busy) return;
+    if (screen.screen === 'secret') backFromSecret();
+    else if (screen.screen === 'detail') pickAnother();
+  }
+
   function backFromSecret() {
     screen = backToDetail(screen);
     resetSecretFields();
@@ -319,7 +332,13 @@
      the gate's title changes with the screen. -->
 <div class="am-stage">
   {#key screen.screen}
-    <div class="am-stage-screen" in:fieldPart out:fieldPart>
+    <div class="am-stage-screen" in:fieldPart out:fieldPart onintroend={(event) => {
+      if (document.activeElement === document.body || document.activeElement?.closest('[inert]'))
+        focusNamedTarget(event.currentTarget.querySelector<HTMLElement>('[data-access-step-heading]'));
+    }}>
+      {#key stepTitle}
+        <h2 class="visually-hidden" data-access-step-heading {@attach focusNamedTarget}>{stepTitle}</h2>
+      {/key}
 {#if screen.screen === 'list'}
   {#if purpose !== 'recovered'}
     <div class="am-intro">

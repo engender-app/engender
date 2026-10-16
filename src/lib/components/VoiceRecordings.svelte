@@ -27,6 +27,8 @@
      stored, being derivable from the file (ADR-0010), and the row is already
      loading that file's metadata to play it. It counts up rather than
      landing, because a number that changes is a number that moves. */
+  import { page } from '$app/state';
+  import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
   import { SvelteMap } from 'svelte/reactivity';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -77,7 +79,7 @@
                 </span>
                 <a
                   class="icon-btn"
-                  href={`/entry/${r.entryId}`}
+                  href={withListReturn(`/entry/${r.entryId}`, page.url)}
                   data-open-entry={r.id}
                   aria-label={m.vm_open_entry_aria({
                     date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })

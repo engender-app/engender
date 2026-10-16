@@ -3,7 +3,7 @@
    with the headers production sends, or a check passes against a page no
    person will ever load: vite preview's document had no CSP and no held
    module hints. */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
@@ -69,4 +69,14 @@ test('a path that climbs out of build/ gets the document, never the file it name
 test('starting over a tree with no build is refused by name', async () => {
   rmSync(join(root, 'build'), { recursive: true });
   await expect(serveBuild(root)).rejects.toThrow(/build\/index\.html/);
+});
+
+test('every response sends the CSP from the production nginx header, including the service worker', async () => {
+  writeFileSync(join(root, 'build/service-worker.js'), 'self.addEventListener("fetch", () => {});');
+  const nginx = readFileSync(new URL('../deploy/nginx/journal-headers.conf', import.meta.url), 'utf8');
+  const policy = nginx.match(/^add_header\s+Content-Security-Policy\s+"([^"\n]+)"\s+always;/m)?.[1];
+  expect(policy).toBeTruthy();
+  for (const path of ['/', '/service-worker.js', '/_app/immutable/missing.js']) {
+    expect((await get(path)).headers.get('content-security-policy')).toBe(policy);
+  }
 });

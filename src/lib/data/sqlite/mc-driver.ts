@@ -135,7 +135,7 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
     liveConnections.delete(connection);
   }
 
-  const connection = { post, terminate, gone: () => stopped !== null };
+  const connection = { post, terminate, gone: () => stopped !== null, release: () => post<void>('close') };
   liveConnections.add(connection);
   return connection;
 }
@@ -161,15 +161,17 @@ type Connection = ReturnType<typeof connectWorker>;
    close otherwise) tolerates a second `close` later - the worker's own
    handler is idempotent, `db` and `poolUtil` already null.
 
-   A retained document must retire these workers too. Once every close has
-   answered, a new worker can reacquire the pool; connections created during
-   that release wait for it. The prewarm slot cannot retain a closed worker. */
-export function releaseOnPageHide(): Promise<void> {
+   A retained document releases live drivers through their existing drain.
+   Posting close directly would overtake statements inside an admitted
+   transaction. Session disposal still bounds a stalled drain. Once every
+   release settles, a new worker can reacquire the pool; connections created
+   during that release wait for it. The prewarm slot cannot retain a closed worker. */
+export function releaseOnPageHide(retained = false): Promise<void> {
   prewarmed = null;
   const closing = [...liveConnections];
   const done = Promise.all(closing.map(async (connection) => {
     try {
-      if (!connection.gone()) await connection.post('close');
+      if (!connection.gone()) await (retained ? connection.release() : connection.post('close'));
     } catch {
       // A failed worker still needs to be retired.
     } finally {
@@ -184,7 +186,7 @@ export function releaseOnPageHide(): Promise<void> {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', () => { void releaseOnPageHide(); });
+  window.addEventListener('pagehide', (event) => { void releaseOnPageHide(event.persisted); });
 }
 
 /* Start the worker and compile WASM beside the survey and key derivation.
@@ -283,6 +285,8 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     },
     dispose: terminate
   });
+  // The wrapped driver owns transaction draining and bounded-disposal rejection.
+  connection.release = () => driver.close();
 
   /* The copy check and the restore, which are what a failed boot does next
      (ux-carpet 219). boot() closes this driver when migrating fails, and

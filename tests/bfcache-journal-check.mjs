@@ -96,6 +96,16 @@ await page.addInitScript(() => {
           window.releaseReopen = () => receive.call(this, event);
         };
       }
+      if (window.holdSave && message.op === 'run' && /^\s*INSERT INTO entry\b/.test(message.args.sql)) {
+        window.holdSave = false;
+        const receive = this.onmessage;
+        this.onmessage = (event) => {
+          if (event.data.id !== message.id) return receive.call(this, event);
+          this.onmessage = receive;
+          window.saveHeld = true;
+          window.releaseSave = () => receive.call(this, event);
+        };
+      }
       return super.postMessage(message, ...args);
     }
   };
@@ -185,9 +195,14 @@ try {
   await restore();
   await page.waitForFunction(() => window.reopenHeld === true);
   assert.equal(await page.locator('[data-nav-item]').count(), 0, 'recovery has not published route access');
-  await page.evaluate(() => window.releaseReopen());
+  // Leave while the private reopen is held, then return through real BFCache again.
+  // The cancelled reply arrives only after the newer return opens its own worker.
+  await restore();
   await ready();
+  await page.evaluate(() => window.releaseReopen());
   await calendar();
+  assert.equal(await page.evaluate(() => window.historyProof.workers.filter(worker => !worker.retired).length), 1);
+  console.log('PASS repeated actual restoration during held reopen keeps the next retained key and worker');
   // Write through the restored application's UI, then read through normal reload.
   const note = `BFCache saved note ${Date.now()}`;
   await clientRoute('/entry/new/2026-10-05?seedMood=4');
@@ -201,7 +216,15 @@ try {
   await ready();
   assert.equal(await page.locator('#ed-note').inputValue(), note, 'unsaved note survives actual BFCache restoration');
   console.log('PASS unsaved editor note survives actual restoration');
+  // Hold the real INSERT acknowledgement inside the admitted save transaction.
+  // Navigation must drain it, then commit before retiring the old worker.
+  await page.evaluate(() => { window.holdSave = true; });
   await page.locator('[data-save]').click();
+  await page.waitForFunction(() => window.saveHeld === true);
+  await restore();
+  assert.equal(await page.locator('[data-nav-item]').count(), 0, 'admitted save is still draining behind recovery');
+  await page.evaluate(() => window.releaseSave());
+  await ready();
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/new/'));
   await clientRoute('/day/2026-10-05');
   await page.getByText(note, { exact: true }).first().waitFor();
@@ -210,6 +233,7 @@ try {
   await ready();
   await page.getByText(note, { exact: true }).first().waitFor();
   console.log('PASS restored read and saved change survive normal reload');
+  console.log('PASS admitted save commits across actual BFCache navigation and survives reload');
   await calendar();
   for (let cycle = 0; cycle < 2; cycle++) {
     await restore(); await ready(); await calendar();

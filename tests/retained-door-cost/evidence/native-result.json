@@ -1,0 +1,1847 @@
+{
+  "build": {
+    "sourceRevision": "d9c411a83bc05e488cd664e2bd05cbbb84266471",
+    "probeSha256": "7623fee013c3216bad9bf555bfd1103c7897e11a487610dc5e2f9e91a67ec19f",
+    "driverSha256": "89064a2abf5160d7be74065e441bc3c9d6355b1a519b58bb9a042e7b11683f79",
+    "builtAt": "2026-10-14T18:17:53.630Z"
+  },
+  "summary": {
+    "firstEpochDay": 17024,
+    "lastEpochDay": 20676,
+    "entries": 3300,
+    "daysWithEntries": 2619,
+    "photos": 391,
+    "labResults": 136,
+    "milestones": 12,
+    "commonWord": "lustro",
+    "commonWordEntries": 1923,
+    "rareWord": "endokrynolog",
+    "rareWordEntries": 64,
+    "tagWord": "basen",
+    "tagWordEntries": 270,
+    "regionEuphoriaEntries": 242,
+    "hairStagings": 19,
+    "doseEvents": 1466,
+    "additionalDoseEvents": 491,
+    "measurements": 24,
+    "sizeRecords": 11,
+    "hairRemovalSessions": 15,
+    "roadmapChecks": 17,
+    "letters": 4,
+    "tryouts": 6,
+    "personalEffects": 13,
+    "wearSessions": 170,
+    "cycleEvents": 13,
+    "sideEffects": 10,
+    "stockEntries": 2,
+    "checklistItems": 6,
+    "voiceRecordings": 13,
+    "videoNotes": 31,
+    "appointments": 41,
+    "documents": 6,
+    "tryoutWideOpenStartEpochDay": 17514,
+    "lastSingleEpisodeEpochDay": 20525
+  },
+  "generatedInMs": 568899.5,
+  "driver": "native SQLCipher createAndroidSqlite with recordingDriver",
+  "userAgent": "Mozilla/5.0 (Linux; Android 10; K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36",
+  "samples": [
+    {
+      "mode": "current",
+      "index": 0,
+      "traced": false,
+      "saveCompletionMs": 49.40000003576279,
+      "saveSettledMs": 841.9000000357628,
+      "saveStatements": null,
+      "saveBytes": null,
+      "revisitSettledMs": 75.10000002384186,
+      "revisitStatements": null,
+      "revisitBytes": null,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 22.30000001192093
+      },
+      "freshNotes": true,
+      "notesCalls": 0,
+      "hiddenNotesCalls": 1,
+      "hiddenFreshNotes": true,
+      "saveReadOperations": [],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "deferred",
+      "index": 1,
+      "traced": false,
+      "saveCompletionMs": 49,
+      "saveSettledMs": 148.60000002384186,
+      "saveStatements": null,
+      "saveBytes": null,
+      "revisitSettledMs": 800.8000000119209,
+      "revisitStatements": null,
+      "revisitBytes": null,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 26.900000035762787
+      },
+      "freshNotes": true,
+      "notesCalls": 1,
+      "hiddenNotesCalls": 0,
+      "hiddenFreshNotes": false,
+      "saveReadOperations": [],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "deferred",
+      "index": 2,
+      "traced": false,
+      "saveCompletionMs": 46.700000047683716,
+      "saveSettledMs": 149.9000000357628,
+      "saveStatements": null,
+      "saveBytes": null,
+      "revisitSettledMs": 767.9000000357628,
+      "revisitStatements": null,
+      "revisitBytes": null,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 23.700000047683716
+      },
+      "freshNotes": true,
+      "notesCalls": 1,
+      "hiddenNotesCalls": 0,
+      "hiddenFreshNotes": false,
+      "saveReadOperations": [],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "current",
+      "index": 3,
+      "traced": false,
+      "saveCompletionMs": 50.5,
+      "saveSettledMs": 834.5,
+      "saveStatements": null,
+      "saveBytes": null,
+      "revisitSettledMs": 66.20000004768372,
+      "revisitStatements": null,
+      "revisitBytes": null,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 23.5
+      },
+      "freshNotes": true,
+      "notesCalls": 0,
+      "hiddenNotesCalls": 1,
+      "hiddenFreshNotes": true,
+      "saveReadOperations": [],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "current",
+      "index": 4,
+      "traced": false,
+      "saveCompletionMs": 39.700000047683716,
+      "saveSettledMs": 825.8000000119209,
+      "saveStatements": null,
+      "saveBytes": null,
+      "revisitSettledMs": 41.09999996423721,
+      "revisitStatements": null,
+      "revisitBytes": null,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 10.199999988079071
+      },
+      "freshNotes": true,
+      "notesCalls": 0,
+      "hiddenNotesCalls": 1,
+      "hiddenFreshNotes": true,
+      "saveReadOperations": [],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "deferred",
+      "index": 5,
+      "traced": false,
+      "saveCompletionMs": 43.799999952316284,
+      "saveSettledMs": 150.0999999642372,
+      "saveStatements": null,
+      "saveBytes": null,
+      "revisitSettledMs": 783.6999999880791,
+      "revisitStatements": null,
+      "revisitBytes": null,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 14.199999988079071
+      },
+      "freshNotes": true,
+      "notesCalls": 1,
+      "hiddenNotesCalls": 0,
+      "hiddenFreshNotes": false,
+      "saveReadOperations": [],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "current",
+      "index": 6,
+      "traced": true,
+      "saveCompletionMs": 56,
+      "saveSettledMs": 884.1999999880791,
+      "saveStatements": 136,
+      "saveBytes": 807620,
+      "revisitSettledMs": 65.5,
+      "revisitStatements": 0,
+      "revisitBytes": 0,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 23.600000023841858
+      },
+      "freshNotes": true,
+      "notesCalls": 0,
+      "hiddenNotesCalls": 1,
+      "hiddenFreshNotes": true,
+      "saveReadOperations": [
+        {
+          "operation": "revisits.getDueRevisits",
+          "visible": true,
+          "startedAtMs": 743728.3000000119,
+          "completedAtMs": 743747.6999999881
+        },
+        {
+          "operation": "entries.latestBadMomentEntryId",
+          "visible": true,
+          "startedAtMs": 743728.3999999762,
+          "completedAtMs": 743750.1999999881
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": true,
+          "startedAtMs": 743728.3999999762,
+          "completedAtMs": 743751.5999999642
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 743728.5,
+          "completedAtMs": 743753.5
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": true,
+          "startedAtMs": 743728.5,
+          "completedAtMs": 743757.6999999881
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": true,
+          "startedAtMs": 743728.6999999881,
+          "completedAtMs": 744494.5999999642
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": true,
+          "startedAtMs": 743728.6999999881,
+          "completedAtMs": 743760
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": true,
+          "startedAtMs": 743728.6999999881,
+          "completedAtMs": 744495.3999999762
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": true,
+          "startedAtMs": 743728.8000000119,
+          "completedAtMs": 744495.5999999642
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": true,
+          "startedAtMs": 743728.8000000119,
+          "completedAtMs": 743756.3000000119
+        },
+        {
+          "operation": "checklists.getDebriefState",
+          "visible": true,
+          "startedAtMs": 743728.8000000119,
+          "completedAtMs": 744496.3999999762
+        },
+        {
+          "operation": "entries.entriesForDay",
+          "visible": true,
+          "startedAtMs": 743728.8999999762,
+          "completedAtMs": 744497.0999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 743729.0999999642,
+          "completedAtMs": 743779.3000000119
+        },
+        {
+          "operation": "stats.entryCountsByDay",
+          "visible": false,
+          "startedAtMs": 743729.0999999642,
+          "completedAtMs": 743785.0999999642
+        },
+        {
+          "operation": "stats.daySpread",
+          "visible": false,
+          "startedAtMs": 743729.1999999881,
+          "completedAtMs": 743787.1999999881
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": false,
+          "startedAtMs": 743729.1999999881,
+          "completedAtMs": 743751.5999999642
+        },
+        {
+          "operation": "entries.recentDays",
+          "visible": false,
+          "startedAtMs": 743729.1999999881,
+          "completedAtMs": 744497.8999999762
+        },
+        {
+          "operation": "entries.countDistinctDays",
+          "visible": false,
+          "startedAtMs": 743729.3000000119,
+          "completedAtMs": 743800
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 743729.3999999762,
+          "completedAtMs": 743801.1999999881
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 743729.3999999762,
+          "completedAtMs": 743801.1999999881
+        },
+        {
+          "operation": "entries.noteEntries",
+          "visible": false,
+          "startedAtMs": 743729.3999999762,
+          "completedAtMs": 744411.5
+        },
+        {
+          "operation": "correlationCards.getCards",
+          "visible": false,
+          "startedAtMs": 743729.3999999762,
+          "completedAtMs": 744493.0999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 743729.3999999762,
+          "completedAtMs": 744481.0999999642
+        },
+        {
+          "operation": "stats.bodyRegionMap",
+          "visible": false,
+          "startedAtMs": 743729.5,
+          "completedAtMs": 744483.6999999881
+        },
+        {
+          "operation": "entries.counterevidencePool",
+          "visible": false,
+          "startedAtMs": 743729.5999999642,
+          "completedAtMs": 744504.6999999881
+        },
+        {
+          "operation": "stats.recap",
+          "visible": false,
+          "startedAtMs": 743729.6999999881,
+          "completedAtMs": 744485.8999999762
+        },
+        {
+          "operation": "letters.getLetters",
+          "visible": false,
+          "startedAtMs": 743729.6999999881,
+          "completedAtMs": 744486.0999999642
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": false,
+          "startedAtMs": 743729.8999999762,
+          "completedAtMs": 744486.1999999881
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": false,
+          "startedAtMs": 743729.8999999762,
+          "completedAtMs": 744486.3999999762
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": false,
+          "startedAtMs": 743730,
+          "completedAtMs": 743753.5
+        },
+        {
+          "operation": "stats.recap",
+          "visible": false,
+          "startedAtMs": 743730,
+          "completedAtMs": 744487.3000000119
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 743730,
+          "completedAtMs": 743801.1999999881
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": false,
+          "startedAtMs": 743730.0999999642,
+          "completedAtMs": 744489.0999999642
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": false,
+          "startedAtMs": 743730.3999999762,
+          "completedAtMs": 744494.5999999642
+        },
+        {
+          "operation": "letters.getLetterSeals",
+          "visible": false,
+          "startedAtMs": 743730.3999999762,
+          "completedAtMs": 744490.5
+        },
+        {
+          "operation": "wearSessions.getRunningSession",
+          "visible": false,
+          "startedAtMs": 743730.3999999762,
+          "completedAtMs": 744490.5
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": false,
+          "startedAtMs": 743730.3999999762,
+          "completedAtMs": 743760
+        },
+        {
+          "operation": "appointments.getAppointments",
+          "visible": false,
+          "startedAtMs": 743730.3999999762,
+          "completedAtMs": 744490.6999999881
+        },
+        {
+          "operation": "procedures.getProcedures",
+          "visible": false,
+          "startedAtMs": 743730.5,
+          "completedAtMs": 744508.0999999642
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": false,
+          "startedAtMs": 743730.5,
+          "completedAtMs": 744495.3999999762
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": false,
+          "startedAtMs": 743730.5,
+          "completedAtMs": 744495.5999999642
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": false,
+          "startedAtMs": 743730.5,
+          "completedAtMs": 743756.3000000119
+        },
+        {
+          "operation": "voice.lastWriteEpochDay",
+          "visible": false,
+          "startedAtMs": 743730.5,
+          "completedAtMs": 744490.8000000119
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 744486.3999999762,
+          "completedAtMs": 744505.0999999642
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 744486.3999999762,
+          "completedAtMs": 744505.1999999881
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 744486.5,
+          "completedAtMs": 744505.1999999881
+        }
+      ],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "deferred",
+      "index": 7,
+      "traced": true,
+      "saveCompletionMs": 52.30000001192093,
+      "saveSettledMs": 158.19999998807907,
+      "saveStatements": 47,
+      "saveBytes": 16087,
+      "revisitSettledMs": 800.3000000119209,
+      "revisitStatements": 53,
+      "revisitBytes": 782664,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 23.30000001192093
+      },
+      "freshNotes": true,
+      "notesCalls": 1,
+      "hiddenNotesCalls": 0,
+      "hiddenFreshNotes": false,
+      "saveReadOperations": [
+        {
+          "operation": "revisits.getDueRevisits",
+          "visible": true,
+          "startedAtMs": 746069.5999999642,
+          "completedAtMs": 746082.5
+        },
+        {
+          "operation": "entries.latestBadMomentEntryId",
+          "visible": true,
+          "startedAtMs": 746069.6999999881,
+          "completedAtMs": 746084.6999999881
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": true,
+          "startedAtMs": 746069.8000000119,
+          "completedAtMs": 746086
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 746069.8000000119,
+          "completedAtMs": 746090.3999999762
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": true,
+          "startedAtMs": 746069.8000000119,
+          "completedAtMs": 746092.3999999762
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": true,
+          "startedAtMs": 746069.8999999762,
+          "completedAtMs": 746110.5
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": true,
+          "startedAtMs": 746070,
+          "completedAtMs": 746095.0999999642
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": true,
+          "startedAtMs": 746070,
+          "completedAtMs": 746114.5
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": true,
+          "startedAtMs": 746070,
+          "completedAtMs": 746120
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": true,
+          "startedAtMs": 746070,
+          "completedAtMs": 746091.1999999881
+        },
+        {
+          "operation": "checklists.getDebriefState",
+          "visible": true,
+          "startedAtMs": 746070.0999999642,
+          "completedAtMs": 746121
+        },
+        {
+          "operation": "entries.entriesForDay",
+          "visible": true,
+          "startedAtMs": 746070.0999999642,
+          "completedAtMs": 746127.5999999642
+        }
+      ],
+      "revisitReadOperations": [
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 746197.3000000119,
+          "completedAtMs": 746211.8000000119
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 746197.5,
+          "completedAtMs": 746211.8000000119
+        },
+        {
+          "operation": "entries.noteEntries",
+          "visible": true,
+          "startedAtMs": 746197.5,
+          "completedAtMs": 746846.0999999642
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 746197.5999999642,
+          "completedAtMs": 746912.5999999642
+        },
+        {
+          "operation": "wordIgnore.getIgnoredWords",
+          "visible": true,
+          "startedAtMs": 746197.5999999642,
+          "completedAtMs": 746915.6999999881
+        },
+        {
+          "operation": "correlationCards.getCards",
+          "visible": true,
+          "startedAtMs": 746197.5999999642,
+          "completedAtMs": 746918.0999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 746197.6999999881,
+          "completedAtMs": 746913.1999999881
+        },
+        {
+          "operation": "stats.bodyRegionMap",
+          "visible": true,
+          "startedAtMs": 746197.6999999881,
+          "completedAtMs": 746914
+        },
+        {
+          "operation": "stats.tallyTrend",
+          "visible": true,
+          "startedAtMs": 746197.6999999881,
+          "completedAtMs": 746914.0999999642
+        },
+        {
+          "operation": "stats.tallyTrend",
+          "visible": true,
+          "startedAtMs": 746197.8000000119,
+          "completedAtMs": 746914.1999999881
+        },
+        {
+          "operation": "entries.counterevidencePool",
+          "visible": true,
+          "startedAtMs": 746197.8000000119,
+          "completedAtMs": 746932.1999999881
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 746197.8999999762,
+          "completedAtMs": 746912.5999999642
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": true,
+          "startedAtMs": 746197.8999999762,
+          "completedAtMs": 746914.5
+        },
+        {
+          "operation": "stats.recap",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746914.8999999762
+        },
+        {
+          "operation": "letters.getLetters",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746915
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746912.5999999642
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746914.5
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746912.5999999642
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746200.8999999762
+        },
+        {
+          "operation": "tally.firstEpochDay",
+          "visible": true,
+          "startedAtMs": 746198,
+          "completedAtMs": 746915.0999999642
+        },
+        {
+          "operation": "chartAnnotations.getAnnotations",
+          "visible": true,
+          "startedAtMs": 746198.0999999642,
+          "completedAtMs": 746933.8000000119
+        },
+        {
+          "operation": "stats.recap",
+          "visible": true,
+          "startedAtMs": 746198.1999999881,
+          "completedAtMs": 746915.3999999762
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 746198.1999999881,
+          "completedAtMs": 746211.8000000119
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 746915,
+          "completedAtMs": 746932.8000000119
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 746915,
+          "completedAtMs": 746933
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 746915,
+          "completedAtMs": 746933.0999999642
+        }
+      ]
+    },
+    {
+      "mode": "deferred",
+      "index": 8,
+      "traced": true,
+      "saveCompletionMs": 50.10000002384186,
+      "saveSettledMs": 149.5,
+      "saveStatements": 47,
+      "saveBytes": 16087,
+      "revisitSettledMs": 817.4000000357628,
+      "revisitStatements": 53,
+      "revisitBytes": 782664,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 22.900000035762787
+      },
+      "freshNotes": true,
+      "notesCalls": 1,
+      "hiddenNotesCalls": 0,
+      "hiddenFreshNotes": false,
+      "saveReadOperations": [
+        {
+          "operation": "revisits.getDueRevisits",
+          "visible": true,
+          "startedAtMs": 748536.0999999642,
+          "completedAtMs": 748549.3999999762
+        },
+        {
+          "operation": "entries.latestBadMomentEntryId",
+          "visible": true,
+          "startedAtMs": 748536.1999999881,
+          "completedAtMs": 748551.3999999762
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": true,
+          "startedAtMs": 748536.1999999881,
+          "completedAtMs": 748552.6999999881
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 748536.3000000119,
+          "completedAtMs": 748554.5
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": true,
+          "startedAtMs": 748536.3000000119,
+          "completedAtMs": 748558.3999999762
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": true,
+          "startedAtMs": 748536.5999999642,
+          "completedAtMs": 748575.0999999642
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": true,
+          "startedAtMs": 748536.5999999642,
+          "completedAtMs": 748560.5
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": true,
+          "startedAtMs": 748536.5999999642,
+          "completedAtMs": 748577
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": true,
+          "startedAtMs": 748536.6999999881,
+          "completedAtMs": 748580.5
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": true,
+          "startedAtMs": 748536.6999999881,
+          "completedAtMs": 748556.6999999881
+        },
+        {
+          "operation": "checklists.getDebriefState",
+          "visible": true,
+          "startedAtMs": 748536.6999999881,
+          "completedAtMs": 748581.5
+        },
+        {
+          "operation": "entries.entriesForDay",
+          "visible": true,
+          "startedAtMs": 748536.6999999881,
+          "completedAtMs": 748586.3999999762
+        }
+      ],
+      "revisitReadOperations": [
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 748656.6999999881,
+          "completedAtMs": 748672.5999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 748657,
+          "completedAtMs": 748672.5999999642
+        },
+        {
+          "operation": "entries.noteEntries",
+          "visible": true,
+          "startedAtMs": 748657,
+          "completedAtMs": 749322.8999999762
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 748657,
+          "completedAtMs": 749393.5
+        },
+        {
+          "operation": "wordIgnore.getIgnoredWords",
+          "visible": true,
+          "startedAtMs": 748657.0999999642,
+          "completedAtMs": 749400.1999999881
+        },
+        {
+          "operation": "correlationCards.getCards",
+          "visible": true,
+          "startedAtMs": 748657.0999999642,
+          "completedAtMs": 749404
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 748657.0999999642,
+          "completedAtMs": 749394.3999999762
+        },
+        {
+          "operation": "stats.bodyRegionMap",
+          "visible": true,
+          "startedAtMs": 748657.1999999881,
+          "completedAtMs": 749396.0999999642
+        },
+        {
+          "operation": "stats.tallyTrend",
+          "visible": true,
+          "startedAtMs": 748657.3000000119,
+          "completedAtMs": 749396.5999999642
+        },
+        {
+          "operation": "stats.tallyTrend",
+          "visible": true,
+          "startedAtMs": 748657.3000000119,
+          "completedAtMs": 749396.8000000119
+        },
+        {
+          "operation": "entries.counterevidencePool",
+          "visible": true,
+          "startedAtMs": 748657.3000000119,
+          "completedAtMs": 749408.8000000119
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 748657.3999999762,
+          "completedAtMs": 749393.5
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": true,
+          "startedAtMs": 748657.5,
+          "completedAtMs": 749397.3999999762
+        },
+        {
+          "operation": "stats.recap",
+          "visible": true,
+          "startedAtMs": 748657.5,
+          "completedAtMs": 749398.0999999642
+        },
+        {
+          "operation": "letters.getLetters",
+          "visible": true,
+          "startedAtMs": 748657.5999999642,
+          "completedAtMs": 749398.3999999762
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 748657.5999999642,
+          "completedAtMs": 749393.5
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": true,
+          "startedAtMs": 748657.5999999642,
+          "completedAtMs": 749397.3999999762
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 748657.5999999642,
+          "completedAtMs": 749393.5
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 748657.5999999642,
+          "completedAtMs": 748660.6999999881
+        },
+        {
+          "operation": "tally.firstEpochDay",
+          "visible": true,
+          "startedAtMs": 748657.6999999881,
+          "completedAtMs": 749398.8000000119
+        },
+        {
+          "operation": "chartAnnotations.getAnnotations",
+          "visible": true,
+          "startedAtMs": 748657.6999999881,
+          "completedAtMs": 749411.5999999642
+        },
+        {
+          "operation": "stats.recap",
+          "visible": true,
+          "startedAtMs": 748657.8000000119,
+          "completedAtMs": 749399.5999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 748657.8000000119,
+          "completedAtMs": 748672.5999999642
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 749398.5,
+          "completedAtMs": 749409.3999999762
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 749398.5999999642,
+          "completedAtMs": 749409.8999999762
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 749398.5999999642,
+          "completedAtMs": 749410.1999999881
+        }
+      ]
+    },
+    {
+      "mode": "current",
+      "index": 9,
+      "traced": true,
+      "saveCompletionMs": 47.09999996423721,
+      "saveSettledMs": 884.5999999642372,
+      "saveStatements": 136,
+      "saveBytes": 807620,
+      "revisitSettledMs": 75.90000003576279,
+      "revisitStatements": 0,
+      "revisitBytes": 0,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 24.900000035762787
+      },
+      "freshNotes": true,
+      "notesCalls": 0,
+      "hiddenNotesCalls": 1,
+      "hiddenFreshNotes": true,
+      "saveReadOperations": [
+        {
+          "operation": "revisits.getDueRevisits",
+          "visible": true,
+          "startedAtMs": 750958.8999999762,
+          "completedAtMs": 750977.5999999642
+        },
+        {
+          "operation": "entries.latestBadMomentEntryId",
+          "visible": true,
+          "startedAtMs": 750959,
+          "completedAtMs": 750980.0999999642
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": true,
+          "startedAtMs": 750959.0999999642,
+          "completedAtMs": 750982
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 750959.1999999881,
+          "completedAtMs": 750982.5999999642
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": true,
+          "startedAtMs": 750959.1999999881,
+          "completedAtMs": 750986.3000000119
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": true,
+          "startedAtMs": 750959.3000000119,
+          "completedAtMs": 751725.3000000119
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": true,
+          "startedAtMs": 750959.3000000119,
+          "completedAtMs": 750988.0999999642
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": true,
+          "startedAtMs": 750959.3000000119,
+          "completedAtMs": 751725.8999999762
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": true,
+          "startedAtMs": 750959.3999999762,
+          "completedAtMs": 751726.0999999642
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": true,
+          "startedAtMs": 750959.5,
+          "completedAtMs": 750984.0999999642
+        },
+        {
+          "operation": "checklists.getDebriefState",
+          "visible": true,
+          "startedAtMs": 750959.5,
+          "completedAtMs": 751726.3999999762
+        },
+        {
+          "operation": "entries.entriesForDay",
+          "visible": true,
+          "startedAtMs": 750959.5,
+          "completedAtMs": 751726.5999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 750959.6999999881,
+          "completedAtMs": 751003.8999999762
+        },
+        {
+          "operation": "stats.entryCountsByDay",
+          "visible": false,
+          "startedAtMs": 750959.6999999881,
+          "completedAtMs": 751005.6999999881
+        },
+        {
+          "operation": "stats.daySpread",
+          "visible": false,
+          "startedAtMs": 750959.6999999881,
+          "completedAtMs": 751006.8000000119
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": false,
+          "startedAtMs": 750959.6999999881,
+          "completedAtMs": 750982
+        },
+        {
+          "operation": "entries.recentDays",
+          "visible": false,
+          "startedAtMs": 750959.8000000119,
+          "completedAtMs": 751726.8999999762
+        },
+        {
+          "operation": "entries.countDistinctDays",
+          "visible": false,
+          "startedAtMs": 750959.8999999762,
+          "completedAtMs": 751014.6999999881
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 750959.8999999762,
+          "completedAtMs": 751017.6999999881
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 750959.8999999762,
+          "completedAtMs": 751017.6999999881
+        },
+        {
+          "operation": "entries.noteEntries",
+          "visible": false,
+          "startedAtMs": 750959.8999999762,
+          "completedAtMs": 751637.5
+        },
+        {
+          "operation": "correlationCards.getCards",
+          "visible": false,
+          "startedAtMs": 750959.8999999762,
+          "completedAtMs": 751723.8000000119
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 750959.8999999762,
+          "completedAtMs": 751717
+        },
+        {
+          "operation": "stats.bodyRegionMap",
+          "visible": false,
+          "startedAtMs": 750960,
+          "completedAtMs": 751718.3000000119
+        },
+        {
+          "operation": "entries.counterevidencePool",
+          "visible": false,
+          "startedAtMs": 750960,
+          "completedAtMs": 751744.0999999642
+        },
+        {
+          "operation": "stats.recap",
+          "visible": false,
+          "startedAtMs": 750960.0999999642,
+          "completedAtMs": 751719.5
+        },
+        {
+          "operation": "letters.getLetters",
+          "visible": false,
+          "startedAtMs": 750960.0999999642,
+          "completedAtMs": 751719.5999999642
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": false,
+          "startedAtMs": 750960.1999999881,
+          "completedAtMs": 751719.6999999881
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": false,
+          "startedAtMs": 750960.1999999881,
+          "completedAtMs": 751719.6999999881
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": false,
+          "startedAtMs": 750960.1999999881,
+          "completedAtMs": 750982.5999999642
+        },
+        {
+          "operation": "stats.recap",
+          "visible": false,
+          "startedAtMs": 750960.3000000119,
+          "completedAtMs": 751720.0999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 750960.3000000119,
+          "completedAtMs": 751017.6999999881
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": false,
+          "startedAtMs": 750960.3000000119,
+          "completedAtMs": 751721.1999999881
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": false,
+          "startedAtMs": 750960.5999999642,
+          "completedAtMs": 751725.3000000119
+        },
+        {
+          "operation": "letters.getLetterSeals",
+          "visible": false,
+          "startedAtMs": 750960.5999999642,
+          "completedAtMs": 751722.3000000119
+        },
+        {
+          "operation": "wearSessions.getRunningSession",
+          "visible": false,
+          "startedAtMs": 750960.6999999881,
+          "completedAtMs": 751722.3999999762
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": false,
+          "startedAtMs": 750960.6999999881,
+          "completedAtMs": 750988.0999999642
+        },
+        {
+          "operation": "appointments.getAppointments",
+          "visible": false,
+          "startedAtMs": 750960.6999999881,
+          "completedAtMs": 751722.5999999642
+        },
+        {
+          "operation": "procedures.getProcedures",
+          "visible": false,
+          "startedAtMs": 750960.8000000119,
+          "completedAtMs": 751753
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": false,
+          "startedAtMs": 750960.8000000119,
+          "completedAtMs": 751725.8999999762
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": false,
+          "startedAtMs": 750960.8000000119,
+          "completedAtMs": 751726.0999999642
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": false,
+          "startedAtMs": 750960.8000000119,
+          "completedAtMs": 750984.0999999642
+        },
+        {
+          "operation": "voice.lastWriteEpochDay",
+          "visible": false,
+          "startedAtMs": 750960.8000000119,
+          "completedAtMs": 751722.6999999881
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 751719.8000000119,
+          "completedAtMs": 751748
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 751719.8999999762,
+          "completedAtMs": 751751.1999999881
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 751719.8999999762,
+          "completedAtMs": 751752.5
+        }
+      ],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "current",
+      "index": 10,
+      "traced": true,
+      "saveCompletionMs": 44.89999997615814,
+      "saveSettledMs": 867.5999999642372,
+      "saveStatements": 136,
+      "saveBytes": 807624,
+      "revisitSettledMs": 57.59999996423721,
+      "revisitStatements": 0,
+      "revisitBytes": 0,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 20
+      },
+      "freshNotes": true,
+      "notesCalls": 0,
+      "hiddenNotesCalls": 1,
+      "hiddenFreshNotes": true,
+      "saveReadOperations": [
+        {
+          "operation": "revisits.getDueRevisits",
+          "visible": true,
+          "startedAtMs": 753392.3999999762,
+          "completedAtMs": 753405.5
+        },
+        {
+          "operation": "entries.latestBadMomentEntryId",
+          "visible": true,
+          "startedAtMs": 753392.5,
+          "completedAtMs": 753408.8999999762
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": true,
+          "startedAtMs": 753392.5999999642,
+          "completedAtMs": 753409.5
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 753392.5999999642,
+          "completedAtMs": 753409.8000000119
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": true,
+          "startedAtMs": 753392.5999999642,
+          "completedAtMs": 753413
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": true,
+          "startedAtMs": 753392.8999999762,
+          "completedAtMs": 754145.6999999881
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": true,
+          "startedAtMs": 753392.8999999762,
+          "completedAtMs": 753414.1999999881
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": true,
+          "startedAtMs": 753392.8999999762,
+          "completedAtMs": 754147.3000000119
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": true,
+          "startedAtMs": 753392.8999999762,
+          "completedAtMs": 754147.3999999762
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": true,
+          "startedAtMs": 753392.8999999762,
+          "completedAtMs": 753411.5999999642
+        },
+        {
+          "operation": "checklists.getDebriefState",
+          "visible": true,
+          "startedAtMs": 753393.0999999642,
+          "completedAtMs": 754153.5999999642
+        },
+        {
+          "operation": "entries.entriesForDay",
+          "visible": true,
+          "startedAtMs": 753393.0999999642,
+          "completedAtMs": 754153.8999999762
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 753393.0999999642,
+          "completedAtMs": 753425.5999999642
+        },
+        {
+          "operation": "stats.entryCountsByDay",
+          "visible": false,
+          "startedAtMs": 753393.1999999881,
+          "completedAtMs": 753427.6999999881
+        },
+        {
+          "operation": "stats.daySpread",
+          "visible": false,
+          "startedAtMs": 753393.1999999881,
+          "completedAtMs": 753430.0999999642
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": false,
+          "startedAtMs": 753393.3000000119,
+          "completedAtMs": 753409.5
+        },
+        {
+          "operation": "entries.recentDays",
+          "visible": false,
+          "startedAtMs": 753393.3000000119,
+          "completedAtMs": 754154.1999999881
+        },
+        {
+          "operation": "entries.countDistinctDays",
+          "visible": false,
+          "startedAtMs": 753393.3000000119,
+          "completedAtMs": 753437.5999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 753393.3000000119,
+          "completedAtMs": 753441.3999999762
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 753393.3999999762,
+          "completedAtMs": 753441.3999999762
+        },
+        {
+          "operation": "entries.noteEntries",
+          "visible": false,
+          "startedAtMs": 753393.3999999762,
+          "completedAtMs": 754049.6999999881
+        },
+        {
+          "operation": "correlationCards.getCards",
+          "visible": false,
+          "startedAtMs": 753393.3999999762,
+          "completedAtMs": 754144.1999999881
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 753393.3999999762,
+          "completedAtMs": 754137.5
+        },
+        {
+          "operation": "stats.bodyRegionMap",
+          "visible": false,
+          "startedAtMs": 753393.3999999762,
+          "completedAtMs": 754138.8000000119
+        },
+        {
+          "operation": "entries.counterevidencePool",
+          "visible": false,
+          "startedAtMs": 753393.5,
+          "completedAtMs": 754162.3000000119
+        },
+        {
+          "operation": "stats.recap",
+          "visible": false,
+          "startedAtMs": 753393.5,
+          "completedAtMs": 754139.8999999762
+        },
+        {
+          "operation": "letters.getLetters",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 754140
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 754140
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 754140
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 753409.8000000119
+        },
+        {
+          "operation": "stats.recap",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 754140.3999999762
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 753441.3999999762
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": false,
+          "startedAtMs": 753393.6999999881,
+          "completedAtMs": 754141.5
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754145.6999999881
+        },
+        {
+          "operation": "letters.getLetterSeals",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754142.6999999881
+        },
+        {
+          "operation": "wearSessions.getRunningSession",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754142.8000000119
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 753414.1999999881
+        },
+        {
+          "operation": "appointments.getAppointments",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754142.8999999762
+        },
+        {
+          "operation": "procedures.getProcedures",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754167.3999999762
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754147.3000000119
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": false,
+          "startedAtMs": 753394,
+          "completedAtMs": 754147.3999999762
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": false,
+          "startedAtMs": 753394.0999999642,
+          "completedAtMs": 753411.5999999642
+        },
+        {
+          "operation": "voice.lastWriteEpochDay",
+          "visible": false,
+          "startedAtMs": 753394.0999999642,
+          "completedAtMs": 754143.0999999642
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 754140.0999999642,
+          "completedAtMs": 754163.5
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 754140.0999999642,
+          "completedAtMs": 754164.8000000119
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": false,
+          "startedAtMs": 754140.0999999642,
+          "completedAtMs": 754166.8000000119
+        }
+      ],
+      "revisitReadOperations": []
+    },
+    {
+      "mode": "deferred",
+      "index": 11,
+      "traced": true,
+      "saveCompletionMs": 53.39999997615814,
+      "saveSettledMs": 149.5999999642372,
+      "saveStatements": 47,
+      "saveBytes": 16088,
+      "revisitSettledMs": 784.2999999523163,
+      "revisitStatements": 53,
+      "revisitBytes": 782666,
+      "firstPaint": {
+        "sameReadingNode": true,
+        "held": 0,
+        "atMs": 22.399999976158142
+      },
+      "freshNotes": true,
+      "notesCalls": 1,
+      "hiddenNotesCalls": 0,
+      "hiddenFreshNotes": false,
+      "saveReadOperations": [
+        {
+          "operation": "revisits.getDueRevisits",
+          "visible": true,
+          "startedAtMs": 755712.0999999642,
+          "completedAtMs": 755725.1999999881
+        },
+        {
+          "operation": "entries.latestBadMomentEntryId",
+          "visible": true,
+          "startedAtMs": 755712.0999999642,
+          "completedAtMs": 755728.3999999762
+        },
+        {
+          "operation": "entries.countAll",
+          "visible": true,
+          "startedAtMs": 755712.1999999881,
+          "completedAtMs": 755730.5999999642
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 755712.3000000119,
+          "completedAtMs": 755735.5999999642
+        },
+        {
+          "operation": "lastWrite.getLastWrites",
+          "visible": true,
+          "startedAtMs": 755712.3000000119,
+          "completedAtMs": 755737.3000000119
+        },
+        {
+          "operation": "milestones.getMilestones",
+          "visible": true,
+          "startedAtMs": 755712.3000000119,
+          "completedAtMs": 755751.6999999881
+        },
+        {
+          "operation": "tryouts.getTryouts",
+          "visible": true,
+          "startedAtMs": 755712.3000000119,
+          "completedAtMs": 755738.5
+        },
+        {
+          "operation": "doses.getNextUncoveredSlot",
+          "visible": true,
+          "startedAtMs": 755712.3999999762,
+          "completedAtMs": 755753.5
+        },
+        {
+          "operation": "stock.getProjections",
+          "visible": true,
+          "startedAtMs": 755712.3999999762,
+          "completedAtMs": 755757.8999999762
+        },
+        {
+          "operation": "measurements.latestMeasurement",
+          "visible": true,
+          "startedAtMs": 755712.3999999762,
+          "completedAtMs": 755736.5
+        },
+        {
+          "operation": "checklists.getDebriefState",
+          "visible": true,
+          "startedAtMs": 755712.5,
+          "completedAtMs": 755759.1999999881
+        },
+        {
+          "operation": "entries.entriesForDay",
+          "visible": true,
+          "startedAtMs": 755712.5999999642,
+          "completedAtMs": 755763.8999999762
+        }
+      ],
+      "revisitReadOperations": [
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 755829.5,
+          "completedAtMs": 755844.0999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 755829.6999999881,
+          "completedAtMs": 755844.0999999642
+        },
+        {
+          "operation": "entries.noteEntries",
+          "visible": true,
+          "startedAtMs": 755829.6999999881,
+          "completedAtMs": 756473.5
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 755829.6999999881,
+          "completedAtMs": 756530.3000000119
+        },
+        {
+          "operation": "wordIgnore.getIgnoredWords",
+          "visible": true,
+          "startedAtMs": 755829.6999999881,
+          "completedAtMs": 756532.8000000119
+        },
+        {
+          "operation": "correlationCards.getCards",
+          "visible": true,
+          "startedAtMs": 755829.8000000119,
+          "completedAtMs": 756535.1999999881
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 755829.8000000119,
+          "completedAtMs": 756530.6999999881
+        },
+        {
+          "operation": "stats.bodyRegionMap",
+          "visible": true,
+          "startedAtMs": 755829.8000000119,
+          "completedAtMs": 756531.3000000119
+        },
+        {
+          "operation": "stats.tallyTrend",
+          "visible": true,
+          "startedAtMs": 755829.8000000119,
+          "completedAtMs": 756531.3999999762
+        },
+        {
+          "operation": "stats.tallyTrend",
+          "visible": true,
+          "startedAtMs": 755829.8999999762,
+          "completedAtMs": 756531.5
+        },
+        {
+          "operation": "entries.counterevidencePool",
+          "visible": true,
+          "startedAtMs": 755830,
+          "completedAtMs": 756545.8000000119
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 755830,
+          "completedAtMs": 756530.3000000119
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": true,
+          "startedAtMs": 755830,
+          "completedAtMs": 756531.8000000119
+        },
+        {
+          "operation": "stats.recap",
+          "visible": true,
+          "startedAtMs": 755830,
+          "completedAtMs": 756532
+        },
+        {
+          "operation": "letters.getLetters",
+          "visible": true,
+          "startedAtMs": 755830.0999999642,
+          "completedAtMs": 756532.1999999881
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 755830.0999999642,
+          "completedAtMs": 756530.3000000119
+        },
+        {
+          "operation": "eraMutes.getMutedEraUuids",
+          "visible": true,
+          "startedAtMs": 755830.0999999642,
+          "completedAtMs": 756531.8000000119
+        },
+        {
+          "operation": "eras.getEras",
+          "visible": true,
+          "startedAtMs": 755830.0999999642,
+          "completedAtMs": 756530.3000000119
+        },
+        {
+          "operation": "eras.getJournalBounds",
+          "visible": true,
+          "startedAtMs": 755830.0999999642,
+          "completedAtMs": 755832.3000000119
+        },
+        {
+          "operation": "tally.firstEpochDay",
+          "visible": true,
+          "startedAtMs": 755830.1999999881,
+          "completedAtMs": 756532.3000000119
+        },
+        {
+          "operation": "chartAnnotations.getAnnotations",
+          "visible": true,
+          "startedAtMs": 755830.1999999881,
+          "completedAtMs": 756549.3999999762
+        },
+        {
+          "operation": "stats.recap",
+          "visible": true,
+          "startedAtMs": 755830.1999999881,
+          "completedAtMs": 756532.5999999642
+        },
+        {
+          "operation": "stats.dayAverages",
+          "visible": true,
+          "startedAtMs": 755830.1999999881,
+          "completedAtMs": 755844.0999999642
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 756532.1999999881,
+          "completedAtMs": 756546.3999999762
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 756532.1999999881,
+          "completedAtMs": 756547.6999999881
+        },
+        {
+          "operation": "stats.isGoodDay",
+          "visible": true,
+          "startedAtMs": 756532.1999999881,
+          "completedAtMs": 756549
+        }
+      ]
+    }
+  ]
+}

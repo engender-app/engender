@@ -6,6 +6,7 @@ import androidx.core.app.NotificationManagerCompat;
 
 import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.files.FileDeliveryPlugin;
+import dev.engender.app.keystore.CredentialWrapStore;
 import dev.engender.app.clipboard.SensitiveClipboard;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.photos.CameraCapture;
@@ -51,6 +52,7 @@ public final class DeviceStores {
     public static void wipe(Context context) throws Exception {
         Exception failure = null;
         for (Store store : new Store[] {
+            owner -> new CredentialWrapStore(owner).remove(),
             ReminderScheduler::wipe,
             AutoExportPlugin::wipe,
             FileDeliveryPlugin::wipe,

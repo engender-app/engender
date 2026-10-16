@@ -32,6 +32,7 @@ import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { JOURNAL_DATABASE } from '../data/legacy-journal';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
+import { markJournalBusy } from '../data/journal-busy';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
 import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
@@ -68,7 +69,7 @@ import {
 import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
 import { changeCredentials } from '../data/credential-ownership';
 import { removeKeystoreFile } from '../data/keystore-file';
-import { openWithRecoveryKey } from '../data/recovery-key';
+import { openWithRecoveryKey, withoutPendingRecoveryKeyOwned } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
@@ -76,19 +77,19 @@ import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
 import { openPreferences } from '../data/prefs/preferences';
-import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
+import { activateLanguagePreference, applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { UnlockCancelledError } from '../lock/unlock-attempt';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
-import type { PreferenceKey } from '../data/prefs/catalogue';
+import { PREFERENCE_DEFAULTS, type PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, isReadyState, type BootState } from './boot-state';
 import { journalSession } from './journal-session';
 import { forgetJournalContent } from '../lock/forget-content';
 import { crossBootFailure, openApp } from '../motion/appOpening';
 import { ui } from './ui.svelte';
-import { performPlatformEffect } from './boot-platform';
+import { performPlatformEffect, sweepDeviceBoundAfterSecretUnlock } from './boot-platform';
 import {
   describeError,
   deviceBoundSetupOutcome,
@@ -332,7 +333,8 @@ export function watchBrowserSession(): () => void {
       await session.resumeAfterNavigation(current);
     })().catch((error) => {
       if (mine === generation && !isLocked(bootState.accessMode)) {
-        dispatch({ type: 'boot-failed', message: describeError(error) });
+        if (error instanceof ReopenPreparationError) reportReopenPreparationFailure(error, current);
+        else dispatch({ type: 'boot-failed', message: describeError(error) });
       }
     }).finally(() => {
       if (mine === generation) browserSession.recovering = false;
@@ -379,12 +381,10 @@ let reopening: Promise<void> = Promise.resolve();
 /* Captured by the synchronous reopen effect, before its first wait. */
 let reopeningCurrent: () => void = () => {};
 
-/* A lock's reopen: the boot's own construction without the boot. The
-   journal was open and migrated minutes ago in this same page, so there is
-   nothing to migrate, reconcile or sweep; what is left is a driver over the
-   key, the preferences and the vocabulary read back, and the facade opened
-   on the new handle. The prewarmed worker the lock started is what the
-   driver takes over, so the wait is an `open` and a few reads. */
+/* A private reopen uses the cold boot's compatibility and migration owner
+   before reading preferences or vocabulary. Another page may have upgraded
+   the journal while this page released its connection. Reconciliation and
+   housekeeping remain cold-boot work. */
 async function reopenJournal(
   dataKey: Uint8Array<ArrayBuffer>,
   current: () => void,
@@ -393,6 +393,14 @@ async function reopenJournal(
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   own(sqlite.driver);
+  const migrating = markJournalBusy();
+  try {
+    await migrateJournal(sqlite.driver, sqlite.fileOps);
+  } catch (error) {
+    migrating(false);
+    throw new ReopenPreparationError(error, sqlite.fileOps);
+  } finally { migrating(); }
+  current();
   const preparing = openJournal(sqlite.driver, photoFiles);
   const preferences = await openPreferences(sqlite.driver, bootCache);
   current();
@@ -402,6 +410,7 @@ async function reopenJournal(
   current();
   await attachPreferences(preferences);
   current();
+  activateLanguagePreference();
   const journal = attachJournal(openJournal(journalDriver, photoFiles));
   openDriver = sqlite.driver;
   openFileOps = sqlite.fileOps;
@@ -411,6 +420,22 @@ async function reopenJournal(
   journalIsOpen();
   dispatch({ type: 'journal-reopened', journal });
   return sqlite.driver;
+}
+
+/** Carry recovery operations through the session's private-driver disposal.
+    The original migration error still reaches the caller after reporting. */
+class ReopenPreparationError extends Error {
+  readonly fileOps: MigrationFileOps;
+  constructor(cause: unknown, fileOps: MigrationFileOps) {
+    super('the private journal could not be prepared', { cause });
+    this.fileOps = fileOps;
+  }
+}
+
+function reportReopenPreparationFailure(error: ReopenPreparationError, current: () => void): void {
+  current();
+  openFileOps = error.fileOps;
+  dispatch({ type: 'journal-open-failed', error: error.cause });
 }
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
@@ -438,7 +463,18 @@ export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome')
   return changeCredentials(() => resetAppOwned(next));
 }
 
+async function stopJournalTransfers(): Promise<void> {
+  if (!isAndroid()) return;
+  const { stopAutoExportScheduler } = await import('../data/archive/auto-export-scheduler');
+  await stopAutoExportScheduler();
+  const { androidAutoExport } = await import('../data/archive/android-auto-export-bridge');
+  const { androidFileDelivery } = await import('../data/archive/android-file-delivery-bridge');
+  await androidAutoExport.abortPendingTransfers();
+  await androidFileDelivery.abortPendingTransfers();
+}
+
 async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  await stopJournalTransfers();
   /* The reads' last answers are journal content held in the page
      (lastResults.ts, ux-carpet 201); a reset takes them first. */
   forgetLastResults();
@@ -525,6 +561,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
     that has just been replaced (mc-driver.ts), and boot() has already run. */
 export async function restorePreviousJournal(): Promise<void> {
   if (!openFileOps) throw new Error('there is no failed boot to recover from');
+  await stopJournalTransfers();
   await openFileOps.restorePreMigrationCopy();
   /* Closed before the reload, the way resetApp does it: the restore left the
      database connection gone but the pool still held, and pauseVfs() is what
@@ -603,7 +640,7 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
   const current = beginSessionUnlock();
   const dataKey = await unlockJournalPassphrase(passphrase);
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true });
 }
 
 /** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
@@ -616,11 +653,12 @@ async function submitPinSetup(pin: string): Promise<void> {
     DeviceBindingUnavailableError when this browser has lost the key the PIN
     was bound to; the gate owns both sentences, and they are different
     sentences because only one of them is worth retyping for. */
-export async function submitPinUnlock(pin: string): Promise<void> {
-  const current = beginSessionUnlock();
-  const dataKey = await unlockJournalPin(pin);
+export async function submitPinUnlock(pin: string, gateCurrent: () => void = () => {}): Promise<void> {
+  const sessionCurrent = beginSessionUnlock();
+  const current = () => { sessionCurrent(); gateCurrent(); };
+  const dataKey = await unlockJournalPin(pin, undefined, current);
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true, secretAuthenticated: true });
 }
 
 /** The setup module's biometric choice (ticket 55). The prompt the platform
@@ -638,7 +676,7 @@ export async function submitBiometricUnlock(): Promise<void> {
   const current = beginSessionUnlock();
   const dataKey = await unlockJournalBiometric();
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true, secretAuthenticated: true });
 }
 
 /** Whether a recovery unlock happened this page-load, and therefore whether
@@ -755,10 +793,19 @@ export async function submitAccessModeSetup(
     device-bound material - so an interruption anywhere in here leaves a
     journal that still opens, under one mode or the other, never neither. */
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
-  return changeCredentials(() => changeAccessModeOwned(target, secret));
+  /* A recovery key nobody confirmed does not outlive the protection it was
+     made under (last-audit UI 42). Taken away before the change and put back
+     if a prompt is cancelled before credentials change. Once a write lands
+     or removal can partly commit, cleanup failures cannot restore it. */
+  return changeCredentials(() => withoutPendingRecoveryKeyOwned((doNotRestorePending) =>
+    changeAccessModeOwned(target, secret, doNotRestorePending)));
 }
 
-async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
+async function changeAccessModeOwned(
+  target: Exclude<JournalAccessMode, null>,
+  secret: string,
+  doNotRestorePending: () => void
+): Promise<void> {
   const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
@@ -768,10 +815,18 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       const hexKey = Array.from(sessionDataKey)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
-      const wrapped = await androidKeystore.wrap({ hexKey, authRequired });
+      const wrapped = await androidKeystore.wrap({ hexKey, authRequired }).catch((error) => {
+        // Rejection can follow native publication. Only an explicit
+        // noDeviceCredential outcome guarantees nothing changed.
+        doNotRestorePending();
+        throw error;
+      });
       if (wrapped.outcome === 'noDeviceCredential') {
         throw new Error('device has no lock screen credentials');
       }
+      // Native wrap policy has changed; removal may publish a tombstone
+      // before deleting its legacy OPFS copy, then throw during cleanup.
+      doNotRestorePending();
       await removeKeystoreFile();
       dispatch({ type: 'access-mode-changed', accessMode: target });
       recoveryUnlock.used = false;
@@ -788,6 +843,7 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
        keystore - so the next boot would have asked for the old secret again,
        with a toast in the person's memory saying it had moved. Failing here
        leaves the old mode working and the screen able to say so. */
+    doNotRestorePending();
     await removeKeystoreFile();
     dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
     recoveryUnlock.used = false;
@@ -797,9 +853,14 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
     return;
   }
 
-  if (target === 'pin') await addJournalPin(sessionDataKey, secret);
-  else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
-  else await addJournalPassphrase(sessionDataKey, secret);
+  if (target === 'pin') await addJournalPin(sessionDataKey, secret, undefined, doNotRestorePending);
+  else if (target === 'biometric') await addJournalBiometric(sessionDataKey, undefined, doNotRestorePending);
+  else await addJournalPassphrase(sessionDataKey, secret, doNotRestorePending);
+  // The new secret wrap is authoritative even if removing old access fails.
+  doNotRestorePending();
+  // Keep the change retryable until the old no-secret access is gone.
+  if (isAndroid()) await androidKeystore.erase();
+  else await removeDeviceBoundJournal();
   dispatch({ type: 'access-mode-changed', accessMode: target });
   /* Cleared after the wrap landed rather than before it: the module is in
      front of the app precisely until there is a secret the person has, and
@@ -814,15 +875,6 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       console.warn('could not remove the PIN binding key after changing access mode', error);
     });
   }
-  if (isAndroid()) {
-    await androidKeystore.erase().catch((error) => {
-      console.warn('could not erase the Android keystore keys after changing access mode', error);
-    });
-    return;
-  }
-  await removeDeviceBoundJournal().catch((error) => {
-    console.warn('could not remove the browser device-bound key after changing access mode', error);
-  });
 }
 
 /** The Android gate's submit, and the first run's own call. Asks Keystore for
@@ -859,6 +911,14 @@ async function perform(effect: BootEffect): Promise<void> {
       applyCachedBootPreferences(bootCache.read());
       return;
 
+    case 'discard-erased-journal-mirrors':
+      // No journal credentials or legacy data remain to own these caches.
+      clearBrowserMirrors(localStorage);
+      clearBrowserMirrors(sessionStorage);
+      bootCache.clear();
+      applyCachedBootPreferences(PREFERENCE_DEFAULTS);
+      return;
+
     case 'mark-unlocked':
       markUnlocked();
       return;
@@ -869,14 +929,20 @@ async function perform(effect: BootEffect): Promise<void> {
     case 'reopen-journal': {
       const current = reopeningCurrent;
       reopeningCurrent = () => {};
-      reopening = session.unlock(effect.dataKey, current);
+      reopening = session.unlock(effect.dataKey, current).catch((error) => {
+        if (error instanceof ReopenPreparationError) {
+          reportReopenPreparationFailure(error, current);
+          throw error.cause;
+        }
+        throw error;
+      });
       await reopening.catch(() => {});
       dispatch({ type: 'journal-reopen-ended' });
       return;
     }
 
     case 'open-journal':
-      await openAndBoot(effect.dataKey);
+      await openAndBoot(effect.dataKey, effect.sweepDeviceBound);
       return;
 
     case 'restore-previous-journal':
@@ -924,11 +990,19 @@ async function perform(effect: BootEffect): Promise<void> {
 /** Everything both platforms do once they have a data key: the journal is
     constructed over a driver, boot() runs its sequence, and how it ended goes
     back to the reducer as an event. */
-async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>, sweepDeviceBound = false): Promise<void> {
   // Effects start synchronously at dispatch, before another leave can run.
   const current = !isAndroid() && accessModeHasSecret(machine.boot.accessMode, false)
     ? beginSessionUnlock() : () => {};
   try {
+    if (sweepDeviceBound) {
+      try {
+        await sweepDeviceBoundAfterSecretUnlock(current);
+      } catch (error) {
+        if (error instanceof UnlockCancelledError) throw error;
+        console.warn('could not remove the leftover device-bound key; the next boot will retry', error);
+      }
+    }
     await prepareJournal(dataKey, current);
   } catch (error) {
     if (!(error instanceof UnlockCancelledError)) throw error;
@@ -1065,6 +1139,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
   }
   await attachPreferences(preferences);
   current();
+  activateLanguagePreference();
 
   // Publish after the last ownership check, so queued reads and draft
   // writes cannot obtain a session superseded while boot was preparing it.

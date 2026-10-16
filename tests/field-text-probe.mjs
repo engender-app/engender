@@ -31,7 +31,7 @@ import { chromium } from 'playwright-core';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium } from './browser-harness.mjs';
 import { SETUP_STEPS } from './setup-flow.mjs';
 import { JUMP_FIRST_RUN_EXPRESSION } from './yank-sweep-core.mjs';
 import {
@@ -313,7 +313,7 @@ async function rest(page, scene) {
   const locale = scene.locale ?? (DEVICE ? 'en' : '');
   if (locale) {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-    await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
+    await setAppLanguage(page, locale);
   }
   await boot(page, scene.at);
   if (scene.enter) {
@@ -330,6 +330,76 @@ async function rest(page, scene) {
   }, scene.scroll);
   await page.waitForTimeout(600);
   return room;
+}
+
+/** Observe the native transition without changing its timing or promises.
+    Mutation records catch a cleanup between frames; rAF covers the whole
+    second transition, including the interval after the first one finishes. */
+function watchTransitionOwnership() {
+  const root = document.documentElement;
+  const nativeStart = document.startViewTransition;
+  const transitions = [];
+  const pending = [];
+  const failures = [];
+  let current;
+  let frame;
+  const check = (at) => {
+    if (!current || current.finished) return;
+    current.checks++;
+    const pattern = root.dataset.nav;
+    const from = root.style.getPropertyValue('--blind-from');
+    const to = root.style.getPropertyValue('--blind-to');
+    if (pattern !== 'fade-through' || !from || !to) {
+      failures.push({ at, transition: transitions.length, pattern: pattern ?? null, from, to });
+    }
+  };
+  const observer = new MutationObserver(() => check('mutation'));
+  observer.observe(root, { attributes: true, attributeFilter: ['data-nav', 'style'] });
+  const tick = () => {
+    check('frame');
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+  document.startViewTransition = function (...args) {
+    const previous = current;
+    const record = { checks: 0, ready: false, finished: false, interrupted: !!previous && !previous.finished, supersededFinish: false };
+    const transition = nativeStart.apply(this, args);
+    transitions.push(record);
+    current = record;
+    check('start');
+    void transition.ready.then(() => {
+      record.ready = true;
+      check('ready');
+    }, () => {});
+    pending.push(transition.finished.catch(() => {}).then(() => {
+      record.finished = true;
+      if (current !== record && !current.finished) {
+        current.supersededFinish = true;
+        check('superseded finish');
+      }
+    }));
+    return transition;
+  };
+  window.__finishTransitionOwnership = async () => {
+    // The sun can outlast the pixel window. Observe until the native finish,
+    // while keeping that window and the application's animation timings intact.
+    let timeout;
+    await Promise.race([
+      Promise.all(pending),
+      new Promise((resolve) => {
+        timeout = setTimeout(() => {
+          failures.push({ at: 'timeout', reason: 'native transitions did not finish within 5 seconds after recording' });
+          resolve();
+        }, 5000);
+      })
+    ]);
+    clearTimeout(timeout);
+    observer.disconnect();
+    cancelAnimationFrame(frame);
+    document.startViewTransition = nativeStart;
+    delete window.__finishTransitionOwnership;
+    return { transitions, failures };
+  };
 }
 
 /** Records the page for the scene's length and reads both instruments. */
@@ -362,6 +432,8 @@ async function measure(held, sceneIn) {
         return field ? Math.round((field.getBoundingClientRect().top + (region?.scrollTop ?? 0)) * 10) / 10 : 0;
       })
     : 0;
+  const watchOwnership = !DEVICE && scene.name?.includes('interrupted at 140ms');
+  if (watchOwnership) await page.evaluate(watchTransitionOwnership);
   const sampled = page.evaluate(samplerExpression(scene.steps ?? [], scene.ms, edgeOffset));
   if (scene.resize) {
     await page.waitForTimeout(scene.resize.at);
@@ -371,10 +443,11 @@ async function measure(held, sceneIn) {
   if (RATE !== 1) await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
   await cdp.send('Page.stopScreencast');
   cdp.off('Page.screencastFrame', onFrame);
-  return { epoch, rows, cast };
+  const ownership = watchOwnership ? await page.evaluate(() => window.__finishTransitionOwnership()) : undefined;
+  return { epoch, rows, cast, ownership };
 }
 
-function analyse({ epoch, rows, cast }, { step = false, still = false, cuts = false } = {}) {
+function analyse({ epoch, rows, cast, ownership }, { step = false, still = false, cuts = false } = {}) {
   const series = step
     ? rows.filter((r) => r.step).map((r) => ({ t: r.t, edge: r.step.edge, parts: r.step.parts }))
     : rows.filter((r) => r.edge !== undefined).map((r) => ({ ...r }));
@@ -402,10 +475,20 @@ function analyse({ epoch, rows, cast }, { step = false, still = false, cuts = fa
   /* A navigation swaps the screen under the transition, so the real field's
      height changes when the outgoing one is removed: only a scene with no
      navigation in it reads the field's own height. */
-  return { geometry, ink, jumps: still ? jumps : [], series: series.length };
+  if (ownership) {
+    const second = ownership.transitions[1];
+    if (ownership.transitions.length !== 2 || !second?.ready || !second.finished || second.checks < 2) {
+      ownership.failures.push({ at: 'coverage', reason: 'both native transitions must run and the second must be sampled until it finishes' });
+    }
+    if (!cuts && (!second?.interrupted || !second.supersededFinish)) {
+      ownership.failures.push({ at: 'coverage', reason: 'the first transition must finish while the second owns the pattern and blind' });
+    }
+  }
+  return { geometry, ink, jumps: still ? jumps : [], series: series.length, ownership };
 }
 
 const failed = (r) =>
+  (r.ownership?.failures.length ?? 0) > 0 ||
   r.geometry.overspill.length > 0 ||
   r.geometry.teleports.length > 0 ||
   r.geometry.pops.length > 0 ||
@@ -427,6 +510,7 @@ async function keep(name, width, run, m) {
 
 function log(width, name, run, r, extra = '') {
   const bits = summarise(r);
+  if (r.ownership?.failures.length) bits.push(`transition ownership: ${JSON.stringify(r.ownership.failures[0])}`);
   const verdict = failed(r) || r.jumps.length ? 'FAIL' : 'ok  ';
   console.log(`${verdict} ${width} ${name}${RUNS > 1 ? ` #${run + 1}` : ''}${extra} ${bits.length ? '- ' + bits.join('; ') : ''}`);
 }
@@ -473,7 +557,7 @@ try {
         const held = await pageFor(width, { fresh: true, tag: `setup-${locale}`, reduced: !!mode.reduced, height: mode.height ?? 0 });
         const { page } = held;
         await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), mode.lang);
+        await setAppLanguage(page, mode.lang);
         await page.goto(`${base}/`, { waitUntil: IDLE });
         await page.waitForSelector('[data-app-root][data-boot="ready"]');
         /* A fresh profile boots into the demo persona; the demo bar's own
@@ -568,7 +652,7 @@ try {
       }
       if (!ONLY_LIST.length || ONLY_LIST.some((o) => 'pin gate unlock'.includes(o) || o.startsWith('pin'))) {
         try {
-          await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+          await setAppLanguage(page, 'en');
           for (let run = 0; run < Math.max(RUNS, 1); run++) {
             await boot(page, '/settings/access-mode');
             await page.evaluate(LOCK_SETUP_EXPRESSION(PIN));
@@ -688,7 +772,7 @@ try {
             requestAnimationFrame(tick);
           });
           await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-          await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), locale);
+          await setAppLanguage(page, locale);
           await boot(page, route);
           await page.evaluate(() => (window.__field = []));
           await page.goto(`${base}${route}`, { waitUntil: 'domcontentloaded' });

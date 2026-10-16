@@ -1,4 +1,5 @@
 {
+  "$comment": "Candidate stage1/stage2 checks precede tags; stable adds its matrix. Publish web and GitHub/Obtainium first, then record Play and F-Droid outcomes. Channel-live states are recorded only after publication. Reset evidence for each version, including hotfixes.",
   "releaseVersion": "1.0.0",
   "candidateRevision": "",
   "stages": {

@@ -41,6 +41,8 @@
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor';
+import { poolDirectory } from './pool-directory';
+export { poolDirectory } from './pool-directory';
 import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
 
 // Exported for tests/browser-tier/legacy-cipher-worker.ts (ticket 04): the
@@ -65,23 +67,6 @@ let hexKey = '';
 // A failed attach/open stays failed until this worker closes.
 // Queued statements report that cause instead of reopening or using null `db`.
 let openError: Error | null = null;
-
-// A pool directory name derived from the database's own path: stable
-// across reloads for a given database and distinct across databases, but
-// hashed rather than embedding the path itself - this driver exists to
-// keep the journal's contents unreadable at rest (ADR-0018), and a
-// directory literally named after "engender.sqlite3" would defeat the
-// same closed-app OPFS scan that proves nothing plaintext survives there.
-/* poolDirectory stays exported only for legacy-cipher-worker.ts, which
-   cross-checks against it (AU-09 test-only review). */
-export function poolDirectory(path: string): string {
-  let hash = 2166136261; // FNV-1a, just for a short stable non-identifying tag.
-  for (let i = 0; i < path.length; i++) {
-    hash ^= path.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `mc-pool-${(hash >>> 0).toString(36)}`;
-}
 
 /** Applies the raw data key (ADR-0018: PRAGMA hexkey, not a passphrase
     through sqlite3mc's own KDF - stretching already happened in the

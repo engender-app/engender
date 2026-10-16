@@ -34,9 +34,9 @@ export interface DoseLogQuestion {
   deepLinkedDoseId: string | null;
   /** Which regimen the schedule view compares against while more than one
       is active (ticket 15), in order of claim: the pick made on this visit,
-      the drug a Care spine link named, the stored pick. The first naming an
+      the episode a Care spine link named, the stored pick. The first naming an
       active drug wins; with none, the default the new-dose editor gets. */
-  regimenClaims: readonly (string | null)[];
+  regimenClaims: readonly (string | { episodeId: string } | null)[];
 }
 
 /** One result for the dose log's two views and its editor (final-audit
@@ -51,14 +51,14 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
     /* The whole log, not the window (ticket 10): a rotation site's last use
        routinely predates the window, and "never used" has to mean never. The
        window and whether anything precedes it are cut from the same rows. */
-    journal.doses.getDoses(0, question.toEpochDay ?? today),
+    journal.doses.getDosesForSlots(0, question.toEpochDay ?? today),
     journal.doses.getSchedules(),
     journal.doses.getPauses(),
     deepLinkedDoseId ? journal.doses.getDoseById(deepLinkedDoseId) : Promise.resolve(null)
   ]);
   const windowStart = startOfDayTimestamp(fromEpochDay);
-  const doses = allDoses.filter((dose) => dose.timestamp >= windowStart);
-  const comparisonDoses = doses.filter((dose) => dose.timestamp < startOfDayTimestamp(today + 1));
+  const doses = allDoses.filter((dose) => dose.timestamp >= windowStart && dose.timestamp < startOfDayTimestamp((question.toEpochDay ?? today) + 1));
+  const comparisonDoses = allDoses;
 
   /* Every episode active today (phase 5 ticket 38): usually one, but a
      concurrent second drug's makes it two. An episode is in effect for whole
@@ -73,7 +73,11 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
      picker: both ask "which of the concurrently active drugs". */
   const activeDrugChoices = activeEpisodes.map((episode) => episode.drug)
     .filter((drug, index, drugs) => drugs.findIndex((candidate) => sameDrug(candidate, drug)) === index);
-  const claimedDrug = regimenClaims.find((drug): drug is string =>
+  const claimedDrug = regimenClaims.map((claim) =>
+    claim !== null && typeof claim === 'object'
+      ? activeEpisodes.find((episode) => episode.id === claim.episodeId)?.drug ?? null
+      : claim
+  ).find((drug): drug is string =>
     drug !== null && activeDrugChoices.some((choice) => sameDrug(choice, drug)));
   const selectedRegimenDrug =
     activeDrugChoices.find((drug) => claimedDrug !== undefined && sameDrug(drug, claimedDrug)) ??

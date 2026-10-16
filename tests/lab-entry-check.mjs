@@ -113,6 +113,34 @@ try {
   assert.equal(await page.locator('#lab-value').getAttribute('aria-invalid'), 'true');
   assert.match(await page.locator('#lab-value-hint').innerText(), /number/i);
   console.log('PASS manual result fields precede context and time; missing value explains disabled Save');
+  // Last-audit UI 01: typed one key at a time, as a person types, a decimal
+  // or a minus sign must not be rewritten under the caret (72.5 used to
+  // save as 572, -3 read 3). `fill` sets the whole value at once and never
+  // showed it.
+  await page.locator('#lab-value').pressSequentially('-', { delay: 20 });
+  assert.equal(await page.locator('[data-save-lab]').isDisabled(), true, 'a lone minus is not a value yet');
+  await page.locator('#lab-value').pressSequentially('3', { delay: 20 });
+  assert.equal(await page.locator('#lab-value').inputValue(), '-3', 'typing -3 keeps its minus');
+  await page.locator('[data-close-record]').click();
+  await page.locator('[data-discard-record]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  for (const [typed, saved] of [['72.5', 72.5], ['0.5', 0.5], ['12.75', 12.75]]) {
+    await openNew();
+    const analyte = await page.locator('#lab-analyte').inputValue();
+    await page.locator('#lab-value').pressSequentially(typed, { delay: 20 });
+    assert.equal(await page.locator('#lab-value').inputValue(), typed, `typing ${typed} key by key keeps it`);
+    await page.locator('[data-save-lab]').click();
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
+    const results = await stored(analyte);
+    const record = results.find(({ value }) => value === saved);
+    assert.ok(record, `${typed} saved as ${saved}, not ${JSON.stringify(results.map(({ value }) => value))}`);
+    await page.evaluate(async (id) => {
+      const { bootState } = await import('/src/lib/stores/boot.svelte.ts');
+      await bootState.journal.labs.deleteResult(id);
+    }, record.id);
+  }
+  console.log('PASS lab value typed key by key keeps decimals and a minus, and saves the number typed');
+  await openNew();
   await page.locator('#lab-analyte').selectOption('custom');
   assert.equal(await page.locator('#lab-custom-analyte').getAttribute('aria-invalid'), 'true');
   assert.equal(await page.locator('#lab-custom-analyte').getAttribute('aria-describedby'), 'lab-custom-analyte-hint');

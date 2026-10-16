@@ -279,6 +279,39 @@ describe('candidate publication evidence', () => {
     expect(check(evidence)).toEqual([]);
   });
 
+  function shipFirstRecord(version = '2.2.0') {
+    const evidence = { ...pendingRecord(), releaseVersion: version, candidateRevision: revision };
+    const passed = fullRecord();
+    evidence.stages.stage1 = passed.stages.stage1;
+    evidence.stages.stage2 = passed.stages.stage2;
+    evidence.stages.stable = passed.stages.stable;
+    return evidence;
+  }
+
+  it.each(['1.0.0', '1.0.1'])('allows ship-first publication of %s with every channel still pending', (version) => {
+    const evidence = shipFirstRecord(version);
+    expect(check(evidence, 'stable', version)).toEqual([]);
+    expect(progressiveReleaseProblems(evidence)).toEqual([]);
+    expect(evidence.channels.obtainium.state).toBe('label-only');
+    expect(evidence.stages.stage3.evidence.playOpenTesting).toBe(false);
+    expect(evidence.stages.stage4.evidence.fdroidSubmission).toBe(false);
+  });
+
+  it.each(['stage1', 'stage2', 'stable'] as const)('refuses missing %s candidate checks before publication', (stage) => {
+    const evidence = shipFirstRecord();
+    evidence.stages[stage].releaseMatrix.checks.rollback = false;
+    expect(check(evidence)).toContain(`${stage}.releaseMatrix.checks.rollback must be true.`);
+  });
+
+  it('does not hide false post-publication claims behind stable readiness', () => {
+    const evidence = shipFirstRecord();
+    evidence.channels.play = { state: 'live', switchedAt: '2026-08-18T10:00:00Z' };
+    expect(check(evidence)).toContain('stage3.evidence.playOpenTesting must be true.');
+    evidence.channels.play.state = 'label-only';
+    evidence.stages.stage4.evidence.fdroidSubmission = true;
+    expect(check(evidence)).toContain('stage4.evidence.fdroidRebuildPassed must be true.');
+  });
+
   it('rejects source changes after the tested revision', () => {
     writeFileSync(join(root, 'source.txt'), 'untested application');
     git('add', '.');

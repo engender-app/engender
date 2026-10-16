@@ -87,3 +87,17 @@ test('a child ignoring timeout termination is stopped by the fallback', async ()
   expect(result.timedOut).toBe(true);
   expect(invocationFailed(result)).toBe(true);
 });
+
+
+test('combined matrix refuses old evidence before running any engine', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'capability-combined-stale-'));
+  directories.push(directory);
+  const stale = join(directory, 'matrix.json');
+  const previous = '{"results":[{"status":"pass"}]}';
+  await writeFile(stale, previous);
+  const runner = fileURLToPath(new URL('./browser-tier/capability-run.mjs', import.meta.url));
+  await expect(promisify(execFile)(process.execPath, [runner], {
+    env: { ...process.env, CAPABILITY_OUTPUT: directory }
+  })).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('EEXIST') });
+  expect(await readFile(stale, 'utf8')).toBe(previous);
+});

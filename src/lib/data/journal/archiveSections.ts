@@ -147,6 +147,44 @@ function flat<
   };
 }
 
+const MEDICATION_STOCK = {
+  table: 'medication_stock',
+  identity: 'drug',
+  orderBy: 'drug',
+  columns: {
+    uuid: 'id',
+    drug: 'drug',
+    quantity: 'quantity',
+    unit: 'unit',
+    recorded_epoch_day: 'recordedEpochDay',
+    reminder_ever_created: { field: 'reminderEverCreated', bool: true },
+    reminder_dismissed: { field: 'reminderDismissed', bool: true },
+    opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
+    in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
+    in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
+    lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
+    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
+  }
+} as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
+
+const REMINDERS = {
+  table: 'reminder',
+  identity: 'uuid',
+  orderBy: 'id',
+  columns: {
+    uuid: 'id',
+    title: 'title',
+    type: 'type',
+    time: 'time',
+    recurrence: 'recurrence',
+    interval: 'interval',
+    anchor_epoch_day: 'anchorEpochDay',
+    epoch_day: 'epochDay',
+    enabled: { field: 'enabled', bool: true },
+    auto_source: { field: 'autoSource', whenAbsent: null }
+  }
+} as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
+
 const SECTIONS = [
   section({
     name: 'dimensions',
@@ -720,28 +758,17 @@ const SECTIONS = [
   // `auto_source` declares what it is written from when absent, the way lab
   // results' dosing columns do - an archive written before ticket 04 has no
   // such field at all.
-  flat({
-    name: 'reminders',
-    // Not structure to hand a stranger: `auto_source` ties a reminder to
-    // this device's own stock or wear-session state (reminderAutoSource has
-    // two writers), which means nothing on a receiving device.
-    travels: 'none',
-    table: 'reminder',
-    identity: 'uuid',
-    orderBy: 'id',
-    columns: {
-      uuid: 'id',
-      title: 'title',
-      type: 'type',
-      time: 'time',
-      recurrence: 'recurrence',
-      interval: 'interval',
-      anchor_epoch_day: 'anchorEpochDay',
-      epoch_day: 'epochDay',
-      enabled: { field: 'enabled', bool: true },
-      auto_source: { field: 'autoSource', whenAbsent: null }
-    }
-  }),
+  {
+    ...flat({
+      name: 'reminders',
+      // Not structure to hand a stranger: `auto_source` ties a reminder to
+      // this device's own stock or wear-session state (reminderAutoSource has
+      // two writers), which means nothing on a receiving device.
+      travels: 'none',
+      ...REMINDERS
+    }),
+    apply: (restoring: Restoring) => apply.applyReminders(REMINDERS, restoring)
+  },
   flat({
     name: 'tallyEvents',
     travels: 'none',
@@ -857,9 +884,9 @@ const SECTIONS = [
       hidden: { field: 'hidden', bool: true }
     }
   }),
-  // Carries no episode link: which episode a dose belongs to is resolved
-  // from its own timestamp above the seam (regimenEpisode.ts), so unlike the
-  // schedules and pauses below this needs no `after`. `drug` is absent on an
+  // Person-logged doses resolve their episode by timestamp above the seam
+  // (regimenEpisode.ts). Automatic provenance carries a travelling episode
+  // uuid, not a local rowid, so this still needs no `after`. `drug` is absent on an
   // archive from before ticket 38 - null, same as every dose ever logged
   // without one.
   flat({
@@ -886,7 +913,10 @@ const SECTIONS = [
          11 carries no source at all, and every row in one was logged by
          hand, because nothing else could write a dose then. The column's
          own default says the same thing (schema v82). */
-      source: { field: 'source', whenAbsent: 'person' }
+      source: { field: 'source', whenAbsent: 'person' },
+      auto_log_episode_uuid: { field: 'autoLogEpisodeId', whenAbsent: null },
+      auto_log_epoch_day: { field: 'autoLogEpochDay', whenAbsent: null },
+      auto_log_index: { field: 'autoLogIndex', whenAbsent: null }
     }
   }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just
@@ -920,34 +950,22 @@ const SECTIONS = [
     read: read.readDosePauses,
     apply: apply.applyDosePauses
   }),
-  /* Identified by `drug`, not by uuid: medication_stock is UNIQUE per drug
-     (schema.ts), one row that a fresh count replaces in place rather
-     than a log of past ones - the same shape personalEffects has for an
-     effect. The reminder bookkeeping travels as recorded: restoring a
-     device's own backup should restore its own hand-off state, not a blank
-     one (see ArchiveMedicationStock's own comment). */
-  flat({
-    name: 'medicationStock',
-    // Your own current inventory count, not structure to hand a stranger.
-    travels: 'none',
-    table: 'medication_stock',
-    identity: 'drug',
-    orderBy: 'drug',
-    columns: {
-      uuid: 'id',
-      drug: 'drug',
-      quantity: 'quantity',
-      unit: 'unit',
-      recorded_epoch_day: 'recordedEpochDay',
-      reminder_ever_created: { field: 'reminderEverCreated', bool: true },
-      reminder_dismissed: { field: 'reminderDismissed', bool: true },
-      opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
-      in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
-      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
-      lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
-      doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
-    }
-  }),
+  /* A destination stock row keeps its count when either its travelling uuid
+     or its trimmed, case-insensitive drug key is present. Renaming preserves
+     the uuid; a fresh count is still one row per drug, not a log of past
+     ones. The descriptor keeps the column mapping and defaults while this rule has its
+     own applier. Reminder bookkeeping travels as recorded, so Replace
+     restores the device's own hand-off state (ArchiveMedicationStock). */
+  {
+    ...flat({
+      name: 'medicationStock',
+      after: ['reminders'],
+      // Your own current inventory count, not structure to hand a stranger.
+      travels: 'none',
+      ...MEDICATION_STOCK
+    }),
+    apply: (restoring: Restoring) => apply.applyMedicationStock(MEDICATION_STOCK, restoring)
+  },
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
   // and `procedures` above give.
   section({

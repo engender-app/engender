@@ -6,6 +6,7 @@
 
 import {
   isInjectionDose,
+  isPositiveDoseAmount,
   isTopicalDose,
   lastInjectionBefore,
   matchDoseRoute,
@@ -170,6 +171,7 @@ export function draftWithDrug(
     site to record. */
 export function doseInputOfDraft(draft: DoseDraft): DoseEventInput | null {
   const dose = parseFloat(draft.dose);
+  if (draft.status !== 'skipped' && !isPositiveDoseAmount(dose)) return null;
   const common = {
     id: draft.id,
     timestamp: draftTimestamp(draft.day, draft.time),

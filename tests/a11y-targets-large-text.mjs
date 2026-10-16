@@ -1,22 +1,52 @@
 /* Touch targets and whole navigation names (phase 15 after-release ticket
    18; accessibility audit A10, A11 and V13, and the 5 October audit's
-   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08).
+   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08; the 12 October UI audit's
+   U38 and U39, last-audit UI ticket 25).
 
    A target is measured the way a finger meets it, not by its box: from the
    control's centre, how far left, right, up and down `elementFromPoint`
    still lands on the control or something inside it. That counts a
    transparent `::after` extension the way a press does, and it counts
-   nothing a neighbour covers. It steps a quarter of a pixel at a time, so a
-   48px target with its centre between two pixels reads 48 rather than the
-   47 a whole-pixel walk gives it. Each extent is capped at 60px, so 120 is
-   "at least 48"; an extension reaching out on one side only (the photo
-   years') still counts whole.
+   nothing a neighbour covers. It steps a quarter of a pixel at a time.
+   Each extent is capped at 60px, so 120 is "at least 48"; an extension
+   reaching out on one side only (the photo years') still counts whole.
 
    Every listed control is checked at 320 and 390px wide with the page's
    text at 100% and 200% (the root font size, which every type token is a
    rem of). The bottom navigation is checked at 100%, 130% and 200%: every
    label shows its whole name, no word is broken across lines, and no tab
    is under 48px.
+
+   A scene marked `narrow` is also checked at 195px, the width a 390px
+   phone leaves at 200% zoom, with text at 100%, in English and Polish:
+   opened letters' rows and the Words cloud, which the 12 October audit
+   measured at 23px tall and 29 to 47px wide, and the five screens its
+   U51, U52 and U54 found losing content or stacking targets there
+   (last-audit UI 48). Three more checks are theirs. A scene's `whole`
+   text has to show whole: the range of its words inside the viewport
+   and inside every ancestor that clips sideways, which is what Journal's
+   month ("Octobe", "paździe") and In the room's question ("spironolac")
+   failed. A scene marked `apart` has no two listed controls whose boxes
+   overlap, which is what Lab results' and a saved question's back
+   control did, 24px deep under the first action, and what Journal's
+   month button did under the search control. A scene whose `path` is a
+   function finds its address on the filled journal (a saved question's
+   id is not fixed).
+
+   The walk alone cannot tell 47px from 48px. Chromium snaps a hit-test
+   point by up to a pixel, so a lone 47px button read 47.75 and a 48px
+   donut row with its neighbour flush below read 47.75 too; the old floor
+   of 48 less a quarter pixel passed both. So the size comes from layout,
+   which is exact: the control's box joined with any absolutely placed
+   `::before`/`::after` it draws inside itself (the .hit-floor extension).
+   The walk then only says what that misses: a side where it lands more
+   than a pixel short of the edge is covered by something and counts as
+   far as the walk got, and a side where it lands more than a pixel past
+   it has an extension layout did not find and counts as walked. Before
+   any scene the measure runs over two planted buttons, 47px and 48px
+   square, and the run stops unless it reads the first under the floor and
+   the second at it. A walk that cannot see a 47px control proves nothing
+   about the real ones.
 
    The calendar's date links are printed at 320 rather than failed: seven
    48px columns need 336px of row, which a 320px screen does not have
@@ -29,7 +59,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
+import { setAppLanguage, launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
 import { FILL_EVERY_FEATURE_EXPRESSION, INIT_HIDE_DEMO_SCRIPT, RESET_PERSONA_EXPRESSION } from './yank-sweep-core.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -39,8 +69,6 @@ const flag = (name, fallback) => {
   return at >= 0 ? args[at + 1] : fallback;
 };
 const FLOOR = 48;
-/** What a quarter-pixel walk can lose off a target's true extent. */
-const SLACK = 0.25;
 const out = flag('out', null);
 const only = flag('only', null)?.split(',');
 
@@ -51,7 +79,7 @@ const SCENES = [
   { key: 'tally', path: '/tally', targets: '.segment' },
   { key: 'wear', path: '/body/wear', targets: '.segment, .tag-chip' },
   { key: 'body-map', path: '/body-map', targets: '.tag-chip' },
-  { key: 'letters', path: '/transition/letters', targets: '.letter-act' },
+  { key: 'letters', path: '/transition/letters', targets: '.letter-act, [data-letter-open]', narrow: true },
   { key: 'eras', path: '/transition/milestones', targets: '[data-tl-era]' },
   {
     /* At rest the year rail takes no pointer at all (it wakes on a scroll,
@@ -82,6 +110,21 @@ const SCENES = [
     }
   },
   { key: 'stats', path: '/stats/days', targets: '.kit-donut-item-btn' },
+  { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
+  { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
+  {
+    key: 'saved-search',
+    path: async (page, base) => {
+      await settlePage(page, base, '/search?questions=1', 'light');
+      return page.locator('a[href^="/search/questions/"]').first().getAttribute('href');
+    },
+    targets: '[data-screen-back], .header-action > *',
+    apart: true,
+    narrow: true
+  },
+  { key: 'measurements', path: '/body/measurements', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
+  { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
+  { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
   {
     key: 'templates',
@@ -95,6 +138,7 @@ const SCENES = [
 ];
 
 const WIDTHS = [320, 390];
+const NARROW = 195;
 const TEXT = [100, 200];
 const NAV_TEXT = [100, 130, 200];
 
@@ -152,10 +196,73 @@ function measure(page, selector, sticky = false) {
       while (r < CAP && owns(cx + r + STEP, cy)) r += STEP;
       while (t < CAP && owns(cx, cy - t - STEP)) t += STEP;
       while (d < CAP && owns(cx, cy + d + STEP)) d += STEP;
-      rows.push({ name, box: `${Math.round(b.width)}x${Math.round(b.height)}`, w: l + r + STEP, h: t + d + STEP });
+      /* The box, joined with a pseudo-element extension placed against its
+         padding box (only a positioned control is that containing block). */
+      const own = getComputedStyle(e);
+      let { left, right, top, bottom } = b;
+      if (own.position !== 'static') {
+        for (const pseudo of ['::before', '::after']) {
+          const p = getComputedStyle(e, pseudo);
+          if (p.content === 'none' || p.display === 'none' || p.pointerEvents === 'none' || p.position !== 'absolute') continue;
+          const x = b.left + parseFloat(own.borderLeftWidth) + parseFloat(p.left);
+          const y = b.top + parseFloat(own.borderTopWidth) + parseFloat(p.top);
+          left = Math.min(left, x);
+          right = Math.max(right, x + parseFloat(p.width));
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y + parseFloat(p.height));
+        }
+      }
+      /* The layout edge, unless the walk is more than the snap away from it. */
+      const side = (walked, edge) => (Math.abs(walked - edge) > 1 ? walked : edge);
+      const w = side(l, cx - left) + side(r, right - cx);
+      const h = side(t, cy - top) + side(d, bottom - cy);
+      rows.push({ name, box: `${Math.round(b.width)}x${Math.round(b.height)}`, w, h });
     }
     return rows;
   }, [selector, sticky]);
+}
+
+/** Words of each matching element that do not show whole: the range of
+    its text past the viewport or past an ancestor that clips sideways. */
+function cut(page, selector) {
+  return page.evaluate((sel) => {
+    const rows = [];
+    for (const e of document.querySelectorAll(sel)) {
+      const range = document.createRange();
+      range.selectNodeContents(e);
+      const t = range.getBoundingClientRect();
+      if (!t.width) {
+        rows.push(`${sel} paints no text`);
+        continue;
+      }
+      let by = t.left < -0.5 || t.right > innerWidth + 0.5 ? 'the viewport' : '';
+      for (let a = e.parentElement; a && !by; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === 'visible') continue;
+        const r = a.getBoundingClientRect();
+        if (t.left < r.left - 0.5 || t.right > r.right + 0.5) by = `${a.tagName.toLowerCase()}.${[...a.classList].join('.')}`;
+      }
+      if (by) rows.push(`"${e.textContent.trim().replace(/\s+/g, ' ').slice(0, 40)}" runs ${Math.round(t.width)}px wide, cut by ${by}`);
+    }
+    return rows;
+  }, selector);
+}
+
+/** Pairs of matching controls whose boxes overlap. */
+function stacked(page, selector) {
+  return page.evaluate((sel) => {
+    const boxes = [...document.querySelectorAll(sel)]
+      .filter((e) => e.getBoundingClientRect().width > 0 && !e.closest('[aria-hidden="true"],[inert]'))
+      .map((e) => [(e.getAttribute('aria-label') || e.textContent).trim().slice(0, 30), e.getBoundingClientRect()]);
+    const rows = [];
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const [an, a] = boxes[i];
+      const [bn, b] = boxes[j];
+      const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      if (x > 0.5 && y > 0.5) rows.push(`"${an}" and "${bn}" overlap ${x.toFixed(1)}x${y.toFixed(1)}`);
+    }
+    return rows;
+  }, selector);
 }
 
 /** Every nav label whole: no clipped text, no word split across lines, the
@@ -203,29 +310,57 @@ try {
   if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('persona reset never reached Home');
   if (!(await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION))) throw new Error('fill every feature never reached /more');
 
-  for (const width of WIDTHS) {
+  /* The planted pair: the walk has to see the 1px between them. */
+  const bench = await context.newPage();
+  await bench.setContent(
+    '<body style="margin:0">' +
+      [47, 48].map((size, i) => `<button data-planted-target style="position:absolute;top:${100 + i * 100}px;left:100px;width:${size}px;height:${size}px;padding:0;border:0"></button>`).join('') +
+      '</body>'
+  );
+  const planted = await measure(bench, '[data-planted-target]', true);
+  await bench.close();
+  const [small, whole] = planted;
+  /* A layout unit (1/64px) of rounding is not a shortfall. */
+  const under = (row) => !row || row.covered || row.w < FLOOR - 1 / 64 || row.h < FLOOR - 1 / 64;
+  if (planted.length !== 2 || !under(small) || under(whole)) {
+    throw new Error(`the walk cannot tell a 47px control from a 48px one: ${JSON.stringify(planted)}`);
+  }
+  console.log(`planted controls: 47px reads ${small.w}x${small.h} (under), 48px reads ${whole.w}x${whole.h} (at the floor)`);
+
+  for (const scene of SCENES) if (typeof scene.path === 'function') scene.path = await scene.path(page, base);
+
+  for (const width of [...WIDTHS, NARROW]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const text of TEXT) {
-      for (const scene of SCENES) {
-        if (only && !only.includes(scene.key)) continue;
-        await settlePage(page, base, scene.path, 'light');
-        await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
-        if (scene.open) await scene.open(page);
-        await settle(page, scene.targets);
-        const rows = await measure(page, scene.targets, scene.sticky);
-        const label = `${scene.key} ${width}px ${text}%`;
-        if (!rows.length) failures.push(`${label}: no listed controls found`);
-        for (const row of rows) {
-          if (row.covered) failures.push(`${label}: "${row.name}" ${row.box}, centre covered by ${row.covered}`);
-          else if (row.w < FLOOR - SLACK || row.h < FLOOR - SLACK) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
+    for (const lang of width === NARROW ? ['en', 'pl'] : ['en']) {
+      if (width === NARROW) await setAppLanguage(page, lang);
+      for (const text of width === NARROW ? [100] : TEXT) {
+        for (const scene of SCENES) {
+          if (only && !only.includes(scene.key)) continue;
+          if (width === NARROW && !scene.narrow) continue;
+          await settlePage(page, base, scene.path, 'light');
+          await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
+          if (scene.open) await scene.open(page);
+          await settle(page, scene.targets);
+          const rows = await measure(page, scene.targets, scene.sticky);
+          const label = `${scene.key} ${width === NARROW ? `${lang} ` : ''}${width}px ${text}%`;
+          if (!rows.length) failures.push(`${label}: no listed controls found`);
+          for (const row of rows) {
+            if (row.covered) failures.push(`${label}: "${row.name}" ${row.box}, centre covered by ${row.covered}`);
+            else if (under(row)) failures.push(`${label}: "${row.name}" ${row.box}, hit ${row.w}x${row.h}`);
+          }
+          const lost = scene.whole ? await cut(page, scene.whole) : [];
+          const overlaps = scene.apart ? await stacked(page, scene.targets) : [];
+          if (scene.whole && !(await page.locator(scene.whole).count())) lost.push(`no ${scene.whole} found`);
+          for (const line of [...lost, ...overlaps]) failures.push(`${label}: ${line}`);
+          results.scenes.push({ scene: scene.key, width, lang, text, rows, lost, overlaps });
+          console.log(`${label}: ${rows.length} controls, ${rows.filter(under).length} under ${FLOOR}${scene.whole ? `, ${lost.length} cut` : ''}${scene.apart ? `, ${overlaps.length} overlapping` : ''}`);
         }
-        results.scenes.push({ scene: scene.key, width, text, rows });
-        console.log(`${label}: ${rows.length} controls, ${rows.filter((r) => r.covered || r.w < FLOOR - SLACK || r.h < FLOOR - SLACK).length} under ${FLOOR}`);
       }
     }
-    if (!only || only.includes('nav')) {
+    if (width === NARROW) await setAppLanguage(page, 'en');
+    if (width !== NARROW && (!only || only.includes('nav'))) {
       for (const lang of ['en', 'pl']) for (const text of NAV_TEXT) {
-        await page.evaluate((l) => localStorage.setItem('PARAGLIDE_LOCALE', l), lang);
+        await setAppLanguage(page, lang);
         await settlePage(page, base, '/', 'light');
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         await settle(page, '[data-app-nav] [data-nav-item]');
@@ -240,7 +375,7 @@ try {
         results.nav.push({ lang, width, text, ...nav });
         console.log(`${label}: bar ${nav.bar.height}px${nav.layout ? ` (${nav.layout})` : ''}, ${nav.rows.map((r) => `${r.name} ${r.w}x${r.h} ${r.lines}l${r.clipped ? ' CLIPPED' : ''}`).join(', ')}`);
       }
-      await page.evaluate(() => localStorage.setItem('PARAGLIDE_LOCALE', 'en'));
+      await setAppLanguage(page, 'en');
     }
   }
 
@@ -253,6 +388,49 @@ try {
     results.calendar = rows;
     const under = rows.filter((r) => r.covered || r.w < FLOOR || r.h < FLOOR);
     console.log(`calendar 320px (printed, not failed): ${rows.length} date links, ${under.length} under ${FLOOR}${under[0] ? `, e.g. ${under[0].box} hit ${under[0].w}x${under[0].h}` : ''}`);
+  }
+
+  /* Stepping through the months must not move the search control. Where a
+     month name cannot fit the line ("październik" at 200% text on 195px) it
+     breaks in two, and a slot sized by the label showing was a line taller
+     for that month alone: search jumped a line in one frame on the way in
+     and again on the way out. The top is read right after each step, while
+     both labels are still in the slot, and again once the swap has settled. */
+  if (!only || only.includes('journal-steps')) {
+    for (const [width, text] of [[195, 200], [320, 200], [390, 100]]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const lang of ['en', 'pl']) {
+        await setAppLanguage(page, lang);
+        await settlePage(page, base, '/calendar', 'light');
+        await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
+        await settle(page, '[data-cal-month-btn]');
+        /* Sampled on every animation frame, from before the first click to
+           after the last settle, so a one-frame jump between two reads
+           cannot slip through. */
+        await page.evaluate(() => {
+          window.__tops = [];
+          window.__sampling = true;
+          const tick = () => {
+            window.__tops.push(document.querySelector('.cal-field > a').getBoundingClientRect().top);
+            if (window.__sampling) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        for (let i = 0; i < 12; i++) {
+          await page.locator('[data-cal-step="next"]').click();
+          await page.waitForTimeout(450);
+        }
+        const tops = await page.evaluate(() => {
+          window.__sampling = false;
+          return window.__tops;
+        });
+        const label = `journal steps ${lang} ${width}px ${text}%`;
+        const moved = tops.filter((t) => Math.abs(t - tops[0]) > 0.5);
+        if (moved.length) failures.push(`${label}: search top moved while stepping through 12 months (${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')})`);
+        console.log(`${label}: search top ${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')} over ${tops.length} frames`);
+      }
+    }
+    await setAppLanguage(page, 'en');
   }
 } finally {
   await browser.close();

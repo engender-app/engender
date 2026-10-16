@@ -52,6 +52,8 @@ jobs:
 
       - name: Collect every Node check
         id: node-checks
+        env:
+          TZ: UTC
         run: |
           mkdir -p ci-logs
           node scripts/run-ci-checks.mjs --tier node 2>&1 | tee ci-logs/node-checks.log
@@ -159,8 +161,16 @@ jobs:
             entry: tests/browser-tier/run.mjs
           - name: update-handover
             entry: tests/update-handover-check.mjs
+          - name: credential-change
+            entry: tests/credential-change-check.mjs
+          - name: stalled-reopen
+            entry: tests/stalled-reopen-check.mjs
           - name: restore-commit
             entry: tests/restore-commit-check.mjs
+          - name: language-confirm
+            entry: tests/language-confirm-check.mjs
+          - name: journal-history
+            entry: tests/journal-history-check.mjs
           - name: walkthrough-journal
             entry: tests/walkthrough.test.mjs
             args: --group journal
@@ -173,6 +183,8 @@ jobs:
           - name: walkthrough-actions
             entry: tests/walkthrough.test.mjs
             args: --group actions
+          - name: installed-ocr
+            entry: tests/browser-tier/ocr-offline.mjs
           - name: installed-pwa
             entry: tests/browser-tier/verify-build.mjs
           - name: hosting

@@ -13,13 +13,16 @@
    throws into a failed boot, which is what the four sequences this replaced
    each ended in. */
 
-import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
+import { inspectAndroidJournal } from '../data/sqlite/android-driver';
 import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
-import { readKeystoreSource } from '../data/keystore-file';
+import { readKeystoreSource, readKeystoreSourceForBoot } from '../data/keystore-file';
+import { authenticateCredentials } from '../data/credential-ownership';
+import { webJournalPresent } from '../data/journal-presence';
 import { surveyAndroid } from './android-survey';
 import {
   deviceBoundJournalExists,
   DeviceBoundKeyUnavailableError,
+  removeDeviceBoundJournal,
   unlockDeviceBoundJournal
 } from '../data/device-bound-journal';
 import { JOURNAL_DATABASE, legacyStoragePresent } from '../data/legacy-journal';
@@ -28,6 +31,19 @@ import { androidKeystore } from '../lock/keystore-bridge';
 import type { BootEffect, BootEvent } from './boot-machine';
 
 type BootDispatch = (event: BootEvent) => void;
+
+/** Sweep only after authentication, under the same owner as mode changes.
+    Another tab may have completed a move back to device-bound mode since
+    the survey, so its current keystore decides whether this wrap is stale. */
+export async function sweepDeviceBoundAfterSecretUnlock(current: () => void = () => {}): Promise<void> {
+  await authenticateCredentials(async () => {
+    current();
+    const secretSource = await readKeystoreSource();
+    current();
+    if (secretSource !== null) await removeDeviceBoundJournal();
+    current();
+  });
+}
 
 /** Everything the reducer can ask for that needs no rune and no open journal. */
 type PlatformEffect = Extract<
@@ -46,13 +62,17 @@ type PlatformEffect = Extract<
 export async function performPlatformEffect(effect: PlatformEffect, dispatch: BootDispatch): Promise<void> {
   switch (effect.type) {
     case 'survey-web': {
-      const keystoreSecretSource = await readKeystoreSource();
-      const deviceBoundKeystoreExists = await deviceBoundJournalExists();
-      dispatch({
-        type: 'web-surveyed',
-        keystoreSecretSource,
-        deviceBoundKeystoreExists,
-        legacyStoragePresent: await legacyStoragePresent()
+      // Empty-journal cache cleanup must share ownership with setup and reset.
+      await authenticateCredentials(async () => {
+        const keystoreSecretSource = await readKeystoreSourceForBoot();
+        const deviceBoundKeystoreExists = await deviceBoundJournalExists();
+        dispatch({
+          type: 'web-surveyed',
+          keystoreSecretSource,
+          deviceBoundKeystoreExists,
+          legacyStoragePresent: await legacyStoragePresent(),
+          journalPresent: keystoreSecretSource === null && !deviceBoundKeystoreExists && await webJournalPresent()
+        });
       });
       return;
     }
@@ -63,9 +83,9 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     case 'survey-android': {
       /* All three at once (android-survey.ts says why). */
       const survey = await surveyAndroid({
-        readKeystoreSource,
+        readKeystoreSource: readKeystoreSourceForBoot,
         keystoreStatus: () => androidKeystore.status(),
-        journalIsPlaintext: () => androidJournalIsPlaintext(JOURNAL_DATABASE)
+        inspectJournal: () => inspectAndroidJournal(JOURNAL_DATABASE)
       });
       dispatch({ type: 'android-surveyed', ...survey });
       return;
@@ -155,7 +175,7 @@ async function performDemoEffect(
         dispatch({ type: 'demo-unlock-failed' });
         return;
       }
-      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true });
       return;
     }
   }

@@ -283,10 +283,17 @@
     text-align: start;
   }
 
+  /* The press reaches into the card's own padding, above and below, so an
+     unread letter's one line ("Written 15 May 2026 - Ready", 23px) is still
+     a 48px target (last-audit UI 25, audit U38). The negative margin hands
+     the padding straight back, so the drawing does not move. Below, it takes
+     only --space-3: that is the gap above the close button on an open
+     letter, and two controls must not share a strip of screen. */
   .letter-main-btn {
     background: none;
     border: 0;
-    padding: 0;
+    padding: var(--space-4) 0 var(--space-3);
+    margin-block: calc(-1 * var(--space-4)) calc(-1 * var(--space-3));
     color: inherit;
     font: inherit;
     cursor: pointer;

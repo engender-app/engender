@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CACHE_PDF_WORKER } from './pdf-worker-cache';
-import { CACHE_ON_DEMAND, SKIP_WAITING, listenForOnDemandCache, listenForSkipWaiting } from './sw-messages';
+import { SKIP_WAITING, listenForOnDemandCache, listenForSkipWaiting } from './sw-messages';
 
 /** A scope that records what was registered and can be sent a message. The
     `waitUntil` it hands the listener is the one a real message event carries,
@@ -55,28 +55,23 @@ describe('listenForOnDemandCache', () => {
     const caches = fakeCaches();
     listenForOnDemandCache(sw, caches, {
       cacheName: 'engender-shell-abc',
-      assets: ['/tesseract/worker.min.js', '/tesseract/tesseract-core.wasm']
+      assets: ['/pdf-worker.js'], message: CACHE_PDF_WORKER
     });
 
-    sw.send(CACHE_ON_DEMAND);
-    /* Held open while it runs: 21 MB is long enough for a browser to decide an
-       idle worker can be shut down, and half a cached engine is worse than
-       none. */
+    sw.send(CACHE_PDF_WORKER);
+    // The worker stays alive until the optional PDF fetch completes.
     expect(sw.held).toHaveLength(1);
     await Promise.all(sw.held);
 
-    expect(caches.added['engender-shell-abc']).toEqual([
-      '/tesseract/worker.min.js',
-      '/tesseract/tesseract-core.wasm'
-    ]);
+    expect(caches.added['engender-shell-abc']).toEqual(['/pdf-worker.js']);
   });
 
   test('the ask carries no paths of its own, so another page cannot name what gets cached', async () => {
     const sw = fakeScope();
     const caches = fakeCaches();
-    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/tesseract/worker.min.js'] });
+    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/pdf-worker.js'], message: CACHE_PDF_WORKER });
 
-    sw.send({ type: CACHE_ON_DEMAND, assets: ['https://example.test/tracker.js'] });
+    sw.send({ type: CACHE_PDF_WORKER, assets: ['https://example.test/tracker.js'] });
     sw.send('engender:something-else');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -92,32 +87,19 @@ describe('listenForOnDemandCache', () => {
         }
       }))
     };
-    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/tesseract/worker.min.js'] });
+    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/pdf-worker.js'], message: CACHE_PDF_WORKER });
 
-    sw.send(CACHE_ON_DEMAND);
+    sw.send(CACHE_PDF_WORKER);
     await expect(Promise.all(sw.held)).resolves.toBeDefined();
     expect(caches.open).toHaveBeenCalledTimes(1);
   });
 
-  test('the PDF worker has an ask of its own, and neither ask fills the other set', async () => {
+  test('the former OCR message no longer starts an optional download', async () => {
     const sw = fakeScope();
     const caches = fakeCaches();
-    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc', assets: ['/tesseract/worker.min.js'] });
-    listenForOnDemandCache(sw, caches, {
-      cacheName: 'engender-shell-abc',
-      assets: ['/_app/immutable/workers/pdf-worker-X.js'],
-      message: CACHE_PDF_WORKER
-    });
-
-    sw.send(CACHE_PDF_WORKER);
-    await Promise.all(sw.held);
-    expect(caches.added['engender-shell-abc']).toEqual(['/_app/immutable/workers/pdf-worker-X.js']);
-
-    sw.send(CACHE_ON_DEMAND);
-    await Promise.all(sw.held);
-    expect(caches.added['engender-shell-abc']).toEqual([
-      '/_app/immutable/workers/pdf-worker-X.js',
-      '/tesseract/worker.min.js'
-    ]);
+    listenForOnDemandCache(sw, caches, { cacheName: 'engender-shell-abc',
+      assets: ['/pdf-worker.js'], message: CACHE_PDF_WORKER });
+    sw.send('engender:cache-on-demand');
+    expect(caches.open).not.toHaveBeenCalled();
   });
 });

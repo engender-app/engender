@@ -10,10 +10,11 @@
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay } from '$lib/data/dates';
-  import { epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { pauseCoversDay } from '$lib/data/journalingPause';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -25,6 +26,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { collapse, resize } from '$lib/motion/reveal';
   import type { JournalingPause } from '$lib/data/types';
+  import { writer } from '$lib/stores/attempt.svelte';
 
   const today = $derived(currentDay());
 
@@ -35,35 +37,41 @@
 
   let newPause = $state<{ start: string; end: string } | null>(null);
 
+  let rangeInverted = $derived(!!newPause && spanIsInverted({
+    startEpochDay: epochDayFromDateInputValue(newPause.start),
+    endEpochDay: epochDayFromDateInputValue(newPause.end)
+  }));
+
+  /* Starting and resuming are one write at a time (UI 17): a double tap on
+     Start used to store two pauses. A failed write leaves the panel as it
+     was and says so. */
+  const pauseWrite = writer();
   async function startPause() {
-    if (!newPause) return;
+    if (!newPause || rangeInverted) return;
     const startEpochDay = epochDayFromDateInputValue(newPause.start);
     if (startEpochDay === null) return;
-    await journal.journalingPauses.upsertPause({
-      startEpochDay,
-      // An empty end day is a pause that is still running, not a one-day one.
-      endEpochDay: epochDayFromDateInputValue(newPause.end)
-    });
+    // An empty end day is a pause that is still running, not a one-day one.
+    const endEpochDay = epochDayFromDateInputValue(newPause.end);
+    if (!(await pauseWrite.run(() => journal.journalingPauses.upsertPause({ startEpochDay, endEpochDay }), m.write_failed()))) return;
     newPause = null;
   }
 
   async function resumeToday() {
-    if (!current) return;
+    const running = current;
+    if (!running) return;
     // Today itself resumes, so the pause ends yesterday - an inclusive
     // end day of today would leave today still covered (pauseCoversDay)
     // and nothing would actually change until tomorrow. A pause declared
     // and resumed on the same day never covered a real day at all, so it
     // is deleted outright rather than kept as an inverted range.
     const endEpochDay = today - 1;
-    if (endEpochDay < current.startEpochDay) {
-      await journal.journalingPauses.deletePause(current.id);
-      return;
-    }
-    await journal.journalingPauses.upsertPause({
-      id: current.id,
-      startEpochDay: current.startEpochDay,
-      endEpochDay
-    });
+    await pauseWrite.run(
+      () =>
+        endEpochDay < running.startEpochDay
+          ? journal.journalingPauses.deletePause(running.id)
+          : journal.journalingPauses.upsertPause({ id: running.id, startEpochDay: running.startEpochDay, endEpochDay }),
+      m.write_failed()
+    );
   }
 
   const pauseRecord = recordEditor<JournalingPause>({
@@ -97,11 +105,13 @@
             day: fmtDay(current.startEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
           })}
         </p>
-        <button class="btn btn-soft" data-resume-pause onclick={resumeToday}>
+        <button class="btn btn-soft" data-resume-pause disabled={pauseWrite.busy} onclick={resumeToday}>
           <span>{m.journaling_pause_resume()}</span>
         </button>
       {:else if newPause}
-        <div class="cd-endpoints">
+        <!-- Inert while the pause is being stored, so a date changed then is
+             not dropped when the form gives way to the running pause (UI 17). -->
+        <div class="cd-endpoints" inert={pauseWrite.busy}>
           <Field label={m.journaling_pause_start_label()} id="pause-start">
             {#snippet children(id)}
               <DatePicker name="pause-start" bind:value={newPause!.start} {id} />
@@ -109,17 +119,23 @@
           </Field>
           <Field label={m.journaling_pause_end_label()} id="pause-end">
             {#snippet children(id)}
-              <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
+              <DatePicker name="pause-end" min={dayRangeEndMin(newPause!.start)} bind:value={newPause!.end} {id} aria-invalid={rangeInverted || undefined} describedBy={rangeInverted ? "pause-range-error" : undefined} />
             {/snippet}
           </Field>
         </div>
         <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">
           {m.journaling_pause_end_hint()}
         </p>
+        <div aria-live="polite">
+          {#if rangeInverted}
+            <p class="muted small" id="pause-range-error" transition:collapse>{m.era_conflict_inverted()}</p>
+          {/if}
+        </div>
         <button
           class="btn btn-primary"
           data-confirm-pause
-          disabled={epochDayFromDateInputValue(newPause.start) === null}
+          aria-describedby={rangeInverted ? "pause-range-error" : undefined}
+          disabled={epochDayFromDateInputValue(newPause.start) === null || rangeInverted || pauseWrite.busy}
           onclick={startPause}
         >
           <span>{m.journaling_pause_start()}</span>

@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 engender is a journal for tracking a gender transition. It is made and
 published by Alicja Barankiewicz in Warsaw, Poland. This policy covers the
@@ -61,9 +61,17 @@ logs can contain an IP address and requested URL; the live server keeps
 them for at most seven days. Page-count requests are not logged.
 
 The app does not upload your journal or create an account or visitor profile.
-Page-opening counts are described below. The app loads its fonts and its text recognition files from the same server and asks nothing of any other site. The first time you scan a
-lab photo, the browser downloads the text recognition engine (about 21 MB)
-from that server; scanning itself happens on your device.
+Page-opening counts are described below. Fonts and text recognition files come
+from the same server. Installing the web app downloads the complete English and
+Polish OCR engine before it is ready offline. Scanning happens on your device,
+including the first scan after installation.
+
+Android includes the English and Polish text recognition files in the APK.
+Its first lab scan needs no download or network connection.
+
+Journal text fields ask the browser to turn off autofill and session restoration
+for their contents. This does not remove text saved by earlier app versions or
+control what a browser extension or your keyboard stores.
 
 On the web, the local journal opens in one of four ways:
 
@@ -80,9 +88,15 @@ the device makes that copy of the journal unreadable.
 You can also make an optional 25-character recovery key. It opens the
 journal on the same device and browser profile if your passphrase, PIN or
 biometric authenticator stops working. It cannot move data to a new device
-or open an export. The app shows the key once and keeps only a sealed copy
-of the journal key. Keep the recovery key on paper or in a password manager
-on another device: anyone with it and the journal data can read the journal.
+or open an export. The app shows the key once, when you make it, and keeps
+only a sealed copy of the journal key. The one exception is a lock: if the
+app locks while a new key is on screen, it shows the same key again after
+you unlock. Until then the key is held encrypted in memory and is never
+saved. A new key replaces the old one only when you confirm you have
+written it down, and until then both open the journal. If the app closes
+before that, the old key keeps working and the app tells you the
+replacement did not finish. Keep the recovery key on paper or in a password manager on another
+device: anyone with it and the journal data can read the journal.
 It cannot bring back deleted data.
 
 When you copy the recovery key in a browser, the app tries to clear it from
@@ -131,12 +145,24 @@ network connections and sends nothing to any server. It also opts out of
 Android's cloud backup and of device-to-device transfer, so the system does
 not copy the app's storage to Google or to a new phone.
 
+The app opts out of WebView diagnostic uploads to Google.
+Google Safe Browsing stays at WebView's enabled default. Its checks can use
+Google Play services' own network access.
+
+Android always asks the keyboard not to learn words typed in the app, using
+`IME_FLAG_NO_PERSONALIZED_LEARNING`. The keyboard can ignore this request.
+It does not remove words the keyboard learned earlier.
+Your keyboard and browser can make their own network requests
+independently of engender.
+
 The app requests these permissions:
 
 - `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED`,
   so a reminder or the daily check-in can notify you, at the time you chose
   rather than in a batched system window, and still fire after the phone
   restarts.
+- `WAKE_LOCK`, so Android can keep the CPU running while a scheduled encrypted
+  backup is delivered to the chosen local folder. The screen can stay off.
 - `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, for voice notes, voice
   practice and the sound of video notes.
 - `CAMERA`, for video notes and for taking a photo. A photo is taken with
@@ -153,7 +179,9 @@ the app itself can send its own internal messages.
 
 Reminder and check-in notifications show only a generic label by default,
 even on a locked screen. A setting under Notifications turns that off and
-shows the real title instead.
+shows the real title instead. If notification history is on in Android's
+settings, Android keeps the titles shown there for about a day after the
+notification goes away. The app does not turn history on and cannot clear it.
 
 When you copy the recovery key on Android 13 or later, the app marks the
 clipboard entry as sensitive, which asks the keyboard to leave it out of its
@@ -187,6 +215,11 @@ An encrypted backup (`.ngndr`), whether you export it yourself or Android
 writes it on a schedule to a folder you picked, is encrypted with AES-GCM
 under a backup password you choose. Nobody can read it without that
 password.
+
+Android automatic backups require the system's local storage provider. A backup
+is reported complete only after the file and folder are synced and the delivered
+bytes are checked. The app reports incomplete delivery for
+other providers. It does not verify cloud uploads.
 
 ### Exports meant to be read
 

@@ -96,7 +96,7 @@ export function journalSession<Key, Driver extends Closable>(
   const connection = sessionGate<Driver>();
   let driver: Driver | null = null;
   let locked = false;
-  let navigationKey: Key | null = null;
+  let retainedNavigation: { key: Key } | null = null;
   let navigationSuspended = false;
   /* An unlock asked for while a lock is still waiting on the journal's
      calls ends that wait. The wait is there so a save can land before the
@@ -160,7 +160,7 @@ export function journalSession<Key, Driver extends Closable>(
     driver = null;
     locked = true;
     void key.close();
-    ports.release(navigationKey !== null);
+    ports.release(retainedNavigation !== null);
     if (!suspended && !navigationSuspended) ports.prewarm();
   }
 
@@ -182,7 +182,7 @@ export function journalSession<Key, Driver extends Closable>(
     lock: () => {
       attempts.lock();
       cancelOpening?.();
-      navigationKey = null;
+      retainedNavigation = null;
       // Revoke new key access immediately; existing saves keep their key.
       void key.close();
       return inTurn(async () => {
@@ -195,8 +195,9 @@ export function journalSession<Key, Driver extends Closable>(
       navigationSuspended = true;
       attempts.lock();
       cancelOpening?.();
-      if (retainKey) navigationKey ??= key.current;
-      else navigationKey = null;
+      const held = retainedNavigation?.key ?? key.current;
+      // Each suspension owns its retained key, even when the key bytes are the same.
+      retainedNavigation = retainKey && held !== null ? { key: held } : null;
       // Stop handing out handles in the pagehide turn, before freezing.
       const suspended = ports.suspend().catch((error) => {
         console.warn('the journal did not settle cleanly before retained navigation', error);
@@ -211,15 +212,15 @@ export function journalSession<Key, Driver extends Closable>(
       });
     },
     async resumeAfterNavigation(current) {
-      const held = navigationKey;
-      if (held === null) return;
+      const retained = retainedNavigation;
+      if (retained === null) return;
       try {
-        await this.unlock(held, () => {
+        await this.unlock(retained.key, () => {
           current();
-          if (navigationKey !== held) throw new Error('the retained journal session was locked');
+          if (retainedNavigation !== retained) throw new Error('the retained journal session was locked');
         });
       } finally {
-        if (navigationKey === held) navigationKey = null;
+        if (retainedNavigation === retained) retainedNavigation = null;
       }
     },
     unlock(derived, current = () => {}) {
@@ -251,7 +252,7 @@ export function journalSession<Key, Driver extends Closable>(
           locked = false;
           key.open(derived);
           navigationSuspended = false;
-          navigationKey = null;
+          retainedNavigation = null;
         } catch (error) {
           // Disposal cannot wait for preparation to return its driver.
           // Late preparation has only its ownership check, not a cleanup

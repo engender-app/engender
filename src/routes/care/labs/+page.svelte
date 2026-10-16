@@ -18,6 +18,7 @@
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import TimePicker from '$lib/components/TimePicker.svelte';
@@ -32,12 +33,13 @@
   import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
-  import { isAndroid } from '$lib/platform';
+  import { journalTextAutocomplete } from '$lib/platform';
   import {
   formatLabReviewValue,
   type OcrReviewRow
 } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -73,8 +75,12 @@
      the unavailable state SourceRecordHandoff renders for every source
      link's target (phase 11 ticket 11). */
   let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
-  let deepLinkedLabQuery = liveQuery((j) =>
-    deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
+  let deepLinkedLabQuery = liveQuery(async (j) => {
+    const id = deepLinkedLabId;
+    return { id, result: id ? await j.labs.getResultById(id) : null };
+  });
+  let deepLinkedLab = $derived(
+    deepLinkedLabQuery.value?.id === deepLinkedLabId ? deepLinkedLabQuery.value.result : undefined
   );
 
   /* No hormone assumed: the screen opens on whatever the journal actually
@@ -95,16 +101,22 @@
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (deepLinkedLabQuery.value) {
-      analyte = deepLinkedLabQuery.value.analyte;
-      return;
-    }
-    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
+    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLab === undefined)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
 
+  function openLinkedLab() {
+    if (!deepLinkedLab) return;
+    analyte = deepLinkedLab.analyte;
+    if (page.url.searchParams.has('lab')) {
+      const url = new URL(page.url);
+      url.searchParams.delete('lab');
+      void replaceRoute(url, { noScroll: true, keepFocus: true });
+    }
+  }
+
   $effect(() => {
-    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
+    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLab) {
       scrollToHash();
     }
   });
@@ -205,7 +217,7 @@
     time: string;
     analyte: string;
     customAnalyte: string;
-    value: string;
+    value: number | null;
     unit: string;
     note: string;
     provider: string;
@@ -214,7 +226,10 @@
     timing: LabResult['timing'];
   };
 
-  const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
+  /* A number input binds the number it parsed, or null while it holds
+     nothing parseable: blank, a lone minus, `e`. Bound as a string, the
+     field was rewritten under the caret on every key (last-audit UI 01). */
+  const validValue = (value: number | null): value is number => value !== null && Number.isFinite(value);
 
   let unitStated = false;
   const record = recordEditor<LabResult, LabDraft>({
@@ -228,7 +243,7 @@
          fallback the measurements screen uses for its own unit. */
       analyte,
       customAnalyte: '',
-      value: '',
+      value: null,
       unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results[results.length - 1]?.unit ?? ''),
       note: '',
       provider: '',
@@ -240,16 +255,16 @@
       time: result.drawTime ?? '',
       analyte: result.analyte,
       customAnalyte: '',
-      value: String(result.value),
+      value: result.value,
       unit: result.unit,
       note: result.note,
       provider: result.provider,
       timing: result.timing
     }),
     async upsert(draft) {
-      const value = Number(draft.value);
+      const value = draft.value;
       const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-      if (!validValue(draft.value) || !resultAnalyte) return false;
+      if (!validValue(value) || !resultAnalyte) return false;
 
       /* Which units this analyte already has, ignoring the result being edited,
          so that changing the unit on an analyte's only result does not announce
@@ -406,14 +421,6 @@
         : m.labs_ocr_pick_sheet()
   );
 
-  /* What the scanner is about to spend, said before it spends it (phase 5
-     performance ticket 01). The engine and its two language files are 21 MB
-     over the wire and the shell no longer precaches them, so a person opening
-     this on mobile data is about to pay for a feature they may have opened by
-     accident. Not on Android, where every one of those files is already inside
-     the APK and nothing is downloaded at all. */
-  const ocrDownloads = !isAndroid();
-
   function openOcrImport() {
     ocr.open();
   }
@@ -448,11 +455,13 @@
   }
 
   /* Ticket 11's other entry point into the appointment prep list: a one-tap
-     add, seeded from the analyte already on screen. */
+     add, seeded from the analyte already on screen. One add per tap, and a
+     failed one says so (UI 17); a later tap is a second add on purpose. */
+  const prepWrite = writer();
   async function addToAppointmentPrep(draft: LabDraft) {
     const resultAnalyte = analyteOf(draft);
     if (!resultAnalyte) return;
-    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte }));
+    if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte })), m.write_failed()))) return;
     toast(m.appointment_prep_added_toast());
   }
 </script>
@@ -477,8 +486,9 @@
        no longer there. -->
   <SourceRecordHandoff
     id={deepLinkedLabId}
-    ready={!deepLinkedLabQuery.loading}
-    found={deepLinkedLabQuery.value !== null}
+    ready={deepLinkedLab !== undefined}
+    found={deepLinkedLab !== null}
+    onOpen={openLinkedLab}
   />
 
   <ReadGate read={chartsRead} variant="block" count={1}>
@@ -555,7 +565,7 @@
               class:is-target-lab={r.id === deepLinkedLabId}
               id={r.id}
               data-lab-result={r.id}
-              aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              aria-label={m.labs_result_aria({ analyte: r.analyte, value: `${r.value} ${r.unit}`, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
               onclick={() => record.openEditor(r)}
             >
               <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
@@ -644,7 +654,7 @@
         <div class="disclosed" transition:disclose>
           <Field label={m.labs_custom_label()} id="lab-custom-analyte" hint={!editor.customAnalyte.trim() ? m.labs_missing_analyte() : undefined}>
             {#snippet children(id, hintId)}
-              <input class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
             {/snippet}
           </Field>
         </div>
@@ -652,18 +662,18 @@
       <div class="cd-endpoints lab-pair">
         <Field label={m.labs_value_label()} id="lab-value" hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
           {#snippet children(id, hintId)}
-            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
           {/snippet}
         </Field>
         <Field label={m.labs_unit_label()} id="lab-unit">
           {#snippet children(id)}
-            <input class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
+            <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
           {/snippet}
         </Field>
       </div>
       <Field label={m.labs_provider_label()} id="lab-provider">
         {#snippet children(id)}
-          <input class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
         {/snippet}
       </Field>
       <div class="cd-endpoints lab-pair">
@@ -682,7 +692,7 @@
       </div>
       <Field label={m.labs_note_label()} id="lab-note">
         {#snippet children(id)}
-          <input class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
         {/snippet}
       </Field>
 
@@ -706,7 +716,7 @@
       {/if}
     {/snippet}
     {#snippet extraActions(editor)}
-      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor)}>
+      <button class="btn btn-soft" data-add-to-appointment-prep disabled={prepWrite.busy} onclick={() => addToAppointmentPrep(editor)}>
         <span>{m.appointment_prep_add_button()}</span>
       </button>
     {/snippet}
@@ -727,14 +737,6 @@
     {#if ocrState.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
-      {#if ocrDownloads}
-        <Notice
-          icon="info"
-          key="labs-ocr-download"
-          title={m.labs_ocr_download_title()}
-          text={m.labs_ocr_download_body()}
-        />
-      {/if}
       <div class="stack-3">
         <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => scan('gallery')}>
           <span>{m.labs_ocr_pick_gallery()}</span>
@@ -798,18 +800,18 @@
             {/if}
             <Field label={m.labs_analyte_label()} id={`ocr-analyte-${i}`}>
               {#snippet children(id)}
-                <input class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
             <div class="cd-endpoints lab-pair">
               <Field label={m.labs_value_label()} id={`ocr-value-${i}`}>
                 {#snippet children(id)}
-                  <input class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                  <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
               <Field label={m.labs_unit_label()} id={`ocr-unit-${i}`}>
                 {#snippet children(id)}
-                  <input class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                  <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
             </div>
@@ -820,7 +822,7 @@
             </Field>
             <Field label={m.labs_note_label()} id={`ocr-note-${i}`}>
               {#snippet children(id)}
-                <input class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
           </div>

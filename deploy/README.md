@@ -3,10 +3,12 @@
 Ticket 05 serves the Journal from one decided origin:
 `app.engender.barankiewicz.dev`.
 
-The VPS keeps immutable release directories and one symlink:
+The VPS keeps immutable release directories, a serving symlink and switch
+history:
 
 - `/home/journal/releases/<version>--<buildId>/` - complete static release
 - `/home/journal/current` - symlink nginx serves from
+- `/home/journal/current.history.json` - selected and previously active targets
 
 Nginx resolves the symlink per request, so replacing it is enough to switch
 traffic with no reload and no half-copied release state.
@@ -234,8 +236,24 @@ What deploy enforces:
 - source `release.json` must name a release version (not `0.0.0-dev...`) unless `--allow-development-version` is passed deliberately
 - full directory copy lands before the symlink switch
 - previous release directory stays in place
+- PDF workers from the selected and outgoing releases remain reachable through
+  a separate namespace; neither original release tree is changed
 - deployment refuses a lower `schemaMax` or an older stable version; use the
   explicit rollback command for a deliberate rollback
+
+The operator stages PDF workers in `releases/.pdf-workers/` and atomically
+publishes `releases/.pdf-current` before switching `current`. The nginx snippet
+uses that sibling namespace only when a PDF worker is absent from the selected
+release. Install the updated snippet before using this operator version.
+Original release files and `release.json` stay unchanged. Identical worker
+names must have identical bytes, or the switch is refused.
+
+The network window covers two release sets: the selected release and the one
+active immediately before the switch, including explicit rollback. Superseded
+namespace snapshots are removed after a successful switch. A worker from an
+earlier release may remain available in a browser's retained cache, but the
+server does not promise its uncached first open after another switch. PDF
+workers still load on demand; an uncached first open needs a network.
 
 For explicit non-release checks only:
 
@@ -256,6 +274,24 @@ Previous release rollback:
 ```bash
 node scripts/journal-release.mjs rollback --previous
 ```
+
+`--previous` selects the release that was active immediately before the last
+successful deploy or rollback. Directory timestamps do not determine that
+choice. For example, deploy 1.0.0, deploy 1.0.1, roll back to 1.0.0, then
+deploy 1.0.2: `--previous` returns to 1.0.0.
+
+Each switch writes `<current-link>.history.json` beside the configured current
+link. The receipt names both the selected and outgoing targets. `list` marks
+the selected release with `*` and its recorded previous release with `<`.
+The deploy message names that same previous target. A rollback to the already
+selected release leaves the history and PDF namespace unchanged.
+
+The operator publishes complete history before changing `current`. On a
+caught switch failure it restores the prior receipt and PDF namespace. If
+an interruption leaves a receipt that does not match `current`, `--previous`
+refuses to guess. A missing, malformed or stale receipt, or a removed target,
+requires a named rollback. Existing installations without switch history
+start recording it on the next deploy or named rollback.
 
 By default rollback refuses a target with lower `schemaMax` than the currently
 served release. That guard stops selecting code that cannot safely open journals
@@ -300,10 +336,19 @@ If you keep a machine-specific runbook, store it in
 Development CI accepts the pending record in
 `scripts/progressive-release-record.json`. A signed tag does not. Before the
 release workflow builds or publishes artifacts, it checks the record against
-that tag's exact version and the tested source revision. Stable tags require
-`stable`; prerelease tags require `stage2`, the prerequisite for the signed
-GitHub APK in stage3. Stage3's publication claims are recorded after that APK
-and Play open testing exist. Prereleases never deploy the production web app.
+that tag's exact version and the tested source revision. The tag command runs
+the same gate before creating or pushing a tag, including in dry-run mode.
+Stable tags require the candidate checks in `stage1`, `stage2` and `stable`.
+Prerelease tags require `stage1` and `stage2`. These checks can pass while every
+channel is still `label-only`; channel availability is recorded after publication.
+Prereleases never deploy the production web app.
+
+Publish web and GitHub/Obtainium first. Record the web channel after its stage1
+checks and deployment, and Obtainium after its stage2 device checks and signed
+GitHub APK publication. Play's stage3 and F-Droid's stage4 outcomes follow on
+their own schedules. Neither is a prerequisite for the first stable release or
+a later stable hotfix. An incomplete stage3 or stage4 claim still fails the gate;
+leave its timestamps empty and checks false until that work is complete.
 
 Commit the candidate source, including release notes, before running its release
 matrix. Record that commit's full SHA in `candidateRevision` and the intended
@@ -329,3 +374,14 @@ Use the command for the version being released. Ordinary
 `npm run check:progressive-release` only validates the record's current claims;
 it does not authorize publication. The existing tag workflow still checks the
 signature's presence and main ancestry. No evidence is filled in automatically.
+
+OCR generations live under `/tesseract/<sha256>/`. Release preparation retains
+previous OCR directories and freezes historical root URLs before switching
+`current`. Keep these directories when copying releases outside this helper.
+The nginx snippet serves legacy `.traineddata.gz` requests from canonical
+`.traineddata` files; do not add `.gz` duplicates to APK assets.
+
+The upload carries the frozen pre-generation Tesseract library at its original
+immutable URL. Release preparation checks the receipt against both a retained
+copy and any staged fallback. Missing or changed required bytes refuse the
+switch; a verified staged copy also supports first deployment.

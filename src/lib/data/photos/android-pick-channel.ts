@@ -27,8 +27,8 @@
    is the cost recorded below.
 
    **What that cost is.** `WEB_MESSAGE_ARRAY_BUFFER` arrives in WebView 105
-   and the app's floor is 87 (ADR-0023), so between the two the base64
-   fallback is the real path.
+   and the app's floor is 104 (ADR-0023), so WebView 104 uses the base64
+   fallback.
 
    That range used to be where a pick at the ceiling failed outright: the
    whole encoding was one Java String, 34 MB for a 25 MB scan, and the

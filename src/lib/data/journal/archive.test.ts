@@ -445,7 +445,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledRoute: null,
       scheduledTimestamp: null,
       drug: null,
-      source: 'person'
+      source: 'person',
+      autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null
     },
     {
       id: changedDose,
@@ -461,21 +462,18 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledRoute: 'oral',
       scheduledTimestamp: 1_700_090_000_000,
       drug: null,
-      source: 'person'
+      source: 'person',
+      autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null
     }
   ]);
 });
 
-test('a dose carries no episode link, so nothing about its attribution travels', async () => {
+test('person-logged doses carry no automatic-slot provenance', async () => {
   const { journal } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
-
-  for (const dose of snapshot.journal.doseEvents) {
-    assert.deepEqual(
-      Object.keys(dose).filter((key) => key.toLowerCase().includes('episode')),
-      []
-    );
+  for (const dose of (await journal.archive.snapshot()).journal.doseEvents) {
+    assert.equal(dose.autoLogEpisodeId, null);
+    assert.equal(dose.autoLogEpochDay, null);
+    assert.equal(dose.autoLogIndex, null);
   }
 });
 
@@ -1046,7 +1044,8 @@ test('every column in the schema is either carried or deliberately left behind',
 
   for (const { name } of tables) {
     const columns = await db.query<{ name: string }>(`PRAGMA table_info(${name})`);
-    const known = [...CARRIED[name], ...LEFT_BEHIND];
+    // Stock identity is rebuilt from the drug's wire spelling on this device.
+    const known = [...CARRIED[name], ...LEFT_BEHIND, ...(name === 'medication_stock' ? ['drug_key'] : [])];
     for (const column of columns) {
       assert.ok(known.includes(column.name), `${name}.${column.name} is neither carried nor left behind`);
     }

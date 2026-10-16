@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* Making a voice benchmark (phase 5 deepening ticket 15, CONTEXT: "Voice
      benchmark"), as one tab of the voice screen (phase 8 features
      ticket 09).
@@ -559,7 +560,7 @@
 
       <label class="field vb-note">
         <span class="field-label">{m.vb_note_label()}</span>
-        <textarea class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
+        <textarea autocomplete={journalTextAutocomplete()} class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
       </label>
     </div>
 
@@ -771,7 +772,7 @@
   <p class="muted small">{m.vb_passage_own_hint()}</p>
   <label class="field">
     <span class="field-label">{m.vb_passage_own_title()}</span>
-    <textarea class="input" rows="6" bind:value={passageDraft} placeholder={m.vb_passage_own_placeholder()}
+    <textarea autocomplete={journalTextAutocomplete()} class="input" rows="6" bind:value={passageDraft} placeholder={m.vb_passage_own_placeholder()}
     ></textarea>
   </label>
   <div class="vb-sheet-actions">

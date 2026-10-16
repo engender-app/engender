@@ -19,7 +19,7 @@
 
   import { navigating, page } from '$app/state';
   import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
@@ -34,7 +34,8 @@
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
   import { tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
-  import { speech } from '$lib/stores/announcer.svelte';
+  import { announce, speech } from '$lib/stores/announcer.svelte';
+  import { clearToasts } from '$lib/stores/toasts.svelte';
   import { bootState, browserSession, closeJournalForLock, recoveryUnlock, startBoot, watchBrowserSession } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -62,6 +63,7 @@
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
+  import { ACTIVE_DOOR_CONTENT } from '$lib/navigation/doorActivity';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
@@ -103,6 +105,9 @@
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
+  $effect(() => {
+    if (prefs.disguise) untrack(() => { announce.clear(); clearToasts(); });
+  });
   $effect(() => {
     const stopLock = watchLock(closeJournalForLock);
     const stopSession = watchBrowserSession();
@@ -188,6 +193,9 @@
 
   $effect.pre(() => {
     if (locked || browserSession.recovering) retainedSession = Symbol();
+    // The gate cuts journal DOM immediately. End panel outros before that
+    // removal, or a quick unlock can resume their detached route subtree.
+    if (locked) markScreenArrival();
   });
   $effect(() => {
     if (locked) dropJournalScreens();
@@ -219,7 +227,7 @@
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
-    if (navigation.to) restoreScroll(navigation.to.url.pathname, navigation.type);
+    if (navigation.to) restoreScroll(navigation.to.url, navigation.type);
     /* And a screen that just arrived is not a screen changing (phase 9
        carpet ticket 04). Its panels are gated on reads that answer a few
        dozen milliseconds from here, so without this every one of them would
@@ -240,6 +248,28 @@
   $effect(() => {
     void bootState.status;
     markScreenArrival();
+  });
+
+  // Gate removal is an arrival even when the URL stays unchanged. A retained
+  // door can mount after the shell, so wait for its heading before handing over.
+  $effect(() => {
+    if (replacesApp || bootState.status !== 'ready') return;
+    let cancelled = false;
+    let observer: MutationObserver | undefined;
+    void tick().then(() => {
+      if (cancelled) return;
+      const region = document.getElementById('app-main');
+      if (!region) return;
+      const arrive = () => {
+        if (!region.querySelector(`h1${ACTIVE_DOOR_CONTENT}`)) return;
+        focusArrivedScreen(region);
+        observer?.disconnect();
+      };
+      observer = new MutationObserver(arrive);
+      observer.observe(region, { childList: true, subtree: true });
+      arrive();
+    });
+    return () => { cancelled = true; observer?.disconnect(); };
   });
 
   /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:
@@ -423,7 +453,8 @@
      does not restart. */
   $effect(() => {
     if (!isAndroid()) return;
-    const ready = isReadyState(bootState);
+    // Track readiness even though Back is registered before the key arrives.
+    isReadyState(bootState);
     const checkInEnabled = prefs.checkInEnabled;
     const checkInTime = prefs.checkInTime;
     const checkInAffirmationsEnabled = prefs.checkInAffirmationsEnabled;
@@ -445,7 +476,6 @@
     const launcherIconShape = prefs.launcherIconShape;
     const lockAfter = prefs.lockAfter;
     const allowScreenCapture = prefs.allowScreenCapture;
-    if (!ready || !isAndroid()) return;
 
     let cleanup: (() => void) | undefined;
     let unmounted = false;
@@ -505,6 +535,8 @@
           androidLockTiming,
           androidScreenCapture,
           androidBackButton,
+          isGateActive: () => locked || needsPassphrase || needsAuthentication ||
+            needsDeviceRecovery || needsAccessModeAfterRecovery,
           // Hidden built-ins and this language's custom lines are read fresh on
           // every call (phase 5 ticket 15) rather than captured once here, so a
           // change lands on the next sync without needing this effect to restart.
@@ -578,19 +610,6 @@
            leaves (after-release ticket 09). -->
       <BootFailureNotice />
     {/if}
-    <!-- Only over a Journal that is open and unlocked. The notice is not
-         urgent enough to sit above a passphrase gate or a lock screen, and
-         those two screens have one job each. -->
-    {#if isReadyState(bootState) && !locked && !browserSession.recovering}
-      <!-- Loaded after boot rather than with it, like the schema gate below:
-           neither is drawn on a first visit, and the first-load budget had
-           no room left for the live regions after-release 21 added. The
-           service worker precaches every chunk of a release, so both still
-           load offline. -->
-      {#await import('$lib/components/UpdateNotice.svelte') then { default: UpdateNotice }}
-        <UpdateNotice />
-      {/await}
-    {/if}
     <!-- Before <main>, which is what puts the rail to the left of the
          content at desktop width without an `order` (order moves boxes and
          leaves tab order where it was, so the two would disagree). On a
@@ -629,7 +648,7 @@
           <AndroidKeyGate />
         {:else if needsDeviceRecovery}
           {#await import('$lib/components/DeviceBoundRecovery.svelte') then { default: DeviceBoundRecovery }}
-            <DeviceBoundRecovery />
+            <DeviceBoundRecovery missingAccess={bootState.status === 'needs-device-recovery' && bootState.recoveryReason === 'missing-access'} />
           {/await}
         {:else if needsAccessModeAfterRecovery}
           <!-- Before the lock rather than after it: a session that has just
@@ -703,7 +722,7 @@
      the whole width. Here rather than in components.css because .app and
      .is-chromeless are this file's own classes. */
   @container app (min-width: 1024px) {
-    .app:not(.is-chromeless) :global(.toast) {
+    .app:not(.is-chromeless) :global(.toast-stack) {
       left: calc(var(--rail-width) + var(--inset-left));
     }
   }

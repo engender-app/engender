@@ -11,7 +11,7 @@ import { markScreenArrival } from '$lib/motion/screenArrival';
 import { chromeTabOrigin } from './chrome-tab-origin';
 import { cutsInsteadOfMoving } from './chromeless';
 import { leavesHomeForEntry, screenTransition } from './screen-transition';
-import { rememberScroll, restoreScroll, savedScroll } from './scroll-region';
+import { claimScrollHold, rememberScroll, restoreScroll, savedScroll } from './scroll-region';
 import { animateAndroidTab, finishAndroidTab } from './androidTabMotion';
 import { isAndroid } from '$lib/platform';
 import { isReducedMotion } from '$lib/motion/tokens';
@@ -50,9 +50,14 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      is the right answer for every other way out of it too: a deep link, a
      notification, the back button. */
   ui.chooserOpen = false;
+  // Query cleanup on the same screen must preserve a legacy manager handoff.
+  if (navigation.from?.url.pathname !== navigation.to?.url.pathname) ui.raisedManager = null;
 
   /* Before the capture, while the outgoing screen can still be measured. */
   rememberScroll(navigation.from?.url.pathname);
+  /* And before anything restores: whether this is the in-place navigation
+     `replaceRoute` was asked to keep still. */
+  claimScrollHold(navigation.to?.url);
 
   /* The arrival window opens here rather than only in the layout's
      `afterNavigate`, and the difference is most of the second defect phase
@@ -188,7 +193,7 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
            Restoring here as well as there is not a race fixed by luck -
            this one is provably before the capture, and afterNavigate's own
            call becomes a harmless no-op restoring the same value again. */
-        if (navigation.to) restoreScroll(navigation.to.url.pathname, navigation.type);
+        if (navigation.to) restoreScroll(navigation.to.url, navigation.type);
       } finally {
         /* The incoming screen has mounted and the outgoing one is gone.
            Before the new capture, so each name is on exactly one element

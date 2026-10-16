@@ -1,7 +1,9 @@
 import { isAndroid } from '../platform';
 import { androidKeystore } from '../lock/keystore-bridge';
-import { KEYSTORE_FILE } from './keystore-file';
-import { legacyStoragePresent } from './legacy-journal';
+import { keystoreFileExists } from './keystore-file';
+import { webJournalPresent } from './journal-presence';
+import { JOURNAL_DATABASE, legacyStoragePresent } from './legacy-journal';
+import { inspectAndroidJournal } from './sqlite/android-driver';
 import { initializeCredentials } from './credential-ownership';
 
 export const DEVICE_BOUND_FILE = 'device-key.json';
@@ -16,19 +18,19 @@ export class JournalAlreadyExistsError extends Error {
 /** Check all access modes before minting any key, including a PIN binding.
     An unreadable record fails closed: it is not an empty installation. */
 export async function journalAccessExists(): Promise<boolean> {
-  const root = await navigator.storage.getDirectory();
-  for (const name of [KEYSTORE_FILE, DEVICE_BOUND_FILE]) {
-    try {
-      await root.getFileHandle(name);
-      return true;
-    } catch (error) {
-      if ((error as DOMException)?.name !== 'NotFoundError') throw error;
-    }
-  }
+  if (await keystoreFileExists()) return true;
   if (isAndroid()) {
-    return (await androidKeystore.status()).hasKey;
+    if ((await androidKeystore.status()).hasKey) return true;
+    return (await inspectAndroidJournal(JOURNAL_DATABASE)).exists;
   }
-  return legacyStoragePresent(root);
+  const root = await navigator.storage.getDirectory();
+  try {
+    await root.getFileHandle(DEVICE_BOUND_FILE);
+    return true;
+  } catch (error) {
+    if ((error as DOMException)?.name !== 'NotFoundError') throw error;
+  }
+  return await legacyStoragePresent(root) || await webJournalPresent();
 }
 
 /** The lock spans the durable check and publication. A stale or simultaneous

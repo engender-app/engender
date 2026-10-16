@@ -103,6 +103,11 @@ key until you unlock again.
 Android reminders use a generic label by default; you can choose to show
 their titles instead.
 
+Journal text fields turn off browser autofill and session restoration on the
+web. Android always asks keyboards not to learn from the app's text fields;
+the keyboard decides whether to honor that request. Text saved by earlier
+versions is not removed from browser profiles or keyboard storage.
+
 The layout adapts to the space available, with a bottom navigation bar on
 narrow screens and a rail on wider ones. The app uses bundled fonts and
 respects reduced-motion preferences.
@@ -134,7 +139,10 @@ The full policies are available in
 
 Export an encrypted Archive when you want a backup or need to move your
 journal. Archives use a backup password you choose and can be restored on
-another device. Android also supports scheduled encrypted backups. It keeps
+another device. Android also supports scheduled encrypted backups to its local
+storage provider. Delivery syncs the file and folder, then checks the bytes read
+back before reporting success. Providers without that boundary report an
+incomplete backup. Android keeps
 the five newest verified automatic backups and prunes older automatic backups
 only after a new one verifies. Manual backups remain untouched.
 
@@ -166,18 +174,19 @@ Choose an encrypted Archive when you need a private backup.
 The web app is a static SvelteKit SPA with a service worker. Once the app
 has cached its release, it can start without a network connection. A new
 release waits until journal operations allow it to activate. Fonts and
-runtime assets come from the app's own origin; the lab scanner downloads
-its OCR assets when first used and caches them for later offline use.
+runtime assets come from the app's own origin. Installation includes the complete
+English and Polish OCR engine before offline readiness. Recognition starts only
+when you scan a photo.
 
 Android runs the same interface from a bundle installed in the APK. Native
 plugins provide database access, device authentication, media handling,
 notifications and home-screen widgets. Android updates arrive through an
-updated app installation.
+updated app installation. English and Polish lab recognition assets are bundled
+in the APK, so the first scan can run offline.
 
 The web app needs a secure context for browser storage, the service worker
 and authentication APIs. HTTPS is required when hosting it; localhost works
-for development. Android needs WebView version 87 or newer and shows an
-update explanation if its WebView is too old.
+for development. Android needs WebView version 104 or newer.
 
 To host your own web app, follow the
 [self-hosting guide](deploy/SELF-HOSTING.md). It covers Docker and nginx,
@@ -279,9 +288,13 @@ npm run verify:build
 
 The browser capability matrix also runs
 Firefox and automated WebKit against the built app. Run
-`npm run verify:capabilities` after a production build, then
-`npm run verify:capabilities:lifecycle` against the same build. Automated WebKit
-provides engine evidence; actual Safari and iOS PWA remain unverified.
+`npm run build && npm run verify:capabilities` runs both production and
+lifecycle checks, with a pinned matching Playwright container for WebKit.
+The combined matrix records source/build identity, current BFCache controls,
+splash defect controls, engine limitations and duration. It is a pre-release
+check outside routine CI. Podman and host Chromium/Playwright Firefox are
+required. Automated WebKit provides engine evidence; actual Safari and iOS
+PWA remain unverified. See `tests/PROBES.md` for output and runtime options.
 
 
 The hosting check needs Docker running and accessible to your user. It tests
@@ -356,8 +369,23 @@ The script requires a clean main branch and notes for the version in
 [CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
+The release gate rejects signatures from unexpected certificates.
+[Android signing guidance](SECURITY.md#android-signing-certificates) records
+the GitHub APK, AAB upload and Play app-signing fingerprints.
 Release notes state schema changes, Archive format changes, security
-migrations and the minimum supported version.
+migrations and the minimum supported version. The stable section uses
+`{{schema}}`, resolved from the candidate migration list by the notes generator
+and shared with `release.json`. Generation rejects stale schema or minimum
+version facts. The released-format tests migrate a copy of the rc.1 schema-88
+fixture and check retained row counts; they do not replace the human exercise
+of updating an installed release or set release-matrix success flags.
+
+Keep private local evidence in the ignored working directories or root paths
+starting with `evidence`. CI rejects those root paths if they enter the index;
+the committed export policy also excludes them from `git archive` source
+packages. Application source and intentional test fixtures remain included,
+including nested directories named `evidence`. The policy prevents future
+packages from including these paths; it does not rewrite published history.
 
 [Deployment notes](deploy/README.md) describe immutable web releases, the
 atomic switch between them and rollback checks. A rollback refuses code

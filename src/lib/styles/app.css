@@ -892,6 +892,29 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 .app-nav { view-transition-name: nav; }
 ::view-transition-group(screen) { z-index: 1; }
 ::view-transition-group(nav) { z-index: 2; }
+/* The update notice sits under a screen's field (last-audit UI ticket 21),
+   so in the screen's snapshot it would fade and scale with every
+   navigation, though it is the same notice on both sides. It gets a group
+   of its own instead, above everything a screen's field can send up: the
+   one notice travels from under the old field to under the new one on the
+   clock the screen's content follows the field's edge with (blind-follow,
+   --blind-dur and --ease-out), while its two pictures - the same picture -
+   crossfade over --dur-fast under the browser's plus-lighter blend and so
+   paint it unchanged. A notice on one side only - closing as a navigation
+   starts, or a release turning up in the middle of one - fades rather than
+   cutting. */
+.update-band { view-transition-name: update-notice; }
+::view-transition-group(update-notice) {
+  z-index: 6;
+  animation-duration: var(--blind-dur, var(--dur-slow));
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-old(update-notice),
+::view-transition-new(update-notice) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+}
 /* The bar does not move between two tabs, so there is nothing for it to
    animate; it holds still while the screens cross behind it. Where a
    navigation does hide it - into a gate, out of one - the pair is absent on
@@ -1718,7 +1741,8 @@ html[data-palette-transition] .palette-selection-ring {
 
 /* One root snapshot keeps the edge continuous across the screen and nav. */
 html[data-appearance-transition] .app-column,
-html[data-appearance-transition] .app-nav { view-transition-name: none; }
+html[data-appearance-transition] .app-nav,
+html[data-appearance-transition] .update-band { view-transition-name: none; }
 html[data-appearance-transition]::view-transition-old(root) { animation: none; }
 html[data-appearance-transition]::view-transition-new(root) {
   animation: appearance-swipe var(--dur-slow) var(--ease-in-out) both;

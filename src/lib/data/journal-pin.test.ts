@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import {
   addJournalPin,
   changeJournalPin,
@@ -18,6 +18,7 @@ import { DecryptionFailedError } from '../crypto/aesGcm.ts';
 import { KeystoreUnreadableError, wrapDataKeyWithSecret, unlockKeystore, type KeystoreMetadata } from '../crypto/keystore.ts';
 import type { DeviceKeySlot } from './device-bound-journal.ts';
 import { changeCredentials, CredentialsBusyError } from './credential-ownership';
+import { UnlockCancelledError, unlockAttempts } from '../lock/unlock-attempt';
 
 /* Both halves of PIN mode in memory: the keystore file and the two key
    stores a PIN can be bound to. The Argon2id derivations are real at the
@@ -115,6 +116,97 @@ test('a journal set up under a PIN opens with that PIN and refuses another', asy
   await expect(unlockJournalPin('4321', world)).rejects.toThrow(DecryptionFailedError);
 });
 
+test('a correct native PIN waits for credential ownership without starting another operation', async () => {
+  vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  let release = () => {};
+  let held: Promise<void> | undefined;
+  let attempt: Promise<unknown> | undefined;
+  try {
+    const world = bothPlatforms();
+    const dataKey = await setupJournalPin('1234', world.phone);
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => { started = resolve; });
+    held = changeCredentials(async () => {
+      started();
+      await new Promise<void>((resolve) => { release = resolve; });
+    });
+    await entered;
+    const read = vi.spyOn(world.phone.binding, 'read');
+    let settled = false;
+    attempt = unlockJournalPin('1234', world.phone).then(
+      (key) => { settled = true; return key; },
+      (error) => { settled = true; return error; }
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(settled).toBe(false);
+    expect(read).not.toHaveBeenCalled();
+    await expect(changeCredentials(async () => 'overlap')).rejects.toThrow(CredentialsBusyError);
+    release();
+    await held;
+    expect(await attempt).toEqual(dataKey);
+    expect(read).toHaveBeenCalledTimes(1);
+  } finally {
+    release();
+    await held;
+    await attempt;
+    vi.unstubAllGlobals();
+  }
+});
+
+test('locking cancels a queued PIN before reading or rebinding credentials', async () => {
+  const world = bothPlatforms();
+  const dataKey = await setupJournalPin('1234', world.phone);
+  const attempts = unlockAttempts();
+  let release = () => {};
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => { started = resolve; });
+  const held = changeCredentials(async () => {
+    started();
+    await new Promise<void>((resolve) => { release = resolve; });
+  });
+  await entered;
+  const read = vi.spyOn(world.phone.binding, 'read');
+  const pending = unlockJournalPin('1234', world.phone, attempts.begin()).then(
+    () => null, (error) => error
+  );
+  try {
+    attempts.lock();
+    release();
+    await held;
+    expect(await pending).toBeInstanceOf(UnlockCancelledError);
+    expect(read).not.toHaveBeenCalled();
+    expect(await unlockJournalPin('1234', world.phone, attempts.begin())).toEqual(dataKey);
+  } finally { release(); await held; await pending; }
+});
+
+test('locking during PIN derivation refuses the derived key and preserves the wrap for a fresh attempt', async () => {
+  const world = bothPlatforms();
+  const dataKey = await setupJournalPin('1234', world.phone);
+  const metadata = world.stored();
+  const attempts = unlockAttempts();
+  const readBinding = world.phone.binding.read.bind(world.phone.binding);
+  let release = () => {};
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => { started = resolve; });
+  world.phone.binding.read = async () => {
+    started();
+    await new Promise<void>((resolve) => { release = resolve; });
+    return readBinding();
+  };
+  const pending = unlockJournalPin('1234', world.phone, attempts.begin()).then(
+    () => null, (error) => error
+  );
+  try {
+    await entered;
+    attempts.lock();
+    release();
+    expect(await pending).toBeInstanceOf(UnlockCancelledError);
+    expect(world.stored()).toBe(metadata);
+    world.phone.binding.read = readBinding;
+    expect(await unlockJournalPin('1234', world.phone, attempts.begin())).toEqual(dataKey);
+  } finally { release(); await pending; }
+});
+
 test('the stored keystore names PIN as its source, so boot draws the pad rather than a passphrase field', async () => {
   const world = ports();
   await setupJournalPin('1234', world);
@@ -199,6 +291,65 @@ test('changing the PIN keeps the journal and stops the old PIN working', async (
   await expect(unlockJournalPin('1234', world)).rejects.toThrow(DecryptionFailedError);
 });
 
+/* Last-audit UI 42: a new recovery key nobody confirmed does not outlive
+   the protection it was made under, and a refused change keeps it. */
+test('changing the PIN discards an unconfirmed recovery key once the current PIN is proven, before the new one is written', async () => {
+  const order: string[] = [];
+  const base = ports();
+  const world = {
+    ...base,
+    writeKeystore: async (metadata: KeystoreMetadata) => {
+      await base.writeKeystore(metadata);
+      order.push('keystore');
+    },
+    withoutPendingRecoveryKey: async <T,>(work: (doNotRestorePending: () => void) => Promise<T>) => {
+      order.push('discard');
+      return work(() => {});
+    }
+  };
+  await setupJournalPin('1234', world);
+  order.length = 0;
+
+  await expect(changeJournalPin('9999', '5678', world)).rejects.toThrow(DecryptionFailedError);
+  expect(order).toEqual([]);
+  await changeJournalPin('1234', '5678', world);
+  expect(order).toEqual(['discard', 'keystore']);
+});
+
+test('a PIN publication that rejects during sync keeps the pending recovery key discarded', async () => {
+  const { mintRecoveryKey, finishRecoveryKey, openWithRecoveryKey, inMemoryRecoveryKeyPorts,
+    recoveryKeyState, withoutPendingRecoveryKeyOwned } = await import('./recovery-key');
+  const base = ports();
+  const dataKey = await setupJournalPin('1234', base);
+  const recovery = inMemoryRecoveryKeyPorts();
+  const confirmed = await mintRecoveryKey(dataKey, recovery);
+  await finishRecoveryKey(confirmed, recovery);
+  await mintRecoveryKey(dataKey, recovery);
+  const world: PinPorts = {
+    ...base,
+    withoutPendingRecoveryKey: (work) => withoutPendingRecoveryKeyOwned(work, recovery),
+    writeKeystore: async (metadata) => {
+      await base.writeKeystore(metadata);
+      throw new Error('directory sync failed after publication');
+    }
+  };
+  await expect(changeJournalPin('1234', '5678', world)).rejects.toThrow('directory sync failed after publication');
+  expect(await unlockJournalPin('5678', base)).toEqual(dataKey);
+  expect(await recoveryKeyState(recovery)).toEqual({ active: true, pending: false });
+  expect(await openWithRecoveryKey(confirmed, recovery)).toEqual(dataKey);
+});
+
+test('a discard that fails stops the PIN change with nothing written', async () => {
+  const base = ports();
+  const world = { ...base, withoutPendingRecoveryKey: async () => { throw new Error('remove refused'); } };
+  const dataKey = await setupJournalPin('1234', world);
+  const before = world.stored();
+
+  await expect(changeJournalPin('1234', '5678', world)).rejects.toThrow('remove refused');
+  expect(world.stored()).toBe(before);
+  expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
+});
+
 test('changing the PIN with the wrong current PIN writes nothing', async () => {
   const world = ports();
   await setupJournalPin('1234', world);
@@ -233,15 +384,29 @@ test('only four digits is a PIN', () => {
    binding key replaces the only key that opens the keystore already on disk,
    the second because the digit count is what the setup copy's whole
    brute-force figure is computed from. */
-test('moving to PIN mode refuses a journal already in PIN mode, rather than replacing its device key', async () => {
+test('moving to PIN mode refuses a different PIN instead of replacing its device key', async () => {
   const world = ports();
   const dataKey = await setupJournalPin('1234', world);
   const before = world.stored();
 
-  await expect(addJournalPin(dataKey, '5678', world)).rejects.toThrow(KeystoreUnreadableError);
+  await expect(addJournalPin(dataKey, '5678', world)).rejects.toThrow(DecryptionFailedError);
   // Nothing written, and the PIN that worked still does.
   expect(world.stored()).toBe(before);
   expect(await unlockJournalPin('1234', world)).toEqual(dataKey);
+});
+
+test('retrying a published PIN wrap keeps its binding and permits old-mode cleanup', async () => {
+  const world = ports();
+  const dataKey = crypto.getRandomValues(new Uint8Array(32));
+  await addJournalPin(dataKey, '1234', world);
+  const published = world.stored();
+  const mint = vi.spyOn(world.binding, 'create');
+  await expect(changeCredentials(() => addJournalPin(dataKey, '1234', world))).resolves.toBeUndefined();
+  expect(mint).not.toHaveBeenCalled();
+  expect(world.stored()).toBe(published);
+  await expect(unlockJournalPin('1234', world)).resolves.toEqual(dataKey);
+  await expect(addJournalPin(crypto.getRandomValues(new Uint8Array(32)), '1234', world)).rejects.toThrow(KeystoreUnreadableError);
+  expect(world.stored()).toBe(published);
 });
 
 test('a PIN that is not four digits never reaches the wrap', async () => {
@@ -428,4 +593,80 @@ test('stale PIN setup preserves the original binding and credential', async () =
   expect(world.mints()).toBe(1);
   expect(world.stored()).toEqual(metadata);
   await expect(unlockJournalPin('1234', world.phone)).resolves.toEqual(key);
+});
+
+async function accountedPhone() {
+  const world = bothPlatforms();
+  await setupJournalPin('1234', world.phone);
+  const begin = vi.fn(async () => 'durable-admission');
+  const finish = vi.fn(async (_token: string, _successful: boolean) => {});
+  return { world, begin, finish, ports: { ...world.phone, attempts: { begin, finish } } satisfies PinPorts };
+}
+
+test('PIN admission follows metadata and binding preflight, then settles wrong and correct authentication', async () => {
+  const { world, ports, begin, finish } = await accountedPhone();
+  const metadata = vi.spyOn(ports, 'readKeystore');
+  const binding = vi.spyOn(ports.binding, 'read');
+  await expect(unlockJournalPin('0000', ports)).rejects.toBeInstanceOf(DecryptionFailedError);
+  expect(metadata.mock.invocationCallOrder[0]).toBeLessThan(binding.mock.invocationCallOrder[0]);
+  expect(binding.mock.invocationCallOrder[0]).toBeLessThan(begin.mock.invocationCallOrder[0]);
+  expect(finish).toHaveBeenLastCalledWith('durable-admission', false);
+  const key = await unlockJournalPin('1234', ports);
+  expect(finish).toHaveBeenLastCalledWith('durable-admission', true);
+  expect(key).toEqual(await unlockJournalPin('1234', world.phone));
+  key.fill(0);
+});
+
+test('missing binding, unreadable metadata and preflight cancellation never admit a PIN guess', async () => {
+  const { ports, begin } = await accountedPhone();
+  const binding = ports.binding.read;
+  ports.binding.read = async () => { throw new DeviceBindingUnavailableError('missing alias'); };
+  await expect(unlockJournalPin('0000', ports)).rejects.toBeInstanceOf(DeviceBindingUnavailableError);
+  ports.binding.read = binding;
+  const read = ports.readKeystore;
+  ports.readKeystore = async () => null;
+  await expect(unlockJournalPin('0000', ports)).rejects.toBeInstanceOf(KeystoreUnreadableError);
+  ports.readKeystore = read;
+  await expect(unlockJournalPin('0000', ports, () => { throw new UnlockCancelledError(); })).rejects.toBeInstanceOf(UnlockCancelledError);
+  expect(begin).not.toHaveBeenCalled();
+});
+
+test('failed durable admission never derives a PIN and failed settlement cannot acknowledge a miss', async () => {
+  const { ports, begin, finish } = await accountedPhone();
+  const crypto = await import('../crypto/argon2id');
+  const derive = vi.spyOn(crypto, 'deriveKey');
+  try {
+    begin.mockRejectedValueOnce(new Error('admission failed'));
+    await expect(unlockJournalPin('0000', ports)).rejects.toThrow('admission failed');
+    expect(derive).not.toHaveBeenCalled();
+    finish.mockRejectedValueOnce(new Error('settlement failed'));
+    await expect(unlockJournalPin('0000', ports)).rejects.toThrow('settlement failed');
+    expect(derive).toHaveBeenCalledTimes(1);
+    expect(finish).toHaveBeenCalledWith('durable-admission', false);
+  } finally { derive.mockRestore(); }
+});
+
+test('cancellation during an admitted derivation keeps its count and refuses the key', async () => {
+  const { ports, begin, finish } = await accountedPhone();
+  let cancelled = false;
+  begin.mockImplementation(async () => { cancelled = true; return 'durable-admission'; });
+  await expect(unlockJournalPin('1234', ports, () => {
+    if (cancelled) throw new UnlockCancelledError();
+  })).rejects.toBeInstanceOf(UnlockCancelledError);
+  expect(finish).toHaveBeenCalledWith('durable-admission', false);
+});
+
+test('legacy rebinding uses the same durable admission and does not reset a failed publication', async () => {
+  const world = bothPlatforms();
+  await setupJournalPin('1234', world.web);
+  const begin = vi.fn(async () => 'legacy-admission');
+  const finish = vi.fn(async (_token: string, _successful: boolean) => {});
+  const ports = { ...world.phone, attempts: { begin, finish } };
+  world.failNextWrite();
+  await expect(unlockJournalPin('1234', ports)).rejects.toThrow('keystore landed');
+  expect(finish).toHaveBeenLastCalledWith('legacy-admission', false);
+  const key = await unlockJournalPin('1234', ports);
+  expect(finish).toHaveBeenLastCalledWith('legacy-admission', true);
+  expect(world.stored()?.pinBinding).toBe('keystore');
+  key.fill(0);
 });

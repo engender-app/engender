@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <queries>
         <intent>
@@ -55,6 +56,7 @@
          the Android 11 and older half of the range, which starts at the
          app's floor of API 26. -->
     <application
+        android:name=".JournalApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
@@ -63,6 +65,24 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <!-- Opt out of per-app diagnostic uploads. Safe Browsing keeps
+             WebView's enabled default. -->
+        <meta-data android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+
+        <!-- BackupWork uses ordinary delayed jobs without network constraints
+             or foreground execution. Keep WorkManager's job and rescheduling
+             owners; omit the two components those unused features add. -->
+        <provider android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="merge">
+            <meta-data android:name="androidx.work.WorkManagerInitializer" tools:node="remove" />
+        </provider>
+        <service android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
+        <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
+            tools:node="remove" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -103,7 +123,16 @@
              flip, which is the "closes briefly to switch"
              disguise_app_sub_android warns about. A flag change does not:
              it is not urgent the way hiding the app is, so the launcher
-             picks the new icon up by the next cold start (ADR-0088). -->
+             picks the new icon up by the next cold start (ADR-0088).
+
+             Each alias also answers OPEN_ROUTE, the action widget and
+             notification taps send (launch/AppLaunch.java). Recents and the
+             window title TalkBack reads take their label and icon from the
+             component that started the task, so a tap that named
+             MainActivity showed "engender" even under disguise. Sent as an
+             action, the tap resolves to whichever alias is enabled when it
+             lands, the same one the launcher starts. MainActivity must not
+             declare the action, or it would match too. -->
         <activity-alias
             android:name=".disguise.LauncherDefault"
             android:targetActivity=".MainActivity"
@@ -115,6 +144,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -130,6 +164,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -143,6 +182,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -158,6 +202,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -171,6 +220,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -186,6 +240,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -199,6 +258,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -214,6 +278,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -227,6 +296,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -242,6 +316,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -255,6 +334,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -270,6 +354,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -283,6 +372,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -298,6 +392,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -311,6 +410,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -326,6 +430,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -339,6 +448,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -354,6 +468,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -367,6 +486,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -382,6 +506,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -395,6 +524,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -410,6 +544,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -423,6 +562,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -438,6 +582,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -451,6 +600,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -466,6 +620,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -479,6 +638,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -494,6 +658,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -507,6 +676,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -522,6 +696,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -535,6 +714,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -550,6 +734,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -563,6 +752,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -620,6 +814,8 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>
@@ -662,6 +858,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- WorkManager holds a wake lock during scheduled encrypted delivery.
+         BackupWork never requests network constraints or foreground work. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
     <!-- Voice notes. Recording itself needs no native code: it
          is plain getUserMedia/MediaRecorder, the same as the web build, and
          Capacitor's own BridgeWebChromeClient.onPermissionRequest already

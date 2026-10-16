@@ -586,3 +586,70 @@ test('a newer lock cancels retained recovery before it publishes its private dri
   assert.equal(session.connection.current, null);
   assert.equal(session.key.current, null);
 });
+
+for (const lateReply of ['before return', 'after return']) {
+  test(`a cancelled retained resume cannot clear the next suspension's key (${lateReply})`, async () => {
+    const log: string[] = [];
+    const key = keyOf(9);
+    const first = fakeDriver('first', log);
+    const cancelled = fakeDriver('cancelled', log);
+    const final = fakeDriver('final', log);
+    let releaseOld!: () => void;
+    let reached!: () => void;
+    const entered = new Promise<void>(resolve => { reached = resolve; });
+    const held = new Promise<void>(resolve => { releaseOld = resolve; });
+    let opens = 0;
+    const session = journalSession<Key, FakeDriver>({
+      async suspend() {},
+      release(retainContent) { log.push(`released ${retainContent}`); },
+      prewarm() {},
+      async open(derived, current, own) {
+        assert.equal(derived, key);
+        if (opens++) {
+          const opened = opens === 2 ? final : fakeDriver('authenticated', log);
+          own(opened);
+          return opened;
+        }
+        own(cancelled);
+        reached();
+        await held;
+        current();
+        return cancelled;
+      }
+    });
+    session.adopt(key, first);
+    await session.suspendForNavigation(true);
+    const oldReturn = session.resumeAfterNavigation(() => {});
+    const rejected = assert.rejects(oldReturn, /cancelled/);
+    await entered;
+    await session.suspendForNavigation(true);
+    await rejected;
+    assert.equal(cancelled.closed, true, 'the cancelled private driver is disposed');
+    assert.equal(session.key.current, null);
+    assert.equal(session.connection.current, null);
+    assert.equal(log.at(-1), 'released true', 'the newer suspension keeps its content');
+    if (lateReply === 'before return') {
+      releaseOld();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    await session.resumeAfterNavigation(() => {});
+    assert.equal(opens, 2, 'the second return still has automatic reopening authority');
+    assert.equal(session.driver, final);
+    assert.equal(session.key.current, key);
+    assert.equal(session.connection.current, final);
+    const releases = log.length;
+    releaseOld();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(log.length, releases, 'late old preparation cannot release the newer session');
+    assert.equal(final.closed, false);
+    assert.equal(await session.connection.run(driver => driver.query()), 'final');
+    await session.lock();
+    await session.resumeAfterNavigation(() => {});
+    assert.equal(session.key.current, null, 'explicit lock still discards automatic reopening');
+    assert.equal(session.connection.current, null);
+    assert.equal(opens, 2);
+    await session.unlock(key);
+    assert.equal(opens, 3, 'fresh authentication can reopen after explicit lock');
+    assert.equal(await session.connection.run(driver => driver.query()), 'authenticated');
+  });
+}

@@ -21,7 +21,7 @@
    unit-tested in the Node tier against a fake driver, while the real app
    supplies createEncryptedWebSqlite() from mc-driver.ts. */
 
-import { markJournalBusy } from '../journal-busy.ts';
+import { markJournalBusy, waitForJournalIdle } from '../journal-busy.ts';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import { runMigrations } from './migration-runner.ts';
@@ -195,18 +195,21 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     what they did not finish is still there for the next boot to retry. */
 async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
   try {
+    await waitForJournalIdle();
     await deps.purgeExpiredTrash?.(driver);
   } catch (error) {
     console.warn('trash purge failed; expired entries stay trashed until the next boot', error);
   }
 
   try {
+    await waitForJournalIdle();
     await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {
     console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
   }
 
   try {
+    await waitForJournalIdle();
     await deps.autoLogDueDoses?.(driver);
   } catch (error) {
     console.warn('auto-logging doses failed; the slots stay open until the next boot', error);

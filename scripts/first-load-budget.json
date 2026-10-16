@@ -8,14 +8,15 @@
     "gzipBytesBaseline": 251290,
     "gzipBytesBudget": 252314
   },
-  "onDemand": {
-    "what": "the OCR engine and the standard PDF fonts - not first-load, but the largest thing the app can ask for. Recorded rather than gated: nothing on a first visit waits on it.",
-    "recordedOn": "2026-10-07",
-    "files": 21,
-    "gzipBytes": 22866526
-  },
   "demoBuild": {
     "exempt": true,
     "reason": "Demo builds include fixture generation and worker prewarming for walkthroughs. They are not shipped as the production app. CI gates the production locale graphs; demo behavior has walkthrough checks."
+  },
+  "installedOcr": {
+    "what": "Complete current OCR generation and frozen legacy library installed before offline readiness; initialization remains deferred",
+    "recordedOn": "2026-10-14",
+    "files": 9,
+    "gzipBytes": 22341751,
+    "storedBytes": 27616147
   }
 }

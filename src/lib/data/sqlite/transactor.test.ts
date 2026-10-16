@@ -2,6 +2,7 @@
    Node tier; run with `npm test`. */
 
 import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
 import { test, vi } from 'vitest';
 import { oneTransactionAtATime } from './transactor.ts';
 
@@ -97,6 +98,64 @@ test('a rejected transaction does not fail the ones queued behind it', async () 
 
   await assert.rejects(failing, /first/);
   assert.equal(await following, 'second');
+});
+
+test.each(['statement', 'commit'] as const)('rollback failure keeps the %s failure as its cause and does not poison queued work', async (stage) => {
+  const originalCause = new Error('original diagnostic');
+  const original = new Error('database or disk is full', { cause: originalCause });
+  const rollback = new Error('cannot rollback - no transaction is active');
+  const db = connection();
+  let refuseCommit = stage === 'commit';
+  const transaction = oneTransactionAtATime({
+    ...db.steps,
+    async commit() {
+      if (refuseCommit) { refuseCommit = false; throw original; }
+      await db.steps.commit();
+    },
+    async rollback() { await db.steps.rollback(); throw rollback; }
+  });
+  const failing = transaction(() => { if (stage === 'statement') throw original; });
+  const following = transaction(() => 'following');
+  await assert.rejects(failing, (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.equal(error.message, original.message);
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.cause, original);
+    assert.equal(original.cause, originalCause);
+    assert.deepEqual(error.errors, [original, rollback]);
+    return true;
+  });
+  assert.equal(await following, 'following');
+  assert.equal(db.sent.at(-1), 'COMMIT');
+});
+
+test('real SQLite automatic rollback preserves SQLITE_FULL and allows the next queued transaction', async () => {
+  const db = new DatabaseSync(':memory:');
+  try {
+    db.exec('CREATE TABLE entry (body TEXT); PRAGMA max_page_count = 20');
+    const transaction = oneTransactionAtATime({
+      async begin() { db.exec('BEGIN'); },
+      async commit() { db.exec('COMMIT'); },
+      async rollback() { db.exec('ROLLBACK'); }
+    });
+    const failing = transaction(() => {
+      const insert = db.prepare('INSERT INTO entry VALUES (?)');
+      insert.run('first');
+      for (let i = 0; i < 1000; i++) insert.run('x'.repeat(2000));
+    });
+    const following = transaction(() => db.prepare('INSERT INTO entry VALUES (?)').run('following'));
+    await assert.rejects(failing, (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /database or disk is full/);
+      assert.ok(error instanceof AggregateError);
+      assert.equal((error.cause as Error & { errcode: number }).errcode, 13);
+      assert.equal(error.errors[0], error.cause);
+      assert.match(error.errors[1].message, /cannot rollback - no transaction is active/);
+      return true;
+    });
+    await following;
+    assert.deepEqual(db.prepare('SELECT body FROM entry').all().map((row) => row.body), ['following']);
+  } finally { db.close(); }
 });
 
  test('a failed post-commit cleanup preserves the committed result and runs later cleanups', async () => {

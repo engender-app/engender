@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listReturnTo, sourceReturnTo, withListReturn } from './sourceRecord';
+import { careEpisodeId, careLaneReturnHref, listReturnTo, sourceReturnTo, withEntryListReturn, withListReturn } from './sourceRecord';
 
 const at = (path: string) => new URL(`https://engender.test${path}`);
 
@@ -23,5 +23,36 @@ describe('listReturnTo', () => {
 
   it('does not make the editor think a source record sent it', () => {
     expect(sourceReturnTo(at(withListReturn('/entry/7', at('/calendar'))))).toBeNull();
+  });
+});
+
+const EPISODE = '12345678-1234-1234-1234-123456789abc';
+
+describe('Care return identity', () => {
+  it('keeps the episode UUID and day without copying journal text', () => {
+    expect(careLaneReturnHref(at(`/care/doses?episode=${EPISODE}&date=20000&drug=private&lane=private`)))
+      .toBe(`/care?episode=${EPISODE}&date=20000`);
+    expect(careLaneReturnHref(at('/care/labs?date=20000'))).toBe('/care?date=20000');
+  });
+
+  it('refuses names disguised as episode IDs and dates', () => {
+    expect(careEpisodeId(at('/care?episode=private-drug'))).toBeNull();
+    expect(careLaneReturnHref(at('/care/doses?episode=private-drug&date=private-drug'))).toBe('/more');
+  });
+});
+
+
+describe('entry links in mixed source lists', () => {
+  it('carries route filters and record identity without changing non-entry links', () => {
+    for (const source of ['/voice?tab=recordings', '/search?starred=1', '/search/questions/abc', '/', '/care/curve?days=30']) {
+      expect(listReturnTo(at(withEntryListReturn('/entry/7', at(source))))).toBe(source);
+      expect(withEntryListReturn('/care/doses?date=20000', at(source))).toBe('/care/doses?date=20000');
+    }
+  });
+
+  it('does not copy legacy typed queries or drug names into return context', () => {
+    const href = withEntryListReturn('/entry/7', at('/search?starred=1&q=private-query&drug=private-drug&lane=private-lane'));
+    expect(listReturnTo(at(href))).toBe('/search?starred=1');
+    expect(href).not.toContain('private');
   });
 });

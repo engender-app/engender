@@ -53,7 +53,7 @@ export interface FakeSqlitePlugin {
   restorePreMigrationCopy(options: Options): Promise<void>;
   cleanupPreMigrationCopy(options: Options): Promise<void>;
   deleteDatabase(options: { name: string }): Promise<void>;
-  isPlaintextDatabase(options: { name: string }): Promise<{ plaintext: boolean }>;
+  isPlaintextDatabase(options: { name: string }): Promise<{ exists: boolean; plaintext: boolean }>;
   close(options: Options): Promise<void>;
   /** Every call that reached the plugin, with how it ended, for assertions. */
   readonly calls: { method: string; session?: string; seq?: number; refused?: string }[];
@@ -254,7 +254,7 @@ export function createFakeSqlitePlugin(dir: string): FakeSqlitePlugin {
           rmSync(pathOf(name) + suffix, { force: true });
         }
       }),
-    isPlaintextDatabase: () => unsequenced('isPlaintextDatabase', () => ({ plaintext: false })),
+    isPlaintextDatabase: () => unsequenced('isPlaintextDatabase', () => ({ exists: false, plaintext: false })),
 
     close: (o) =>
       sequenced('close', o, () => {

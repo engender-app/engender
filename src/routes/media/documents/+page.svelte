@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* The paper somebody keeps (phase 8 features ticket 52, ADR-0065; phase
      10 redesign ticket 58).
 
@@ -279,7 +280,7 @@
   {#snippet fields(draft: ImportDraft)}
     <Field label={m.document_title_label()} id="document-title">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="document-title"

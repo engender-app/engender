@@ -572,11 +572,17 @@
      differently-sized boxes - the outer button transparent and centred
      on the corner, the smaller ::before disc carrying the surface fill
      and the edge that separates it from whatever the photo underneath
-     happens to be. */
+     happens to be.
+
+     On the photograph's top-left corner, the one the selection tick
+     (.photo-check, top right) never takes. It was the bottom-left corner
+     until last-audit UI 52: that corner is the date caption's row, and
+     the disc covered the caption's first letter while the 48px target
+     took taps meant for the tile (audit U44). */
   .photo-cell-controls { position: relative; }
   .photo-view-action { width: 100%; margin-top: var(--space-3); }
   .photo-edit-day {
-    position: absolute; bottom: -8px; left: -8px;
+    position: absolute; top: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
     border: none; cursor: pointer; background: none; color: var(--text);
     display: flex; align-items: center; justify-content: center;
@@ -657,8 +663,11 @@
   }
   /* The drawn tab is 18px; the target is the 48px floor, reaching left
      over the grid's edge. Only a target, never paint, and only while the
-     rail is awake: at rest the rail takes no pointer at all. */
-  .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
+     rail is awake: at rest the rail takes no pointer at all. The insets
+     count from inside the tab's 1px border, so the right one takes the
+     border in and the left one starts 17px in: measured from the border's
+     outside edge they left a 47px target (last-audit UI 25). */
+  .photo-year::after { content: ''; position: absolute; inset: -2px -1px -2px calc(17px - var(--touch-target)); }
   .photo-year:hover { color: var(--text); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's

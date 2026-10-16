@@ -30,6 +30,7 @@ import { liveList, liveQuery, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime, fmtNumber } from './dates';
+import { SPINE_FORWARD_DAYS } from './careSpine';
 import { todayEpochDay as clockDay } from './epochDay';
 import { hairRemovalAreaName } from './vocabulary/labels';
 import { spanCoversDay } from './span';
@@ -121,7 +122,7 @@ export function homeTiles(
   );
   const schedules = liveList((j) => j.doses.getSchedules());
   const dosePauses = liveList((j) => j.doses.getPauses());
-  const todayDoses = liveList((j) => j.doses.getDoses(todayEpochDay, todayEpochDay));
+  const scheduleDoses = liveList((j) => j.doses.getDosesForSlots(todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS));
   const yesterdayDoses = liveList((j) => j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1));
   const latestBenchmarkDay = liveQuery((j) => j.voiceBenchmarks.lastWriteEpochDay(todayEpochDay));
   const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
@@ -180,7 +181,7 @@ export function homeTiles(
     tryoutFeltSense,
     schedules,
     dosePauses,
-    todayDoses,
+    scheduleDoses,
     yesterdayDoses,
     latestBenchmarkDay,
     journalingPauses,
@@ -226,7 +227,7 @@ export function homeTiles(
         latestFeltSenseByTryoutId: tryoutFeltSense.value ?? new Map(),
         schedules: schedules.rows,
         dosePauses: dosePauses.rows,
-        todayDoses: todayDoses.rows,
+        scheduleDoses: scheduleDoses.rows,
         yesterdayDoses: yesterdayDoses.rows,
         latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
         journalingPauses: journalingPauses.rows,

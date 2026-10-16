@@ -692,7 +692,7 @@ test('replace leaves the PIN, the app-lock flags and the disguise settings alone
   const source = await populated();
   const target = await device();
   // Written as rows rather than through preferences.ts: what this asserts is
-  // that a restore does not touch the pref table at all, whoever wrote it.
+  // that row-only restore leaves device-local settings untouched.
   for (const [key, value] of [
     ['pinHash', '"argon2-hash"'],
     ['appLock', 'true'],
@@ -1302,6 +1302,25 @@ test.each(['replace', 'merge'] as const)('hidden goal visibility and linked reco
   for (const key of keys) await target.journal.roadmap.setGoalHidden('pl', key, false);
   assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), []);
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { [keys[0]]: 'checked', [keys[1]]: 'not-my-path' });
+});
+
+test.each(['checked', 'not-my-path'] as const)('merging a status into a locally hidden unchecked goal keeps %s after unhiding', async (status) => {
+  const source = await device();
+  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', status);
+  const target = await device();
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', true);
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-passport', true);
+  const contents = await exported(source.journal);
+  await target.journal.archive.merge(contents);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-appeal', 'pl-legal-passport']);
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', false);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-passport']);
+  const reopened = await device();
+  await reopened.journal.archive.replace(await exported(target.journal));
+  assert.deepEqual(await reopened.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
 });
 
 test('merging hidden goals preserves local visibility and status while legacy checks restore visible', async () => {

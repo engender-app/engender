@@ -6,6 +6,8 @@
 export interface Migration {
   version: number;
   sql: string;
+  /** Parameterized data repair inside the same transaction, before advancing the version. */
+  apply?: (db: MigrationDb) => Promise<void>;
   /** Builds the whole schema rather than stepping from the version before it
       (the squash: ticket 34, then after-release ticket 42). Only an empty database can take it, so a
       journal that already has a schema below it is refused by name. */
@@ -29,6 +31,8 @@ type MigrationSource =
 export interface MigrationDb {
   exec(sql: string): void | Promise<void>;
   query<Row extends Record<string, unknown> = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]>;
+  /** Runs a parameterized statement that does not return rows. */
+  run(sql: string, params?: unknown[]): Promise<{ changes: number; lastInsertRowid: number }>;
   getUserVersion(): number | Promise<number>;
   setUserVersion(version: number): void | Promise<void>;
   transaction<T>(fn: (db: MigrationDb) => T | Promise<T>): T | Promise<T>;
@@ -223,6 +227,7 @@ export async function runMigrations(
     for (const migration of pending) {
       await db.transaction(async (db) => {
         await db.exec(migration.sql);
+        await migration.apply?.(db);
         await db.setUserVersion(migration.version);
       });
     }

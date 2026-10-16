@@ -67,7 +67,13 @@ public class ReminderPayloadStoreTest {
 
         JSONObject loaded = ReminderScheduler.loadPayload(context);
         assertNotNull(loaded);
-        assertEquals(payload().toString(), loaded.toString());
+        JSONObject reminder = loaded.getJSONArray("reminders").getJSONObject(0);
+        long pendingAt = reminder.getLong(ReminderScheduler.PENDING_AT);
+        assertTrue("the pending occurrence is not wrapped", pendingAt > System.currentTimeMillis());
+        assertFalse("the pending occurrence is readable on disk", onDisk.contains(Long.toString(pendingAt)));
+        JSONObject expected = payload();
+        expected.getJSONArray("reminders").getJSONObject(0).put(ReminderScheduler.PENDING_AT, pendingAt);
+        assertEquals(expected.toString(), loaded.toString());
     }
 
     @Test

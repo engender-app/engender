@@ -113,9 +113,9 @@ test('a statement that fails on its own reports its own error', async () => {
 });
 
 test('the two calls made with no driver open carry no number', async () => {
-  const { deleteAndroidDatabase, androidJournalIsPlaintext } = await import('./android-driver.ts');
+  const { deleteAndroidDatabase, inspectAndroidJournal } = await import('./android-driver.ts');
   void deleteAndroidDatabase('journal');
-  void androidJournalIsPlaintext('journal');
+  void inspectAndroidJournal('journal');
   await flush();
 
   expect(sent.map((call) => [call.method, call.options.seq])).toEqual([
@@ -161,4 +161,12 @@ test('a file operation made after the close waits for it, then goes on a session
   void fileOps.restorePreMigrationCopy();
   await flush();
   expect(sent[3].options).toMatchObject({ session: asked.options.session, seq: 1 });
+});
+
+test('storage survey reports retained ciphertext without opening a connection', async () => {
+  const { inspectAndroidJournal } = await import('./android-driver');
+  const result = inspectAndroidJournal('journal');
+  expect(sent.map(call => call.method)).toEqual(['isPlaintextDatabase']);
+  sent[0].answer({ exists: true, plaintext: false });
+  await expect(result).resolves.toEqual({ exists: true, plaintext: false });
 });

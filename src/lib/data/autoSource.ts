@@ -13,11 +13,13 @@
    fourth copy of `'wear:'` is the kind of drift that shows up as a
    preference switch that silently stops matching the rows it gates. */
 
+import { drugNameKey } from './regimenEpisode';
+
 export const STOCK_PREFIX = 'stock:';
 export const WEAR_PREFIX = 'wear:';
 
 /** The marker medication stock puts on the run-out reminder it manages. */
-export const stockAutoSource = (drug: string): string => `${STOCK_PREFIX}${drug}`;
+export const stockAutoSource = (drug: string): string => `${STOCK_PREFIX}${drugNameKey(drug)}`;
 
 /** The marker a wear session puts on its own elapsed prompt. */
 export const wearAutoSource = (sessionId: string): string => `${WEAR_PREFIX}${sessionId}`;

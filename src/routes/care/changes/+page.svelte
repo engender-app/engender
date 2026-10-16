@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   /* When you first noticed each change, on the surface kit (phase 5 UX
      ticket 25).
 
@@ -51,6 +52,7 @@
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { severityName, cycleEventKindName } from '$lib/data/vocabulary/labels';
   import type { PersonalEffectCatalogEntry, SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -230,9 +232,11 @@
 
   /* Ticket 11's second entry point into the appointment prep list: a
      one-tap add, seeded from what is already on screen, rather than a
-     detour through that list's own editor. */
+     detour through that list's own editor. One add per tap, and a failed
+     one says so (UI 17); a later tap is a second add on purpose. */
+  const prepWrite = writer();
   async function addToAppointmentPrep(name: string) {
-    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name }));
+    if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name })), m.write_failed()))) return;
     toast(m.appointment_prep_added_toast());
   }
 
@@ -329,10 +333,14 @@
   let newEffectName = $state('');
   let newEffectCategory = $state('');
 
+  /* One type per tap (UI 17): a custom type can only be hidden, never
+     deleted, so a double tap used to leave a duplicate for good. A failed
+     add keeps the name and says so. */
+  const effectTypeWrite = writer();
   async function addEffectType() {
     const name = newEffectName.trim();
     if (!name) return;
-    await journal.personalEffects.addCustomEffectType(name, newEffectCategory || null);
+    if (!(await effectTypeWrite.run(() => journal.personalEffects.addCustomEffectType(name, newEffectCategory || null), m.write_failed()))) return;
     newEffectName = '';
     newEffectCategory = '';
   }
@@ -616,7 +624,7 @@
     {#snippet fields(editor)}
       <Field label={m.side_effect_name_label()} id="side-effect-name">
         {#snippet children(id)}
-          <input class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
       <Field label={m.side_effect_severity_label()} legend>
@@ -636,7 +644,7 @@
       </Field>
     {/snippet}
     {#snippet extraActions(editor)}
-      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor.name)}>
+      <button class="btn btn-soft" data-add-to-appointment-prep disabled={prepWrite.busy} onclick={() => addToAppointmentPrep(editor.name)}>
         <span>{m.appointment_prep_add_button()}</span>
       </button>
     {/snippet}
@@ -670,7 +678,7 @@
   <!-- Saying you are done with this area (phase 8 features ticket 04). -->
   <AreaFinish group="effects" />
 
-  <Sheet open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>
+  <Sheet busy={effectTypeWrite.busy} open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.effects_categories_heading()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effects_categories_intro()}</p>
     <div class="taggroup-toggles">
@@ -722,7 +730,7 @@
 
     <Field label={m.effect_type_new_label()} id="new-effect-type">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="new-effect-type"
@@ -741,7 +749,7 @@
         </select>
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-add-effect-type onclick={addEffectType}><span>{m.effect_type_add()}</span></button>
+    <button class="btn btn-primary" data-add-effect-type disabled={effectTypeWrite.busy} onclick={addEffectType}><span>{m.effect_type_add()}</span></button>
   </Sheet>
 </div>
 

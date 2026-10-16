@@ -14,6 +14,7 @@ import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Lifecycle;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -51,10 +52,48 @@ public class KeystorePlugin extends Plugin {
     private static final String TAG = "Keystore";
 
     private JournalKeystore keystore;
+    private CredentialWrapStore credentialWraps;
 
     @Override
     public void load() {
         keystore = new JournalKeystore(getContext());
+        credentialWraps = new CredentialWrapStore(getContext());
+    }
+
+    @PluginMethod
+    public void readCredential(PluginCall call) {
+        try { call.resolve(credentialRecord()); }
+        catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    @PluginMethod
+    public void writeCredential(PluginCall call) {
+        try {
+            credentialWraps.write(call.getString("serialized"));
+            call.resolve();
+        } catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    @PluginMethod
+    public void adoptCredential(PluginCall call) {
+        try {
+            credentialWraps.adopt(call.getString("serialized"));
+            call.resolve(credentialRecord());
+        } catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    @PluginMethod
+    public void removeCredential(PluginCall call) {
+        try { credentialWraps.remove(); call.resolve(); }
+        catch (Exception e) { call.reject(message(e), e); }
+    }
+
+    private JSObject credentialRecord() throws Exception {
+        JSObject result = new JSObject();
+        String stored = credentialWraps.read();
+        result.put("initialized", stored != null);
+        if (stored != null && !"null".equals(stored)) result.put("serialized", stored);
+        return result;
     }
 
     /** A first run against every later one. */
@@ -269,6 +308,7 @@ public class KeystorePlugin extends Plugin {
            prompts require API 30. */
         if (deviceCredential && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             activity.runOnUiThread(() -> {
+                if (cancelInactivePrompt(activity, call)) return;
                 if (credentialPending) {
                     call.resolve(outcome(BiometricOutcomes.FAILED, null));
                     return;
@@ -314,20 +354,38 @@ public class KeystorePlugin extends Plugin {
                 /* onAuthenticationFailed is deliberately not overridden. It
                    fires per unrecognised finger while the prompt stays up and
                    the platform keeps asking; resolving there would answer the
-                   call while Android's own dialog was still on screen. Every
-                   prompt ends in one of the two above. */
+                   call while Android's own dialog was still on screen. An
+                   admitted prompt ends in one of the two above. */
             };
 
         activity.runOnUiThread(
             () -> {
-                BiometricPrompt biometricPrompt =
-                    new BiometricPrompt(activity, ContextCompat.getMainExecutor(getContext()), callback);
-                if (cipher != null) {
-                    biometricPrompt.authenticate(info.build(), new BiometricPrompt.CryptoObject(cipher));
-                } else {
-                    biometricPrompt.authenticate(info.build());
+                if (cancelInactivePrompt(activity, call)) return;
+                try {
+                    BiometricPrompt biometricPrompt =
+                        new BiometricPrompt(activity, ContextCompat.getMainExecutor(getContext()), callback);
+                    if (cipher != null) {
+                        biometricPrompt.authenticate(info.build(), new BiometricPrompt.CryptoObject(cipher));
+                    } else {
+                        biometricPrompt.authenticate(info.build());
+                    }
+                } catch (Exception error) {
+                    call.reject(message(error), error);
                 }
             });
+    }
+
+    /** Checked on the UI thread beside the launch: androidx 1.1 silently
+     * returns after fragment state is saved, without invoking its callback.
+     * A cancelled answer lets the gate release busy and offer its retry. */
+    private boolean cancelInactivePrompt(FragmentActivity activity, PluginCall call) {
+        if (activity.isFinishing() || activity.isDestroyed()
+            || activity.getSupportFragmentManager().isStateSaved()
+            || !activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+            call.resolve(outcome(BiometricOutcomes.CANCELLED, null));
+            return true;
+        }
+        return false;
     }
 
     @ActivityCallback

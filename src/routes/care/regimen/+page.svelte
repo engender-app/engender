@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { SvelteSet } from 'svelte/reactivity';
   import { page } from '$app/state';
   import { sameDraft, snapshotDraft } from '$lib/components/kit/recordEditor';
@@ -15,14 +16,23 @@
      line, so this screen keeps only the one link still worth naming
      here. */
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { cycleTrackingVisible, testosteroneActive } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { fmtNumber, fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { episodeEndReasonLabel, pauseReasonLabel, routeLabel, ROUTE_OPTIONS } from '$lib/data/vocabulary/doseLabels';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
+  import {
+    episodeEndReasonLabel,
+    pauseReasonLabel,
+    regimenIntervalLabel,
+    regimenIntervalToStore,
+    regimenPeriodLabel,
+    routeLabel,
+    ROUTE_OPTIONS
+  } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import type { DosePause, DoseRoute, DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
@@ -86,12 +96,6 @@
   let editorSchedule = $derived((schedulesQuery.rows).find((s) => s.episodeId === editor?.id) ?? null);
   let editorPauses = $derived((pausesQuery.rows).filter((p) => p.episodeId === editor?.id));
 
-  function rangeLabel(episode: RegimenEpisode): string {
-    const start = fmtDay(episode.startEpochDay, { month: 'short', year: 'numeric' });
-    const end = episode.endEpochDay === null ? m.regimen_ongoing() : fmtDay(episode.endEpochDay, { month: 'short', year: 'numeric' });
-    return m.regimen_period_range({ from: start, to: end });
-  }
-
   let editor = $state<{
     id?: string;
     drug: string;
@@ -100,6 +104,9 @@
     doseUnit: string;
     route: string;
     interval: string;
+    /** The interval as the loaded episode stores it, which the field above
+        shows through the catalogue (audit U50); null for a new episode. */
+    storedInterval: string | null;
     startDate: string;
     /** `''` while the episode is still ongoing (types.ts's null). */
     endDate: string;
@@ -131,7 +138,8 @@
           dose: String(episode.dose),
           doseUnit: episode.doseUnit,
           route: episode.route,
-          interval: episode.interval,
+          interval: regimenIntervalLabel(episode.interval),
+          storedInterval: episode.interval,
           startDate: dateInputValueFromEpochDay(episode.startEpochDay),
           endDate: episode.endEpochDay === null ? '' : dateInputValueFromEpochDay(episode.endEpochDay),
           endReason: episode.endReason
@@ -143,6 +151,7 @@
           doseUnit: '',
           route: template?.route ?? '',
           interval: '',
+          storedInterval: null,
           startDate: dateInputValueFromEpochDay(todayEpochDay()),
           endDate: '',
           endReason: null
@@ -191,7 +200,16 @@
   let episodeChanged = $derived(!sameDraft(episodeSnapshot, episodeBaseline));
   let scheduleChanged = $derived(!sameDraft(scheduleSnapshot, scheduleBaseline));
   let changed = $derived(episodeChanged || scheduleChanged || newPause !== null || pendingEndReason !== null);
+  let episodeRangeInverted = $derived(!!editor && spanIsInverted({
+    startEpochDay: epochDayFromDateInputValueOrToday(editor.startDate),
+    endEpochDay: epochDayFromDateInputValue(editor.endDate)
+  }));
+  let pauseRangeInverted = $derived(!!newPause && spanIsInverted({
+    startEpochDay: epochDayFromDateInputValue(newPause.start),
+    endEpochDay: epochDayFromDateInputValue(newPause.end)
+  }));
   let episodeRequirements = $derived([
+    ...(episodeRangeInverted ? [m.era_conflict_inverted()] : []),
     ...(!editor?.drug.trim() ? [m.regimen_drug_required()] : []),
     ...(!Number.isFinite(parseFloat(String(editor?.dose ?? ''))) ? [m.regimen_dose_required()] : [])
   ]);
@@ -240,7 +258,7 @@
       dose: parseFloat(String(draft.dose)),
       doseUnit: draft.doseUnit.trim(),
       route: draft.route.trim(),
-      interval: draft.interval.trim(),
+      interval: regimenIntervalToStore(draft.interval, draft.storedInterval),
       startEpochDay: epochDayFromDateInputValueOrToday(draft.startDate),
       endEpochDay: draft.endDate ? epochDayFromDateInputValue(draft.endDate) : null,
       endReason: draft.endReason
@@ -383,7 +401,7 @@
   }
 
   async function addPause() {
-    if (!editor?.id || !newPause || saving) return;
+    if (!editor?.id || !newPause || pauseRangeInverted || saving) return;
     const startEpochDay = epochDayFromDateInputValue(newPause.start);
     if (startEpochDay === null) return;
     const values = {
@@ -479,7 +497,7 @@
                 id={episode.id}
                 icon="pill"
                 title={episode.drug}
-                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: episode.interval, period: rangeLabel(episode) })}
+                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: regimenIntervalLabel(episode.interval), period: regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay) })}
                 chevron={false}
                 onclick={() => openEditor(episode)}
               >
@@ -554,7 +572,7 @@
               data-hidden-episode={episode.id}
               icon="pill"
               title={episode.drug}
-              subtitle={`${episode.dose} ${episode.doseUnit} · ${rangeLabel(episode)}`}
+              subtitle={`${fmtNumber(episode.dose)} ${episode.doseUnit} · ${regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay)}`}
               action={{
                 icon: 'eye',
                 label: m.regimen_show_aria({ drug: episode.drug }),
@@ -599,12 +617,12 @@
           <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
           <Field label={m.regimen_drug_label()} id="regimen-drug">
             {#snippet children(id, _hint, touched)}
-              <input class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
             {/snippet}
           </Field>
           <Field label={m.regimen_ester_label()} id="regimen-ester">
             {#snippet children(id)}
-              <input class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-ester" placeholder={m.regimen_ester_placeholder()} bind:value={editor!.ester} />
             {/snippet}
           </Field>
           <div class="cd-endpoints">
@@ -615,18 +633,18 @@
             </Field>
             <Field label={m.regimen_dose_unit_label()} id="regimen-dose-unit">
               {#snippet children(id)}
-                <input class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-dose-unit" placeholder={m.regimen_dose_unit_placeholder()} bind:value={editor!.doseUnit} />
               {/snippet}
             </Field>
           </div>
           <Field label={m.regimen_route_label()} id="regimen-route">
             {#snippet children(id)}
-              <input class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-route" placeholder={m.regimen_route_placeholder()} bind:value={editor!.route} />
             {/snippet}
           </Field>
           <Field label={m.regimen_interval_label()} id="regimen-interval">
             {#snippet children(id)}
-              <input class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-interval" placeholder={m.regimen_interval_placeholder()} bind:value={editor!.interval} />
             {/snippet}
           </Field>
           <div class="cd-endpoints">
@@ -637,13 +655,13 @@
             </Field>
             <Field label={m.regimen_end_label()} id="regimen-end">
               {#snippet children(id)}
-                <DatePicker name="regimen-end" bind:value={editor!.endDate} {id} />
+                <DatePicker name="regimen-end" min={dayRangeEndMin(editor!.startDate)} bind:value={editor!.endDate} {id} aria-invalid={episodeRangeInverted || undefined} describedBy={episodeRangeInverted ? "regimen-episode-requirements" : undefined} />
               {/snippet}
             </Field>
           </div>
           <p class="muted small" style="margin:calc(-1 * var(--space-2)) 0 var(--space-3)">{m.regimen_end_hint()}</p>
           <div id="regimen-episode-requirements" class="muted small" aria-live="polite">
-            {#each episodeRequirements as requirement (requirement)}<p>{requirement}</p>{/each}
+            {#each episodeRequirements as requirement (requirement)}<p transition:collapse>{requirement}</p>{/each}
           </div>
           <button class="btn btn-primary" data-save-regimen disabled={episodeRequirements.length > 0} onclick={saveEpisode}>
             <span>{m.regimen_save()}</span>
@@ -759,7 +777,7 @@
                             />
                           </span>
                           <span class="field">
-                            <input
+                            <input autocomplete={journalTextAutocomplete()}
                               class="input"
                               data-amount-unit={index}
                               aria-label={m.dose_unit_label()}
@@ -874,7 +892,7 @@
                 </Field>
                 <Field label={m.regimen_pause_end_label()} id="pause-end">
                   {#snippet children(id)}
-                    <DatePicker name="pause-end" bind:value={newPause!.end} {id} />
+                    <DatePicker name="pause-end" min={dayRangeEndMin(newPause!.start)} bind:value={newPause!.end} {id} aria-invalid={pauseRangeInverted || undefined} describedBy={pauseRangeInverted ? "regimen-pause-requirements" : undefined} />
                   {/snippet}
                 </Field>
               </div>
@@ -899,14 +917,16 @@
                   </div>
                 {/snippet}
               </Field>
-              {#if epochDayFromDateInputValue(newPause.start) === null}
-                <p class="muted small" id="regimen-pause-requirements">{m.regimen_pause_start_required()}</p>
-              {/if}
+              <div aria-live="polite">
+                {#if epochDayFromDateInputValue(newPause.start) === null || pauseRangeInverted}
+                  <p class="muted small" id="regimen-pause-requirements" transition:collapse>{pauseRangeInverted ? m.era_conflict_inverted() : m.regimen_pause_start_required()}</p>
+                {/if}
+              </div>
               <button
                 class="btn btn-soft"
                 data-add-pause
-                aria-describedby={epochDayFromDateInputValue(newPause.start) === null ? "regimen-pause-requirements" : undefined}
-                disabled={epochDayFromDateInputValue(newPause.start) === null}
+                aria-describedby={epochDayFromDateInputValue(newPause.start) === null || pauseRangeInverted ? "regimen-pause-requirements" : undefined}
+                disabled={epochDayFromDateInputValue(newPause.start) === null || pauseRangeInverted}
                 onclick={addPause}
               >
                 <span>{m.regimen_pause_add()}</span>

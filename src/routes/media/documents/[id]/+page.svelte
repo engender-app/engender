@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page } from '$app/state';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
@@ -36,7 +37,6 @@
      file the renderer cannot read: written back out unchanged through the
      share sheet or a download (archive/deliver.ts), the only way this app
      hands a file to anything outside its own encryption. */
-  import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
   import { deleter } from '$lib/stores/attempt.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -435,7 +435,7 @@
     toast(m.record_deleted(), { kind: 'record-deleted' });
     // Deleting answered the question a rename would have asked.
     detail.discard();
-    await goto(DOCUMENTS);
+    await replaceRoute(DOCUMENTS);
   }
 </script>
 
@@ -576,7 +576,7 @@
     <div in:crossfade>
       <Field label={m.document_title_label()} id="document-title">
         {#snippet children(id)}
-          <input class="input" {id} name="document-title" bind:value={draft.title} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="document-title" bind:value={draft.title} />
         {/snippet}
       </Field>
       <Field label={m.document_day_label()} id="document-day">

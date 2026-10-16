@@ -60,7 +60,11 @@
      a reading order. The day cards do take their turn from the table, and
      take the one they took on Home, so an entry looks the same wherever it
      is drawn. */
-  import { flushSync } from 'svelte';
+  import { flushSync, untrack } from 'svelte';
+  import { onNavigate } from '$app/navigation';
+  import { navigating } from '$app/state';
+  import { depthAfter, navigationDepth, sameUrl } from '$lib/navigation/smart-back';
+  import { rememberJournalVisit, restoreJournalVisit } from '$lib/navigation/journalVisit';
   import { m } from '$lib/paraglide/messages';
   import { fmtDayBar, fmtMonthYear, fmtTime } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -102,11 +106,16 @@
   const doorActive = useDoorActivity();
   let visit = 0;
 
+  let visitDepth = untrack(() => navigating.type ? depthAfter(navigating.type, navigating.delta) : navigationDepth());
+  const restored = untrack(() => restoreJournalVisit(visitDepth, navigating.type === 'popstate'));
   const now = new Date();
-  let year = $state(now.getFullYear());
-  let month = $state(now.getMonth());
+  let year = $state(restored?.year ?? now.getFullYear());
+  let month = $state(restored?.month ?? now.getMonth());
 
   let monthLabel = $derived(fmtMonthYear(year, month));
+  /* Every month of the showing year, for the slot's sizer: the slot is as
+     tall as the tallest of them, whichever one is showing. */
+  let monthSizers = $derived(Array.from({ length: 12 }, (_, i) => fmtMonthYear(year, i)));
 
   /* Whether this journal has anything in it at all, which decides whether
      the month and the week draw (phase 8 UX ticket 01, and Home's own rule):
@@ -157,7 +166,7 @@
      being asked for twice (ADR-0069's "batch" is the DOM's; this is still
      one bounded read per render). */
   const RECENT_DAYS_STEP = 5;
-  let recentDaysLimit = $state(RECENT_DAYS_STEP);
+  let recentDaysLimit = $state(restored?.recentDaysLimit ?? RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
   let dayGroups = $derived(entryDayGroups(recent.rows).slice(0, recentDaysLimit));
   let recentMonths = $derived(recentDayMonths(dayGroups));
@@ -421,10 +430,23 @@
      the way it went. A pick closes the sheet in the same step, so the label
      slides while the sheet is on its way down. */
   let jumpOpen = $state(false);
-  $effect.pre(() => {
+  // Capture before a retained door deactivates. Restore before it is shown,
+  // while a non-retained route restores during its initial mount above.
+  onNavigate((navigation) => {
+    if (sameUrl(navigation)) return;
+    if (navigation.from?.url.pathname === '/calendar') {
+      rememberJournalVisit(visitDepth, { year, month, recentDaysLimit });
+    }
+    if (navigation.to?.url.pathname !== '/calendar') return;
+    visitDepth = depthAfter(navigation.type, navigation.delta);
+    const saved = restoreJournalVisit(visitDepth, navigation.type === 'popstate');
     const current = new Date();
-    year = current.getFullYear();
-    month = current.getMonth();
+    year = saved?.year ?? current.getFullYear();
+    month = saved?.month ?? current.getMonth();
+    recentDaysLimit = saved?.recentDaysLimit ?? RECENT_DAYS_STEP;
+  });
+
+  $effect.pre(() => {
     if (doorActive()) {
       monthMotion = new AbortController();
       return () => {
@@ -434,6 +456,9 @@
       };
     }
     visit++;
+    const current = new Date();
+    year = current.getFullYear();
+    month = current.getMonth();
     jumpOpen = false;
     monthOpen = false;
     folding = false;
@@ -476,6 +501,9 @@
       <div class="cal-field">
         <h2 class="cal-month" data-cal-month aria-live="polite">
           <span class="cal-month-slot">
+            <span class="cal-month-sizer" aria-hidden="true">
+              {#each monthSizers as label (label)}<span>{label}</span>{/each}
+            </span>
             {#key monthLabel}
               <span in:labelIn out:labelOut>
                 <button class="cal-month-btn" data-cal-month-btn onclick={() => (jumpOpen = true)}>
@@ -668,6 +696,22 @@
     gap: var(--space-2);
   }
   .cal-field .cal-month { flex: 1; }
+  /* Beside the search control the month has the app's width less 96px:
+     99px at 195px (200% zoom on a 390px phone), where "October" (109px)
+     and "październik" (153px) were cut by the slot's walls and the button
+     under them ran 2 to 46px into the search target (last-audit UI 48).
+     Where the longest month word would not fit beside it, the month takes
+     the whole line and search moves to the line under it, at the same
+     trailing edge. The bound is in em, the app's own text size, because
+     the words grow with it and the 96px does not: 15.75em is 252px at
+     100% text, where "październik" just fits beside, and 504px at 200%.
+     Decided by the width and the text size, never by which month is
+     showing, so stepping from May to October does not move the control. */
+  @container app (max-width: 15.75em) {
+    .cal-field { flex-wrap: wrap; }
+    .cal-field .cal-month { flex-basis: 100%; }
+    .cal-field > a { margin-left: auto; }
+  }
 
   /* The section-heading size (rule 2), which is what rule 7 gives this door
      in place of a title: it names the month the strip under it is drawing,
@@ -702,6 +746,33 @@
   }
   .cal-month-slot > * { grid-area: 1 / 1; }
 
+  /* Holds the slot at the height of the tallest month name. Where a name
+     cannot fit the line ("październik" at 200% text on 195px) it breaks in
+     two, and the slot would be a line taller for that month alone, moving
+     the search control under it by a line in one frame when the month
+     changes. Every name is stacked in one cell, in the button's own font
+     and box, hidden and unread, so the height never depends on which month
+     is showing (last-audit UI 48). */
+  .cal-month-sizer {
+    display: grid;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .cal-month-sizer > span {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    text-align: left;
+    /* A button does not inherit the heading's tracking; the sizer has to
+       break its words where the button does. */
+    letter-spacing: normal;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 2px;
+    overflow-wrap: anywhere;
+  }
+
   /* The label is the affordance, so it reads as one: underlined the way the
      app's text actions are not, but only by a hair - the chevron on the
      control line already says this screen moves months, and the button only
@@ -735,6 +806,10 @@
        baseline is drawn outside them and never seen. */
     text-underline-offset: 2px;
     text-decoration-thickness: 2px;
+    /* The last resort, where even the whole line is narrower than one
+       word ("październik" is 307px with text at 200%): broken inside the
+       word rather than cut by the slot. */
+    overflow-wrap: anywhere;
   }
 
   /* The chevron turns over rather than being swapped for a second glyph:

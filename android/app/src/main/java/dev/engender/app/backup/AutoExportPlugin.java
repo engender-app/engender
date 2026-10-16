@@ -33,10 +33,7 @@ import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -52,6 +49,7 @@ import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
 import dev.engender.app.R;
+import dev.engender.app.JournalApplication;
 
 /**
  * Android side of scheduled encrypted backup destination management: a SAF
@@ -328,11 +326,12 @@ public class AutoExportPlugin extends Plugin {
                 call.reject("beginBackup requires fileName");
                 return;
             }
-            if (pendingBackup != null || BackupWork.foregroundPacking) {
-                call.reject("backup-in-progress");
-                return;
-            }
             try {
+                discardStaleBackup();
+                if (pendingBackup != null || BackupWork.foregroundPacking) {
+                    call.reject("backup-in-progress");
+                    return;
+                }
                 pendingTransferId = UUID.randomUUID().toString();
                 pendingBackup = new StagedBackup(new File(getContext().getCacheDir(), "auto-export-" + pendingTransferId + ".pending"));
                 BackupWork.foregroundTransferId = pendingTransferId;
@@ -374,8 +373,6 @@ public class AutoExportPlugin extends Plugin {
     @PluginMethod
     public synchronized void finishBackup(PluginCall call) {
         synchronized (BackupWork.OWNER) {
-            DocumentFile target = null;
-            boolean destinationVerified = false;
             try {
                 StagedBackup backup = requireTransfer(call);
                 long expectedLength = byteCount(call, "byteLength");
@@ -404,22 +401,9 @@ public class AutoExportPlugin extends Plugin {
                 if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
 
                 // Always create a new document. Never truncate a recoverable backup.
-                target = folder.createFile("application/octet-stream", pendingFileName);
+                DocumentFile target = folder.createFile("application/octet-stream", pendingFileName);
                 if (target == null) throw new IllegalStateException("destination-unavailable");
-                ContentResolver resolver = getContext().getContentResolver();
-                try (InputStream input = new FileInputStream(backup.file);
-                     OutputStream output = resolver.openOutputStream(target.getUri(), "w")) {
-                    if (output == null) throw new IllegalStateException("destination-unavailable");
-                    byte[] buffer = new byte[8192];
-                    int read;
-                    while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
-                    output.flush();
-                }
-                try (InputStream input = resolver.openInputStream(target.getUri())) {
-                    if (input == null) throw new IllegalStateException("destination-unavailable");
-                    StagedBackup.verify(input, expectedLength, sha256);
-                    destinationVerified = true;
-                }
+                DeliveredBackup.writeAndVerify(getContext(), folder, target, backup.file, expectedLength, sha256);
 
                 // Cleanup failure must never remove the newly verified backup.
                 try { clearPendingBackup(); }
@@ -432,9 +416,6 @@ public class AutoExportPlugin extends Plugin {
                 BackupWork.schedule(getContext());
                 call.resolve(result);
             } catch (Exception e) {
-                if (target != null && !destinationVerified) {
-                    try { target.delete(); } catch (Exception cleanup) { e.addSuppressed(cleanup); }
-                }
                 rejectDelivery(call, e);
             }
         }
@@ -519,6 +500,19 @@ public class AutoExportPlugin extends Plugin {
             throw new IllegalStateException("backup-configuration-changed");
         }
         return pendingBackup;
+    }
+
+    void discardStaleBackup() throws IOException {
+        if (pendingBackup != null && pendingResetEpoch != BackupWork.resetEpoch) clearPendingBackup();
+    }
+
+    @PluginMethod
+    public synchronized void abortPendingTransfers(PluginCall call) {
+        synchronized (BackupWork.OWNER) {
+            BackupWork.resetForegroundOwner();
+            try { clearPendingBackup(); call.resolve(); }
+            catch (IOException error) { call.reject("staging-cleanup-unavailable", error); }
+        }
     }
 
     private void clearPendingBackup() throws IOException {
@@ -608,8 +602,8 @@ public class AutoExportPlugin extends Plugin {
      */
     public static void wipe(Context context) throws Exception {
         synchronized (BackupWork.OWNER) {
-            BackupWork.resetEpoch++;
-            BackupWork.await(androidx.work.WorkManager.getInstance(context).cancelUniqueWork(BackupWork.NAME));
+            BackupWork.resetForegroundOwner();
+            BackupWork.await(JournalApplication.workManager(context).cancelUniqueWork(BackupWork.NAME));
             PersistentBackup.clear(context);
             File[] pendingFiles = context.getCacheDir().listFiles((directory, name) ->
                 name.equals("auto-export.pending") || name.matches("auto-export-[a-f0-9-]{36}\\.pending"));
@@ -701,7 +695,7 @@ public class AutoExportPlugin extends Plugin {
 
     private void disableWithFailure(String reason) {
         PersistentBackup.clear(getContext());
-        androidx.work.WorkManager.getInstance(getContext()).cancelUniqueWork(BackupWork.NAME);
+        JournalApplication.workManager(getContext()).cancelUniqueWork(BackupWork.NAME);
         releaseDestinationGrant(destinationUri());
         long now = System.currentTimeMillis();
         preferences().edit()
@@ -744,10 +738,13 @@ public class AutoExportPlugin extends Plugin {
         out.put("lastSuccessAt", prefs.contains(KEY_LAST_SUCCESS_AT) ? prefs.getLong(KEY_LAST_SUCCESS_AT, 0) : JSObject.NULL);
         out.put("lastFailureAt", prefs.contains(KEY_LAST_FAILURE_AT) ? prefs.getLong(KEY_LAST_FAILURE_AT, 0) : JSObject.NULL);
 
-        String reason = prefs.getString(KEY_LAST_FAILURE_REASON, null);
+        long schedulingFailureAt = JournalApplication.schedulingFailureAt();
+        String reason = schedulingFailureAt != 0
+            ? "backup-scheduling-unavailable" : prefs.getString(KEY_LAST_FAILURE_REASON, null);
+        if (schedulingFailureAt != 0) out.put("lastFailureAt", schedulingFailureAt);
         out.put("lastFailureReason", reason == null ? JSObject.NULL : reason);
 
-        Long due = nextDueAt(prefs);
+        Long due = schedulingFailureAt != 0 ? null : nextDueAt(prefs);
         out.put("nextDueAt", due == null ? JSObject.NULL : due);
 
         return out;

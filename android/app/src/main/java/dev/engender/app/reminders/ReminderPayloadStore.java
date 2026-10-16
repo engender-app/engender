@@ -18,7 +18,7 @@ import javax.crypto.spec.GCMParameterSpec;
 
 /**
  * The reminder payload on disk (audit finding G-02): every reminder's
- * title and time, the check-in affirmation pool, the
+ * title, rule and pending occurrence, the check-in affirmation pool, the
  * hide-titles preference and the epoch day of the latest entry, wrapped under
  * a Keystore AES-GCM key instead of written as a JSON string anyone holding
  * the app's directory can read.
@@ -70,8 +70,8 @@ public final class ReminderPayloadStore {
 
         /* commit rather than apply: this write is also the one that takes
            an older build's plaintext off disk, and apply returns before the
-           file does. The payload is a few hundred bytes and this runs once
-           per sync, so there is nothing to gain by queueing it. */
+           file does. Occurrence consumption also reaches disk before a
+           notification is posted, so another boot cannot replay it. */
         boolean committed = prefs(context).edit()
             .putString(KEY_NONCE, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
             .putString(KEY_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.NO_WRAP))

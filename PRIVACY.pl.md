@@ -1,6 +1,6 @@
 # Polityka prywatności
 
-Ostatnia aktualizacja: 7 października 2026
+Ostatnia aktualizacja: 14 października 2026
 
 engender to dziennik tranzycji. Tworzy go i publikuje Alicja Barankiewicz
 w Warszawie. Ta polityka dotyczy aplikacji w przeglądarce i na Androida,
@@ -64,9 +64,19 @@ Dzienniki błędów mogą zawierać adres IP i żądany URL; serwer przechowuje 
 najwyżej przez siedem dni. Żądania licznika otwarć nie trafiają do logów.
 
 Aplikacja nie wysyła dziennika i nie zakłada konta ani profilu odwiedzającej
-osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu aplikacja pobiera z tego samego serwera i nie łączy się z żadną inną stroną. Przy pierwszym
-skanowaniu zdjęcia wyników przeglądarka pobiera z tego serwera silnik OCR
-(około 21 MB). Samo rozpoznawanie tekstu odbywa się na twoim urządzeniu.
+osoby. Licznik otwarć opisujemy poniżej. Czcionki i pliki do rozpoznawania tekstu
+pochodzą z tego samego serwera. Instalacja aplikacji internetowej pobiera cały
+silnik OCR z danymi do języka angielskiego i polskiego, zanim aplikacja będzie
+gotowa do pracy bez sieci. Rozpoznawanie tekstu odbywa się na twoim urządzeniu.
+Pierwsze skanowanie po instalacji również działa bez połączenia z siecią.
+
+Na Androidzie pliki do rozpoznawania tekstu po angielsku i po polsku są w APK.
+Pierwsze skanowanie wyników nie wymaga pobierania plików ani połączenia z siecią.
+
+Pola tekstowe dziennika proszą przeglądarkę o wyłączenie autouzupełniania
+i przywracania ich treści po ponownym otwarciu sesji. To nie usuwa tekstu
+zapisanego przez wcześniejsze wersje aplikacji ani nie kontroluje danych
+zapisywanych przez rozszerzenia przeglądarki lub klawiaturę.
 
 W przeglądarce lokalny dziennik otwiera się na jeden z czterech sposobów:
 
@@ -85,11 +95,18 @@ albo utracie urządzenia tej kopii dziennika nie da się już odczytać.
 Możesz też utworzyć opcjonalny, 25-znakowy klucz odzyskiwania. Otwiera
 dziennik na tym samym urządzeniu i w tym samym profilu przeglądarki, gdy
 hasło, PIN albo biometria przestaną działać. Nie przeniesie danych na nowe
-urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz i przechowuje
-tylko zaszyfrowaną kopię klucza dziennika. Trzymaj klucz odzyskiwania na
-papierze albo w menedżerze haseł na innym urządzeniu: każdy, kto ma ten klucz
-i dane dziennika, może odczytać dziennik. Klucz nie przywróci usuniętych
-danych.
+urządzenie i nie otworzy eksportu. Aplikacja pokazuje go raz, przy
+tworzeniu, i przechowuje tylko zaszyfrowaną kopię klucza dziennika. Jedyny
+wyjątek to blokada: jeśli aplikacja zablokuje się, gdy nowy klucz jest na
+ekranie, po odblokowaniu pokaże ten sam klucz jeszcze raz. Do tego czasu
+klucz jest zaszyfrowany w pamięci i nigdzie się nie zapisuje. Nowy klucz
+zastępuje stary dopiero wtedy, gdy potwierdzisz, że jest zapisany, a do
+tego czasu oba otwierają dziennik. Jeśli aplikacja zamknie się wcześniej,
+stary klucz nadal działa, a aplikacja powie, że wymiana się nie skończyła.
+Trzymaj klucz
+odzyskiwania na papierze albo w menedżerze haseł na innym urządzeniu: każdy,
+kto ma ten klucz i dane dziennika, może odczytać dziennik. Klucz nie
+przywróci usuniętych danych.
 
 Gdy kopiujesz klucz odzyskiwania w przeglądarce, aplikacja po minucie
 próbuje usunąć go ze schowka, jeśli nadal tam jest. Przeglądarka może na to
@@ -140,11 +157,24 @@ połączeń sieciowych i niczego nie wysyła na żaden serwer. Wyłącza też ko
 zapasową Androida w chmurze i przenoszenie danych między telefonami, więc
 system nie kopiuje jej danych do Google ani na nowy telefon.
 
+Aplikacja rezygnuje z wysyłania danych diagnostycznych WebView do Google.
+Google Safe Browsing pozostaje domyślnie włączone w WebView. Do sprawdzania
+stron może korzystać z własnego dostępu do sieci usług Google Play.
+
+Na Androidzie aplikacja zawsze prosi klawiaturę, żeby nie zapamiętywała
+wpisywanych słów. Służy do tego flaga `IME_FLAG_NO_PERSONALIZED_LEARNING`.
+Klawiatura może zignorować tę prośbę. Nie usuwa to słów zapamiętanych wcześniej.
+Klawiatura i przeglądarka mogą wysyłać własne żądania sieciowe
+niezależnie od engender.
+
 Aplikacja prosi o następujące uprawnienia:
 
 - `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` i `RECEIVE_BOOT_COMPLETED`,
   żeby przypomnienie albo codzienne pytanie pojawiło się o wybranej
   godzinie, a nie w zbiorczym oknie systemu, także po restarcie telefonu.
+- `WAKE_LOCK`, żeby Android mógł utrzymać pracę procesora podczas zapisu
+  zaplanowanej, zaszyfrowanej kopii zapasowej w wybranym folderze lokalnym.
+  Ekran może pozostać wyłączony.
 - `RECORD_AUDIO` i `MODIFY_AUDIO_SETTINGS`, do notatek głosowych, ćwiczeń
   głosu i dźwięku w notatkach wideo.
 - `CAMERA`, do notatek wideo i do robienia zdjęć. Zdjęcie robi aplikacja
@@ -162,7 +192,10 @@ wewnętrzne komunikaty aplikacji mogła wysyłać tylko ona sama.
 
 Przypomnienia i codzienne pytanie domyślnie pokazują tylko ogólny tytuł,
 nawet na zablokowanym ekranie. Ustawienie w sekcji Powiadomienia to wyłącza
-i pokazuje prawdziwy tytuł.
+i pokazuje prawdziwy tytuł. Jeśli w ustawieniach Androida włączona jest
+historia powiadomień, Android przechowuje pokazane tytuły przez mniej więcej
+dobę od zniknięcia powiadomienia. Aplikacja nie włącza tej historii i nie może
+jej wyczyścić.
 
 Na Androidzie 13 i nowszym aplikacja oznacza skopiowany klucz odzyskiwania
 jako wrażliwy. To prośba do klawiatury, żeby nie zapisywała go w historii
@@ -199,6 +232,11 @@ Zaszyfrowana kopia zapasowa (`.ngndr`), eksportowana ręcznie albo
 zapisywana przez Androida według harmonogramu w wybranym folderze, jest
 szyfrowana algorytmem AES-GCM hasłem, które ustalasz. Bez tego hasła nikt jej
 nie odczyta.
+
+Automatyczne kopie na Androidzie wymagają systemowego dostawcy pamięci lokalnej.
+Zapis jest uznawany za zakończony po synchronizacji pliku i folderu oraz
+sprawdzeniu zapisanych bajtów. Inni dostawcy nie mogą otrzymać takiego
+potwierdzenia. Nie oznacza ono sprawdzenia przesłania pliku do chmury.
 
 ### Eksporty do czytania
 

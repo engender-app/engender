@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* One tryout, on the surface kit (phase 5 UX ticket 25).
 
@@ -11,12 +12,13 @@
      them, on the kit's split row, so a row is one control and the delete
      is another rather than a button floating inside a row that also opens
      something. */
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
@@ -51,6 +53,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { OFFERS, answerOffer, type OfferAnswer, type TryoutAdoption } from '$lib/data/offers';
 
   /* Three areas below the form: how it has felt, what it looked like, and
@@ -86,6 +89,10 @@
     saving: () => saving
   });
   let draft = $derived(detail.draft);
+  let rangeInverted = $derived(spanIsInverted({
+    startEpochDay: epochDayFromDateInputValueOrToday(draft.start),
+    endEpochDay: epochDayFromDateInputValue(draft.end)
+  }));
   let saving = $state(false);
   let saveFailed = $state(false);
   let saved = $state(false);
@@ -114,7 +121,7 @@
   async function openCreatedTryout() {
     if (!creationId) return;
     try {
-      await goto(`/transition/tryouts/${creationId}`);
+      await replaceRoute(`/transition/tryouts/${creationId}`);
       navigationFailed = detail.isNew;
     } catch {
       navigationFailed = true;
@@ -123,7 +130,7 @@
   }
 
   async function saveTryout() {
-    if (saving || creationId && detail.isNew || !draft.label.trim()) return;
+    if (saving || creationId && detail.isNew || !draft.label.trim() || rangeInverted) return;
     const isNew = detail.isNew;
     saving = true;
     saveFailed = false;
@@ -247,14 +254,18 @@
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
+  /* One reading per tap, and a failed one keeps the mood and note and says
+     so (UI 17). Only what was sent is cleared: a mood or note changed while
+     the write ran is the next reading, not this one. */
+  const feelingWrite = writer();
   async function addFeeling() {
-    if (feelingMood == null) return;
-    await journal.feltSense.add(
-      { tryoutId: detail.id },
-      { epochDay: todayEpochDay(), mood: feelingMood, note: feelingNote.trim() || null }
-    );
-    feelingMood = null;
-    feelingNote = '';
+    const mood = feelingMood;
+    if (mood == null) return;
+    const typed = feelingNote;
+    const note = typed.trim() || null;
+    if (!(await feelingWrite.run(() => journal.feltSense.add({ tryoutId: detail.id }, { epochDay: todayEpochDay(), mood, note }), m.write_failed()))) return;
+    if (feelingMood === mood) feelingMood = null;
+    if (feelingNote === typed) feelingNote = '';
   }
 
   const feelingRecord = recordEditor<FeltSenseEntry>({
@@ -368,7 +379,7 @@
     </Field>
     <Field label={m.tryout_label_label()} hint={m.tryout_label_required()} id="tr-label">
       {#snippet children(id, describedBy)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="tr-label"
@@ -384,7 +395,7 @@
       <div class="disclosed" transition:disclose>
         <Field label={m.tryout_description_label()} id="tr-description">
           {#snippet children(id)}
-            <textarea
+            <textarea autocomplete={journalTextAutocomplete()}
               class="input"
               {id}
               rows="2"
@@ -402,9 +413,16 @@
     </Field>
     <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
       {#snippet children(id, describedBy)}
-        <DatePicker name="tr-end" bind:value={draft.end} {id} {describedBy} />
+        <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
       {/snippet}
     </Field>
+    <div aria-live="polite">
+      {#if rangeInverted}
+        <div class="disclosed" transition:disclose>
+          <p class="muted small" id="tr-range-error">{m.era_conflict_inverted()}</p>
+        </div>
+      {/if}
+    </div>
     {#if canAdopt}
       <button
         type="button"
@@ -421,7 +439,8 @@
       class:btn-primary={!canAdopt}
       class:btn-soft={canAdopt}
       data-save-tryout
-      disabled={draft.label.trim().length === 0}
+      disabled={draft.label.trim().length === 0 || rangeInverted}
+      aria-describedby={rangeInverted ? "tr-range-error" : undefined}
       onclick={saveTryout}
     >
       <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
@@ -470,7 +489,7 @@
          this was the one field on the screen with none. -->
     <Field label={m.note_label()} id="tr-feeling-note">
       {#snippet children(id)}
-        <textarea
+        <textarea autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           rows="2"
@@ -482,7 +501,7 @@
     <button
       class="btn btn-soft btn-block press"
       style="margin:var(--space-3) 0"
-      disabled={feelingMood == null}
+      disabled={feelingMood == null || feelingWrite.busy}
       data-add-feeling
       onclick={addFeeling}
     >

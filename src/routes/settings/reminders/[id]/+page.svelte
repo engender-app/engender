@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import {
@@ -25,7 +25,7 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { isAndroid } from '$lib/platform';
+  import { isAndroid, journalTextAutocomplete } from '$lib/platform';
   import { writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
 
@@ -101,7 +101,7 @@
     // The baseline moves first, or the guard would hold the save's own exit.
     detail.commit();
     toast(m.saved(), { kind: 'record-saved' });
-    goto('/settings/reminders');
+    await replaceRoute('/settings/reminders');
   }
 </script>
 
@@ -161,7 +161,7 @@
   </Field>
   <Field label={m.rem_name_label()} id="r-name">
     {#snippet children(id)}
-      <input class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
+      <input autocomplete={journalTextAutocomplete()} class="input" {id} name="r-name" placeholder={m.rem_name_placeholder()} bind:value={draft.title} />
     {/snippet}
   </Field>
   <Field label={m.rem_time_label()} id="r-time">

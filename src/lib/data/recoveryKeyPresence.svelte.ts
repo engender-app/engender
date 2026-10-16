@@ -13,7 +13,7 @@
    recovery key would have opened this" before correcting itself. Hence
    `known`: nothing that depends on the answer draws until there is one.
 
-   It was seven unhandled rejections. `recoveryKeyExists` swallows an
+   It was seven unhandled rejections. `recoveryKeyState` swallows an
    unreadable file and rethrows everything else, and none of the seven
    callers had a catch.
 
@@ -25,12 +25,18 @@
    wrong means telling somebody their journal cannot be opened, and silence
    is the honest answer to a question this could not ask. */
 
-import { recoveryKeyExists } from './recovery-key';
+import { recoveryKeyState } from './recovery-key';
 
 export const recoveryKeyPresence = $state({
   /** Whether the answer is in yet. Nothing conditional draws until it is. */
   known: false,
-  exists: false
+  /** Whether any recovery key opens this journal: what a gate offers. */
+  exists: false,
+  /** Whether a confirmed key does: what Settings states as set up. */
+  active: false,
+  /** Whether a new key is waiting to be confirmed after an interrupted
+      replacement or first mint (last-audit UI 42). */
+  pending: false
 });
 
 /** Re-reads the file. Called on mount by everything that shows the answer,
@@ -38,8 +44,10 @@ export const recoveryKeyPresence = $state({
     enough that caching it would only be a way to go stale. */
 export async function refreshRecoveryKeyPresence(): Promise<void> {
   try {
-    const found = await recoveryKeyExists();
-    recoveryKeyPresence.exists = found;
+    const found = await recoveryKeyState();
+    recoveryKeyPresence.exists = found.active || found.pending;
+    recoveryKeyPresence.active = found.active;
+    recoveryKeyPresence.pending = found.pending;
     recoveryKeyPresence.known = true;
   } catch (error) {
     console.error('could not tell whether this journal has a recovery key', error);

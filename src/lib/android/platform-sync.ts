@@ -42,6 +42,7 @@ import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import { dismissActiveOverlay } from '../components/overlayLock';
+import { setupBack } from '../onboarding/back';
 import { resolveAndroidBackAction } from './back-navigation';
 
 /* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
@@ -107,6 +108,7 @@ export interface PlatformSyncDeps {
      in the Node tier, which has no `$app/*` (ADR-0017). */
   replaceRoute: (path: string) => Promise<void> | void;
   navigationDepth: () => number;
+  isGateActive: () => boolean;
 }
 
 /** Wraps `run` so a call while one is already in flight is queued rather than
@@ -323,7 +325,13 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
   let removeBackButtonListener: (() => void) | null = null;
   void deps.androidBackButton
     .addListener('backButton', () => {
-      if (backButtonTornDown || dismissActiveOverlay()) return;
+      if (backButtonTornDown) return;
+      if (deps.isGateActive()) {
+        void deps.androidBackButton.minimizeApp();
+        return;
+      }
+      if (dismissActiveOverlay()) return;
+      if (window.location.pathname === '/onboarding' && setupBack()) return;
       switch (resolveAndroidBackAction(window.location.pathname, deps.navigationDepth())) {
         case 'minimize':
           void deps.androidBackButton.minimizeApp();
@@ -351,13 +359,15 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
       console.error('Could not attach Android back-button handler', error);
     });
 
-  void deps.androidDisguise.setLauncherIdentity({
-    disguised: deps.prefs.disguise,
-    palette: deps.prefs.palette,
-    shape: deps.prefs.launcherIconShape
-  }).catch(console.error);
-  void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter }).catch(console.error);
-  void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture }).catch(console.error);
+  if (deps.isReady()) {
+    void deps.androidDisguise.setLauncherIdentity({
+      disguised: deps.prefs.disguise,
+      palette: deps.prefs.palette,
+      shape: deps.prefs.launcherIconShape
+    }).catch(console.error);
+    void deps.androidLockTiming.setTiming({ timing: deps.prefs.lockAfter }).catch(console.error);
+    void deps.androidScreenCapture.setAllowed({ allowed: deps.prefs.allowScreenCapture }).catch(console.error);
+  }
 
   stopCurrent = () => {
     if (!active) return;

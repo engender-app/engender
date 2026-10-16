@@ -3,7 +3,8 @@
    per screen: RecordSheet (measurements, standing for its seventeen
    screens), a hand-written sheet save (affirmations), a save that leaves
    the screen (a reminder), surgery's notes, and Today's acknowledgement of
-   an entry saved today. Failures come from a journal operation replaced in
+   an entry saved today. Then the eight action sites UI 17 brought under
+   the same rule, each failing once and then double tapped while held. Failures come from a journal operation replaced in
    the page with one that rejects, the same seam letter-composition-check
    uses; nothing may end as an unhandled rejection. */
 import assert from 'node:assert/strict';
@@ -77,6 +78,41 @@ async function doubleTapWhilePending(button, field) {
   await page.waitForFunction(() => window.fault.resolve);
   assert.equal(await button.isDisabled(), true, 'the button holds while its write is in flight');
   if (field) assert.equal(await field.evaluate((el) => !!el.closest('[inert]') || el.matches(':disabled')), true, 'the form is frozen while its write is in flight');
+  await page.evaluate(() => window.fault.resolve());
+  return before;
+}
+
+/* UI ticket 17: the action sites after-release 06 missed. A rejected write
+   says the catalogued failure and leaves the control ready for a retry; a
+   held write plus a second tap then admits one write. */
+async function failsThenRetries(button, kept) {
+  // Only a toast raised by this tap counts, not one still up from before.
+  await page.evaluate(() => document.querySelectorAll('[data-toast]').forEach((t) => t.setAttribute('data-seen', '')));
+  await button.click();
+  await page.locator('[data-toast-kind="failed"]:not([data-seen])').filter({ hasText: /Could not save/ }).waitFor({ timeout: 1200 });
+  if (kept) await kept();
+  assert.equal(await button.isDisabled(), false, 'a failed write clears busy for a retry');
+}
+/* The records a section needs before its screen opens. A switch rather
+   than a function passed in: the app's CSP refuses eval in the page. */
+const seed = (what, arg) => page.evaluate(async ({ what, arg }) => {
+  const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
+  const { todayEpochDay } = await import('/src/lib/data/epochDay.ts');
+  const today = todayEpochDay();
+  if (what === 'side effect') return journal.sideEffects.upsertSideEffect({ name: 'Probe side effect', severity: null, epochDay: today });
+  if (what === 'lab result') return journal.labs.upsertResult({ epochDay: today, analyte: 'Probe analyte', value: 1.5, unit: 'nmol/L' });
+  if (what === 'procedure') return journal.procedures.upsertProcedure({ name: 'Probe dilation procedure', surgeryEpochDay: today - 30, kind: 'vaginoplasty' });
+  if (what === 'no procedure') return journal.procedures.deleteProcedure(arg);
+  if (what === 'tryout') return journal.tryouts.upsertTryout({ kind: 'name', label: 'Probe tryout', startEpochDay: today - 3, endEpochDay: null });
+  throw new Error(`no seed for ${what}`);
+}, { what, arg });
+/* A row toggle stays pressable while its write runs (disabling it would drop
+   keyboard focus), so the double tap is counted rather than seen held. */
+async function doubleToggleWhilePending(control) {
+  await setMode('pending');
+  const before = await calls();
+  await control.evaluate((el) => { el.click(); el.click(); });
+  await page.waitForFunction(() => window.fault.resolve);
   await page.evaluate(() => window.fault.resolve());
   return before;
 }
@@ -184,6 +220,171 @@ try {
   await page.locator('[data-mood-chips] [data-mood="4"]').click();
   await page.waitForURL(/\/entry\/new\/today\?seedMood=4/);
   console.log('PASS Today rings the latest mood saved today, says when, and the ringed face still adds another');
+
+  // UI 17: a custom effect type, the appointment prep list's own add and its two toggles.
+  await navigate('/care/changes');
+  await page.locator('[data-manage-effects]').click();
+  await page.locator('#new-effect-type').fill('Probe effect type');
+  await fault('personalEffects', 'addCustomEffectType');
+  const addEffectType = page.locator('[data-add-effect-type]');
+  await failsThenRetries(addEffectType, async () => {
+    assert.equal(await page.locator('#new-effect-type').inputValue(), 'Probe effect type', 'a failed add keeps the typed name');
+  });
+  const beforeEffect = await doubleTapWhilePending(addEffectType, page.locator('#new-effect-type'));
+  await page.waitForFunction(() => document.querySelector('#new-effect-type')?.value === '');
+  assert.equal(await calls(), beforeEffect + 1, 'a double tap adds one effect type');
+  const typeRow = page.locator('[data-sheet] .managed-label').filter({ hasText: 'Probe effect type' });
+  await typeRow.first().waitFor();
+  assert.equal(await typeRow.count(), 1, 'one row for the new type');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  console.log('PASS effect type: failure says so and keeps the name, double tap adds one');
+
+  await navigate('/health/appointments');
+  await page.locator('[data-add-prep]').first().click();
+  await page.locator('#appointment-prep-input').fill('Probe prep question');
+  await fault('checklists', 'addToStandaloneChecklist');
+  const addPrep = page.locator('[data-save-appointment-item]');
+  await failsThenRetries(addPrep, async () => {
+    assert.equal(await page.locator('#appointment-prep-input').inputValue(), 'Probe prep question', 'a failed add keeps the sheet and its text');
+  });
+  const beforePrep = await doubleTapWhilePending(addPrep, page.locator('#appointment-prep-input'));
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+  assert.equal(await calls(), beforePrep + 1, 'a double tap adds one prep item');
+  const prepRow = page.locator('[data-appointment-item]').filter({ hasText: 'Probe prep question' });
+  await prepRow.waitFor();
+  assert.equal(await prepRow.count(), 1, 'one row for the new item');
+  console.log('PASS appointment prep add: failure keeps the sheet, double tap adds one');
+
+  const check = prepRow.locator('[role="checkbox"]');
+  await fault('checklists', 'setItemChecked');
+  await failsThenRetries(check, async () => {
+    assert.equal(await check.getAttribute('aria-checked'), 'false', 'a failed check leaves the item unchecked');
+  });
+  const beforeCheck = await doubleToggleWhilePending(check);
+  await prepRow.locator('[role="checkbox"][aria-checked="true"]').waitFor();
+  assert.equal(await calls(), beforeCheck + 1, 'a double tap on the checkbox writes once');
+  await setMode('pass');
+  await check.click();
+  await prepRow.locator('[role="checkbox"][aria-checked="false"]').waitFor();
+  console.log('PASS appointment prep check: failure says so, double tap writes once, a later tap still toggles back');
+
+  const flag = prepRow.locator('[data-carry-forward]');
+  await fault('checklists', 'setItemCarriedForward');
+  await failsThenRetries(flag, async () => {
+    assert.equal(await flag.getAttribute('aria-pressed'), 'false', 'a failed flag leaves the item unflagged');
+  });
+  const beforeFlag = await doubleToggleWhilePending(flag);
+  await prepRow.locator('[data-carry-forward][aria-pressed="true"]').waitFor();
+  assert.equal(await calls(), beforeFlag + 1, 'a double tap on the flag writes once');
+  console.log('PASS appointment prep flag: failure says so, double tap writes once');
+
+  // UI 17: Add to appointment prep from a side effect and from a lab result.
+  // Unseen: raised since failsThenRetries marked the toasts already up.
+  const prepAdded = () => page.locator('[data-toast]:not([data-seen])').filter({ hasText: 'Added to appointment prep list' });
+  for (const [path, open] of [
+    ['/care/changes', async () => {
+      const id = await seed('side effect');
+      await page.locator(`[data-side-effect="${id}"]`).click();
+    }],
+    ['/care/labs', async () => {
+      const id = await seed('lab result');
+      // The list shows one analyte at a time.
+      await page.locator('[data-segmented="labs-analyte"] [data-segment="Probe analyte"]').click();
+      await page.locator(`[data-lab-result="${id}"]`).click();
+    }]
+  ]) {
+    await navigate(path);
+    await open();
+    const addToPrep = page.locator('[data-add-to-appointment-prep]');
+    await fault('checklists', 'addToStandaloneChecklist');
+    await failsThenRetries(addToPrep, async () => {
+      assert.equal(await prepAdded().count(), 0, 'a failed add does not say it was added');
+    });
+    const beforeAdd = await doubleTapWhilePending(addToPrep);
+    await prepAdded().last().waitFor({ timeout: 1200 });
+    assert.equal(await calls(), beforeAdd + 1, `a double tap on ${path} Add to appointment prep adds one`);
+    // Intentional later additions are still additions: a second visit adds again.
+    await setMode('pass');
+    await addToPrep.click();
+    await page.waitForFunction((n) => window.fault.calls === n, beforeAdd + 2);
+    await page.waitForFunction((n) => [...document.querySelectorAll('[data-toast]:not([data-seen])')].filter((t) => t.textContent.includes('Added to appointment prep list')).length >= n, 2);
+    await page.locator('[data-close-record]').click();
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
+    console.log(`PASS ${path} Add to appointment prep: failure says so, double tap adds one, a later tap adds again`);
+  }
+
+  // UI 17: a dilation schedule.
+  const procedureId = await seed('procedure');
+  await navigate('/health/dilation');
+  await page.locator('[data-notice="dilation-schedule-empty"]').getByRole('button', { name: 'Add your schedule' }).click();
+  await page.locator('[data-stage-frequency="0"]').fill('1');
+  await page.locator('[data-stage-duration="0"]').fill('30');
+  await fault('taper', 'upsertTaper');
+  const saveSchedule = page.locator('[data-save-schedule]');
+  await failsThenRetries(saveSchedule, async () => {
+    assert.equal(await page.locator('[data-stage-duration="0"]').inputValue(), '30', 'a failed save keeps the editor and its stages');
+  });
+  const beforeSchedule = await doubleTapWhilePending(saveSchedule);
+  await page.locator('[data-schedule]').waitFor();
+  assert.equal(await calls(), beforeSchedule + 1, 'a double tap saves one schedule');
+  // A stage changed while the save runs is not closed away under it.
+  await page.locator('[data-schedule]').click();
+  await setMode('pending');
+  await saveSchedule.click();
+  await page.waitForFunction(() => window.fault.resolve);
+  await page.locator('[data-stage-duration="0"]').fill('45');
+  await page.evaluate(() => window.fault.resolve());
+  await page.waitForFunction(() => !document.querySelector('[data-save-schedule]')?.disabled);
+  assert.equal(await page.locator('[data-stage-duration="0"]').inputValue(), '45', 'the editor stays with the newer stage');
+  await setMode('pass');
+  await saveSchedule.click();
+  await page.locator('[data-schedule]').waitFor();
+  await seed('no procedure', procedureId);
+  console.log('PASS dilation schedule: failure keeps the editor, double tap saves one');
+
+  // UI 17: a felt-sense reading on a tryout.
+  const tryoutId = await seed('tryout');
+  await navigate(`/transition/tryouts/${tryoutId}`);
+  await page.locator('[data-mood="4"]').first().click();
+  await page.locator('#tr-feeling-note').fill('Probe feeling');
+  await fault('feltSense', 'add');
+  const addFeeling = page.locator('[data-add-feeling]');
+  await failsThenRetries(addFeeling, async () => {
+    assert.equal(await page.locator('#tr-feeling-note').inputValue(), 'Probe feeling', 'a failed reading keeps the note');
+  });
+  const beforeFeeling = await doubleTapWhilePending(addFeeling);
+  await page.waitForFunction(() => document.querySelector('#tr-feeling-note')?.value === '');
+  assert.equal(await calls(), beforeFeeling + 1, 'a double tap saves one reading');
+  await page.waitForFunction(() => document.querySelectorAll('[data-feeling]').length === 1);
+  // Only what was sent is cleared: a note typed while the write runs stays.
+  await page.locator('[data-mood="2"]').first().click();
+  await setMode('pending');
+  await addFeeling.click();
+  await page.waitForFunction(() => window.fault.resolve);
+  await page.locator('#tr-feeling-note').fill('Typed while saving');
+  await page.evaluate(() => window.fault.resolve());
+  await page.waitForFunction(() => document.querySelectorAll('[data-feeling]').length === 2);
+  assert.equal(await page.locator('#tr-feeling-note').inputValue(), 'Typed while saving', 'a note typed during the write is kept');
+  console.log('PASS felt sense: failure keeps the reading, double tap saves one');
+
+  // UI 17: a journaling pause, started and resumed.
+  await navigate('/settings/journaling-pause');
+  await page.locator('[data-new-pause]').click();
+  await fault('journalingPauses', 'upsertPause');
+  const confirmPause = page.locator('[data-confirm-pause]');
+  await failsThenRetries(confirmPause);
+  const beforePause = await doubleTapWhilePending(confirmPause, page.locator('#pause-start'));
+  const resume = page.locator('[data-resume-pause]');
+  await resume.waitFor();
+  assert.equal(await calls(), beforePause + 1, 'a double tap starts one pause');
+  // Started today, so resuming deletes it rather than ending it yesterday.
+  await fault('journalingPauses', 'deletePause');
+  await failsThenRetries(resume);
+  const beforeResume = await doubleTapWhilePending(resume);
+  await page.locator('[data-new-pause]').waitFor();
+  assert.equal(await calls(), beforeResume + 1, 'a double tap resumes once');
+  console.log('PASS journaling pause: start and resume say a failure, double tap writes once');
 
   assert.deepEqual(await page.evaluate(() => window.unhandled), [], 'no unhandled rejections');
   assert.deepEqual(errors, [], 'no page errors');

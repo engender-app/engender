@@ -28,18 +28,48 @@ export function backupIsStale(lastBackupAt: number | null, today: number = today
   return age !== null && age > BACKUP_STALE_DAYS;
 }
 
+/** Which of three things Export & import's last-backup row says (last-audit
+    UI 54). Not stale is not the same as backed up: a journal never exported
+    is not stale either, and the row drew its success tick for it beside "No
+    export recorded on this device". */
+export function backupStanding(
+  lastBackupAt: number | null,
+  today: number = todayEpochDay()
+): 'never' | 'recent' | 'stale' {
+  if (lastBackupAt === null) return 'never';
+  return backupIsStale(lastBackupAt, today) ? 'stale' : 'recent';
+}
+
 /** Whether Home says that this browser may clear the journal (after-release
     17, U2). The browser refusing persistent storage is not news a person
     can act on by itself; what they can do is keep a backup elsewhere, so
     the notice is that ask, said once: it goes for good with the first
     backup or a dismissal. After that the stale-backup notice is the
     reminder, and two notices asking for one export would be one too many.
+    Safari also offers installation advice independently of the persistence
+    answer, with these same backup and dismissal gates.
     It replaced a toast that covered the Welcome screen's buttons for four
     seconds on every cold web load. */
 export function storageNoticeShows(state: {
   persistDenied: boolean;
   dismissed: boolean;
   lastBackupAt: number | null;
+  safariInstallation?: 'ios' | 'mac' | null;
 }): boolean {
-  return state.persistDenied && !state.dismissed && state.lastBackupAt === null;
+  return (state.persistDenied || !!state.safariInstallation) && !state.dismissed && state.lastBackupAt === null;
+}
+
+/** macOS first offers Add to Dock in Safari 17.
+    iPad desktop mode identifies as Macintosh, but still uses Home Screen. */
+export function safariInstallationTarget(environment: {
+  userAgent: string;
+  standalone: boolean;
+  maxTouchPoints: number;
+}): 'ios' | 'mac' | null {
+  const { userAgent, standalone, maxTouchPoints } = environment;
+  if (standalone || !/Safari\//.test(userAgent) || /Chrome|Chromium|CriOS|FxiOS|Edg|OPR|OPiOS/.test(userAgent)) return null;
+  const version = /Version\/(\d+)/.exec(userAgent);
+  if (!version) return null;
+  if (/iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)) return 'ios';
+  return /Macintosh/.test(userAgent) && Number(version[1]) >= 17 ? 'mac' : null;
 }

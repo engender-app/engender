@@ -71,6 +71,7 @@
   import { smartBack } from '$lib/navigation/smart-back';
   import { crossfade, resize } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
+  import UpdateNoticeSlot from './UpdateNoticeSlot.svelte';
 
   let {
     title,
@@ -198,6 +199,10 @@
       <div class="screen-field-slot" data-field-part>{@render field()}</div>
     {/if}
   </div>
+
+  <!-- Under the field and over the subtitle: a waiting release, if there is
+       one (UpdateNoticeSlot.svelte). -->
+  <UpdateNoticeSlot />
 
   {#if subtitle}
     <!-- A line that lands from a read (the return surface's, most visibly)

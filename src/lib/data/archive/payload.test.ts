@@ -94,7 +94,7 @@ test('a v1 archive naming a preset nobody has ever had restores the default scal
 test('a v1 archive that never carried a preset at all is left saying nothing about scales', () => {
   const bare = { journal: { presets: [] }, preferences: { name: 'Ola' }, files: [] } as unknown as ArchivePayload;
 
-  // Not filled in with the default: applyPortablePreferences keeps this
+  // Not filled in with the default: Archive Replace keeps this
   // device's value for a key the archive is missing, and inventing one here
   // would turn "the file does not say" into "the file says the default".
   assert.equal(scalesOf(migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION)), undefined);
@@ -123,4 +123,13 @@ test('only the original complete alpha shape gains later empty sections', () => 
   assert.equal(migratePayload(source, 2, 2), source);
   const unknown = { ...source, journal: { ...original, futureArea: [] } } as unknown as ArchivePayload;
   assert.deepEqual((migratePayload(unknown, 1, 2).journal as unknown as Record<string, unknown>).futureArea, []);
+});
+
+
+test('a v1 archive naming a preset without carrying a presets section uses the default scales', () => {
+  const bare = { journal: {}, preferences: { name: 'Ola', activePreset: 'unknown-preset' }, files: [] } as unknown as ArchivePayload;
+  const migrated = migratePayload(bare, 1, ARCHIVE_FORMAT_VERSION);
+  assert.equal((migrated.preferences as { activePreset?: string }).activePreset, undefined);
+  assert.deepEqual(migrated.preferences.activeScales, PREFERENCE_DEFAULTS.activeScales);
+  assert.equal(migrated.preferences.name, 'Ola');
 });

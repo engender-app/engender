@@ -9,6 +9,7 @@
    Flat, so its three writes come from flatArea.ts and only the one read is
    its own. */
 
+import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { JournalingPause } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
@@ -27,7 +28,8 @@ export interface JournalingPausesArea {
 export function makeJournalingPausesArea(driver: SqliteDriver): JournalingPausesArea {
   const pauses = flatArea<JournalingPause>(driver, {
     table: 'journaling_pause',
-    columns: { startEpochDay: 'start_epoch_day', endEpochDay: 'end_epoch_day' }
+    columns: { startEpochDay: 'start_epoch_day', endEpochDay: 'end_epoch_day' },
+    guard: assertSpanOrdered
   });
 
   return {

@@ -1,5 +1,11 @@
 import { test, expect, vi } from 'vitest';
-import { RECOVERY_KEY_FILE, readRecoveryWrapFile, writeRecoveryWrapFile } from './recovery-key-file.ts';
+import {
+  PENDING_RECOVERY_KEY_FILE,
+  RECOVERY_KEY_FILE,
+  readRecoveryWrapFile,
+  removeRecoveryWrapFile,
+  writeRecoveryWrapFile
+} from './recovery-key-file.ts';
 import { wrapDataKeyWithRecoveryKey } from '../crypto/recoveryWrap.ts';
 import { generateRecoveryKey } from '../crypto/recoveryKey.ts';
 
@@ -13,6 +19,10 @@ function fakeRoot(options: { writeFails?: boolean } = {}) {
     log,
     files,
     root: {
+      async removeEntry(name: string) {
+        if (!(name in files)) throw Object.assign(new Error('not found'), { name: 'NotFoundError' });
+        delete files[name];
+      },
       async getFileHandle(name: string, opts?: { create?: boolean }) {
         if (!(name in files) && !opts?.create) {
           throw Object.assign(new Error('not found'), { name: 'NotFoundError' });
@@ -66,5 +76,26 @@ test('a successful write records createWritable, write, close and reads back', a
   await writeRecoveryWrapFile(wrap);
   expect(log).toEqual(['createWritable', 'write', 'close']);
   await expect(readRecoveryWrapFile()).resolves.toEqual(wrap);
+  vi.unstubAllGlobals();
+});
+
+/* Last-audit UI 42: a replacement writes the new wrap beside the active one,
+   never over it, and removing the pending file leaves the active one. */
+test('the pending slot is its own file, and writing or removing it leaves the active key alone', async () => {
+  const active = await wrapDataKeyWithRecoveryKey(crypto.getRandomValues(new Uint8Array(32)), generateRecoveryKey());
+  const pending = await wrapDataKeyWithRecoveryKey(crypto.getRandomValues(new Uint8Array(32)), generateRecoveryKey());
+  const { root, files } = fakeRoot();
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+
+  await writeRecoveryWrapFile(active);
+  const activeText = files[RECOVERY_KEY_FILE];
+  await writeRecoveryWrapFile(pending, PENDING_RECOVERY_KEY_FILE);
+  expect(files[RECOVERY_KEY_FILE]).toBe(activeText);
+  await expect(readRecoveryWrapFile(PENDING_RECOVERY_KEY_FILE)).resolves.toEqual(pending);
+
+  await removeRecoveryWrapFile(PENDING_RECOVERY_KEY_FILE);
+  await removeRecoveryWrapFile(PENDING_RECOVERY_KEY_FILE);
+  await expect(readRecoveryWrapFile(PENDING_RECOVERY_KEY_FILE)).resolves.toBeNull();
+  await expect(readRecoveryWrapFile()).resolves.toEqual(active);
   vi.unstubAllGlobals();
 });

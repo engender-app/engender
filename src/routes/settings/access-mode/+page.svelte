@@ -29,7 +29,6 @@
   import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
-  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -94,8 +93,10 @@
       toast(m.am_changed_toast());
       /* Device-bound and unlocked modes create an unrecoverable state,
          so they get the offer rather than the navigation - and only where
-         there is nothing already covering it. */
-      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.exists) {
+         there is nothing already covering it. `active`, not `exists`:
+         the change has just discarded any key nobody confirmed (last-audit
+         UI 42). */
+      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.active) {
         offering = 'device-bound';
         return;
       }
@@ -122,14 +123,11 @@
      Verifying by unlocking rather than by a comparison: there is nothing to
      compare against, and a PIN that opens the keystore is the definition of
      the current one. */
-  async function verifyCurrentPin(entered: string): Promise<PinAttempt> {
-    try {
-      await unlockJournalPin(entered);
-      currentPin = entered;
-      return 'ok';
-    } catch (e) {
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  async function verifyCurrentPin(entered: string, current: () => void): Promise<PinAttempt> {
+    await unlockJournalPin(entered, undefined, current);
+    current();
+    currentPin = entered;
+    return 'ok';
   }
 
   /** The new PIN, twice. Nothing is being guessed at here, so the bare pad. */
@@ -154,8 +152,9 @@
       toast(m.pin_changed_toast());
       /* A changed PIN rewraps the same data key, so an existing recovery key
          still works and there is nothing to regenerate. What is worth one
-         line is the case where there is none. */
-      if (!recoveryKeyPresence.exists) {
+         line is the case where there is none. An unconfirmed key was
+         discarded by the change (last-audit UI 42). */
+      if (!recoveryKeyPresence.active) {
         changingPin = false;
         offering = 'secret-changed';
         return;

@@ -401,8 +401,8 @@ export interface Journal {
       used to walk seven areas of their own, out of the thirty-six an archive
       carries.
 
-      Leaves the built-in vocabulary and preferences alone, exactly as a
-      Replace does (restore.ts's discardJournalRows). Deletes no photo file
+      Leaves the built-in vocabulary and preferences alone, as Replace's
+      row-discard step does (restore.ts's discardJournalRows). Deletes no photo file
       either - the rows go, and the next boot's orphan sweep reclaims what
       they named (photos.ts). */
   discardEverything(): Promise<void>;

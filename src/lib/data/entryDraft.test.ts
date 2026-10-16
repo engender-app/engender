@@ -4,6 +4,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { timestampAtLocalTime } from './epochDay';
 import { createEntryDraft } from './entryDraft.ts';
 import type { Entry, EntryTemplate } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
@@ -55,7 +56,7 @@ test('a failed commit preserves an edited draft and its removals for retry', asy
     })
   }, fakeFileStore());
   const id = await journal.entries.upsertEntry({
-    epochDay: 100, timestamp: 8_640_000_000, mood: 4, attachPhotos: [photo(1)],
+    epochDay: 100, timestamp: timestampAtLocalTime(100, '12:00'), mood: 4, attachPhotos: [photo(1)],
     attachRecordings: [new Uint8Array([2])], attachVideos: [new Uint8Array([3])]
   });
   const original = (await journal.entries.getEntry(id))!;
@@ -541,4 +542,24 @@ test('effect markers toggle on and off, keep their order, and never double up (t
     draft.toUpsert().effectMarkers?.map((marker) => marker.effect),
     ['hair_changes', 'breast_development']
   );
+});
+
+test('contextual text keeps its draft whitespace and trims only the save payload', () => {
+  const draft = createEntryDraft(19000);
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 4, note: '  felt like me  ' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: '  felt like me\nmore today  ' });
+  const payload = draft.toUpsert();
+  assert.equal(payload.tryoutFeltSense?.note, 'felt like me');
+  assert.equal(payload.procedureRecovery?.notes, 'felt like me\nmore today');
+  assert.equal(draft.tryoutFeltSense?.note, '  felt like me  ');
+  assert.equal(draft.procedureRecovery?.notes, '  felt like me\nmore today  ');
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 4, note: '  ' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: ' \n ' });
+  assert.equal(draft.toUpsert().tryoutFeltSense?.note, null);
+  assert.equal(draft.toUpsert().procedureRecovery, undefined);
+  const recoveryPhoto = photo(1);
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: ' \n ', photo: recoveryPhoto });
+  assert.deepEqual(draft.toUpsert().procedureRecovery, {
+    procedureId: 'proc-1', notes: undefined, photo: recoveryPhoto
+  });
 });

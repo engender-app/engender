@@ -48,7 +48,8 @@ export function browserKeySlot(slot: string): DeviceKeySlot {
   return {
     async load() {
       const db = await openDeviceKeyDatabase();
-      return runRequest<CryptoKey | null>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
+      const key = await runRequest<CryptoKey | undefined>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
+      return key ?? null;
     },
     async save(key) {
       const db = await openDeviceKeyDatabase();
@@ -141,11 +142,21 @@ export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): P
 }
 
 export async function deviceBoundJournalExists(): Promise<boolean> {
-  return (await readDeviceBoundMetadata()) !== null;
+  try {
+    return (await readDeviceBoundMetadata()) !== null;
+  } catch (error) {
+    if (error instanceof DeviceBoundMetadataUnreadableError) return true;
+    throw error;
+  }
 }
 
 export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>> {
-  const metadata = await readDeviceBoundMetadata();
+  const metadata = await readDeviceBoundMetadata().catch((error) => {
+    if (error instanceof DeviceBoundMetadataUnreadableError) {
+      throw new DeviceBoundKeyUnavailableError('the stored device-bound journal metadata is unreadable');
+    }
+    throw error;
+  });
   if (metadata === null) {
     throw new DeviceBoundKeyUnavailableError('there is no device-bound journal metadata to unlock');
   }
@@ -155,8 +166,17 @@ export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer
 
 /** Called inside the access-mode operation's credential ownership. */
 export async function removeDeviceBoundJournal(): Promise<void> {
-  await browserDeviceKeySlot().remove().catch(() => {});
-  await removeDeviceBoundMetadata().catch(() => {});
+  const slot = browserDeviceKeySlot();
+  // Keep the metadata until its key is gone, so a failed removal remains
+  // visible to the next boot's survey and gets another authenticated sweep.
+  await slot.remove();
+  if ((await slot.load()) !== null) {
+    throw new Error('device-bound journal key material is still present');
+  }
+  await removeDeviceBoundMetadata();
+  if (await deviceBoundJournalExists()) {
+    throw new Error('device-bound journal key material is still present');
+  }
 }
 
 /** Takes every slot this database holds - the device-bound wrapping key and
@@ -218,6 +238,10 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not JSON');
   }
 
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not an object');
+  }
+
   if (raw.version !== DEVICE_BOUND_VERSION || raw.kind !== 'device-bound') {
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is from a format this build cannot read');
   }
@@ -226,12 +250,16 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is missing fields');
   }
 
-  return {
-    version: DEVICE_BOUND_VERSION,
-    kind: 'device-bound',
-    nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey)
-  };
+  try {
+    return {
+      version: DEVICE_BOUND_VERSION,
+      kind: 'device-bound',
+      nonce: fromBase64(raw.nonce),
+      wrappedKey: fromBase64(raw.wrappedKey)
+    };
+  } catch {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata has invalid base64');
+  }
 }
 
 async function readDeviceBoundMetadata(): Promise<DeviceBoundMetadata | null> {
@@ -260,7 +288,11 @@ async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata): Promise<
 
 async function removeDeviceBoundMetadata(): Promise<void> {
   const root = await navigator.storage.getDirectory();
-  await root.removeEntry(DEVICE_BOUND_FILE);
+  try {
+    await root.removeEntry(DEVICE_BOUND_FILE);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
 }
 
 async function wrapDeviceBoundDataKey(

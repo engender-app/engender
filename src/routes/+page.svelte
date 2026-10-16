@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { withEntryListReturn } from '$lib/navigation/sourceRecord';
   /* Today (phase 10 redesign ticket 13; ADR-0067, ADR-0073, ADR-0074).
 
      The first screen faces forward. It used to open by asking how you feel
@@ -38,7 +40,8 @@
      areas out of reading order say why. The notices take none, because the
      flag colours the areas of the journal and a notice is the app talking
      about itself. */
-  import { untrack } from 'svelte';
+  import UpdateNoticeSlot from '$lib/components/UpdateNoticeSlot.svelte';
+  import { tick, untrack } from 'svelte';
   import { navigating, page } from '$app/state';
   import { goto } from '$app/navigation';
   import { replaceRoute } from '$lib/navigation/smart-back';
@@ -46,7 +49,8 @@
   import { TODAY_PHOTO_HREF } from '$lib/data/entrySections';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { backupAgeDays, backupIsStale, storageNoticeShows } from '$lib/data/backupHealth';
+  import { backupAgeDays, backupIsStale, storageNoticeShows, safariInstallationTarget } from '$lib/data/backupHealth';
+  import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
   import { storageRisk } from '$lib/stores/boot.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { fmtDay, fmtTime } from '$lib/data/dates';
@@ -70,6 +74,8 @@
   import { dayAheadMarkLabel } from '$lib/components/dayAheadRows';
 
   import FlagSun from '$lib/components/FlagSun.svelte';
+  import { homeAmbient } from '$lib/motion/homeAmbient';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import TodayEditor from '$lib/components/TodayEditor.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -327,6 +333,12 @@
      nothing about a page somebody edited on Tuesday should still be in
      edit mode on Wednesday. */
   let editing = $state(false);
+  let pinnedSection: HTMLElement;
+  async function finishEditing() {
+    editing = false;
+    await tick();
+    if (doorActive()) focusNamedTarget(pinnedSection.querySelector<HTMLElement>('[data-edit-today]'));
+  }
   let pinReads = $derived(pinReadScope(prefs, editing));
   let pinReadKey = $derived(pinReads.rows.join('|'));
   let lastWritesQuery = liveQuery(async (j) => {
@@ -512,16 +524,35 @@
      below it shoved down. Waiting means it arrives on a screen that has
      stopped moving, which is where a notice opening its own height reads as
      the change it is. Nothing about the read waits; only the appearing. */
-  /* The browser refused to keep the journal's storage (after-release 17).
+  const safariInstallation = browser
+    ? safariInstallationTarget({
+        userAgent: navigator.userAgent,
+        standalone: window.matchMedia('(display-mode: standalone)').matches ||
+          (navigator as Navigator & { standalone?: boolean }).standalone === true,
+        maxTouchPoints: navigator.maxTouchPoints
+      })
+    : null;
+  /* Safari installation advice also applies when persistence is granted.
+     Other browsers keep their persistence-refusal notice (after-release 17).
      It shows only before the first backup, and the stale-backup notice
      only after one, so the two never ask for an export together. */
   let showStorageNotice = $derived(
     storageNoticeShows({
       persistDenied: storageRisk.persistDenied,
+      safariInstallation,
       dismissed: prefs.storageNoticeDismissed,
       lastBackupAt: prefs.lastBackupAt
     }) && !ui.appOpening
   );
+  /* A recovery key replacement (or first key) the screen never got to
+     confirm, after a reload or a killed process (last-audit UI 42). Home is
+     where an unlock lands, so this is where the person learns that the old
+     key still works and the new one cannot be shown again; the choices live
+     on the recovery key screen. Read with the fold, so it arrives with the
+     other notices rather than after them. */
+  let recoveryKeyRead = $state(false);
+  void refreshRecoveryKeyPresence().then(() => (recoveryKeyRead = true));
+  let showRecoveryKeyNotice = $derived(recoveryKeyPresence.known && recoveryKeyPresence.pending && !ui.appOpening);
   let showBackupNotice = $derived(
     backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
   );
@@ -573,6 +604,7 @@
     !read.loading && (read.failed || (read.value !== undefined && askedWith(read.value)));
   let foldReadsAgree = $derived(
     liveTiles.ready &&
+      recoveryKeyRead &&
       !agendaQuery.loading &&
       !appointmentsQuery.loading &&
       settledFor(debriefStateQuery, (answer) => answer.appointmentId === lastAppointmentId) &&
@@ -740,7 +772,7 @@
   </span>
 {/snippet}
 
-<div class="screen home">
+<div class="screen home" data-home-ambient="running" {@attach homeAmbient}>
   <header class="home-header" data-home-header>
     <!-- The field (phase 10, DIRECTION.md rule 7; ADR-0075): a solid block
          of one of the flag's colours holding two things, the sun in its top
@@ -783,6 +815,9 @@
            still name the app under disguise; those are ticket 24's screen. -->
       <h1 class="home-hero" data-home-hero data-field-part translate="no">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</h1>
     </div>
+    <!-- Under the field and over the foot: a waiting release, if there is
+         one (UpdateNoticeSlot.svelte). -->
+    <UpdateNoticeSlot />
     <!-- The foot: one line of who and when, one of how much, and the gear at
          the line's end. On the page rather than the field because all three
          are small type (rule 3), and because a gear in the field's corner
@@ -879,7 +914,7 @@
             title={tile.title}
             value={tile.value}
             note={tile.note}
-            href={tile.href}
+            href={withEntryListReturn(tile.href, page.url)}
             action={tile.action}
             dismiss={tile.dismiss}
             {...tile.attrs}
@@ -1036,12 +1071,28 @@
        real preferences, which land when the journal opens, and drawn then
        it shoved the pinned rows 179px in the frame boot went ready. -->
   <ReadReserve ready={foldRevealed} estimate={reserveBelow} onrest={rememberBelow} data-home-reserve="below">
+    {#if showRecoveryKeyNotice}
+      <Notice
+        icon="key"
+        key="recovery-key-unfinished"
+        title={recoveryKeyPresence.active ? m.rk_unfinished_replace_title() : m.rk_unfinished_make_title()}
+        text={recoveryKeyPresence.active ? m.rk_unfinished_replace_body() : m.rk_unfinished_make_body()}
+        action={{ label: m.rk_unfinished_open(), href: '/settings/recovery-key' }}
+        aria-live="polite"
+        data-recovery-key-notice=""
+      />
+    {/if}
+
     {#if showStorageNotice}
       <Notice
         icon="download"
         key="storage"
-        title={m.storage_notice_title()}
-        text={m.storage_notice_body()}
+        title={safariInstallation ? m.storage_notice_safari_title() : m.storage_notice_title()}
+        text={safariInstallation === 'ios'
+          ? m.storage_notice_safari_ios_body()
+          : safariInstallation === 'mac'
+            ? m.storage_notice_safari_mac_body()
+            : m.storage_notice_body()}
         action={{ label: m.backup_now(), href: '/settings/export' }}
         dismiss={{ label: m.dismiss(), onclick: () => (prefs.storageNoticeDismissed = true) }}
         aria-live="polite"
@@ -1163,7 +1214,7 @@
             {#each quietListTiles as tile (tile.key)}
               <ListRow
                 key={tile.tileKey}
-                href={tile.href}
+                href={withEntryListReturn(tile.href, page.url)}
                 title={tile.title}
                 subtitle={tile.note}
                 {...tile.attrs}
@@ -1205,7 +1256,7 @@
        somebody who unpinned everything with no way back. With nothing
        pinned it is the one row, and that row asks for the first pin rather
        than repeating the heading. -->
-  <div data-home-pinned>
+  <div data-home-pinned bind:this={pinnedSection}>
     {#if editing}
       <div transition:collapse={panel} data-home-editing>
         {#if editorReadsReady && doorActive()}
@@ -1214,7 +1265,7 @@
             {reading}
             nowMs={liveTiles.nowMs}
             role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)}
-            onDone={() => (editing = false)}
+            onDone={finishEditing}
           />
         {:else}
           <Skeleton variant="line" count={3} />
@@ -1429,6 +1480,10 @@
 </div>
 
 <style>
+  .home[data-home-ambient="paused"] {
+    --sun-breathe-state: paused;
+  }
+
   /* The pinned block owns the 20px below it. Its reserve's list margin
      collapses into that space at rest, but the closing wrapper's clipping
      holds another 20px inside for the first painted frame. */
