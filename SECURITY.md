@@ -30,6 +30,12 @@ A journal in device-bound or unlocked mode has no secret to ask for, so
 it does not lock mid-session. On Android, the lock hides the journal and
 keeps the database open; the key stays behind Android Keystore.
 
+If Android loses the WebView renderer, it disposes the old bridge and
+restarts the page through the normal access mode. The old SQLCipher
+connection closes after admitted writes finish, and its stored key
+reference is dropped. No retained door pages survive; the encrypted entry
+draft remains available after unlocking.
+
 Changing the passphrase or replacing the recovery key rewraps the same
 data key. A copy of the journal's files taken before the change still
 opens with the old passphrase or recovery key.

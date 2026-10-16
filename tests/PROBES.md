@@ -943,6 +943,25 @@ PIN pad and contain no private fixture text in the DOM. The dedicated fixture
 and notification helpers run only in an isolated package. See
 `tests/android-tier/README.md` for runtime requirements and limits.
 
+`tests/android-tier/renderer-recovery.mjs` uses the same isolated PIN
+fixture (`LockedJournalProcessDeathTest#seed`). It visits all four doors,
+writes an encrypted editor draft, identifies the renderer by its Android
+process record's package ownership and sends `kill -9`. Three kills must
+leave the app process running, with the fresh-process PIN gate, no private
+DOM or retained navigation, and the draft restored after unlocking.
+`--expect-close` checks the original failure instead. Supply
+`RENDERER_RECOVERY_SERIAL` (an owned emulator),
+`RENDERER_RECOVERY_PACKAGE` (`dev.engender.app.test.*`) and
+`RENDERER_RECOVERY_OUTPUT`. The runner removes only its own CDP forward;
+after changing the fixture's access mode in Settings, use
+`RENDERER_RECOVERY_MODE=passphrase` and `RENDERER_RECOVERY_SECRET` to repeat
+the same checks with a passphrase gate. The default is PIN `1234`.
+The caller owns package and emulator cleanup. This is Android emulator
+evidence, not a physical-device memory-pressure measurement.
+`SqlitePluginLifecycleTest` checks that bridge destruction finishes an
+admitted write before releasing its SQLCipher connection and key reference,
+terminates the worker, and refuses late calls.
+
 ## Node calendar zones
 
 CI runs the full Node suite under both `TZ=UTC` and `TZ=Europe/Warsaw`.
