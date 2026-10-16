@@ -269,6 +269,16 @@ final class SqliteConnection {
         }
     }
 
+    /** The bridge is gone, so even migration recovery must obtain a new key. */
+    void dispose() {
+        try {
+            close();
+        } finally {
+            password = "";
+            databaseFile = null;
+        }
+    }
+
     /**
      * The reset path's half of the wipe on Android (ticket 13, ADR-0014).
      *

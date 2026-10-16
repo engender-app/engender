@@ -55,6 +55,15 @@ public class SqlitePlugin extends Plugin {
         SqliteConnection.loadNativeLibrary();
     }
 
+    @Override
+    protected synchronized void handleOnDestroy() {
+        // Finish admitted writes before releasing SQLCipher's keyed connection.
+        // Activity recreation otherwise leaves both it and this thread alive.
+        worker.execute(connection::dispose);
+        worker.shutdown();
+        super.handleOnDestroy();
+    }
+
     /**
      * Opens (or creates) the journal.
      *
@@ -88,7 +97,7 @@ public class SqlitePlugin extends Plugin {
      */
     @PluginMethod
     public void isPlaintextDatabase(PluginCall call) {
-        worker.execute(() -> {
+        execute(call, () -> {
             String name = call.getString("name");
             if (name == null || name.isEmpty()) {
                 call.reject("isPlaintextDatabase requires a database name");
@@ -268,7 +277,7 @@ public class SqlitePlugin extends Plugin {
         does not reach them. */
     @PluginMethod
     public void deleteDatabase(PluginCall call) {
-        worker.execute(() -> {
+        execute(call, () -> {
             String name = call.getString("name");
             if (name == null || name.isEmpty()) {
                 call.reject("deleteDatabase requires a database name");
@@ -319,7 +328,15 @@ public class SqlitePlugin extends Plugin {
             return;
         }
         long seq = data.optLong("seq", -1);
-        worker.execute(() -> sequencer.accept(session, seq, work, call::reject));
+        execute(call, () -> sequencer.accept(session, seq, work, call::reject));
+    }
+
+    private synchronized void execute(PluginCall call, Runnable work) {
+        if (worker.isShutdown()) {
+            call.reject("sqlite bridge is closed");
+            return;
+        }
+        worker.execute(work);
     }
 
     /** Bind parameters, defaulted to none so callers can omit them. */

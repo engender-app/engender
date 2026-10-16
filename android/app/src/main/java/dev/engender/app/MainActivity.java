@@ -5,6 +5,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.view.ViewGroup;
+import android.webkit.RenderProcessGoneDetail;
+import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -12,6 +15,7 @@ import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
+import com.getcapacitor.WebViewListener;
 
 import dev.engender.app.photos.PhotoPickChannel;
 import dev.engender.app.photos.PhotoWriteChannel;
@@ -33,6 +37,7 @@ public class MainActivity extends BridgeActivity {
     private static final String APP_ORIGIN = "https://localhost";
 
     private final OwnSystemUi ownSystemUi = new OwnSystemUi();
+    private boolean rendererGone;
 
     /** The screen going off is leaving, whatever is on top: a picker the app
      * opened ends its window here rather than when its result comes back. */
@@ -76,6 +81,24 @@ public class MainActivity extends BridgeActivity {
         // After super.onCreate, not before: the WebView this needs does not
         // exist until the bridge builds it there.
         if (bridge != null && bridge.getWebView() != null) {
+            bridge.addWebViewListener(new WebViewListener() {
+                @Override
+                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                    if (rendererGone) return true;
+                    rendererGone = true;
+                    // A dead renderer cannot run the JS lock callback. Replace
+                    // the whole bridge so boot starts without a session key or
+                    // retained doors, just as it does in a new process.
+                    bridge.onDestroy();
+                    bridge = null;
+                    if (view.getParent() instanceof ViewGroup) {
+                        ((ViewGroup) view.getParent()).removeView(view);
+                    }
+                    view.destroy();
+                    getWindow().getDecorView().post(MainActivity.this::recreate);
+                    return true;
+                }
+            });
             PhotoWriteChannel.registerIfSupported(this, bridge.getWebView(), APP_ORIGIN);
             PhotoPickChannel.registerIfSupported(bridge.getWebView(), APP_ORIGIN);
         }
@@ -165,7 +188,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void lockOnLeave() {
-        if (bridge == null || bridge.getWebView() == null) return;
+        if (rendererGone || bridge == null || bridge.getWebView() == null) return;
         // Covered by a screen the app opened itself is not leaving it yet,
         // and the page decides how long it may stay up (leave-lock.ts). The
         // page's own visibility is ignored on Android for the same reason, so
@@ -176,7 +199,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void returnFromLeave() {
-        if (bridge != null && bridge.getWebView() != null) {
+        if (!rendererGone && bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().evaluateJavascript("window.__lockOnReturnFromNative && window.__lockOnReturnFromNative();", null);
         }
         ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));

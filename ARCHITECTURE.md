@@ -271,6 +271,16 @@ Ordinary `SELECT` calls with identical SQL and scalar bindings share an answer w
 
 **Android bridge.** On Android, [android-driver.ts](src/lib/data/sqlite/android-driver.ts) talks to `SqlitePlugin` over the Capacitor bridge. Calls are pipelined (ADR-0089): each crosses as soon as it is made, carrying a session and a sequence number, and [CallSequencer.java](android/app/src/main/java/dev/engender/app/sqlite/CallSequencer.java) runs them strictly in order on one thread. Bulk photo bytes skip the JSON bridge and go through two WebMessage channels (`PhotoPickChannel`, `PhotoWriteChannel`), registered with `WebViewCompat.addWebMessageListener` and limited to the `https://localhost` origin.
 
+If Android kills the WebView renderer, `MainActivity` handles
+`onRenderProcessGone`, destroys the dead WebView and recreates the activity
+and its bridge. The new page boots through the journal's normal access
+mode, without a retained session or door pages. The encrypted editor draft
+survives in localStorage. Recovery adds no notice. Destroying the old bridge
+drains admitted SQLCipher work before closing its connection, dropping its
+stored key reference and stopping its worker. Late calls to that bridge
+are refused. Ordinary driver close keeps its migration recovery context;
+bridge disposal discards it.
+
 **Native plugins** are listed once in [src/lib/android/plugin-registry.ts](src/lib/android/plugin-registry.ts), each with the JS module that owns it: `Sqlite`, `Keystore`, `PinBinding`, `Photos`, `Reminders`, `AutoExport`, `FileDelivery`, `RetrospectiveNotifications`, `Disguise`, `LockTiming`, `ScreenCapture`, `DeviceReset`, `Print`, `SensitiveClipboard`, `Permissions` and `StatusBarAppearance`, plus `@capacitor/app` for the back button. Every required plugin is checked at startup. The Java side registers them in [AndroidPluginRegistry.java](android/app/src/main/java/dev/engender/app/AndroidPluginRegistry.java).
 
 **Write notifications.** The journal wrapper announces a successful write's declared tables. Known no-op results skip the announcement (section 6.4).
