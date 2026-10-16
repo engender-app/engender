@@ -313,6 +313,11 @@
     "holds": "two toasts up at once never overlap: deleting two entries inside one toast's four seconds leaves both Restore actions reachable at their centre and across a 48px target, each restoring its own entry; the earlier toast never moves while the newer arrives above it, and the later one travels into the gap over several frames when the earlier leaves; the stack centres on the content column at 1280px, failures over an open sheet stack at the top undimmed, reduced motion keeps the stack, and a lock clears it"
   },
   {
+    "name": "update-notice-check",
+    "tier": "dev",
+    "holds": "the waiting-update notice is a band above the screen inside the content column: at 1024px and 1280px the rail and column keep their places and widths and the notice lines up with the screen's content, at 390px it stays above the screen; it opens and closes over several frames with the screen travelling instead of jumping; a dismissal survives lock and unlock without a second announcement, a fresh page offers the release again, Update now still hands over, and reduced motion cuts it in at the same place"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
     "holds": "real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"

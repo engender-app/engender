@@ -2299,6 +2299,25 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    glyph itself keeps its size; this only grows the surrounding hit area. */
 .notice .icon-btn { width: var(--touch-target); height: var(--touch-target); color: inherit; }
 
+/* The waiting-update notice's place: a band at the top of the content
+   column, above the scroll region (UpdateNotice.svelte, last-audit UI
+   ticket 21). 12px round the notice on a phone, as it always had. At
+   desktop width the band lines its notice up with the centred screen under
+   it - the content's 640px, with the scroll region's gutter left out the
+   way the toast leaves it out - instead of stretching across a column that
+   can be far wider than the screen. `flex: none` so a short window shrinks
+   the scroll region rather than the notice. */
+.update-band {
+  flex: none;
+  padding: var(--space-3);
+}
+@container app (min-width: 1024px) {
+  .update-band {
+    padding-inline: calc((100% - var(--scroll-gutter, 0px) - var(--content-max)) / 2)
+      calc((100% + var(--scroll-gutter, 0px) - var(--content-max)) / 2);
+  }
+}
+
 /* ---------- flag sun (ticket 19, DIRECTION.md's tier 0) ----------
    Replaces the pride aurora above: one concentric ring per stripe instead
    of a blurred wash, Home-only (ADR-0035). `.sun` is a zero-size point

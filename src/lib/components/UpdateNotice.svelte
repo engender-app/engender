@@ -1,3 +1,13 @@
+<script lang="ts" module>
+  /* Dismissal belongs to the page, not to this instance. The layout unmounts
+     the notice at every lock and mounts a new one at unlock, and a flag kept
+     in the component came back false each time, so a notice somebody had
+     closed reappeared and was announced again (last-audit UI ticket 21). A
+     reload starts the module afresh, which is the policy below: dismissed
+     for this load of the app, offered again on the next. */
+  let dismissedThisPage = false;
+</script>
+
 <script lang="ts">
   /* The quiet update action (ticket 04).
 
@@ -16,10 +26,16 @@
   import { applyUpdate, onUpdateReadyChange, updateReady } from '$lib/pwa/update';
   import Icon from './Icon.svelte';
   import { announce } from '$lib/stores/announcer.svelte';
+  import { collapse } from '$lib/motion/reveal';
 
   let ready = $state(updateReady());
-  let dismissed = $state(false);
+  let dismissed = $state(dismissedThisPage);
   let applying = $state(false);
+
+  function dismiss() {
+    dismissedThisPage = true;
+    dismissed = true;
+  }
 
   $effect(() => onUpdateReadyChange((next) => (ready = next)));
 
@@ -42,20 +58,33 @@
   }
 </script>
 
+<!-- The band is the notice's place in the column (+layout.svelte) and what
+     arrives and leaves: `collapse` brings it down from above and gives its
+     height back on a dismissal, so the screen under it travels instead of
+     jumping by the notice's height in one frame. Its padding rather than a
+     margin holds the space round the notice, because a flex item's margin
+     is not clipped and was a 12px step on the first frame.
+
+     Local on purpose. It plays when this block changes - a release becoming
+     ready, a dismissal - and not when the layout takes the whole component
+     away for a lock, which has to be a cut: a notice closing over the lock
+     screen for 380ms is the journal still showing behind its gate. -->
 {#if ready && !dismissed}
-  <div class="notice notice-info" data-update-notice style="margin:var(--space-3)">
-    <Icon name="download" size={20} />
-    <div class="notice-body">
-      <span class="notice-title">{m.update_ready_title()}</span>
-      {m.update_ready_body()}
-      <div style="margin-top:var(--space-2)">
-        <button class="btn btn-soft" data-update-apply disabled={applying} onclick={apply}>
-          <span>{m.update_apply()}</span>
-        </button>
+  <div class="update-band" data-update-band transition:collapse>
+    <div class="notice notice-info" data-update-notice>
+      <Icon name="download" size={20} />
+      <div class="notice-body">
+        <span class="notice-title">{m.update_ready_title()}</span>
+        {m.update_ready_body()}
+        <div style="margin-top:var(--space-2)">
+          <button class="btn btn-soft" data-update-apply disabled={applying} onclick={apply}>
+            <span>{m.update_apply()}</span>
+          </button>
+        </div>
       </div>
+      <button class="icon-btn" aria-label={m.dismiss()} onclick={dismiss}>
+        <Icon name="x" size={18} />
+      </button>
     </div>
-    <button class="icon-btn" aria-label={m.dismiss()} onclick={() => (dismissed = true)}>
-      <Icon name="x" size={18} />
-    </button>
   </div>
 {/if}

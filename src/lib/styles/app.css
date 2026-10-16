@@ -892,6 +892,15 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 .app-nav { view-transition-name: nav; }
 ::view-transition-group(screen) { z-index: 1; }
 ::view-transition-group(nav) { z-index: 2; }
+/* The update notice sits inside the column now (last-audit UI ticket 21),
+   so in the screen's snapshot it would fade and scale with every
+   navigation, though it is the same notice on both sides. Its own group,
+   above everything a screen's field can send up, shows the new picture
+   throughout: the band holds still while the screens cross under it. */
+.update-band { view-transition-name: update-notice; }
+::view-transition-group(update-notice) { z-index: 6; }
+::view-transition-old(update-notice) { opacity: 0; animation: none; }
+::view-transition-new(update-notice) { opacity: 1; animation: none; }
 /* The bar does not move between two tabs, so there is nothing for it to
    animate; it holds still while the screens cross behind it. Where a
    navigation does hide it - into a gate, out of one - the pair is absent on
@@ -1718,7 +1727,8 @@ html[data-palette-transition] .palette-selection-ring {
 
 /* One root snapshot keeps the edge continuous across the screen and nav. */
 html[data-appearance-transition] .app-column,
-html[data-appearance-transition] .app-nav { view-transition-name: none; }
+html[data-appearance-transition] .app-nav,
+html[data-appearance-transition] .update-band { view-transition-name: none; }
 html[data-appearance-transition]::view-transition-old(root) { animation: none; }
 html[data-appearance-transition]::view-transition-new(root) {
   animation: appearance-swipe var(--dur-slow) var(--ease-in-out) both;
