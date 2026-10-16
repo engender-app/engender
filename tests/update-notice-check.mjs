@@ -189,6 +189,36 @@ try {
   await page.setViewportSize({ width: 1024, height: 768 });
   await settled();
 
+  /* A navigation while the notice is up. It has its own view-transition
+     group, so the screens cross under it while it shows the same picture
+     throughout rather than fading and scaling with the screen's snapshot. */
+  await page.evaluate(() => {
+    window.vtFrames = [];
+    window.vtSampling = true;
+    const tick = () => {
+      const pseudos = document.getAnimations().map((a) => a.effect?.pseudoElement ?? '');
+      const node = document.querySelector('[data-update-notice]');
+      window.vtFrames.push({
+        crossing: pseudos.some((p) => p.includes('(screen)')),
+        ownGroup: pseudos.some((p) => p === '::view-transition-group(update-notice)'),
+        noticeAnimations: pseudos.filter((p) => /(old|new)\(update-notice\)/.test(p)).length,
+        opacity: Number(getComputedStyle(document.documentElement, '::view-transition-new(update-notice)').opacity),
+        top: node?.getBoundingClientRect().top ?? null
+      });
+      if (window.vtSampling) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.locator('[data-rail-item="calendar"]').click();
+  await page.waitForURL(/\/calendar/);
+  await settled();
+  const crossing = (await page.evaluate(() => { window.vtSampling = false; return window.vtFrames; })).filter((f) => f.crossing);
+  ok(crossing.length > 3 && crossing.some((f) => f.ownGroup) && crossing.every((f) => f.noticeAnimations === 0 && f.opacity === 1 && f.top !== null && near(f.top, crossing[0].top)),
+    `a navigation crosses the screens under the notice for ${crossing.length} frames while it holds still at full opacity`);
+  await page.locator('[data-rail-item="home"]').click();
+  await page.waitForURL((url) => url.pathname === '/');
+  await settled();
+
   // The arrival: nothing painted at full size in its first frame, and the screen moves down rather than sideways.
   const arrived = frames.filter((f) => f.painted);
   const finalHeight = arrived.at(-1)?.painted.height ?? 0;
@@ -274,7 +304,7 @@ try {
 
   ok(errors.length === 0, `no uncaught page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
   assert.deepEqual(failures, [], 'every update notice check passed');
-  assert.equal(checks, 28, 'all update notice checks ran');
+  assert.equal(checks, 29, 'all update notice checks ran');
   console.log(`Update notice passed: ${checks} checks`);
 } finally {
   await context.close();
