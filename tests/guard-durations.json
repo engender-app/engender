@@ -25,7 +25,8 @@
     "plane-date-labels-clear": "Local Fedora run on 2026-10-15, dev server; tests/plane-date-labels-clear.mjs",
     "toast-stack-check": "Local Fedora run on 2026-10-15, dev server; tests/toast-stack-check.mjs",
     "update-notice-check": "Local Fedora run on 2026-10-16, dev server; tests/update-notice-check.mjs",
-    "recovery-key-replacement-check": "Local Fedora run on 2026-10-16, dev server; tests/recovery-key-replacement-check.mjs"
+    "recovery-key-replacement-check": "Local Fedora run on 2026-10-16, dev server; tests/recovery-key-replacement-check.mjs",
+    "missing-access-recovery-check": "Local Fedora run on 2026-10-16, real OPFS/SQLite with six access-loss cases; tests/missing-access-recovery-check.mjs"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -148,7 +149,8 @@
     "milestone-era-label-clear": 24.6,
     "plane-date-labels-clear": 34.5,
     "toast-stack-check": 12.2,
-    "update-notice-check": 9.9
+    "update-notice-check": 9.9,
+    "missing-access-recovery-check": 37.2
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -428,6 +430,9 @@
     ],
     "update-notice-check": [
       9.9
+    ],
+    "missing-access-recovery-check": [
+      37.2
     ]
   }
 }

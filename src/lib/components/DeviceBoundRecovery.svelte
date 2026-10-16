@@ -10,6 +10,8 @@
   import Sheet from './Sheet.svelte';
   import { disclose } from '$lib/motion/reveal';
 
+  let { missingAccess = false }: { missingAccess?: boolean } = $props();
+
   let resetOpen = $state(false);
   let restoringArchive = $state(false);
   let resetting = $state(false);
@@ -22,7 +24,7 @@
   });
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
-  let body = $derived(recoveryKeyPresence.exists ? m.dbr_body_recoverable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }) : m.dbr_body({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }));
+  let body = $derived(missingAccess ? (recoveryKeyPresence.exists ? m.dbr_missing_recoverable() : m.dbr_missing_body()) : recoveryKeyPresence.exists ? m.dbr_body_recoverable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }) : m.dbr_body({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }));
 
   async function confirmReset() {
     if (resetting) return;
@@ -40,7 +42,7 @@
 {#if usingRecoveryKey}
   <RecoveryKeyEntry onBack={() => (usingRecoveryKey = false)} />
 {:else}
-<GateScreen title={m.dbr_title()}>
+<GateScreen title={missingAccess ? m.dbr_missing_title() : m.dbr_title()}>
   <!-- One body per state rather than one body plus a caveat. The original
        ends "so this copy cannot be reopened", which above a button that
        reopens it is the exact thing docs/ui-copy.md forbids on a risk

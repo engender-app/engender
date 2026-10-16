@@ -81,6 +81,7 @@ type NeedsAuthenticationState = BootShape & {
 
 type NeedsDeviceRecoveryState = BootShape & {
   status: 'needs-device-recovery';
+  recoveryReason: 'device-key' | 'missing-access';
   error: null;
   recoverable: false;
   persistDenied: false;
@@ -212,12 +213,13 @@ function needsAuthentication(state: BootState, androidKey: AndroidKeyRefusal | n
   };
 }
 
-function needsDeviceRecovery(state: BootState): NeedsDeviceRecoveryState {
+function needsDeviceRecovery(state: BootState, recoveryReason: NeedsDeviceRecoveryState['recoveryReason'] = 'device-key'): NeedsDeviceRecoveryState {
   if (state.status !== 'booting' && state.status !== 'needs-unlock') {
     invalidTransition(state, 'needs-device-recovery');
   }
   return {
     status: 'needs-device-recovery',
+    recoveryReason,
     accessMode: state.accessMode,
     ...base()
   };

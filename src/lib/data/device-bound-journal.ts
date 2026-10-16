@@ -142,11 +142,21 @@ export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): P
 }
 
 export async function deviceBoundJournalExists(): Promise<boolean> {
-  return (await readDeviceBoundMetadata()) !== null;
+  try {
+    return (await readDeviceBoundMetadata()) !== null;
+  } catch (error) {
+    if (error instanceof DeviceBoundMetadataUnreadableError) return true;
+    throw error;
+  }
 }
 
 export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>> {
-  const metadata = await readDeviceBoundMetadata();
+  const metadata = await readDeviceBoundMetadata().catch((error) => {
+    if (error instanceof DeviceBoundMetadataUnreadableError) {
+      throw new DeviceBoundKeyUnavailableError('the stored device-bound journal metadata is unreadable');
+    }
+    throw error;
+  });
   if (metadata === null) {
     throw new DeviceBoundKeyUnavailableError('there is no device-bound journal metadata to unlock');
   }
@@ -228,6 +238,10 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not JSON');
   }
 
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not an object');
+  }
+
   if (raw.version !== DEVICE_BOUND_VERSION || raw.kind !== 'device-bound') {
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is from a format this build cannot read');
   }
@@ -236,12 +250,16 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is missing fields');
   }
 
-  return {
-    version: DEVICE_BOUND_VERSION,
-    kind: 'device-bound',
-    nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey)
-  };
+  try {
+    return {
+      version: DEVICE_BOUND_VERSION,
+      kind: 'device-bound',
+      nonce: fromBase64(raw.nonce),
+      wrappedKey: fromBase64(raw.wrappedKey)
+    };
+  } catch {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata has invalid base64');
+  }
 }
 
 async function readDeviceBoundMetadata(): Promise<DeviceBoundMetadata | null> {

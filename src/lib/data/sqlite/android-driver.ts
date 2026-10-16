@@ -57,7 +57,7 @@ interface SqliteBridge {
   restorePreMigrationCopy(options: Stamp): Promise<void>;
   cleanupPreMigrationCopy(options: Stamp): Promise<void>;
   deleteDatabase(options: { name: string }): Promise<void>;
-  isPlaintextDatabase(options: { name: string }): Promise<{ plaintext: boolean }>;
+  isPlaintextDatabase(options: { name: string }): Promise<{ exists: boolean; plaintext: boolean }>;
   close(options: Stamp): Promise<void>;
 }
 
@@ -80,13 +80,13 @@ export async function deleteAndroidDatabase(databaseName: string): Promise<void>
   await Sqlite.deleteDatabase({ name: databaseName });
 }
 
-/** Whether app storage holds a journal from the pre-encryption Android build
-    (ticket 13). Asked before the driver opens anything: a raw-key open of a
-    plaintext file fails as SQLITE_NOTADB, which is the same error a corrupt
-    journal gives, and the two deserve different sentences. */
-export async function androidJournalIsPlaintext(databaseName: string): Promise<boolean> {
-  const { plaintext } = await Sqlite.isPlaintextDatabase({ name: databaseName });
-  return plaintext;
+/** Read-only file facts for boot and the setup key-creation boundary. */
+export async function inspectAndroidJournal(databaseName: string): Promise<{ exists: boolean; plaintext: boolean }> {
+  const result = await Sqlite.isPlaintextDatabase({ name: databaseName });
+  if (typeof result.exists !== 'boolean' || typeof result.plaintext !== 'boolean') {
+    throw new Error('the native journal survey did not report file presence');
+  }
+  return result;
 }
 
 const toHex = (bytes: Uint8Array): string =>

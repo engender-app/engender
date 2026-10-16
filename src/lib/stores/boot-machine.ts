@@ -26,7 +26,7 @@ import {
   type JournalAccessMode
 } from '../data/journal-access-mode.ts';
 import type { CachedAccessMode } from '../data/prefs/boot-cache.ts';
-import type { JournalSecretSource } from '../crypto/keystore.ts';
+import type { KeystoreBootSource } from '../data/keystore-file';
 import type { Journal } from '../data/journal/journal.ts';
 import {
   Fts5UnavailableError,
@@ -52,18 +52,20 @@ export type BootEvent =
       none), a device-bound key, and unsupported legacy storage. */
   | {
       type: 'web-surveyed';
-      keystoreSecretSource: JournalSecretSource | null;
+      keystoreSecretSource: KeystoreBootSource;
       deviceBoundKeystoreExists: boolean;
       legacyStoragePresent: boolean;
+      journalPresent: boolean;
     }
   /** What Android found. No marker and no OPFS: this is the first build that
       runs on a phone, so there is nothing from before encryption to convert. */
   | {
       type: 'android-surveyed';
-      keystoreSecretSource: JournalSecretSource | null;
+      keystoreSecretSource: KeystoreBootSource;
       nativeDeviceKeyExists: boolean;
       nativeDeviceKeyAuthRequired?: boolean;
       plaintextJournalPresent: boolean;
+      journalPresent: boolean;
     }
   | { type: 'setup-stale'; platform: BootPlatform }
   | { type: 'demo-unlock-failed' }
@@ -219,15 +221,16 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
       ]);
 
     case 'web-surveyed': {
-      const { keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent } = event;
+      const { keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent, journalPresent } = event;
       machine = { ...machine, deviceBoundCleanupPending: keystoreSecretSource !== null && deviceBoundKeystoreExists };
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
         chooseJournalAccessMode({ keystoreSecretSource, deviceBoundKeystoreExists })
       );
-      const plan = describeWebBootPlan({ keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent });
+      const plan = describeWebBootPlan({ keystoreSecretSource, deviceBoundKeystoreExists, legacyStoragePresent, journalPresent });
       // Refuse before any key creation, unlock or demo reset can change storage.
       if (plan === 'legacy-refused') return step(machine, bootTransitions.toLegacyRefused(surveyed));
+      if (plan === 'needs-recovery') return step(machine, bootTransitions.toNeedsDeviceRecovery(surveyed, 'missing-access'));
       if (plan === 'auto-unlock') return step(machine, surveyed, [{ type: 'auto-unlock-device-bound' }]);
       const effects: BootEffect[] = plan === 'needs-setup' ? [{ type: 'discard-erased-journal-mirrors' }] : [];
       if (machine.demo) {
@@ -248,7 +251,8 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         keystoreSecretSource,
         nativeDeviceKeyExists,
         nativeDeviceKeyAuthRequired,
-        plaintextJournalPresent
+        plaintextJournalPresent,
+        journalPresent
       } = event;
       const surveyed = bootTransitions.setAccessMode(
         machine.boot,
@@ -262,12 +266,15 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
         keystoreSecretSource,
         nativeDeviceKeyExists,
         nativeDeviceKeyAuthRequired,
-        plaintextJournalPresent
+        plaintextJournalPresent,
+        journalPresent
       });
 
       switch (plan) {
         /* Rendered through i18n in +layout: this path is expected and needs a
            user sentence, not a raw SQLite failure string. */
+        case 'needs-recovery':
+          return step(machine, bootTransitions.toNeedsDeviceRecovery(surveyed, 'missing-access'));
         case 'plaintext-error':
           return step(machine, bootTransitions.toError(surveyed, 'android-plaintext-journal', 'android-plaintext'));
         case 'needs-unlock':

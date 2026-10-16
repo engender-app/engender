@@ -3,7 +3,7 @@
 
    Three questions: whether a passphrase or PIN keystore file exists, whether
    the Android Keystore holds a device key (and whether it wants the user
-   present), and whether the journal on disk is a plaintext one from before
+   present), and whether the journal exists and is a plaintext one from before
    encryption. None depends on another, and all three are asked at once.
 
    They used to be asked one after another. Each native answer takes a few
@@ -18,26 +18,27 @@
    Rune-free and handed its three questions, so the Node tier can test the
    concurrency itself (android-survey.test.ts). */
 
-import type { JournalSecretSource } from '../crypto/keystore';
+import type { KeystoreBootSource } from '../data/keystore-file';
 
 export interface AndroidSurveyPorts {
-  readKeystoreSource(): Promise<JournalSecretSource | null>;
+  readKeystoreSource(): Promise<KeystoreBootSource>;
   keystoreStatus(): Promise<{ hasKey: boolean; authRequired?: boolean }>;
-  journalIsPlaintext(): Promise<boolean>;
+  inspectJournal(): Promise<{ exists: boolean; plaintext: boolean }>;
 }
 
 export interface AndroidSurvey {
-  keystoreSecretSource: JournalSecretSource | null;
+  keystoreSecretSource: KeystoreBootSource;
   nativeDeviceKeyExists: boolean;
   nativeDeviceKeyAuthRequired: boolean;
   plaintextJournalPresent: boolean;
+  journalPresent: boolean;
 }
 
 export async function surveyAndroid(ports: AndroidSurveyPorts): Promise<AndroidSurvey> {
-  const [keystoreSecretSource, status, plaintextJournalPresent] = await Promise.all([
+  const [keystoreSecretSource, status, journal] = await Promise.all([
     ports.readKeystoreSource(),
     ports.keystoreStatus(),
-    ports.journalIsPlaintext()
+    ports.inspectJournal()
   ]);
   return {
     keystoreSecretSource,
@@ -45,6 +46,7 @@ export async function surveyAndroid(ports: AndroidSurveyPorts): Promise<AndroidS
     /* Unknown reads as required: a key that might want the user present is
        never opened without asking. */
     nativeDeviceKeyAuthRequired: status.authRequired ?? true,
-    plaintextJournalPresent
+    plaintextJournalPresent: journal.plaintext,
+    journalPresent: journal.exists
   };
 }

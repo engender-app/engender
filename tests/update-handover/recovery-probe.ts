@@ -34,7 +34,7 @@ if (seed) {
     registerServiceWorkerAfterBoot(machine.boot.status);
   };
   send({ type: 'started', platform: 'web', demo: false });
-  send({ type: 'web-surveyed', keystoreSecretSource: 'passphrase', deviceBoundKeystoreExists: false, legacyStoragePresent: false });
+  send({ type: 'web-surveyed', keystoreSecretSource: 'passphrase', deviceBoundKeystoreExists: false, legacyStoragePresent: false, journalPresent: false });
   send({ type: 'key-obtained', dataKey: key, accessMode: 'passphrase', unlocked: true });
   let journalReads = 0;
   const opened = await boot({ createDriver: () => driver, fileOps, loadReferenceData: async () => { journalReads++; } });

@@ -172,3 +172,31 @@ test('native tombstone commits before legacy removal and a failure preserves leg
   await removeKeystoreFile();
   expect(files[KEYSTORE_FILE]).toBeUndefined();
 });
+
+test('credential presence respects native tombstones without reading stale OPFS', async () => {
+  android();
+  native.readCredential.mockResolvedValue({ initialized: true });
+  const readOpfs = vi.fn(() => { throw new Error('stale OPFS must not be consulted'); });
+  vi.stubGlobal('navigator', { storage: { getDirectory: readOpfs } });
+  const { keystoreFileExists } = await import('./keystore-file');
+  await expect(keystoreFileExists()).resolves.toBe(false);
+  expect(readOpfs).not.toHaveBeenCalled();
+});
+
+test('malformed authoritative credentials still block key initialization', async () => {
+  android();
+  native.readCredential.mockResolvedValue({ initialized: true, serialized: '{broken' });
+  const { keystoreFileExists } = await import('./keystore-file');
+  await expect(keystoreFileExists()).resolves.toBe(true);
+});
+
+test('boot distinguishes malformed wraps from absence and unexpected storage failures', async () => {
+  android();
+  const { readKeystoreSourceForBoot } = await import('./keystore-file');
+  native.readCredential.mockResolvedValue({ initialized: true, serialized: '{broken' });
+  await expect(readKeystoreSourceForBoot()).resolves.toBe('unreadable');
+  native.readCredential.mockResolvedValue({ initialized: true });
+  await expect(readKeystoreSourceForBoot()).resolves.toBeNull();
+  native.readCredential.mockRejectedValue(new Error('storage denied'));
+  await expect(readKeystoreSourceForBoot()).rejects.toThrow('storage denied');
+});

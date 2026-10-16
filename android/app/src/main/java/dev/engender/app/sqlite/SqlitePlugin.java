@@ -106,6 +106,7 @@ public class SqlitePlugin extends Plugin {
             try {
                 JSObject result = new JSObject();
                 result.put("plaintext", SqliteConnection.isPlaintextDatabase(getContext(), name));
+                result.put("exists", getContext().getDatabasePath(name).exists());
                 call.resolve(result);
             } catch (Exception e) {
                 fail(call, e);

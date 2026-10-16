@@ -648,7 +648,7 @@
           <AndroidKeyGate />
         {:else if needsDeviceRecovery}
           {#await import('$lib/components/DeviceBoundRecovery.svelte') then { default: DeviceBoundRecovery }}
-            <DeviceBoundRecovery />
+            <DeviceBoundRecovery missingAccess={bootState.status === 'needs-device-recovery' && bootState.recoveryReason === 'missing-access'} />
           {/await}
         {:else if needsAccessModeAfterRecovery}
           <!-- Before the lock rather than after it: a session that has just
