@@ -269,13 +269,20 @@ try {
   await mintFromScreen('[data-list-row="replace-recovery-key"]');
   await restart();
   await expectNotice('replace');
+  // A change that fails (a two-digit PIN is refused) leaves the waiting key where it was.
+  const refused = await page.evaluate(async () => {
+    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+    try { await changeAccessMode('pin', '12'); return 'changed'; } catch (error) { return error.name; }
+  });
+  assert.notEqual(refused, 'changed');
+  assert.deepEqual((await files()).sort(), ['recovery-key-pending.json', 'recovery-key.json']);
   await page.evaluate(async () => {
     const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
     await changeAccessMode('passphrase', 'demo');
   });
   assert.deepEqual(await files(), ['recovery-key.json']);
   assert.equal(await opens(confirmed), true);
-  console.log('PASS an access-mode change discards the waiting key and keeps the confirmed one');
+  console.log('PASS an access-mode change discards the waiting key and a refused one keeps it');
 
   // The gate: a waiting key typed at the recovery entry opens the journal and finishes the replacement.
   await openRecoveryScreen();

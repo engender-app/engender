@@ -302,7 +302,10 @@ test('changing the PIN discards an unconfirmed recovery key once the current PIN
       await base.writeKeystore(metadata);
       order.push('keystore');
     },
-    discardPendingRecoveryKey: async () => { order.push('discard'); }
+    withoutPendingRecoveryKey: async <T,>(work: () => Promise<T>) => {
+      order.push('discard');
+      return work();
+    }
   };
   await setupJournalPin('1234', world);
   order.length = 0;
@@ -315,7 +318,7 @@ test('changing the PIN discards an unconfirmed recovery key once the current PIN
 
 test('a discard that fails stops the PIN change with nothing written', async () => {
   const base = ports();
-  const world = { ...base, discardPendingRecoveryKey: async () => { throw new Error('remove refused'); } };
+  const world = { ...base, withoutPendingRecoveryKey: async () => { throw new Error('remove refused'); } };
   const dataKey = await setupJournalPin('1234', world);
   const before = world.stored();
 

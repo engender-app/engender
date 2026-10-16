@@ -158,8 +158,13 @@ export async function finishRecoveryKey(typed: string, ports: RecoveryKeyPorts =
 /** Opens the journal's data key with whatever somebody typed: the active
     key first, then a pending one. A pending key that opens the journal is
     promoted on the way in, because whoever typed it evidently has it; a
-    promotion that cannot run now is left for the notice to finish and does
-    not stand between the person and their journal.
+    promotion that fails is left for the notice to finish and does not stand
+    between the person and their journal.
+
+    The whole read, unwrap and promotion runs as one authentication, after
+    whatever change owns the credentials has finished: a pending key that a
+    credential change in another tab discarded must not open the journal
+    from a wrap this read had already picked up.
 
     Three failures, deliberately three: RecoveryKeyMistypedError for input
     that cannot be a key, RecoveryKeyAbsentError when there is no recovery
@@ -171,27 +176,29 @@ export async function openWithRecoveryKey(
   ports: RecoveryKeyPorts = filePorts
 ): Promise<Uint8Array<ArrayBuffer>> {
   const canonical = canonicalRecoveryKey(typed);
-  const pending = await readReadable(ports.pending);
-  let active: RecoveryWrap | null;
-  try {
-    active = await ports.active.read();
-  } catch (error) {
-    if (pending === null) throw error;
-    active = null;
-  }
-  if (active === null && pending === null) throw new RecoveryKeyAbsentError();
-  if (active !== null) {
+  return authenticateCredentials(async () => {
+    const pending = await readReadable(ports.pending);
+    let active: RecoveryWrap | null;
     try {
-      return await unwrapDataKeyWithRecoveryKey(active, canonical);
+      active = await ports.active.read();
     } catch (error) {
-      if (pending === null || !(error instanceof DecryptionFailedError)) throw error;
+      if (pending === null) throw error;
+      active = null;
     }
-  }
-  const dataKey = await unwrapDataKeyWithRecoveryKey(pending!, canonical);
-  await changeCredentials(() => promoteOwned(pending!, ports)).catch((error) => {
-    console.warn('the pending recovery key opened the journal but could not be confirmed yet', error);
+    if (active === null && pending === null) throw new RecoveryKeyAbsentError();
+    if (active !== null) {
+      try {
+        return await unwrapDataKeyWithRecoveryKey(active, canonical);
+      } catch (error) {
+        if (pending === null || !(error instanceof DecryptionFailedError)) throw error;
+      }
+    }
+    const dataKey = await unwrapDataKeyWithRecoveryKey(pending!, canonical);
+    await promoteOwned(pending!, ports).catch((error) => {
+      console.warn('the pending recovery key opened the journal but could not be confirmed yet', error);
+    });
+    return dataKey;
   });
-  return dataKey;
 }
 
 /** What Settings, the gates and Home ask before anything is typed: whether
@@ -233,16 +240,34 @@ export async function recoveryKeyState(
 }
 
 /** Drops a pending key, leaving the active one, if any, as it was: "keep
-    the old key", and the first step of making another. Tolerates absence. */
+    the old key", or for a first key, not having one. Tolerates absence. */
 export async function discardPendingRecoveryKey(ports: RecoveryKeyPorts = filePorts): Promise<void> {
-  return changeCredentials(() => discardPendingRecoveryKeyOwned(ports));
+  return changeCredentials(() => ports.pending.remove());
 }
 
-/** The same, for a credential change that already owns the credentials: a
-    changed passphrase, PIN or access mode discards a key nobody confirmed,
-    so a pending key never outlives the protection it was made under. */
-export async function discardPendingRecoveryKeyOwned(ports: RecoveryKeyPorts = filePorts): Promise<void> {
+/** Runs a credential change that already owns the credentials with any
+    pending key taken away first, so a key nobody confirmed never outlives
+    the protection it was made under. A change that fails or is cancelled
+    puts the pending key back, since the protection it was made under is
+    still the one in force; a removal that fails stops the change before it
+    starts. A process killed in the middle loses the pending key and keeps
+    the confirmed one, which is the side the rule falls on. */
+export async function withoutPendingRecoveryKeyOwned<T>(
+  work: () => Promise<T>,
+  ports: RecoveryKeyPorts = filePorts
+): Promise<T> {
+  const pending = await readReadable(ports.pending);
   await ports.pending.remove();
+  try {
+    return await work();
+  } catch (error) {
+    if (pending !== null) {
+      await ports.pending.write(pending).catch((restoreError) => {
+        console.warn('could not put back the unconfirmed recovery key after a failed change', restoreError);
+      });
+    }
+    throw error;
+  }
 }
 
 /** Removes the recovery key, and a pending one with it. Tolerates their

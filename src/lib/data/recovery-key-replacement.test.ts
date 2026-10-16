@@ -16,7 +16,8 @@ import {
   mintRecoveryKey,
   openWithRecoveryKey,
   recoveryKeyState,
-  revokeRecoveryKey
+  revokeRecoveryKey,
+  withoutPendingRecoveryKeyOwned
 } from './recovery-key.ts';
 import { serializeRecoveryWrap } from '../crypto/recoveryWrap.ts';
 import { RecoveryKeyMistypedError, canonicalRecoveryKey } from '../crypto/recoveryKey.ts';
@@ -250,6 +251,66 @@ describe('the gate while a replacement waits', () => {
     const stranger = await mintRecoveryKey(aDataKey(), inMemoryRecoveryKeyPorts());
 
     await expect(openWithRecoveryKey(stranger, disk)).rejects.toThrow(DecryptionFailedError);
+  });
+});
+
+describe('credential changes and the waiting key', () => {
+  test('a change that lands takes the waiting key with it', async () => {
+    const { disk, dataKey, old } = await journalWithKey();
+    const unseen = await mintRecoveryKey(dataKey, disk);
+
+    await changeCredentials(() => withoutPendingRecoveryKeyOwned(async () => {}, disk));
+
+    expect(await recoveryKeyState(disk)).toEqual({ active: true, pending: false });
+    await opens(old, disk, dataKey);
+    await expect(openWithRecoveryKey(unseen, disk)).rejects.toThrow(DecryptionFailedError);
+  });
+
+  test('a change that fails or is cancelled puts the waiting key back', async () => {
+    const { disk, dataKey } = await journalWithKey();
+    const unseen = await mintRecoveryKey(dataKey, disk);
+    let seenDuring: boolean | undefined;
+
+    await expect(changeCredentials(() => withoutPendingRecoveryKeyOwned(async () => {
+      seenDuring = (await disk.pending.read()) !== null;
+      throw new Error('prompt cancelled');
+    }, disk))).rejects.toThrow('prompt cancelled');
+
+    expect(seenDuring).toBe(false);
+    expect(await recoveryKeyState(disk)).toEqual({ active: true, pending: true });
+    await finishRecoveryKey(unseen, disk);
+  });
+
+  test('a removal that fails stops the change before it starts', async () => {
+    const { disk, dataKey } = await journalWithKey();
+    await mintRecoveryKey(dataKey, disk);
+    const refusing = { ...disk, pending: { ...disk.pending, remove: async () => { throw new Error('remove refused'); } } };
+    let ran = false;
+
+    await expect(withoutPendingRecoveryKeyOwned(async () => { ran = true; }, refusing)).rejects.toThrow('remove refused');
+    expect(ran).toBe(false);
+  });
+
+  test('a gate open waits for a change in progress and does not use a key it discarded', async () => {
+    const { disk, dataKey, old } = await journalWithKey();
+    const unseen = await mintRecoveryKey(dataKey, disk);
+    let release!: () => void;
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    // Another tab's change, which discards the waiting key only as it finishes.
+    const change = changeCredentials(async () => {
+      entered();
+      await new Promise<void>((resolve) => { release = resolve; });
+      await disk.pending.remove();
+    });
+    await started;
+
+    const opening = openWithRecoveryKey(unseen, disk);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    release();
+    await change;
+    await expect(opening).rejects.toThrow(DecryptionFailedError);
+    await opens(old, disk, dataKey);
   });
 });
 
