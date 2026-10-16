@@ -23,6 +23,10 @@ confirm the new key is written down. If the app closes or is killed
 first, the next unlock says the replacement did not finish, and you can
 type the new key to finish, make another, or keep the old one.
 
+Today's sun and mood faces pause after 30 seconds without input. Touch,
+keyboard or assistive input resumes them from where they stopped. Hidden
+Today screens pause too. Reduced-motion settings still remove these loops.
+
 Back during first-run setup now returns to the previous step and keeps
 your answers. Finishing setup removes it from the way back from Today.
 
