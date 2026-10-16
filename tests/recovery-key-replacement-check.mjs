@@ -284,6 +284,30 @@ try {
   assert.equal(await opens(confirmed), true);
   console.log('PASS an access-mode change discards the waiting key and a refused one keeps it');
 
+  // A cleanup failure does not undo the new authoritative wrap. Do not
+  // restore a pending recovery key from before that protection change.
+  await openRecoveryScreen();
+  const beforePartialChange = await mintFromScreen('[data-list-row="replace-recovery-key"]');
+  const partial = await page.evaluate(async () => {
+    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+    const { readKeystoreFile } = await import('/src/lib/data/keystore-file.ts');
+    const before = JSON.stringify(await readKeystoreFile());
+    const remove = IDBObjectStore.prototype.delete;
+    IDBObjectStore.prototype.delete = function () { throw new Error('device cleanup refused'); };
+    let error;
+    try { await changeAccessMode('passphrase', 'demo'); } catch (failure) { error = failure.message; }
+    finally { IDBObjectStore.prototype.delete = remove; }
+    return { error, changed: before !== JSON.stringify(await readKeystoreFile()) };
+  });
+  assert.equal(partial.error, 'device cleanup refused');
+  assert.equal(partial.changed, true, 'the new wrap already became authoritative');
+  assert.deepEqual(await files(), ['recovery-key.json']);
+  assert.equal(await opens(beforePartialChange), false, 'the old pending key stays discarded');
+  assert.equal(await opens(confirmed), true, 'the confirmed recovery key remains usable');
+  console.log('PASS cleanup failure after a committed access change never restores the waiting key');
+  await restart();
+
+
   // The gate: a waiting key typed at the recovery entry opens the journal and finishes the replacement.
   await openRecoveryScreen();
   const atGate = await mintFromScreen('[data-list-row="replace-recovery-key"]');

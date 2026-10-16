@@ -248,20 +248,23 @@ export async function discardPendingRecoveryKey(ports: RecoveryKeyPorts = filePo
 /** Runs a credential change that already owns the credentials with any
     pending key taken away first, so a key nobody confirmed never outlives
     the protection it was made under. A change that fails or is cancelled
-    puts the pending key back, since the protection it was made under is
-    still the one in force; a removal that fails stops the change before it
-    starts. A process killed in the middle loses the pending key and keeps
-    the confirmed one, which is the side the rule falls on. */
+    puts the pending key back only while its caller can still guarantee
+    the old protection is in force. After publication or an operation that
+    can partly commit, the caller disables restoration. A failed cleanup
+    must never revive a key from before the change. A pending-wrap removal
+    that fails stops the change before it starts. A process killed in the
+    middle loses the pending key and keeps the confirmed one, which is the side the rule falls on. */
 export async function withoutPendingRecoveryKeyOwned<T>(
-  work: () => Promise<T>,
+  work: (doNotRestorePending: () => void) => Promise<T>,
   ports: RecoveryKeyPorts = filePorts
 ): Promise<T> {
   const pending = await readReadable(ports.pending);
   await ports.pending.remove();
+  let restorePending = true;
   try {
-    return await work();
+    return await work(() => { restorePending = false; });
   } catch (error) {
-    if (pending !== null) {
+    if (pending !== null && restorePending) {
       await ports.pending.write(pending).catch((restoreError) => {
         console.warn('could not put back the unconfirmed recovery key after a failed change', restoreError);
       });

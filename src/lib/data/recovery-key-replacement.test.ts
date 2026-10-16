@@ -281,6 +281,20 @@ describe('credential changes and the waiting key', () => {
     await finishRecoveryKey(unseen, disk);
   });
 
+  test('a partially committed change never restores the waiting key after cleanup fails', async () => {
+    const { disk, dataKey, old } = await journalWithKey();
+    const unseen = await mintRecoveryKey(dataKey, disk);
+
+    await expect(changeCredentials(() => withoutPendingRecoveryKeyOwned(async (doNotRestorePending) => {
+      doNotRestorePending();
+      throw new Error('old credential cleanup failed');
+    }, disk))).rejects.toThrow('old credential cleanup failed');
+
+    expect(await recoveryKeyState(disk)).toEqual({ active: true, pending: false });
+    await opens(old, disk, dataKey);
+    await expect(openWithRecoveryKey(unseen, disk)).rejects.toThrow(DecryptionFailedError);
+  });
+
   test('a removal that fails stops the change before it starts', async () => {
     const { disk, dataKey } = await journalWithKey();
     await mintRecoveryKey(dataKey, disk);

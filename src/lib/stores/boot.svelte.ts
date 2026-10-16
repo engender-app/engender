@@ -795,12 +795,17 @@ export async function submitAccessModeSetup(
 export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
   /* A recovery key nobody confirmed does not outlive the protection it was
      made under (last-audit UI 42). Taken away before the change and put back
-     if a prompt is cancelled or a write fails, since the old mode is then
-     still the one in force. */
-  return changeCredentials(() => withoutPendingRecoveryKeyOwned(() => changeAccessModeOwned(target, secret)));
+     if a prompt is cancelled before credentials change. Once a write lands
+     or removal can partly commit, cleanup failures cannot restore it. */
+  return changeCredentials(() => withoutPendingRecoveryKeyOwned((doNotRestorePending) =>
+    changeAccessModeOwned(target, secret, doNotRestorePending)));
 }
 
-async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
+async function changeAccessModeOwned(
+  target: Exclude<JournalAccessMode, null>,
+  secret: string,
+  doNotRestorePending: () => void
+): Promise<void> {
   const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
@@ -814,6 +819,9 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       if (wrapped.outcome === 'noDeviceCredential') {
         throw new Error('device has no lock screen credentials');
       }
+      // Native wrap policy has changed; removal may publish a tombstone
+      // before deleting its legacy OPFS copy, then throw during cleanup.
+      doNotRestorePending();
       await removeKeystoreFile();
       dispatch({ type: 'access-mode-changed', accessMode: target });
       recoveryUnlock.used = false;
@@ -830,6 +838,7 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
        keystore - so the next boot would have asked for the old secret again,
        with a toast in the person's memory saying it had moved. Failing here
        leaves the old mode working and the screen able to say so. */
+    doNotRestorePending();
     await removeKeystoreFile();
     dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
     recoveryUnlock.used = false;
@@ -842,6 +851,8 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
   if (target === 'pin') await addJournalPin(sessionDataKey, secret);
   else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
   else await addJournalPassphrase(sessionDataKey, secret);
+  // The new secret wrap is authoritative even if removing old access fails.
+  doNotRestorePending();
   // Keep the change retryable until the old no-secret access is gone.
   if (isAndroid()) await androidKeystore.erase();
   else await removeDeviceBoundJournal();
