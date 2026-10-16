@@ -13,6 +13,21 @@ const server = await createServer({
 await server.listen();
 const browser = await launchChromium();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+// Retained doors run as Android after web boot. Supply the real demo wrap
+// through the native credential owner when the gate later authenticates it.
+await page.addInitScript(() => {
+  window.__doorCredentialReads = 0;
+  window.Capacitor = {
+    PluginHeaders: [{ name: 'Keystore', methods: [{ name: 'readCredential', rtype: 'promise' }] }],
+    nativePromise: async (plugin, method) => {
+      if (plugin !== 'Keystore' || method !== 'readCredential' || !window.__doorCredential) {
+        throw new Error(`unexpected native call: ${plugin}.${method}`);
+      }
+      window.__doorCredentialReads++;
+      return { initialized: true, serialized: window.__doorCredential };
+    }
+  };
+});
 const errors = [];
 const results = [];
 page.on('pageerror', (error) => errors.push(String(error)));
@@ -159,6 +174,11 @@ try {
   await page.evaluate(() => { window.__initialDoor = document.querySelector('[data-home-header]').closest('.screen'); });
   const loadedHost = page.waitForResponse((response) => response.url().includes('/src/lib/navigation/RetainedDoors.svelte'));
   await page.evaluate(async () => {
+    const { readKeystoreFile } = await import('/src/lib/data/keystore-file.ts');
+    const { serializeKeystore } = await import('/src/lib/crypto/keystore.ts');
+    const credential = await readKeystoreFile();
+    if (!credential) throw new Error('door fixture has no credential wrap');
+    window.__doorCredential = serializeKeystore(credential);
     window.Capacitor.getPlatform = () => 'android';
     document.querySelector('.demo-bar')?.style.setProperty('display', 'none');
     const { ui } = await import('/src/lib/stores/ui.svelte.ts');
@@ -428,6 +448,7 @@ try {
   await page.waitForSelector(activeRetained);
   await settled();
   assert.equal(await page.locator(retained).count(), 1, 'unlock recreated previously visited doors');
+  assert(await page.evaluate(() => window.__doorCredentialReads > 0), 'unlock skipped native credential owner');
 
   await home();
   const saving = await page.evaluate(async () => {
