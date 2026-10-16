@@ -14,9 +14,20 @@
     backdate: string;
     onChooseDate: () => void;
   } = $props();
+
+  /* The fan mounts this with `open` already true, and a Sheet created open
+     skips its own entrance (Svelte transitions are local to the block that
+     creates them), so the scrim tint and the sheet landed at full strength in
+     one frame over the bottom bar. Mount closed and open on the next effect,
+     before the first paint, so the sheet's `{#if}` flips and its rise and
+     scrim fade play. A close reports back through `onClose`. */
+  let shown = $state(false);
+  $effect(() => {
+    shown = open;
+  });
 </script>
 
-<Sheet bind:open title={m.another_day()}>
+<Sheet bind:open={shown} onClose={() => (open = false)} title={m.another_day()}>
   <h3>{m.another_day()}</h3>
   <label class="field-label" for="backdate">{m.another_day()}</label>
   <div class="spread" style="margin-top:var(--space-2)">

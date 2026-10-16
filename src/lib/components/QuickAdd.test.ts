@@ -23,3 +23,16 @@ describe('Quick add fan transitions and compositing contracts (ticket 105)', () 
     expect(sweepCore).not.toContain('[data-nav-add]');
   });
 });
+
+describe('Quick add backdate sheet entrance (last-audit ui 29)', () => {
+  const backdateSheet = readFileSync(root + '/src/lib/components/QuickAddBackdateSheet.svelte', 'utf8');
+
+  it('mounts its Sheet closed and opens it in an effect, so the entrance plays', () => {
+    // A Sheet created with open already true skips its local rise and scrim
+    // fade: the tint arrived at opacity 0.999 in one frame over the bottom bar.
+    expect(backdateSheet).toMatch(/let shown = \$state\(false\);/);
+    expect(backdateSheet).toMatch(/\$effect\(\(\) => \{\s*shown = open;\s*\}\);/);
+    expect(backdateSheet).toMatch(/<Sheet bind:open=\{shown\}/);
+    expect(backdateSheet).not.toMatch(/<Sheet bind:open[ >]/);
+  });
+});
