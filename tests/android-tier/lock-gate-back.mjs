@@ -31,8 +31,16 @@ try {
   let pid;
   await until(() => { pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0]; return Boolean(pid); }, 'app process');
   forward = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();
-  connection = await chromium.connectOverCDP(`http://127.0.0.1:${forward}`, { noDefaults: true });
-  const page = connection.contexts()[0].pages()[0];
+  let page;
+  await until(async () => {
+    try {
+      connection ??= await chromium.connectOverCDP(`http://127.0.0.1:${forward}`, { timeout: 1000, noDefaults: true });
+      page = connection.contexts()[0]?.pages()[0];
+      return Boolean(page);
+    } catch {
+      return false;
+    }
+  }, 'WebView debugging endpoint');
   page.setDefaultTimeout(30000);
   const route = () => new URL(page.url()).pathname;
   const gate = page.locator(mode === 'pin' ? '[data-key="1"]' : '[data-key-retry]');
