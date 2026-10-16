@@ -13,8 +13,9 @@ assert.ok(mode === 'pin' || mode === 'key');
 const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 30000 });
 const launch = () => adb('shell', 'am', 'start', '-n', `${pkg}/dev.engender.app.disguise.LauncherDefault`);
 const back = () => adb('shell', 'input', 'keyevent', 'KEYCODE_BACK');
-const foreground = () => adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
-  .filter(line => /mResumedActivity|topResumedActivity/.test(line)).some(line => line.includes(pkg + '/'));
+const resumedActivities = () => adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
+  .filter(line => /^\s*(?:mResumedActivity|topResumedActivity|ResumedActivity)\s*[:=]/.test(line));
+const foreground = () => resumedActivities().some(line => line.includes(pkg + '/'));
 async function until(check, label) {
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
@@ -61,8 +62,13 @@ try {
   }
   assert.equal(await page.locator('[data-nav-item="home"]:visible, [data-rail-item="home"]:visible').count(), 0);
   const coldRoute = route();
+  evidence.coldBack = { before: resumedActivities() };
   back();
-  await until(() => !foreground(), 'cold gate backgrounds app');
+  try {
+    await until(() => !foreground(), 'cold gate backgrounds app');
+  } finally {
+    evidence.coldBack.after = resumedActivities();
+  }
   assert.equal(route(), coldRoute);
   evidence.checks.push({ name: 'cold gate Back backgrounds without navigation', route: coldRoute, passed: true });
   launch();
@@ -93,8 +99,13 @@ try {
     await until(() => foreground(), 'return after leave lock');
     await gate.waitFor();
     assert.equal(route(), deepRoute);
+    evidence.midSessionBack = { before: resumedActivities() };
     back();
-    await until(() => !foreground(), 'mid-session gate backgrounds app');
+    try {
+      await until(() => !foreground(), 'mid-session gate backgrounds app');
+    } finally {
+      evidence.midSessionBack.after = resumedActivities();
+    }
     assert.equal(route(), deepRoute);
     launch();
     await until(() => foreground(), 'return to locked deep route');
