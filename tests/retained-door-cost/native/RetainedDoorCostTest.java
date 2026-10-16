@@ -28,7 +28,7 @@ public class RetainedDoorCostTest {
     @Test public void measureRetainedDoors() throws Exception {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertTrue("retained door probe requires its isolated package",
-            app.getPackageName().equals("dev.engender.app.test.retained64"));
+            app.getPackageName().equals("dev.engender.app.test.retained81"));
         File target = new File(app.getFilesDir(), "retained-door-cost-probe");
         deleteRecursively(target);
         app.deleteDatabase("retained-door-cost.sqlite3");

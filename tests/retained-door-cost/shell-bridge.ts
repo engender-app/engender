@@ -20,7 +20,8 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  window.__retainedDoorExperiment = localStorage.getItem('retained64-mode') === 'deferred' ? 'deferred' : 'current';
+  const mode = localStorage.getItem('retained64-mode');
+  window.__retainedDoorExperiment = mode === 'deferred' || mode === 'bounded' ? mode : 'current';
   const animations: NonNullable<Window['__retainedShell']>['animations'] = [];
   const animate = Element.prototype.animate;
   Element.prototype.animate = function (frames, options) {

@@ -53,23 +53,39 @@ export async function readKeystoreFile(): Promise<KeystoreMetadata | null> {
   return readOpfsKeystore();
 }
 
+/** Approval identity includes unreadable access wraps so recovery can repair
+    them. Reading identity never adopts a legacy wrap or revives a tombstone. */
+export async function readKeystoreText(): Promise<string | null> {
+  if (isAndroid()) {
+    const native = await androidWraps.readCredential();
+    if (native.initialized) return native.serialized ?? null;
+  }
+  return readOpfsKeystoreText();
+}
+
 async function readOpfsKeystore(): Promise<KeystoreMetadata | null> {
+  const serialized = await readOpfsKeystoreText();
+  return serialized === null ? null : parseKeystore(serialized);
+}
+
+async function readOpfsKeystoreText(): Promise<string | null> {
   const root = await navigator.storage.getDirectory();
   try {
     const handle = await root.getFileHandle(KEYSTORE_FILE);
-    return parseKeystore(await (await handle.getFile()).text());
+    return (await handle.getFile()).text();
   } catch (error) {
     if (isNotFound(error)) return null;
     throw error;
   }
 }
 
-export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<void> {
+export async function writeKeystoreFile(metadata: KeystoreMetadata, current: () => void = () => {}): Promise<void> {
   /* Serialized before the file is opened, because createWritable() truncates
      and serializeKeystore can refuse metadata (a biometric keystore with no
      credential id). Building the text first means a refusal leaves the old
      keystore where it was rather than emptying it. */
   const serialized = serializeKeystore(metadata);
+  current();
   if (isAndroid()) {
     // A native persistence failure must never fall back to the WebView store.
     await androidWraps.writeCredential({ serialized });
@@ -89,6 +105,7 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<voi
      ordering. */
   try {
     await writable.write(serialized);
+    current();
     await writable.close();
   } catch (error) {
     await writable.abort().catch(() => {});

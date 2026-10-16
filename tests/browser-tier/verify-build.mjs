@@ -34,6 +34,7 @@ const OCR_ASSETS = JSON.parse(readFileSync('build/tesseract/assets.json', 'utf8'
    13; shell-assets.ts has the reasoning). Named by pattern, as it does,
    because their names carry a hash. */
 const PDF_WORKER = /^\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
+const PHOTO_WORKER = /^\/_app\/immutable\/workers\/normalize\.worker-[^/]+\.js$/;
 const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
 
 /** Any screen, from whatever state the page is in.
@@ -380,6 +381,8 @@ try {
     ok(`fresh installation contains all ${OCR_ASSETS.length} OCR assets (${ocrStoredBytes} stored bytes)`);
   else fail('fresh installation contains the complete current OCR generation', JSON.stringify(precachedOcr));
   const onlineSizes = Object.fromEntries(OCR_ASSETS.map(asset => [asset, statSync(join('build', asset)).size]));
+  const photoWorkers = shell.paths.filter((path) => PHOTO_WORKER.test(path));
+  if (photoWorkers.length !== 1) throw new Error(`expected one precached photo worker, found ${photoWorkers.length}`);
 
   /* The PDF renderer's worker, kept out of the install and asked for by the
      first document opened (pdf.ts). Sent the way pdf.ts sends it. Checked on
@@ -661,6 +664,30 @@ try {
   }, pdfWorkerCached[0]);
   if (offlinePdfWorker > 0) ok('with the network gone the PDF worker, once asked for, still loads from the shell');
   else fail('with the network gone the PDF worker, once asked for, still loads from the shell', `${offlinePdfWorker} bytes`);
+
+  const offlinePhoto = await deep.evaluate(async (path) => {
+    const canvas = new OffscreenCanvas(4, 3);
+    canvas.getContext('2d').fillRect(0, 0, 4, 3);
+    const input = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
+    const worker = new Worker(path, { type: 'module' });
+    try {
+      const reply = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('offline photo worker timed out')), 10000);
+        worker.onmessage = ({ data }) => { clearTimeout(timeout); resolve(data); };
+        worker.onerror = (event) => { clearTimeout(timeout); reject(new Error(event.message)); };
+        worker.postMessage(input);
+      });
+      if (!reply.ok) throw new Error(reply.error);
+      const bitmap = await createImageBitmap(new Blob([reply.photo.full], { type: 'image/jpeg' }));
+      const size = `${bitmap.width}x${bitmap.height}`;
+      bitmap.close();
+      return size;
+    } finally {
+      worker.terminate();
+    }
+  }, photoWorkers[0]);
+  if (offlinePhoto === '4x3') ok('the precached photo worker normalizes an image offline');
+  else fail('the precached photo worker normalizes an image offline', offlinePhoto);
 
   const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);
   if (offOrigin.length === 0 && offlineRequests.length > 0)

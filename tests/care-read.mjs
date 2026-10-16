@@ -220,11 +220,11 @@ export async function verifyCareRead({ gallery = false } = {}) {
         interval: 'daily', startEpochDay: today - 10, endEpochDay: null, endReason: null });
       await j.doses.upsertDose({ drug: 'Care proof', timestamp: startOfDayTimestamp(today - 2), route: 'oral', dose: 2, doseUnit: 'mg' });
       await j.stock.upsertEntry({ drug: 'Care proof', quantity: 10, unit: 'pills', recordedEpochDay: today - 5 });
-      const original = j.exposure.getCounters.bind(j.exposure);
+      const original = j.doses.getDosesForSlots.bind(j.doses);
       window.careFault = { mode: 'fail', pending: [], today, startOfDayTimestamp };
-      j.exposure.getCounters = async (...args) => {
+      j.doses.getDosesForSlots = async (...args) => {
         const value = await original(...args);
-        if (window.careFault.mode === 'fail') throw new Error('injected Care totals failure');
+        if (window.careFault.mode === 'fail') throw new Error('injected Care dose rows failure');
         if (window.careFault.mode === 'pending') return new Promise((resolve, reject) => {
           window.careFault.pending.push({ resolve: () => resolve(value), reject });
         });
@@ -270,7 +270,7 @@ export async function verifyCareRead({ gallery = false } = {}) {
        the newest was rejected and wait forever, so Try again never shows. */
     await page.evaluate(() => {
       window.careFault.mode = 'fail';
-      for (const run of window.careFault.pending) run.reject(new Error('refresh totals failure'));
+      for (const run of window.careFault.pending) run.reject(new Error('refresh dose rows failure'));
     });
     await retry.waitFor();
     assert.equal(await lane.innerText(), before);

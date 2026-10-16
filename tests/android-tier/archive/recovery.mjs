@@ -7,33 +7,34 @@ import { reportStage } from '../instrumentation.mjs';
 import { browserRecoverySource, browserRecoveryDestination, assertRecoveryResult } from '../../browser-tier/archive-recovery.mjs';
 
 /** Uses only the caller's owned disposable emulator. Ciphertext crosses the boundary. */
-export async function installationRecovery({ device, repo, evidenceDir, avd, reporter }) {
+export async function installationRecovery({ device, repo, evidenceDir, avd, reporter, pkg = 'dev.engender.app' }) {
+  if (!/^dev\.engender\.app(?:\.test\.[a-z0-9]+)?$/.test(pkg)) throw new Error('Archive recovery requires an owned app package');
   const { ok } = reporter;
   const required = (result, label) => {
     if (result.status !== 0 || result.error || result.signal) throw new Error(`${label}: status=${result.status} signal=${result.signal} error=${result.error ?? ''} stderr=${result.stderr ?? ''}`);
     return result.stdout;
   };
   const destroy = () => {
-    required(device(['shell', 'pm', 'clear', 'dev.engender.app']), 'destroy source app-private storage and keys');
-    const absent = device(['shell', 'pidof', 'dev.engender.app']);
+    required(device(['shell', 'pm', 'clear', pkg]), 'destroy source app-private storage and keys');
+    const absent = device(['shell', 'pidof', pkg]);
     if (absent.stdout?.trim()) throw new Error('source process survived installation destruction');
   };
   const phase = (name, input) => {
     if (input) {
-      required(device(['shell', 'run-as', 'dev.engender.app', 'mkdir', '-p', 'files']), 'create destination artifact directory');
-      const directory = required(device(['shell', 'run-as', 'dev.engender.app', 'ls', '-ld', 'files']), 'verify destination artifact directory');
+      required(device(['shell', 'run-as', pkg, 'mkdir', '-p', 'files']), 'create destination artifact directory');
+      const directory = required(device(['shell', 'run-as', pkg, 'ls', '-ld', 'files']), 'verify destination artifact directory');
       const json = JSON.stringify(input);
-      const args = ['shell', '-T', "run-as dev.engender.app sh -c 'cat > files/recovery-input.json'"];
+      const args = ['shell', '-T', `run-as ${pkg} sh -c 'cat > files/recovery-input.json'`];
       const transfer = device(args, { input: json, timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
       writeFileSync(join(evidenceDir, `${avd}-recovery-input-transfer-${Date.now()}.json`), JSON.stringify({ args, inputBytes: Buffer.byteLength(json), directory, status: transfer.status, signal: transfer.signal, error: transfer.error?.message, stderr: transfer.stderr }));
       required(transfer, 'deliver Archive-only input');
     }
     const result = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
       'dev.engender.app.backup.ArchiveInstallationRecoveryTest#recoveryPhase', '-e', 'recoveryPhase', name,
-      'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 300000, maxBuffer: 4 * 1024 * 1024 });
+      `${pkg}.test/androidx.test.runner.AndroidJUnitRunner`], { timeout: 300000, maxBuffer: 4 * 1024 * 1024 });
     writeFileSync(join(evidenceDir, `${avd}-recovery-${name}-${Date.now()}.log`), `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status}\n`);
     if (!reportStage(`${avd}: Archive installation recovery ${name}`, result, reporter)) throw new Error(`required recovery phase failed: ${name}`);
-    const output = JSON.parse(required(device(['shell', 'run-as', 'dev.engender.app', 'cat', 'files/recovery-output.json'], { maxBuffer: 4 * 1024 * 1024 }), 'read executed recovery evidence'));
+    const output = JSON.parse(required(device(['shell', 'run-as', pkg, 'cat', 'files/recovery-output.json'], { maxBuffer: 4 * 1024 * 1024 }), 'read executed recovery evidence'));
     if (output.error || !output.identity) throw new Error(`missing recovery execution: ${JSON.stringify(output)}`);
     return output;
   };

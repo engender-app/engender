@@ -15,6 +15,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.engender.app.MainActivity;
 import dev.engender.app.backup.LongJournalBackupSupport;
+import dev.engender.app.webview.WebViewProbe;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -26,12 +27,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Runs the ten-year Journal benchmark over the native Android driver.
@@ -73,10 +71,9 @@ public class LongJournalBenchmarkTest {
     /** The database the probe opens - deleted before each run so it starts empty. */
     private static final String PROBE_DATABASE = "long-journal-benchmark.sqlite3";
 
-    /** 60 minutes: the probe generates a decade of journal entries with photos on real device.
-        Device I/O and encryption overhead make this ~14x slower than headless Chrome (~44s).
-        Real device timing (Pixel 10a GrapheneOS): fixture 600s+, measurements 300+s. */
-    private static final long RESULT_TIMEOUT_SECONDS = 3600;
+    /** Physical one- and ten-year runs have taken over an hour including fixture setup.
+        This is a completion deadline, separate from every measured operation budget. */
+    private static final long RESULT_TIMEOUT_SECONDS = 10800;
 
     @Test
     public void longJournalMeasurementsAreWithinBudget() throws Exception {
@@ -97,6 +94,11 @@ public class LongJournalBenchmarkTest {
             scenario.onActivity(activity -> activity.getBridge().setServerBasePath(probeDir.getAbsolutePath()));
 
             String raw = awaitResult(scenario);
+            // Keep the complete result on-device even if the host loses USB or an assertion fails.
+            File receipt = new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getFilesDir(),
+                "long-journal-result.json");
+            java.nio.file.Files.write(receipt.toPath(), raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Log.i(TAG, "Complete result saved: " + receipt.getAbsolutePath());
             JSONObject result = new JSONObject(raw);
 
             if (result.has("error")) {
@@ -134,12 +136,10 @@ public class LongJournalBenchmarkTest {
             Log.i(TAG, "Automatic backup one year: " + oneYear.getJSONObject("automaticBackup"));
             Log.i(TAG, "Automatic backup ten years: " + result.getJSONObject("automaticBackup"));
 
-            if (!unrecorded) {
-                checkBudgets(oneYear.getJSONArray("measurements"), budgetTable);
-                checkBudgets(measurements, budgetTable);
-            }
-            JSONArray growthBreaches = scaling.getJSONArray("breaches");
-            assertTrue("long-journal scaling exceeded: " + growthBreaches, growthBreaches.length() == 0);
+            List<String> breaches = BudgetBreaches.collect(oneYear.getJSONArray("measurements"), measurements,
+                budgetTable, scaling.getJSONArray("breaches"), !unrecorded);
+            assertTrue("long-journal benchmark exceeded " + breaches.size() + " budget(s): " + breaches,
+                breaches.isEmpty());
         } finally { if (backupConfigurationStarted) backups.cleanup(); }
     }
 
@@ -168,10 +168,9 @@ public class LongJournalBenchmarkTest {
             assertEquals("scaling measurement order", name, pair.getString("name"));
             Log.i(TAG, String.format("  %-55s 1y %.2fms  10y %.2fms  %.2fx%s", m.getString("what"),
                 pair.getDouble("oneYearMs"), pair.getDouble("tenYearMs"), pair.getDouble("ratio"), budget));
-            /* A screen mount's own line: what it crossed the driver seam for.
-               On this platform a statement is a Capacitor bridge call, so
-               the count is the reading and the
-               milliseconds beside it say what one call costs here. */
+            /* The native recorder sits above ordinary-read caching. These
+               counts describe requested reads and returned JSON; a cached
+               answer does not send another Capacitor bridge call. */
             if (m.has("statements")) {
                 String ceilings = budgetTable.has(name) && budgetTable.getJSONObject(name).has("statementBudget")
                     ? String.format("  budget %d statements, %d bytes",
@@ -200,84 +199,16 @@ public class LongJournalBenchmarkTest {
             Build.FINGERPRINT);
     }
 
-    /** Fails the test for each measurement that exceeds its budget. */
-    private static void checkBudgets(JSONArray measurements, JSONObject budgetTable) throws Exception {
-        List<String> breaches = new ArrayList<>();
-
-        for (int i = 0; i < measurements.length(); i++) {
-            JSONObject m = measurements.getJSONObject(i);
-            String name = m.getString("name");
-            long ms = Math.round(m.getDouble("ms"));
-
-            if (!budgetTable.has(name)) {
-                breaches.add(name + " has no budget - add one to android-budgets.json");
-                continue;
-            }
-
-            JSONObject budget = budgetTable.getJSONObject(name);
-            int budgetMs = budget.getInt("budgetMs");
-            if (ms > budgetMs) {
-                breaches.add(String.format("%s: %dms over a budget of %dms (baseline %dms)",
-                    name, ms, budgetMs, budget.getInt("baselineMs")));
-            }
-
-            /* The two count budgets a screen mount carries, judged the same
-               way budgets.mjs judges them: a count with no budget is a
-               breach rather than a pass, because the alternative is this
-               gate quietly not watching the one metric that tracks what a
-               bridge call costs. */
-            if (m.has("statements") != budget.has("statementBudget")) {
-                breaches.add(m.has("statements")
-                    ? name + " counts statements and has no budget for them - add one to android-budgets.json"
-                    : name + " has a statement budget and the run took no count for it");
-                continue;
-            }
-            if (m.has("statements")) {
-                int statements = m.getInt("statements");
-                int bytes = m.getInt("bytes");
-                if (statements > budget.getInt("statementBudget")) {
-                    breaches.add(String.format("%s: %d statements over a budget of %d (baseline %d)",
-                        name, statements, budget.getInt("statementBudget"), budget.getInt("statementBaseline")));
-                }
-                if (bytes > budget.getInt("byteBudget")) {
-                    breaches.add(String.format("%s: %d bytes over a budget of %d (baseline %d)",
-                        name, bytes, budget.getInt("byteBudget"), budget.getInt("byteBaseline")));
-                }
-            }
-        }
-
-        assertTrue(
-            "long-journal benchmark exceeded " + breaches.size() + " budget(s): " + breaches,
-            breaches.isEmpty());
-    }
-
     /** Polls the WebView until the probe publishes its result. */
     private String awaitResult(ActivityScenario<MainActivity> scenario) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(RESULT_TIMEOUT_SECONDS);
 
+        WebViewProbe probe = new WebViewProbe(scenario, RESULT_TIMEOUT_SECONDS);
         while (System.nanoTime() < deadline) {
-            serviceBackup(scenario);
-            AtomicReference<String> value = new AtomicReference<>();
-            CountDownLatch evaluated = new CountDownLatch(1);
-
-            scenario.onActivity(
-                activity ->
-                    activity
-                        .getBridge()
-                        .getWebView()
-                        .evaluateJavascript(
-                            "document.body && document.body.dataset.longJournalReady === 'true'"
-                                + " ? JSON.stringify(window.__longJournalResult) : ''",
-                            result -> {
-                                value.set(result);
-                                evaluated.countDown();
-                            }));
-
-            if (!evaluated.await(30, TimeUnit.SECONDS)) {
-                throw new AssertionError("the WebView stopped answering");
-            }
-
-            String json = unquote(value.get());
+            serviceBackup(probe);
+            String json = unquote(probe.evaluate(
+                "document.body && document.body.dataset.longJournalReady === 'true'"
+                    + " ? JSON.stringify(window.__longJournalResult) : ''"));
             if (json != null && !json.isEmpty()) return json;
             Thread.sleep(500);
         }
@@ -286,14 +217,9 @@ public class LongJournalBenchmarkTest {
             "the long-journal probe did not report within " + RESULT_TIMEOUT_SECONDS + "s; check logcat for errors");
     }
 
-    private void serviceBackup(ActivityScenario<MainActivity> scenario) throws Exception {
+    private void serviceBackup(WebViewProbe probe) throws Exception {
         if (!disposableBackups) return;
-        AtomicReference<String> value = new AtomicReference<>();
-        CountDownLatch evaluated = new CountDownLatch(1);
-        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "JSON.stringify(window.__backupBenchmarkRequest || null)", result -> { value.set(result); evaluated.countDown(); }));
-        assertTrue("benchmark request evaluation", evaluated.await(30, TimeUnit.SECONDS));
-        String raw = unquote(value.get());
+        String raw = unquote(probe.evaluate("JSON.stringify(window.__backupBenchmarkRequest || null)"));
         if (raw == null || raw.equals("null")) return;
         JSONObject request = new JSONObject(raw);
         int days = request.getInt("days");
@@ -308,7 +234,7 @@ public class LongJournalBenchmarkTest {
             deliveredDays = days;
             response = "window.__backupBenchmarkDelivered=" + new JSONObject().put("days", days).put("native", nativeResult);
         } else return;
-        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(response, null));
+        probe.evaluate(response);
     }
 
     private static String unquote(String evaluated) {
@@ -351,6 +277,7 @@ public class LongJournalBenchmarkTest {
     /** Deletes the benchmark database and photo directory so each run starts fresh. */
     private static void deleteProbeArtifacts() {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        new File(app.getFilesDir(), "long-journal-result.json").delete();
         app.deleteDatabase(PROBE_DATABASE);
         app.deleteDatabase("long-journal-benchmark-one-year.sqlite3");
 

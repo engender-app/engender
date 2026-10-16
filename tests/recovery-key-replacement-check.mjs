@@ -111,9 +111,15 @@ async function openRecoveryScreen() {
   await page.waitForSelector('[data-recovery-key-step]');
 }
 
+async function approveMint() {
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
+}
+
 async function mintFromScreen(selector) {
   await page.locator(selector).click();
   if (selector === '[data-list-row="replace-recovery-key"]') await page.locator('[data-confirm-replace]').click();
+  await approveMint();
   await page.locator('[data-recovery-key]').waitFor();
   return (await page.locator('[data-recovery-key]').innerText()).trim();
 }
@@ -205,6 +211,7 @@ try {
   await holdAfterWrite(PENDING);
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await approveMint();
   await page.waitForFunction(() => window.rkHeld === 'after-write');
   assert.equal(await page.locator('[data-recovery-key]').count(), 0, 'the key was never shown');
   await restart();
@@ -223,6 +230,7 @@ try {
   // Cut 3: shown, not confirmed; "Make a new key", then the old key typed to finish is refused.
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await approveMint();
   const lost = (await page.locator('[data-recovery-key]').innerText()).trim();
   await restart();
   await expectNotice('replace');
@@ -246,6 +254,7 @@ try {
   // Cut 4: between the promoting write and the pending file's removal.
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await approveMint();
   const promoted = (await page.locator('[data-recovery-key]').innerText()).trim();
   await holdBeforeRemove(PENDING);
   await page.locator('[data-recovery-key-done]').click();
@@ -326,14 +335,14 @@ try {
   await expectNotice('replace');
   // A change that fails (a two-digit PIN is refused) leaves the waiting key where it was.
   const refused = await page.evaluate(async () => {
-    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
-    try { await changeAccessMode('pin', '12'); return 'changed'; } catch (error) { return error.name; }
+    const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
+    try { await prepareAccessModeChange('pin', '12', { title: '', subtitle: '', cancel: '' }, () => {})('demo'); return 'changed'; } catch (error) { return error.name; }
   });
   assert.notEqual(refused, 'changed');
   assert.deepEqual((await files()).sort(), ['recovery-key-pending.json', 'recovery-key.json']);
   await page.evaluate(async () => {
-    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
-    await changeAccessMode('passphrase', 'demo');
+    const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
+    await prepareAccessModeChange('passphrase', 'demo', { title: '', subtitle: '', cancel: '' }, () => {})('demo');
   });
   assert.deepEqual(await files(), ['recovery-key.json']);
   assert.equal(await opens(confirmed), true);
@@ -344,13 +353,13 @@ try {
   await openRecoveryScreen();
   const beforePartialChange = await mintFromScreen('[data-list-row="replace-recovery-key"]');
   const partial = await page.evaluate(async () => {
-    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+    const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
     const { readKeystoreFile } = await import('/src/lib/data/keystore-file.ts');
     const before = JSON.stringify(await readKeystoreFile());
     const remove = IDBObjectStore.prototype.delete;
     IDBObjectStore.prototype.delete = function () { throw new Error('device cleanup refused'); };
     let error;
-    try { await changeAccessMode('passphrase', 'demo'); } catch (failure) { error = failure.message; }
+    try { await prepareAccessModeChange('passphrase', 'demo', { title: '', subtitle: '', cancel: '' }, () => {})('demo'); } catch (failure) { error = failure.message; }
     finally { IDBObjectStore.prototype.delete = remove; }
     return { error, changed: before !== JSON.stringify(await readKeystoreFile()) };
   });
@@ -368,7 +377,7 @@ try {
   await openRecoveryScreen();
   const beforeRejectedPublication = await mintFromScreen('[data-list-row="replace-recovery-key"]');
   const rejectedPublication = await page.evaluate(async () => {
-    const { changeAccessMode } = await import('/src/lib/stores/boot.svelte.ts');
+    const { prepareAccessModeChange } = await import('/src/lib/stores/boot.svelte.ts');
     const create = FileSystemFileHandle.prototype.createWritable;
     FileSystemFileHandle.prototype.createWritable = async function (...args) {
       const writable = await create.apply(this, args);
@@ -378,7 +387,7 @@ try {
       }
       return writable;
     };
-    try { await changeAccessMode('passphrase', 'demo'); return null; }
+    try { await prepareAccessModeChange('passphrase', 'demo', { title: '', subtitle: '', cancel: '' }, () => {})('demo'); return null; }
     catch (error) { return error.message; }
     finally { FileSystemFileHandle.prototype.createWritable = create; }
   });

@@ -1,0 +1,36 @@
+/* Run from the released source's tests/long-journal/fixture-archive directory. */
+import { boot } from '../../../src/lib/data/sqlite/boot.ts';
+import { createEncryptedWebSqlite } from '../../../src/lib/data/sqlite/mc-driver.ts';
+import { openJournal } from '../../../src/lib/data/journal/journal.ts';
+import { opfsPhotoFiles } from '../../../src/lib/data/photos/opfs-file-store.ts';
+import { encryptedFileStore } from '../../../src/lib/data/photos/encrypted-file-store.ts';
+import { freshOrigin, PROBE_DATA_KEY } from '../../browser-tier/fresh-origin.ts';
+import { PREFERENCE_DEFAULTS } from '../../../src/lib/data/prefs/catalogue.ts';
+import { packArchive } from '../../../src/lib/data/archive/pack.ts';
+import { portablePreferences } from '../../../src/lib/data/archive/payload.ts';
+import { generateLongJournal } from '../generate.ts';
+import { publish } from '../../probe-handshake.mjs';
+
+async function main() {
+  await freshOrigin();
+  const files = encryptedFileStore(opfsPhotoFiles('upgrade-fixture-photos'), PROBE_DATA_KEY);
+  const { driver, fileOps } = createEncryptedWebSqlite('upgrade-fixture.sqlite3', PROBE_DATA_KEY);
+  const booted = await boot({ createDriver: () => driver, fileOps });
+  if (booted.phase === 'error') throw booted.error;
+  const journal = openJournal(booted.driver, files);
+  await journal.reconcileBuiltIns();
+  const canvas = new OffscreenCanvas(320, 240);
+  canvas.getContext('2d')!.fillRect(0, 0, 320, 240);
+  const jpeg = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/jpeg' })).arrayBuffer());
+  const summary = await generateLongJournal(journal, { days: 32, makePhoto: async () => ({ full: jpeg, thumb: jpeg }) });
+  const snapshot = await journal.archive.snapshot();
+  let archiveBytes = 0;
+  for await (const chunk of packArchive({ journal: snapshot.journal, preferences: portablePreferences(PREFERENCE_DEFAULTS),
+    files: snapshot.files, readFile: snapshot.readFile }, 'upgrade40')) {
+    let binary = '';
+    for (let i = 0; i < chunk.length; i += 0x8000) binary += String.fromCharCode(...chunk.subarray(i, i + 0x8000));
+    await (window as any).sink(btoa(binary)); archiveBytes += chunk.length;
+  }
+  publish('fixture-archive', { userVersion: await driver.getUserVersion(), summary, archiveBytes });
+}
+main().catch((error) => publish('fixture-archive', { error: String(error?.stack ?? error) }));

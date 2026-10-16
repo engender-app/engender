@@ -248,6 +248,7 @@ flowchart LR
   Drv <-- "postMessage<br/>{id, op, args}" --> W[DB worker<br/>mc-worker.ts]
   W --> OPFS[(OPFS SAHPool)]
   UI <--> A2[Argon2id worker]
+  UI <--> Photo[Photo normalization worker]
   UI <--> PDF[pdf.js worker]
   UI <--> OCR[tesseract worker]
   UI <-- "skip-waiting,<br/>cache-on-demand" --> SW[Service worker]
@@ -284,6 +285,8 @@ bridge disposal discards it.
 **Native plugins** are listed once in [src/lib/android/plugin-registry.ts](src/lib/android/plugin-registry.ts), each with the JS module that owns it: `Sqlite`, `Keystore`, `PinBinding`, `Photos`, `Reminders`, `AutoExport`, `FileDelivery`, `RetrospectiveNotifications`, `Disguise`, `LockTiming`, `ScreenCapture`, `DeviceReset`, `Print`, `SensitiveClipboard`, `Permissions` and `StatusBarAppearance`, plus `@capacitor/app` for the back button. Every required plugin is checked at startup. The Java side registers them in [AndroidPluginRegistry.java](android/app/src/main/java/dev/engender/app/AndroidPluginRegistry.java).
 
 **Write notifications.** The journal wrapper announces a successful write's declared tables. Known no-op results skip the announcement (section 6.4).
+
+**Photo normalization.** Each picked image is decoded and encoded in a short-lived module worker. The worker returns the normalized JPEG and thumbnail, then terminates. This avoids Android canvas encoding waiting for the page’s idle scheduler after a screen mount. Size limits, orientation handling and metadata removal are unchanged.
 
 **Service worker.** Update activation uses `engender:skip-waiting` in [src/lib/pwa/sw-messages.ts](src/lib/pwa/sw-messages.ts). The optional PDF worker uses `engender:cache-pdf-worker` in [src/lib/pwa/pdf-worker-cache.ts](src/lib/pwa/pdf-worker-cache.ts). OCR needs no download message.
 
@@ -763,6 +766,19 @@ Android PIN/passphrase metadata lives in `journal-credential.json`, owned by [Cr
 
 Boot inspects storage without opening SQLite or creating a key. Android's existing file survey reports presence and the plaintext header separately; the web checks the journal's namespaced SAH pool directory. Even an empty retained pool is treated conservatively until an explicit reset removes it. The gate describes missing access without claiming that usable journal data survives: an unreadable wrap can also remain after interrupted setup. Missing access with retained storage, or unreadable access metadata, reaches the recovery gate before setup or demo initialization. Unexpected storage errors fail boot. The same presence invariant runs under credential ownership in `initializeJournal`, so a stale setup action cannot mint over surviving ciphertext. Native credential presence respects the authoritative record and tombstone before considering legacy OPFS. Recovery uses the existing active/pending wrap owner and requires a new access mode before journal content appears. Archive replacement and reset retain their destructive confirmation.
 
+Settings protection changes capture the current session, lock generation and
+credential generation when their prompt opens. `protection-change.ts` verifies
+the current protection, compares persisted credential and recovery-wrap identities
+under `changeCredentials`, and spends the operation before mutation. Publication
+owners check again after asynchronous derivation or enrolment. PIN verification
+uses the existing attempt store without rebinding credentials. A cleanup failure
+after secret publication reconciles boot's access mode to that persisted authority
+without reporting success; retry asks for that current secret. Recovery unlock
+holds one immediate-setup proof, using a weak reference so it cannot retain a
+locked browser session's key. Android unlocked mode accepts a fresh biometric
+check or an existing recovery key; only web device-bound mode permits unlocked
+session authority.
+
 ```mermaid
 stateDiagram-v2
   [*] --> booting
@@ -1066,8 +1082,10 @@ The native features:
 - **Scheduled backups.** `AutoExportPlugin` derives the archive key natively (ADR-0042) and keeps the five newest verified automatic backups ([BackupRetention.java](android/app/src/main/java/dev/engender/app/backup/BackupRetention.java)). Foreground and `BackupWork` delivery share [DeliveredBackup.java](android/app/src/main/java/dev/engender/app/backup/DeliveredBackup.java): sync a regular destination file, sync its directory, close and reopen it, then check its length and SHA-256 before committing success and pruning. The supported production boundary is Android's system ExternalStorageProvider. SAF has no cloud-upload durability acknowledgement; an unknown provider or a pipe reports incomplete delivery and cannot trigger retention. Failed writes remove their partial target through this shared owner. A temporarily unavailable folder keeps its setting for a later retry. Changing or disabling the destination releases its persisted SAF grant. The scheduler admits one check at a time and reports failures from status lookup or snapshotting as well as packing and delivery. A device-local SQLite preference records the native failure timestamp after its notice posts, waits for quiet hours or is declined by the notice switch. The same timestamp identifies a failed run and later status checks, so ticks and cold starts cannot repeat it. Clearing the native failure after success or a destination change clears this receipt. A new failure can notify again, including after the device clock moves back. WorkManager initializes on demand through `JournalApplication`, not AndroidX Startup. Its initialization handler logs a fixed message without journal content and keeps the failure timestamp in memory even when storage cannot accept preferences. Scheduling rejects a failed initialization; auto-export status returns `backup-scheduling-unavailable`, that timestamp and no next due time. The failure lasts until the process restarts, when WorkManager can try again. Journal boot remains independent and uses the existing `storage-full` failure and retry.
 - **Retrospective notifications.** These are the Wrapped and On-this-day notifications (`RetrospectiveNotificationsPlugin`).
 - **Widgets.** `QuickLogWidgetProvider`, `TallyWidgetProvider` and `DoubtWidgetProvider` extend `DisguisableWidgetProvider`. Their taps are launch routes.
-- **Manual exports.** `FileDeliveryPlugin` stages the export encrypted in the app's cache, opens the system save picker, then writes and verifies the picked document, deleting it on failure. A full disk while staging rejects with the code `storage-full`, one while writing to the destination with `destination-full`, and every other failure with no code, so the screen names only a real full disk ([spaceShortage.ts](src/lib/data/spaceShortage.ts)). Before writing, a destination on Android's own on-device providers (shared storage, SD cards, Downloads) that hands over a regular file is measured with `fstatvfs` and refused when the export will not fit. Any other provider, a cloud drive included, is not measured and goes straight to the write, because its descriptor may be a local cache or a pipe.
-- **Everything else** is one plugin per concern: file delivery to the save picker with encrypted staging, the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.
+- **Manual file delivery.** `FileDeliveryPlugin` opens Android's system save picker. Encrypted staging and its in-memory key survive activity recreation while the picker is open; process death loses the key. Capacitor's restored result carries the transfer, process and reset identities. The shell reports it once after the journal gates clear, and checks the journal owner again after asynchronous status lookup. Only journal exports update the last-backup timestamp. Before writing, the plugin records the exact returned destination URI in app-private preferences and requests a persisted grant where supported. Failed or interrupted delivery deletes only that destination. A later app start retries cleanup; denied access keeps the record and reports that cleanup remains pending. Success removes the record and releases only a grant acquired for that transfer. No plaintext export or staging key is persisted for recovery.
+
+  A full disk while staging rejects with the code `storage-full`, one while writing to the destination with `destination-full`, and every other failure with no code, so the screen names only a real full disk ([spaceShortage.ts](src/lib/data/spaceShortage.ts)). Before writing, a destination on Android's own on-device providers (shared storage, SD cards, Downloads) that hands over a regular file is measured with `fstatvfs` and refused when the export will not fit. Any other provider, a cloud drive included, is not measured and goes straight to the write, because its descriptor may be a local cache or a pipe.
+- **Everything else** is one plugin per concern: the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.
 
 ## 10. Testing
 
@@ -1090,6 +1108,7 @@ flowchart TB
 | Built app | `npm run verify:build`, `verify:hosting` | Installed-PWA cold start, offline start, update and PIN; the nginx container's headers, cache rules and SPA routing. |
 | Benchmarks | `npm run benchmark:long-journal`, `test:return-floor` | A ten-year fixture against [tests/long-journal/budgets.json](tests/long-journal/budgets.json); the return-floor timing. |
 | Android | `npm run test:android` | Instrumentation tests on the `gd26` and `tracker35` emulators: native SQLite features, Keystore behaviour, the encryption claim test, the contract suite in a WebView. JVM unit tests run with `./gradlew :app:testDebugUnitTest`. |
+| Installed Android upgrade | `npm run test:android:upgrade -- <serial> <avd> <manifest>` | Opt-in update of a filled rc.1 synthetic package, journal/media/SQLite/alarm preservation, row-deleting control and failed-migration recovery. [Kit and fixture preparation](tests/android-tier/installed-upgrade.md) rebuild the APKs and Archive from source. |
 | Galleries | `npm run gallery:*`, `measure:*`, `sweep:*` | Renders and frame captures for review. Most of them gate nothing. |
 
 Screen contracts use [mount-screen.ts](tests/browser-tier/mount-screen.ts)
@@ -1102,6 +1121,15 @@ outside the Node tier, whose test drivers cannot provide browser storage.
 The contract suite in [data/journal/contract-suite.ts](src/lib/data/journal/contract-suite.ts) runs the same journal assertions against every driver: Node, the browser tier and Android.
 
 **Fixtures and the demo.** [data/demo/persona.ts](src/lib/data/demo/persona.ts) is "Alice", a seeded, deterministic persona about two and a half years into transition, generated relative to today. Every import of it sits behind `__DEMO__`, which a production build replaces with `false`. [verify-build.mjs](tests/browser-tier/verify-build.mjs) greps the built bundle to prove the persona is gone. `VITE_DEMO=1 npm run build` produces the demo build that guards and the walkthrough use. On a cold web load the database worker seeds the persona itself, in one transaction ([worker-seed.ts](src/lib/data/demo/worker-seed.ts)). While the sqlite wasm is still downloading, the worker draws the persona's photos ahead of time (`warmDemoPhotos`); the seed takes each one from that set, and draws on demand any photo the set does not hold. Photos depend on their seed alone, so the rows and bytes written do not change. [data/demo/fullFixture.ts](src/lib/data/demo/fullFixture.ts) fills every feature. The long-journal fixture is a separate generator ([tests/long-journal/generate.ts](tests/long-journal/generate.ts)).
+
+The Node tier also runs [tests/fuzz/](tests/fuzz/): 40 seeded mutations for
+each of 12 importer and sniffer targets. A separate child has a 1 GiB heap
+limit and a 30-second case watchdog. Refused cases must preserve row and file
+content hashes after orphan cleanup; accepted imports must pass SQLite
+integrity checks and read back through the journal. Exact failing inputs and
+seed/index receipts stay in ignored `ci-logs/fuzz/`. `FUZZ_LONG=1` raises the
+default to 2,000 cases per target. Untyped refusals are report-only unless
+`FUZZ_STRICT_TYPED=1`; crashes and invariant failures always fail the run.
 
 `docs/agents/verification.md` lists what each tier needs and its known noise.
 
@@ -1125,7 +1153,7 @@ flowchart LR
   First -. "import()" .-> Later
 ```
 
-**First load has a budget.** [scripts/check-first-load-budget.mjs](scripts/check-first-load-budget.mjs) gzips every `/_app/immutable` URL that `build/index.html` asks for and compares the total with [scripts/first-load-budget.json](scripts/first-load-budget.json). Each build compiles one language, so it measures the English and the Polish graph and gates the larger. The budget is 104 files and 251,272 bytes (recorded 2026-10-07, after-release ticket 40). A production build of that commit came to 104 files, 248.8 KB English and 250.2 KB Polish. The file count gets no headroom, and the byte budget gets a 1 KB floor for hash wobble. A rebaseline has to name the change that caused it in the same file. The script records OCR installation transfer and stored bytes separately. OCR installation does not add eager execution to this graph. PDF fonts remain precached. CI gates the production build only.
+**First load has a budget.** [scripts/check-first-load-budget.mjs](scripts/check-first-load-budget.mjs) gzips every `/_app/immutable` URL that `build/index.html` asks for and compares the total with [scripts/first-load-budget.json](scripts/first-load-budget.json). Each build compiles one language, so it measures the English and the Polish graph and gates the larger. The budget is 15 files and 235,087 bytes (recorded 2026-10-14 UTC, last-audit backend ticket 61, for final-audit 10's startup grouping). The accepted backend integration at `ad44a0b4f` measures 15 files in each locale, 233,012 bytes English and 234,063 bytes Polish, including the selector. The file count gets no headroom, and the byte budget adds exactly 1,024 bytes to the larger measurement for hash wobble. A rebaseline has to name the change that caused it in the same file. The script records OCR installation transfer and stored bytes separately. OCR installation does not add eager execution to this graph. PDF fonts remain precached. CI gates the production build only.
 
 **What stays out of first load:**
 - deferred journal areas (section 6.3)
@@ -1147,6 +1175,12 @@ flowchart LR
 - `batchWrites` coalesces bursts of writes into one round of re-runs.
 - A refresh that comes back equal leaves the screen untouched.
 - `lastResults` paints a warm revisit from memory in its first frame.
+- Hidden retained doors defer repository admission for up to 75 ms per query
+  attempt. Becoming visible releases pending reads immediately. The query still
+  captures dependencies synchronously; superseded attempts cannot dispatch
+  delayed reads. Hidden refresh continues after the bound, keeping warm caches
+  fresh. [The physical comparison](tests/retained-door-cost/RESULTS.md) records
+  the foreground gain and the longer full refresh settlement.
 
 Home also limits which questions it asks. [data/pinnedRows.ts](src/lib/data/pinnedRows.ts)'s
 `pinReadScope()` supplies the selected rows, last-write areas and forward facts;
@@ -1212,7 +1246,7 @@ flowchart LR
 - **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022). [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
 - **Hosting.** `npm run deploy:release`, `deploy:rollback` and `deploy:list` drive immutable web releases ([deploy/README.md](deploy/README.md)). A sidecar receipt beside the current link records the outgoing target at each switch. `rollback --previous` uses that matching history, never directory age; missing or stale history requires a named target. Failed switches restore the prior receipt and PDF namespace. Rollback still refuses code that can't open the current schema.
 - **Progressive release.** Candidate checks in `stage1` and `stage2`, plus the `stable` matrix for stable versions, precede publication. Web and GitHub/Obtainium publish first; Play (`stage3`) and F-Droid (`stage4`) follow. Channel-live states record completed publication, so pending channels do not prevent a tag. Each required stage records update, migration, archive round trip, scheduled backup and rollback checks in [scripts/progressive-release-record.json](scripts/progressive-release-record.json). The tag command and release workflow validate the tested source revision and exact version before publication. See [candidate evidence](deploy/README.md#candidate-evidence-before-publication).
-- **F-Droid** rebuilds with its own key, so moving between channels means reinstalling and restoring an archive.
+- **Android channel signing.** Play retains its separate app-signing key. The planned F-Droid route verifies a reproducible source build and preserves the GitHub APK's developer signature. GitHub/F-Droid switching remains unverified until the actual rebuild and installed updates in both directions preserve synthetic journals. A matching certificate alone is insufficient. [Android channel verification](deploy/README.md#android-channel-verification) records the required proof and the Archive migration rule for incompatible channels.
 
 ## 13. Paradigms worth knowing before editing
 

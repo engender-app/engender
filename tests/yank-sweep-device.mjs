@@ -83,6 +83,7 @@ import {
   INJECT_PROOF_EXPRESSION,
   JUMP_FIRST_RUN_EXPRESSION,
   LOCK_SETUP_EXPRESSION,
+  APPROVE_PROTECTION_EXPRESSION,
   OUTLIER_MIN,
   PROOF,
   SCENE_MS,
@@ -705,6 +706,7 @@ async function restoreAccessMode(mode) {
   await ev(`document.querySelector('[data-access-modes] [data-list-row="${mode}"]').click(); true;`);
   await ev(waitForExpression('[data-access-submit]', 10000));
   await ev(`document.querySelector('[data-access-submit]').click(); true;`);
+  await ev(APPROVE_PROTECTION_EXPRESSION(PIN));
   await ev(`(async () => {
     for (let i = 0; i < 300; i++) {
       if (location.pathname === '/settings/security' || document.querySelector('[data-recovery-offer]')) return true;

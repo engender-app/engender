@@ -62,6 +62,8 @@ try {
 
   await navigate('/settings/recovery-key');
   await page.locator('[data-make-recovery-key]').click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   let shown = (await page.locator('[data-recovery-key]').innerText()).trim();
 
   await page.locator('[data-screen-back]').click();
@@ -144,6 +146,8 @@ try {
 
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   shown = (await page.locator('[data-recovery-key]').innerText()).trim();
 
   await page.locator('[data-recovery-key-done]').click();
@@ -156,6 +160,8 @@ try {
   await page.locator('a[href="/settings/recovery-key"]').click();
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   await page.waitForSelector('[data-recovery-key]');
   await page.locator('[data-nav-item="calendar"]:visible').click();
   await page.locator('[data-leave-recovery-key]').click();

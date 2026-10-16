@@ -7,6 +7,8 @@ import Access from '../../src/routes/settings/access-mode/+page.svelte';
 import Trash from '../../src/routes/settings/trash/+page.svelte';
 import Words from '../../src/routes/settings/words/+page.svelte';
 import Recovery from '../../src/routes/settings/recovery-key/+page.svelte';
+import { addJournalPassphrase } from '../../src/lib/data/journal-passphrase';
+import { PROBE_DATA_KEY } from './fresh-origin';
 import { bootState } from '$lib/stores/boot.svelte';
 
 const f = await fixture('focus-swaps');
@@ -19,6 +21,7 @@ async function show(scene: string) {
   await mounted.remove();
   const target = document.querySelector('.app-main') as HTMLElement;
   bootState.accessMode = 'passphrase';
+  if (scene === 'recovery') await addJournalPassphrase(PROBE_DATA_KEY, 'focus fixture passphrase');
   if (scene === 'trash') {
     for (let i = 0; i < 2; i++) {
       const id = await f.journal.entries.upsertEntry({ epochDay: today - i, mood: 3, note: `Restore ${i}` });

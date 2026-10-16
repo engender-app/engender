@@ -1,5 +1,6 @@
 import { railEpisodes, scheduleDoseFacts, SPINE_FORWARD_DAYS } from './careSpine';
 import { startOfDayTimestamp } from './epochDay';
+import { cumulativeDoseTotals } from './exposureCounters';
 import type { Journal } from './journal/journal';
 import { activeEpisodesAt, sameDrug } from './regimenEpisode';
 import { depletingStocks } from './stockProjection';
@@ -10,10 +11,10 @@ export const CARE_DOSE_TOTAL_WINDOW_DAYS = 90;
 /** One result for Care's medication readings. Start every journal call before
     awaiting so liveQuery observes every dependency on its first run. */
 export async function readCare(
-  journal: Pick<Journal, 'doses' | 'regimen' | 'stock' | 'labs' | 'exposure'>,
+  journal: Pick<Journal, 'doses' | 'regimen' | 'stock' | 'labs'>,
   today: number
 ) {
-  const [recentDoses, episodes, schedules, pauses, stock, latestLab, counters] = await Promise.all([
+  const [recentDoses, episodes, schedules, pauses, stock, latestLab] = await Promise.all([
     /* The totals window's doses, not the whole log (ux-carpet ticket 221).
        Every lane asks for its last logged dose and doses that cover forward
        slots. The pairing window includes tolerance; the last-dose fact
@@ -25,9 +26,11 @@ export async function readCare(
     journal.doses.getSchedules(),
     journal.doses.getPauses(),
     journal.stock.getProjections(today),
-    journal.labs.getLatestResult(),
-    journal.exposure.getCounters(today - CARE_DOSE_TOTAL_WINDOW_DAYS + 1, today)
+    journal.labs.getLatestResult()
   ]);
+  // Slot reads include the totals window, plus tolerance and future doses.
+  // The shared fold scopes those rows to the totals window before attribution.
+  const { totals } = cumulativeDoseTotals(recentDoses, episodes, today - CARE_DOSE_TOTAL_WINDOW_DAYS + 1, today);
   const depleting = depletingStocks(stock, today, SPINE_FORWARD_DAYS);
   const running = railEpisodes(activeEpisodesAt(episodes, startOfDayTimestamp(today)));
   const factsOver = (doses: readonly DoseEvent[]) =>
@@ -57,7 +60,7 @@ export async function readCare(
     episode,
     ...facts[i],
     runOut: depleting.find((row) => sameDrug(row.entry.drug, episode.drug)) ?? null,
-    doseTotals: counters.doseTotals.filter((total) => sameDrug(total.drug, episode.drug))
+    doseTotals: totals.filter((total) => sameDrug(total.drug, episode.drug))
   }));
   return {
     lanes,

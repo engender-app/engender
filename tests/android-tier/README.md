@@ -10,6 +10,9 @@ serial, and Gradle receives that serial
 through `ANDROID_SERIAL`. Choose an unused even port with `ANDROID_TIER_PORT`
 (default 5580). `ANDROID_TIER_HEADLESS=1` uses software graphics without Vulkan.
 
+The emulator runs with metrics and crash reporting disabled for that process,
+so a previous emulator crash cannot block startup on a consent dialog.
+
 Each run retains invocation logs, stage logs and disposable AVD files in a new
 directory under `.claude/android-tier/`. `ANDROID_TIER_LOG_DIR` overrides that
 parent directory. XML results are cleared before each invocation. Missing,
@@ -28,6 +31,53 @@ tokens and remaining delay.
 
 Parser and invocation regressions run in the Node tier through
 `tests/android-tier/instrumentation.test.ts`.
+
+## Optimized instrumentation
+
+Run `ANDROID_TIER_R8=1 npm run test:android` for the complete optimized tier.
+The runner builds and installs `dev.engender.app.test.r8`, uses the optimized
+variant for every stage including isolated offline OCR, and records that
+variant's APK hashes. Omitting `ANDROID_TIER_R8` retains the debug tier.
+The same switch also applies to the optional lock, recovery and backup runs.
+
+`r8.init.gradle` defines the opt-in `r8Instrumented` build type. It copies the
+release settings and ProGuard rules, uses local debug signing, and keeps R8 in
+release mode. It requires isolated application and test package IDs under
+`dev.engender.app.test.` and rejects configuration with the production package.
+The generated app and test manifests enable `run-as` and authenticate the test
+provider after processing; setting
+the build type itself to debuggable would disable R8 optimizations. Run the
+artifact guard against `app/build/outputs/mapping/r8Instrumented/mapping.txt`
+to check that helpers were obfuscated.
+
+Fault-injection tests need the existing debug `BackupProviderCapability`, which
+accepts only the installed instrumentation provider. The init script selects
+that one source file for this test variant. Production release builds keep the
+release implementation, which refuses instrumentation providers. A full run on
+this variant proves the optimized fault-injection tier; it does not prove
+delivery through a production release APK. Release provider refusal and delivery
+through Android's supported local provider need separate release controls.
+
+For an isolated APK built from the production `release` source set, run
+`BackupDeliveryDurabilityTest#releaseRefusesInstrumentationProviderForForegroundAndWorker`
+with instrumentation argument `releaseProviderRefusal=true`. It checks that
+foreground delivery and the scheduled worker reject the instrumentation provider
+with `destination-durability-unavailable`, remove partial documents, and publish
+no backup success. Verify the installed release APK hash before invocation;
+the test skips without the explicit argument. That skip supplies no
+release-provider evidence.
+
+The test APK uses the normal AndroidX dependency graph. Shipped member-level
+rules preserve its calls into shared runtime classes, while AGP applies the app's
+name mapping. Test-only ProGuard rules suppress the optional coroutine screenshot
+adapter and compile-only types outside this tier. The app shrinker does not use
+those suppressions.
+
+The opt-in [`test:android:upgrade` stage](installed-upgrade.md) installs a
+candidate over a filled rc.1 synthetic package on a named emulator. It compares
+the journal, media, SQLite and alarms, rejects a row-deleting control, and checks
+failed-migration recovery. Its kit command rebuilds all four APKs and the old
+Archive fixture from source; historical APKs are not needed.
 
 ## Persistent automatic backups
 
@@ -76,3 +126,34 @@ removes its forwards and isolated packages, then shuts down its owned emulator.
 Its evidence includes process IDs and one result for each arrival. This checks
 process death on an emulator, not permission revocation or physical-device
 behavior.
+
+The API 26 runner disables the emulator's GLDMA transport. Its old goldfish
+kernel panics while mapping graphics DMA buffers during Android startup.
+The native floor checks run after a fresh boot with that transport disabled.
+
+## Release evidence
+
+Start from a clean working tree. A passing run writes `androidTier` in
+`scripts/progressive-release-record.json` after checking that HEAD and the
+working tree stayed unchanged. It records each AVD, serial, API, APK hashes,
+completed stage groups and individual passing checks. Failed runs do not write
+passing evidence. Commit the record before tagging or running another tier.
+Tagging and publication require the API 26 and current-Android core rosters;
+focused runs cannot satisfy that requirement. The current-Android roster also
+requires fresh English and Polish OCR in airplane mode. The runner builds an
+isolated package for this phase, records its APK hashes separately, and restores
+network settings and removes both packages when the phase ends or fails.
+`offline-ocr-stage.mjs` owns this phase for both the core and standalone runners.
+
+`optionalStages.installedUpgrade` and `optionalStages.lockedProcessDeath` are
+explicitly absent until their stages complete. A focused lock run can add its
+completed result to earlier core evidence only when both runs used equivalent
+source. The installed-upgrade stage remains unavailable until its runner lands.
+A CDP-only installed-upgrade run records four application APKs: the released
+rc.1 build, the healthy candidate, and the two named migration controls. Each
+APK has its actual SHA-256, source revision, package ID and version metadata;
+control APKs also name their fixture patch. The healthy APK hash must match the
+run's target hash, and its source and both control sources must match the tested
+revision. Core and other instrumentation runs retain their test-APK hashes.
+An installed-upgrade result alone leaves the required core roster incomplete.
+The release workflow reads the committed record from the publication checkout.

@@ -26,6 +26,11 @@ export async function focusSwaps(browser, origin, motion = 'reduce') {
       if (activeControl) assert.deepEqual(activeControl, { tabIndex: 0, hidesRing: false }, `${label} stays keyboard reachable`);
       results.push(label); console.log('PASS', label);
     };
+    const authenticateRecovery = async (label) => {
+      await focused('[data-sheet]:has([data-current-protection])', label);
+      await page.locator('#current-protection-secret').fill('focus fixture passphrase');
+      await enter('[data-confirm-current-protection]');
+    };
     await show('home');
     await enter('[data-edit-today]');
     await focused('[data-today-editor] h2', 'Today editor heading');
@@ -71,11 +76,13 @@ export async function focusSwaps(browser, origin, motion = 'reduce') {
     await focused('h1', 'Notice empty heading');
     await show('recovery');
     await enter('[data-make-recovery-key]');
+    await authenticateRecovery('New recovery key current passphrase');
     await focused('.rk-shown-title', 'New recovery key heading');
     await enter('[data-recovery-key-done]');
     await focused('h1', 'Recovery key done heading');
     await enter('[data-list-row="replace-recovery-key"]');
     await enter('[data-confirm-replace]');
+    await authenticateRecovery('Replacement recovery key current passphrase');
     await focused('.rk-shown-title', 'Replacement recovery key heading');
     await enter('[data-recovery-key-done]');
     await enter('[data-list-row="remove-recovery-key"]');

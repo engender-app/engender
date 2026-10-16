@@ -165,6 +165,12 @@ your journal: clearing browser storage, wiping app data or losing a device
 can remove the only local copy. The maintainer cannot recover passwords
 or keys.
 
+Creating or replacing a recovery key and changing access mode ask for the
+current PIN, passphrase or biometrics again. Web device-bound mode instead
+explains that the unlocked browser has this authority. Android unlocked mode
+requires biometrics or an existing recovery key and blocks the change without
+either. A recovery unlock approves one immediate protection setup only.
+
 CSV, JSON, journal books, clinician summaries and exported images or videos
 are readable files. Anyone who receives them can read their contents.
 Choose an encrypted Archive when you need a private backup.
@@ -275,6 +281,11 @@ the English and Polish catalogues and prevents the number of untranslated
 literals from increasing. The licence check inspects installed dependencies;
 the first-load check measures the built app's initial assets.
 
+`npm test` includes 480 seeded importer and sniffer fuzz cases. Run
+`FUZZ_LONG=1 FUZZ_SEED=7 npm test` for 24,000 cases. Failures keep their exact
+inputs and seed/index receipts in `ci-logs/fuzz/`; see
+[tests/PROBES.md](tests/PROBES.md) for replay and strict typed-refusal checks.
+
 The screen and walkthrough suites use Chromium. Set `CHROMIUM_PATH` if its
 executable is not at the harness's default location. They cover storage
 contracts, rendered screens, complete user flows and offline startup of the
@@ -313,6 +324,11 @@ on a machine that supports it.
 ```sh
 npm run test:android
 ```
+
+The opt-in [installed-upgrade stage](tests/android-tier/installed-upgrade.md)
+checks a candidate over a filled rc.1 synthetic package, including row loss and
+failed-migration recovery. Its documented kit and preparation commands rebuild
+the old APK, candidate controls and Archive fixture from source.
 
 ## Codebase
 
@@ -365,8 +381,22 @@ npm run release:tag -- 1.2.3 --dry-run
 npm run release:tag -- 1.2.3
 ```
 
-The script requires a clean main branch and notes for the version in
-[CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
+Before tagging, run `npm run test:android` on the clean candidate. A passing
+run writes its source revision, device/API identities, APK hashes and completed
+stages into `scripts/progressive-release-record.json`. The required roster is
+API 26 native instrumentation, PIN-wait persistence and native backup deferral,
+plus current-Android instrumentation, PIN-wait persistence, Archive recovery
+and native backup lifecycle stages. Current Android also runs fresh English and
+Polish OCR in airplane mode under an isolated package, with separate APK hashes.
+Commit the record after the run. Only that
+record may differ from the tested candidate source.
+
+Focused backup, recovery and locked-process-death runs do not replace the core
+roster. The record names optional stages as completed or absent; the core pass
+count does not claim an installed-upgrade or locked-process-death run.
+
+The script requires a clean main branch, matching Android-tier evidence and
+notes for the version in [CHANGELOG.md](CHANGELOG.md). Packaging builds the web app twice and checks
 that both bundles have the same digest. Release artifacts include the web
 bundle, source archive, signed Android APK and App Bundle, and checksums.
 The release gate rejects signatures from unexpected certificates.
@@ -391,9 +421,19 @@ packages from including these paths; it does not rewrite published history.
 atomic switch between them and rollback checks. A rollback refuses code
 that cannot open the current journal schema by default.
 
-F-Droid rebuilds use F-Droid's signing key. Moving between that channel and
-an APK signed by this project's release workflow requires reinstalling and
-restoring an Archive, because the signatures are not update-compatible.
+GitHub and Obtainium use the same release APK. The planned F-Droid route
+preserves that APK's developer signature after F-Droid verifies a reproducible
+source build. GitHub/F-Droid switching is not yet verified: it requires that
+build evidence and installed-update checks in both directions with synthetic
+journals. A matching certificate alone is insufficient. Wait for a compatible
+equal-or-newer version at the destination; do not downgrade to change channels.
+
+Play keeps its current, separate app-signing key and existing update path.
+Direct switching between Play and the other channels is not supported. Before
+uninstalling to move between incompatible channels, export an Archive and
+verify its restore on a separate disposable installation. Uninstalling removes
+the local journal. See [channel verification](deploy/README.md#android-channel-verification)
+for the evidence required before claiming a supported switch.
 
 ## Support and licence
 

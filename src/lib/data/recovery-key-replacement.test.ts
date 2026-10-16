@@ -14,6 +14,9 @@ import {
   finishRecoveryKey,
   inMemoryRecoveryKeyPorts,
   mintRecoveryKey,
+  mintRecoveryKeyOwned,
+  openWithRecoveryKeyOwned,
+  verifyRecoveryKey,
   openWithRecoveryKey,
   recoveryKeyState,
   revokeRecoveryKey,
@@ -22,7 +25,7 @@ import {
 import { serializeRecoveryWrap } from '../crypto/recoveryWrap.ts';
 import { RecoveryKeyMistypedError, canonicalRecoveryKey } from '../crypto/recoveryKey.ts';
 import { DecryptionFailedError } from '../crypto/aesGcm.ts';
-import { changeCredentials } from './credential-ownership.ts';
+import { authenticateCredentials, changeCredentials } from './credential-ownership.ts';
 import { createKeystore, serializeKeystore } from '../crypto/keystore.ts';
 import { changeJournalPassphrase } from './journal-passphrase.ts';
 import { KEYSTORE_FILE } from './keystore-file.ts';
@@ -452,4 +455,58 @@ describe('a credential change while a new key waits', () => {
     expect(files[KEYSTORE_FILE]).toBe(keystore);
     expect(await openWithRecoveryKey(unseen)).toEqual(dataKey);
   });
+});
+
+
+test('an authenticated mint writes pending while the confirmed key remains active', async () => {
+  const { disk, dataKey, old } = await journalWithKey();
+  const before = serializeRecoveryWrap((await disk.active.read())!);
+  const next = await changeCredentials(() => mintRecoveryKeyOwned(dataKey, () => {}, disk));
+  expect(serializeRecoveryWrap((await disk.active.read())!)).toBe(before);
+  expect(await recoveryKeyState(disk)).toEqual({ active: true, pending: true });
+  await opens(old, disk, dataKey);
+  expect(await verifyRecoveryKey(next, () => {}, disk)).toEqual(dataKey);
+  expect(await recoveryKeyState(disk)).toEqual({ active: true, pending: true });
+});
+
+test('Settings proof of a pending key leaves both recovery wraps unchanged', async () => {
+  const { disk, dataKey } = await journalWithKey();
+  const next = await mintRecoveryKey(dataKey, disk);
+  const before = await storedText(disk);
+  expect(await verifyRecoveryKey(next, () => {}, disk)).toEqual(dataKey);
+  expect(await storedText(disk)).toBe(before);
+});
+
+test('a cancelled authenticated mint cannot replace an earlier pending key', async () => {
+  const { disk, dataKey } = await journalWithKey();
+  await mintRecoveryKey(dataKey, disk);
+  const before = await storedText(disk);
+  await expect(changeCredentials(() => mintRecoveryKeyOwned(dataKey, () => {
+    throw new Error('cancelled');
+  }, disk))).rejects.toThrow('cancelled');
+  expect(await storedText(disk)).toBe(before);
+});
+
+test('the gate captures the promoted identity while it still owns the credentials', async () => {
+  const { disk, dataKey } = await journalWithKey();
+  const next = await mintRecoveryKey(dataKey, disk);
+  const before = await storedText(disk);
+  const opened = await authenticateCredentials(async () => {
+    const result = await openWithRecoveryKeyOwned(next, () => {}, disk);
+    expect(await storedText(disk)).not.toBe(before);
+    expect(await disk.pending.read()).toBeNull();
+    return result;
+  });
+  expect(opened).toEqual(dataKey);
+});
+
+test('cancellation after deriving a pending recovery key cannot promote it', async () => {
+  const { disk } = await journalWithKey();
+  const next = await mintRecoveryKey(aDataKey(), disk);
+  const before = await storedText(disk);
+  let checks = 0;
+  await expect(authenticateCredentials(() => openWithRecoveryKeyOwned(next, () => {
+    if (++checks === 3) throw new Error('cancelled');
+  }, disk))).rejects.toThrow('cancelled');
+  expect(await storedText(disk)).toBe(before);
 });

@@ -62,20 +62,28 @@ public class AutoExportDestinationTest {
         int modes = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
         app.getContentResolver().takePersistableUriPermission(tree, modes);
         app.getSharedPreferences(AutoExportPlugin.PREFS, 0).edit().putString("destinationUri", tree.toString()).commit();
+        CapturedCall call = new CapturedCall("pickDestination", new JSObject());
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 try {
                     AutoExportPlugin plugin = (AutoExportPlugin) activity.getBridge().getPlugin("AutoExport").getInstance();
                     java.lang.reflect.Method picked = AutoExportPlugin.class.getDeclaredMethod("pickedDestination", PluginCall.class, ActivityResult.class);
                     picked.setAccessible(true);
-                    CapturedCall call = new CapturedCall("pickDestination", new JSObject());
                     picked.invoke(plugin, call, new ActivityResult(Activity.RESULT_OK, new Intent().setData(second).setFlags(modes)));
-                    assertNull(call.error);
-                    assertFalse(holds(tree));
-                    assertTrue(holds(second));
-                    plugin.configure(new CapturedCall("configure", new JSObject().put("enabled", false)));
-                    assertFalse(holds(second));
                 } catch (Exception error) { throw new AssertionError(error); }
+            });
+            assertTrue("destination selection did not finish", call.completed.await(10, TimeUnit.SECONDS));
+            assertNull(call.error);
+            assertNotNull(call.result);
+            assertFalse(holds(tree));
+            assertTrue(holds(second));
+            scenario.onActivity(activity -> {
+                AutoExportPlugin plugin = (AutoExportPlugin) activity.getBridge().getPlugin("AutoExport").getInstance();
+                CapturedCall disabled = new CapturedCall("configure", new JSObject().put("enabled", false));
+                plugin.configure(disabled);
+                assertNull(disabled.error);
+                assertNotNull(disabled.result);
+                assertFalse(holds(second));
             });
         } finally { AutoExportPlugin.wipe(app); }
     }
@@ -108,11 +116,12 @@ public class AutoExportDestinationTest {
         } catch (Exception error) { throw new AssertionError(error); }
     }
     private static final class CapturedCall extends PluginCall {
-        JSObject result;
-        String error;
+        volatile JSObject result;
+        volatile String error;
+        final CountDownLatch completed = new CountDownLatch(1);
         CapturedCall(String method, JSObject data) { super(null, "AutoExport", UUID.randomUUID().toString(), method, data); }
-        @Override public void resolve(JSObject value) { result = value; }
-        @Override public void resolve() { result = new JSObject(); }
-        @Override public void reject(String message, String code, Exception exception, JSObject data) { error = message; }
+        @Override public void resolve(JSObject value) { result = value; completed.countDown(); }
+        @Override public void resolve() { result = new JSObject(); completed.countDown(); }
+        @Override public void reject(String message, String code, Exception exception, JSObject data) { error = message; completed.countDown(); }
     }
 }

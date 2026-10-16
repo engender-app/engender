@@ -1641,6 +1641,7 @@
   }
 
   .editor-save-row {
+    width: 100%;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1650,6 +1651,10 @@
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
+
+  @container app (min-width: 640px) {
+    .editor-save-moods { flex: 1 1 0; }
+  }
 
   /* The line under a heading that needs one. A hint is the area's own second
      sentence rather than a caption on a field, so it sits at the page's

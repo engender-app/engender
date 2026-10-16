@@ -36,6 +36,7 @@ import { SETUP_STEPS } from './setup-flow.mjs';
 import { JUMP_FIRST_RUN_EXPRESSION } from './yank-sweep-core.mjs';
 import {
   LOCK_SETUP_EXPRESSION,
+  APPROVE_PROTECTION_EXPRESSION,
   RESET_PERSONA_EXPRESSION,
   UNLOCK_PIN_EXPRESSION
 } from './yank-sweep-core.mjs';
@@ -689,6 +690,7 @@ try {
             await page.waitForSelector('[data-access-submit]');
             await page.locator('[data-access-submit]').click();
             await page.waitForTimeout(2500);
+            await page.evaluate(APPROVE_PROTECTION_EXPRESSION(PIN));
             await page.goto(`${base}/`, { waitUntil: IDLE });
             if (!(await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 20000 }).catch(() => null)))
               throw new Error('the journal is still behind a gate after switching back to unlocked');

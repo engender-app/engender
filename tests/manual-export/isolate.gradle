@@ -1,0 +1,6 @@
+allprojects { afterEvaluate { p ->
+    if (p.path == ':app') {
+        p.android.defaultConfig.applicationId = 'dev.engender.app.test.picker77'
+        p.android.sourceSets.androidTest.java.srcDir(p.file('../../tests/manual-export/native'))
+    }
+} }

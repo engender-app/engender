@@ -48,7 +48,7 @@ import {
 
 interface RecoveryWrapSlot {
   read(): Promise<RecoveryWrap | null>;
-  write(wrap: RecoveryWrap): Promise<void>;
+  write(wrap: RecoveryWrap, current?: () => void): Promise<void>;
   remove(): Promise<void>;
 }
 
@@ -59,7 +59,7 @@ interface RecoveryKeyPorts {
 
 const fileSlot = (name: string): RecoveryWrapSlot => ({
   read: () => readRecoveryWrapFile(name),
-  write: (wrap) => writeRecoveryWrapFile(wrap, name),
+  write: (wrap, current) => writeRecoveryWrapFile(wrap, name, current),
   remove: () => removeRecoveryWrapFile(name)
 });
 
@@ -115,15 +115,23 @@ export async function mintRecoveryKey(
   dataKey: Uint8Array<ArrayBuffer>,
   ports: RecoveryKeyPorts = filePorts
 ): Promise<string> {
-  return changeCredentials(async () => {
-    const display = generateRecoveryKey();
-    /* Minted through the parser rather than beside it: a generator that
-       produced something the gate would reject is a journal nobody can
-       recover, and this makes that impossible rather than unlikely. */
-    const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(display));
-    await ports.pending.write(wrap);
-    return display;
-  });
+  return changeCredentials(() => mintRecoveryKeyOwned(dataKey, () => {}, ports));
+}
+
+/** The authenticated operation already owns credential serialization. */
+export async function mintRecoveryKeyOwned(
+  dataKey: Uint8Array<ArrayBuffer>,
+  current: () => void,
+  ports: RecoveryKeyPorts = filePorts
+): Promise<string> {
+  const display = generateRecoveryKey();
+  /* Minted through the parser rather than beside it: a generator that
+     produced something the gate would reject is a journal nobody can
+     recover, and this makes that impossible rather than unlikely. */
+  const wrap = await wrapDataKeyWithRecoveryKey(dataKey, canonicalRecoveryKey(display));
+  current();
+  await ports.pending.write(wrap, current);
+  return display;
 }
 
 /* Write-then-remove, and the order is the crash safety. A cut after the
@@ -131,10 +139,11 @@ export async function mintRecoveryKey(
    recognises and tidies; a cut before it leaves the old key working. The
    pending wrap is compared with the one that was opened so a key can only
    promote the wrap it actually opens. */
-async function promoteOwned(opened: RecoveryWrap, ports: RecoveryKeyPorts): Promise<void> {
+async function promoteOwned(opened: RecoveryWrap, ports: RecoveryKeyPorts, current: () => void = () => {}): Promise<void> {
   const pending = await readReadable(ports.pending);
   if (pending === null || !sameWrap(pending, opened)) throw new RecoveryKeyNotPendingError();
-  await ports.active.write(opened);
+  current();
+  await ports.active.write(opened, current);
   await ports.pending.remove();
 }
 
@@ -190,30 +199,71 @@ export async function openWithRecoveryKey(
   typed: string,
   ports: RecoveryKeyPorts = filePorts
 ): Promise<Uint8Array<ArrayBuffer>> {
+  return authenticateCredentials(() => openWithRecoveryKeyOwned(typed, () => {}, ports));
+}
+
+/** The gate owns credentials through promotion and capture of its new identity. */
+export function openWithRecoveryKeyOwned(
+  typed: string,
+  current: () => void,
+  ports: RecoveryKeyPorts = filePorts
+): Promise<Uint8Array<ArrayBuffer>> {
+  return readRecoveryKeyOwned(typed, current, ports, true);
+}
+
+/** Settings proves the current key without changing a pending replacement. */
+export function verifyRecoveryKey(
+  typed: string,
+  current: () => void,
+  ports: RecoveryKeyPorts = filePorts
+): Promise<Uint8Array<ArrayBuffer>> {
+  return authenticateCredentials(() => readRecoveryKeyOwned(typed, current, ports, false));
+}
+
+async function readRecoveryKeyOwned(
+  typed: string,
+  current: () => void,
+  ports: RecoveryKeyPorts,
+  promote: boolean
+): Promise<Uint8Array<ArrayBuffer>> {
+  current();
   const canonical = canonicalRecoveryKey(typed);
-  return authenticateCredentials(async () => {
-    const pending = await readReadable(ports.pending);
-    let active: RecoveryWrap | null;
-    try {
-      active = await ports.active.read();
-    } catch (error) {
-      if (pending === null) throw error;
-      active = null;
-    }
-    if (active === null && pending === null) throw new RecoveryKeyAbsentError();
+  const pending = await readReadable(ports.pending);
+  let active: RecoveryWrap | null;
+  try {
+    active = await ports.active.read();
+  } catch (error) {
+    if (pending === null) throw error;
+    active = null;
+  }
+  current();
+  if (active === null && pending === null) throw new RecoveryKeyAbsentError();
+  let dataKey: Uint8Array<ArrayBuffer> | undefined;
+  try {
     if (active !== null) {
       try {
-        return await unwrapDataKeyWithRecoveryKey(active, canonical);
+        dataKey = await unwrapDataKeyWithRecoveryKey(active, canonical);
       } catch (error) {
         if (pending === null || !(error instanceof DecryptionFailedError)) throw error;
       }
+      if (dataKey !== undefined) {
+        current();
+        return dataKey;
+      }
     }
-    const dataKey = await unwrapDataKeyWithRecoveryKey(pending!, canonical);
-    await promoteOwned(pending!, ports).catch((error) => {
-      console.warn('the pending recovery key opened the journal but could not be confirmed yet', error);
-    });
+    dataKey = await unwrapDataKeyWithRecoveryKey(pending!, canonical);
+    current();
+    if (promote) {
+      await promoteOwned(pending!, ports, current).catch((error) => {
+        console.warn('the pending recovery key opened the journal but could not be confirmed yet', error);
+      });
+    }
+    current();
     return dataKey;
-  });
+  } catch (error) {
+    dataKey?.fill(0);
+    throw error;
+  }
 }
 
 /** What Settings, the gates and Home ask before anything is typed: whether

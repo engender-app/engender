@@ -26,17 +26,23 @@ const isNotFound = (error: unknown): boolean => (error as DOMException)?.name ==
 /** The stored wrap, or null when this journal has no recovery key - which
     is every journal until somebody asks for one. */
 export async function readRecoveryWrapFile(name = RECOVERY_KEY_FILE): Promise<RecoveryWrap | null> {
+  const serialized = await readRecoveryWrapText(name);
+  return serialized === null ? null : parseRecoveryWrap(serialized);
+}
+
+/** Identity checks must include unreadable wraps, which an owner may replace. */
+export async function readRecoveryWrapText(name = RECOVERY_KEY_FILE): Promise<string | null> {
   const root = await navigator.storage.getDirectory();
   try {
     const handle = await root.getFileHandle(name);
-    return parseRecoveryWrap(await (await handle.getFile()).text());
+    return (await handle.getFile()).text();
   } catch (error) {
     if (isNotFound(error)) return null;
     throw error;
   }
 }
 
-export async function writeRecoveryWrapFile(wrap: RecoveryWrap, name = RECOVERY_KEY_FILE): Promise<void> {
+export async function writeRecoveryWrapFile(wrap: RecoveryWrap, name = RECOVERY_KEY_FILE, current: () => void = () => {}): Promise<void> {
   /* Serialized before the file is opened, the ordering `writeKeystoreFile`
      spells out: createWritable() truncates, so building the text first
      means a refusal leaves the previous file where it was rather than
@@ -59,6 +65,7 @@ export async function writeRecoveryWrapFile(wrap: RecoveryWrap, name = RECOVERY_
      same pattern. */
   try {
     await writable.write(serialized);
+    current();
     await writable.close();
   } catch (error) {
     await writable.abort().catch(() => {});

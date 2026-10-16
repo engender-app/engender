@@ -1,5 +1,7 @@
 # Physical Android retained-read comparison
 
+## 14 October: blanket deferral
+
 On 14 October 2026, a Pixel 10a (API 37, WebView 155) ran twelve alternating
 current/deferred samples over one generated ten-year journal: 3300 entries,
 391 entry photos and the other areas in `evidence/native-result.json`.
@@ -80,3 +82,92 @@ README, ARCHITECTURE, both privacy policies, SECURITY, CHANGELOG, CONTEXT and
 ADR-0089 describe unchanged production behavior and need no amendment for
 this disposable experiment. `tests/PROBES.md` links this harness and its
 recorded boundaries. Backend 78 owns the separate actual-mount budget probe.
+
+
+## 15 October: bounded hidden refresh
+
+The follow-up compared unbounded admission (`current`) with a 75 ms hidden
+admission bound (`bounded`) on the same Pixel 10a, API 37 and WebView 155.
+Each query attempt shares one admission promise across its operations. A door
+becoming visible releases its pending reads. Dependency capture remains
+synchronous, and a superseded generation cannot dispatch a delayed read.
+The selected repair now lives in `live/hiddenReadAdmission.ts`, called by the
+existing live-query and retained-door owners. The driver queue is unchanged.
+
+The twelve samples used one freshly generated ten-year SQLCipher journal:
+3300 entries, 2619 days with entries and 391 entry/milestone photos. Other
+areas are recorded in `evidence/native-bounded-result.json`. An independent
+`SELECT COUNT(*) AS total FROM entry` returned 3300 before measurement.
+Generation took 903352.1 ms. The first six rounds disabled tracing and byte
+serialization; the last six recorded visible and hidden read operations.
+Both modes ran three times in each group, in alternating pairs.
+
+| Measure | Current | Bounded |
+| --- | --- | --- |
+| Write completion, untraced | 41.7 / 49.7 / 51.4 ms | 50.6 / 85.5 / 48.2 ms |
+| Full save settlement, untraced | 825.7 / 841.9 / 868.1 ms | 925.5 / 942.2 / 900.8 ms |
+| Warm Look back after hidden settlement, untraced | 74.3 / 57.5 / 65.6 ms | 66.1 / 57.5 / 65.6 ms |
+| Immediate dirty Look back settlement, untraced | 797.6 / 821.2 / 787.9 ms | 799.3 / 803.2 / 802.9 ms |
+| Visible Home read window, traced | 762.6 / 778.4 / 736.9 ms | 48.8 / 53.8 / 57.1 ms |
+| Save statements, traced | 130 | 130 |
+| Save response bytes, traced | 805778-805782 | 805778-805782 |
+| Warm revisit statements / bytes, traced | 0 / 0 | 0 / 0 |
+
+The foreground read window shrank by roughly 700 ms. Unlike blanket deferral,
+the bounded candidate refreshed hidden data before the settled warm revisit;
+that revisit stayed at 58-66 ms. Switching immediately after a second write,
+before hidden refresh had settled, still took about 800 ms in both modes.
+This repair does not make that immediate dirty revisit fast. Full save
+settlement, including hidden refresh, increased by roughly 75-100 ms in the
+first two pairs and 33 ms in the last pair. Write completion had no consistent
+gain. The statement and byte totals did not fall: this changes admission
+order, not the questions asked or their answers.
+
+These measurements use the boundaries defined above, including five quiet
+animation frames for settlement. The visible window measures repository
+readiness, not pixels; write completion is not the editor's full Save
+interaction. The 1.2 s Save guard, 250/300 ms web warm/cold arrival guards,
+and 500 ms long-journal Look back mount target therefore remain separate
+checks. ADR-0089 keeps physical Android distinct from the web arrival guard.
+The evidence supports bounded admission because foreground readiness improves
+without moving a comparable delay into the settled warm revisit. It does
+not establish every arrival or Save budget on every device.
+
+All twelve native samples preserved Words and Calendar saved-note freshness,
+hidden Words refresh, retained reading-node identity and lock cleanup.
+Separate current/bounded captures of the actual demo shell preserved the
+authored hold, 0.004 opacity floor, reduced motion, hidden
+`inert`/`display:none` and lock concealment. Their demo data differs from the
+ten-year journal, and their timings are not performance measurements.
+
+The source base was `a5e3e1c962597e9ae621f952b4d02cfba60d7407`. The raw result
+records source, probe and driver identities; `evidence/bounded-identity.json`
+adds APK hashes and setup receipts. `evidence/promotion-equivalence.json`
+compares the measured transformed owners with the promoted owners: imports,
+the helper comment and its superseded-read error wording are the only
+normalized differences in those owners. Activity lookup also preserves
+standalone effect roots: without a component context they remain active,
+covered by the existing real live-reads browser probe and focused tests.
+That compatibility path does not participate in the physical retained-door
+comparison. The probe now bypasses the production admission only
+for the unbounded baseline. Native measurements came from the isolated debug
+probe, not a signed release or an R8 build.
+
+Fixture setup encountered the known idle JPEG encoder delay. A temporary
+animation-frame loop ran only during generation; it stopped at
+`awaiting-quiet`, and its counter stayed at 42014 across a 250 ms check before
+samples. The original generator and photo bytes were unchanged. The count
+check's temporary debugger breakpoint was removed and the debugger disabled.
+The Activity was resumed, visible and focused; thermal status was 0 and
+battery temperature 23.6 C. This team's heavy host work was paused. Another
+session's `ui37-api35` emulator remained active, so the host was not fully
+idle. This is repeated evidence on one device and fixture, not a population
+estimate.
+
+Both owned packages and port 9381 were removed after captures. Synthetic
+fixtures disappeared with the packages. Screen timeout stayed at 120000 ms
+and stay-on remained 0; the phone lease was released for ticket 83.
+
+ARCHITECTURE and CHANGELOG now describe bounded background refresh. README,
+CONTEXT, SECURITY, both privacy policies and ADR-0089 need no changes: no
+storage, encryption, network, domain wording or published budget changed.

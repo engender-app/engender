@@ -325,7 +325,7 @@ public class ReminderNotificationPrivacyTest {
         Pixel it does, roughly one batch run in two; on an emulator it never
         seemed to. Polling rather than sleeping a fixed span, so the usual
         case stays as fast as it was. */
-    private static Notification await(java.util.concurrent.Callable<Notification> lookFor)
+    static Notification await(java.util.concurrent.Callable<Notification> lookFor)
         throws InterruptedException {
         long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
         while (true) {

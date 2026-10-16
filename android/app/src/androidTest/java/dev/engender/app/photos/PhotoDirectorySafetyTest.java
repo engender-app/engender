@@ -5,8 +5,8 @@ import android.content.Context;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.getcapacitor.JSObject;
-import com.getcapacitor.PluginCall;
+import org.json.JSONObject;
+import dev.engender.app.webview.WebViewProbe;
 import dev.engender.app.MainActivity;
 import java.io.File;
 import org.junit.Test;
@@ -18,32 +18,36 @@ public class PhotoDirectorySafetyTest {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         File protectedFile = new File(app.getFilesDir(), "journal-key.wrapped");
         byte[] original = protectedFile.exists() ? java.nio.file.Files.readAllBytes(protectedFile.toPath()) : null;
-        for (String name : new String[] {".", "arbitrary", "../photos"}) {
-            try { PhotoFiles.directory(app, name); fail("accepted " + name); }
-            catch (IllegalArgumentException expected) { }
-            try { PhotoFiles.deleteDirectory(app, name); fail("deleted " + name); }
-            catch (IllegalArgumentException expected) { }
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            WebViewProbe page = new WebViewProbe(scenario, 10);
+            for (String name : new String[] {".", "arbitrary", "../photos"}) {
+                for (String method : new String[] {"directoryPath", "removeDirectory"}) {
+                    JSONObject answer = page.awaitCall(page.startCall("Photos", method, new JSONObject().put("directory", name)));
+                    assertEquals("accepted " + method + " " + name + ": " + answer, "rejected", answer.getString("state"));
+                }
+            }
         }
         if (original != null) assertArrayEquals(original, java.nio.file.Files.readAllBytes(protectedFile.toPath()));
     }
 
     @Test public void listingKeepsPrivacyMarkerOutOfOrphanCandidates() throws Exception {
-        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        File directory = PhotoFiles.directory(app, "initialization-test-photos");
-        File photo = new File(directory, "orphan.jpg");
-        photo.createNewFile();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                PhotosPlugin plugin = (PhotosPlugin) activity.getBridge().getPlugin("Photos").getInstance();
-                PluginCall call = new PluginCall(null, "Photos", "list-proof", "listFiles",
-                    new JSObject().put("directory", "initialization-test-photos")) {
-                    @Override public void resolve(JSObject result) {
-                        assertEquals("[\"orphan.jpg\"]", result.optJSONArray("names").toString());
-                    }
-                };
-                plugin.listFiles(call);
-            });
-            assertTrue(new File(directory, ".nomedia").isFile());
-        } finally { PhotoFiles.deleteDirectory(app, "initialization-test-photos"); }
+            WebViewProbe page = new WebViewProbe(scenario, 10);
+            JSONObject arguments = new JSONObject().put("directory", "initialization-test-photos");
+            JSONObject path = page.awaitCall(page.startCall("Photos", "directoryPath", arguments));
+            assertEquals(path.toString(), "resolved", path.getString("state"));
+            File directory = new File(path.getJSONObject("result").getString("path"));
+            File photo = new File(directory, "orphan.jpg");
+            assertTrue(photo.createNewFile() || photo.exists());
+            try {
+                JSONObject answer = page.awaitCall(page.startCall("Photos", "listFiles", arguments));
+                assertEquals(answer.toString(), "resolved", answer.getString("state"));
+                assertEquals("[\"orphan.jpg\"]", answer.getJSONObject("result").getJSONArray("names").toString());
+                assertTrue(new File(directory, ".nomedia").isFile());
+            } finally {
+                JSONObject removed = page.awaitCall(page.startCall("Photos", "removeDirectory", arguments));
+                assertEquals(removed.toString(), "resolved", removed.getString("state"));
+            }
+        }
     }
 }

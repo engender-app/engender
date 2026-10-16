@@ -35,11 +35,13 @@ export async function setupJournalPassphrase(passphrase: string): Promise<Uint8A
 export async function addJournalPassphrase(
   dataKey: Uint8Array<ArrayBuffer>,
   passphrase: string,
+  current: () => void = () => {},
   beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
   const metadata = await wrapDataKeyWithSecret(dataKey, passphrase);
+  current();
   beforeCredentialWrite();
-  await writeKeystoreFile(metadata);
+  await writeKeystoreFile(metadata, current);
 }
 
 /** Every later run: throws DecryptionFailedError on a wrong passphrase,

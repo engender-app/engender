@@ -99,3 +99,15 @@ test('the pending slot is its own file, and writing or removing it leaves the ac
   await expect(readRecoveryWrapFile()).resolves.toEqual(active);
   vi.unstubAllGlobals();
 });
+
+test.each([RECOVERY_KEY_FILE, PENDING_RECOVERY_KEY_FILE])('cancellation before %s commit preserves its old wrap', async (name) => {
+  const wrap = await wrapDataKeyWithRecoveryKey(new Uint8Array(32), generateRecoveryKey());
+  const { root, log, files } = fakeRoot();
+  files[name] = 'previous';
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+  try {
+    await expect(writeRecoveryWrapFile(wrap, name, () => { throw new Error('cancelled'); })).rejects.toThrow('cancelled');
+    expect(log).toEqual(['createWritable', 'write', 'abort']);
+    expect(files[name]).toBe('previous');
+  } finally { vi.unstubAllGlobals(); }
+});

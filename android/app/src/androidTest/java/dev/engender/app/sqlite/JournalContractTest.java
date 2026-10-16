@@ -11,6 +11,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.engender.app.MainActivity;
+import dev.engender.app.webview.WebViewProbe;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,9 +41,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * SqlitePlugin, and fails with whatever the suite reports.
  *
  * <p>The bundle is built by tests/android-tier/run.mjs and shipped as an
- * androidTest asset. Bridge.setServerBasePath is what points the WebView at
- * it - the same hook a live update would use - so nothing about the probe
- * has to be present in a release build.
+ * androidTest asset, copied into app-private files. Capacitor's existing
+ * file handler serves it at the app origin with the native bridge. The
+ * production bundle contains no probe.
  */
 @RunWith(AndroidJUnit4.class)
 public class JournalContractTest {
@@ -62,7 +63,7 @@ public class JournalContractTest {
         deleteProbeDatabase();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> activity.getBridge().setServerBasePath(probeDir.getAbsolutePath()));
+            new WebViewProbe(scenario, RESULT_TIMEOUT_SECONDS).loadFile(new File(probeDir, "index.html").getAbsolutePath());
 
             String raw = awaitResult(scenario);
             JSONObject result = new JSONObject(raw);
@@ -104,10 +105,7 @@ public class JournalContractTest {
 
             scenario.onActivity(
                 activity ->
-                    activity
-                        .getBridge()
-                        .getWebView()
-                        .evaluateJavascript(
+                    WebViewProbe.webView(activity).evaluateJavascript(
                             "document.body && document.body.dataset.contractReady === 'true'"
                                 + " ? JSON.stringify(window.__contractResult) : ''",
                             result -> {

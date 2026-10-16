@@ -54,6 +54,21 @@ Device timings require a supported WebView and are separate from desktop
 measurements. The native probe bundle and Java consumer can be compiled
 without running the device benchmark.
 
+The native fixture setup requests animation frames while encoding its photos,
+then cancels the loop before startup or operation measurements. WebView can
+otherwise defer idle canvas encoding for minutes. The encoder, dimensions and
+JPEG quality stay the same. Each fixture asserts an empty starting journal and
+an actual entry count matching the generator. Its result records both counts
+and verifies that setup frames did not continue during measurements.
+
+The native launcher allows three hours for fixture setup and the complete run;
+operation, count and scaling budgets remain separate. It uses the shared
+WebView probe dispatcher so global UI idleness cannot delay result polling.
+Before checking budgets it writes the complete result to the isolated app's
+`files/long-journal-result.json`, which survives a disconnected host. The next
+run removes that receipt before generation. Collect it before uninstalling the
+test package.
+
 `mount-stats` mounts the shipped Look back door, including the Words tile's
 whole-journal `noteEntries` read and word analysis. Reference hydration and
 the preceding read generation finish before the measured window opens.
@@ -69,3 +84,11 @@ Words from the mounted screen fails this ownership check even when the
 remaining reading group finishes. Node tests also cover omitted, repeated
 and empty reads. Node's synthetic mount remains a harness count check,
 not a substitute for the browser or Android screen measurement.
+
+The [15 October photo and return investigation](photo-and-return.md) records
+the Android idle-encoder regression and the evidence for the return surface’s
+updated count budgets. Photo timing budgets stay unchanged. Android collects
+budget failures from both fixture sizes and scaling before asserting, so a
+one-year failure cannot hide the decade result. The [Care and Look back
+investigation](care-and-look-back.md) records their count changes and the
+difference between the native recorder and the desktop worker boundary.

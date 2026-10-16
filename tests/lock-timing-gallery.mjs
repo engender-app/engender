@@ -365,6 +365,8 @@ try {
     await openAccessMode();
     await page.locator('[data-access-modes] [data-list-row="device-bound"]').click();
     await page.locator('[data-access-submit]').click();
+    await page.locator('#current-protection-secret').fill('demo');
+    await page.locator('[data-confirm-current-protection]').click();
     /* No recovery key in the demo, so the change ends on the offer. */
     await page.locator('[data-skip-recovery-offer]').click({ timeout: 20000 });
     await page.waitForSelector('[data-security-list]');

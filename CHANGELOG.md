@@ -234,8 +234,37 @@ notification shows Notes and the neutral icon in Recents, and a screen
 reader announces Notes. These had opened under the real name and icon. With
 disguise off, the same taps show the chosen flag rather than the default one.
 
+Hidden tabs give visible journal refreshes a short head start after a save,
+then refresh their cached readings in the background.
+
+Photo normalization runs in a worker to avoid Android’s idle-encoder delay.
+Dose comparisons reuse schedules already read for the same operation.
+
+Android channel guidance retains Play's existing signing key and records the
+planned F-Droid route using the GitHub APK's developer signature. GitHub/F-Droid
+switching remains unverified pending reproducibility and installed-update proof.
+
+The Node test suite runs 480 seeded importer and sniffer fuzz cases. A
+24,000-case run is available with `FUZZ_LONG=1 FUZZ_SEED=7`. Failures retain
+their exact inputs and seed/index receipts for replay.
+
+The entry editor keeps Save, star and mood controls above the Android keyboard
+in landscape. Wide layouts use one footer row without shrinking touch targets.
+When the keyboard leaves too little height for both text and navigation, the
+editor hides the bottom navigation until the frame grows again.
+
+Recovery-key creation, replacement and access-mode changes now require fresh
+current-protection approval. Web device-bound mode explains its unlocked-session
+exception; Android unlocked mode requires biometrics or an existing recovery key.
+Recovery unlock approves one immediate protection setup. Cancelled or stale
+prompts cannot publish a replacement wrap.
+
 Release verification rejects APKs and App Bundles signed by an unexpected
 certificate, even when the signature itself is valid.
+
+Android manual exports survive activity recreation while the save picker is
+open. Interrupted writes leave a cleanup record for the chosen destination;
+the app retries removal at its next start and reports when access is refused.
 
 Archive import identifies non-object JSON headers as corrupt files before
 key derivation, including a header containing only `null`.
@@ -424,7 +453,7 @@ say "daily" and "weekly" in English, and an episode still running read "lut
 lut 2026". The clinician summary's interval column follows the same words.
 An interval you typed yourself is shown as you wrote it.
 
-- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Released schema 88 journals upgrade through schema 89, 90 and 91 without rewriting old dose rows.
+- Schema changes: schema 90 adds nullable automatic-slot provenance and indexes. Schema 91 unifies medication stock by its trimmed, case-insensitive drug key. Schema 92 limits the trash index to trashed entries so live date-range reads use the day index. Released schema 88 journals upgrade through schema 89, 90, 91 and 92 without rewriting old dose rows.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore.
 - Security migrations: none.
 - Minimum supported version: 1.0.0-rc.1.
@@ -489,5 +518,5 @@ Pre-squash development journals are not supported; export text or PDF from the o
 
 - Schema changes: this release uses schema {{schema}}. Journals from 1.0.0-rc.1 start at schema 88 and migrate forward on first open.
 - Archive format changes: format 2 gains optional automatic-slot fields. Released format-2 archives without them still restore. Archives from development builds are not a supported restore path.
-- Security migrations: none. F-Droid signs its rebuilds with a different key; moving between F-Droid and GitHub or Play requires reinstalling and restoring an encrypted archive.
+- Security migrations: none. Play retains its separate signing key and update path. The planned F-Droid route preserves the GitHub APK developer signature, but switching between GitHub and F-Droid remains unverified pending reproducibility and installed-update checks. Before uninstalling to leave an incompatible channel, export an Archive and verify restoration on a separate disposable installation.
 - Minimum supported version: 1.0.0-rc.1.

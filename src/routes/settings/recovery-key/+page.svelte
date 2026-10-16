@@ -29,7 +29,6 @@
     RecoveryKeyNotPendingError,
     discardPendingRecoveryKey,
     finishRecoveryKey,
-    mintRecoveryKey,
     revokeRecoveryKey
   } from '$lib/data/recovery-key';
   import { RecoveryKeyMistypedError } from '$lib/crypto/recoveryKey';
@@ -37,7 +36,7 @@
   import { crossfade, resize } from '$lib/motion/reveal';
   import RecoveryKeyField from '$lib/components/RecoveryKeyField.svelte';
   import { recoveryKeyPresence, refreshRecoveryKeyPresence } from '$lib/data/recoveryKeyPresence.svelte';
-  import { bootState, journalDataKey } from '$lib/stores/boot.svelte';
+  import { bootState, journalDataKey, prepareRecoveryKeyChange } from '$lib/stores/boot.svelte';
   import { isLockedNow } from '$lib/stores/lock.svelte';
   import {
     forgetHeldRecoveryKey,
@@ -47,6 +46,8 @@
   } from '$lib/data/recovery-key-held';
   import { onDestroy, tick } from 'svelte';
   import { focusArrivedScreen, focusNamedTarget } from '$lib/navigation/arrivalFocus';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
+  import CurrentProtection from '$lib/components/CurrentProtection.svelte';
   import { copyRecoveryKey } from '$lib/data/recovery-key-clipboard';
   import { isAndroid } from '$lib/platform';
   import { printCurrentPage } from '$lib/print/print';
@@ -100,27 +101,49 @@
 
   refreshRecoveryKeyPresence();
 
-  async function mint() {
-    if (busy) return;
+  let protection = $state.raw<{ run: ReturnType<typeof prepareRecoveryKeyChange>; controller: AbortController } | null>(null);
+  function cancelProtection() {
+    protection?.controller.abort();
+    protection = null;
+  }
+  onDestroy(cancelProtection);
+
+  function mint() {
+    if (busy || protection) return;
+    const controller = new AbortController();
+    const current = () => { if (controller.signal.aborted) throw new UnlockCancelledError(); };
+    protection = {
+      controller,
+      run: prepareRecoveryKeyChange({ title: m.protection_title(), subtitle: m.protection_biometric_body(), cancel: m.cancel() }, current)
+    };
+    confirming = null;
+  }
+
+  async function authenticateMint(secret: string, current: () => void) {
+    const operation = protection;
+    if (!operation) throw new UnlockCancelledError();
     busy = true;
     try {
-      /* Awaited rather than read: the key is announced once per page when
-         the journal opens, and this screen can be reached by a goto that
-         beats it. journalDataKey() is the same door the entry-draft mirror
-         goes through. */
       const dataKey = await journalDataKey();
-      const minted = await mintRecoveryKey(dataKey);
+      const minted = await operation.run(secret, current);
+      if (operation.controller.signal.aborted) return;
       holdShownRecoveryKey(minted, dataKey);
       shown = minted;
       finishing = false;
+      focusAfterConfirmation = true;
+      protection = null;
       await refreshRecoveryKeyPresence();
-      focusCommittedStep();
-      confirming = null;
-    } catch {
-      toast(m.rk_failed());
-    } finally {
-      busy = false;
-    }
+    } catch (error) {
+      try {
+        current();
+        if (!operation.controller.signal.aborted) {
+          protection = null;
+          busy = false;
+          mint();
+        }
+      } catch { /* The owner left while authentication or publication was pending. */ }
+      throw error;
+    } finally { busy = false; }
   }
 
   /* The commit. Finished with the characters on screen, so the wrap that
@@ -466,6 +489,21 @@
       {m.cancel()}
     </button>
   </div>
+</Sheet>
+
+<Sheet
+  open={protection !== null}
+  title={m.protection_title()}
+  onClose={cancelProtection}
+  onClosed={() => {
+    if (!focusAfterConfirmation) return;
+    focusAfterConfirmation = false;
+    void focusStep();
+  }}
+>
+  {#if protection !== null}
+    <CurrentProtection mode={bootState.accessMode} allowRecovery={recoveryKeyPresence.exists} onVerify={authenticateMint} onCancel={cancelProtection} />
+  {/if}
 </Sheet>
 
 <Sheet

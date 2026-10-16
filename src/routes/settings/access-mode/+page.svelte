@@ -11,7 +11,7 @@
 
      Changing the secret *within* a mode is a different job and is not here:
      that is /settings/passphrase for a passphrase and the PIN row below for
-     a PIN, both of which need the current secret and this screen does not.
+     a PIN, both of which verify the current secret before replacing it.
 
      Its second question is when that same secret is asked for again
      (lock-timing ticket 01). It used to be a "Lock on leave" switch on two
@@ -20,16 +20,19 @@
      only while no other mode is being looked at: under a chosen mode's
      consequence it would read as a question about that one. A mode with no
      secret has nothing to ask again, so it gets a sentence instead. */
+  import { onDestroy } from 'svelte';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
+  import CurrentProtection from '$lib/components/CurrentProtection.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import { goto } from '$app/navigation';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { isAndroid } from '$lib/platform';
   import { disclose, resize } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
-  import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
+  import { bootState, prepareAccessModeChange } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
-  import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import AccessModeSetup, { type AccessSetupMode } from '$lib/components/AccessModeSetup.svelte';
@@ -84,12 +87,34 @@
       offer, which is the ordinary case. */
   let offering = $state<'device-bound' | 'secret-changed' | null>(null);
 
-  async function choose(mode: Mode, secret: string) {
-    if (busy) return;
+  let protection = $state.raw<{ mode: Mode; secret: string; run: ReturnType<typeof prepareAccessModeChange>; controller: AbortController } | null>(null);
+  function cancelProtection() {
+    protection?.controller.abort();
+    protection = null;
+  }
+  onDestroy(cancelProtection);
+
+  function choose(mode: Mode, secret: string) {
+    if (busy || protection) return;
+    const controller = new AbortController();
+    protection = {
+      mode, secret, controller,
+      run: prepareAccessModeChange(mode, secret,
+        { title: m.protection_title(), subtitle: m.protection_biometric_body(), cancel: m.cancel() },
+        () => { if (controller.signal.aborted) throw new UnlockCancelledError(); })
+    };
+  }
+
+  async function authenticateChange(secret: string, current: () => void) {
+    const operation = protection;
+    if (!operation) throw new UnlockCancelledError();
+    const mode = operation.mode;
     busy = true;
     error = '';
     try {
-      await changeAccessMode(mode, secret);
+      await operation.run(secret, current);
+      if (operation.controller.signal.aborted) return;
+      protection = null;
       toast(m.am_changed_toast());
       /* Device-bound and unlocked modes create an unrecoverable state,
          so they get the offer rather than the navigation - and only where
@@ -102,12 +127,17 @@
       }
       await goto('/settings/security');
     } catch (e) {
-      console.error('changing the access mode failed', e);
-      /* Same rule as the first-run gate: a device that will not release a
-         secret has not failed at changing anything, it has answered that it
-         cannot do this mode, and the sentence has to send the person to
-         another row rather than leave them retrying at a wall. */
-      error = e instanceof BiometricUnavailableError ? m.am_biometric_unavailable() : m.am_change_failed();
+      // A partial publication consumes its approval. Retrying asks for the
+      // protection now on disk, including a secret whose cleanup failed.
+      try {
+        current();
+        if (!operation.controller.signal.aborted) {
+          protection = null;
+          busy = false;
+          choose(operation.mode, operation.secret);
+        }
+      } catch { /* A departed or locked screen cannot prepare another change. */ }
+      throw e;
     } finally {
       busy = false;
     }
@@ -278,6 +308,12 @@
     </ReadReserve>
   {/if}
 </div>
+
+<Sheet open={protection !== null} title={m.protection_title()} onClose={cancelProtection}>
+  {#if protection !== null}
+    <CurrentProtection mode={bootState.accessMode} allowRecovery={recoveryKeyPresence.exists} onVerify={authenticateChange} onCancel={cancelProtection} />
+  {/if}
+</Sheet>
 
 <style>
   .am-after {

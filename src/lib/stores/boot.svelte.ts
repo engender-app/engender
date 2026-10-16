@@ -56,7 +56,7 @@ import {
   setupJournalPassphrase,
   unlockJournalPassphrase
 } from '../data/journal-passphrase';
-import { addJournalPin, removeEveryPinBinding, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
+import { addJournalPin, removeEveryPinBinding, setupJournalPin, unlockJournalPin, verifyJournalPin } from '../data/journal-pin';
 import { addJournalBiometric, setupJournalBiometric, unlockJournalBiometric } from '../data/journal-biometric';
 import { BiometricUnavailableError } from '../data/webauthn-prf';
 import {
@@ -67,9 +67,11 @@ import {
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
 import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
-import { changeCredentials } from '../data/credential-ownership';
-import { removeKeystoreFile } from '../data/keystore-file';
-import { openWithRecoveryKey, withoutPendingRecoveryKeyOwned } from '../data/recovery-key';
+import { authenticateCredentials, changeCredentials, currentCredentials, invalidateCredentialApprovals } from '../data/credential-ownership';
+import { protectionChange, verifyCurrentProtection } from '../data/protection-change';
+import { readRecoveryWrapText, PENDING_RECOVERY_KEY_FILE } from '../data/recovery-key-file';
+import { readKeystoreFile, readKeystoreText, removeKeystoreFile } from '../data/keystore-file';
+import { mintRecoveryKeyOwned, openWithRecoveryKeyOwned, verifyRecoveryKey, withoutPendingRecoveryKeyOwned } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
@@ -460,6 +462,8 @@ const RESET_DESTINATION = {
     gate (phase 14 ticket 15): setup's welcome then says what happened,
     since nobody there forgot anything and the result cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  invalidateCredentialApprovals();
+  recoveryApproval = null;
   return changeCredentials(() => resetAppOwned(next));
 }
 
@@ -690,6 +694,21 @@ export async function submitBiometricUnlock(): Promise<void> {
     keystore still names the mode the person could not open, so a reload
     lands back at the gate and the written key still works. */
 export const recoveryUnlock = $state({ used: false });
+let recoveryApproval: { key: WeakRef<Uint8Array<ArrayBuffer>>; current: () => void; identity: string; adopted: boolean } | null = null;
+
+class RecoveryApprovalRequiredError extends Error {
+  constructor() { super('a fresh recovery-key check is required for this setup attempt'); }
+}
+
+async function protectionIdentity(): Promise<string> {
+  const [credential, recovery, pending] = await Promise.all([
+    readKeystoreText(), readRecoveryWrapText(), readRecoveryWrapText(PENDING_RECOVERY_KEY_FILE)
+  ]);
+  return JSON.stringify([
+    credential,
+    recovery, pending
+  ]);
+}
 
 /** The recovery-key gate's submit (ADR-0054, ticket sec-02). Opens the same
     data key the access mode would have opened, so nothing about the journal
@@ -707,9 +726,24 @@ export const recoveryUnlock = $state({ used: false });
     DecryptionFailedError separately, because the gate says three different
     things (data/recovery-key.ts). */
 export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
-  const current = beginSessionUnlock();
-  const dataKey = await openWithRecoveryKey(typed);
+  const sessionCurrent = beginSessionUnlock();
+  const credentialsCurrent = currentCredentials();
+  const current = () => { sessionCurrent(); credentialsCurrent(); };
+  const { dataKey, identity } = await authenticateCredentials(async () => {
+    current();
+    const dataKey = await openWithRecoveryKeyOwned(typed, current);
+    try {
+      current();
+      const identity = await protectionIdentity();
+      current();
+      return { dataKey, identity };
+    } catch (error) {
+      dataKey.fill(0);
+      throw error;
+    }
+  });
   current();
+  recoveryApproval = { key: new WeakRef(dataKey), current, identity, adopted: false };
   recoveryUnlock.used = true;
   dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
 }
@@ -782,6 +816,55 @@ export async function submitAccessModeSetup(
   }
 }
 
+type ProtectionPrompt = Pick<UnlockRequest, 'title' | 'subtitle' | 'cancel'>;
+
+/** Capture ownership before showing the current-protection prompt. */
+function prepareProtectionChange<T>(
+  prompt: ProtectionPrompt,
+  current: () => void,
+  mutate: (key: Uint8Array<ArrayBuffer>, current: () => void) => Promise<T>
+) {
+  const key = session.key.current;
+  const mode = machine.boot.accessMode;
+  const driver = session.driver;
+  const sessionCurrent = beginSessionUnlock();
+  const owned = () => {
+    current();
+    sessionCurrent();
+    if (key === null || session.key.current !== key || session.driver !== driver || recoveryUnlock.used || machine.boot.accessMode !== mode ||
+        !isReadyState(machine.boot) || isLocked(mode)) throw new UnlockCancelledError();
+  };
+  owned();
+  return protectionChange({
+    current: owned,
+    readCredential: async () => {
+      const metadata = await readKeystoreFile();
+      const secretMode = mode === 'pin' || mode === 'passphrase' || mode === 'biometric';
+      if (secretMode ? metadata?.secretSource !== mode : metadata !== null) throw new UnlockCancelledError();
+      return protectionIdentity();
+    },
+    authenticate: (secret, check) => verifyCurrentProtection(mode, isAndroid(), key!, secret, check, {
+      pin: (pin, check) => verifyJournalPin(pin, check),
+      passphrase: unlockJournalPassphrase,
+      biometric: unlockJournalBiometric,
+      recovery: secret => verifyRecoveryKey(secret, check),
+      androidBiometric: async () => (await androidKeystore.confirm({ ...prompt, deviceCredential: false })).outcome
+    }),
+    mutate: check => mutate(key!, check)
+  });
+}
+
+export function prepareRecoveryKeyChange(prompt: ProtectionPrompt, current: () => void) {
+  return prepareProtectionChange(prompt, current, (key, check) => mintRecoveryKeyOwned(key, check));
+}
+
+export function prepareAccessModeChange(
+  target: Exclude<JournalAccessMode, null>, secret: string,
+  prompt: ProtectionPrompt, current: () => void
+) {
+  return prepareProtectionChange(prompt, current, (_key, check) => changeAccessModeOwned(target, secret, check));
+}
+
 /** Changing access mode with the journal already open (ticket 53's Settings
     screen). The data key is in memory, so every direction is a rewrap of the
     same key: the journal is never re-encrypted and the change is instant
@@ -792,20 +875,56 @@ export async function submitAccessModeSetup(
     chooseJournalAccessMode prefers a secret keystore over leftover
     device-bound material - so an interruption anywhere in here leaves a
     journal that still opens, under one mode or the other, never neither. */
-export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
-  /* A recovery key nobody confirmed does not outlive the protection it was
-     made under (last-audit UI 42). Taken away before the change and put back
-     if a prompt is cancelled before credentials change. Once a write lands
-     or removal can partly commit, cleanup failures cannot restore it. */
-  return changeCredentials(() => withoutPendingRecoveryKeyOwned((doNotRestorePending) =>
-    changeAccessModeOwned(target, secret, doNotRestorePending)));
+export async function changeAccessModeAfterRecovery(
+  target: Exclude<JournalAccessMode, null>, secret: string,
+  current: () => void, typedRecoveryKey = ''
+): Promise<void> {
+  const key = session.key.current;
+  const proof = recoveryApproval;
+  const driver = session.driver;
+  const sessionCurrent = beginSessionUnlock();
+  const owned = () => {
+    current();
+    sessionCurrent();
+    if (key === null || session.key.current !== key || session.driver !== driver || !recoveryUnlock.used ||
+        !isReadyState(machine.boot) || isLocked(machine.boot.accessMode)) throw new UnlockCancelledError();
+  };
+  owned();
+  return protectionChange({
+    current: owned,
+    readCredential: protectionIdentity,
+    authenticate: async (_secret, check) => {
+      if (typedRecoveryKey !== '') {
+        const opened = await verifyRecoveryKey(typedRecoveryKey, check);
+        try {
+          check();
+          if (!opened.every((byte, index) => byte === key![index]) || opened.length !== key!.length) throw new UnlockCancelledError();
+        } finally { opened.fill(0); }
+      } else {
+        if (proof === null || proof !== recoveryApproval || proof.key.deref() !== key) throw new RecoveryApprovalRequiredError();
+        proof.current();
+        if (proof.identity !== await protectionIdentity()) throw new RecoveryApprovalRequiredError();
+        proof.current();
+      }
+    },
+    mutate: check => {
+      recoveryApproval = null;
+      return changeAccessModeOwned(target, secret, check);
+    }
+  })();
 }
 
-async function changeAccessModeOwned(
-  target: Exclude<JournalAccessMode, null>,
-  secret: string,
-  doNotRestorePending: () => void
+async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string, current: () => void): Promise<void> {
+  current();
+  return withoutPendingRecoveryKeyOwned((doNotRestorePending) =>
+    changeAccessModeWithoutPending(target, secret, current, doNotRestorePending));
+}
+
+async function changeAccessModeWithoutPending(
+  target: Exclude<JournalAccessMode, null>, secret: string,
+  current: () => void, doNotRestorePending: () => void
 ): Promise<void> {
+  current();
   const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
@@ -815,6 +934,7 @@ async function changeAccessModeOwned(
       const hexKey = Array.from(sessionDataKey)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
+      current();
       const wrapped = await androidKeystore.wrap({ hexKey, authRequired }).catch((error) => {
         // Rejection can follow native publication. Only an explicit
         // noDeviceCredential outcome guarantees nothing changed.
@@ -836,7 +956,7 @@ async function changeAccessModeOwned(
       return;
     }
 
-    await addDeviceBoundJournal(sessionDataKey);
+    await addDeviceBoundJournal(sessionDataKey, current);
     /* The removal is awaited before the change is reported, and a failure is
        allowed to throw. Reporting first would have said "changed" while the
        keystore was still on disk, and chooseJournalAccessMode prefers a
@@ -853,14 +973,20 @@ async function changeAccessModeOwned(
     return;
   }
 
-  if (target === 'pin') await addJournalPin(sessionDataKey, secret, undefined, doNotRestorePending);
-  else if (target === 'biometric') await addJournalBiometric(sessionDataKey, undefined, doNotRestorePending);
-  else await addJournalPassphrase(sessionDataKey, secret, doNotRestorePending);
-  // The new secret wrap is authoritative even if removing old access fails.
+  if (target === 'pin') await addJournalPin(sessionDataKey, secret, undefined, current, doNotRestorePending);
+  else if (target === 'biometric') await addJournalBiometric(sessionDataKey, undefined, current, doNotRestorePending);
+  else await addJournalPassphrase(sessionDataKey, secret, current, doNotRestorePending);
   doNotRestorePending();
-  // Keep the change retryable until the old no-secret access is gone.
-  if (isAndroid()) await androidKeystore.erase();
-  else await removeDeviceBoundJournal();
+  // The published secret is already the authority, even if old-binding
+  // cleanup fails. A retry must authenticate that protection, not reuse
+  // the former web device-bound exception. Failure still reports incomplete.
+  try {
+    if (isAndroid()) await androidKeystore.erase();
+    else await removeDeviceBoundJournal();
+  } catch (error) {
+    dispatch({ type: 'access-mode-changed', accessMode: target });
+    throw error;
+  }
   dispatch({ type: 'access-mode-changed', accessMode: target });
   /* Cleared after the wrap landed rather than before it: the module is in
      front of the app precisely until there is a secret the person has, and
@@ -1144,6 +1270,10 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
   // Publish after the last ownership check, so queued reads and draft
   // writes cannot obtain a session superseded while boot was preparing it.
   journal = attachJournal(openJournal(journalDriver, photoFiles));
+  if (recoveryApproval !== null) {
+    if (recoveryApproval.adopted || recoveryApproval.key.deref() !== dataKey) recoveryApproval = null;
+    else recoveryApproval.adopted = true;
+  }
   session.adopt(dataKey, result.driver);
   setActiveDriver(result.driver);
   useJournalFiles(photoFiles);

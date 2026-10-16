@@ -1,3 +1,4 @@
+import { androidTierFixture } from './fixtures/android-tier-evidence';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -105,6 +106,7 @@ Pre-squash development journals are not supported; export text or PDF from the o
       const evidence = JSON.parse(readFileSync('tests/fixtures/progressive-release-record.template.json', 'utf8'));
       evidence.releaseVersion = '1.0.0';
       evidence.candidateRevision = git('rev-parse', 'HEAD');
+      evidence.androidTier = androidTierFixture(evidence.candidateRevision);
       for (const stage of ['stage3', 'stage4']) {
         evidence.stages[stage].passedAt = '';
         evidence.stages[stage].releaseMatrix.ranAt = '';

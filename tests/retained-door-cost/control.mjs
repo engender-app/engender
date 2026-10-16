@@ -15,7 +15,9 @@ try {
   const result = await page.evaluate(() => window.__retainedDoorResult);
   assert.equal(result.error, undefined, result.error);
   assert.equal(result.samples.length, 12);
-  console.log('PASS short desktop observer control: current Words refresh, deferred revisit freshness, retained DOM and lock cleanup');
+  assert.deepEqual([...new Set(result.samples.map(sample => sample.mode))].sort(), ['bounded', 'current']);
+  assert(result.samples.every(sample => sample.immediateDirtyRevisit.freshNotes));
+  console.log('PASS short desktop observer control: bounded hidden refresh, immediate dirty revisit freshness, retained DOM and lock cleanup');
 } finally {
   await browser?.close();
   await server.close();

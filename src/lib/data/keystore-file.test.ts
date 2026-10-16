@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import { KEYSTORE_FILE, readKeystoreFile, writeKeystoreFile, removeKeystoreFile } from './keystore-file.ts';
+import { KEYSTORE_FILE, readKeystoreText, readKeystoreFile, writeKeystoreFile, removeKeystoreFile } from './keystore-file.ts';
 import { createKeystore, serializeKeystore } from '../crypto/keystore.ts';
 
 const native = vi.hoisted(() => ({
@@ -81,7 +81,6 @@ test('a successful write records createWritable, write, close and reads back', a
   await expect(readKeystoreFile()).resolves.toEqual(metadata);
   vi.unstubAllGlobals();
 });
-
 
 test('Android waits for native persistence and never opens OPFS for a new write', async () => {
   android();
@@ -199,4 +198,56 @@ test('boot distinguishes malformed wraps from absence and unexpected storage fai
   await expect(readKeystoreSourceForBoot()).resolves.toBeNull();
   native.readCredential.mockRejectedValue(new Error('storage denied'));
   await expect(readKeystoreSourceForBoot()).rejects.toThrow('storage denied');
+});
+
+test('cancellation before the OPFS commit keeps the previous credential', async () => {
+  const { metadata } = await createKeystore('synthetic replacement');
+  const { root, log, files } = fakeRoot();
+  files[KEYSTORE_FILE] = 'previous';
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+  const current = () => { if (log.includes('write')) throw new Error('cancelled'); };
+  await expect(writeKeystoreFile(metadata, current)).rejects.toThrow('cancelled');
+  expect(log).toEqual(['createWritable', 'write', 'abort']);
+  expect(files[KEYSTORE_FILE]).toBe('previous');
+});
+
+test('revoked approval never dispatches an Android credential write', async () => {
+  android();
+  const { metadata } = await createKeystore('synthetic native replacement');
+  await expect(writeKeystoreFile(metadata, () => { throw new Error('cancelled'); })).rejects.toThrow('cancelled');
+  expect(native.writeCredential).not.toHaveBeenCalled();
+});
+
+
+test('approval identity includes malformed OPFS wraps without parsing or altering them', async () => {
+  const { root, files, log } = fakeRoot();
+  files[KEYSTORE_FILE] = '{broken';
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+  await expect(readKeystoreText()).resolves.toBe('{broken');
+  expect(log).toEqual([]);
+  delete files[KEYSTORE_FILE];
+  await expect(readKeystoreText()).resolves.toBeNull();
+});
+
+test('approval identity uses native malformed bytes or tombstone without reviving OPFS', async () => {
+  android();
+  const opfs = vi.fn(() => { throw new Error('stale OPFS must not be consulted'); });
+  vi.stubGlobal('navigator', { storage: { getDirectory: opfs } });
+  native.readCredential.mockResolvedValue({ initialized: true, serialized: '{broken' });
+  await expect(readKeystoreText()).resolves.toBe('{broken');
+  native.readCredential.mockResolvedValue({ initialized: true });
+  await expect(readKeystoreText()).resolves.toBeNull();
+  expect(opfs).not.toHaveBeenCalled();
+  expect(native.adoptCredential).not.toHaveBeenCalled();
+});
+
+test('approval identity reads malformed legacy bytes without adopting them', async () => {
+  android();
+  native.readCredential.mockResolvedValue({ initialized: false });
+  const { root, files, log } = fakeRoot();
+  files[KEYSTORE_FILE] = '{legacy broken';
+  vi.stubGlobal('navigator', { storage: { getDirectory: async () => root } });
+  await expect(readKeystoreText()).resolves.toBe('{legacy broken');
+  expect(log).toEqual([]);
+  expect(native.adoptCredential).not.toHaveBeenCalled();
 });

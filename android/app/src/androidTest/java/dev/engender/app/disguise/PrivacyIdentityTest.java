@@ -45,8 +45,8 @@ public class PrivacyIdentityTest {
         mark.setBounds(0, 0, 100, 100);
         mark.draw(new Canvas(bitmap));
         assertEquals(0, Color.alpha(bitmap.getPixel(0, 0)));
-        assertTrue(Color.alpha(bitmap.getPixel(1, 50)) > 0);
-        assertEquals(0, Color.alpha(bitmap.getPixel(62, 50)));
-        assertTrue(Color.alpha(bitmap.getPixel(51, 10)) > 0);
+        assertTrue(Color.alpha(bitmap.getPixel(2, 50)) > 0);
+        assertEquals(0, Color.alpha(bitmap.getPixel(50, 50)));
+        assertTrue(Color.alpha(bitmap.getPixel(48, 5)) > 0);
     }
 }

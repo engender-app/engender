@@ -42,7 +42,7 @@ export interface BiometricPorts {
   journalExists(): Promise<boolean>;
   authenticator: PrfAuthenticator;
   readKeystore(): Promise<KeystoreMetadata | null>;
-  writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  writeKeystore(metadata: KeystoreMetadata, current?: () => void): Promise<void>;
 }
 
 const browserPorts = (): BiometricPorts => ({
@@ -78,13 +78,15 @@ export async function setupJournalBiometric(ports: BiometricPorts = browserPorts
 export async function addJournalBiometric(
   dataKey: Uint8Array<ArrayBuffer>,
   ports: BiometricPorts = browserPorts(),
+  current: () => void = () => {},
   beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
   const prfSalt = randomPrfSalt();
   const { credentialId, secret } = await ports.authenticator.enrol(prfSalt);
   const metadata = await wrapDataKeyWithSecret(dataKey, secret, undefined, 'biometric');
+  current();
   beforeCredentialWrite();
-  await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } });
+  await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } }, current);
 }
 
 /** Every later run. Throws BiometricUnavailableError when the authenticator

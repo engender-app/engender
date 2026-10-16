@@ -43,7 +43,7 @@ try {
     const procedure = await j.procedures.upsertProcedure({ name: 'Exact procedure' });
     const episodeInput = { drug: 'Exact episode', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily', startEpochDay: 14000, endEpochDay: 14001, endReason: null };
     const episode = await j.regimen.upsertEpisode(episodeInput);
-    for (let i = 0; i < 75; i++) await j.regimen.upsertEpisode({ ...episodeInput, drug: `Later episode ${i}`, startEpochDay: 16000 + i });
+    for (let i = 0; i < 75; i++) await j.regimen.upsertEpisode({ ...episodeInput, drug: `Later episode ${i}`, startEpochDay: 16000 + i, endEpochDay: 16001 + i });
     await j.milestones.upsertMilestone({ id: milestone, name: 'Exact milestone', epochDay: 15000, photo: { action: 'replace', photo } });
     const entry = await j.entries.upsertEntry({ epochDay: 15001, mood: 4, note: 'Exact entry', attachVideos: [new Uint8Array([1])] });
     await j.photos.attach({ entryId: entry }, photo);
