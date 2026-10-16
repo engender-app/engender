@@ -35,4 +35,11 @@ describe('Quick add backdate sheet entrance (last-audit ui 29)', () => {
     expect(backdateSheet).toMatch(/<Sheet bind:open=\{shown\}/);
     expect(backdateSheet).not.toMatch(/<Sheet bind:open[ >]/);
   });
+
+  it('tells the caller only after the exit has played', () => {
+    // onClose fires as the exit starts; the caller unmounts on false, which
+    // removed the sheet and its scrim in one frame.
+    expect(backdateSheet).toContain('onClosed={() => (open = false)}');
+    expect(backdateSheet).not.toContain('onClose={');
+  });
 });
