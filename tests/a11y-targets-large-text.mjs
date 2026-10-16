@@ -404,18 +404,30 @@ try {
         await settlePage(page, base, '/calendar', 'light');
         await page.evaluate((t) => (document.documentElement.style.fontSize = `${t}%`), text);
         await settle(page, '[data-cal-month-btn]');
-        const searchTop = () => page.evaluate(() => document.querySelector('.cal-field > a').getBoundingClientRect().top);
-        const tops = [await searchTop()];
+        /* Sampled on every animation frame, from before the first click to
+           after the last settle, so a one-frame jump between two reads
+           cannot slip through. */
+        await page.evaluate(() => {
+          window.__tops = [];
+          window.__sampling = true;
+          const tick = () => {
+            window.__tops.push(document.querySelector('.cal-field > a').getBoundingClientRect().top);
+            if (window.__sampling) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
         for (let i = 0; i < 12; i++) {
           await page.locator('[data-cal-step="next"]').click();
-          tops.push(await searchTop());
           await page.waitForTimeout(450);
-          tops.push(await searchTop());
         }
+        const tops = await page.evaluate(() => {
+          window.__sampling = false;
+          return window.__tops;
+        });
         const label = `journal steps ${lang} ${width}px ${text}%`;
         const moved = tops.filter((t) => Math.abs(t - tops[0]) > 0.5);
         if (moved.length) failures.push(`${label}: search top moved while stepping through 12 months (${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')})`);
-        console.log(`${label}: search top ${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')} over 25 reads`);
+        console.log(`${label}: search top ${[...new Set(tops.map((t) => t.toFixed(1)))].join(', ')} over ${tops.length} frames`);
       }
     }
     await setAppLanguage(page, 'en');
