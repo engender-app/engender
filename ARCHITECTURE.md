@@ -1018,6 +1018,15 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Visible text first.** `aria-label` doesn't replace a card's visible reading.
 - **Audit records.** `docs/accessibility-audit-2026-09-30*` holds the latest audit.
 
+Setup keeps one empty SvelteKit shallow-history entry while mounted.
+Browser Back consumes that entry, calls the same previous-step function as
+the setup arrow, and rearms it. Answers stay in component state, never in
+the address or history payload. Finishing consumes the shallow entry and
+replaces the underlying setup route with Today before releasing the busy
+state. Android delegates to the mounted setup owner; Welcome backgrounds
+the app. The access-mode module handles its own inner Back controls, and
+its initial list remains a hard gate.
+
 ## 9. Native layer
 
 Android Back is registered before the journal opens. While a lock, key or

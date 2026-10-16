@@ -546,6 +546,27 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
   });
 
+  test('setup Back delegates to its mounted stepper and Welcome minimizes', async () => {
+    const { registerSetupBack } = await import('../onboarding/back');
+    const deps = makeDeps();
+    window.location.pathname = '/onboarding';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const previous = vi.fn().mockReturnValue(true);
+    const unregister = registerSetupBack(previous);
+    try {
+      back();
+      expect(previous).toHaveBeenCalledTimes(1);
+      expect(window.history.back).not.toHaveBeenCalled();
+      expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+      previous.mockReturnValue(false);
+      back();
+      expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+    } finally {
+      unregister();
+    }
+  });
+
   test('Back replaces a deep link with home when no surface or history remains', () => {
     const deps = makeDeps();
     window.location.pathname = '/health/appointments';

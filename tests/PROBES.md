@@ -1085,3 +1085,19 @@ then cold-launch. The key-gate instrumentation fixture is emulator-only. The pro
 cancels an initial native authentication prompt before checking app Back.
 Physical devices require the shared phone lease before any adb command.
 The package must be isolated; this probe does not seed or clear data.
+
+### First-run setup Back
+
+After a production build, run `node tests/setup-back-check.mjs <evidence-dir>`.
+It types disposable answers, checks history Back against the setup arrow,
+walks restore cancellation and both access-mode screens, then finishes and
+checks Back from Today. `SETUP_ENTRY=/onboarding` checks direct entry;
+`SETUP_THEME=dark` captures the dark theme. Frame measurements and actual
+screencast PNGs are retained beside the result receipt.
+
+For native Back, add `<serial> dev.engender.app.test.ui10` after the evidence
+directory. Install a fresh isolated production debug APK first. The probe
+uses real `KEYCODE_BACK`, records native activity state on Welcome and
+checks Today after reopening. Take the shared phone lease before using a
+physical serial. A sleeping or locked physical display can pause WebView
+animations; that is a harness failure, not evidence about Back.

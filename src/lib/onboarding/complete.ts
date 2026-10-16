@@ -39,7 +39,7 @@ export interface SetupCompletion {
   /** Out of setup and into the app. Called even when the disguise was
       applied: on web nothing restarts, and on Android the process is
       already gone before this could matter. */
-  leaveSetup: () => void;
+  leaveSetup: () => void | Promise<void>;
 }
 
 export async function completeSetup(completion: SetupCompletion): Promise<void> {
@@ -63,5 +63,5 @@ export async function completeSetup(completion: SetupCompletion): Promise<void> 
     }
   }
 
-  completion.leaveSetup();
+  await completion.leaveSetup();
 }

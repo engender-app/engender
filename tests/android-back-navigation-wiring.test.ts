@@ -20,6 +20,11 @@ describe('android back button routing', () => {
     expect(resolveAndroidBackAction('', 3)).toBe('minimize');
   });
 
+  it('minimizes on Welcome after the setup owner declines Back', () => {
+    expect(resolveAndroidBackAction('/onboarding', 3)).toBe('minimize');
+    expect(resolveAndroidBackAction('/onboarding', 0)).toBe('minimize');
+  });
+
   it('walks in-app history when there is somewhere to go back to', () => {
     expect(resolveAndroidBackAction('/settings', 3)).toBe('history-back');
   });

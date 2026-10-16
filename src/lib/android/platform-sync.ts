@@ -42,6 +42,7 @@ import { quietHoursOf, type QuietHours } from '../unprompted/quietHours';
 import { buildAndroidReminderPayload } from '$lib/reminders/payload';
 import type { AndroidReminderSyncPayload, AndroidReminderTexts } from '$lib/reminders/android-bridge';
 import { dismissActiveOverlay } from '../components/overlayLock';
+import { setupBack } from '../onboarding/back';
 import { resolveAndroidBackAction } from './back-navigation';
 
 /* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
@@ -330,6 +331,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
         return;
       }
       if (dismissActiveOverlay()) return;
+      if (window.location.pathname === '/onboarding' && setupBack()) return;
       switch (resolveAndroidBackAction(window.location.pathname, deps.navigationDepth())) {
         case 'minimize':
           void deps.androidBackButton.minimizeApp();

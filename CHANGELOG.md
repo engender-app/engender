@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Back during first-run setup now returns to the previous step and keeps
+your answers. Finishing setup removes it from the way back from Today.
+
 Android now recovers when its WebView renderer stops instead of closing
 the app. The journal opens as it does after restarting the app, with an
 unsaved entry draft kept.
