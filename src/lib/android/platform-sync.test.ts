@@ -356,6 +356,7 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
   return {
     isAndroid: () => true,
     isReady: () => true,
+    isGateActive: () => false,
     todayEpochDay: () => 20313,
     prefs: {
       checkInEnabled: true,
@@ -445,6 +446,49 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
   afterEach(() => {
     platformSync.stopAndroidPlatformSync();
     vi.unstubAllGlobals();
+  });
+
+  test.each([true, false])('Back backgrounds a gate without changing its deep route (ready: %s)', (ready) => {
+    let gated = true;
+    const deps = makeDeps({ isReady: () => ready, isGateActive: () => gated, navigationDepth: () => 2 });
+    window.location.pathname = '/health/appointments';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    back();
+    expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(deps.replaceRoute).not.toHaveBeenCalled();
+    gated = false;
+    back();
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+  });
+
+  test('a gate takes priority over an overlay and reads the current lock state', async () => {
+    let gated = false;
+    const deps = makeDeps({ isGateActive: () => gated });
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerOverlay } = await import('../components/overlayLock');
+    const dismiss = vi.fn();
+    const release = registerOverlay({} as HTMLElement, { dismiss });
+    gated = true;
+    back();
+    expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+    expect(dismiss).not.toHaveBeenCalled();
+    release();
+  });
+
+  test('does not mirror unhydrated preferences or read the journal before it opens', async () => {
+    const deps = makeDeps({ isReady: () => false, isGateActive: () => true });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(deps.androidBackButton.addListener).toHaveBeenCalledTimes(1);
+    expect(deps.androidDisguise.setLauncherIdentity).not.toHaveBeenCalled();
+    expect(deps.androidLockTiming.setTiming).not.toHaveBeenCalled();
+    expect(deps.androidScreenCapture.setAllowed).not.toHaveBeenCalled();
+    expect(deps.journal.reminders.getReminders).not.toHaveBeenCalled();
+    expect(deps.journal.stock.reconcileRunOutReminders).not.toHaveBeenCalled();
+    expect(deps.androidReminders.consumeLaunchRoute).not.toHaveBeenCalled();
   });
 
   test('Back closes the nested calendar and sheet before navigating', async () => {

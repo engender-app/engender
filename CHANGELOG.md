@@ -8,6 +8,9 @@ update, and "none" is a perfectly good answer to any of them.
 
 ## Unreleased
 
+Android Back now backgrounds the app from a lock or key screen. Unlocking
+returns to the screen that was locked, including after Back and reopening.
+
 An address the app does not know now opens a screen of its own. A stale
 bookmark used to land on a bare "404 Not Found" in English with nothing to
 press. It now has a header, one sentence in your language and a button to

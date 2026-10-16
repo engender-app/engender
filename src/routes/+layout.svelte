@@ -450,7 +450,8 @@
      does not restart. */
   $effect(() => {
     if (!isAndroid()) return;
-    const ready = isReadyState(bootState);
+    // Track readiness even though Back is registered before the key arrives.
+    isReadyState(bootState);
     const checkInEnabled = prefs.checkInEnabled;
     const checkInTime = prefs.checkInTime;
     const checkInAffirmationsEnabled = prefs.checkInAffirmationsEnabled;
@@ -472,7 +473,6 @@
     const launcherIconShape = prefs.launcherIconShape;
     const lockAfter = prefs.lockAfter;
     const allowScreenCapture = prefs.allowScreenCapture;
-    if (!ready || !isAndroid()) return;
 
     let cleanup: (() => void) | undefined;
     let unmounted = false;
@@ -532,6 +532,8 @@
           androidLockTiming,
           androidScreenCapture,
           androidBackButton,
+          isGateActive: () => locked || needsPassphrase || needsAuthentication ||
+            needsDeviceRecovery || needsAccessModeAfterRecovery,
           // Hidden built-ins and this language's custom lines are read fresh on
           // every call (phase 5 ticket 15) rather than captured once here, so a
           // change lands on the next sync without needing this effect to restart.

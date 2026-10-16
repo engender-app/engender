@@ -1045,3 +1045,15 @@ Polish, reduced motion, the backup link and dismissal. This is Linux engine
 emulation with Safari user agents, not Safari eviction proof or Apple hardware
 verification. Apple menu sources: [iPhone](https://support.apple.com/guide/iphone/iph42ab2f3a7/ios)
 and [macOS](https://support.apple.com/104996).
+
+### Android Back at lock and key gates
+
+`node tests/android-tier/lock-gate-back.mjs <serial> <isolated-package> pin|key <output.json>`
+uses hardware Back events against the production app. Seed the PIN variant
+with `LockedJournalProcessDeathTest#seed`; it checks a cold PIN gate and
+normal history, then locks a deep route, backgrounds it with Back, returns
+and unlocks on the same route. For `key`, seed device-bound access with the
+key-gate fixture, restore the production assets and cold-launch. The probe
+cancels an initial native authentication prompt before checking app Back.
+Physical devices require the shared phone lease before any adb command.
+The package must be isolated; this probe does not seed or clear data.

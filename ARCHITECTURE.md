@@ -1010,6 +1010,12 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 
 ## 9. Native layer
 
+Android Back is registered before the journal opens. While a lock, key or
+access-recovery gate is visible, it backgrounds the app before consulting
+overlays or route history. The hidden route stays in place for the next
+unlock. Journal reads, reminder launch routes and native preference mirrors
+still wait for readiness.
+
 ```mermaid
 sequenceDiagram
   participant N as Notification / widget
