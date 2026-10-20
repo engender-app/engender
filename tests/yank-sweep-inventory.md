@@ -24,6 +24,20 @@ Above 600px, the injected bloat mark widens to 35% of the viewport so its
 painted defect still exceeds the unchanged camera proof threshold. Narrow
 and device proof geometry stays unchanged.
 
+Android keeps a visited door mounted, hidden and inert
+(`[data-retained-door]`), so preparation counts such a node as gone when it is
+the screen left behind and accepts it as the target shown again; every other
+screen must still disconnect. The device runner drives only a debug build under
+`dev.engender.app.test.<name>` (`--package`, with `--port` for its devtools
+forward) and refuses the real app id before any adb call.
+
+`--force-inset <px>` gives the desktop runner the phone's status-bar inset and
+the Android platform answer so the status strip exists in its casts; each
+settle asserts the strip's height and the report records `forceInset`.
+`--reduced-motion` runs the control pass on either runner and is recorded in
+the runtime. `yank-sweep-strip-check.mjs` reads the saved casts of such a run
+and names the first frame that takes the strip off `--bg`.
+
 Theme and palette preparation wait for their actual reset transition and
 boot preference mirror before another control is tested. Measurement still
 starts after preparation with its existing window.
