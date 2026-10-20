@@ -2713,3 +2713,25 @@ export function missingProofYanks(report, { checkArrival = true } = {}) {
     return missing.map((item) => label ? `${label}: ${item}` : item);
   });
 }
+
+/** What the device runner drives, read from its argv before any adb call.
+ *  `dev.engender.app` holds the real journal and the runner installs,
+ *  force-stops and launches its package, so only a debug build under
+ *  `dev.engender.app.test.<name>` is accepted. The forward port is the
+ *  caller's own, so the run removes only that forward. */
+export function deviceTargetFromArgs(args) {
+  const flag = (name) => {
+    const at = args.indexOf(`--${name}`);
+    return at >= 0 ? args[at + 1] : undefined;
+  };
+  const positional = args.filter((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
+  const serial = positional.find((a) => !a.endsWith('.apk'));
+  if (!serial) throw new Error('pass the device serial, e.g. node tests/yank-sweep-device.mjs 64101JEA325797 --package dev.engender.app.test.<name> [apk]');
+  const pkg = flag('package');
+  if (!pkg) throw new Error('pass --package dev.engender.app.test.<name>: the runner never drives the real app');
+  if (!/^dev\.engender\.app\.test\.[a-z0-9]+$/.test(pkg))
+    throw new Error(`refusing package "${pkg}": only dev.engender.app.test.<name> is accepted, dev.engender.app is never driven`);
+  const port = Number(flag('port') ?? '9341');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be a TCP port, got "${flag('port')}"`);
+  return { serial, pkg, port, apk: positional.find((a) => a.endsWith('.apk')) };
+}

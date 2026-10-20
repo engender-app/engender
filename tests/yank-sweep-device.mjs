@@ -123,6 +123,7 @@ import {
   replySlices,
   scenesFor,
   resetSceneProfile,
+  deviceTargetFromArgs,
   sceneForTheme,
   samplerExpression,
   scrapeIdExpression,
@@ -137,13 +138,16 @@ const flag = (name, fallback) => {
   const at = args.indexOf(`--${name}`);
   return at >= 0 ? args[at + 1] : fallback;
 };
-const serial = args.find((a) => !a.startsWith('--') && !args[args.indexOf(a) - 1]?.startsWith('--'));
-if (!serial) {
-  console.error('pass the device serial, e.g. node tests/yank-sweep-device.mjs 64101JEA325797 [apk]');
+/* Refuse before the first adb call: `dev.engender.app` is Alicja's real
+   journal and this script installs, force-stops and launches its package. */
+let deviceTarget;
+try {
+  deviceTarget = deviceTargetFromArgs(args);
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
-const APK = args.find((a) => a.endsWith('.apk'));
-const PKG = 'dev.engender.app';
+const { serial, pkg: PKG, port: PORT, apk: APK } = deviceTarget;
 const outDir = resolve(flag('out', resolve(here, '../.claude/yank-sweep-device')));
 const only = flag('scenes', '')
   .split(',')
@@ -191,8 +195,8 @@ async function attach() {
     const socket = appPid && new RegExp(`webview_devtools_remote_${appPid}\\b`).exec(unix)?.[0];
     if (!socket) continue;
     try {
-      adb('forward', 'tcp:9333', `localabstract:${socket}`);
-      const list = await fetch('http://127.0.0.1:9333/json/list', {
+      adb('forward', `tcp:${PORT}`, `localabstract:${socket}`);
+      const list = await fetch(`http://127.0.0.1:${PORT}/json/list`, {
         signal: AbortSignal.timeout(3000)
       }).then((r) => r.json());
       const target = list.find((t) => t.type === 'page' && t.url.startsWith('https://localhost'));
@@ -1134,7 +1138,7 @@ await writeFile(
   )
 );
 client.close();
-adb('forward', '--remove', 'tcp:9333');
+adb('forward', '--remove', `tcp:${PORT}`);
 
 const styleTotal = report.reduce((n, r) => n + (r.styleYanks?.length ?? 0), 0);
 const renderTotal = report.reduce((n, r) => n + (r.pixelFindings?.length ?? 0), 0);
