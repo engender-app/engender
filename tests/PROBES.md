@@ -789,7 +789,7 @@ on this page ran green on 2026-09-23.
 | Script | Measures |
 | --- | --- |
 | `sweep:yanks` | every navigation and state change, per frame, for teleports and vanishes (`--prove` injects three) |
-| `sweep:yanks-device` | the same sweep on a phone over USB; see the file's header for the APK steps |
+| `sweep:yanks-device` | the same sweep on a phone over USB; needs `--package dev.engender.app.test.<name>` (never `dev.engender.app`, refused before any adb call) and takes `--port`, `--reduced-motion`; see the file's header for the APK steps |
 | `sweep:hydration` | every screen cold-mounted in both database profiles, for the pops the gesture sweep misses |
 | `gallery:cohesion` | every route read against DIRECTION.md from the computed tree (`savebar-frame.test.ts` reads it) |
 | `gallery:savebar` | what the save bar covers, per screen and viewport, in minutes rather than the cohesion sweep's 25 |
@@ -835,7 +835,6 @@ available for the surface or device it measures.
 | `device-bound-writes` | verify wrapping-key reuse and failed metadata writes on real OPFS and IndexedDB; run with `node tests/device-bound-writes.mjs` |
 | `android-tab-status-strip` | sample tab and system-icon backgrounds in an Android WebView; requires a demo build and attached device |
 | `yank-sweep-strip-check` | read a sweep's saved casts and check the status strip (`.app::before`, inset minus 9 CSS px) against `--bg` in every frame, naming the first frame and millisecond that leaves it; a band a sheet's scrim dims evenly is not counted. Run `node tests/yank-sweep-strip-check.mjs <sweep out dir>` over a device sweep or a desktop `yank-sweep --force-inset 58` run; exits 1 when any cast moves. Seen failing on a demo build copy with `.app::before` transparent (11 of 14 door and mood casts) before passing on the real build (`mood-pick` only, where the screen and editor field cover the band on both builds) |
-| `yank-sweep-device` | the yank sweep through a phone's WebView; `node tests/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [--port N]`, never `dev.engender.app` (refused before any adb call). Build the test APK with the demo build, `npx cap sync android` and a changed `applicationId`; `--reduced-motion` runs the control pass |
 | `journal-book-height` | measure the journal book height against a demo build (`measure:journal-book`) |
 | `journal-book-print-diff` | compare printed journal output between demo builds (`measure:journal-book-print`) |
 | `journal-book-summary-gallery` | capture journal book summary crops (`gallery:journal-book-summary`) |
