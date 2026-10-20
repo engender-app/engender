@@ -36,7 +36,7 @@
      npx cap sync android
      JAVA_HOME=~/.sdkman/candidates/java/21.0.12-tem \
        android/gradlew -p android :app:assembleDebug
-     node tests/yank-sweep-device.mjs <serial> [path/to/app-debug.apk]
+     node tests/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [path/to/app-debug.apk]
 
     `--scenes a,b` narrows the run, `--passes N` sets the repeats,
     `--themes light,dark` (both, by default), `--out <dir>` names the report
@@ -45,6 +45,14 @@
     fails unless the style arithmetic and the camera both catch them,
     `--dump` writes every scene's style frames as JSON, and
     `--cast-scenes a,b` saves all compositor frames for named scenes.
+    `--reduced-motion` runs the control pass (`prefers-reduced-motion:
+    reduce` emulated over CDP, recorded as `reducedMotion` in the runtime).
+
+    `--package dev.engender.app.test.<name>` is required: the runner
+    installs, force-stops and launches it, and `dev.engender.app` is
+    Alicja's real journal, so it is refused before any adb call (build the
+    test APK under that id; see `tests/PROBES.md`). `--port N` (default
+    9341) is the devtools forward, the only one this run removes.
 
     `--hydration` (ticket 108) swaps the gesture scene table for the full
     screen inventory and walks it cold in both database profiles: the
@@ -172,6 +180,9 @@ const comparePath = flag(
   resolve(outDir, '../', hydration ? 'hydration-sweep' : 'yank-sweep', 'report.json')
 );
 const prove = args.includes('--prove');
+/** The control pass the desktop sweep describes: the WebView told
+    `prefers-reduced-motion: reduce` over CDP, recorded in the report. */
+const reducedMotion = args.includes('--reduced-motion');
 const dump = args.includes('--dump');
 const castScenes = flag('cast-scenes', '').split(',').filter(Boolean);
 const SCENES = hydration ? hydrationScreensFor({ prove, only }) : scenesFor({ prove, only });
@@ -297,6 +308,7 @@ let client = null;
 const errors = [];
 const runtime = {
   serial,
+  reducedMotion,
   model: adb('shell', 'getprop', 'ro.product.model').trim(),
   androidVersion: adb('shell', 'getprop', 'ro.build.version.release').trim(),
   sdk: adb('shell', 'getprop', 'ro.build.version.sdk').trim()
@@ -313,6 +325,7 @@ async function initClient(c) {
   await c.send('Page.addScriptToEvaluateOnNewDocument', {
     source: STUB_PERSIST_SCRIPT
   });
+  if (reducedMotion) await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   c.onEvent(onEvent);
 }
 
