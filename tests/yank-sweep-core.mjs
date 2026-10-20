@@ -873,15 +873,20 @@ export const gestureNavigationExpression = (path, predecessor = null) => `(${asy
   const intermediate = predecessor ?? (path === '/settings/licences' ? '/calendar' : '/settings/licences');
   if (previousRoute === intermediate) await jump(intermediate === '/calendar' ? '/settings/licences' : '/calendar');
   await jump(intermediate);
-  await wait(() => roots.every(node => !node.isConnected), 'old screen remained mounted');
+  /* Android keeps a visited door mounted, hidden and inert, so a door left
+     behind never disconnects and a revisited door is the same node shown
+     again. A retained door counts as gone at both waits; every other screen
+     still has to disconnect. */
+  const gone = node => !node.isConnected || node.matches('[data-retained-door]');
+  await wait(() => roots.every(gone), 'old screen remained mounted');
   const intermediateRoots = [...document.querySelector('#app-main').children];
   await jump(path);
-  await wait(() => intermediateRoots.every(node => !node.isConnected), 'target screen did not remount');
+  await wait(() => intermediateRoots.every(gone), 'target screen did not remount');
   await wait(() => !document.documentElement.dataset.appearanceTransition, 'appearance transition');
   if (performance.timeOrigin !== origin) throw new Error('gesture SPA navigation replaced its document');
   const proof = { kind: 'spa-mount', requested: path, previousRoute, intermediate,
     actualRoute: location.pathname + location.search, previousTimeOrigin: origin, timeOrigin: performance.timeOrigin,
-    oldRootDetached: roots.every(node => !node.isConnected), targetMounted: document.querySelector('#app-main').children.length > 0 };
+    oldRootDetached: roots.every(gone), targetMounted: document.querySelector('#app-main').children.length > 0 };
   globalThis.__sweepDocumentProof = null;
   return globalThis.__sweepNavigationProof = proof;
 }})(${JSON.stringify(path)}, ${JSON.stringify(predecessor)})`;
