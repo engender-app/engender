@@ -5,6 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
+import { REVIEWED_CONTENT } from '../src/lib/reviewedContent';
 
 const script = fileURLToPath(new URL('../scripts/check-reviewed-content.mjs', import.meta.url));
 
@@ -15,11 +16,12 @@ function run(today: string, env: NodeJS.ProcessEnv = {}): string {
   });
 }
 
-test('every shipped area warns, and the run still passes, once its limit is long past', () => {
+test('every registered entry warns, and the run still passes, once its limit is long past', () => {
   const output = run('2099-01-01');
-  const warned = output.split('\n').filter((line) => line.startsWith('warning: ')).map((line) => line.slice(9).split(',')[0]);
+  const warned = output.split('\n').filter((line) => line.startsWith('warning: '));
 
-  expect(new Set(warned)).toEqual(new Set(['Resources', 'Roadmap', 'Voice', 'Wear']));
+  expect(warned).toHaveLength(REVIEWED_CONTENT.length);
+  expect(new Set(warned.map((line) => line.slice(9).split(',')[0]))).toEqual(new Set(REVIEWED_CONTENT.map((entry) => entry.area)));
 });
 
 test('in GitHub Actions each warning is an annotation on the run', () => {
