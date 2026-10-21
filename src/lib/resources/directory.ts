@@ -4,9 +4,15 @@
    with no signal, and this is the only screen in the app whose whole content
    is other people's phone numbers and addresses.
 
-   Trans-specific only. No 112, no 999, no general crisis line: a person in
-   Poland already knows those numbers, and a directory that opens with them
-   buries the three entries they came here for.
+   Trans-specific first, and no 112 or 999: a person in Poland already knows
+   those numbers, and a directory that opens with them buries the entries
+   they came here for. The one exception is the general crisis lines under
+   Poland (functional audit ticket 40). Lambda answers three hours on
+   weekday evenings, so an adult in Poland at night or at a weekend had no
+   line on this screen that was open and local. 116 123 and 800 70 2222 are
+   the two free adult lines that answer at any hour, and 116 111 is the
+   same for under-18s. None of the three is a trans service, and their
+   descriptions say so rather than letting anyone find out on the call.
 
    Keys and language-neutral facts only. A name like "Fundacja Trans-Fuzja" is
    a proper noun and reads the same in both catalogues, and a number is a
@@ -38,16 +44,19 @@ interface ResourceShape {
   kind: ResourceKind;
   /** As the organisation writes it. Never translated. */
   name: string;
-  /** Dialable as written, spaces and all: it goes into a tel: URI. Always
-      with its country code, because the person holding the phone is in
-      Poland and a UK line published as 0300 330 5468 does not ring from
-      there. */
+  /** Dialable as written, spaces and all: it goes into a tel: URI. With its
+      country code, because the person holding the phone is in Poland and a
+      UK line published as 0300 330 5468 does not ring from there. Polish
+      116 short codes and 800 freephone numbers are the exception: they
+      exist only inside the Polish network, the operators publish them
+      without +48, and a short code is not guaranteed to route with it. */
   phone?: string;
   url?: string;
 }
 
-/** The day a person last checked every number and address below. */
-export const RESOURCES_REVIEWED_ON = '2026-08-19';
+/** The day a person last checked every number and address below. The
+    release-time guard in reviewedContent.ts warns six months after it. */
+export const RESOURCES_REVIEWED_ON = '2026-10-21';
 
 const ENTRIES = [
   {
@@ -56,7 +65,34 @@ const ENTRIES = [
     kind: 'helpline',
     name: 'Telefon Zaufania Lambda Warszawa',
     phone: '+48 22 628 52 22',
-    url: 'https://lambdawarszawa.org/wsparcie'
+    url: 'https://www.lambdawarszawa.org/wsparcie'
+  },
+  {
+    key: 'pl-116123',
+    region: 'pl',
+    kind: 'helpline',
+    name: 'Telefon Zaufania dla Dorosłych',
+    phone: '116 123',
+    /* NASK's site for the line, never 116123.pl (a parked domain for sale)
+       or 116123.edu.pl (a certificate for another host, and behind it a page
+       still giving the old 14:00 to 22:00 hours). */
+    url: 'https://116sos.pl/'
+  },
+  {
+    key: 'pl-centrum-wsparcia',
+    region: 'pl',
+    kind: 'helpline',
+    name: 'Centrum Wsparcia, Fundacja ITAKA',
+    phone: '800 70 2222',
+    url: 'https://centrumwsparcia.pl/'
+  },
+  {
+    key: 'pl-116111',
+    region: 'pl',
+    kind: 'helpline',
+    name: 'Telefon Zaufania dla Dzieci i Młodzieży',
+    phone: '116 111',
+    url: 'https://116111.pl/'
   },
   {
     key: 'pl-transfuzja',
@@ -78,6 +114,16 @@ const ENTRIES = [
     url: 'https://tranzycja.pl/'
   },
   {
+    key: 'pl-tranzycja-testosterone',
+    region: 'pl',
+    kind: 'info',
+    name: 'Maskulinizująca terapia hormonalna',
+    /* tranzycja.pl's testosterone chapter, the twin of its feminising one.
+       The directory's English reading is all feminising (Transfeminine
+       Science), so this is the transmasculine reading ticket 40 asked for. */
+    url: 'https://tranzycja.pl/krok-po-kroku/maskulinizujaca-terapia-hormonalna/'
+  },
+  {
     key: 'pl-zaimki',
     region: 'pl',
     kind: 'info',
@@ -91,14 +137,6 @@ const ENTRIES = [
     name: 'Trans Lifeline',
     phone: '+1 877 565 8860',
     url: 'https://translifeline.org/'
-  },
-  {
-    key: 'int-trevor',
-    region: 'int',
-    kind: 'helpline',
-    name: 'The Trevor Project',
-    phone: '+1 866 488 7386',
-    url: 'https://www.thetrevorproject.org/'
   },
   {
     key: 'int-mindline-trans',
@@ -140,7 +178,7 @@ const ENTRIES = [
 export type ResourceKey = (typeof ENTRIES)[number]['key'];
 
 /* What a reader gets: one type with optional phone and url, rather than the
-   union of eight literal shapes ENTRIES has, half of which carry no `phone`
+   union of literal shapes ENTRIES has, half of which carry no `phone`
    property to read at all. The key stays narrow through that widening, which
    is what lets labels.ts index its maps directly instead of casting them back
    to strings and carrying a fallback for a key that cannot exist. */

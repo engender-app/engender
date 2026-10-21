@@ -23,11 +23,14 @@ type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
 const DESCRIPTION: Record<ResourceKey, Message> = {
   'pl-lambda': m.resources_pl_lambda,
+  'pl-116123': m.resources_pl_116123,
+  'pl-centrum-wsparcia': m.resources_pl_centrum_wsparcia,
+  'pl-116111': m.resources_pl_116111,
   'pl-transfuzja': m.resources_pl_transfuzja,
   'pl-tranzycja': m.resources_pl_tranzycja,
+  'pl-tranzycja-testosterone': m.resources_pl_tranzycja_testosterone,
   'pl-zaimki': m.resources_pl_zaimki,
   'int-translifeline': m.resources_int_translifeline,
-  'int-trevor': m.resources_int_trevor,
   'int-mindline-trans': m.resources_int_mindline_trans,
   'int-gdb': m.resources_int_gdb,
   'int-transfemscience': m.resources_int_transfemscience,
@@ -36,11 +39,14 @@ const DESCRIPTION: Record<ResourceKey, Message> = {
 
 const HOURS: Record<ResourceKey, Message | null> = {
   'pl-lambda': m.resources_pl_lambda_hours,
+  'pl-116123': m.resources_hours_always,
+  'pl-centrum-wsparcia': m.resources_hours_always,
+  'pl-116111': m.resources_hours_always,
   'pl-transfuzja': null,
   'pl-tranzycja': null,
+  'pl-tranzycja-testosterone': null,
   'pl-zaimki': null,
   'int-translifeline': m.resources_int_translifeline_hours,
-  'int-trevor': m.resources_int_trevor_hours,
   'int-mindline-trans': m.resources_int_mindline_trans_hours,
   'int-gdb': null,
   'int-transfemscience': null,
