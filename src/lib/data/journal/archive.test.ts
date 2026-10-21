@@ -1045,7 +1045,9 @@ test('every column in the schema is either carried or deliberately left behind',
   for (const { name } of tables) {
     const columns = await db.query<{ name: string }>(`PRAGMA table_info(${name})`);
     // Stock identity is rebuilt from the drug's wire spelling on this device.
-    const known = [...CARRIED[name], ...LEFT_BEHIND, ...(name === 'medication_stock' ? ['drug_key'] : [])];
+    const known = [...CARRIED[name], ...LEFT_BEHIND, ...(name === 'medication_stock' ? ['drug_key'] : []),
+      // A nullable note FA 04 adds for FA 30; nothing writes or carries it yet.
+      ...(name === 'hair_removal_session' ? ['note'] : [])];
     for (const column of columns) {
       assert.ok(known.includes(column.name), `${name}.${column.name} is neither carried nor left behind`);
     }

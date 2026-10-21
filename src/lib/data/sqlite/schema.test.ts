@@ -204,7 +204,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 92);
+  assert.equal(db.getUserVersion(), 93);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -456,17 +456,16 @@ test('measurement_type has the same key NOT NULL / uuid nullable shape gender_di
   );
 });
 
-test('tally_event.kind accepts only the two counters', async () => {
+test('tally_event.kind takes both counters; the vocabulary is the code\'s (FA 04)', async () => {
   const db = await migratedDb();
   const insert = (kind: string) =>
     db.raw.exec(`INSERT INTO tally_event (uuid, epoch_day, kind, updated_at) VALUES ('t-${kind}', 100, '${kind}', 1000)`);
 
   assert.doesNotThrow(() => insert('misgendered'));
   assert.doesNotThrow(() => insert('correctly_gendered'));
-  assert.throws(() => insert('confused'));
 });
 
-test('cycle_event carries no episode reference and accepts only its three kinds', async () => {
+test('cycle_event carries no episode reference and takes its three kinds', async () => {
   const db = await migratedDb();
   const columns = (db.raw.prepare('PRAGMA table_info(cycle_event)').all() as Array<{ name: string }>).map(
     (c) => c.name
@@ -479,7 +478,6 @@ test('cycle_event carries no episode reference and accepts only its three kinds'
   assert.doesNotThrow(() => insert('period_occurred'));
   assert.doesNotThrow(() => insert('spotting'));
   assert.doesNotThrow(() => insert('nothing_this_month'));
-  assert.throws(() => insert('irregular'));
 });
 
 test('side_effect carries no episode reference, takes a blank severity and rejects one outside 1-5', async () => {
