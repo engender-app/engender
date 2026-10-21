@@ -56,7 +56,7 @@
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
-  import { bandsFor, comfortBand, pitchAxis } from '$lib/audio/bands';
+  import { comfortBand, pitchAxis } from '$lib/audio/bands';
   import { decodePitchTrack } from '$lib/audio/track';
   import { pitchDensity } from '$lib/audio/density';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
@@ -67,7 +67,6 @@
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -211,20 +210,11 @@
      benchmarkDelta.ts itself rather than here. */
   let delta = $derived(pair ? acousticDelta(anchors[pair.left], anchors[pair.right]) : undefined);
 
-  /* The pair's shared caption takes its language from the left take. Safe
-     because a pair is only comparable at all when both were read from the
-     same passage, which is benchmarkDelta.ts's own gate - and where they
-     were not, the caption still names whose figures the bands are, which is
-     what ADR-0059 asks of it. The no-pair arm is never displayed (the
-     caption renders inside `{#if comparing && pair}`) but is still
-     evaluated, so it has to be something rather than an index into null. */
-  let pairBands = $derived(bandsFor(pair ? anchors[pair.left].passageKey : '', getLocale()));
-
   /* The pair as one picture (redesign ticket 42). Two stacked time plots is
      what this view was, and two forty-second scribbles is not what somebody
      comparing two months of work is reading: the question is where the
      voice sat, which is one axis with both takes' shapes on it, back to
-     back, inside the same cited bands.
+     back on the same hertz axis.
 
      One axis over both takes rather than one each. Two shapes placed
      against private axes would read as comparable while putting the same
@@ -372,7 +362,7 @@
     <ScreenHeader title={m.vc_compare()} back={() => (comparing = false)} />
     <p class="compare-gap">{gapLabel}</p>
 
-    <!-- Where each read sat, on one axis, inside the same bands. The
+    <!-- Where each read sat, on one axis. The
          earlier take reads leftward from the spine and the later one
          rightward; which is which is said in words under it, because
          nothing on this screen may read as a direction of travel
@@ -384,9 +374,6 @@
           trace={[]}
           pair={{ earlier: pairFigure.earlier, later: pairFigure.later }}
           tickLabel={hzLabel}
-          language={pairBands.language}
-          languageGuessed={pairBands.guessed}
-          captionShared
           role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
         />
         <p class="vc-sides">
@@ -415,13 +402,6 @@
           </div>
         </div>
       {/each}
-    </div>
-
-    <!-- One caption for the pair. Two of them, each in half the width, is
-         the same three paragraphs twice over the two charts they are about
-         (PitchBandsCaption.svelte's own note). -->
-    <div class="screen-part" {...roleAttrs(roleAt(activeFlag.roles, SECTION_ROLE.trend))}>
-      <PitchBandsCaption language={pairBands.language} languageGuessed={pairBands.guessed} />
     </div>
 
     <div class="screen-part vc-delta" data-benchmark-delta>
@@ -571,7 +551,7 @@
               <ChartEmpty>{m.vc_trend_too_little()}</ChartEmpty>
             {/if}
           </ChartCard>
-          <!-- The five figures that carry no band, each against the
+          <!-- Own-series figures, each against the
                person's own earlier takes (ticket 29, ADR-0060). Under
                the pitch trend, which is the one figure with a published
                range to read against, and above the picking list, because
@@ -777,7 +757,7 @@
   }
 
   /* Which side is which, under the figure rather than on it: a label
-     inside the box would sit on the bands, and the two dates are the only
+     inside the box would crowd the marks, and the two dates are the only
      thing that says which shape is the earlier read. */
   .vc-sides {
     display: flex;

@@ -36,7 +36,6 @@ import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
-import type { IntervalMoodPatternArea } from './intervalMoodPattern';
 import { makeErasArea, type ErasArea } from './eras';
 import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
 import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
@@ -338,12 +337,6 @@ export interface Journal {
       not scope drift. A view over rows `stats`, `doses` and `dimensions`
       own, not a fourth owner for any of them. */
   correlationCards: CorrelationCardsArea;
-  /** Day-average mood bucketed by a cyclical position - day of interval
-      across completed injectable regimen intervals, or a person-chosen
-      interval length (phase 5 ticket 09) - descriptive throughout, the same
-      as correlationCards and the comparability flag. A view over rows
-      `stats` and `doses` own, not a third owner for either. */
-  intervalMoodPattern: IntervalMoodPatternArea;
   /** Everything above at once, in the shape an export carries it
       (ADR-0007), and one archive read back in - Replace or Merge, each a
       single operation whose order of writes is nobody else's business
@@ -555,9 +548,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     correlationCards: deferredArea<CorrelationCardsArea>(async () =>
       (await import('./correlationCards')).makeCorrelationCardsArea(driver, doses, dimensions)
     )(['getCards']),
-    intervalMoodPattern: deferredArea<IntervalMoodPatternArea>(async () =>
-      (await import('./intervalMoodPattern')).makeIntervalMoodPatternArea(stats, doses)
-    )(['dayOfInterval', 'byCustomInterval']),
     /* Deferred (ticket 03), and the larger of the two: the pack, read, apply
        and section machinery plus five importers, none of which a screen
        reaches before somebody opens settings and asks to export or import. */

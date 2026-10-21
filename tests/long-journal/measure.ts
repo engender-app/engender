@@ -129,11 +129,9 @@ const STATS_METRIC = 'mood';
     starts on. Both are what the screen mounts with rather than what a
     person can drag it to. */
 const STATS_DEFAULT_RANGE = 30;
-const CUSTOM_INTERVAL_DAYS = 28;
 
 /** The two interval cards' "the whole journal", which is the convention
     `stats.ts` already uses for it. */
-const WHOLE_JOURNAL_FROM = Number.MIN_SAFE_INTEGER;
 
 /** What the word list renders: `settings/words/+page.svelte`'s own
     `WORD_LIMIT`, restated here the way every screen literal in this file is
@@ -833,8 +831,6 @@ export async function measureLongJournal(
       insights: journal.stats.tagInsights(STATS_METRIC, from, today),
       spreads: journal.stats.daySpread(STATS_METRIC, from, today),
       correlationCards: journal.correlationCards.getCards(from, today),
-      intervalMood: journal.intervalMoodPattern.dayOfInterval(WHOLE_JOURNAL_FROM, today),
-      customInterval: journal.intervalMoodPattern.byCustomInterval(WHOLE_JOURNAL_FROM, today, CUSTOM_INTERVAL_DAYS),
       recap: journal.stats.recap(from, today),
       tagShare: journal.stats.tagShare(from, today),
       lastWrites: journal.lastWrite.getLastWrites(today),
@@ -852,7 +848,6 @@ export async function measureLongJournal(
       result: reads,
       detail:
         `${STATS_DEFAULT_RANGE} days for ${CHARTED_METRICS.length} metrics, ${reads.insights.length} tag insights, ` +
-        `${reads.intervalMood.length + reads.customInterval.length} interval buckets over the whole journal, ` +
         `${reads.constellation.length} constellation readings, ${reads.recap.entryCount} entries in range`
     };
   });

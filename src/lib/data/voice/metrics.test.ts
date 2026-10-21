@@ -22,8 +22,6 @@ import { test, expect } from 'vitest';
 import {
   VOICE_METRICS,
   VOICE_METRICS_REVIEWED_ON,
-  bandsOf,
-  type VoiceMetric,
   type VoiceMetricKey
 } from './metrics.ts';
 
@@ -49,49 +47,6 @@ test('exactly one figure is Referenced, and it is speaking pitch (ADR-0060)', ()
   const referenced = VOICE_METRICS.filter((metric) => metric.tier === 'referenced');
 
   expect(referenced.map((metric) => metric.key)).toEqual(['pitch']);
-});
-
-test('an Own-series figure carries no sourced language to draw a band from', () => {
-  const banded = VOICE_METRICS.filter(
-    (metric) => metric.tier === 'ownSeries' && metric.bandLanguages.length > 0
-  );
-
-  expect(banded.map((metric) => metric.key)).toEqual([]);
-});
-
-test('the Referenced figure names both languages the app has passages in', () => {
-  const pitch = VOICE_METRICS.find((metric) => metric.key === 'pitch')!;
-
-  expect([...pitch.bandLanguages].sort()).toEqual(['en', 'pl']);
-});
-
-/* The rule ADR-0060 exists for. Three cases, and the middle one is the
-   harmful one: an English-sourced band against a Polish read puts an
-   ordinary Polish cis man inside the range captioned cis woman. */
-const sourcedInEnglishOnly: VoiceMetric = { key: 'pitch', tier: 'referenced', bandLanguages: ['en'] };
-
-test('a Referenced figure draws bands for a language its citation covers', () => {
-  const bands = bandsOf(sourcedInEnglishOnly, 'en');
-
-  expect(bands?.map((band) => band.key)).toEqual(['cisMan', 'cisWoman', 'between']);
-});
-
-test('a language the citation does not cover draws no band, not the English one', () => {
-  expect(bandsOf(sourcedInEnglishOnly, 'pl')).toBe(null);
-});
-
-test('an Own-series figure draws no band in any language', () => {
-  const spread = VOICE_METRICS.find((metric) => metric.key === 'spread')!;
-
-  expect(bandsOf(spread, 'en')).toBe(null);
-  expect(bandsOf(spread, 'pl')).toBe(null);
-});
-
-test('the shipped table draws the pitch bands for both passages', () => {
-  const pitch = VOICE_METRICS.find((metric) => metric.key === 'pitch')!;
-
-  expect(bandsOf(pitch, 'en')).not.toBe(null);
-  expect(bandsOf(pitch, 'pl')).not.toBe(null);
 });
 
 /* What makes the prose half exhaustive, proved by removing an entry rather

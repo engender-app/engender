@@ -6,7 +6,7 @@ const PREFIX = '/tesseract/' + 'a'.repeat(64) + '/';
 describe('splitShellAssets', () => {
   test('installs the complete current OCR set without fetching legacy copies', () => {
     const current = ['tesseract.esm.min.js', 'worker.min.js', 'tesseract-core.wasm.js',
-      'tesseract-core.wasm', 'lang-data/eng.traineddata', 'lang-data/pol.traineddata'].map(name => PREFIX + name);
+      'lang-data/eng.traineddata', 'lang-data/pol.traineddata'].map(name => PREFIX + name);
     const { shell, unused } = splitShellAssets(['/icons/icon.png', ...current,
       '/tesseract/lang-data/eng.traineddata', '/tesseract/assets.json'], '', PREFIX);
     expect(shell).toEqual(['/icons/icon.png', ...current]);

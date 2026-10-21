@@ -1,12 +1,7 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { createOcrMachine, type OcrImageSource, type OcrMachineState, type OcrRecognizer, type OcrSaver } from './ocr-machine';
 import { epochDayFromDateInputValue } from '../epochDay';
 import type { OcrReviewRow } from './ocr';
-
-vi.mock('./units', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./units')>();
-  return { ...actual, PREFERRED_UNIT_ANALYTES: [...actual.PREFERRED_UNIT_ANALYTES, 'progesterone'] };
-});
 
 // ---------------------------------------------------------------------------
 // Stub adapters
@@ -495,17 +490,23 @@ describe('OcrMachine – save-failed path', () => {
   });
 });
 
-describe('OcrMachine – preferred-unit default derives from the allowlist', () => {
-  test('asks the saver for every allowlisted analyte, including one added after this code was written', async () => {
-    const getPreferredUnit = vi.fn(() => null);
-    const saver: OcrSaver = { ...saverWith(), getPreferredUnit };
+describe('OcrMachine – source units', () => {
+  test('saves scanned value and unit even when preference uses another unit', async () => {
+    const saver = {
+      ...saverWith(),
+      getPreferredUnit: () => 'pmol/L'
+    };
     const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
 
     m.open();
     await m.pickSource('gallery');
-
-    expect(getPreferredUnit).toHaveBeenCalledWith('progesterone');
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    expect(m.state.rows[0]).toMatchObject({ value: '123.4', unit: 'pg/mL' });
+    await m.save();
+    expect(saver.saved[0]).toMatchObject({ value: 123.4, unit: 'pg/mL' });
   });
+
+
 });
 
 /* Phase 9 audit ticket 11. Recognition on a phone photo of a lab report is

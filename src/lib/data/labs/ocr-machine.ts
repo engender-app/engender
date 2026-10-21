@@ -1,5 +1,4 @@
 import {
-  applyPreferredUnitDefaults,
   buildDuplicateKeys,
   isPermissionDenied,
   makeReviewRows,
@@ -9,7 +8,6 @@ import {
   type OcrReviewRow
 } from './ocr';
 import { epochDayFromDateInputValue } from '../epochDay';
-import { PREFERRED_UNIT_ANALYTES } from './units';
 
 // ---------------------------------------------------------------------------
 // Adapter interfaces (seams for injection and testing)
@@ -46,7 +44,6 @@ export interface OcrSaver {
     unit: string;
     note: string;
   }): Promise<void>;
-  getPreferredUnit?(analyte: string): string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,10 +201,7 @@ export function createOcrMachine(
       if (stale(mine)) return;
       attempt = null;
 
-      const preferredUnits = Object.fromEntries(
-        PREFERRED_UNIT_ANALYTES.map((analyte) => [analyte, saver.getPreferredUnit?.(analyte) ?? undefined])
-      );
-      const parsed = applyPreferredUnitDefaults(parseOcrLabRows(text), preferredUnits);
+      const parsed = parseOcrLabRows(text);
       if (!parsed.length) {
         machine.state = { tag: 'no-rows' };
         return;

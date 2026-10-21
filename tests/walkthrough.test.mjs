@@ -1578,36 +1578,6 @@ try {
 } catch (e) { fail('tag insight entries', e); }
 });
 
-/* 6c. the custom-interval card's length field waits for the typist (phase 8
-   audit ticket 16, the same debounce ticket 15 gave /search's query).
-
-   Three digits firing one read rather than three is proved by counting
-   closure runs (tests/browser-tier/live-reads-probe.svelte.ts's own
-   ticket-16 section, alongside ticket 15's) - nothing a walkthrough drives
-   from outside the page can count that. What
-   this proves instead is what a person actually sees: a length typed digit
-   by digit still lands once typing stops, `pressSequentially` rather than
-   `fill` because `fill` sets the whole value in one event and would
-   exercise no wait at all. 182 is a three-digit length the demo persona's
-   own history draws a pattern for - chosen by checking the rendered card
-   rather than assumed, since a length past the persona's span draws nothing
-   to wait for. */
-await flow('custom interval length waits for the typist', async () => {
-try {
-  /* On Care since redesign ticket 05, as the merged interval card's own
-     control. */
-  await fresh('/care');
-  const card = page.locator('[data-chart-card="interval-mood"]');
-  const field = page.locator('#custom-interval-length');
-
-  await field.fill('');
-  await field.pressSequentially('182', { delay: 30 });
-  await card.locator('[aria-label*="182-day interval"]').first().waitFor();
-
-  ok('the custom interval length typed digit by digit still lands once typing stops');
-} catch (e) { fail('custom interval length waits for the typist', e); }
-});
-
 /* 6b. ticket 18's three view-only screens: chronological milestones with
    a compressed gap, thumbnail-backed photo comparison with both sides
    step-able, and the on-demand recap sequence with its Rive fallback.
@@ -4998,12 +4968,6 @@ try {
   const fields = await page.locator('[data-metric="room"] [data-metric-field]').count();
   if (fields !== 7) {
     throw new Error(`an own-series figure carries ${fields} fields, not seven`);
-  }
-  if ((await page.locator('[data-metric="pitch"] [data-metric-bands]').count()) !== 2) {
-    throw new Error('the pitch section does not state a published range per passage language');
-  }
-  if ((await page.locator('[data-metric="spread"] [data-metric-bands]').count()) !== 0) {
-    throw new Error('an own-series figure draws a band (ADR-0060)');
   }
   if ((await page.locator('[data-metrics-reviewed]').count()) === 0) {
     throw new Error('the metric table shows no reviewed-on date');

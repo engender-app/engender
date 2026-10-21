@@ -82,14 +82,14 @@ export function androidPermissionProblems(apk, applicationId = 'dev.engender.app
  */
 export function androidOcrAssetProblems(apk, webBuildDir = 'build') {
   let required = ['tesseract/worker.min.js', 'tesseract/tesseract-core.wasm.js',
-    'tesseract/tesseract-core.wasm', 'tesseract/lang-data/eng.traineddata',
+    'tesseract/lang-data/eng.traineddata',
     'tesseract/lang-data/pol.traineddata'];
   const manifest = join(webBuildDir, 'tesseract/assets.json');
   if (existsSync(manifest)) {
     const { generation } = JSON.parse(readFileSync(manifest, 'utf8'));
     if (!/^[a-f0-9]{64}$/.test(generation)) return ['Invalid OCR generation'];
     required = ['tesseract.esm.min.js', 'worker.min.js', 'tesseract-core.wasm.js',
-      'tesseract-core.wasm', 'lang-data/eng.traineddata', 'lang-data/pol.traineddata']
+      'lang-data/eng.traineddata', 'lang-data/pol.traineddata']
       .map(name => `tesseract/${generation}/${name}`);
   }
   const problems = required.filter((path) => !existsSync(join(webBuildDir, path)))

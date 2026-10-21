@@ -13,7 +13,6 @@ const ocr = [
   ['tesseract.js/dist/worker.min.js', 'worker.min.js'],
   ['tesseract.js/dist/worker.min.js.LICENSE.txt', 'worker.min.js.LICENSE.txt'],
   ['tesseract.js-core/tesseract-core.wasm.js', 'tesseract-core.wasm.js'],
-  ['tesseract.js-core/tesseract-core.wasm', 'tesseract-core.wasm'],
   ['@tesseract.js-data/eng/4.0.0/eng.traineddata.gz', 'lang-data/eng.traineddata'],
   ['@tesseract.js-data/pol/4.0.0/pol.traineddata.gz', 'lang-data/pol.traineddata']
 ];

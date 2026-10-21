@@ -160,17 +160,5 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['stats', 'tagInsights'],
       ['stats', 'dayAverages']
     ]
-  },
-  {
-    read: ['intervalMoodPattern', 'dayOfInterval'],
-    composes: [
-      ['stats', 'dayAverages'],
-      ['doses', 'getDoses']
-    ]
-  },
-  {
-    // The custom fold reads no dose log: it folds by the epoch day itself.
-    read: ['intervalMoodPattern', 'byCustomInterval'],
-    composes: [['stats', 'dayAverages']]
   }
 ];
