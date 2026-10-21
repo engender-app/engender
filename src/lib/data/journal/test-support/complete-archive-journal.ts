@@ -277,6 +277,17 @@ export async function seedCompleteArchiveJournal(
     place: 'Poradnia, ul. Kopernika',
     note: 'ask about the dose'
   });
+  /* And one still waiting for its day, with a dated update (ticket 26), so
+     the section carries a null day, a referred-on day and its statuses. */
+  const waiting = await journal.appointments.upsertAppointment({
+    epochDay: null,
+    referredEpochDay: 19800,
+    procedureId: null,
+    kind: 'Gender clinic',
+    place: 'Charing Cross',
+    note: 'GP letter sent'
+  });
+  await journal.appointments.addStatusUpdate({ appointmentId: waiting, epochDay: 19900, status: 'Letter came' });
   await journal.procedures.addPhoto(procedure, 20052, { full: bytes('recovery'), thumb: bytes('rt') });
   const checklistItem = await journal.procedures.addChecklistItem(procedure, 'buy gauze');
   await journal.checklists.setItemChecked(checklistItem.id, true);

@@ -25,6 +25,7 @@ import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 import { migrateDrugClass } from './drug-class-migration.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
+import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
@@ -82,5 +83,7 @@ DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'm
   { version: 99, sql: `
 ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER;
 ALTER TABLE medication_stock ADD COLUMN pharmacy_note TEXT;
-` }
+` },
+  /* Functional audit ticket 26: an appointment can wait without a day. */
+  { version: 100, sql: WAITLIST_REBUILD }
 ];

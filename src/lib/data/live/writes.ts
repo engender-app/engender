@@ -690,13 +690,19 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   appointments: classify<Journal['appointments']>()({
     writes: {
       upsertAppointment: ['appointment'],
-      deleteAppointment: ['appointment']
+      deleteAppointment: ['appointment'],
+      // A status update is its own table under the same coarse name: nothing
+      // reads one without the appointment it belongs to (sqlTables.ts).
+      addStatusUpdate: ['appointment'],
+      deleteStatusUpdate: ['appointment']
     },
     // consultsByProcedure and getDayRecords join `procedure` for its name,
     // so a renamed journey redraws them.
     reads: {
       getAppointments: ['appointment', 'procedure'],
       getAppointment: ['appointment', 'procedure'],
+      getWaiting: ['appointment', 'procedure'],
+      getStatusUpdates: ['appointment'],
       getKinds: ['appointment'],
       getDayRecords: ['appointment', 'procedure'],
       lastWriteEpochDay: ['appointment'],

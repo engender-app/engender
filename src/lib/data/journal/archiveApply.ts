@@ -24,7 +24,7 @@
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
-import type { ArchiveJournal } from '../archive/payload';
+import type { ArchiveAppointment, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
 import { assertChanged, mintUuid, now, rowidWhere } from './support';
@@ -1107,31 +1107,48 @@ export async function applyTaper({ driver, journal, ts }: Restoring): Promise<vo
     one, where a dated record of a visit is worth more than the link is. */
 export async function applyAppointments({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM appointment');
+  const presentStatuses = await presentIds(driver, 'SELECT uuid AS id FROM appointment_status');
 
   for (const appointment of journal.appointments) {
-    if (present.has(appointment.id)) continue;
+    if (!present.has(appointment.id)) await insertAppointment(driver, appointment, ts);
 
-    // Not `rowidWhere`: that one throws on an id it cannot find, and the
-    // whole point here is that an unresolvable link is dropped rather than
-    // taking the appointment down with it.
-    const rows = appointment.procedureId
-      ? await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [appointment.procedureId])
-      : [];
-
-    await driver.run(
-      `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        appointment.id,
-        rows[0]?.id ?? null,
-        appointment.epochDay,
-        appointment.kind,
-        appointment.place,
-        appointment.note,
-        ts
-      ]
-    );
+    /* A wait's updates (ticket 26), insert-if-absent by their own uuid even
+       under an appointment this journal already held: an update written on
+       the other device since the last restore is a new fact about the same
+       wait. Absent on archives written before the ticket. */
+    for (const status of appointment.statuses ?? []) {
+      if (presentStatuses.has(status.id)) continue;
+      await driver.run(
+        `INSERT INTO appointment_status (uuid, appointment_id, epoch_day, status, updated_at)
+         VALUES (?, (SELECT id FROM appointment WHERE uuid = ?), ?, ?, ?)`,
+        [status.id, appointment.id, status.epochDay, status.status, ts]
+      );
+    }
   }
+}
+
+async function insertAppointment(driver: SqliteDriver, appointment: ArchiveAppointment, ts: number): Promise<void> {
+  // Not `rowidWhere`: that one throws on an id it cannot find, and the
+  // whole point here is that an unresolvable link is dropped rather than
+  // taking the appointment down with it.
+  const rows = appointment.procedureId
+    ? await driver.query<{ id: number }>('SELECT id FROM procedure WHERE uuid = ?', [appointment.procedureId])
+    : [];
+
+  await driver.run(
+    `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      appointment.id,
+      rows[0]?.id ?? null,
+      appointment.epochDay,
+      appointment.kind,
+      appointment.place,
+      appointment.note,
+      appointment.referredEpochDay ?? null,
+      ts
+    ]
+  );
 }
 
 /** The column list import_log's insert shares with `recordImport` below -

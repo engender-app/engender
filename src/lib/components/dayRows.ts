@@ -43,6 +43,7 @@ import {
 import { doseRowTitle, statusLabel } from '$lib/data/vocabulary/doseLabels';
 import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 import { iconOf } from './rowIcon';
+import { appointmentDayRow } from './appointmentDayRow';
 
 /** One line in the day's context list. `subtitle` is the earned exception
     (DIRECTION 3b), not the standard: most rows say everything in the
@@ -317,17 +318,12 @@ const SECTION_ROWS: Record<
       count: group.length
     })),
 
-  /* What the appointment was, with where it was underneath it. An
-     appointment nobody named a kind for says only "appointment", because
-     the app ships no kinds of its own to guess with (ADR-0066); one that
-     belongs to a surgery journey says so, since that is what a consult
-     read as before the record existed. */
+  /* What the appointment was, or the referral or update on its wait
+     (appointmentDayRow.ts). */
   appointments: (day) =>
     day.appointments.map((appointment) => ({
-      key: `appointment-${appointment.id}`,
+      ...appointmentDayRow(appointment),
       ...iconOf('appointments'),
-      title: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
-      subtitle: appointment.place ?? (appointment.kind ? appointment.procedureName ?? undefined : undefined),
       href: APPOINTMENTS
     })),
 

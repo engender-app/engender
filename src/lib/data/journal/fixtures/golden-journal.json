@@ -1529,7 +1529,9 @@
       "procedureId": "a4008d85-bed5-470b-9a82-54c3c67c6028",
       "kind": null,
       "place": null,
-      "note": null
+      "note": null,
+      "referredEpochDay": null,
+      "statuses": []
     },
     {
       "id": "7fffbb5e-edf2-47e5-be6e-0722793bbac6",
@@ -1537,7 +1539,25 @@
       "procedureId": null,
       "kind": "endokrynolog",
       "place": "Poradnia, ul. Kopernika",
-      "note": "ask about the dose"
+      "note": "ask about the dose",
+      "referredEpochDay": null,
+      "statuses": []
+    },
+    {
+      "id": "38642311-9cac-485f-948c-d00818376781",
+      "epochDay": null,
+      "procedureId": null,
+      "kind": "Gender clinic",
+      "place": "Charing Cross",
+      "note": "GP letter sent",
+      "referredEpochDay": 19800,
+      "statuses": [
+        {
+          "id": "8c04d341-ad6b-4de0-96a2-c49354c18d84",
+          "epochDay": 19900,
+          "status": "Letter came"
+        }
+      ]
     }
   ],
   "reminders": [

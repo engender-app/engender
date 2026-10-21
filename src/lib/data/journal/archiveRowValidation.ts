@@ -70,6 +70,12 @@ const procedurePhoto = object({
   fileName: text
 });
 
+const appointmentStatus = object({
+  id: identity,
+  epochDay: numeric,
+  status: text
+});
+
 const tryoutPhoto = object({
   id: identity,
   epochDay: numeric,
@@ -240,11 +246,13 @@ const ROWS = {
   },
   appointments: {
     id: identity,
-    epochDay: numeric,
+    epochDay: nullable(numeric),
     procedureId: nullable(text),
     kind: nullable(text),
     place: nullable(text),
-    note: nullable(text)
+    note: nullable(text),
+    referredEpochDay: optional(nullable(numeric)),
+    statuses: optional(list(appointmentStatus))
   },
   reminders: {
     id: identity,
