@@ -46,7 +46,7 @@
      and into Tags, which is where every other tag reading on the door
      lives, and cut Words and Highest days. What was left behind the tile
      was the mood strip alone, so on Alicja's sign-off the tile and its
-     screen went and the strip draws here under the grid, which leaves six
+     screen went and the strip draws here over the grid, which leaves six
      tiles, three rows of two.
 
      Redesign ticket 11: one span drives every read on this screen. The rail
@@ -675,10 +675,13 @@
          own read and stays absent where the span holds nothing for it;
          the grid draws the hairlines between whatever is there. In the
          ticket's order: the two over the scales first, then tags, then
-         the three screens that were screens already. Under the grid, in
+         the three screens that were screens already. Above the grid, in
          the same group, the mood strip draws in full: it was one chart
          behind a tile of its own until Alicja's sign-off on functional
-         audit ticket 12, and a single chart needs no screen.
+         audit ticket 12, and a single chart needs no screen. Above and
+         not below, because a span change lifts the leaving tiles out of
+         flow (gridCell), so the leaving grid folds to nothing: a strip
+         under it jumped 530px up over the fading tiles in one frame.
 
          Drawn as one group once every tile has decided whether it exists
          (ticket 190): drawn as each answered, a tile landing a tick after
@@ -697,6 +700,7 @@
     {#key `${resolvedSpan.start}:${resolvedSpan.end}`}
     <div class="lookback-reading-slot" in:readingArrival out:readingFade onoutrostart={(event) => ((event.currentTarget as HTMLElement).inert = true)}>
     <ReadGroup answered={factsAnswered && factsCurrent} count={2}>
+    <DaysReading span={resolvedSpan} {enoughEntries} />
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
@@ -705,7 +709,6 @@
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <TallyTile span={resolvedSpan} />
     </ReadingGrid>
-    <DaysReading span={resolvedSpan} {enoughEntries} />
     </ReadGroup>
     </div>
     {/key}

@@ -431,11 +431,12 @@ describe('Look back says each thing once', () => {
 
   /* Alicja's sign-off on the ticket: the mood strip was one chart behind
      a tile of its own, and "if it's just a single chart, it should display
-     a screen before". It draws on the door under the grid, in the tiles'
-     own read group, and has no tile, no screen and no title on the route. */
+     a screen before". It draws on the door over the grid, in the tiles'
+     own read group (over, since a leaving grid folds out of flow and a
+     strip under it jumped up), and has no tile, no screen and no title on the route. */
   it('draws the mood strip on the door, with no tile and no screen of its own', () => {
     const body = markup(stats);
-    expect(body).toMatch(/<\/ReadingGrid>\s*<DaysReading span=\{resolvedSpan\} \{enoughEntries\} \/>\s*<\/ReadGroup>/);
+    expect(body).toMatch(/<ReadGroup[^>]*>\s*<DaysReading span=\{resolvedSpan\} \{enoughEntries\} \/>\s*<ReadingGrid/);
     expect(readings.days).not.toContain('ReadingTile');
     expect(readings.days).not.toContain('readingHref');
     expect(route).not.toContain('DaysReading');

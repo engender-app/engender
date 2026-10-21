@@ -15,7 +15,7 @@
    Highest days, and affirming themes, which became the share ring's "on
    good days" filter on Tags. Alicja's sign-off on that ticket took the
    mood strip off its own screen: one chart behind a tile was a screen for
-   nothing, so it draws on the door under the tiles. */
+   nothing, so it draws on the door over the tiles. */
 import type { RegionSideReading } from './bodyMap';
 import { epochDayFromDateInputValue } from './epochDay';
 import { DEFAULT_SPAN_DAYS, spanRangeQuery, type Span } from './lookBackSpan';

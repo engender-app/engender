@@ -1,6 +1,6 @@
 <script lang="ts">
   /* How the days fell: the days at each mood (phase 11 ticket 07), drawn
-     on the Look back door itself under the reading tiles. It used to be a
+     on the Look back door itself above the reading tiles. It used to be a
      tile of its own, "Mood across your days", opening a screen that held
      this one strip and nothing else; Alicja's sign-off on functional audit
      ticket 12 took the tile and the screen out ("if it's just a single
@@ -37,7 +37,7 @@
   let anyDays = $derived(distribution.some((step) => step.count > 0));
 
   /* Whether there is a card is settled once the mood read answers
-     (ReadGroup), so it arrives with the tiles above it, never after. */
+     (ReadGroup), so it arrives with the tiles under it, never after. */
   joinReadGroup(() => !moodQuery.loading);
 </script>
 
