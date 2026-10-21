@@ -194,7 +194,6 @@ const REMINDERS = {
   columns: {
     uuid: 'id',
     title: 'title',
-    type: 'type',
     time: 'time',
     recurrence: 'recurrence',
     interval: 'interval',

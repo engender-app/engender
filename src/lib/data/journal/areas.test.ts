@@ -7,7 +7,7 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-import { timestampAtLocalTime, todayEpochDay } from '../epochDay.ts';
+import { timestampAtLocalTime } from '../epochDay.ts';
 import type { Journal } from './journal.ts';
 import type { LabResultInput } from './labs.ts';
 import type { LabResult } from '../types.ts';
@@ -985,11 +985,10 @@ test('deleting a session cascades to its photos', async () => {
 
 test('every rule shape written by the journal passes the schema recurrence CHECK', async () => {
   const { journal } = await journalWithBuiltIns();
-  const base = { title: 'x', type: 'med' as const, time: '20:00', enabled: true };
+  const base = { title: 'x', time: '20:00', enabled: true };
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
 
   await journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'DAILY' });
-  await journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'WEEKLY' });
   await journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: 100 });
   await journal.reminders.upsertReminder({ ...base, ...none, recurrence: null, epochDay: 200 });
 
@@ -998,20 +997,38 @@ test('every rule shape written by the journal passes the schema recurrence CHECK
     stored.map((r) => [r.recurrence, r.interval, r.anchorEpochDay, r.epochDay]),
     [
       ['DAILY', null, null, null],
-      ['EVERY_N_DAYS', 7, todayEpochDay(), null],
       ['EVERY_N_DAYS', 3, 100, null],
       [null, null, null, 200]
     ]
   );
 });
 
+/* Functional audit ticket 08: the type only ever picked an icon, and
+   medication and injection already shared one. */
+test('a reminder carries no type, in the row or in the table', async () => {
+  const { db, journal } = await journalWithBuiltIns();
+  const id = await journal.reminders.upsertReminder({
+    title: 'Patch', time: '20:00', enabled: true, recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null
+  });
+  const [stored] = await journal.reminders.getReminders();
+  assert.equal(stored.id, id);
+  assert.ok(!('type' in stored));
+  const columns = (await db.query<{ name: string }>('PRAGMA table_info(reminder)')).map((c) => c.name);
+  assert.ok(!columns.includes('type'));
+});
+
 test("the seed's old vocabulary is rejected before it reaches the schema", async () => {
   const { journal } = await journalWithBuiltIns();
-  const base = { title: 'x', type: 'med' as const, time: '20:00', enabled: true };
+  const base = { title: 'x', time: '20:00', enabled: true };
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
 
   await assert.rejects(
     journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'EVERY_3_DAYS' as never }),
+    /invalid reminder rule/
+  );
+  // The pre-rc weekly shape has no reader left, so it is refused like any other unknown word.
+  await assert.rejects(
+    journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'WEEKLY' as never }),
     /invalid reminder rule/
   );
   // A recurrence that needs its parts cannot be written without them.
@@ -1026,7 +1043,6 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
   const id = await journal.reminders.upsertReminder({
     title: 'Patch',
-    type: 'med',
     time: '20:00',
     enabled: true,
     ...none,
@@ -1039,11 +1055,12 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   await journal.reminders.upsertReminder({
     id,
     title: 'Patch',
-    type: 'med',
     time: '21:00',
     enabled: false,
     ...none,
-    recurrence: 'WEEKLY'
+    recurrence: 'EVERY_N_DAYS',
+    interval: 7,
+    anchorEpochDay: 100
   });
   assert.equal((await journal.reminders.getReminders())[0].time, '21:00');
 
@@ -1201,19 +1218,4 @@ test("a procedure's checklist is an ordinary owned checklist, created on the fir
   assert.equal((await journal.procedures.getChecklist(id))?.items.length, 2, 'the second item joins the same checklist');
 
   await assert.rejects(journal.procedures.addChecklistItem('nope', 'x'), /unknown procedure/);
-});
-
-test('editing a legacy Weekly input preserves its existing seven-day anchor', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const base = { title: 'Injection', type: 'injection' as const, time: '20:00', enabled: true, epochDay: null };
-  const id = await journal.reminders.upsertReminder({
-    ...base, recurrence: 'EVERY_N_DAYS', interval: 7, anchorEpochDay: 20675
-  });
-  await journal.reminders.upsertReminder({
-    ...base, id, title: 'Renamed', recurrence: 'WEEKLY', interval: null, anchorEpochDay: null
-  });
-  const [stored] = await journal.reminders.getReminders();
-  assert.equal(stored.anchorEpochDay, 20675);
-  assert.equal(stored.recurrence, 'EVERY_N_DAYS');
-  assert.equal(stored.interval, 7);
 });

@@ -4,7 +4,7 @@
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { resolveReminderOrigin } from '$lib/data/provenance';
-  import { reminderScheduleLabel, reminderTypeLabel } from '$lib/data/vocabulary/reminderLabel';
+  import { reminderScheduleLabel } from '$lib/data/vocabulary/reminderLabel';
   import { prefs, preferencesAttached } from '$lib/data/prefs/store.svelte';
   import type { Reminder } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
@@ -22,7 +22,6 @@
   import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { watchStatus } from '$lib/permissions/watchStatus';
 
-  const TYPE_ICON: Record<string, string> = { med: 'pill', injection: 'pill', appointment: 'calendar', other: 'bell' };
   let isWeb = $derived(!isAndroid());
 
   let reminders = liveList((j) => j.reminders.getReminders());
@@ -136,9 +135,9 @@
               static
               key={r.id}
               data-reminder={r.id}
-              icon={TYPE_ICON[r.type] || 'bell'}
+              icon="bell"
               title={r.title}
-              subtitle={[`${reminderTypeLabel(r.type)} · ${reminderScheduleLabel(r)}`, origin?.text]}
+              subtitle={[reminderScheduleLabel(r), origin?.text]}
               action={{
                 icon: 'trash',
                 label: m.rem_delete_aria({ title: r.title }),
@@ -256,10 +255,10 @@
                one icon button, not a Switch (ticket 18). -->
           {@const origin = resolveReminderOrigin(r)}
           <div class="kit-row" data-list-row={r.id}>
-            <span class="kit-row-ico"><Icon name={TYPE_ICON[r.type] || 'bell'} size={22} /></span>
+            <span class="kit-row-ico"><Icon name="bell" size={22} /></span>
             <a class="kit-row-text" href="/settings/reminders/{r.id}" style="text-decoration:none;color:inherit">
               <span class="kit-row-title">{r.title}</span>
-              <span class="kit-row-sub">{reminderTypeLabel(r.type)} · {reminderScheduleLabel(r)}</span>
+              <span class="kit-row-sub">{reminderScheduleLabel(r)}</span>
               {#if origin}<span class="kit-row-sub">{origin.text}</span>{/if}
             </a>
             <span class="kit-row-trail">

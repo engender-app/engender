@@ -245,7 +245,6 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
     await reminders.upsertReminder({
       id: existing?.id,
       title: existing?.title ?? (title as string),
-      type: 'other',
       time: rule.time,
       recurrence: null,
       interval: null,

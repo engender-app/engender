@@ -11,8 +11,7 @@ import {
   CYCLE_EVENT_KINDS,
   HAIR_REMOVAL_METHODS,
   TALLY_KINDS,
-  TRYOUT_KINDS,
-  type ReminderType
+  TRYOUT_KINDS
 } from './rowValues';
 
 export interface Photo {
@@ -267,9 +266,8 @@ export interface Milestone {
 export interface Reminder {
   id: string;
   title: string;
-  type: ReminderType;
   time: string;
-  recurrence: 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS' | null;
+  recurrence: 'DAILY' | 'EVERY_N_DAYS' | null;
   /** EVERY_N_DAYS only. */
   interval: number | null;
   /** EVERY_N_DAYS only: a day the reminder fires on, fixing the progression. */

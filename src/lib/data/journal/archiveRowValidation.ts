@@ -4,7 +4,7 @@ import { isLegacyHairStaging } from '../hairStageScales';
 import {
   CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
-  REMINDER_TYPES, TALLY_KINDS, TRYOUT_KINDS
+  TALLY_KINDS, TRYOUT_KINDS
 } from '../rowValues';
 import {
   BUILT_IN_DIMENSIONS, BUILT_IN_EFFECT_CATEGORIES, BUILT_IN_TAG_GROUPS
@@ -253,7 +253,6 @@ const ROWS = {
   reminders: {
     id: identity,
     title: text,
-    type: oneOf(REMINDER_TYPES),
     time: text,
     recurrence: nullable(oneOf(REMINDER_RECURRENCES)),
     interval: nullable(numeric),
@@ -518,7 +517,7 @@ export function assertArchiveRows(
     if (name === 'reminders') {
       const oneOff = row.recurrence === null && row.epochDay !== null && row.interval === null && row.anchorEpochDay === null;
       const everyN = row.recurrence === 'EVERY_N_DAYS' && row.interval !== null && row.anchorEpochDay !== null && row.epochDay === null;
-      const plain = (row.recurrence === 'DAILY' || row.recurrence === 'WEEKLY') &&
+      const plain = row.recurrence === 'DAILY' &&
         row.interval === null && row.anchorEpochDay === null && row.epochDay === null;
       if (!oneOff && !everyN && !plain) throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }

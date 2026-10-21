@@ -431,7 +431,6 @@ beforeAll(async () => {
   const reminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
       title: 'injection',
-      type: 'injection',
       time: '08:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,
@@ -444,7 +443,6 @@ beforeAll(async () => {
   const secondReminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
       title: 'a second reminder',
-      type: 'injection',
       time: '09:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,

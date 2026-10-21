@@ -62,9 +62,6 @@ test('an unknown value in each closed-list column inserts at the SQL level', asy
   assert.doesNotThrow(() =>
     run(`INSERT INTO cycle_event (uuid, epoch_day, kind, updated_at) VALUES ('c-kind', 1, 'irregular', 1)`)
   );
-  assert.doesNotThrow(() =>
-    run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at) VALUES ('r-type', 'x', 'walk', '20:00', 'DAILY', 1)`)
-  );
 });
 
 test('structural invariants stay in SQL: pain 1 to 5 when present, the reminder rule shape', async () => {
@@ -75,7 +72,7 @@ test('structural invariants stay in SQL: pain 1 to 5 when present, the reminder 
          VALUES ('h-pain', 1, 'chin', 'laser', 9, '', 1)`)
   );
   assert.throws(() =>
-    run(`INSERT INTO reminder (uuid, title, type, time, updated_at) VALUES ('r-none', 'x', 'other', '20:00', 1)`)
+    run(`INSERT INTO reminder (uuid, title, time, updated_at) VALUES ('r-none', 'x', '20:00', 1)`)
   );
 });
 
@@ -118,11 +115,12 @@ test('migrating a populated 92 keeps every row, child link and id counter, and c
   const hair = db.raw.prepare(`SELECT area, method, pain_rating, cost, note FROM hair_removal_session WHERE uuid = 'h1'`).get();
   assert.deepEqual({ ...(hair as object) }, { area: 'chin', method: 'laser', pain_rating: 3, cost: '40 EUR', note: null });
 
-  // Indexes and the legacy-weekly trigger survive the rebuild of their tables.
+  // Indexes survive the rebuild of their tables. The legacy-weekly trigger
+  // went with version 104 (functional audit ticket 08).
   const names = (db.raw.prepare(`SELECT name FROM sqlite_schema WHERE type IN ('index','trigger')`).all() as Array<{ name: string }>)
     .map((r) => r.name);
   for (const name of ['idx_hair_removal_session_epoch_day', 'idx_hair_removal_session_area', 'idx_tryout_start',
-    'idx_tally_kind_day', 'idx_cycle_event_epoch_day', 'reminder_anchor_legacy_weekly']) {
+    'idx_tally_kind_day', 'idx_cycle_event_epoch_day']) {
     assert.ok(names.includes(name), `${name} still exists`);
   }
   assert.equal(count(db, 'tally_event'), 2);

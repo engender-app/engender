@@ -57,7 +57,6 @@ async function populated() {
   });
   const reminder = await journal.reminders.upsertReminder({
     title: 'injection',
-    type: 'injection',
     time: '08:00',
     recurrence: 'EVERY_N_DAYS',
     interval: 7,
@@ -320,7 +319,6 @@ test('milestones, lab results, tally events, side effects, cycle events, reminde
     {
       id: reminder,
       title: 'injection',
-      type: 'injection',
       time: '08:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,

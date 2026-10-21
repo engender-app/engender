@@ -108,7 +108,6 @@ async function populated() {
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.reminders.upsertReminder({
     title: 'injection',
-    type: 'injection',
     time: '08:00',
     recurrence: 'EVERY_N_DAYS',
     interval: 7,
@@ -751,7 +750,7 @@ test('a failed replacement keeps the original entries searchable', async () => {
   const target = await device();
   const mine = await target.journal.entries.upsertEntry({ epochDay: 20500, mood: 5, note: 'original searchable note' });
   const contents = await exported(source.journal);
-  contents.journal.reminders = [{ ...contents.journal.reminders[0], type: 'nonsense' }];
+  contents.journal.reminders = [{ ...contents.journal.reminders[0], recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null }];
 
   await assert.rejects(target.journal.archive.replace(contents));
 

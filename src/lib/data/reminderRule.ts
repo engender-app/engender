@@ -17,8 +17,7 @@
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
-// WEEKLY remains in the input type for older journals and archives.
-type Recurrence = 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS';
+type Recurrence = 'DAILY' | 'EVERY_N_DAYS';
 
 export interface ReminderRule {
   /** Local wall-clock time, 'HH:MM'. */
@@ -33,9 +32,7 @@ export interface ReminderRule {
   epochDay: number | null;
 }
 
-/** Current writes use a one-off day, anchored EVERY_N_DAYS, or bare DAILY.
-    The schema also accepts legacy WEEKLY inserts and anchors them by trigger.
-    Validated before the row is written so a bad rule fails as one clear
+/** A one-off day, anchored EVERY_N_DAYS, or bare DAILY. Validated before the row is written so a bad rule fails as one clear
     error rather than as a constraint violation from inside the driver. */
 export function assertValidRule(r: ReminderRule) {
   const oneOff = r.recurrence === null && r.epochDay != null && r.interval == null && r.anchorEpochDay == null;
@@ -81,15 +78,14 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
     return occurrenceOn(day, rule.time);
   }
 
-  if (rule.recurrence === 'WEEKLY') throw new Error('WEEKLY reminder must be anchored before planning');
   const todayAt = occurrenceOn(today, rule.time);
   return todayAt > now ? todayAt : occurrenceOn(today + 1, rule.time);
 }
 
-/* The editor's own vocabulary (F25). The segmented control offers five
+/* The editor's own vocabulary (F25). The segmented control offers four
    options where the stored rule has three shapes: a one-off, DAILY, and
-   anchored EVERY_N_DAYS split into the two intervals worth a button. Weekly
-   writes the same seven-day progression. The pair below handles that
+   anchored EVERY_N_DAYS split into the two intervals worth a button. The
+   pair below handles that
    translation, and it lived in settings/reminders/[id]/+page.svelte where
    nothing could run it.
 
@@ -97,7 +93,7 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
    about the Java side: a rule this app writes and a rule the scheduler
    reads have to be the same rule, so everything that builds one belongs
    next to `assertValidRule` and to the fixture. */
-export type RecurrenceChoice = 'ONCE' | 'DAILY' | 'EVERY_3_DAYS' | 'EVERY_7_DAYS' | 'WEEKLY';
+export type RecurrenceChoice = 'ONCE' | 'DAILY' | 'EVERY_3_DAYS' | 'EVERY_7_DAYS';
 
 const CHOICE_INTERVAL: Record<'EVERY_3_DAYS' | 'EVERY_7_DAYS', number> = { EVERY_3_DAYS: 3, EVERY_7_DAYS: 7 };
 
@@ -135,8 +131,8 @@ export function ruleFromChoice(
     const at = nextOccurrence({ ...none, time, recurrence: 'DAILY' }, now)!;
     return { ...none, time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
   }
-  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS' || choice === 'WEEKLY') {
-    const interval = choice === 'WEEKLY' ? 7 : CHOICE_INTERVAL[choice];
+  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS') {
+    const interval = CHOICE_INTERVAL[choice];
     const anchorEpochDay =
       existing?.recurrence === 'EVERY_N_DAYS' && existing.interval === interval
         ? existing.anchorEpochDay

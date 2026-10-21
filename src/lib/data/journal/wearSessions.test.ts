@@ -197,7 +197,6 @@ test('an optional reminder is created N hours after the start, with no app-impos
   const [reminder] = reminders;
   assert.equal(reminder.autoSource, `wear:${id}`);
   assert.equal(reminder.title, 'Binder check-in');
-  assert.equal(reminder.type, 'other');
   assert.equal(reminder.recurrence, null);
   assert.equal(reminder.time, '02:00'); // 20:00 + 30h = 02:00 two days later
   assert.equal(reminder.epochDay, 19002);

@@ -14,7 +14,6 @@ describe('buildAndroidReminderPayload', () => {
         {
           id: 'r-1',
           title: 'Estradiol patch',
-          type: 'med',
           time: '20:00',
           recurrence: 'EVERY_N_DAYS',
           interval: 3,
@@ -45,7 +44,6 @@ describe('buildAndroidReminderPayload', () => {
         {
           id: 'r-1',
           title: 'Estradiol patch',
-          type: 'med',
           time: '20:00',
           recurrence: 'EVERY_N_DAYS',
           interval: 3,
@@ -75,7 +73,6 @@ describe('buildAndroidReminderPayload', () => {
       {
         id: 'r-1',
         title: 'Reminder',
-        type: 'other' as const,
         time: '08:00',
         recurrence: 'DAILY' as const,
         interval: null,

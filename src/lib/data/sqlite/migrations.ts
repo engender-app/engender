@@ -127,5 +127,46 @@ CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
 DROP TABLE journaling_pause;
 DELETE FROM area_state WHERE area = 'journalingPauses';
 DELETE FROM pref WHERE key = 'pauseActiveBannerEnabled';
+` },
+  /* Functional audit ticket 08: a reminder has no type (it only ever picked
+     an icon), and the pre-rc WEEKLY recurrence has no reader left. SQLite
+     cannot drop a column or change a CHECK in place, so the table is rebuilt,
+     its AUTOINCREMENT counter carried over, and the trigger that anchored a
+     WEEKLY insert goes with the old table. A row could only hold WEEKLY
+     between that trigger's insert and its update, so none should exist; one
+     that does becomes the seven-day progression the trigger would have made. */
+  { version: 104, sql: `
+CREATE TABLE reminder_new (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid             TEXT NOT NULL UNIQUE,
+  title            TEXT NOT NULL,
+  time             TEXT NOT NULL,
+  recurrence       TEXT CHECK (recurrence IN ('DAILY','EVERY_N_DAYS')),
+  interval         INTEGER,
+  anchor_epoch_day INTEGER,
+  epoch_day        INTEGER,
+  enabled          INTEGER NOT NULL DEFAULT 1,
+  updated_at       INTEGER NOT NULL,
+  auto_source      TEXT,
+  CHECK (
+    (recurrence IS NULL AND epoch_day IS NOT NULL AND interval IS NULL AND anchor_epoch_day IS NULL)
+    OR (recurrence IS 'EVERY_N_DAYS' AND interval IS NOT NULL AND anchor_epoch_day IS NOT NULL AND epoch_day IS NULL)
+    OR (recurrence IS 'DAILY' AND interval IS NULL AND anchor_epoch_day IS NULL AND epoch_day IS NULL)
+  )
+);
+INSERT INTO reminder_new (id, uuid, title, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, updated_at, auto_source)
+  SELECT id, uuid, title, time,
+    CASE recurrence WHEN 'WEEKLY' THEN 'EVERY_N_DAYS' ELSE recurrence END,
+    CASE recurrence WHEN 'WEEKLY' THEN 7 ELSE interval END,
+    CASE recurrence
+      WHEN 'WEEKLY' THEN CAST(strftime('%s', date(updated_at / 1000, 'unixepoch', 'localtime')) AS INTEGER) / 86400
+      ELSE anchor_epoch_day
+    END,
+    epoch_day, enabled, updated_at, auto_source
+  FROM reminder;
+DELETE FROM sqlite_sequence WHERE name = 'reminder_new';
+INSERT INTO sqlite_sequence (name, seq) SELECT 'reminder_new', seq FROM sqlite_sequence WHERE name = 'reminder';
+DROP TABLE reminder;
+ALTER TABLE reminder_new RENAME TO reminder;
 ` }
 ];

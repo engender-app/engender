@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 103);
+  assert.equal(db.getUserVersion(), 104);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -410,28 +410,28 @@ test('reminder shape: one-off needs epoch_day, EVERY_N_DAYS needs interval and a
 
   assert.doesNotThrow(() =>
     insert(
-      "INSERT INTO reminder (uuid, title, type, time, epoch_day, updated_at) VALUES ('r1', 'Appt', 'appointment', '09:00', 100, 1000)"
+      "INSERT INTO reminder (uuid, title, time, epoch_day, updated_at) VALUES ('r1', 'Appt', '09:00', 100, 1000)"
     )
   );
   assert.doesNotThrow(() =>
     insert(
-      "INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at) VALUES ('r2', 'Pill', 'med', '20:00', 'DAILY', 1000)"
+      "INSERT INTO reminder (uuid, title, time, recurrence, updated_at) VALUES ('r2', 'Pill', '20:00', 'DAILY', 1000)"
     )
   );
   assert.doesNotThrow(() =>
     insert(
-      "INSERT INTO reminder (uuid, title, type, time, recurrence, interval, anchor_epoch_day, updated_at) VALUES ('r3', 'Patch', 'med', '20:00', 'EVERY_N_DAYS', 3, 50, 1000)"
+      "INSERT INTO reminder (uuid, title, time, recurrence, interval, anchor_epoch_day, updated_at) VALUES ('r3', 'Patch', '20:00', 'EVERY_N_DAYS', 3, 50, 1000)"
     )
   );
   // Recurring but missing interval/anchor.
   assert.throws(() =>
     insert(
-      "INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at) VALUES ('r4', 'Patch', 'med', '20:00', 'EVERY_N_DAYS', 1000)"
+      "INSERT INTO reminder (uuid, title, time, recurrence, updated_at) VALUES ('r4', 'Patch', '20:00', 'EVERY_N_DAYS', 1000)"
     )
   );
   // Neither a recurrence nor a one-off day.
   assert.throws(() =>
-    insert("INSERT INTO reminder (uuid, title, type, time, updated_at) VALUES ('r5', 'Nothing', 'other', '20:00', 1000)")
+    insert("INSERT INTO reminder (uuid, title, time, updated_at) VALUES ('r5', 'Nothing', '20:00', 1000)")
   );
 });
 
@@ -1007,29 +1007,12 @@ test('every wear session has a kind, and a write that names none gets the defaul
   assert.equal(row.note, 'a bit tight by the end');
 });
 
-test('an old weekly reminder inserted by archive restore is anchored on its recorded local day', async () => {
+test('a WEEKLY reminder is refused by the schema, with no trigger left to translate it', async () => {
   const db = await migratedDb();
-  await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
-    VALUES ('archive-weekly', 'Injection', 'injection', '20:00', 'WEEKLY', ?)`,
-    [new Date(2026, 7, 10, 12).getTime()]);
-  assert.deepEqual((await db.query('SELECT recurrence, interval, anchor_epoch_day FROM reminder')).map((row) => ({ ...row })),
-    [{ recurrence: 'EVERY_N_DAYS', interval: 7, anchor_epoch_day: 20675 }]);
-});
-
-test('an old weekly reminder is anchored on its local calendar day at a UTC day boundary', async () => {
-  const originalTz = process.env.TZ;
-  process.env.TZ = 'Pacific/Kiritimati';
-  try {
-    const db = await migratedDb();
-    await db.run(`INSERT INTO reminder (uuid, title, type, time, recurrence, updated_at)
-      VALUES ('boundary', 'Injection', 'injection', '20:00', 'WEEKLY', ?)`,
-      [Date.parse('2026-08-09T10:30:00Z')]);
-    const [row] = await db.query('SELECT anchor_epoch_day FROM reminder');
-    assert.equal(row.anchor_epoch_day, 20675);
-  } finally {
-    if (originalTz === undefined) delete process.env.TZ;
-    else process.env.TZ = originalTz;
-  }
+  await assert.rejects(db.run(`INSERT INTO reminder (uuid, title, time, recurrence, updated_at)
+    VALUES ('archive-weekly', 'Injection', '20:00', 'WEEKLY', 1)`));
+  const triggers = await db.query("SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'reminder'");
+  assert.deepEqual(triggers, []);
 });
 
 /* Functional audit ticket 10 cut saved questions: the migration drops the

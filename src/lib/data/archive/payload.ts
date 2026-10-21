@@ -481,10 +481,11 @@ export interface ArchiveHairRemovalSession {
   photos: ArchiveHairRemovalPhoto[];
 }
 
+/* An archive written before functional audit ticket 08 also carries a
+   `type`; nothing reads it now, and restore ignores it. */
 interface ArchiveReminder {
   id: string;
   title: string;
-  type: string;
   time: string;
   recurrence: string | null;
   interval: number | null;

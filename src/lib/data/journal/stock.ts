@@ -320,7 +320,6 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
                 // needs no copy of its own to translate (ADR-0016 keeps
                 // paraglide out of this tier anyway).
                 title: entry.drug,
-                type: 'med',
                 time: '09:00',
                 recurrence: null,
                 interval: null,

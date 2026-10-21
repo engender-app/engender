@@ -203,7 +203,6 @@ export async function seedCompleteArchiveJournal(
   await journal.hairRemoval.addPhoto(hairRemovalSession, { full: bytes('session'), thumb: bytes('st') });
   await journal.reminders.upsertReminder({
     title: 'injection',
-    type: 'injection',
     time: '08:00',
     recurrence: 'EVERY_N_DAYS',
     interval: 7,
@@ -301,7 +300,6 @@ export async function seedCompleteArchiveJournal(
   // Older journals can retain a reminder after its wear session ended.
   await journal.reminders.upsertReminder({
     title: 'binder check-in',
-    type: 'other',
     time: '07:13',
     recurrence: null,
     interval: null,
