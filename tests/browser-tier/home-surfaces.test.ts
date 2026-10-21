@@ -273,7 +273,7 @@ export async function homeContracts(): Promise<Result[]> {
   });
   await f.journal.procedures.upsertProcedure({
     name: 'Contract surgery',
-    surgeryEpochDay: today + 10
+    surgeryEpochDay: today - 10
   });
   await f.journal.letters.addLetter({
     epochDay: today - 3,

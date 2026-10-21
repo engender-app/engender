@@ -592,25 +592,24 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       };
     },
 
+    /* The days after a surgery, and only those (functional-audit ticket
+       14). The agenda states the date while it is ahead and on the day
+       itself, so a countdown here said it twice. Procedures not yet behind
+       today are left out before the nearest is picked, so an upcoming one
+       closer to today cannot hide the recovery that is running. */
     'surgery-countdown': (gate) => {
       if (!gate.enabled || gate.snoozed) return null;
-      const procedure = activeSurgeryProcedure(reads.procedures, today);
+      const behind = reads.procedures.filter((p) => p.surgeryEpochDay !== null && p.surgeryEpochDay < today);
+      const procedure = activeSurgeryProcedure(behind, today);
       if (!procedure) return null;
       const day = recoveryDay(procedure.surgeryEpochDay, today);
-      const value =
-        day.type === 'unscheduled'
-          ? m.surgery_day_unscheduled()
-          : day.type === 'upcoming'
-            ? m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) })
-            : day.type === 'surgeryDay'
-              ? m.surgery_day_of()
-              : m.surgery_day_since({ days: m.n_days({ n: day.days }) });
+      if (day.type !== 'since') return null;
       return {
         key: 'surgery-countdown',
         tileKey: 'surgery-countdown',
         attrs: { 'data-surgery-tile': true },
         title: m.tile_surgery_title(),
-        value,
+        value: m.tile_surgery_post_op_day({ days: String(day.days) }),
         note: procedure.name,
         href: '/health/surgery'
       };

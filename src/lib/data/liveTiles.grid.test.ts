@@ -86,7 +86,7 @@ const schedule: DoseSchedule = {
 const procedure: Procedure = {
   id: 'proc-1',
   name: 'Vaginoplasty',
-  surgeryEpochDay: TODAY + 10,
+  surgeryEpochDay: TODAY - 10,
   consults: [],
   notes: '',
   kind: 'vaginoplasty',
@@ -473,15 +473,40 @@ describe('what each tile says', () => {
     });
   });
 
-  it('the surgery countdown reads the nearest procedure and carries no control', () => {
+  it('the surgery tile says which day after surgery it is and carries no control', () => {
     const tile = tileNamed('surgery-countdown')!;
     expect(tile.tileKey).toBe('surgery-countdown');
     expect(tile.attrs).toEqual({ 'data-surgery-tile': true });
-    expect(tile.value).toBe(m.surgery_day_upcoming({ days: m.n_days({ n: 10 }) }));
+    expect(tile.value).toBe(m.tile_surgery_post_op_day({ days: '10' }));
     expect(tile.note).toBe('Vaginoplasty');
     expect(tile.href).toBe('/health/surgery');
     expect(tile.action).toBeUndefined();
     expect(tile.dismiss).toBeUndefined();
+  });
+
+  /* Functional-audit ticket 14: the agenda already states a surgery's date
+     while it is ahead, so the tile counting down to it said the same thing
+     twice. Only the days after it are the tile's. */
+  it('the surgery tile is absent before the surgery day and on it', () => {
+    for (const surgeryEpochDay of [TODAY + 10, TODAY + 1, TODAY]) {
+      expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay }] } })).toBeUndefined();
+    }
+    expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: null }] } })).toBeUndefined();
+  });
+
+  it('the surgery tile counts from the day after, and an upcoming one nearer today does not hide it', () => {
+    const dayOne = tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: TODAY - 1 }] } })!;
+    expect(dayOne.value).toBe(m.tile_surgery_post_op_day({ days: '1' }));
+    const behind = tileNamed('surgery-countdown', {
+      reads: {
+        procedures: [
+          { ...procedure, id: 'proc-2', name: 'Top surgery', surgeryEpochDay: TODAY + 1 },
+          { ...procedure, surgeryEpochDay: TODAY - 20 }
+        ]
+      }
+    })!;
+    expect(behind.value).toBe(m.tile_surgery_post_op_day({ days: '20' }));
+    expect(behind.note).toBe('Vaginoplasty');
   });
 
   it('the safe space nudge dismisses the entry it is about', () => {
