@@ -73,7 +73,7 @@ test('a hidden episode draws no curve, counts no exposure and is missing from th
 
   const before = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
   assert.equal(before.injectable.charts.length, 1);
-  assert.equal((await journal.clinicianSummary.getSummary(FROM, TO)).regimenEpisodes.length, 1);
+  assert.equal((await journal.clinicianSummary.getSummary(FROM, TO)).sections.regimen!.history.length, 1);
   assert.equal((await journal.exposure.getCounters(FROM, TO)).regimenDays.length, 1);
 
   await journal.regimen.setEpisodeHidden(id, true);
@@ -81,7 +81,7 @@ test('a hidden episode draws no curve, counts no exposure and is missing from th
   const after = await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false });
   assert.equal(after.injectable.charts.length, 0);
   const summary = await journal.clinicianSummary.getSummary(FROM, TO);
-  assert.deepEqual(summary.regimenEpisodes, []);
+  assert.deepEqual(summary.sections.regimen!.history, []);
   const counters = await journal.exposure.getCounters(FROM, TO);
   assert.deepEqual(counters.regimenDays, []);
   assert.deepEqual(counters.doseTotals, []);
@@ -91,7 +91,7 @@ test('a hidden episode draws no curve, counts no exposure and is missing from th
     (await journal.hormoneCurve.getCurves({ fromEpochDay: FROM, toEpochDay: TO, fitToOwnLabs: false })).injectable.charts.length,
     1
   );
-  assert.equal((await journal.clinicianSummary.getSummary(FROM, TO)).regimenEpisodes.length, 1);
+  assert.equal((await journal.clinicianSummary.getSummary(FROM, TO)).sections.regimen!.history.length, 1);
 });
 
 test('a hidden episode no longer takes a dose that falls in its range; the one under it does', async () => {

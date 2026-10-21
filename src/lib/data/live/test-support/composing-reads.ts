@@ -80,9 +80,10 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
     ]
   },
   {
-    // Its declaration is the section registry's own union
-    // (clinicianSummary.ts's CLINICIAN_SUMMARY_TABLES), so this entry checks
-    // the registry's per-section tables rather than a copy in writes.ts.
+    // Its declaration is the union of the section registry's tables
+    // (writes.ts's CLINICIAN_SUMMARY_TABLES, held equal to the registry by
+    // clinicianSummary.test.ts), so this entry checks that union against
+    // what the sections really read.
     read: ['clinicianSummary', 'getSummary'],
     composes: [
       ['regimen', 'getEpisodes'],
@@ -91,6 +92,7 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['labs', 'getResults'],
       ['exposure', 'getCounters'],
       ['sideEffects', 'getSideEffectsInRange'],
+      ['cycleEvents', 'getCycleEventsInRange'],
       ['procedures', 'getProcedures'],
       ['procedures', 'getChecklist'],
       ['procedures', 'getPhotos'],

@@ -5,7 +5,6 @@ import WrappedCompact from '../../src/lib/components/WrappedCompact.svelte';
 import WrappedYear from '../../src/lib/components/WrappedYear.svelte';
 import WrappedCard from '../../src/lib/components/WrappedCard.svelte';
 import ClinicianSummaryDossier from '../../src/lib/components/ClinicianSummaryDossier.svelte';
-import { DEFAULT_CLINICIAN_DOSSIER_INCLUSION } from '../../src/lib/data/export/clinicianSummaryData';
 import { recapTopTags } from '../../src/lib/data/recapDisplay';
 import { DEFAULT_PITCH_AXIS } from '../../src/lib/audio/bands';
 import { publish } from '../probe-handshake.mjs';
@@ -93,17 +92,18 @@ await check('recap naming preserves tag identities', async () =>
 );
 
 await check('clinician dose totals keep distinct tuples with equal joined labels', async (target) => {
-  const instance = mount(ClinicianSummaryDossier, { target, props: { dossier: {
+  const instance = mount(ClinicianSummaryDossier, { target, props: { summary: {
     fromEpochDay: 20000, toEpochDay: 20000, generatedAtEpochDay: 20000,
-    demographics: null, regimen: null, labs: null, sideEffects: null, cycleEvents: null,
-    appointmentPrep: null, procedures: null, finishedAreas: null,
-    inclusion: DEFAULT_CLINICIAN_DOSSIER_INCLUSION,
-    exposure: {
-      doseTotals: [
-        { drug: 'a-oral', route: 'oral', doseUnit: 'mg', total: 1 },
-        { drug: 'a', route: 'oral', doseUnit: 'oral-mg', total: 2 }
-      ],
-      routeDays: [], regimenDays: [], excludedDoses: 0
+    sections: {
+      demographics: null, regimen: null, labs: null, sideEffects: null, cycleEvents: null,
+      appointmentPrep: null, procedures: null, finishedAreas: null,
+      exposure: {
+        doseTotals: [
+          { drug: 'a-oral', route: 'oral', doseUnit: 'mg', total: 1 },
+          { drug: 'a', route: 'oral', doseUnit: 'oral-mg', total: 2 }
+        ],
+        routeDays: [], regimenDays: [], excludedDoses: 0
+      }
     }
   } } });
   flushSync();

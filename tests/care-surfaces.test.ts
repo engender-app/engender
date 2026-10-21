@@ -149,7 +149,7 @@ describe('every row on Care states a current value', () => {
 
   it('states the summary row off the summary screen’s own two modules', () => {
     expect(care).toContain('ongoingWindowRange(today, 90)');
-    expect(care).toContain('CLINICIAN_DOSSIER_INCLUSION_KEYS.length');
+    expect(care).toContain('CLINICIAN_SUMMARY_SECTION_KEYS.length');
   });
 
   it('keeps the stock row for what no lane already names', () => {
