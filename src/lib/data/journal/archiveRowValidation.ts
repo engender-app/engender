@@ -262,7 +262,7 @@ const ROWS = {
     epochDay: numeric,
     area: oneOf(HAIR_REMOVAL_AREAS),
     method: oneOf(HAIR_REMOVAL_METHODS),
-    painRating: integerBetween(1, 5),
+    painRating: nullable(integerBetween(1, 5)),
     cost: text,
     provider: text,
     photos: list(hairRemovalPhoto)

@@ -525,8 +525,8 @@ export async function readHairRemovalSessions({
     epoch_day: number;
     area: string;
     method: string;
-    pain_rating: number;
-    cost: string;
+    pain_rating: number | null;
+    cost: string | null;
     provider: string;
   }>('SELECT id, uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session ORDER BY epoch_day, id');
 
@@ -542,7 +542,7 @@ export async function readHairRemovalSessions({
     area: session.area,
     method: session.method,
     painRating: session.pain_rating,
-    cost: session.cost,
+    cost: session.cost ?? '',
     provider: session.provider,
     photos: byId.get(session.id) ?? []
   }));

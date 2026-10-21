@@ -576,7 +576,7 @@ export interface ArchiveHairRemovalSession {
   epochDay: number;
   area: string;
   method: string;
-  painRating: number;
+  painRating: number | null;
   cost: string;
   provider: string;
   photos: ArchiveHairRemovalPhoto[];

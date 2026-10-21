@@ -68,3 +68,16 @@ test('an unknown word already stored reads back and renders as other', async () 
   // A word the code knows still gets its own name.
   assert.equal(labels.tryoutKindName('name'), m.tryout_kind_name());
 });
+
+test('a hair-removal session with no pain rating or cost survives export and import', async () => {
+  const { db, journal } = await open();
+  await db.run(`INSERT INTO hair_removal_session (uuid, epoch_day, area, method, provider, updated_at) VALUES ('h', 1, 'chin', 'laser', 'Clinic', 1)`);
+  const { journal: exported } = await journal.archive.snapshot();
+  assert.equal(exported.hairRemovalSessions[0].painRating, null);
+
+  const target = await open();
+  await target.journal.archive.replace({ journal: exported, files: (async function* () {})() });
+  const [session] = await target.journal.hairRemoval.getSessions();
+  assert.equal(session.painRating, null);
+  assert.equal(session.provider, 'Clinic');
+});
