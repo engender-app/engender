@@ -2,8 +2,8 @@
    level a screen's source can be held to - mirrors home-surfaces.test.ts and
    more-surfaces.test.ts.
 
-   Sheets are not a surface (home-surfaces.test.ts's own note): the metric
-   and about sheets keep the old `.list-group`/`.list-row`/`.card`
+   Sheets are not a surface (home-surfaces.test.ts's own note): the about
+   sheet keeps the old `.list-group`/`.list-row`/`.card`
    vocabulary inside <Sheet>, so this file's "no card of its own" check
    strips every <Sheet>...</Sheet> block first, the same way the script
    block is stripped. The scales sheet is the exception and is on the kit
@@ -224,6 +224,14 @@ describe('what Settings is built from', () => {
       if (palette === 'intersex') expect(new Set(drawn)).toEqual(new Set(stripes));
       else expect(drawn, palette).toEqual(stripes);
     }
+  });
+
+  it('has no Home & calendar colour row (functional-audit ticket 14)', () => {
+    /* The metric preference stays: Calendar and Look back's day-by-day
+       reading set it from their own pickers. Only the Settings row and its
+       sheet went. */
+    expect(settings).not.toContain('key="metric"');
+    expect(settings).not.toContain('metricSheet');
   });
 
   it('carries every data-* handle the walkthrough relies on', () => {

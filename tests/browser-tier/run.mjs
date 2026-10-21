@@ -137,7 +137,7 @@ await block('Archive after browser installation loss', 2, async () => {
 
 await block('rendered screen contracts', 171, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 58, home: 55, calendar: 59 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 54, calendar: 59 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
@@ -1615,14 +1615,14 @@ try {
       live.narrowed.error ?? `still ${live.narrowed.afterEntry} run(s)`
     );
 
-  /* Phase 8 audit ticket 13: Home's batched felt-sense read is fed the ids a
-     live list beside it holds, so it depends on that list as well as on its
-     own tables. Both halves have to reach it. */
+  /* Phase 8 audit ticket 13: a read fed the ids a live list beside it
+     holds depends on that list as well as on its own tables. Both halves
+     have to reach it. */
   if (live.feltSense.runsAfterTryout > live.feltSense.runsBefore && live.feltSense.latestDay === live.feltSense.expectedDay)
-    ok('a batched read fed a live list re-runs for the list it reads and for the table it asks');
+    ok('a read fed a live list re-runs for the list it reads and for the table it asks');
   else
     fail(
-      'a batched read fed a live list re-runs for the list it reads and for the table it asks',
+      'a read fed a live list re-runs for the list it reads and for the table it asks',
       live.feltSense.error ??
         `${live.feltSense.runsBefore} run(s) before the tryout, ${live.feltSense.runsAfterTryout} after, ` +
           `latest day ${live.feltSense.latestDay} rather than ${live.feltSense.expectedDay}`

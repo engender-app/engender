@@ -9,6 +9,7 @@ import {
   style,
   today,
   heldReads,
+  countedReads,
   type Result
 } from './screen-contracts/fixture';
 import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
@@ -18,6 +19,7 @@ import QuickAdd from '$lib/components/QuickAdd.svelte';
 import { ui } from '$lib/stores/ui.svelte';
 import { HOME_AREA_ROLE, tileRoleAt } from '$lib/theme/roles';
 import { activeFlag } from '$lib/theme/activeFlag.svelte';
+import { LIVE_TILE_ORDER, LIVE_TILE_PREF_KEY } from '$lib/data/liveTiles';
 
 export async function homeContracts(): Promise<Result[]> {
   const results: Result[] = [];
@@ -240,6 +242,17 @@ export async function homeContracts(): Promise<Result[]> {
     return root().querySelector('a[href="/transition/milestones"]');
   });
   await screen.remove();
+  const promptEntry = (await f.journal.entries.entriesForDay(today))[0];
+  screen = await mountScreen(`/?quickLogDims=${promptEntry.id}`, f);
+  await until(() => root().querySelector('[data-home-log] [data-mood="4"]'), 'quick mood');
+  /* Functional-audit ticket 14: a mood-only save opens no follow-up sheet.
+     The address the editor used to land on after one is the old way in, so
+     it is the one that has to open nothing now. */
+  await check('A mood-only save opens no scales follow-up sheet', async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return !root().querySelector('[data-quick-log-dims],[data-sheet] [data-qld-input]');
+  });
+  await screen.remove();
   const fanTarget = document.createElement('div');
   document.querySelector('#screens')!.replaceChildren(fanTarget);
   const fan = mountInto(QuickAdd, {}, fanTarget);
@@ -261,12 +274,19 @@ export async function homeContracts(): Promise<Result[]> {
   });
   await f.journal.procedures.upsertProcedure({
     name: 'Contract surgery',
-    surgeryEpochDay: today + 10
+    surgeryEpochDay: today - 10
   });
   await f.journal.letters.addLetter({
     epochDay: today - 3,
     unlockEpochDay: today - 1,
     text: 'Sealed contract letter'
+  });
+  await f.journal.appointments.upsertAppointment({
+    epochDay: today,
+    procedureId: null,
+    kind: 'Contract endocrinologist',
+    place: 'Contract clinic',
+    note: null
   });
   const initialReads: [string, string, number?][] = [
     ['wearSessions', 'getRunningSession'],
@@ -275,16 +295,12 @@ export async function homeContracts(): Promise<Result[]> {
     ['letters', 'getLetterSeals'],
     ['revisits', 'getDueRevisits'],
     ['entries', 'latestBadMomentEntryId'],
-    ['tryouts', 'getTryouts'],
-    ['feltSense', 'latestDaysForTryouts'],
     ['doses', 'getSchedules'],
     ['doses', 'getPauses'],
     ['doses', 'getDosesForSlots', today],
     ['doses', 'getDoses', today - 1],
-    ['voiceBenchmarks', 'lastWriteEpochDay'],
     ['journalingPauses', 'getPauses'],
     ['areaStates', 'getAreaStates'],
-    ['hairRemoval', 'latestSession'],
     ['appointments', 'getDayRecords']
   ];
   for (const [area, operation, day] of initialReads) {
@@ -330,6 +346,14 @@ export async function homeContracts(): Promise<Result[]> {
       Node.DOCUMENT_POSITION_FOLLOWING
     );
   });
+  await check("Agenda's today row names today's appointment and its place", () => {
+    const row = node(root(), `[data-agenda-item="appointment"][data-agenda-day="${today}"]`);
+    return (
+      row.textContent!.includes('Contract endocrinologist') &&
+      row.textContent!.includes('Contract clinic') &&
+      !root().querySelector('[data-live-tile="appointment-today"]')
+    );
+  });
   await check('Backup notice stays below mood strip and out of agenda', () => {
     const notice = node(root(), '[data-backup-notice]');
     return (
@@ -340,6 +364,55 @@ export async function homeContracts(): Promise<Result[]> {
     );
   });
   await screen.remove();
+
+  /* Functional-audit ticket 14: a tile whose kind is switched off, or whose
+     area is hidden, issues no read at all - not a read whose answer is then
+     ignored. Each pair is a read only the tile grid makes on Home. */
+  const TILE_READS = [
+    'wearSessions.getRunningSession',
+    'regimen.getEpisodes',
+    'procedures.getProcedures',
+    'letters.getLetterSeals',
+    'revisits.getDueRevisits',
+    'entries.latestBadMomentEntryId',
+    'doses.getSchedules',
+    'doses.getPauses',
+    'doses.getDosesForSlots',
+    'doses.getDoses',
+    'journalingPauses.getPauses'
+  ];
+  const settledHome = async () => {
+    await until(() => root().querySelector('[data-home-log]'), 'counted Home');
+    await until(() => !root().querySelector('[data-read-reserve-hold]') || null, 'counted Home reads');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  };
+  /* No pinned rows, because a pinned wear or letters row asks two of the
+     same questions for its own line (rowForwardReads.ts). */
+  const unpinned = { ...f.preferences, pinnedRows: [] };
+  const allTilesOff = Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [LIVE_TILE_PREF_KEY[kind], false]));
+  let counted = countedReads({ ...f, preferences: { ...unpinned, ...allTilesOff } });
+  screen = await mountScreen('/', counted.fixture);
+  await settledHome();
+  await check('Home issues no tile read while every tile is switched off', () => {
+    const asked = TILE_READS.filter((name) => counted.calls.has(name));
+    if (asked.length) throw new Error(`asked ${asked.map((name) => `${name} x${counted.calls.get(name)}`).join(', ')}`);
+    return !root().querySelector('[data-live-tile]');
+  });
+  await screen.remove();
+  await f.journal.areaStates.setAreasHidden(['wearSessions'], true);
+  counted = countedReads({ ...f, preferences: unpinned });
+  screen = await mountScreen('/', counted.fixture);
+  await settledHome();
+  await check('Home issues no read for a tile whose area is hidden', () => {
+    const hiddenReads = ['wearSessions.getRunningSession'];
+    const asked = hiddenReads.filter((name) => counted.calls.has(name));
+    if (asked.length) throw new Error(`asked ${asked.join(', ')}`);
+    /* The other tiles still read: the gate is per tile, not a switch on
+       the whole grid. */
+    return counted.calls.has('procedures.getProcedures') && !root().querySelector('[data-live-tile="wear-timer"]');
+  });
+  await screen.remove();
+  await f.journal.areaStates.setAreasHidden(['wearSessions'], false);
   await f.journal.journalingPauses.upsertPause({
     startEpochDay: today - 2,
     endEpochDay: null

@@ -27,12 +27,8 @@ describe('the unprompted registry', () => {
       'surgeryCountdownEnabled',
       'safeSpaceNudgeEnabled',
       'stockNoticeEnabled',
-      'activeTryoutTileEnabled',
       'patchScheduleTileEnabled',
-      'voiceBenchmarkNudgeEnabled',
       'pauseActiveBannerEnabled',
-      'hairRemovalRecoveryEnabled',
-      'appointmentTodayEnabled',
       'wrappedEnabled',
       'onThisDayEnabled',
       'revisitEnabled'
@@ -146,14 +142,11 @@ describe('the notifications view (ticket 04)', () => {
      finished takes its tiles and its notifications with it, and this is the
      list that says which are whose. */
 
-  it('names an area for the six kinds that belong to one, and none for the rest', () => {
+  it('names an area for the two kinds that belong to one, and none for the rest', () => {
     const withArea = UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [row.key, row.area]);
 
     expect(withArea).toEqual([
       ['wear-timer', 'wearSessions'],
-      ['voice-benchmark-nudge', 'voiceBenchmarks'],
-      ['hair-removal-recovery', 'hairRemovalSessions'],
-      ['appointment-today', 'appointments'],
       ['wear-elapsed', 'wearSessions']
     ]);
   });

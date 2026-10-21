@@ -56,6 +56,7 @@ import { isDailySchedule, mostRecentPassedSlot } from './doseSchedule';
 import type { DayAheadMark, DayAheadMarkKind } from './journal/dayAhead';
 import { DAY_AHEAD_ROUTES } from './journal/dayAheadRoutes';
 import type { DoseScheduleComparison } from './journal/doses';
+import type { AppointmentDayRecord } from './journal/appointments';
 
 /** How many days the agenda covers, today counted as one of them.
 
@@ -88,9 +89,23 @@ export const AGENDA_PASSED_DAYS = 7;
     be argued to a different figure without dragging the other with it. */
 export const AGENDA_CAP = 3;
 
+/** Which appointment today's appointment row is about (functional-audit
+    ticket 14). `title` is the appointment's own kind, or its procedure's
+    name, or null for one with neither - the screen draws the kind's own
+    label then, the same fallback chain the appointments screen uses.
+    `more` counts the other appointments on the same day. */
+export interface AgendaAppointment {
+  title: string | null;
+  place: string | null;
+  more: number;
+}
+
 /** One dated thing, and where to go to read more about it. Carries the day
     and the kind, which is the whole of what a mark says (dayAhead.ts) -
-    never which appointment, never which letter. */
+    never which letter. The one exception is today's appointment row, which
+    names the visit and its place: on the day itself the date is the least
+    useful thing about it, and that row is where the appointment-today tile
+    folded to (functional-audit ticket 14). */
 export interface AgendaItem {
   /** The row's own walkthrough handle (ADR-0029) - stable, never the copy.
       Keyed by kind *and* day, since a weekly injection earns one mark per
@@ -99,6 +114,8 @@ export interface AgendaItem {
   kind: DayAheadMarkKind;
   epochDay: number;
   route: string;
+  /** Only on an appointment row dated today. */
+  appointment?: AgendaAppointment;
 }
 
 /** The one slot that went by with nothing logged against it. Its own shape
@@ -129,6 +146,17 @@ export interface AgendaInput {
       about slots only in the one arm where a schedule exists - the same
       narrowing `whatIsWaiting` does. */
   doses: DoseScheduleComparison;
+  /** `appointments.getDayRecords` for today, in that read's own order. */
+  todayAppointments: readonly AppointmentDayRecord[];
+}
+
+/** Today's appointment row's own words, or undefined with nothing booked
+    today. The first of the day is named and the rest are counted, the way
+    the tile it replaces did. */
+function todayAppointment(records: readonly AppointmentDayRecord[]): AgendaAppointment | undefined {
+  const [first, ...rest] = records;
+  if (!first) return undefined;
+  return { title: first.kind ?? first.procedureName, place: first.place, more: rest.length };
 }
 
 /** The window Today asks `dayAhead` for: `AGENDA_DAYS` days starting today,
@@ -197,14 +225,19 @@ export function passedSlotSentence(epochDay: number, fullDay: (epochDay: number)
     registry order (`assembleDayAhead`), the same order `/day/[day]` draws
     them in. */
 export function agenda(input: AgendaInput): Agenda | null {
+  const today = todayAppointment(input.todayAppointments);
   const items: AgendaItem[] = [...input.marks]
     .sort((a, b) => a.epochDay - b.epochDay)
-    .map((mark) => ({
-      key: `agenda-${mark.kind}-${mark.epochDay}`,
-      kind: mark.kind,
-      epochDay: mark.epochDay,
-      route: DAY_AHEAD_ROUTES[mark.kind]
-    }));
+    .map((mark) => {
+      const item: AgendaItem = {
+        key: `agenda-${mark.kind}-${mark.epochDay}`,
+        kind: mark.kind,
+        epochDay: mark.epochDay,
+        route: DAY_AHEAD_ROUTES[mark.kind]
+      };
+      if (mark.kind === 'appointment' && mark.epochDay === input.todayEpochDay && today) item.appointment = today;
+      return item;
+    });
 
   const passed = passedSlot(input.doses, input.todayEpochDay);
   if (items.length === 0 && !passed) return null;

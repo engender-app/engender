@@ -30,6 +30,7 @@ import {
 } from '../../src/lib/data/live/journal.svelte.ts';
 import { readWhatIsWaiting, WAITING_TABLES } from '../../src/lib/data/comingBackReads.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
+import type { FeltSenseEntry } from '../../src/lib/data/types.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { watchLock } from '../../src/lib/stores/lock.svelte.ts';
 import { prefs } from '../../src/lib/data/prefs/store.svelte.ts';
@@ -95,7 +96,7 @@ async function run() {
   let recapRuns = 0;
   let recapQuery: LiveQuery<number>;
   let feltSenseRuns = 0;
-  let feltSenseQuery!: LiveQuery<Map<string, number>>;
+  let feltSenseQuery!: LiveQuery<FeltSenseEntry[]>;
 
   $effect.root(() => {
     // Care's own stock-sheet read, counting its runs: what the screen shows is
@@ -115,17 +116,19 @@ async function run() {
       return recap.entryCount;
     });
 
-    /* Home's felt-sense read (phase 8 audit ticket 13): one batched question
-       fed the ids a `liveList` beside it already answered with, rather than a
-       second `getTryouts` and then one query per tryout. Its dependency on
-       that list is a synchronous read of `rows` before the first await, which
-       is a Svelte dependency and not a table version - so this is the check
-       that the two kinds of dependency reach the same effect. */
+    /* A read fed the ids a `liveList` beside it already answered with,
+       rather than a second `getTryouts`. Its dependency on that list is a
+       synchronous read of `rows` before the first await, which is a Svelte
+       dependency and not a table version - so this is the check that the
+       two kinds of dependency reach the same effect. Home's felt-sense read
+       was the first of this shape; it went with the active tryout tile
+       (functional-audit ticket 14), and the running tryout's readings are
+       the same question asked of one id. */
     const tryouts = liveList((j) => j.tryouts.getTryouts());
     feltSenseQuery = liveQuery((j) => {
-      const ids = tryouts.rows.filter((t) => spanCoversDay(t, TODAY)).map((t) => t.id);
+      const id = tryouts.rows.find((t) => spanCoversDay(t, TODAY))?.id;
       feltSenseRuns += 1;
-      return j.feltSense.latestDaysForTryouts(ids);
+      return id ? j.feltSense.forTryout(id) : Promise.resolve([]);
     });
   });
 
@@ -133,7 +136,7 @@ async function run() {
 
   await until(() => projectionRuns > 0, 'the stock projection query to answer');
   await until(() => recapRuns > 0, 'the narrowed recap query to answer');
-  await until(() => feltSenseQuery.value !== undefined, "Home's felt-sense query to answer");
+  await until(() => feltSenseQuery.value !== undefined, 'the felt-sense query to answer');
 
   const projectionRunsBefore = projectionRuns;
   const recapRunsBefore = recapRuns;
@@ -150,15 +153,15 @@ async function run() {
   });
   const feltSenseError = await reasonIfNotReached(
     until(
-      () => (feltSenseQuery.value?.size ?? 0) === 0 && feltSenseRuns > feltSenseRunsBefore,
-      "Home's felt-sense query to be re-read after a tryout was added"
+      () => (feltSenseQuery.value?.length ?? 0) === 0 && feltSenseRuns > feltSenseRunsBefore,
+      'the felt-sense query to be re-read after a tryout was added'
     )
   );
   await journal.feltSense.add({ tryoutId }, { epochDay: TODAY - 4, mood: 3 });
   const feltSenseWriteError = await reasonIfNotReached(
     until(
-      () => feltSenseQuery.value?.get(tryoutId) === TODAY - 4,
-      "Home's felt-sense query to answer with the day just written"
+      () => feltSenseQuery.value?.[0]?.epochDay === TODAY - 4,
+      'the felt-sense query to answer with the day just written'
     )
   );
 
@@ -414,7 +417,7 @@ async function run() {
     feltSense: {
       runsBefore: feltSenseRunsBefore,
       runsAfterTryout: feltSenseRuns,
-      latestDay: feltSenseQuery.value?.get(tryoutId) ?? null,
+      latestDay: feltSenseQuery.value?.[0]?.epochDay ?? null,
       expectedDay: TODAY - 4,
       error: feltSenseError ?? feltSenseWriteError
     },

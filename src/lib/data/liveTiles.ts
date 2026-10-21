@@ -15,27 +15,24 @@
 
    Relative imports rather than $lib for the same reason registry.ts uses
    them: this file is read by the Node tier, where no alias exists. That is
-   also why the four display formats arrive as callbacks - `fmtDay` and
-   `hairRemovalAreaName` both reach paraglide through `$lib`. */
+   also why the display formats arrive as callbacks - `fmtDay` reaches
+   paraglide through `$lib`. */
 
 import { m } from '../paraglide/messages';
 import type {
   DoseEvent,
   DosePause,
   DoseSchedule,
-  HairRemovalSession,
   JournalingPause,
   Procedure,
   RegimenEpisode,
   Revisit,
-  Tryout,
   WearSession
 } from './types';
 import { pauseCoversDay as isJournalingPauseOn } from './journalingPause';
 import { expectedAmountOn, isDailySchedule } from './doseSchedule';
 import { activeEpisodesAt, attributeDose } from './regimenEpisode';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
-import { spanCoversDay } from './span';
 import { binderCueShowing, hoursMinutesSecondsOf } from './journal/wearSessions';
 import { wearTileTitle } from './vocabulary/wearLabels';
 import { activeSurgeryProcedure, recoveryDay } from './recoveryDay';
@@ -43,45 +40,10 @@ import { SPINE_FORWARD_DAYS } from './careSpine';
 import { pairDoseSchedule } from './journal/doses';
 import { shouldShowSafeSpaceNudge } from './safeSpaceNudge';
 import { unreadUnlockedLetters } from './letterStatus';
-import type { AppointmentDayRecord } from './journal/appointments';
 import type { BooleanPrefKey, SurfaceRow, UnpromptedKind } from '../unprompted/registry';
 import { SURFACE_ROWS, unpromptedQuiet } from '../unprompted/registry';
 import type { AreaStates } from './areaState';
 import type { LetterSeal } from './journal/letters';
-
-interface ActiveTryoutTileResult {
-  tryout: Tryout;
-  daysElapsed: number;
-}
-
-/* shouldShowActiveTryoutTile stays exported only for its own test (AU-09
-   test-only review). */
-export function shouldShowActiveTryoutTile(params: {
-  tryouts: readonly Tryout[];
-  /** A tryout with no felt-sense history is absent, which reads the same as
-      one whose latest day is unknown: both fall back to its start day
-      (feltSense.ts states the convention). */
-  latestFeltSenseByTryoutId: ReadonlyMap<string, number>;
-  todayEpochDay: number;
-  enabled: boolean;
-  snoozed: boolean;
-}): ActiveTryoutTileResult | null {
-  if (!params.enabled || params.snoozed) return null;
-
-  const activeTryouts = params.tryouts.filter((t) => spanCoversDay(t, params.todayEpochDay));
-
-  for (const tryout of activeTryouts) {
-    const lastFeltDay = params.latestFeltSenseByTryoutId.get(tryout.id);
-    const referenceDay = lastFeltDay != null ? lastFeltDay : tryout.startEpochDay;
-    const daysElapsed = params.todayEpochDay - referenceDay;
-
-    if (daysElapsed >= 3) {
-      return { tryout, daysElapsed };
-    }
-  }
-
-  return null;
-}
 
 interface PatchScheduleTileResult {
   episode: RegimenEpisode;
@@ -134,42 +96,6 @@ export function shouldShowPatchScheduleTile(params: {
   return null;
 }
 
-interface VoiceBenchmarkNudgeResult {
-  daysElapsed: number;
-}
-
-/* Benchmarks, not an entry's voice memos (phase 5 deepening ticket 15). The
-   tile was written against `voice.inJournal()` while voice_benchmark did not
-   exist yet, which made it measure the age of the last memo somebody attached
-   to an entry - a different record with a different cadence, and the one
-   thing a benchmark reminder must not be counting.
-
-   A journal with no benchmark in it gets no tile at all, which is ADR-0039's
-   own rule - the live-tile area is gated on live data, never on a preference
-   - and is what stops the tile being an advert for a feature nobody has
-   started. The flow is reached from the More hub until then. */
-/* shouldShowVoiceBenchmarkNudge stays exported only for its own test (AU-09
-   test-only review). */
-export function shouldShowVoiceBenchmarkNudge(params: {
-  /** The day of the newest benchmark at or before today, or null when there
-      is none - one bounded `MAX`, not a table reduced here (lastWrite.ts). */
-  latestBenchmarkEpochDay: number | null;
-  todayEpochDay: number;
-  enabled: boolean;
-  snoozed: boolean;
-}): VoiceBenchmarkNudgeResult | null {
-  if (!params.enabled || params.snoozed) return null;
-
-  if (params.latestBenchmarkEpochDay == null) return null;
-
-  const daysElapsed = params.todayEpochDay - params.latestBenchmarkEpochDay;
-  if (daysElapsed > 14) {
-    return { daysElapsed };
-  }
-
-  return null;
-}
-
 interface PauseActiveBannerResult {
   pause: JournalingPause;
   resumeEpochDay: number | null;
@@ -194,40 +120,14 @@ export function shouldShowPauseActiveBanner(params: {
   };
 }
 
-interface HairRemovalRecoveryResult {
-  session: HairRemovalSession;
-  daysSince: number;
-}
-
-/* shouldShowHairRemovalRecovery stays exported only for its own test (AU-09
-   test-only review). */
-export function shouldShowHairRemovalRecovery(params: {
-  /** The newest session at or before today, which is the read's own job to
-      find (hairRemoval.ts): the tile needs one row, not the table. */
-  latestSession: HairRemovalSession | null;
-  todayEpochDay: number;
-  enabled: boolean;
-  snoozed: boolean;
-}): HairRemovalRecoveryResult | null {
-  if (!params.enabled || params.snoozed) return null;
-  if (!params.latestSession) return null;
-
-  const daysSince = params.todayEpochDay - params.latestSession.epochDay;
-  // 48 hours following session = today (0) or yesterday (1)
-  if (daysSince >= 0 && daysSince < 2) {
-    return { session: params.latestSession, daysSince };
-  }
-
-  return null;
-}
-
 /* ------------------------------------------------------------------------
    Home's grid (phase 8 deepening ticket 07)
 
    Eleven tiles used to be eleven `{#if}` blocks in a route, each holding its
    own reads, its own preference gate and its own answer to "how many
    siblings do I have" - which is how four of them ended up asking that
-   question of only the original five tiles, so a journal showing several kinds could draw a partial count. What follows is the same
+   question of only the original five tiles, so a journal showing several
+   kinds could draw a partial count. What follows is the same
    eleven with one gate, one order and one count.
 
    No policy: no cap, no priority, no tier. The order below is the source
@@ -235,7 +135,7 @@ export function shouldShowHairRemovalRecovery(params: {
    spec's cap ticket is what changes it.
    --------------------------------------------------------------------- */
 
-/** The kinds Home's grid draws, narrowed out of `UnpromptedKind`'s nineteen.
+/** The kinds Home's grid draws, narrowed out of `UnpromptedKind`'s fifteen.
 
     Written out rather than derived from `LIVE_TILE_ORDER` below, for the
     reason registry.ts gives about its own `UnpromptedKind`: a union read off
@@ -251,12 +151,8 @@ export type LiveTileKind =
   | 'safe-space-nudge'
   | 'ready-letter'
   | 'revisit'
-  | 'active-tryout-tile'
   | 'patch-schedule-tile'
-  | 'voice-benchmark-nudge'
-  | 'pause-active-banner'
-  | 'hair-removal-recovery'
-  | 'appointment-today';
+  | 'pause-active-banner';
 
 /** The order Home draws them in, and the only place that order is written.
 
@@ -272,16 +168,8 @@ export const LIVE_TILE_ORDER = [
   'safe-space-nudge',
   'ready-letter',
   'revisit',
-  'active-tryout-tile',
   'patch-schedule-tile',
-  'voice-benchmark-nudge',
-  'pause-active-banner',
-  'hair-removal-recovery',
-  /* Appended rather than slotted into the historical route order above:
-     this kind never lived on the route (phase 8 features ticket 63), so
-     there is no prior position to preserve - only where it lands in its own
-     tier, which `LIVE_TILE_TIER` below decides. */
-  'appointment-today'
+  'pause-active-banner'
 ] as const satisfies readonly LiveTileKind[];
 
 /** How much of the screen a tile is worth (phase 8 UX ticket 01, ADR-0055).
@@ -292,13 +180,14 @@ export const LIVE_TILE_ORDER = [
     still have to be bucketed to draw.
 
     - `today` is true today and false tomorrow: a wear session running now,
-      a dose slot the day expects, the two days of hair-removal aftercare,
-      an appointment on today's date (phase 8 features ticket 63).
+      a dose slot the day expects. An appointment on today's date is the
+      agenda's today row since functional-audit ticket 14, not a tile.
     - `moment` is something that has happened and is waiting: a letter that
-      unlocked, a bad moment Safe Space can answer, a surgery whose day is
-      approaching, a break that is running.
-    - `dormant` is a thing nothing is asking for: it has been a while since
-      a benchmark, a measurement, a felt sense on a tryout.
+      unlocked, a bad moment Safe Space can answer, the days after a
+      surgery, a break that is running.
+    - `dormant` is a thing nothing is asking for. No live tile sits there
+      since functional-audit tickets 05 and 14 cut the nudges and the tryout
+      tile; the tier stays so the next quiet nudge has a place.
 
     The dose panel is a moment rather than bound to today on purpose. It
     qualifies for as long as an episode is active, which would make it a
@@ -321,16 +210,12 @@ const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readon
 export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'wear-timer': 'today',
   'patch-schedule-tile': 'today',
-  'hair-removal-recovery': 'today',
   'dose-panel': 'moment',
   'surgery-countdown': 'moment',
   'safe-space-nudge': 'moment',
   'ready-letter': 'moment',
   'revisit': 'moment',
-  'pause-active-banner': 'moment',
-  'active-tryout-tile': 'dormant',
-  'voice-benchmark-nudge': 'dormant',
-  'appointment-today': 'today'
+  'pause-active-banner': 'moment'
 };
 
 /** How many tiles Home draws at their own weight. The rest fold into one
@@ -464,21 +349,13 @@ export interface HomeTileReads {
       read, but it is the safe-space nudge's second input and belongs beside
       the first. */
   safeSpaceDismissedEntryId: number | null | undefined;
-  tryouts: readonly Tryout[];
-  latestFeltSenseByTryoutId: ReadonlyMap<string, number>;
   schedules: readonly DoseSchedule[];
   dosePauses: readonly DosePause[];
   scheduleDoses: readonly DoseEvent[];
   /** Yesterday's logged timestamps, used only for the automatic-log notice.
       Schedule pairing reads its own tolerance-widened window above. */
   yesterdayDoses: readonly DoseEvent[];
-  latestBenchmarkEpochDay: number | null;
   journalingPauses: readonly JournalingPause[];
-  latestHairRemovalSession: HairRemovalSession | null;
-  /** Today's own appointment rows (phase 8 features ticket 63) - `getDayRecords`
-      asked for today rather than the whole table, the same reason
-      `scheduleDoses` above is bounded rather than every dose ever logged. */
-  todayAppointments: readonly AppointmentDayRecord[];
 }
 
 /** What a tile's controls do. Everything a tile can start except opening the
@@ -498,7 +375,7 @@ export interface HomeTileActions {
   snooze: (kind: LiveTileKind) => void;
 }
 
-/** The five display formats, as callbacks: every one of them reaches
+/** The display formats, as callbacks: every one of them reaches
     paraglide through `$lib`, which the Node tier cannot resolve. */
 /* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
    cross-checks against it (AU-09 test-only review). */
@@ -516,8 +393,6 @@ export interface HomeTileFormat {
   weekdayDay: (epochDay: number) => string;
   /** A wall-clock time - when a wear session started. */
   time: (timestamp: number) => string;
-  /** A hair removal area's own name. */
-  hairRemovalArea: (area: string) => string;
 }
 
 /* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which
@@ -540,7 +415,7 @@ export interface HomeTilesInput {
 }
 
 /** The preference and the snooze, already resolved for one kind. Handed to
-    each builder rather than checked for it, because five of the twelve have
+    each builder rather than checked for it, because five of the eight have
     no predicate to pass it to and would otherwise skip the gate. */
 interface TileGate {
   enabled: boolean;
@@ -590,8 +465,8 @@ export function dosePanelCoversEveryRegimen(
   return marking.length === 0 || (marking.length === 1 && marking[0].id === active[0].id);
 }
 
-/** Home's grid: the twelve kinds, gated, in `LIVE_TILE_ORDER`, with nothing
-    dropped for being twelfth. A `Record` keyed by `LiveTileKind` rather
+/** Home's grid: every kind, gated, in `LIVE_TILE_ORDER`, with nothing
+    dropped for being last. A `Record` keyed by `LiveTileKind` rather
     than an array, so a kind added to the union is a missing-property error
     here as well as a missing entry in the order. */
 function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
@@ -690,25 +565,24 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       };
     },
 
+    /* The days after a surgery, and only those (functional-audit ticket
+       14). The agenda states the date while it is ahead and on the day
+       itself, so a countdown here said it twice. Procedures not yet behind
+       today are left out before the nearest is picked, so an upcoming one
+       closer to today cannot hide the recovery that is running. */
     'surgery-countdown': (gate) => {
       if (!gate.enabled || gate.snoozed) return null;
-      const procedure = activeSurgeryProcedure(reads.procedures, today);
+      const behind = reads.procedures.filter((p) => p.surgeryEpochDay !== null && p.surgeryEpochDay < today);
+      const procedure = activeSurgeryProcedure(behind, today);
       if (!procedure) return null;
       const day = recoveryDay(procedure.surgeryEpochDay, today);
-      const value =
-        day.type === 'unscheduled'
-          ? m.surgery_day_unscheduled()
-          : day.type === 'upcoming'
-            ? m.surgery_day_upcoming({ days: m.n_days({ n: day.days }) })
-            : day.type === 'surgeryDay'
-              ? m.surgery_day_of()
-              : m.surgery_day_since({ days: m.n_days({ n: day.days }) });
+      if (day.type !== 'since') return null;
       return {
         key: 'surgery-countdown',
         tileKey: 'surgery-countdown',
         attrs: { 'data-surgery-tile': true },
         title: m.tile_surgery_title(),
-        value,
+        value: m.tile_surgery_post_op_day({ days: String(day.days) }),
         note: procedure.name,
         href: '/health/surgery'
       };
@@ -785,33 +659,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       };
     },
 
-    'active-tryout-tile': (gate) => {
-      const qualifying = shouldShowActiveTryoutTile({
-        tryouts: reads.tryouts,
-        latestFeltSenseByTryoutId: reads.latestFeltSenseByTryoutId,
-        todayEpochDay: today,
-        enabled: gate.enabled,
-        snoozed: gate.snoozed
-      });
-      if (!qualifying) return null;
-      return {
-        key: 'active-tryout-tile',
-        tileKey: 'active-tryout',
-        attrs: { 'data-active-tryout-tile': true },
-        title: m.tile_active_tryout_title(),
-        value: qualifying.tryout.label,
-        note: m.tile_active_tryout_note({ days: String(qualifying.daysElapsed) }),
-        href: `/transition/tryouts/${qualifying.tryout.id}`,
-        action: {
-          icon: 'plus',
-          text: m.tile_tryout_action(),
-          label: m.tile_tryout_action(),
-          href: `/transition/tryouts/${qualifying.tryout.id}?feltSense=1`
-        },
-        dismiss: dismissSnooze('active-tryout-tile')
-      };
-    },
-
     'patch-schedule-tile': (gate) => {
       const qualifying = shouldShowPatchScheduleTile({
         formatNumber: format.number,
@@ -842,32 +689,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
       };
     },
 
-    'voice-benchmark-nudge': (gate) => {
-      const qualifying = shouldShowVoiceBenchmarkNudge({
-        latestBenchmarkEpochDay: reads.latestBenchmarkEpochDay,
-        todayEpochDay: today,
-        enabled: gate.enabled,
-        snoozed: gate.snoozed
-      });
-      if (!qualifying) return null;
-      return {
-        key: 'voice-benchmark-nudge',
-        tileKey: 'voice-benchmark',
-        attrs: { 'data-voice-benchmark-tile': true },
-        title: m.tile_voice_benchmark_title(),
-        value: m.tile_voice_benchmark_action(),
-        note: m.tile_voice_benchmark_days_ago({ days: String(qualifying.daysElapsed) }),
-        href: '/voice?tab=compare',
-        action: {
-          icon: 'mic',
-          text: m.tile_voice_benchmark_action(),
-          label: m.tile_voice_benchmark_action(),
-          href: '/voice?tab=record'
-        },
-        dismiss: dismissSnooze('voice-benchmark-nudge')
-      };
-    },
-
     'pause-active-banner': (gate) => {
       const qualifying = shouldShowPauseActiveBanner({
         pauses: reads.journalingPauses,
@@ -895,54 +716,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           onclick: () => actions.resumePause(pause.id, pause.startEpochDay)
         },
         dismiss: dismissSnooze('pause-active-banner')
-      };
-    },
-
-    'hair-removal-recovery': (gate) => {
-      const qualifying = shouldShowHairRemovalRecovery({
-        latestSession: reads.latestHairRemovalSession,
-        todayEpochDay: today,
-        enabled: gate.enabled,
-        snoozed: gate.snoozed
-      });
-      if (!qualifying) return null;
-      return {
-        key: 'hair-removal-recovery',
-        tileKey: 'hair-removal-recovery',
-        attrs: { 'data-hair-removal-tile': true },
-        title: m.tile_hair_removal_title(),
-        value: format.hairRemovalArea(qualifying.session.area),
-        note: m.tile_hair_removal_guidance(),
-        href: '/body/hair-removal',
-        dismiss: dismissSnooze('hair-removal-recovery')
-      };
-    },
-
-    /* An appointment on today's date (phase 8 features ticket 63, ADR-0067).
-       No snooze: unlike the recurring nudges beside it in this tier, the
-       fact is true for exactly one day and gone on its own tomorrow, so
-       there is nothing a snooze would buy that waiting for tomorrow does
-       not already give for free. More than one appointment today still
-       produces the one tile the acceptance asks for - the rest are counted
-       the same way a second unread letter is. */
-    'appointment-today': (gate) => {
-      if (!gate.enabled || gate.snoozed) return null;
-      const [appointment, ...rest] = reads.todayAppointments;
-      if (!appointment) return null;
-      return {
-        key: 'appointment-today',
-        tileKey: 'appointment-today',
-        attrs: { 'data-appointment-today-tile': true },
-        title: m.tile_appointment_title(),
-        // Same fallback chain the appointments screen's own `titleOf` uses:
-        // a consult with no kind typed in still names the journey it
-        // belongs to before falling back to the untitled label.
-        value: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
-        note:
-          rest.length > 0
-            ? m.tile_appointment_more({ count: String(rest.length) })
-            : (appointment.place ?? undefined),
-        href: '/health/appointments'
       };
     }
   };

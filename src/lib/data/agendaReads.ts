@@ -6,22 +6,26 @@
    takes rows. This file is what fetches them, in one place, so every
    surface that ever asks what is coming asks the same two questions.
 
-   Two reads, and only one of them looks forward. `dayAhead.getDayAhead` is
-   the app's one forward read (ADR-0067) and nothing here adds a second:
+   Three reads, and only one of them looks forward. `dayAhead.getDayAhead`
+   is the app's one forward read (ADR-0067) and nothing here adds a second:
    Today is its seventh consumer, not a new mechanism. The schedule
    comparison looks *backwards*, over the week behind, and exists for the
    single passed slot the projection may state - `agenda.ts`'s own header
-   says why that is a dose slot and can be nothing else.
+   says why that is a dose slot and can be nothing else. The third is
+   today's own appointments, which name today's appointment row
+   (functional-audit ticket 14, which folded the appointment-today tile
+   into the agenda).
 
-   No table list is exported to seed a live query with. Both reads are
+   No table list is exported to seed a live query with. All three reads are
    issued in the same `Promise.all`, before this function's first `await`,
-   so a `liveQuery` discovers both dependencies on its first run - the
+   so a `liveQuery` discovers every dependency on its first run - the
    problem `WAITING_TABLES` exists for (five reads sitting past an earlier
    `await`) is not this one's. */
 
 import { agenda, agendaPassedWindow, agendaWindow, type Agenda, type AgendaInput } from './agenda';
-import { DAY_AHEAD_MARK_KINDS, type DayAheadArea, type DayAheadMarkKind } from './journal/dayAhead';
+import type { DayAheadArea } from './journal/dayAhead';
 import type { DosesArea } from './journal/doses';
+import type { AppointmentsArea } from './journal/appointments';
 
 /** The areas the agenda reads: the ones `openJournal` already built, so
     every fact arrives through the same method its own screen would ask
@@ -30,6 +34,7 @@ import type { DosesArea } from './journal/doses';
 export interface AgendaAreas {
   dayAhead: DayAheadArea;
   doses: DosesArea;
+  appointments: AppointmentsArea;
 }
 
 /** Read the agenda's facts without waiting for the live tiles to decide
@@ -40,28 +45,31 @@ export async function readAgenda(
 ): Promise<AgendaInput | null> {
   const ahead = agendaWindow(todayEpochDay);
   const behind = agendaPassedWindow(todayEpochDay);
-  const [marks, doses] = await Promise.all([
+  const [marks, doses, todayAppointments] = await Promise.all([
     areas.dayAhead.getDayAhead(ahead.fromEpochDay, ahead.toEpochDay, todayEpochDay),
     /* `getComparison` is what resolves the episode in effect, its schedule
        and its pauses, so this file asks one question instead of assembling
        four - the same reason the return surface asks it. */
-    areas.doses.getComparison(behind)
+    areas.doses.getComparison(behind),
+    /* Today's rows, not the table: one day is all the today row names. */
+    areas.appointments.getDayRecords(todayEpochDay)
   ]);
 
-  return { todayEpochDay, marks, doses };
+  return { todayEpochDay, marks, doses, todayAppointments };
 }
 
-/** Apply the current switches and dose-panel coverage to the same facts.
-    Filter before capping, so a withheld dose never takes another row's room.
-    Coverage includes every regimen producing dose-slot marks. A second
-    such regimen preserves the marks; daily or unscheduled regimens do not. */
+/** Apply the dose panel's coverage to the same facts. Filter before
+    capping, so a withheld dose never takes another row's room. Coverage
+    includes every regimen producing dose-slot marks. A second such regimen
+    preserves the marks; daily or unscheduled regimens do not.
+
+    Every other kind is drawn: the five per-kind switches went in
+    functional-audit ticket 14. */
 export function projectAgenda(
   facts: AgendaInput | null | undefined,
-  kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
   dosePanelCoversEveryDose = false
 ): Agenda | null {
   if (!facts) return null;
-  const on = new Set<DayAheadMarkKind>(kinds);
-  if (dosePanelCoversEveryDose) on.delete('doseSlot');
-  return agenda({ ...facts, marks: facts.marks.filter((mark) => on.has(mark.kind)) });
+  if (!dosePanelCoversEveryDose) return agenda(facts);
+  return agenda({ ...facts, marks: facts.marks.filter((mark) => mark.kind !== 'doseSlot') });
 }
