@@ -182,7 +182,7 @@
       }
     ],
     taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],
-    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY }],
+    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY, resolvedEpochDay: null }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
     cycleEvents: [{ id: 'c1', kind: 'spotting', epochDay: DAY }],
     tallyEvents: [

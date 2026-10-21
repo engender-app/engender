@@ -754,7 +754,8 @@ export async function generateLongJournal(
     await journal.sideEffects.upsertSideEffect({
       name: pick(SIDE_EFFECT_NAMES),
       severity: between(1, 5),
-      epochDay: firstEpochDay + Math.floor(((i + 1) / 11) * days)
+      epochDay: firstEpochDay + Math.floor(((i + 1) / 11) * days),
+      resolvedEpochDay: null
     });
     summary.sideEffects++;
   }

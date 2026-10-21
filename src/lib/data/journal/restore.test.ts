@@ -103,7 +103,7 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.reminders.upsertReminder({
@@ -445,7 +445,7 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
 
 test('a side effect left blank survives an export/import round trip as null, not zero or three', async () => {
   const source = await device();
-  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000 });
+  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000, resolvedEpochDay: null });
 
   const target = await device();
   await target.journal.archive.merge(await exported(source.journal));

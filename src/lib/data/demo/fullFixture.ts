@@ -315,10 +315,19 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     await journal.cycleEvents.upsertCycleEvent({ kind: pick(['period_occurred', 'spotting', 'nothing_this_month'] as const), epochDay: day });
   }
 
-  // Side effects: a handful spread over the last two years.
+  // Side effects: a handful spread over the last two years. The older ones
+  // resolved a few weeks in, the two newest still going on (functional
+  // audit ticket 23), so both states show. No extra rolls: the seeded
+  // sequence after this stays where it was.
   const sideEffectNames = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
   for (let i = 0; i < 8; i++) {
-    await journal.sideEffects.upsertSideEffect({ name: pick(sideEffectNames), severity: between(1, 5), epochDay: today - 730 + Math.floor((i / 8) * 730) });
+    const epochDay = today - 730 + Math.floor((i / 8) * 730);
+    await journal.sideEffects.upsertSideEffect({
+      name: pick(sideEffectNames),
+      severity: between(1, 5),
+      epochDay,
+      resolvedEpochDay: i < 6 ? epochDay + 14 + i * 3 : null
+    });
   }
 
   // Surgery: one procedure, dated in the past, with consults, notes and a

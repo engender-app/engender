@@ -49,7 +49,12 @@
   import { offeredEffectTypes } from '$lib/data/effectPicker';
   import { RETIRED_PERSONAL_EFFECT_KEYS } from '$lib/data/vocabulary/retiredEffects';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import {
+    todayEpochDay,
+    epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
+    dateInputValueFromEpochDay
+  } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -213,27 +218,59 @@
   const rememberBody = (px: number) => rememberReserve('care-changes', px);
   let effects = $derived(effectsQuery.rows);
 
-  const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({
-    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '' }),
+  /* `resolved` is the resolved day as a date input value, empty while the
+     side effect is ongoing (functional audit ticket 23). */
+  type SideEffectDraft = { id?: string; date: string; name: string; severity: string; resolved: string };
+
+  const record = recordEditor<SideEffect, SideEffectDraft>({
+    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '', resolved: '' }),
     fromRecord: (effect) => ({
       id: effect.id,
       date: dateInputValueFromEpochDay(effect.epochDay),
       name: effect.name,
-      severity: effect.severity === null ? '' : String(effect.severity)
+      severity: effect.severity === null ? '' : String(effect.severity),
+      resolved: effect.resolvedEpochDay === null ? '' : dateInputValueFromEpochDay(effect.resolvedEpochDay)
     }),
     async upsert(draft) {
       const name = draft.name.trim();
-      if (!name) return false;
+      if (!name || !resolvedAfterStart(draft)) return false;
       await journal.sideEffects.upsertSideEffect({
         id: draft.id,
         name,
         severity: draft.severity === '' ? null : Number(draft.severity),
-        epochDay: epochDayFromDateInputValueOrToday(draft.date)
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
+        resolvedEpochDay: epochDayFromDateInputValue(draft.resolved)
       });
     },
     remove: (id) => journal.sideEffects.deleteSideEffect(id),
     findById: (id) => effects.find((effect) => effect.id === id)
   });
+
+  /* Marking it resolved starts the end day on today, or on the start day
+     when that is later, so the sheet never opens on a day it would refuse. */
+  function setResolved(draft: SideEffectDraft, resolved: boolean) {
+    if (!resolved) {
+      draft.resolved = '';
+      return;
+    }
+    if (draft.resolved !== '') return;
+    const start = epochDayFromDateInputValueOrToday(draft.date);
+    draft.resolved = dateInputValueFromEpochDay(Math.max(start, todayEpochDay()));
+  }
+
+  function resolvedAfterStart(draft: SideEffectDraft): boolean {
+    const end = epochDayFromDateInputValue(draft.resolved);
+    return end === null || end >= epochDayFromDateInputValueOrToday(draft.date);
+  }
+
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /** When it began and, once resolved, when it ended. */
+  function sideEffectSpan(effect: SideEffect): string {
+    if (effect.resolvedEpochDay === null) return m.side_effect_since({ date: longDay(effect.epochDay) });
+    if (effect.resolvedEpochDay === effect.epochDay) return longDay(effect.epochDay);
+    return m.side_effect_span({ from: longDay(effect.epochDay), to: longDay(effect.resolvedEpochDay) });
+  }
 
   /* Ticket 11's second entry point into the appointment prep list: a
      one-tap add, seeded from what is already on screen, rather than a
@@ -529,7 +566,7 @@
           <ListCard role={roleAt(activeFlag.roles, 1)}>
             {#each [...effects].reverse() as effect (effect.id)}
               {@const severity = severityName(effect.severity)}
-              {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+              {@const day = sideEffectSpan(effect)}
               <ListRow
                 key={effect.id}
                 data-side-effect={effect.id}
@@ -622,6 +659,7 @@
     editTitle={m.side_effect_edit_sheet()}
     saveLabel={m.side_effect_save()}
     deleteLabel={m.side_effect_delete()}
+    canSave={resolvedAfterStart}
     confirm={{
       title: m.side_effect_delete_sheet(),
       question: (effect) => m.side_effect_delete_q({ name: effect.name }),
@@ -651,6 +689,30 @@
           <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
+      <Field label={m.side_effect_status_label()} legend>
+        {#snippet children()}
+          <div data-side-effect-status>
+            <Segmented
+              name={m.side_effect_status_label()}
+              options={[
+                { value: 'ongoing', label: m.side_effect_ongoing() },
+                { value: 'resolved', label: m.side_effect_resolved() }
+              ]}
+              value={editor.resolved === '' ? 'ongoing' : 'resolved'}
+              onChange={(v) => setResolved(editor, v === 'resolved')}
+            />
+          </div>
+        {/snippet}
+      </Field>
+      {#if editor.resolved !== ''}
+        <div class="disclosed" transition:disclose>
+          <Field label={m.side_effect_resolved_label()} id="side-effect-resolved">
+            {#snippet children(id)}
+              <DatePicker name="side-effect-resolved" bind:value={editor.resolved} {id} />
+            {/snippet}
+          </Field>
+        </div>
+      {/if}
     {/snippet}
     {#snippet extraActions(editor)}
       <button class="btn btn-soft" data-add-to-appointment-prep disabled={prepWrite.busy} onclick={() => addToAppointmentPrep(editor.name)}>

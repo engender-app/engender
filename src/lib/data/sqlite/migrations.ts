@@ -73,5 +73,9 @@ DROP TABLE measurement_type;
 DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
-` }
+` },
+  /* Functional audit ticket 23: a side effect is ongoing (NULL) until the
+     person marks the day it resolved. sideEffects.ts refuses a day before
+     the start; no CHECK, so an archive row is judged by the same code. */
+  { version: 98, sql: 'ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER;' }
 ];

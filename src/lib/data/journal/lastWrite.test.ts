@@ -130,7 +130,7 @@ test('an area whose newest row is in the future, with nothing before it, answers
 
 test('an area whose rows were all deleted answers null again', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: TODAY });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: TODAY, resolvedEpochDay: null });
 
   assert.equal((await journal.lastWrite.getLastWrites(TODAY)).sideEffects, TODAY);
 

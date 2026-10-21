@@ -173,7 +173,8 @@ const ROWS = {
     id: identity,
     name: text,
     severity: nullable(integerBetween(1, 5)),
-    epochDay: numeric
+    epochDay: numeric,
+    resolvedEpochDay: optional(nullable(numeric))
   },
   cycleEvents: {
     id: identity,
@@ -517,6 +518,9 @@ export function assertArchiveRows(
           (scale !== 'other' && row.description !== undefined && row.description !== '')) {
         throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
       }
+    }
+    if (name === 'sideEffects' && typeof row.resolvedEpochDay === 'number' && row.resolvedEpochDay < (row.epochDay as number)) {
+      throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'reminders') {
       const oneOff = row.recurrence === null && row.epochDay !== null && row.interval === null && row.anchorEpochDay === null;

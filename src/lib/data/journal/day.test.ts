@@ -53,7 +53,7 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
     snrDb: null
   });
   await journal.taper.upsertSession({ epochDay });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay, resolvedEpochDay: null });
   await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: epochDay });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay });
   await journal.tally.log({ kind: 'correctly_gendered', epochDay });

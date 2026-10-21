@@ -672,6 +672,9 @@ export interface SideEffect {
       grade and does not require one (phase 8 features ticket 23). */
   severity: number | null;
   epochDay: number;
+  /** The day it resolved, or null while it is ongoing (functional audit
+      ticket 23). Never before `epochDay`. */
+  resolvedEpochDay: number | null;
 }
 
 /** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,

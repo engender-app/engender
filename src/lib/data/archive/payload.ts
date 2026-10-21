@@ -246,6 +246,9 @@ interface ArchiveSideEffect {
   name: string;
   severity: number | null;
   epochDay: number;
+  /** Absent in an archive written before functional audit ticket 23, which
+      reads as ongoing. */
+  resolvedEpochDay?: number | null;
 }
 
 interface ArchiveCycleEvent {

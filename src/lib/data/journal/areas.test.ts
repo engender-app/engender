@@ -516,27 +516,27 @@ test('a provider is stored as typed, with no list and no normalization', async (
 
 test('a side effect round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200 });
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200, resolvedEpochDay: null });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100, resolvedEpochDay: null });
 
   const effects = await journal.sideEffects.getSideEffects();
   assert.deepEqual(effects.map((e) => e.epochDay), [100, 200]);
-  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100 });
+  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100, resolvedEpochDay: null });
 });
 
 test('severity round-trips as null when left blank, sorting and reading like any other side effect', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100, resolvedEpochDay: null });
 
   const [effect] = await journal.sideEffects.getSideEffects();
-  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100 });
+  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100, resolvedEpochDay: null });
 });
 
 test('a range read returns only the days it was asked for', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150 });
-  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200 });
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200, resolvedEpochDay: null });
 
   const inRange = await journal.sideEffects.getSideEffectsInRange(120, 180);
   assert.deepEqual(inRange.map((e) => e.name), ['headache']);
@@ -544,13 +544,13 @@ test('a range read returns only the days it was asked for', async () => {
 
 test('side effects update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
 
-  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100, resolvedEpochDay: null });
   assert.equal((await journal.sideEffects.getSideEffects())[0].severity, 3);
 
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1 }),
+    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1, resolvedEpochDay: null }),
     /unknown side effect/
   );
 
@@ -562,17 +562,40 @@ test('side effects update by id, throw on unknown ids and delete idempotently', 
 test('a severity outside the 1-5 scale is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
+});
+
+/* Functional audit ticket 23: a side effect is ongoing until the person
+   says it resolved, and the resolution can be taken back. */
+test('a side effect starts ongoing, can be marked resolved and back', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, null);
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: 130 });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, 130);
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, null);
+});
+
+test('a side effect cannot resolve before it began', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 99 }),
+    /resolved before it began/
+  );
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 100 });
 });
 
 /* cycle events (phase 5 ticket 03) */

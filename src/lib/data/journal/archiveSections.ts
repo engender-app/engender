@@ -485,7 +485,13 @@ const SECTIONS = [
     table: 'side_effect',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', name: 'name', severity: 'severity', epoch_day: 'epochDay' }
+    columns: {
+      uuid: 'id',
+      name: 'name',
+      severity: 'severity',
+      epoch_day: 'epochDay',
+      resolved_epoch_day: { field: 'resolvedEpochDay', whenAbsent: null }
+    }
   }),
   flat({
     name: 'cycleEvents',

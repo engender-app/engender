@@ -154,7 +154,7 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.taper.upsertSession({ epochDay: 19955, note: 'first one, went fine' });
   await journal.taper.upsertSession({ epochDay: 19956, note: '' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: 20030 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
   await journal.revisits.setRevisit({ entryId: entry, createdEpochDay: 20000, targetEpochDay: 20100 });

@@ -569,10 +569,10 @@ beforeAll(async () => {
 
   // --- sideEffects --------------------------------------------------------
   const sideEffectId = (await drive('sideEffects', 'upsertSideEffect', () =>
-    journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 })
+    journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null })
   )) as string;
   const secondSideEffectId = (await drive('sideEffects', 'upsertSideEffect', () =>
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 20001 })
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 20001, resolvedEpochDay: null })
   )) as string;
   await drive('sideEffects', 'deleteSideEffect', () => journal.sideEffects.deleteSideEffect(secondSideEffectId));
 
