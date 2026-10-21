@@ -1051,7 +1051,7 @@ CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day)
 -- logged against it.
 --
 -- \`description\` is free text alongside \`label\`, nullable, because a style
--- or garment tryout needs more than the short field a name or pronoun set gets.
+-- tryout needs more than the short field a name or pronoun set gets.
 CREATE TABLE tryout (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid            TEXT NOT NULL UNIQUE,

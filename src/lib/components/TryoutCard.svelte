@@ -48,7 +48,6 @@
     tryout,
     entries = [],
     today,
-    onfeel,
     ondelete,
     ...rest
   }: {
@@ -57,7 +56,6 @@
     /** This tryout's felt-sense readings, in any order. */
     entries?: readonly FeltSenseEntry[];
     today: number;
-    onfeel?: () => void;
     ondelete?: () => void;
     [key: string]: unknown;
   } = $props();
@@ -118,21 +116,12 @@
 
   <TryoutFeltSenseArc {reading} />
 
-  <!-- How many readings the drawing holds and the way to add to it, on one
-       line: the drawing is aria-hidden, so the count it holds and the day
-       of its last mark are both owed in text - the last mark is up on the
-       face and its tally is here. A full-width button under every card in a
-       list would be a second primary action per row. -->
-  <div class="tc-foot">
-    {#if reading.marks.length}
+  <!-- The drawing is aria-hidden, so its count and last reading are also in text. -->
+  {#if reading.marks.length}
+    <div class="tc-foot">
       <p class="tc-felt" data-tryout-felt>{m.tryout_felt_count({ n: reading.marks.length })}</p>
-    {/if}
-    {#if onfeel}
-      <button type="button" class="btn btn-ghost tc-feel" data-feel-today={tryout.id} onclick={onfeel}>
-        <span>{m.tryout_feeling_today()}</span>
-      </button>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -156,7 +145,7 @@
      the link's box
      stays where its content is, for layout and for its accessible name,
      and its hit area is stretched over the arc and the sentence by a
-     pseudo-element. The delete and the felt-sense control lift above it. */
+     pseudo-element. The delete control lifts above it. */
   .tc-face::after {
     content: '';
     position: absolute;
@@ -275,15 +264,6 @@
     font-size: var(--text-sm);
     color: var(--text-2);
     font-variant-numeric: tabular-nums;
-  }
-
-  /* Above the stretched hit area, like the delete: this writes today's
-     reading and does not open the tryout. Pushed to the row's end when the
-     sentence wraps to a line of its own. */
-  .tc-feel {
-    position: relative;
-    z-index: 2;
-    margin-inline-start: auto;
   }
 
   /* The wash a full-width row answers a press with, which is the control's

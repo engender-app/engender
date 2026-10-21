@@ -152,5 +152,14 @@ DROP TABLE felt_sense;
 ALTER TABLE felt_sense_new RENAME TO felt_sense;
 CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id);
 CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
+` },
+  { version: 105, sql: `
+UPDATE milestone SET tryout_id = NULL
+  WHERE tryout_id IN (SELECT uuid FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM felt_sense WHERE tryout_id IN
+  (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM tryout_photo WHERE tryout_id IN
+  (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM tryout WHERE kind IN ('garment', 'presentation_step');
 ` }
 ];

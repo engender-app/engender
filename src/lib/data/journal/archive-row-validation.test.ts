@@ -17,6 +17,35 @@ import { restoreArchive, verifyArchive } from './restore.ts';
 const golden = (): ArchiveJournal => JSON.parse(readFileSync(journalPath, 'utf8'));
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
+for (const mode of ['replace', 'merge'] as const) {
+  test(`${mode} drops legacy tryout kinds and keeps their milestones unlinked`, async () => {
+    const incoming = golden();
+    for (const kind of ['garment', 'presentation_step']) {
+      const id = `legacy-${kind}`;
+      incoming.tryouts.push({ id, kind, label: kind, description: null, startEpochDay: 10, endEpochDay: null, photos: [] });
+      incoming.milestones.push({ ...incoming.milestones[0], id: `${id}-milestone`, name: kind, tryoutId: id, photo: null });
+      incoming.feltSenseEntries.push({ id: `${id}-felt`, tryoutId: id, milestoneId: null, epochDay: 10, mood: 3, note: null });
+    }
+    const driver = await migratedDb();
+    try {
+      await restoreArchive(driver, fakeFileStore(), mode, {
+        journal: incoming,
+        files: (async function* () {})()
+      });
+      const restored = (await openJournal(driver, fakeFileStore()).archive.snapshot()).journal;
+      assert.ok(restored.tryouts.every((row) => row.kind !== 'garment' && row.kind !== 'presentation_step'));
+      assert.ok(restored.feltSenseEntries.every((row) => !row.id.startsWith('legacy-')));
+      for (const kind of ['garment', 'presentation_step']) {
+        const milestone = restored.milestones.find((row) => row.id === `legacy-${kind}-milestone`);
+        assert.ok(milestone);
+        assert.equal(milestone.tryoutId, null);
+      }
+    } finally {
+      await driver.close();
+    }
+  });
+}
+
 async function tableCounts(driver: Awaited<ReturnType<typeof migratedDb>>) {
   const tables = await driver.query<{ name: string }>(
     `SELECT name FROM sqlite_master WHERE type = 'table'

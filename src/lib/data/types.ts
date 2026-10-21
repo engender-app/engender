@@ -359,8 +359,7 @@ export interface ComfortItem {
 
 /** What someone is trying out (phase 4 ticket 16, widened past name/pronoun
     by phase 5 ticket 13, CONTEXT: "Tryout"): a name or pronoun set, a
-    style, a garment, makeup, or a presentation step - one record type
-    covering whatever is being tried, rather than a second type forked
+    style or makeup - one record type covering whatever is being tried, rather than a second type forked
     alongside this one for everything that is not a name or pronoun set. */
 export type TryoutKind = (typeof TRYOUT_KINDS)[number];
 
@@ -372,8 +371,8 @@ export type TryoutKind = (typeof TRYOUT_KINDS)[number];
     past with no rule that exactly one of them is current.
 
     `description` is free text alongside `label`, for a kind whose label
-    does not carry enough on its own - a style or garment tryout usually
-    needs more said about it than a name or pronoun set does. Null for any
+    does not carry enough on its own - a style tryout usually needs more said
+    about it than a name or pronoun set does. Null for any
     kind that has no use for it.
 
     Which entries fall inside a tryout's range is never stored (ADR-0010):

@@ -232,7 +232,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
 
   // Tryouts: dated inside the persona's own 150-day entry window, so the
   // detail route has real entries to read back by date overlap.
-  const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'garment' | 'makeup' | 'presentation_step'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
+  const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'makeup'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
     { kind: 'name', label: 'Alex', startEpochDay: today - 120, endEpochDay: today - 60 },
     { kind: 'pronouns', label: 'she/her', startEpochDay: today - 100, endEpochDay: null },
     { kind: 'style', label: 'layered look', startEpochDay: today - 40, endEpochDay: today - 10 }

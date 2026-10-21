@@ -23,6 +23,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
+  import { TRYOUT_KINDS } from '$lib/data/rowValues';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -60,8 +61,7 @@
      what was written while it ran. */
   const SECTION_ROLE = { feeling: 0, photos: 1, entries: 2 };
 
-  const KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
-  const KIND_OPTIONS = KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
+  const KIND_OPTIONS = TRYOUT_KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
 
   // A name or pronoun set already gets a placeholder shaped for it; every
   // other kind gets the free-text description instead (ticket 13's own
@@ -272,18 +272,12 @@
     remove: (id) => journal.feltSense.remove(id),
     findById: (id) => feeling.find((f) => f.id === id)
   });
-  /* One example per kind. Name and pronouns had their own and the other four
-     shared "a short name for it", so moving between Style, Garment, Makeup
-     and Presentation step changed the highlight and nothing else - which
-     reads as a switcher that does not work (Alicja, 2026-08-26). An example
-     of the thing itself is the shortest way to say what the kind means. */
+  /* One example per kind, so changing the picker changes the hint too. */
   function labelPlaceholder(kind: TryoutKind): string {
     if (kind === 'name') return m.tryout_label_placeholder_name();
     if (kind === 'pronouns') return m.tryout_label_placeholder_pronouns();
     if (kind === 'style') return m.tryout_label_placeholder_style();
-    if (kind === 'garment') return m.tryout_label_placeholder_garment();
     if (kind === 'makeup') return m.tryout_label_placeholder_makeup();
-    if (kind === 'presentation_step') return m.tryout_label_placeholder_presentation_step();
     return m.tryout_label_placeholder_other();
   }
 
