@@ -13,14 +13,15 @@
    it is added regardless of its tick, and 'unchecked' is an ordinary
    value of that same row's `status` column.
 
-   Track is roadmap.ts's business for a bundled goal (RoadmapGoal.track)
-   and the user's own choice for a custom one, fixed at creation: the
-   ticket's out-of-scope line refuses a reorder UI, so there is no setter
-   to move a custom goal between tracks either. */
+   A custom goal's `track` column predates functional audit ticket 34,
+   which left the roadmap one list. Goals written before it keep the
+   social, presentational or medical track they were filed under, and
+   nothing reads it any more; new ones are written as 'legal', the one
+   track left. The column stays so an older archive's goals restore as they
+   were written. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { CustomRoadmapGoal, RoadmapGoalStatus } from '../types';
-import type { RoadmapTrack } from '../roadmap';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface RoadmapArea {
@@ -36,11 +37,10 @@ export interface RoadmapArea {
   setGoalHidden(packKey: string, goalKey: string, hidden: boolean): Promise<void>;
 
   /** Every custom goal across every track, in the order they were added -
-      the order a screen appends them in after a track's bundled goals. */
+      the order a screen appends them in after the pack's bundled goals. */
   getCustomGoals(): Promise<CustomRoadmapGoal[]>;
-  /** Starts unchecked. `track` is fixed for the goal's whole life; there
-      is no reorder or move-track UI for a custom goal to feed. */
-  addCustomGoal(track: RoadmapTrack, text: string): Promise<CustomRoadmapGoal>;
+  /** Starts unchecked, appended to the end of the list. */
+  addCustomGoal(text: string): Promise<CustomRoadmapGoal>;
   setCustomGoalStatus(id: string, status: RoadmapGoalStatus): Promise<void>;
   /** The person's own words, so they can be changed after the fact
       (phase 8 features ticket 69, ADR-0068). Throws on an unknown id the
@@ -57,18 +57,6 @@ export interface RoadmapArea {
       note about where it belonged goes. A built-in goal has no counterpart
       to any of this: there is no row, so there is nothing to delete. */
   deleteCustomGoal(id: string): Promise<void>;
-
-  /** Which tracks the person has said are not their path (phase 8 features
-      ticket 49), sorted, so a caller comparing two reads gets the same
-      order. A track named here that `ROADMAP_TRACKS` no longer lists is
-      returned like any other and matches nothing on screen - the same
-      no-cleanup-job property a mute naming a deleted era has. */
-  getDismissedTracks(): Promise<string[]>;
-  /** Idempotent both ways: presence is the whole of the state, so
-      dismissing twice writes the same row and undoing one that was never
-      dismissed deletes nothing and is success. Never touches a goal's own
-      status - the fold is a reading of the ticks, not a write over them. */
-  setTrackDismissed(track: RoadmapTrack, dismissed: boolean): Promise<void>;
 }
 
 export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
@@ -132,8 +120,9 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
       return rows.map((row) => ({ id: row.uuid, track: row.track, text: row.text, status: row.status }));
     },
 
-    async addCustomGoal(track, text) {
+    async addCustomGoal(text) {
       const uuid = mintUuid();
+      const track = 'legal';
       await driver.run('INSERT INTO roadmap_goal (uuid, track, text, status, updated_at) VALUES (?, ?, ?, ?, ?)', [
         uuid,
         track,
@@ -176,23 +165,6 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
         );
         await driver.run('DELETE FROM roadmap_goal WHERE uuid = ?', [id]);
       });
-    },
-
-    async getDismissedTracks() {
-      const rows = await driver.query<{ track: string }>('SELECT track FROM roadmap_track ORDER BY track');
-      return rows.map((row) => row.track);
-    },
-
-    async setTrackDismissed(track, dismissed) {
-      if (!dismissed) {
-        await driver.run('DELETE FROM roadmap_track WHERE track = ?', [track]);
-        return;
-      }
-      await driver.run(
-        `INSERT INTO roadmap_track (track, updated_at) VALUES (?, ?)
-           ON CONFLICT (track) DO UPDATE SET updated_at = excluded.updated_at`,
-        [track, now()]
-      );
     }
   };
 }

@@ -748,28 +748,10 @@ const SECTIONS = [
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
-  /* A track somebody has said is not their path (phase 8 features ticket
-     49). Named by bundled structure rather than by anything the person
-     wrote, so it does not travel, for the same reason roadmapChecks above
-     does not: it records a fact about this person against content every
-     install already has.
-
-     A descriptor rather than a hand-written pair, unlike roadmapChecks: a
-     tick is identified by a pack/goal couple, which `identity` has no way
-     to name, and a dismissed track is one column of one table - exactly
-     what eraMutes above is. */
-  flat({
-    name: 'roadmapTracks',
-    travels: 'none',
-    table: 'roadmap_track',
-    identity: 'track',
-    orderBy: 'track',
-    columns: { track: 'track' }
-  }),
   /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
      present locally is simply skipped rather than compared column by column.
-     Its track is fixed at creation (roadmap.ts has no move-track setter),
-     and its text and status are both this device's own to say since ticket
+     Its track is fixed at creation and nothing reads it since functional
+     audit ticket 34 made the roadmap one list, and its text and status are both this device's own to say since ticket
      69 gave a custom goal a rewording - so skipping is the same rule
      applyRoadmapChecks keeps, that a merge must not overwrite what the
      person did on the device doing the importing. A replace carries all
@@ -1083,7 +1065,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
-  'measurementTypes', 'measurements', 'sizeRecords'
+  'measurementTypes', 'measurements', 'sizeRecords', 'roadmapTracks'
 ];
 
 /** A journal with every section present and empty - what an importer builds

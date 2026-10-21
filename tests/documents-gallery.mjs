@@ -261,7 +261,7 @@ for (const theme of ['light', 'dark']) {
 
   /* The goal the ticket was written around: paper arrives for "keep every
      opinion" long before that step could ever be ticked. */
-  const GOAL = 'pl-medical-keep-opinions';
+  const GOAL = 'pl-legal-final-copy';
   await page.locator(`[data-pick-target="goal:${GOAL}"]`).click();
   await page.waitForTimeout(800);
   await shoot('07-document-linked');

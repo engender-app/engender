@@ -289,9 +289,6 @@ const ROWS = {
     status: text,
     hidden: optional(bool)
   },
-  roadmapTracks: {
-    track: text
-  },
   roadmapGoals: {
     id: identity,
     track: text,

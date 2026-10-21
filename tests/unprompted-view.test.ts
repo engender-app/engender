@@ -54,9 +54,12 @@ describe('what the merged screen is built from', () => {
 
   it('carries remaining prompts under a heading', () => {
     expect(screenMarkup).toContain('m.notif_prompts_heading()');
-    for (const key of ['guided-prompts', 'wear-duration-cue', 'roadmap-milestone-sync']) {
+    for (const key of ['guided-prompts', 'wear-duration-cue']) {
       expect(screen).toContain(`key: '${key}'`);
     }
+    // Functional audit ticket 34 moved the roadmap's milestone prompt onto
+    // the roadmap screen, next to the ticks it is about.
+    expect(screen).not.toContain('roadmapMilestoneSyncEnabled');
     // A plain div for the same reason every other switch row here is one.
     expect(screenMarkup).toMatch(/<div class="kit-row" data-prompt=\{prompt\.key\}>/);
   });

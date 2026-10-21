@@ -1,13 +1,12 @@
-/* Wording for the transition roadmap (phase 4 ticket 23): a track name, a
-   pack name, and a title plus an optional note per goal. roadmap.ts holds
+/* Wording for the transition roadmap (phase 4 ticket 23): a pack name,
+   and a title plus an optional note per goal. roadmap.ts holds
    the keys and takes no paraglide, the same split builtins.ts and this
    file's neighbour labels.ts keep (ADR-0002, ADR-0016).
 
    The title map is a full Record over every bundled goal key, so a goal
    added to a pack without wording is a typecheck failure rather than a raw
-   key on screen. Notes are Partial on purpose: a social step like telling
-   one person has nothing procedural to add, and a forced note there would
-   be filler.
+   key on screen. Notes are Partial on purpose: a goal with nothing
+   procedural to add gets no note, since a forced one would be filler.
 
    The Polish pack's legal and procedural wording was checked against
    tranzycja.pl (the step-by-step guides on medical transition, the court
@@ -28,16 +27,9 @@
    reason the notes carry deadlines and fees rather than recommendations. */
 
 import { m } from '$lib/paraglide/messages';
-import type { RoadmapGoalKey, RoadmapPackKey, RoadmapTrack } from '../roadmap';
+import type { RoadmapGoalKey, RoadmapPackKey } from '../roadmap';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
-
-const TRACK_NAME: Record<RoadmapTrack, Message> = {
-  social: m.roadmap_track_social,
-  legal: m.roadmap_track_legal,
-  presentational: m.roadmap_track_presentational,
-  medical: m.roadmap_track_medical
-};
 
 const PACK_NAME: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_pack_pl
@@ -63,21 +55,6 @@ const PACK_SOURCES: Record<RoadmapPackKey, Message> = {
 };
 
 const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
-  'pl-social-tell-one-person': m.roadmap_goal_pl_social_tell_one_person,
-  'pl-social-close-people': m.roadmap_goal_pl_social_close_people,
-  'pl-social-name-at-work': m.roadmap_goal_pl_social_name_at_work,
-  'pl-social-community': m.roadmap_goal_pl_social_community,
-  'pl-presentational-clothes': m.roadmap_goal_pl_presentational_clothes,
-  'pl-presentational-voice': m.roadmap_goal_pl_presentational_voice,
-  'pl-presentational-hair': m.roadmap_goal_pl_presentational_hair,
-  'pl-presentational-photo': m.roadmap_goal_pl_presentational_photo,
-  'pl-medical-two-specialists': m.roadmap_goal_pl_medical_two_specialists,
-  'pl-medical-psychologist': m.roadmap_goal_pl_medical_psychologist,
-  'pl-medical-psych-opinion': m.roadmap_goal_pl_medical_psych_opinion,
-  'pl-medical-doctor-opinion': m.roadmap_goal_pl_medical_doctor_opinion,
-  'pl-medical-diagnosis-code': m.roadmap_goal_pl_medical_diagnosis_code,
-  'pl-medical-bloodwork': m.roadmap_goal_pl_medical_bloodwork,
-  'pl-medical-keep-opinions': m.roadmap_goal_pl_medical_keep_opinions,
   'pl-legal-birth-certificate': m.roadmap_goal_pl_legal_birth_certificate,
   'pl-legal-which-court': m.roadmap_goal_pl_legal_which_court,
   'pl-legal-court-fee': m.roadmap_goal_pl_legal_court_fee,
@@ -104,17 +81,6 @@ const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
 };
 
 const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
-  'pl-social-name-at-work': m.roadmap_note_pl_social_name_at_work,
-  'pl-presentational-voice': m.roadmap_note_pl_presentational_voice,
-  'pl-presentational-hair': m.roadmap_note_pl_presentational_hair,
-  'pl-presentational-photo': m.roadmap_note_pl_presentational_photo,
-  'pl-medical-two-specialists': m.roadmap_note_pl_medical_two_specialists,
-  'pl-medical-psychologist': m.roadmap_note_pl_medical_psychologist,
-  'pl-medical-psych-opinion': m.roadmap_note_pl_medical_psych_opinion,
-  'pl-medical-doctor-opinion': m.roadmap_note_pl_medical_doctor_opinion,
-  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code,
-  'pl-medical-bloodwork': m.roadmap_note_pl_medical_bloodwork,
-  'pl-medical-keep-opinions': m.roadmap_note_pl_medical_keep_opinions,
   'pl-legal-which-court': m.roadmap_note_pl_legal_which_court,
   'pl-legal-court-fee': m.roadmap_note_pl_legal_court_fee,
   'pl-legal-application': m.roadmap_note_pl_legal_application,
@@ -141,18 +107,13 @@ const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
 
 /* A second, independent note for a goal whose first note is already at the
    two-sentence cap. Partial and keyed the same way GOAL_NOTE is.
-   pl-medical-diagnosis-code's says what F64.0's own criteria describe.
    pl-legal-application's points at roadmap_marker_note_pl rather than
    repeating it, since its title ("the application to change the sex
    marker") is the one legal-track sentence the ticket found reading as a
    route open to every reader now that the caveat says otherwise. */
 const GOAL_NOTE_SECONDARY: Partial<Record<RoadmapGoalKey, Message>> = {
-  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code_criteria,
   'pl-legal-application': m.roadmap_note_pl_legal_application_marker
 };
-
-/** The name of a track: social, legal, presentational or medical. */
-export const roadmapTrackName = (track: RoadmapTrack): string => TRACK_NAME[track]();
 
 /** The country a pack describes. */
 export const roadmapPackName = (pack: RoadmapPackKey): string => PACK_NAME[pack]();

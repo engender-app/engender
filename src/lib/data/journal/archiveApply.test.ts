@@ -505,6 +505,22 @@ test('applyRoadmapChecks inserts a check and leaves a matched pack/goal pair alo
   assert.deepEqual((await select<{ status: string }>(driver, 'SELECT status FROM roadmap_check'))[0].status, 'checked');
 });
 
+/* Functional audit ticket 34: an archive written before the trim still
+   carries ticks against the three cut tracks. They are skipped, the way
+   migration 98 deleted them, and a legal tick beside them still lands. */
+test('applyRoadmapChecks skips ticks against the cut social, presentational and medical tracks', async () => {
+  const driver = await migratedDb();
+  const checks: ArchiveRoadmapCheck[] = [
+    { packKey: 'pl', goalKey: 'pl-social-tell-one-person', status: 'checked' },
+    { packKey: 'pl', goalKey: 'pl-presentational-voice', status: 'checked' },
+    { packKey: 'pl', goalKey: 'pl-medical-bloodwork', status: 'not-my-path' },
+    { packKey: 'pl', goalKey: 'pl-legal-court-fee', status: 'checked' }
+  ];
+
+  await applyRoadmapChecks(restoring(driver, { roadmapChecks: checks }, 'replace', 2));
+  assert.deepEqual(await select(driver, 'SELECT goal_key FROM roadmap_check'), [{ goal_key: 'pl-legal-court-fee' }]);
+});
+
 // applyChecklists ---------------------------------------------------------------
 
 test('applyChecklists inserts a checklist with its items', async () => {

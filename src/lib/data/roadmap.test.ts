@@ -1,40 +1,32 @@
-/* The roadmap's tracks and its country packs (phase 4 ticket 23). What is
-   under test here is the pack structure, not the wording: a pack holds
-   keys and a review date, and roadmapLabels.ts turns a key into text. */
+/* The roadmap's country pack (phase 4 ticket 23, trimmed to the legal track
+   by functional audit ticket 34). What is under test here is the pack
+   structure, not the wording: a pack holds keys and a review date, and
+   roadmapLabels.ts turns a key into text. */
 
 import { readFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
 import {
   POLISH_PACK,
   ROADMAP_PACKS,
-  ROADMAP_TRACKS,
-  goalsInTrack,
-  roadmapSections,
+  isCutTrackGoal,
+  polishLegalStepsShown,
+  roadmapList,
   roadmapStepsLeft,
-  whereYouAreInRoadmap,
   type RoadmapPack
 } from './roadmap.ts';
 import type { RoadmapGoalStatus } from './types.ts';
 
 const allGoals = ROADMAP_PACKS.flatMap((pack) => pack.goals);
 
-test('there are exactly the four tracks the ticket names', () => {
-  expect([...ROADMAP_TRACKS]).toEqual(['social', 'legal', 'presentational', 'medical']);
-});
-
-test('every goal sits in one of the four tracks and carries a key', () => {
-  for (const goal of allGoals) {
-    expect(ROADMAP_TRACKS).toContain(goal.track);
-    expect(goal.key.length).toBeGreaterThan(0);
-  }
-});
-
-/* Acceptance box 2 (phase 5 ticket 43): every goal carries a hand-authored
-   lean, not left undefined by an incomplete pack entry. */
-test('every goal carries a lean of femme, masc, or neutral', () => {
-  for (const goal of allGoals) {
-    expect(['femme', 'masc', 'neutral']).toContain(goal.lean);
-  }
+/* Functional audit ticket 34: the social, presentational and medical tracks
+   repeated other modules (milestones, voice, hair removal, tryouts) or were
+   the most clinical text outside Care, so only the court procedure and its
+   paperwork stay. */
+test('the Polish pack holds the legal steps and nothing else', () => {
+  expect(POLISH_PACK.goals.length).toBe(23);
+  for (const goal of POLISH_PACK.goals) expect(goal.key.startsWith('pl-legal-')).toBe(true);
+  expect(POLISH_PACK.goals[0].key).toBe('pl-legal-birth-certificate');
+  expect(POLISH_PACK.goals.at(-1)!.key).toBe('pl-legal-document-set');
 });
 
 /* Goal keys have to be unique across packs, not just within one: the
@@ -52,22 +44,9 @@ test('goal keys are unique across every bundled pack, and prefixed with their pa
   }
 });
 
-test('the Polish pack populates all four tracks', () => {
-  for (const track of ROADMAP_TRACKS) {
-    expect(goalsInTrack(POLISH_PACK, track).length).toBeGreaterThan(0);
-  }
-});
-
-test('goalsInTrack keeps the pack own order, which is the order of the procedure', () => {
-  const legal = goalsInTrack(POLISH_PACK, 'legal').map((goal) => goal.key);
-  const asBundled = POLISH_PACK.goals.filter((goal) => goal.track === 'legal').map((goal) => goal.key);
-
-  expect(legal).toEqual(asBundled);
-});
-
-/* Acceptance box 4: the review date is recorded alongside the content
-   rather than left implicit, because Polish gender-recognition procedure
-   changes with legislation. */
+/* The review date is recorded alongside the content rather than left
+   implicit, because Polish gender-recognition procedure changes with
+   legislation. */
 test('every pack records the date its content was reviewed, as a plain ISO day', () => {
   for (const pack of ROADMAP_PACKS) {
     expect(pack.reviewedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -75,224 +54,89 @@ test('every pack records the date its content was reviewed, as a plain ISO day',
   }
 });
 
-/* Acceptance box 2: bundled and fully offline. A pack that survives a
-   JSON round trip unchanged is inert data compiled into the bundle - no
-   lazy getter, no promise, nothing that could reach for the network when
-   a screen reads it. */
+/* Bundled and fully offline. A pack that survives a JSON round trip
+   unchanged is inert data compiled into the bundle - no lazy getter, no
+   promise, nothing that could reach for the network when a screen reads
+   it. */
 test('a pack is inert data, so reading it can never fetch anything', () => {
   expect(JSON.parse(JSON.stringify(POLISH_PACK))).toEqual(POLISH_PACK);
 });
 
-/* Acceptance box 3: a second country's pack is content alone. Nothing
-   here is Polish-specific, and the stub below never touches the schema -
-   the journal stores a tick against whatever pack key it is handed
-   (roadmap.ts in journal/). */
+/* A second country's pack is content alone: the journal stores a tick
+   against whatever pack key it is handed (roadmap.ts in journal/). */
 test('a second pack satisfies the same shape without any change to it', () => {
   const stub = {
     key: 'xx',
     reviewedOn: '2026-01-31',
-    goals: [
-      { key: 'xx-social-first', track: 'social', lean: 'neutral' },
-      { key: 'xx-legal-first', track: 'legal', lean: 'neutral' }
-    ]
+    goals: [{ key: 'xx-legal-first' }, { key: 'xx-legal-second' }]
   } satisfies RoadmapPack;
 
-  expect(goalsInTrack(stub, 'legal').map((goal) => goal.key)).toEqual(['xx-legal-first']);
-  expect(goalsInTrack(stub, 'medical')).toEqual([]);
+  expect(roadmapList(stub, true, [], []).goals.map((goal) => goal.key)).toEqual(['xx-legal-first', 'xx-legal-second']);
 });
 
-/* "Not my path" at track grain (phase 8 features ticket 49 item 5). The
-   fold has to be driven off ROADMAP_TRACKS rather than off a list the
-   screen keeps for itself, or a fifth track would arrive un-foldable and
-   nothing would say so - which is what the first test below is for. It runs
-   the real `roadmapSections` over every track the app declares, so it grows
-   with that list instead of restating it. */
+test('a stored tick is cut only when it names one of the three dropped tracks', () => {
+  expect(isCutTrackGoal('pl-social-tell-one-person')).toBe(true);
+  expect(isCutTrackGoal('pl-presentational-voice')).toBe(true);
+  expect(isCutTrackGoal('pl-medical-bloodwork')).toBe(true);
+  expect(isCutTrackGoal('pl-legal-court-fee')).toBe(false);
+  // A legal key an earlier pack used (the rc.1 fixture holds one) is kept.
+  expect(isCutTrackGoal('pl-legal-court-file')).toBe(false);
+});
+
+/* The "Polish legal steps" switch: on by default for the Polish locale and
+   off otherwise, and an explicit answer wins over the locale either way. */
+test('the Polish legal steps follow the locale until somebody answers the switch', () => {
+  expect(polishLegalStepsShown(null, 'pl')).toBe(true);
+  expect(polishLegalStepsShown(null, 'en')).toBe(false);
+  expect(polishLegalStepsShown(true, 'en')).toBe(true);
+  expect(polishLegalStepsShown(false, 'pl')).toBe(false);
+});
 
 const CUSTOM = [
-  { id: 'c1', track: 'medical', text: 'Ask about a second opinion' },
-  { id: 'c2', track: 'social', text: 'Come out to my book club' }
+  /* Tracks a custom goal was filed under before the trim. They stay what the
+     person wrote, so the list carries them whatever track they name. */
+  { id: 'c1', track: 'medical', text: 'Ask about a second opinion', status: 'unchecked' as const },
+  { id: 'c2', track: 'social', text: 'Come out to my book club', status: 'checked' as const },
+  { id: 'c3', track: 'legal', text: 'Find a notary', status: 'unchecked' as const }
 ];
 
-/** The rule itself, so it can be run against something other than the real
-    fold - the same shape textSearch.test.ts's coverage tests use. Returns
-    the tracks the fold got wrong: one it failed to declare at all, one it
-    failed to fold when dismissed, or one it folded that nobody dismissed. */
-const unfoldableTracks = (fold: typeof roadmapSections): string[] =>
-  ROADMAP_TRACKS.filter((track) => {
-    const sections = fold(POLISH_PACK, CUSTOM, [track]);
-    const dismissed = sections.find((section) => section.track === track);
-    if (!dismissed) return true;
-    if (!dismissed.dismissed || dismissed.goals.length > 0 || dismissed.customGoals.length > 0) return true;
-    /* And only that one. A fold reaching past its own track would be the
-       worse bug of the two: it would hide work somebody is doing. */
-    return sections.some((section) => section.track !== track && section.dismissed);
-  });
-
-test('every track the app declares is folded by the same rule, with none left out', () => {
-  expect(unfoldableTracks(roadmapSections)).toEqual([]);
-
-  for (const track of ROADMAP_TRACKS) {
-    const sections = roadmapSections(POLISH_PACK, CUSTOM, [track]);
-    for (const other of sections.filter((section) => section.track !== track)) {
-      expect(other.goals).toEqual(goalsInTrack(POLISH_PACK, other.track));
-      expect(other.customGoals).toEqual(CUSTOM.filter((goal) => goal.track === other.track));
-    }
-  }
+test('with the switch on, the list is the whole pack and every custom goal', () => {
+  const list = roadmapList(POLISH_PACK, true, CUSTOM, []);
+  expect(list.goals.map((goal) => goal.key)).toEqual(POLISH_PACK.goals.map((goal) => goal.key));
+  expect(list.customGoals).toEqual(CUSTOM);
 });
 
-test('the roadmap screen draws its tracks through the fold rather than from its own list', () => {
-  /* The half of box 5 the two tests around this one cannot reach. Nobody
-     would break the fold by editing `roadmapSections`, which walks
-     ROADMAP_TRACKS and so folds a fifth track for free. The way a fifth
-     track would actually arrive un-foldable is a screen keeping its own
-     list of tracks - which is exactly what this screen used to do, an
-     `{#each ROADMAP_TRACKS}` with the goals filtered inline - so what has
-     to hold is that it no longer can.
-
-     Read as source rather than mounted, the way ClinicianSummaryDossier's
-     own contract tests read theirs: what is under test is where the screen
-     gets its tracks from, and a render would answer that only for the
-     tracks that happen to exist today. */
-  const screen = readFileSync(
-    new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url),
-    'utf8'
-  );
-
-  expect(screen).toContain('roadmapSections(pack, customGoals, dismissedTracks, hiddenGoals)');
-  expect(screen).toContain('{#each sections as section');
-  expect(screen).not.toMatch(/\{#each ROADMAP_TRACKS/);
-  // And it must not re-derive a track's goals beside the fold that just did.
-  expect(screen).not.toMatch(/goalsInTrack\(/);
-  expect(screen).not.toMatch(/customGoals\.filter\(/);
+test('with the switch off, no Polish step shows and custom goals are untouched', () => {
+  const list = roadmapList(POLISH_PACK, false, CUSTOM, []);
+  expect(list.goals).toEqual([]);
+  expect(list.customGoals).toEqual(CUSTOM);
 });
 
-test('a fold that knows about one track fewer fails the rule the real one passes', () => {
-  /* The proof that the test above can fail. This stands in for the way a
-     fifth track would actually arrive broken: not by anybody editing
-     `roadmapSections`, but by a screen or a helper keeping its own list of
-     tracks and never being told about the new one. */
-  const short: typeof roadmapSections = (pack, customGoals, dismissedTracks) =>
-    roadmapSections(pack, customGoals, dismissedTracks).filter((section) => section.track !== 'medical');
-
-  expect(unfoldableTracks(short)).toEqual(['medical']);
+test('hidden built-in goals leave the list and the remaining count', () => {
+  const key = 'pl-legal-court-fee';
+  const before = roadmapList(POLISH_PACK, true, CUSTOM, []);
+  const after = roadmapList(POLISH_PACK, true, CUSTOM, [key]);
+  expect(after.goals.some((goal) => goal.key === key)).toBe(false);
+  expect(after.customGoals).toEqual(before.customGoals);
+  expect(roadmapStepsLeft(after, () => 'unchecked')).toBe(roadmapStepsLeft(before, () => 'unchecked') - 1);
 });
 
-test('with nothing dismissed the sections carry the whole pack, goal for goal', () => {
-  const sections = roadmapSections(POLISH_PACK, CUSTOM, []);
-
-  expect(sections.every((section) => !section.dismissed)).toBe(true);
-  expect(sections.flatMap((section) => section.goals.map((goal) => goal.key)).sort()).toEqual(
-    POLISH_PACK.goals.map((goal) => goal.key).sort()
-  );
-  expect(sections.flatMap((section) => section.customGoals)).toHaveLength(CUSTOM.length);
+test('steps left counts unchecked built-ins and custom goals, and not-my-path resolves one', () => {
+  const list = roadmapList(POLISH_PACK, true, CUSTOM, []);
+  const statuses: Record<string, RoadmapGoalStatus> = { 'pl-legal-court-fee': 'checked', 'pl-legal-appeal': 'not-my-path' };
+  expect(roadmapStepsLeft(list, (key) => statuses[key] ?? 'unchecked')).toBe(POLISH_PACK.goals.length - 2 + 2);
+  expect(roadmapStepsLeft(roadmapList(POLISH_PACK, false, CUSTOM, []), () => 'checked')).toBe(2);
 });
 
-test('several tracks can be dismissed at once, and each still names itself', () => {
-  const sections = roadmapSections(POLISH_PACK, CUSTOM, ['legal', 'medical']);
+test('the roadmap screen draws one list, gated by the switch, with no track picker', () => {
+  /* Read as source rather than mounted: what is under test is where the
+     screen gets its rows from. A screen filtering the pack for itself could
+     show a Polish step with the switch off and no test above would notice. */
+  const screen = readFileSync(new URL('../../routes/transition/roadmap/+page.svelte', import.meta.url), 'utf8');
 
-  expect(sections.filter((section) => section.dismissed).map((section) => section.track)).toEqual(['legal', 'medical']);
-  expect(sections.flatMap((section) => section.goals).some((goal) => goal.track === 'legal')).toBe(false);
-  expect(sections.flatMap((section) => section.goals).some((goal) => goal.track === 'social')).toBe(true);
-});
-
-test('a stored dismissal naming a track this build does not have folds nothing', () => {
-  // The same no-cleanup-job property a mute naming a deleted era has: the
-  // stored row is never the name of anything ROADMAP_TRACKS still lists.
-  const sections = roadmapSections(POLISH_PACK, CUSTOM, ['financial']);
-  expect(sections.some((section) => section.dismissed)).toBe(false);
-});
-
-/* Ticket 54: the header's "where you are", read off the fold rather than
-   off the pack directly, so a dismissed track is already out of the
-   running the same way it already is for the goals a person sees. */
-
-const allUnchecked = (): RoadmapGoalStatus => 'unchecked';
-
-test('with nothing ticked yet, where you are is the pack\'s first track', () => {
-  const sections = roadmapSections(POLISH_PACK, [], []);
-  const here = whereYouAreInRoadmap(sections, allUnchecked);
-
-  expect(here).toEqual({ track: 'social', stepsLeft: goalsInTrack(POLISH_PACK, 'social').length });
-});
-
-test('a selected track reports its own remaining steps, including custom goals', () => {
-  const sections = roadmapSections(POLISH_PACK, CUSTOM.map((goal) => ({ ...goal, status: 'unchecked' as const })), []);
-  const legal = sections.find((section) => section.track === 'legal')!;
-  const statuses: Record<string, RoadmapGoalStatus> = Object.fromEntries(
-    legal.goals.map((goal) => [goal.key, 'checked' as const])
-  );
-
-  expect(roadmapStepsLeft(legal, (key) => statuses[key] ?? 'unchecked')).toBe(0);
-  expect(roadmapStepsLeft(sections.find((section) => section.track === 'medical')!, (key) => statuses[key] ?? 'unchecked')).toBe(
-    goalsInTrack(POLISH_PACK, 'medical').length + 1
-  );
-});
-
-test('a resolved track is skipped for the next live one with something left', () => {
-  const sections = roadmapSections(POLISH_PACK, [], []);
-  const social = new Set(goalsInTrack(POLISH_PACK, 'social').map((goal) => goal.key));
-  const statuses: Record<string, RoadmapGoalStatus> = {};
-  for (const key of social) statuses[key] = 'checked';
-
-  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
-
-  expect(here).toEqual({ track: 'legal', stepsLeft: goalsInTrack(POLISH_PACK, 'legal').length });
-});
-
-test('not-my-path resolves a track the same way checked does', () => {
-  const sections = roadmapSections(POLISH_PACK, [], []);
-  const statuses: Record<string, RoadmapGoalStatus> = {};
-  for (const goal of goalsInTrack(POLISH_PACK, 'social')) statuses[goal.key] = 'not-my-path';
-
-  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
-
-  expect(here?.track).toBe('legal');
-});
-
-test('a dismissed track is skipped even with everything else untouched', () => {
-  const sections = roadmapSections(POLISH_PACK, [], ['social']);
-  const here = whereYouAreInRoadmap(sections, allUnchecked);
-
-  expect(here).toEqual({ track: 'legal', stepsLeft: goalsInTrack(POLISH_PACK, 'legal').length });
-});
-
-test('every track dismissed leaves nowhere to be', () => {
-  const sections = roadmapSections(POLISH_PACK, [], [...ROADMAP_TRACKS]);
-  expect(whereYouAreInRoadmap(sections, allUnchecked)).toBeNull();
-});
-
-test('every track resolved still names the last one, with nothing left', () => {
-  const sections = roadmapSections(POLISH_PACK, [], []);
-  const statuses: Record<string, RoadmapGoalStatus> = {};
-  for (const goal of POLISH_PACK.goals) statuses[goal.key] = 'checked';
-
-  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
-
-  expect(here).toEqual({ track: 'medical', stepsLeft: 0 });
-});
-
-test('an unchecked custom goal keeps its track current, same as a bundled one', () => {
-  const custom = [{ id: 'c1', track: 'social', text: 'Come out to my book club', status: 'unchecked' as const }];
-  const sections = roadmapSections(POLISH_PACK, custom, []);
-  const statuses: Record<string, RoadmapGoalStatus> = {};
-  for (const goal of goalsInTrack(POLISH_PACK, 'social')) statuses[goal.key] = 'checked';
-
-  const here = whereYouAreInRoadmap(sections, (key) => statuses[key] ?? 'unchecked');
-
-  expect(here).toEqual({ track: 'social', stepsLeft: 1 });
-});
-
-
-test('hidden built-in goals leave the normal list and remaining count without dismissing their track', () => {
-  const key = 'pl-social-tell-one-person';
-  const custom = CUSTOM.map((goal) => ({ ...goal, status: 'unchecked' as const }));
-  const before = roadmapSections(POLISH_PACK, custom, []);
-  const after = roadmapSections(POLISH_PACK, custom, [], [key]);
-  const social = after.find((section) => section.track === 'social')!;
-  expect(social.dismissed).toBe(false);
-  expect(social.goals.some((goal) => goal.key === key)).toBe(false);
-  expect(social.customGoals).toEqual(before.find((section) => section.track === 'social')!.customGoals);
-  expect(roadmapStepsLeft(social, () => 'unchecked')).toBe(roadmapStepsLeft(before[0], () => 'unchecked') - 1);
-  expect(after.slice(1)).toEqual(before.slice(1));
-  expect(POLISH_PACK.goals.some((goal) => goal.key === key)).toBe(true);
+  expect(screen).toContain('polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale())');
+  expect(screen).toContain('roadmapList(pack, polishShown, customGoals, hiddenGoals)');
+  expect(screen).not.toContain('<Segmented');
+  expect(screen).not.toContain('data-track-toggle');
+  expect(screen).toContain('prefs.roadmapMilestoneSyncEnabled = v');
 });

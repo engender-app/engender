@@ -803,7 +803,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {
       setGoalHidden: ['roadmapCheck'],
       setGoalStatus: ['roadmapCheck'],
-      setTrackDismissed: ['roadmapCheck'],
       addCustomGoal: ['roadmapGoal'],
       setCustomGoalStatus: ['roadmapGoal'],
       updateCustomGoalText: ['roadmapGoal'],
@@ -812,7 +811,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getHiddenGoals: ['roadmapCheck'],
       getGoalStatuses: ['roadmapCheck'],
-      getDismissedTracks: ['roadmapCheck'],
       getCustomGoals: ['roadmapGoal']
     }
   }),

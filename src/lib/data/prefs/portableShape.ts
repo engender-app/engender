@@ -51,6 +51,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   voiceComfortLowHz: (v) => v === null || Number.isFinite(v),
   voiceComfortHighHz: (v) => v === null || Number.isFinite(v),
   areaFinishOfferDeclined: isStringArray,
+  roadmapPolishStepsChoice: (v) => v === null || typeof v === 'boolean',
   pinnedRows: (v) => v === null || isStringArray(v),
   agendaKinds: (v) => v === null || isStringArray(v),
   onboardingAreas: (v) => v === null || isStringArray(v)

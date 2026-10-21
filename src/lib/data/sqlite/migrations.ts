@@ -73,5 +73,22 @@ DROP TABLE measurement_type;
 DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
+` },
+  /* Functional audit ticket 34: the roadmap keeps only its legal track.
+     Ticks against the social, presentational and medical goals are dropped,
+     not converted, and so is the per-track "not my path" table, which one
+     track and the "Polish legal steps" switch leave nothing to do. A
+     document filed against a cut goal is unfiled, the way deleting a custom
+     goal unfiles one. Custom goals stay as they were written, track and
+     all. */
+  { version: 98, sql: `
+UPDATE document SET target_kind = NULL, target_id = NULL
+  WHERE target_kind = 'goal'
+    AND (target_id LIKE 'pl-social-%' OR target_id LIKE 'pl-presentational-%' OR target_id LIKE 'pl-medical-%');
+DELETE FROM roadmap_check
+  WHERE pack_key = 'pl'
+    AND (goal_key LIKE 'pl-social-%' OR goal_key LIKE 'pl-presentational-%' OR goal_key LIKE 'pl-medical-%');
+DROP TABLE roadmap_track;
+DELETE FROM area_state WHERE area = 'roadmapTracks';
 ` }
 ];

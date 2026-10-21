@@ -158,7 +158,7 @@ async function populated() {
   });
 
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
-  await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  await journal.roadmap.addCustomGoal('Tell my sister');
 
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
@@ -349,14 +349,14 @@ test('merge adds what this device does not have and leaves what it has alone', a
 test('a target own roadmap tick and custom goal survive a merge that has never heard of them', async () => {
   const source = await populated();
   const target = await device();
-  await target.journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
-  await target.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
+  await target.journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'checked');
+  await target.journal.roadmap.addCustomGoal('Ask about remote hearings');
 
   await target.journal.archive.merge(await exported(source.journal));
 
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {
     'pl-legal-court-file': 'checked',
-    'pl-social-tell-someone': 'checked'
+    'pl-legal-which-court': 'checked'
   });
   assert.deepEqual(
     (await target.journal.roadmap.getCustomGoals()).map((g) => g.text).sort(),
@@ -372,9 +372,9 @@ test('a target own roadmap tick and custom goal survive a merge that has never h
    was deleted. */
 test('a reworded custom goal travels as it now reads, and a deleted one does not travel at all', async () => {
   const source = await device();
-  const kept = await source.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
-  const reworded = await source.journal.roadmap.addCustomGoal('social', 'Tell my sster');
-  const removed = await source.journal.roadmap.addCustomGoal('medical', 'Ask for a second opinion');
+  const kept = await source.journal.roadmap.addCustomGoal('Ask about remote hearings');
+  const reworded = await source.journal.roadmap.addCustomGoal('Tell my sster');
+  const removed = await source.journal.roadmap.addCustomGoal('Ask for a second opinion');
   await source.journal.roadmap.setCustomGoalStatus(reworded.id, 'checked');
   await source.journal.roadmap.updateCustomGoalText(reworded.id, 'Tell my sister');
   await source.journal.roadmap.deleteCustomGoal(removed.id);
@@ -384,7 +384,7 @@ test('a reworded custom goal travels as it now reads, and a deleted one does not
 
   assert.deepEqual(await target.journal.roadmap.getCustomGoals(), [
     { id: kept.id, track: 'legal', text: 'Ask about remote hearings', status: 'unchecked' },
-    { id: reworded.id, track: 'social', text: 'Tell my sister', status: 'checked' }
+    { id: reworded.id, track: 'legal', text: 'Tell my sister', status: 'checked' }
   ]);
 });
 

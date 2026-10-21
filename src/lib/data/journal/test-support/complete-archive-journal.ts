@@ -225,8 +225,7 @@ export async function seedCompleteArchiveJournal(
   await journal.voicePracticeTakes.addTake({ epochDay: 20000, minHz: 150, maxHz: 220, medianHz: 180, feltSense: 4 });
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
-  await journal.roadmap.addCustomGoal('social', 'Tell my sister');
-  await journal.roadmap.setTrackDismissed('medical', true);
+  await journal.roadmap.addCustomGoal('Tell my sister');
 
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',

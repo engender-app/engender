@@ -313,15 +313,6 @@ export interface ArchiveRoadmapCheck {
   hidden?: boolean;
 }
 
-/** A roadmap track the person has said is not their path (phase 8 features
-    ticket 49), named by the track key alone - there is no pack in it,
-    because a track is the app's own structure rather than a pack's content.
-    Presence is the whole of the state, the way an ArchiveRoadmapCheck's own
-    absence means unchecked, so there is nothing here but the name. */
-interface ArchiveRoadmapTrack {
-  track: string;
-}
-
 /** A user-authored roadmap goal (phase 5 ticket 20), named by its own
     uuid like any other user-owned row - unlike ArchiveRoadmapCheck, it
     carries data of its own (a track and its text) rather than naming
@@ -798,7 +789,6 @@ export interface ArchiveJournal {
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
-  roadmapTracks: ArchiveRoadmapTrack[];
   roadmapGoals: ArchiveRoadmapGoal[];
   regimenEpisodes: ArchiveRegimenEpisode[];
   doseEvents: ArchiveDoseEvent[];
@@ -1010,7 +1000,6 @@ const postAlphaSections = [
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',
-  'roadmapTracks',
   'roadmapGoals',
   'regimenEpisodes',
   'doseEvents',

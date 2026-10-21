@@ -221,7 +221,7 @@ test('hits come back newest first, with the undated ones last', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.milestones.upsertMilestone({ name: 'older żółć', epochDay: DAY - 5 });
   await journal.milestones.upsertMilestone({ name: 'newer żółć', epochDay: DAY });
-  await journal.roadmap.addCustomGoal('legal', 'undated żółć');
+  await journal.roadmap.addCustomGoal('undated żółć');
 
   assert.deepEqual(await found(journal, 'zolc'), ['newer żółć', 'older żółć', 'undated żółć']);
 });
@@ -230,7 +230,7 @@ test('the date range narrows dated areas and leaves undated ones alone', async (
   const { journal } = await journalWithBuiltIns();
   await journal.milestones.upsertMilestone({ name: 'inside żółć', epochDay: DAY });
   await journal.milestones.upsertMilestone({ name: 'before żółć', epochDay: DAY - 30 });
-  await journal.roadmap.addCustomGoal('legal', 'undated żółć');
+  await journal.roadmap.addCustomGoal('undated żółć');
 
   const results = await journal.textSearch.search({
     query: 'zolc',
@@ -403,7 +403,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     endEpochDay: null
   });
   await journal.feltSense.add({ tryoutId }, { epochDay: DAY, mood: 4, note: `felt ${word}` });
-  await journal.roadmap.addCustomGoal('legal', `goal ${word}`);
+  await journal.roadmap.addCustomGoal(`goal ${word}`);
   await journal.affirmations.addLine('en', `affirmation ${word}`);
   await journal.labs.upsertResult({
     epochDay: DAY,

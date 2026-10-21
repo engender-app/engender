@@ -24,6 +24,7 @@
 import { foldText } from '../fold';
 import { drugNameKey } from '../regimenEpisode';
 import { STOCK_PREFIX, stockAutoSource } from '../autoSource';
+import { isCutTrackGoal } from '../roadmap';
 import type { ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { RestoreMode } from './restore';
@@ -680,8 +681,12 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
     'SELECT pack_key, goal_key, status FROM roadmap_check'
   );
   const present = new Map(rows.map((row) => [`${row.pack_key}\n${row.goal_key}`, row.status]));
+  /* Ticks against the tracks functional audit ticket 34 cut are skipped,
+     the same rows migration 98 deleted, so an older archive cannot bring
+     them back as invisible rows. */
+  const checks = journal.roadmapChecks.filter((check) => !isCutTrackGoal(check.goalKey));
 
-  for (const check of journal.roadmapChecks) {
+  for (const check of checks) {
     if (check.status !== 'unchecked' && present.get(`${check.packKey}\n${check.goalKey}`) === 'unchecked') {
       await driver.run(
         'UPDATE roadmap_check SET status = ?, updated_at = ? WHERE pack_key = ? AND goal_key = ?',
@@ -690,7 +695,7 @@ export async function applyRoadmapChecks({ driver, journal, ts }: Restoring): Pr
     }
   }
 
-  const inserting = journal.roadmapChecks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
+  const inserting = checks.filter((check) => !present.has(`${check.packKey}\n${check.goalKey}`));
   await insertRows(
     driver,
     'INSERT INTO roadmap_check (pack_key, goal_key, status, hidden, updated_at)',

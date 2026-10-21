@@ -25,7 +25,7 @@ import { demoNow } from './demoClock';
 import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
-import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
+import { POLISH_PACK } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
 import { encodePitchTrack } from '../../audio/track';
 import { percentileOfSorted } from '../../audio/series';
@@ -195,14 +195,12 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     }
   }
 
-  // Roadmap: a few ticks across every track, plus one custom goal.
-  for (const track of ROADMAP_TRACKS) {
-    for (const goal of POLISH_PACK.goals.filter((g) => g.track === track)) {
-      if (r() < 0.65) continue;
-      await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
-    }
+  // Roadmap: a few ticks across the legal steps, plus one custom goal.
+  for (const goal of POLISH_PACK.goals) {
+    if (r() < 0.65) continue;
+    await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
   }
-  const customGoal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  const customGoal = await journal.roadmap.addCustomGoal('Tell my sister');
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
 
   // Letters: two already unlockable, two still sealed.

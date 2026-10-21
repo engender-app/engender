@@ -218,11 +218,11 @@ test('documents linked to one target, newest first, and not the others', async (
   const newer = await journal.documents.addDocument({ epochDay: 20000, title: 'Newer opinion' }, page());
   const elsewhere = await journal.documents.addDocument({ epochDay: 19000, title: 'Unrelated' }, page());
 
-  await journal.documents.setDocumentTarget(older, { kind: 'goal', id: 'pl-medical-keep-opinions' });
-  await journal.documents.setDocumentTarget(newer, { kind: 'goal', id: 'pl-medical-keep-opinions' });
+  await journal.documents.setDocumentTarget(older, { kind: 'goal', id: 'pl-legal-final-copy' });
+  await journal.documents.setDocumentTarget(newer, { kind: 'goal', id: 'pl-legal-final-copy' });
   await journal.documents.setDocumentTarget(elsewhere, { kind: 'milestone', id: 'm-1' });
 
-  const linked = await journal.documents.getDocumentsLinkedTo('goal', 'pl-medical-keep-opinions');
+  const linked = await journal.documents.getDocumentsLinkedTo('goal', 'pl-legal-final-copy');
   assert.deepEqual(
     linked.map((d) => d.id),
     [newer, older]

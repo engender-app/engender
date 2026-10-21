@@ -17,7 +17,9 @@
 import { m } from '$lib/paraglide/messages';
 import { liveList } from '$lib/data/live/journal.svelte';
 import { fmtDay } from '$lib/data/dates';
-import { POLISH_PACK } from '$lib/data/roadmap';
+import { getLocale } from '$lib/paraglide/runtime';
+import { prefs } from '$lib/data/prefs/store.svelte';
+import { POLISH_PACK, polishLegalStepsShown } from '$lib/data/roadmap';
 import { roadmapGoalTitle } from '$lib/data/vocabulary/roadmapLabels';
 import { DOCUMENT_TARGET_SECTION_HEADING } from '$lib/data/vocabulary/documentTargetLabels';
 import type { DocumentTarget } from '$lib/data/types';
@@ -66,11 +68,13 @@ export function documentTargets() {
       /* A goal is the one kind with no date, so "most recent first" has
          nothing to sort on: the bundled pack keeps its own order, which is
          the order the roadmap screen draws, and custom goals follow it
-         newest first. */
+         newest first. The pack's goals are offered only while the roadmap
+         shows them (functional audit ticket 34), so a document cannot be
+         filed against a step the person switched off. */
       kind: 'goal',
       heading: DOCUMENT_TARGET_SECTION_HEADING.goal(),
       rows: [
-        ...POLISH_PACK.goals.map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
+        ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice, getLocale()) ? POLISH_PACK.goals : []).map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
         ...[...customGoals.rows].reverse().map((goal) => ({ id: goal.id, title: goal.text }))
       ]
     }
