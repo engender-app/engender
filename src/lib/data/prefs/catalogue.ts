@@ -76,15 +76,6 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
-  /** Whether the daily check-in prompt carries an affirming line alongside
-      its question (phase 4 features ticket 22). Only ever adds a line to
-      the prompt - off leaves the check-in exactly as it was. Portable,
-      with `checkInEnabled` and `checkInTime` rather than with the wrapped
-      family: it configures the same ritual those two carry into an
-      archive, and someone who turned the line off should not get it back
-      by restoring on a new device. Weighed rather than defaulted -
-      ADR-0003's rule alone would have made it device-local. */
-  checkInAffirmationsEnabled: boolean;
   /** Whether the rotating reflection prompt shows on the entry-creation
       screen (phase 4 features ticket 17). Device-local because this controls
       one installation's entry screen, not anything the journal carries. */
@@ -128,10 +119,6 @@ export interface PreferenceValues {
       when a time-capsule letter has become readable. Same shape and
       reasoning as `wearTimerEnabled`. */
   readyLetterEnabled: boolean;
-  /** Whether the revisit live tile is ever shown (phase 8 features ticket
-      08, ADR-0045), when a day chosen to see an old entry again has
-      arrived. Same shape and reasoning as `wearTimerEnabled`. */
-  revisitEnabled: boolean;
   /** Whether the surgery-countdown live tile is ever shown (phase 5
       ticket 51), ahead of a scheduled procedure. Same shape and reasoning
       as `wearTimerEnabled`. */
@@ -420,7 +407,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',
-  checkInAffirmationsEnabled: true,
   guidedPromptsEnabled: true,
   entryTryoutPromptEnabled: true,
   entryDoseQuickLogEnabled: true,
@@ -430,7 +416,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   wearTimerEnabled: true,
   dosePanelEnabled: true,
   readyLetterEnabled: true,
-  revisitEnabled: true,
   surgeryCountdownEnabled: true,
   safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
@@ -486,7 +471,6 @@ export const PORTABLE_KEYS = [
   'language',
   'checkInEnabled',
   'checkInTime',
-  'checkInAffirmationsEnabled',
   'preferredLabUnits',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
@@ -529,7 +513,6 @@ export const DEVICE_LOCAL_KEYS = [
   'wearTimerEnabled',
   'dosePanelEnabled',
   'readyLetterEnabled',
-  'revisitEnabled',
   'surgeryCountdownEnabled',
   'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',

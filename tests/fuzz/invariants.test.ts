@@ -56,13 +56,6 @@ test.each(['refused', 'accepted'])('an orphan surviving the sweep fails a %s cas
   expect(result.kind).toBe('orphans-survive-sweep');
 });
 
-test('an accepted row with an unreadable affirmation identity fails', async () => {
-  const result = await runOn(async ({ raw }) => {
-    raw.exec('UPDATE affirmation SET uuid = NULL WHERE key IS NULL');
-  });
-  expect(result.kind).toBe('unreadable-after-import');
-});
-
 test('an accepted import with a broken foreign key fails', async () => {
   const result = await runOn(async ({ raw }) => {
     raw.exec('PRAGMA foreign_keys = OFF');

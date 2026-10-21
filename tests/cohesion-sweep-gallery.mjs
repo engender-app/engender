@@ -187,7 +187,6 @@ const ROUTES = [
     states: [{ name: 'disguise-sheet', open: ['[data-list-row="disguise"]'] }]
   },
   { path: '/settings/access-mode' },
-  { path: '/settings/affirmations' },
   { path: '/settings/body-regions' },
   { path: '/settings/dimension' },
   { path: '/settings/export' },

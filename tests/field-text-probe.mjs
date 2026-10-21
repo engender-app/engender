@@ -105,7 +105,7 @@ const COLD_ROUTES = (ALL_ROUTES ? (x) => x : (x) => x.slice(0, 4))([
     '/health/appointments', '/health/appointments/in-the-room', '/health/clinician-summary',
     '/health/cycle-events', '/health/dilation', '/health/surgery', '/media/documents',
     '/media/photos', '/media/photos/export', '/on-this-day', '/search', '/settings',
-    '/settings/access-mode', '/settings/affirmations', '/settings/body-regions',
+    '/settings/access-mode', '/settings/body-regions',
     '/settings/dimension', '/settings/eras', '/settings/export', '/settings/journal-book',
     '/settings/journaling-pause', '/settings/notifications', '/settings/passphrase',
     '/settings/permissions', '/settings/recovery-key', '/settings/reminders', '/settings/security',

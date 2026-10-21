@@ -18,7 +18,7 @@ import javax.crypto.spec.GCMParameterSpec;
 
 /**
  * The reminder payload on disk (audit finding G-02): every reminder's
- * title, rule and pending occurrence, the check-in affirmation pool, the
+ * title, rule and pending occurrence, the
  * hide-titles preference and the epoch day of the latest entry, wrapped under
  * a Keystore AES-GCM key instead of written as a JSON string anyone holding
  * the app's directory can read.

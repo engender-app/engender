@@ -17,7 +17,6 @@
 import type { SqliteReader } from '../sqlite/driver';
 import type { ProcedureKind } from '../types';
 import type {
-  ArchiveAffirmation,
   ArchiveBodyRegion,
   ArchiveChecklist,
   ArchiveChecklistItem,
@@ -217,24 +216,6 @@ export async function readTagGroups({ driver }: SectionRead): Promise<ArchiveTag
   }));
 }
 
-export async function readAffirmations({ driver }: SectionRead): Promise<ArchiveAffirmation[]> {
-  const rows = await driver.query<{
-    id: number;
-    uuid: string | null;
-    key: string | null;
-    language: 'en' | 'pl' | null;
-    text: string;
-    hidden: number;
-  }>('SELECT id, uuid, key, language, text, hidden FROM affirmation ORDER BY id');
-  return rows.map((a) => ({
-    id: domainIdOf(a, 'affirmation'),
-    language: a.language,
-    text: a.text,
-    builtIn: a.key !== null,
-    hidden: bool(a.hidden)
-  }));
-}
-
 export async function readBodyRegions({ driver }: SectionRead): Promise<ArchiveBodyRegion[]> {
   const rows = await driver.query<{ id: number; uuid: string | null; key: string | null; name: string; hidden: number }>(
     'SELECT id, uuid, key, name, hidden FROM body_region ORDER BY id'
@@ -430,28 +411,6 @@ export async function readMarginNotes({ driver }: SectionRead): Promise<ArchiveM
       ORDER BY mn.epoch_day, mn.id`
   );
   return rows.map((r) => ({ id: r.uuid, entryId: r.entry_uuid, epochDay: r.epoch_day, text: r.text }));
-}
-
-export async function readRevisits({ driver }: SectionRead): Promise<ArchiveJournal['revisits']> {
-  const rows = await driver.query<{
-    uuid: string;
-    entry_id: string;
-    entry_epoch_day: number;
-    created_epoch_day: number;
-    target_epoch_day: number;
-  }>(
-    `SELECT r.uuid, r.entry_id, r.entry_epoch_day, r.created_epoch_day, r.target_epoch_day
-       FROM revisit r JOIN entry e ON e.uuid = r.entry_id
-      WHERE e.trashed_at IS NULL
-      ORDER BY r.target_epoch_day, r.id`
-  );
-  return rows.map((r) => ({
-    id: r.uuid,
-    entryId: r.entry_id,
-    entryEpochDay: r.entry_epoch_day,
-    createdEpochDay: r.created_epoch_day,
-    targetEpochDay: r.target_epoch_day
-  }));
 }
 
 export async function readEffectCategories({ driver }: SectionRead): Promise<ArchiveEffectCategory[]> {

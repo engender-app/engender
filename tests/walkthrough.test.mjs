@@ -4706,7 +4706,7 @@ try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
-    '/settings/affirmations', '/settings/body-regions',
+    '/settings/body-regions',
     '/settings/journaling-pause', '/media/photos',
     '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',

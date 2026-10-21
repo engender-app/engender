@@ -545,8 +545,6 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     feltSense: 4
   });
 
-  // One custom affirmation line, beside the built-in pool.
-  await journal.affirmations.addLine('en', 'I get to move at my own pace.');
 }
 
 /** A minimal, valid one-page PDF (phase 11 ticket 01), built the same way

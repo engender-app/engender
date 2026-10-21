@@ -425,30 +425,7 @@ export async function applyTagGroups({ driver, mode, journal, ts }: Restoring): 
   }
 }
 
-/** No children to walk, unlike applyTagGroups: an affirmation is a flat row,
-    so a matched one is simply updated (Replace) or left alone (Merge), the
-    same "matched rows are skipped in Merge" rule every other flat section
-    follows (restore.ts's header). */
-export async function applyAffirmations({ driver, mode, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT COALESCE(key, uuid) AS id FROM affirmation');
-
-  for (const a of journal.affirmations) {
-    if (present.has(a.id)) {
-      if (mode === 'merge') continue;
-      await driver.run(
-        'UPDATE affirmation SET language = ?, text = ?, hidden = ?, updated_at = ? WHERE COALESCE(key, uuid) = ?',
-        [a.language, a.text, flag(a.hidden), ts, a.id]
-      );
-      continue;
-    }
-    await driver.run(
-      'INSERT INTO affirmation (uuid, key, language, text, hidden, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [a.builtIn ? null : a.id, a.builtIn ? a.id : null, a.language, a.text, flag(a.hidden), ts]
-    );
-  }
-}
-
-/** A flat row, like applyAffirmations - a matched one is simply updated
+/** A flat row: a matched one is simply updated
     (Replace) or left alone (Merge). */
 export async function applyBodyRegions({ driver, mode, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT COALESCE(key, uuid) AS id FROM body_region');
@@ -835,23 +812,6 @@ export async function applyMarginNotes({ driver, journal, ts }: Restoring): Prom
   }
 
   await insertRows(driver, 'INSERT INTO margin_note (uuid, entry_id, epoch_day, text, updated_at)', rows);
-}
-
-export async function applyRevisits({ driver, journal, ts }: Restoring): Promise<void> {
-  const present = await presentIds(driver, 'SELECT uuid AS id FROM revisit');
-  const entriesWithRevisit = await presentIds(driver, 'SELECT entry_id AS id FROM revisit');
-  const entryIds = await rowidsByUuid(driver, 'entry', journal.revisits.map((revisit) => revisit.entryId));
-  const rows = journal.revisits
-    // A destination entry keeps its revisit even when another device minted a different uuid.
-    .filter((revisit) => !present.has(revisit.id) && entryIds.has(revisit.entryId) && !entriesWithRevisit.has(revisit.entryId))
-    .map((revisit) => [
-      revisit.id, revisit.entryId, revisit.entryEpochDay, revisit.createdEpochDay, revisit.targetEpochDay, ts
-    ]);
-  await insertRows(
-    driver,
-    'INSERT INTO revisit (uuid, entry_id, entry_epoch_day, created_epoch_day, target_epoch_day, updated_at)',
-    rows
-  );
 }
 
 /* Both of these resolve their episode by uuid against what is in the table

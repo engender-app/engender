@@ -60,7 +60,7 @@
   <ScreenHeader title={m.body_regions_row_title()} back="/settings" subtitle={m.body_regions_intro()} />
 
   <!-- Custom before built-in, and the add button with it (phase 11 ticket
-       38): the same order the affirmations screen takes, for the same
+       38): the same order other reference-area screens take, for the same
        reason - ten built-in regions stood between arriving here and adding
        the one region a person came to name. -->
   <SectionHeading text={m.body_regions_custom_heading()} />

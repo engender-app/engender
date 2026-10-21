@@ -16,7 +16,6 @@ import dev.engender.app.R;
 import dev.engender.app.disguise.DisguiseAlias;
 import dev.engender.app.launch.AppLaunch;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
@@ -123,33 +122,11 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            // Same reason as the reminder above (F-05), and the affirmation
-            // line this one can carry says what the app is for even when
-            // the title does not.
+            // Same reason as the reminder above (F-05).
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
-        String affirmation = resolveCheckInAffirmation(payload, epochDay);
-        if (affirmation != null) {
-            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body + "\n" + affirmation));
-        }
-
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build());
-    }
-
-    /** The affirming line for this day, or null
-        when the prompt stays plain: the pool arrives empty when the
-        preference is off, and hideNotificationTitles suppresses the line the
-        same way it hides reminder titles - an affirmation on a lock screen
-        says what the app is for. Indexed by epoch day rather than any stored
-        state, so the line rotates even across days the app is never
-        opened. */
-    static String resolveCheckInAffirmation(JSONObject payload, int epochDay) {
-        if (payload.optBoolean("hideNotificationTitles", false)) return null;
-        JSONArray pool = payload.optJSONArray("checkInAffirmations");
-        if (pool == null || pool.length() == 0) return null;
-        String line = pool.optString(epochDay % pool.length(), "");
-        return line.isBlank() ? null : line;
     }
 
     /** The reminder's own title, unless hideNotificationTitles is

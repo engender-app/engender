@@ -51,7 +51,7 @@ interface SearchHitRow extends Pick<HubRow, 'icon'> {
   label: string;
   href: string;
   /** The day the record belongs to, already worded, or undefined for an area
-      whose records have no day (a roadmap goal, an affirmation). */
+      whose records have no day (a roadmap goal, a checklist). */
   date?: string;
   /** What the row reads: the text around the match rather than the field's
       first line, since a letter runs to paragraphs and the match can be
@@ -117,11 +117,6 @@ const AREA_ROWS: Record<
   },
   eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
-  affirmations: {
-    icon: 'sparkle',
-    label: () => m.affirmations_row_title(),
-    href: () => '/settings/affirmations'
-  },
   /* Goes to the document itself rather than to the list: a hit is one
      piece of paper somebody is looking for, and its own screen is the only
      place the page image is drawn at all (ADR-0065). */

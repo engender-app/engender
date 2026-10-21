@@ -147,7 +147,6 @@ export function homeTiles(
   const episodes = liveList((j) => (wanted('dose-panel', 'patch-schedule-tile') ? j.regimen.getEpisodes() : none([])));
   const procedures = liveList((j) => (wanted('surgery-countdown') ? j.procedures.getProcedures() : none([])));
   const letters = liveList((j) => (wanted('ready-letter') ? j.letters.getLetterSeals(100) : none([])));
-  const dueRevisits = liveList((j) => (wanted('revisit') ? j.revisits.getDueRevisits(todayEpochDay) : none([])));
   const latestBadEntryId = liveQuery((j) =>
     wanted('safe-space-nudge') ? j.entries.latestBadMomentEntryId() : none(null)
   );
@@ -200,7 +199,6 @@ export function homeTiles(
     episodes,
     procedures,
     letters,
-    dueRevisits,
     latestBadEntryId,
     schedules,
     dosePauses,
@@ -237,7 +235,6 @@ export function homeTiles(
         episodes: episodes.rows,
         procedures: procedures.rows,
         letters: letters.rows,
-        dueRevisits: dueRevisits.rows,
         latestBadEntryId: latestBadEntryId.value,
         wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
@@ -261,7 +258,6 @@ export function homeTiles(
           prefs.safeSpaceNudgeDismissedEntryId = entryId;
         },
         openLetterDismiss: handlers.onLetterDismiss,
-        dismissRevisit: (id) => void journal.revisits.deleteRevisit(id),
         resumePause: (pauseId, startEpochDay) => void resumePause(pauseId, startEpochDay),
         snooze
       },

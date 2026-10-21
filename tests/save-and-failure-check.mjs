@@ -1,7 +1,6 @@
 /* After-release ticket 06: every save says it worked, every failure says so,
    and a double tap writes once. One check per class of save rather than one
-   per screen: RecordSheet (standing for its remaining
-   screens), a hand-written sheet save (affirmations), a save that leaves
+   per screen: a save that leaves
    the screen (a reminder), surgery's notes, and Today's acknowledgement of
    an entry saved today. Then the eight action sites UI 17 brought under
    the same rule, each failing once and then double tapped while held. Failures come from a journal operation replaced in
@@ -123,22 +122,6 @@ try {
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
   await page.evaluate(() => { const bar = document.querySelector('.demo-bar'); if (bar) bar.style.display = 'none'; });
 
-  // A hand-written sheet save: affirmations.
-  await navigate('/settings/affirmations');
-  await page.locator('[data-add-affirmation]').click();
-  await page.locator('[data-sheet] textarea').fill('A line worth keeping');
-  await fault('affirmations', 'addLine');
-  const saveLine = page.locator('[data-sheet] .btn-primary');
-  await saveLine.click();
-  await expectToast('failed', /Could not save/);
-  // Raised over the open sheet rather than on its Save button.
-  assert.ok((await toastOf('failed').last().boundingBox()).y < 100, 'a failure over an open sheet sits at the top');
-  assert.equal(await page.locator('[data-sheet] textarea').inputValue(), 'A line worth keeping');
-  const beforeLine = await doubleTapWhilePending(saveLine, page.locator('[data-sheet] textarea'));
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
-  assert.equal(await calls(), beforeLine + 1);
-  await expectToast('record-saved');
-  console.log('PASS sheet save: failure toasts and keeps the sheet, double tap writes once, save confirms');
 
   // A save that leaves the screen: a reminder.
   await navigate('/settings/reminders/new');

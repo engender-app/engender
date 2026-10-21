@@ -850,7 +850,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // (applyTagGroups) - a rename or a hide reaches an already-present tag.
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   // Same update branch as gender_dimension.
-  affirmation: ['uuid', 'key', 'language', 'text', 'hidden'],
   // Same update branch as gender_dimension.
   body_region: ['uuid', 'key', 'name', 'hidden'],
   // Same update branch as gender_dimension.
@@ -913,7 +912,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // belongs to an entry (phase 8 features ticket 07), and entry_id is a
   // rowid resolved against the entries section.
   margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
-  revisit: ['uuid', 'entry_id', 'entry_epoch_day', 'created_epoch_day', 'target_epoch_day'],
   // Read once for the file manifest, the same reason hair_photo above is
   // hand-written.
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],

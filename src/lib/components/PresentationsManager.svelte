@@ -6,7 +6,7 @@
      delete (CONTEXT: "Hidden"), so no delete handler is supplied. Under Settings, not the Transition door (redesign ticket 51,
      ADR-0084): a mode is a reference area, spent on the entry editor's
      chips and never read here for its own sake - the same reason body
-     regions and affirmations already sit on this screen.
+     regions already sit on this screen.
 
      A sheet's own body rather than a screen (audit item 6): even hosted on
      Settings, this was still two rows and hundreds of pixels of black for

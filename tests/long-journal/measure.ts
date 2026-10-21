@@ -780,7 +780,6 @@ export async function measureLongJournal(
       episodes: journal.regimen.getEpisodes(),
       procedures: journal.procedures.getProcedures(),
       letters: journal.letters.getLetterSeals(HOME_LETTER_PAGE),
-      dueRevisits: journal.revisits.getDueRevisits(today),
       latestBadEntryId: journal.entries.latestBadMomentEntryId(),
       schedules: journal.doses.getSchedules(),
       dosePauses: journal.doses.getPauses(),

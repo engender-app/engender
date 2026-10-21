@@ -51,7 +51,6 @@ export const CLINICIAN_SUMMARY_TABLES: TableName[] = [
 export const RECONCILE_TABLES: TableName[] = [
   'tag',
   'dimension',
-  'affirmation',
   'bodyRegion',
   'effectCategory',
   'personalEffectType',
@@ -190,8 +189,6 @@ export const TABLE_NAMES = [
   'checklist',
   /* The binder/tucking wear log (phase 5 ticket 04). */
   'wearSession',
-  /* The check-in's affirmation pool (phase 5 ticket 15). */
-  'affirmation',
   /* The body-region reference-data area (phase 5 ticket 30). An entry's
      own body-region intensities are still announced under 'entry' - this
      is only the region rows themselves: built-in hide/unhide and a custom
@@ -228,11 +225,6 @@ export const TABLE_NAMES = [
      re-run on a write to any of nineteen tables, and hiding an area has not
      touched a single record in it. */
   'areaState',
-  /* A revisit (phase 8 features ticket 08, ADR-0045). Its own name rather
-     than folded into 'entry': setting or cancelling one changes nothing an
-     entry read returns, and the live tile's own read would otherwise
-     re-run on every entry write in the journal. */
-  'revisit',
   /* A margin note (phase 8 features ticket 07). Its own name and not
      folded into 'entry': the whole point of the feature is that a margin
      note and the entry it annotates are read and written apart, so an
@@ -382,15 +374,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // gender_dimension, and a template's tag link goes by cascade when the
     // tag is deleted.
     reads: { getEntryTemplates: ['entryTemplate', 'tag', 'dimension'] }
-  }),
-  affirmations: classify<Journal['affirmations']>()({
-    writes: {
-      addLine: ['affirmation'],
-      editLine: ['affirmation'],
-      setHidden: ['affirmation'],
-      deleteLine: ['affirmation']
-    },
-    reads: { getAffirmations: ['affirmation'] }
   }),
   bodyRegions: classify<Journal['bodyRegions']>()({
     writes: {
@@ -602,11 +585,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   journalingPauses: classify<Journal['journalingPauses']>()({
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
     reads: { getPauses: ['journalingPause'] }
-  }),
-  revisits: classify<Journal['revisits']>()({
-    writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },
-    // Both join the entry, for the rowid a revisit hands back.
-    reads: { getRevisitForEntry: ['revisit', 'entry'], getDueRevisits: ['revisit', 'entry'] }
   }),
   marginNotes: classify<Journal['marginNotes']>()({
     writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },

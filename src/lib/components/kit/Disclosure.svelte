@@ -1,7 +1,7 @@
 <script lang="ts">
   /* A fold: a full-width row with its chevron at the far edge, and the
      block it opens growing under it (`disclose`). The app's one disclosure
-     marker (after-release 28, audit V12/L07-18). Manage tags, Affirmations
+     marker (after-release 28, audit V12/L07-18). Manage tags
      and Body regions used native <details>, which drew the browser's
      triangle beside every other fold's chevron and opened in one frame.
 

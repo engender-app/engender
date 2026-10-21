@@ -141,19 +141,6 @@ export interface ArchiveTagGroup {
   tags: ArchiveTag[];
 }
 
-/** One line of the check-in's affirmation pool (phase 5 ticket 15). `id` is
-    the built-in's key or the custom's uuid, matching ArchiveTag's own
-    convention. `language` is null for a built-in - its wording is looked
-    up fresh on the importing device - and 'en' or 'pl' for a custom, which
-    travels verbatim since it is never translated (CONTEXT: "Custom"). */
-export interface ArchiveAffirmation {
-  id: string;
-  language: 'en' | 'pl' | null;
-  text: string;
-  builtIn: boolean;
-  hidden: boolean;
-}
-
 export interface ArchiveBodyRegion {
   id: string;
   name: string;
@@ -281,22 +268,6 @@ interface ArchiveVoicePracticeTake {
   maxHz: number;
   medianHz: number;
   feltSense: number | null;
-}
-
-/** A day chosen to see one entry again (phase 8 features ticket 08,
-    ADR-0045). `entryId` is the owning entry's own uuid here, not its local
-    row id: a raw integer FK would need resolving against a rowid that can
-    differ after a restore or merge, and a uuid already survives that trip
-    unresolved - the same plain-text FK shape ArchiveMilestone's
-    `procedureId` already carries. The live-schema `Revisit` type (types.ts)
-    resolves this back to the app-facing numeric entry id; that resolution
-    is revisits.ts's job, not this wire shape's. */
-interface ArchiveRevisit {
-  id: string;
-  entryId: string;
-  entryEpochDay: number;
-  createdEpochDay: number;
-  targetEpochDay: number;
 }
 
 /** One bundled transition-roadmap goal with a status recorded at all
@@ -773,7 +744,6 @@ export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
   presets: ArchivePreset[];
   tagGroups: ArchiveTagGroup[];
-  affirmations: ArchiveAffirmation[];
   bodyRegions: ArchiveBodyRegion[];
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
@@ -815,7 +785,6 @@ export interface ArchiveJournal {
   comfortItems: ArchiveComfortItem[];
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
-  revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
   wordIgnore: ArchiveWordIgnore[];
   documents: ArchiveDocument[];
@@ -985,7 +954,6 @@ const alphaSections = ['dimensions', 'presets', 'tagGroups', 'entries', 'milesto
 const postAlphaSections = [
   'presentations',
   'entryTemplates',
-  'affirmations',
   'bodyRegions',
   'marginNotes',
   'wordIgnore',
@@ -995,7 +963,6 @@ const postAlphaSections = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
-  'revisits',
   'eras',
   'eraMutes',
   'effectCategories',

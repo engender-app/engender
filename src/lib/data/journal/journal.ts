@@ -15,7 +15,6 @@ import type { PhotoFileStore } from '../photos/photo-file-store';
 import { builtInsStamp } from './builtInsStamp';
 import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 export type { PhotoFileStore } from '../photos/photo-file-store';
-import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import type { ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import type { ChartAnnotationsArea } from './chartAnnotations';
@@ -44,7 +43,6 @@ import { makeJournalingPausesArea, type JournalingPausesArea } from './journalin
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLastWriteArea, type LastWriteArea } from './lastWrite';
 import { makeLettersArea, type LettersArea } from './letters';
-import { makeRevisitsArea, type RevisitsArea } from './revisits';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
@@ -84,11 +82,6 @@ import { deferredArea } from './deferredArea';
 export interface Journal {
   entries: EntriesArea;
   tags: TagsArea;
-  /** The check-in's affirmation pool (phase 5 ticket 15, CONTEXT:
-      "Affirmation"). Built-in lines are seeded by key, the same as tags;
-      custom lines are additive to the pool the check-in draws from
-      (reminders/affirmations.ts), never a replacement for it. */
-  affirmations: AffirmationsArea;
   /** Every body region an entry can log an intensity against (phase 5
       ticket 30, CONTEXT: "Reference data" - amended): built-in rows seeded
       by key the same way tags and dimensions are, and a custom row a
@@ -312,7 +305,6 @@ export interface Journal {
       unlock day and nothing else - letterStatus.ts derives sealed/
       unlocked against today (ADR-0010) above this seam. */
   letters: LettersArea;
-  revisits: RevisitsArea;
   /** Which goals of which country pack someone has ticked off on the
       transition roadmap (phase 4 ticket 23). Holds ticks only: what the
       goals say is a bundled content module, not a table, so this area
@@ -418,7 +410,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   return {
     entries,
     tags,
-    affirmations: makeAffirmationsArea(driver),
     bodyRegions: makeBodyRegionsArea(driver),
     dimensions,
     milestones,
@@ -544,7 +535,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     feltSense,
     tryouts,
     letters,
-    revisits: makeRevisitsArea(driver),
     roadmap: deferredArea<RoadmapArea>(async () =>
       (await import('./roadmap')).makeRoadmapArea(driver)
     )([

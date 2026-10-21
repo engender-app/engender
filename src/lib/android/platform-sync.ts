@@ -54,7 +54,6 @@ export interface PlatformSyncDeps {
   prefs: {
     checkInEnabled: boolean;
     checkInTime: string;
-    checkInAffirmationsEnabled: boolean;
     hideNotificationTitles: boolean;
     /** The unprompted registry's two reminder switches. Gated here rather
         than by editing the rows themselves: a person who
@@ -98,7 +97,6 @@ export interface PlatformSyncDeps {
     addListener(eventName: 'backButton', listener: () => void): Promise<{ remove(): Promise<void> }>;
     minimizeApp(): Promise<void>;
   };
-  affirmationLines: () => string[];
   reminderTexts: () => AndroidReminderTexts;
   isValidLaunchRoute: (route: string) => boolean;
   currentPathname: () => string;
@@ -175,8 +173,7 @@ export function schedulableReminders(
 }
 
 /** The one piece of the reminder schedule sync with an actual decision in it:
-    which rows may be scheduled at all, an empty affirmation list when the
-    toggle is off rather than none fetched, and the latest entry's day or null
+    which rows may be scheduled at all, and the latest entry's day or null
     when there is none yet.
 
     Quiet hours rides along as three fields rather than being applied here.
@@ -191,8 +188,6 @@ export function assembleReminderSyncPayload(input: {
   recentEntries: Array<{ epochDay: number }>;
   checkInEnabled: boolean;
   checkInTime: string;
-  checkInAffirmationsEnabled: boolean;
-  affirmationLines: string[];
   hideNotificationTitles: boolean;
   remindersEnabled: boolean;
   wearElapsedEnabled: boolean;
@@ -209,7 +204,6 @@ export function assembleReminderSyncPayload(input: {
     checkInEnabled: input.checkInEnabled,
     checkInTime: input.checkInTime,
     journalingPauses: input.journalingPauses,
-    checkInAffirmations: input.checkInAffirmationsEnabled ? input.affirmationLines : [],
     latestEntryEpochDay: input.recentEntries[0]?.epochDay ?? null,
     hideNotificationTitles: input.hideNotificationTitles,
     quietHours: input.quietHours,
@@ -242,8 +236,6 @@ const syncReminderSchedules = coalescing(
         recentEntries,
         checkInEnabled: deps.prefs.checkInEnabled,
         checkInTime: deps.prefs.checkInTime,
-        checkInAffirmationsEnabled: deps.prefs.checkInAffirmationsEnabled,
-        affirmationLines: deps.affirmationLines(),
         hideNotificationTitles: deps.prefs.hideNotificationTitles,
         remindersEnabled: deps.prefs.remindersEnabled,
         wearElapsedEnabled: deps.prefs.wearElapsedEnabled,

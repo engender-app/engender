@@ -2,7 +2,7 @@ import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
 import { isHairStaging } from '../hairStageScales';
 import {
-  AFFIRMATION_LANGUAGES, CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
+  CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
   REMINDER_TYPES, TALLY_KINDS, TRYOUT_KINDS
 } from '../rowValues';
@@ -105,13 +105,6 @@ const ROWS = {
     enabled: optional(bool),
     builtIn: optional(bool),
     tags: optional(list(tag))
-  },
-  affirmations: {
-    id: identity,
-    language: nullable(oneOf(AFFIRMATION_LANGUAGES)),
-    text: text,
-    builtIn: optional(bool),
-    hidden: optional(bool)
   },
   bodyRegions: {
     id: identity,
@@ -446,13 +439,6 @@ const ROWS = {
     finishedEpochDay: nullable(numeric),
     suspendedEpochDay: nullable(numeric)
   },
-  revisits: {
-    id: identity,
-    entryId: text,
-    entryEpochDay: numeric,
-    createdEpochDay: numeric,
-    targetEpochDay: numeric
-  },
   marginNotes: {
     id: identity,
     entryId: text,
@@ -491,7 +477,6 @@ export function assertArchiveRows(
   const defaults = new Set(flatTable ? columnsOf(flatTable)
     .filter((column) => column.bool || column.whenAbsent !== undefined).map((column) => column.field) : []);
   const naturalIdentity = flatTable ? identityFieldOf(flatTable) : undefined;
-  const revisitOwners = new Set<unknown>();
   const identities = new Set<string>();
   for (const [index, row] of rows.entries()) {
     if (!record(row) || (naturalIdentity && !identity(row[naturalIdentity])) ||
@@ -533,12 +518,6 @@ export function assertArchiveRows(
     }
     if (name === 'checklists' && (row.ownerKind === null) !== (row.ownerId === null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
-    }
-    if (name === 'revisits') {
-      if (revisitOwners.has(row.entryId)) {
-        throw new CorruptArchiveError('the archive has more than one revisit for an entry');
-      }
-      revisitOwners.add(row.entryId);
     }
   }
 }

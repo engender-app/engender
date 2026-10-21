@@ -18,7 +18,6 @@ export type ReserveSlot =
   | 'pinned'
   | 'clinician-summary-row'
   | 'access-mode'
-  | 'affirmations'
   | 'hair-progress'
   | 'care-changes'
   | 'wear'
@@ -45,7 +44,7 @@ const HOME_SLOTS: readonly string[] = ['above', 'below', 'pinned'];
 
 /* Home's three slots keep the keys ticket 183 gave them. Other screens'
    late blocks hold their room the same way (ux-carpet ticket 193): the
-   clinician summary's scope row, the access-mode screen's mode list, the affirmation lists, the bodies
+   clinician summary's scope row, the access-mode screen's mode list, the bodies
    that used to swap in from a page-level skeleton (ticket 205) or cut in
    with no placeholder at all (ticket 211), and the hosted-rows card a screen draws for the More hub
    (`hosted-<host>`). */

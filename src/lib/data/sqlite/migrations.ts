@@ -73,5 +73,6 @@ DROP TABLE measurement_type;
 DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
-` }
+` },
+  { version: 98, sql: 'DROP TABLE affirmation; DROP TABLE revisit;' }
 ];

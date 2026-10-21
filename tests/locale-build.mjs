@@ -10,7 +10,7 @@ for (const locale of ['en', 'pl']) {
   const catalogue = JSON.parse(readFileSync(`messages/${locale}.json`, 'utf8'));
   const inactive = JSON.parse(readFileSync(`messages/${locale === 'en' ? 'pl' : 'en'}.json`, 'utf8'));
   const startup = graph[locale].filter((path) => path.endsWith('.js')).map((path) => readFileSync(`build${path}`, 'utf8')).join('\n');
-  for (const key of ['pp_unlock_body', 'pp_wrong', 'affirmation_1']) {
+  for (const key of ['pp_unlock_body', 'pp_wrong']) {
     assert.ok(startup.includes(catalogue[key]), `${locale} startup must contain active ${key}`);
     assert.ok(!startup.includes(inactive[key]), `${locale} startup must prune inactive ${key}`);
   }

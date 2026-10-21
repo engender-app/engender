@@ -384,8 +384,7 @@
        Each row keeps the registry's line, for the reason the add list above
        keeps its own and the pinned list drops them: a line under a row being
        dragged is in the way, and a line under a row being decided about is
-       the decision. "Revisit" is not self-evident, and
-       the screen these switches came from stated what each one puts in front
+       the decision. Each switch explains what it puts in front
        of you (the impeccable critique's own first finding, 2026-09-16).
 
        Every kind, including one whose area is hidden or finished. The

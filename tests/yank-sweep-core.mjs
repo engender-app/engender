@@ -2127,7 +2127,6 @@ const HYDRATION_SCENES = [
   { name: 'passphrase', at: '/settings/passphrase', is: 'the passphrase change screen' },
   { name: 'recovery-key', at: '/settings/recovery-key', is: 'the recovery key mint and revoke' },
   { name: 'security', at: '/settings/security', is: 'the security module' },
-  { name: 'affirmations', at: '/settings/affirmations', is: 'affirmations' },
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
   { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
