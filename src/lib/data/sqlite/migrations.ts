@@ -117,5 +117,11 @@ INSERT INTO sqlite_sequence (name, seq) SELECT 'hair_stage_new', seq FROM sqlite
 DROP TABLE hair_stage;
 ALTER TABLE hair_stage_new RENAME TO hair_stage;
 CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
-` }
+` },
+  /* Functional audit ticket 28: a hair-removal session can say how long it ran
+     (electrolysis is booked by the hour). NULL until written; hairRemoval.ts
+     refuses a length outside 1 to 1440 and archiveRowValidation.ts judges an
+     archive row by the same range, so no CHECK. Pain was made nullable by
+     version 94's rebuild. */
+  { version: 103, sql: 'ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER;' }
 ];

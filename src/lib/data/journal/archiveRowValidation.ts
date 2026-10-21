@@ -231,6 +231,7 @@ const ROWS = {
     area: oneOf(HAIR_REMOVAL_AREAS),
     method: oneOf(HAIR_REMOVAL_METHODS),
     painRating: nullable(integerBetween(1, 5)),
+    minutes: optional(nullable(integerBetween(1, 1440))),
     cost: text,
     provider: text,
     photos: list(hairRemovalPhoto)

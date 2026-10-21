@@ -50,7 +50,12 @@
      nothing. */
   const SECTION_ROLE = { recency: 0, strip: 0, sessions: 1 };
 
-  const PAIN_RATINGS = [1, 2, 3, 4, 5];
+  /* '' is no rating: the draft opens unrated and an unrated session stores
+     none (FA 28). */
+  const PAIN_OPTIONS = [
+    { value: '', label: m.hair_removal_pain_unrated() },
+    ...[1, 2, 3, 4, 5].map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))
+  ];
 
   const today = $derived(currentDay());
 
@@ -62,7 +67,8 @@
       date: dateInputValueFromEpochDay(epochDay),
       area,
       method: 'laser' as HairRemovalMethod,
-      painRating: '3',
+      painRating: '',
+      minutes: null as number | null,
       cost: '',
       provider: ''
     };
@@ -147,7 +153,7 @@
 
   const record = recordEditor<
     HairRemovalSession,
-    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; cost: string; provider: string }
+    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; minutes: number | null; cost: string; provider: string }
   >({
     blank: () => blankDraft(HAIR_REMOVAL_AREAS[0]),
     fromRecord: (session) => ({
@@ -155,7 +161,8 @@
       date: dateInputValueFromEpochDay(session.epochDay),
       area: session.area,
       method: session.method,
-      painRating: String(session.painRating),
+      painRating: session.painRating === null ? '' : String(session.painRating),
+      minutes: session.minutes,
       cost: session.cost,
       provider: session.provider
     }),
@@ -165,7 +172,8 @@
         epochDay: epochDayFromDateInputValueOrToday(draft.date),
         area: draft.area,
         method: draft.method,
-        painRating: Number(draft.painRating),
+        painRating: draft.painRating === '' ? null : Number(draft.painRating),
+        minutes: draft.minutes,
         cost: draft.cost,
         provider: draft.provider
       });
@@ -176,6 +184,9 @@
     remove: (id) => journal.hairRemoval.deleteSession(id),
     findById: (id) => sessions.find((session) => session.id === id)
   });
+  /** Empty is fine; a length is a whole number of minutes in a day. */
+  const minutesOk = (draft: { minutes: number | null }) =>
+    draft.minutes === null || (Number.isInteger(draft.minutes) && draft.minutes >= 1 && draft.minutes <= 1440);
   let editor = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
 
@@ -267,7 +278,7 @@
                     data-hair-removal-session={session.id}
                     icon="shuffle"
                     title={hairRemovalAreaName(session.area)}
-                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), severityName(session.painRating)].filter(Boolean).join(' · ')}
+                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating)].filter(Boolean).join(' · ')}
                     chevron={false}
                     onclick={() => record.openEditor(session)}
                   />
@@ -306,6 +317,7 @@
     newTitle={m.hair_removal_new_sheet()}
     editTitle={m.hair_removal_edit_sheet()}
     saveLabel={m.hair_removal_save()}
+    canSave={minutesOk}
     deleteLabel={m.hair_removal_delete()}
     confirm={{
       title: m.hair_removal_delete_sheet(),
@@ -335,11 +347,27 @@
           </select>
         {/snippet}
       </Field>
+      <Field label={m.hair_removal_minutes_label()} id="hair-removal-minutes">
+        {#snippet children(id)}
+          <input
+            class="input"
+            {id}
+            name="hair-removal-minutes"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="1440"
+            step="1"
+            placeholder={m.hair_removal_minutes_placeholder()}
+            bind:value={draft.minutes}
+          />
+        {/snippet}
+      </Field>
       <Field label={m.hair_removal_pain_label()} legend>
         {#snippet children()}
           <Segmented
             name={m.hair_removal_pain_label()}
-            options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))}
+            options={PAIN_OPTIONS}
             value={draft.painRating}
             onChange={(v) => (draft.painRating = v)}
           />

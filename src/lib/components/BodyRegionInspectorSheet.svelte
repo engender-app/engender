@@ -149,6 +149,7 @@
                 title={`${hairRemovalAreaName(s.area)} · ${hairRemovalMethodName(s.method)}`}
                 subtitle={[
                   fmtDay(s.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
+                  s.minutes !== null ? m.hair_removal_minutes_short({ n: s.minutes }) : false,
                   s.provider || false
                 ]}
                 static
@@ -156,7 +157,9 @@
               >
                 {#snippet trailing()}
                   <!-- Pain only: the method is already in the title. -->
-                  <span class="muted small">{m.body_region_session_pain({ pain: String(s.painRating) })}</span>
+                  {#if s.painRating !== null}
+                    <span class="muted small">{m.body_region_session_pain({ pain: String(s.painRating) })}</span>
+                  {/if}
                 {/snippet}
               </ListRow>
             {/each}

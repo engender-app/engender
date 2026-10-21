@@ -458,9 +458,10 @@ export async function readHairRemovalSessions({
     area: string;
     method: string;
     pain_rating: number | null;
+    minutes: number | null;
     cost: string | null;
     provider: string;
-  }>('SELECT id, uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session ORDER BY epoch_day, id');
+  }>('SELECT id, uuid, epoch_day, area, method, pain_rating, minutes, cost, provider FROM hair_removal_session ORDER BY epoch_day, id');
 
   const byId = groupBy(
     hairRemovalPhotos,
@@ -474,6 +475,7 @@ export async function readHairRemovalSessions({
     area: session.area,
     method: session.method,
     painRating: session.pain_rating,
+    minutes: session.minutes,
     cost: session.cost ?? '',
     provider: session.provider,
     photos: byId.get(session.id) ?? []

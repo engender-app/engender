@@ -838,6 +838,7 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     area: 'upper_lip',
     method: 'electrolysis',
     painRating: 4,
+    minutes: 60,
     cost: '',
     provider: ''
   });
@@ -850,6 +851,7 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     area: 'upper_lip',
     method: 'electrolysis',
     painRating: 4,
+    minutes: 60,
     cost: '',
     provider: ''
   });

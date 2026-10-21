@@ -194,7 +194,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       epochDay: day,
       area: pick(HAIR_REMOVAL_AREAS),
       method: pick(['laser', 'electrolysis', 'other'] as const),
-      painRating: between(1, 5),
+      painRating: r() < 0.25 ? null : between(1, 5),
+      minutes: r() < 0.5 ? between(15, 120) : null,
       cost: r() < 0.7 ? `${between(150, 450)} PLN` : '',
       provider: r() < 0.7 ? 'Klinika Laserowa' : ''
     });

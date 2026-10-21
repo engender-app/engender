@@ -986,14 +986,15 @@ export async function applyHairRemovalSessions({ driver, journal, ts }: Restorin
   for (const session of journal.hairRemovalSessions) {
     if (!sessions.has(session.id)) {
       await driver.run(
-        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, minutes, cost, provider, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           session.id,
           session.epochDay,
           session.area,
           session.method,
           session.painRating,
+          session.minutes ?? null,
           session.cost,
           session.provider,
           ts

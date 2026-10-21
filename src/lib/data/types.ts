@@ -891,6 +891,8 @@ export interface HairRemovalSession {
   area: string;
   method: HairRemovalMethod;
   painRating: number | null;
+  /** How long the session ran, in whole minutes; null when not written down. */
+  minutes: number | null;
   cost: string;
   provider: string;
 }
