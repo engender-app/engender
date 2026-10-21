@@ -377,6 +377,55 @@ export async function runJournalContract(
     for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
+  /* Functional audit ticket 10: mode, body region and one scale's range,
+     each alone and each with text, through the same two reads /search
+     makes. The region and scale halves are EXISTS subqueries over their
+     own tables, and the scale's range binds two numbers, so they belong on
+     every driver rather than in a Node-only test. */
+  await r.section('mode, body region and a scale range narrow the search, alone and with text', async () => {
+    const femme = await journal.presentations.addPresentation('filterprobe femme', 0);
+    const work = await journal.presentations.addPresentation('filterprobe work', 1);
+    const day = 20400;
+    const a = await journal.entries.upsertEntry({
+      epochDay: day, mood: 4, note: 'filterprobe walk', presentationId: femme.id,
+      bodyRegions: { chest: 70 }, dims: { femininity: 80 }
+    });
+    const b = await journal.entries.upsertEntry({
+      epochDay: day, mood: 3, note: 'filterprobe walk', presentationId: work.id,
+      bodyRegions: { hips_waist: 20 }, dims: { femininity: 30 }
+    });
+    const c = await journal.entries.upsertEntry({
+      epochDay: day, mood: 3, note: 'filterprobe other', presentationId: femme.id,
+      bodyRegions: { chest: 30, hips_waist: 60 }, dims: { femininity: 75 }
+    });
+    const d = await journal.entries.upsertEntry({ epochDay: day, mood: 3, note: 'filterprobe bare' });
+
+    const ask = async (query: string, filters: EntrySearchFilters) => {
+      const hits = (await journal.entries.searchEntries(query, [], filters)).map((e) => e.id).sort((x, y) => x - y);
+      const total = await journal.entries.countSearchMatches(query, [], filters);
+      return { hits, total };
+    };
+    const ids = (...list: number[]) => ({ hits: [...list].sort((x, y) => x - y), total: list.length });
+    const inDay = { startEpochDay: day, endEpochDay: day };
+
+    r.equal('a mode alone finds its entries', await ask('', { ...inDay, presentationIds: [femme.id] }), ids(a, c));
+    r.equal('two modes find either', await ask('', { ...inDay, presentationIds: [femme.id, work.id] }), ids(a, b, c));
+    r.equal('a mode with text', await ask('walk', { presentationIds: [femme.id] }), ids(a));
+    r.equal('a body region alone finds every entry with a reading there', await ask('', { ...inDay, bodyRegions: ['chest'] }), ids(a, c));
+    r.equal('a body region with text', await ask('walk', { bodyRegions: ['hips_waist'] }), ids(b));
+    r.equal('a scale range alone, ends included', await ask('', { ...inDay, scale: { key: 'femininity', min: 75, max: 80 } }), ids(a, c));
+    r.equal('a scale range with text', await ask('walk', { scale: { key: 'femininity', min: 0, max: 50 } }), ids(b));
+    r.equal('an entry without that scale is outside every range', await ask('filterprobe', { scale: { key: 'femininity', min: 0, max: 100 } }), ids(a, b, c));
+    r.equal('all three with text narrow to one', await ask('filterprobe', {
+      presentationIds: [femme.id], bodyRegions: ['hips_waist'], scale: { key: 'femininity', min: 70, max: 100 }
+    }), ids(c));
+    r.equal('and nothing when they disagree', await ask('filterprobe', { presentationIds: [work.id], bodyRegions: ['chest'] }), ids());
+
+    for (const id of [a, b, c, d]) await journal.entries.deleteEntry(id).catch(() => {});
+    await journal.presentations.setPresentationHidden(femme.id, true).catch(() => {});
+    await journal.presentations.setPresentationHidden(work.id, true).catch(() => {});
+  });
+
   /* Starred on /search brings every starred photo beside the starred
      entries and counts it in the total, through the same helpers the
      screen calls. */
