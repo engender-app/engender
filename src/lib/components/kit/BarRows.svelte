@@ -50,8 +50,9 @@
         range. Three of those existed before this prop did and all three were
         silently re-normalised: the scale bars say "where the average lands
         inside that metric's own range", the values sheet says "where the day
-        sits in the metric's own range", and the highest days are a position
-        on the person's own scale. A journal whose three scales all sat near
+        sits in the metric's own range", and the highest days (cut since by
+        functional audit ticket 12) were a position on the person's own
+        scale. A journal whose three scales all sat near
         the bottom drew the same near-full wall as one whose scales all sat
         near the top, because the longest of three short bars is still the
         longest. The absolute reading was computed correctly at every one of

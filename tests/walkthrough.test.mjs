@@ -6260,7 +6260,7 @@ try {
    own first and last entry: on an empty journal there is nothing to clamp to
    and the line is correctly absent. The persona seeds eras of its own
    (redesign ticket 48, "Before HRT"; ticket 62 added two more that cover
-   entries, so the words reading has something to weigh) - checked for, then
+   entries) - checked for, then
    cleared, all of them, so the rest of this flow keeps testing "all of it"
    and "earlier still" against the empty slate they were written against:
    "all of it" is both bounds left open, which is the one era that would

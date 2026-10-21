@@ -329,8 +329,9 @@ export function persona(today: number = todayEpochDay()): Persona {
        first lab draw at today-700 - which is also before the first entry,
        so every reading that partitions the journal by era drew nothing on
        it. That was invisible while the era screens only listed eras; the
-       words reading weighs one era's words against the journal's, so an
-       era with no notes in it is the whole of what it can show. The other
+       words reading (cut since by functional audit ticket 12) weighed one
+       era's words against the journal's, so an era with no notes in it was
+       the whole of what it could show. The other
        two are dated over the two stretches the generator actually writes:
        the previous calendar year's sparse days, and the recent run. Both
        bounds dated on all three, for the reason `PersonaEra` gives. */
