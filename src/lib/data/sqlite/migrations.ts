@@ -25,6 +25,7 @@ import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
 import { migrateDrugClass } from './drug-class-migration.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
+import { WAITLIST_REBUILD } from './waitlist-migration.ts';
 
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
@@ -53,5 +54,7 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
      CHECK policy (vocabularies live in code, drugClass.ts reads anything but
      'hrt' as 'other'). */
   { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass },
-  { version: 94, sql: CLOSED_LISTS_REBUILD }
+  { version: 94, sql: CLOSED_LISTS_REBUILD },
+  /* Functional audit ticket 26: an appointment can wait without a day. */
+  { version: 95, sql: WAITLIST_REBUILD }
 ];
