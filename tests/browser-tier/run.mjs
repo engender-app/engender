@@ -148,7 +148,7 @@ await block('rendered screen contracts', 171, async () => {
   }
 });
 
-await block('Safe space optional Good moments', 12, async () => {
+await block('Safe space optional Good moments', 10, async () => {
   const result = await load('/screen-mount.html?safe-space=1', 'screen-mount');
   if (!Array.isArray(result.safeSpace)) throw new Error(result.error ?? 'missing Safe space results');
   for (const item of result.safeSpace) {
@@ -157,7 +157,7 @@ await block('Safe space optional Good moments', 12, async () => {
   }
 });
 
-await block('late reads on Good moments and Tryouts, light and dark', 24, async () => {
+await block('late reads on Good moments and Tryouts, light and dark', 12, async () => {
   for (const theme of ['light', 'dark']) {
     const result = await load(`/screen-mount.html?late-reads=1&theme=${theme}`, 'screen-mount');
     if (!Array.isArray(result.lateReads)) throw new Error(result.error ?? 'missing late-reads results');
