@@ -871,6 +871,13 @@ reconstruct counts an older build already lost. Local storage remains only a
 display mirror on Android. Unreadable metadata asks the person to
 reopen the app so boot can check the current access mode. Busy and error feedback
 use the catalogue and the existing live regions.
+An out-of-space refusal before PIN admission, while reading the credential or
+persisting admission, instead asks for free space and another try. The native
+bridge marks ENOSPC with `storage-full`; the PIN gate uses `spaceShortage` on
+that code or a wrapped read error. No guess is admitted in either case, so
+this refusal leaves the wrong-attempt count alone. A failed settlement after
+admission keeps the unavailable-access message: the guess is already counted
+and its pending token needs a new document to recover.
 
 [browserKeySlot](src/lib/data/device-bound-journal.ts) converts IndexedDB's
 absent-record `undefined` to its declared `null` result. Missing PIN bindings
