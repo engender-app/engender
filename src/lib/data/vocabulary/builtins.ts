@@ -183,11 +183,14 @@ export type BuiltInEffectCategoryKey = (typeof BUILT_IN_EFFECT_CATEGORIES)[numbe
    notices, also out of scope). "Reduced Body Hair" and "Changes to Scalp
    Hair" (feminizing) and "Body Hair, Everywhere" (masculinizing) are
    folded into the existing `hair_changes`/`facial_body_hair` keys rather
-   than duplicated as a second row for the same change. Masculinising
-   scalp hair loss is catalogued at tier 2 despite coming from GenderGP's
-   table: its completion figure is "variable", no range, the same carve-out
-   this ticket's own tier rule gives "male sexual dysfunction" and
-   "decreased sperm production". */
+   than duplicated as a second row for the same change.
+
+   Functional audit ticket 22 re-sourced every band to WPATH SOC8 Appendix
+   C Table 1, which moved two keys across the tier line without moving
+   their rows here (row order is the catalogue's sort order):
+   `male_pattern_baldness_ceasing` is tier 2 now (SOC8: variable / variable)
+   and `scalp_hair_loss_masculinizing` is tier 1 (SOC8: 6-12 months, more
+   than five years). */
 export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   // Feminizing, tier 1: the original four (phase 4 ticket 07) plus ticket
   // 41's five-effect widening.
@@ -199,6 +202,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'decreased_libido', category: 'genital_sexual', direction: 'feminizing' },
   { key: 'decreased_spontaneous_erections', category: 'genital_sexual', direction: 'feminizing' },
   { key: 'decreased_testicular_volume', category: 'genital_sexual', direction: 'feminizing' },
+  // Tier 2 since ticket 22 (see the header above).
   { key: 'male_pattern_baldness_ceasing', category: 'skin_hair', direction: 'feminizing' },
 
   // Feminizing, tier 2: named by genderdysphoria.fyi, no usable literature
@@ -245,8 +249,9 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'clitoral_enlargement_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
   { key: 'vaginal_atrophy_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
 
-  // Masculinizing, tier 2: named by genderdysphoria.fyi (scalp hair loss by
-  // GenderGP too, see the header above), no usable literature figure.
+  // Masculinizing, tier 2: named by genderdysphoria.fyi, no usable
+  // literature figure. Scalp hair loss is the exception, tier 1 since
+  // ticket 22 (see the header above).
   { key: 'scalp_hair_loss_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'larger_hands_feet_masculinizing', category: 'body_shape', direction: 'masculinizing' },
   { key: 'thicker_stronger_nails_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
