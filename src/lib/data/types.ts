@@ -734,10 +734,12 @@ export interface WearSession {
     orders a picker so whichever matches the active preset sorts first. */
 export type Lean = 'femme' | 'masc' | 'neutral';
 
+/** A milestone the app suggests by name. No lean (functional audit ticket
+    32): every milestone template names a kind of event rather than a
+    direction, so all eight were neutral and ranking them did nothing. */
 export interface MilestoneTemplate {
   key: string;
   name: string;
-  lean: Lean;
 }
 
 /** A person's own suggestion for an entry (phase 4 features ticket 17,

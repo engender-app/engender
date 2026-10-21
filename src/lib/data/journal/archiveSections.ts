@@ -331,7 +331,7 @@ const SECTIONS = [
     apply: apply.applyEntries
   }),
   /* A margin note hangs off an entry's rowid (phase 8 features ticket 07),
-     the same reasoning `feltSenseEntries` gives for its own owners: it
+     the same reasoning `feltSenseEntries` gives for its tryout: it
      resolves a rowid against a section already applied, so `entries` has
      to be there first. `travels: 'none'`, the same call `entries` itself
      makes just above - a margin note is the person's own record of what
@@ -906,13 +906,13 @@ const SECTIONS = [
     read: read.readTryouts,
     apply: apply.applyTryouts
   }),
-  // A felt-sense row hangs off a tryout or a milestone rowid (phase 5
-  // ticket 24), the same way a dose schedule hangs off an episode's.
+  // A felt-sense row hangs off a tryout's rowid (phase 5 ticket 16), the
+  // same way a dose schedule hangs off an episode's.
   section({
     name: 'feltSenseEntries',
-    after: ['tryouts', 'milestones'],
-    // Clears before both tryout and milestone, which is `after` reversed
-    // again rather than anything stated here.
+    after: ['tryouts'],
+    // Clears before tryout, which is `after` reversed again rather than
+    // anything stated here.
     discard: ['DELETE FROM felt_sense'],
     travels: 'none',
     read: read.readFeltSenseEntries,

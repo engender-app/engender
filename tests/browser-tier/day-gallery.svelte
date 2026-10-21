@@ -195,7 +195,7 @@
       { id: 'w2', kind: 'binder', startTimestamp: at(19), durationMs: null, note: 'still on' }
     ],
     feltSense: [
-      { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { kind: 'tryout', id: 'ty1', name: 'Robin' } }
+      { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { id: 'ty1', name: 'Robin' } }
     ],
     hairStages: [{ id: 'hs1', epochDay: DAY, scale: 'norwood_hamilton', stage: '3', description: '' }],
     hairPhotos: [

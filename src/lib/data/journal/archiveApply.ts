@@ -781,10 +781,11 @@ export async function applyTryouts({ driver, journal, ts }: Restoring): Promise<
   }
 }
 
-/* Resolves its owner - a tryout or a milestone - by uuid against what
-   applyTryouts/applyMilestones just inserted, the same shape
-   applyDosePauses uses for its episode. A row whose owner is not there is
-   dropped rather than inserted against a guessed one. */
+/* Resolves its tryout by uuid against what applyTryouts just inserted, the
+   same shape applyDosePauses uses for its episode. A row whose tryout is
+   not there is dropped rather than inserted against a guessed one, and so
+   is a reading an older archive hung off a milestone (functional audit
+   ticket 32): it has no tryout to resolve. */
 export async function applyFeltSenseEntries({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM felt_sense');
   const tryoutIds = await rowidsByUuid(
@@ -792,32 +793,22 @@ export async function applyFeltSenseEntries({ driver, journal, ts }: Restoring):
     'tryout',
     journal.feltSenseEntries.flatMap((entry) => (entry.tryoutId ? [entry.tryoutId] : []))
   );
-  const milestoneIds = await rowidsByUuid(
-    driver,
-    'milestone',
-    journal.feltSenseEntries.flatMap((entry) => (entry.milestoneId ? [entry.milestoneId] : []))
-  );
 
   const rows: unknown[][] = [];
   for (const entry of journal.feltSenseEntries) {
     if (present.has(entry.id)) continue;
     const tryoutId = entry.tryoutId ? tryoutIds.get(entry.tryoutId) : undefined;
-    const milestoneId = entry.milestoneId ? milestoneIds.get(entry.milestoneId) : undefined;
-    if (tryoutId === undefined && milestoneId === undefined) continue;
-    rows.push([entry.id, tryoutId ?? null, milestoneId ?? null, entry.epochDay, entry.mood, entry.note, ts]);
+    if (tryoutId === undefined) continue;
+    rows.push([entry.id, tryoutId, entry.epochDay, entry.mood, entry.note, ts]);
   }
 
-  await insertRows(
-    driver,
-    'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at)',
-    rows
-  );
+  await insertRows(driver, 'INSERT INTO felt_sense (uuid, tryout_id, epoch_day, mood, note, updated_at)', rows);
 }
 
 /* A margin note's owner is required rather than optional, unlike felt
    sense's own two-owner shape above: a note with no entry to resolve is
-   dropped, the same reasoning applyFeltSenseEntries gives for either of its
-   owners going missing - a merge is allowed to carry only part of another
+   dropped, the same reasoning applyFeltSenseEntries gives for its tryout
+   going missing - a merge is allowed to carry only part of another
    device's history. */
 export async function applyMarginNotes({ driver, journal, ts }: Restoring): Promise<void> {
   const present = await presentIds(driver, 'SELECT uuid AS id FROM margin_note');

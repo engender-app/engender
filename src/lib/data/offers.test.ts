@@ -57,12 +57,6 @@ function recordingJournal() {
         return { tryoutId: id };
       }
     },
-    feltSense: {
-      add: async () => {
-        calls.push('feltSense.add');
-        return 'fs-1';
-      }
-    },
     areaStates: {
       setAreasFinished: async () => {
         calls.push('areaStates.setAreasFinished');
@@ -108,18 +102,6 @@ const SUBJECTS: { [K in OfferKey]: Parameters<(typeof OFFERS)[K]['write']>[1] } 
     createMilestone: true,
     milestoneTitle: 'Ada',
     milestoneEpochDay: 20000
-  },
-  'new-milestone-felt-sense': {
-    owner: { milestoneId: 'ms-1' },
-    epochDay: 20000,
-    mood: 4,
-    note: null
-  },
-  'milestone-anniversary-felt-sense': {
-    owner: { milestoneId: 'ms-1' },
-    epochDay: 20000,
-    mood: 4,
-    note: 'a year on'
   },
   /* Two areas, because the one hub row that fronts two finishes both in the
      same call and a subject naming one would let a half-finished row

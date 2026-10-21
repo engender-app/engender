@@ -103,7 +103,7 @@ test('deleting an entry or a milestone announces photos too, because it takes th
 
   assert.deepEqual(announced, [
     ['entry', 'photo', 'voiceRecording', 'videoNote'],
-    ['milestone', 'photo', 'feltSense', 'document']
+    ['milestone', 'photo', 'document']
   ]);
 });
 

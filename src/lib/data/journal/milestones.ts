@@ -3,11 +3,7 @@
    date and today (ADR-0010), computed by milestoneStatus() above the seam.
 
    Photos become writable in ticket 11; deleting a milestone already takes
-   its photo rows and files along, mirroring deleteEntry. Phase 5 ticket 24
-   widens feltSense.ts's own table to a second owner arm here, so deleting
-   a milestone takes its felt-sense history along too - read and written
-   through feltSense.ts, not this module, the same division photos.ts
-   keeps for the photo row this file only deletes by owner id. */
+   its photo rows and files along, mirroring deleteEntry. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
@@ -241,9 +237,6 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         [id]
       );
       await driver.transaction(async (driver) => {
-        await driver.run('DELETE FROM felt_sense WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [
-          id
-        ]);
         await driver.run('DELETE FROM photo WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [id]);
         // A document's link is a (kind, id) pair rather than a foreign key
         // (documents.ts), so nothing cascades it either - ticket 56.

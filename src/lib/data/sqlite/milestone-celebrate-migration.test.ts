@@ -33,3 +33,24 @@ test('version 98 keeps every existing milestone celebrated', async () => {
     { integrity_check: 'ok' }
   ]);
 });
+
+test("version 98 drops a milestone's felt-sense readings and keeps a tryout's", async () => {
+  const { db, fileOps } = await journalAt97();
+  db.raw.exec(`INSERT INTO tryout (uuid, kind, label, start_epoch_day, updated_at) VALUES ('t1', 'name', 'Alex', 90, 1000)`);
+  db.raw.exec(`INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at) VALUES
+    ('on-tryout', (SELECT id FROM tryout WHERE uuid = 't1'), NULL, 95, 4, 'at the bakery', 1000),
+    ('on-milestone', NULL, (SELECT id FROM milestone WHERE uuid = 'm1'), 465, 5, 'a year on', 1000)`);
+
+  await runMigrations(db, fileOps, migrations);
+
+  assert.deepEqual(
+    db.raw.prepare('SELECT uuid, tryout_id, epoch_day, mood, note FROM felt_sense').all().map((row) => ({ ...(row as object) })),
+    [{ uuid: 'on-tryout', tryout_id: 1, epoch_day: 95, mood: 4, note: 'at the bakery' }]
+  );
+  const columns = db.raw.prepare('PRAGMA table_info(felt_sense)').all().map((row) => (row as { name: string }).name);
+  assert.equal(columns.includes('milestone_id'), false, 'a felt-sense reading can no longer name a milestone');
+  assert.throws(() =>
+    db.raw.exec(`INSERT INTO felt_sense (uuid, tryout_id, epoch_day, mood, updated_at) VALUES ('orphan', NULL, 1, 3, 1)`)
+  );
+  assert.deepEqual(db.raw.prepare('PRAGMA foreign_key_check').all(), []);
+});

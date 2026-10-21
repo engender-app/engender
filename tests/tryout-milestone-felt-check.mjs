@@ -7,12 +7,12 @@
    2. Adopting a name tryout with "use this name" on sets the app's name to
       the tryout's stored name, even after the milestone was renamed in the
       sheet and the label field holds an unsaved edit.
-   3. On a milestone's anniversary, Milestones offers to record how it feels
-      now; another milestone gets no offer; saving one hides the row and says
-      it was saved, and the reading is stored on that milestone for today.
+   A third block, the anniversary felt-sense offer on Milestones, went with
+   functional audit ticket 32, which cut milestone readings; what replaced
+   it is tests/milestone-celebration-check.mjs.
 
    Every block runs even when an earlier one fails, so one run against the
-   old code shows each of the three red.
+   old code shows each of them red.
 
    Run: node tests/tryout-milestone-felt-check.mjs */
 import assert from 'node:assert/strict';
@@ -67,19 +67,14 @@ try {
 
   const seeded = await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    const { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } = await import('/src/lib/data/epochDay.ts');
+    const { todayEpochDay } = await import('/src/lib/data/epochDay.ts');
     const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
     const today = todayEpochDay();
     prefs.name = 'Before';
     const tryoutId = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: today - 30, endEpochDay: null });
     await journal.feltSense.add({ tryoutId }, { epochDay: today - 20, mood: 2, note: null });
     await journal.feltSense.add({ tryoutId }, { epochDay: today - 10, mood: 5, note: 'At the bakery' });
-    // Two years back on today's month and day, so today is its anniversary.
-    const iso = dateInputValueFromEpochDay(today);
-    const back = `${Number(iso.slice(0, 4)) - 2}${iso.slice(4)}`;
-    const anniversaryId = await journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: epochDayFromDateInputValue(back) });
-    const otherId = await journal.milestones.upsertMilestone({ name: 'Came out at work', epochDay: today - 40 });
-    return { tryoutId, anniversaryId, otherId, today };
+    return { tryoutId, today };
   });
 
   await block('each felt-sense row names its mood, with its face, and the day under it', async () => {
@@ -118,41 +113,6 @@ try {
     }, seeded.tryoutId);
     assert.equal(after.milestone, 'Started going by Alex');
     assert.equal(after.name, 'Alex');
-  });
-
-  await block('the anniversary offer shows on its day, saves, says so and goes', async () => {
-    // The adoption left an unsaved label edit behind, so leaving asks first.
-    await page.evaluate(() => {
-      const link = document.createElement('a');
-      link.href = '/transition/milestones';
-      document.body.append(link);
-      link.click();
-      link.remove();
-    });
-    await page.locator('[data-discard-record]').click();
-    await page.waitForURL('**/transition/milestones');
-    const offer = page.locator(`[data-anniv-feeling="${seeded.anniversaryId}"]`);
-    await offer.waitFor();
-    assert.equal(await page.locator(`[data-anniv-feeling="${seeded.otherId}"]`).count(), 0, 'no offer off the anniversary');
-    assert.match(await offer.innerText(), /Started HRT/);
-    await offer.click();
-    await page.locator('[data-save-feeling-offer]').waitFor();
-    assert.equal(await page.locator('[data-feeling-offer-subject]').innerText(), 'Started HRT', 'the sheet names the milestone');
-    await page.locator('[data-sheet] [data-mood="4"]').click();
-    await page.locator('[data-save-feeling-offer]').click();
-    await offer.waitFor({ state: 'detached' });
-    await page.getByRole('status').filter({ hasText: 'Saved for "Started HRT".' }).waitFor();
-    const stored = await page.evaluate(async (id) => {
-      const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-      return journal.feltSense.forMilestone(id);
-    }, seeded.anniversaryId);
-    assert.deepEqual(stored.map((f) => [f.epochDay, f.mood]), [[seeded.today, 4]]);
-    // Answered today, so a second visit does not ask again.
-    await navigate('/more');
-    await page.locator('[data-hub-search]').waitFor();
-    await navigate('/transition/milestones');
-    await page.locator('[data-ms-log-toggle]').waitFor();
-    assert.equal(await offer.count(), 0);
   });
 
   await block('no uncaught page errors', async () => {

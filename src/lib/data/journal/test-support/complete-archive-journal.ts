@@ -117,10 +117,12 @@ export async function seedCompleteArchiveJournal(
     name: 'HRT start',
     epochDay: 19000,
     description: 'the pharmacist barely looked up',
-    templateKey: 'hrt_start'
+    templateKey: 'hrt_start',
+    // Not celebrated, so the one field a celebrated milestone leaves out is
+    // in the fixture (functional audit ticket 32).
+    celebrate: false
   });
   await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
-  await journal.feltSense.add({ milestoneId: milestone }, { epochDay: 19365, mood: 5, note: 'a year on' });
 
   // Filed under the milestone above (phase 8 features ticket 56), so the
   // fixture pins that the link travels and not just the two columns being

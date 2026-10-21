@@ -640,7 +640,8 @@ To run one on its own, use
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
 | `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
 | `tryout-save-check` | tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes |
-| `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
+| `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, and adoption sets the app name to the stored tryout name |
+| `milestone-celebration-check` | the milestone add sheet lists every template with no shuffle, a new milestone asks for no felt sense, the celebrate switch saves, and Today throws no confetti for a milestone set not to be celebrated or an anniversary in a muted era |
 | `dose-amount-check` | taken and changed doses refuse non-positive or non-finite amounts; fractions, skipped zero and animated EN/PL feedback survive |
 | `range-editors-check` | regimen, dose-pause, journaling-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
@@ -850,7 +851,6 @@ available for the surface or device it measures.
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
 | `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
-| `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
 | `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |

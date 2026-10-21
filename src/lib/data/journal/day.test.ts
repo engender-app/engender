@@ -175,8 +175,8 @@ test('a felt-sense row says which tryout it belongs to, and a procedure record w
   const day = await journal.day.getDay(DAY);
 
   assert.deepEqual(
-    day.feltSense.map((f) => [f.owner.kind, f.owner.name]),
-    [['tryout', 'Robin']]
+    day.feltSense.map((f) => f.owner.name),
+    ['Robin']
   );
   assert.deepEqual(
     day.procedureRecords.map((r) => r.procedureName),

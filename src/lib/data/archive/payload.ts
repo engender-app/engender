@@ -649,8 +649,7 @@ export interface ArchiveTryout {
     ArchiveDoseEvent's own header gives for a forward-compatible union. */
 export interface ArchiveFeltSenseEntry {
   id: string;
-  tryoutId: string | null;
-  milestoneId: string | null;
+  tryoutId: string;
   epochDay: number;
   mood: number;
   note: string | null;

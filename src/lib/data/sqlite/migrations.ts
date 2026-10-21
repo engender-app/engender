@@ -74,9 +74,34 @@ DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
 ` },
-  /* Functional audit ticket 32: a milestone can be set not to be
-     celebrated on Home. Every milestone already recorded keeps its
+  /* Functional audit ticket 32. A milestone can be set not to be
+     celebrated on Home; every milestone already recorded keeps its
      celebration. No CHECK, like roadmap_check.hidden: 0 is off and
-     anything else reads as on. */
-  { version: 98, sql: 'ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1;' }
+     anything else reads as on.
+
+     And a milestone no longer holds felt-sense readings: they were asked
+     for and never shown. A cut removes rather than converts, so the
+     milestone rows are dropped and felt_sense is rebuilt with the tryout
+     as its one owner. Its AUTOINCREMENT counter is carried over, the way
+     CLOSED_LISTS_REBUILD carries its tables'. */
+  { version: 98, sql: `
+ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE felt_sense_new (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  tryout_id  INTEGER NOT NULL REFERENCES tryout(id) ON DELETE CASCADE,
+  epoch_day  INTEGER NOT NULL,
+  mood       INTEGER NOT NULL CHECK (mood BETWEEN 1 AND 5),
+  note       TEXT,
+  updated_at INTEGER NOT NULL
+);
+INSERT INTO felt_sense_new (id, uuid, tryout_id, epoch_day, mood, note, updated_at)
+  SELECT id, uuid, tryout_id, epoch_day, mood, note, updated_at FROM felt_sense WHERE tryout_id IS NOT NULL;
+DELETE FROM sqlite_sequence WHERE name = 'felt_sense_new';
+INSERT INTO sqlite_sequence (name, seq) SELECT 'felt_sense_new', seq FROM sqlite_sequence WHERE name = 'felt_sense';
+DROP TABLE felt_sense;
+ALTER TABLE felt_sense_new RENAME TO felt_sense;
+CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id);
+CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
+` }
 ];

@@ -133,10 +133,6 @@ async function populated() {
     { tryoutId: tryout },
     { epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
   );
-  const milestoneFeltSense = await journal.feltSense.add(
-    { milestoneId: milestone },
-    { epochDay: 19365, mood: 5, note: 'a year on, still relieved' }
-  );
   const tryoutPhoto = await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
   return {
@@ -170,7 +166,6 @@ async function populated() {
     personalEffect,
     tryout,
     feltSense,
-    milestoneFeltSense,
     tryoutPhoto
   };
 }
@@ -354,8 +349,8 @@ test('milestones, lab results, tally events, side effects, cycle events, journal
   ]);
 });
 
-test("a tryout travels whole with its photos, and a felt-sense entry travels by whichever owner's own uuid it has", async () => {
-  const { journal, tryout, milestone, feltSense, milestoneFeltSense, tryoutPhoto } = await populated();
+test("a tryout travels whole with its photos, and a felt-sense entry travels by its tryout's own uuid", async () => {
+  const { journal, tryout, feltSense, tryoutPhoto } = await populated();
 
   const snapshot = await journal.archive.snapshot();
 
@@ -371,16 +366,31 @@ test("a tryout travels whole with its photos, and a felt-sense entry travels by 
     }
   ]);
   assert.deepEqual(snapshot.journal.feltSenseEntries, [
-    {
-      id: milestoneFeltSense,
-      tryoutId: null,
-      milestoneId: milestone,
-      epochDay: 19365,
-      mood: 5,
-      note: 'a year on, still relieved'
-    },
-    { id: feltSense, tryoutId: tryout, milestoneId: null, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+    { id: feltSense, tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
   ]);
+});
+
+/* Functional audit ticket 32: a milestone no longer holds felt-sense
+   readings. An archive written before that still carries them, and it
+   stays restorable: those rows are dropped, not converted, and a tryout's
+   readings come through as before. */
+test("an older archive's milestone felt-sense readings are dropped on restore; a tryout's are kept", async () => {
+  const { journal, tryout, milestone, feltSense } = await populated();
+  const snapshot = await journal.archive.snapshot();
+  const older = {
+    ...snapshot.journal,
+    feltSenseEntries: [
+      { id: 'from-a-milestone', tryoutId: null, milestoneId: milestone, epochDay: 19365, mood: 5, note: 'a year on' },
+      ...snapshot.journal.feltSenseEntries.map((entry) => ({ ...entry, milestoneId: null }))
+    ]
+  } as typeof snapshot.journal;
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: older, files: (async function* () {})() });
+
+  assert.deepEqual((await target.archive.snapshot()).journal.feltSenseEntries.map((entry) => entry.id), [feltSense]);
+  assert.deepEqual((await target.feltSense.forTryout(tryout)).map((entry) => entry.id), [feltSense]);
 });
 
 test('dose events travel whole, including the route-conditional fields and a changed dose\'s scheduled value', async () => {
@@ -937,7 +947,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Exactly one of tryout_id/milestone_id travels, each as that owner's own
   // uuid, the same shape `photo`'s entry_id/milestone_id pair carries - and
   // both are rowids resolved against the tryouts/milestones sections.
-  felt_sense: ['uuid', 'tryout_id', 'milestone_id', 'epoch_day', 'mood', 'note'],
+  felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   // Exactly one owner, unlike felt_sense's two - a margin note always
   // belongs to an entry (phase 8 features ticket 07), and entry_id is a
   // rowid resolved against the entries section.
