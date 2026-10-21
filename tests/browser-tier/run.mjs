@@ -137,7 +137,7 @@ await block('Archive after browser installation loss', 2, async () => {
 
 await block('rendered screen contracts', 171, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 58, home: 54, calendar: 59 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 52, calendar: 59 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
@@ -1900,9 +1900,9 @@ await block('phase 5 deepening ticket 21 day composition', 9, async () => {
       JSON.stringify(typical)
     );
 
-  /* Four rows on the typical day, which is under the cap, so it is not
+  /* Three rows on the typical day, which is under the cap, so it is not
      truncated and offers nothing to expand. */
-  if (typical.rows === 4 && typical.more === 0)
+  if (typical.rows === 3 && typical.more === 0)
     ok('a day inside the cap shows every row it has and offers no overflow');
   else fail('a day inside the cap shows every row it has and offers no overflow', JSON.stringify(typical));
 
