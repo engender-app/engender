@@ -4320,6 +4320,13 @@ async function polishSteps(on) {
     (want) => document.querySelector('[data-roadmap-polish-steps] [role="switch"]')?.getAttribute('aria-checked') === want,
     String(on)
   );
+  /* And past the disclosure: the 23 rows stay in the DOM for the length of
+     the closing travel, so a count taken straight after the tap still sees
+     them. */
+  await page.waitForFunction(
+    (want) => (document.querySelectorAll('[data-goal^="pl-"]').length > 0) === want && document.getAnimations().every((a) => a.effect?.getTiming().iterations === Infinity || a.playState !== 'running'),
+    on
+  );
 }
 
 /* Flow: the transition roadmap (phase 4 ticket 23, widened phase 5 ticket
@@ -4345,7 +4352,6 @@ try {
   if (await page.locator('[data-roadmap-pack-toggle]').count()) throw new Error('the Polish pack details show with the switch off');
 
   await polishSteps(true);
-  await page.waitForSelector('[data-goal^="pl-"]');
 
   // Redesign ticket 16 collapsed the pack's own caveat behind this toggle,
   // closed by default - the two checks below read what it discloses.
@@ -4409,9 +4415,14 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
   if (requested.length) throw new Error('the roadmap made requests: ' + JSON.stringify(requested.slice(0, 4)));
 
+  // That tick offered a milestone; say no, so the sheet is not over the switch.
+  if (await page.locator('[data-sheet]').count()) {
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 0);
+  }
+
   // Off again: the steps leave, and their ticks wait underneath.
   await polishSteps(false);
-  await page.waitForFunction(() => document.querySelectorAll('[data-goal^="pl-"]').length === 0);
   await polishSteps(true);
   await page.waitForFunction(() => document.querySelectorAll('[data-goal][data-status="checked"]').length === 1);
   ok('the English roadmap hides the Polish steps until switched on, then cycles a goal through checked, not-my-path and unchecked, offline, and remembers it across a reload');
