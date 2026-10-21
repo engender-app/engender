@@ -83,7 +83,7 @@ interface DoseInputFields {
     derived from DoseEvent, because deriving it would have inherited that
     nullability and let a new dose be saved with no site at all. */
 export type DoseEventInput =
-  | (DoseInputFields & { route: 'oral' | 'sublingual' })
+  | (DoseInputFields & { route: 'oral' | 'sublingual' | 'rectal' | 'implant' })
   | (DoseInputFields & { route: 'im' | 'sc'; injectionSite: InjectionSiteKey; vehicle: InjectionVehicle })
   | (DoseInputFields & { route: 'patch' | 'gel'; applicationSite: ApplicationSiteKey })
   /* A fourth arm for the dose a schedule writes on the person's behalf

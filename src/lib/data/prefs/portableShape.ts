@@ -46,6 +46,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   measurementUnit: (v) => v === 'cm' || v === 'in',
   journeyAnchorMilestoneId: (v) => v === null || typeof v === 'string',
   hairAnchorEpochDay: (v) => v === null || Number.isFinite(v),
+  hrtStartEpochDay: (v) => v === null || Number.isFinite(v),
   cycleTrackingEnabled: (v) => typeof v === 'boolean',
   cycleTrackingChoice: (v) => v === null || typeof v === 'boolean',
   voiceComfortLowHz: (v) => v === null || Number.isFinite(v),

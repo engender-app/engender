@@ -33,6 +33,7 @@ function tEpisode(drug: string, ester: string | null): RegimenEpisode {
   return {
     id: 'e',
     drug,
+    drugClass: 'hrt',
     ester,
     dose: 100,
     doseUnit: 'mg',

@@ -300,8 +300,8 @@ export interface Reminder {
    computation. Recomputing it would let a dose corrected months later
    silently rewrite the context on a result someone already reviewed. */
 export type LabTiming =
-  | { route: 'oral' | 'sublingual' | 'patch' | 'gel'; hoursSinceDose: number }
-  | { route: 'im' | 'sc'; dayOfInterval: number };
+  | { route: 'oral' | 'sublingual' | 'rectal' | 'patch' | 'gel'; hoursSinceDose: number }
+  | { route: 'im' | 'sc' | 'implant'; dayOfInterval: number };
 
 export interface LabResult {
   id: string;
@@ -488,6 +488,11 @@ export interface FeltSenseEntry {
 export interface RegimenEpisode {
   id: string;
   drug: string;
+  /** HRT or another drug (functional audit ticket 18, CONTEXT: "Drug
+      class"). Only HRT episodes anchor the effects timeline, its onset
+      bands and the hair anchor. Inferred from `drug` when an episode is
+      made (drugClass.ts) and the person's to change after that. */
+  drugClass: DrugClass;
   /** Nullable: antiandrogens and some routes have none. */
   ester: string | null;
   dose: number;
@@ -510,13 +515,18 @@ export interface RegimenEpisode {
     different drug or route, a pause with no plan yet to resume it, or a
     deliberate stop. None is preferred over another, mirroring `PauseReason`'s
     own rule below. */
+/** Whether an episode is part of gender-affirming hormone therapy. Two
+    values on purpose: the one question anything asks of it is "does this
+    count as HRT starting". */
+export type DrugClass = 'hrt' | 'other';
+
 export type EpisodeEndReason = 'switchedDrugOrRoute' | 'pausedForNow' | 'decidedToStop';
 
 /* The routes a dose can be taken by (phase 4 ticket 02). A closed set,
    unlike a regimen episode's free-text `route`: what fields a dose carries
    depends on which route it was, so the app has to know the answer rather
    than carry whatever was typed. */
-export type DoseRoute = 'oral' | 'sublingual' | 'im' | 'sc' | 'patch' | 'gel';
+export type DoseRoute = 'oral' | 'sublingual' | 'rectal' | 'im' | 'sc' | 'implant' | 'patch' | 'gel';
 
 /** Oil suspends an ester for slow release; an aqueous suspension does not.
     Injections only - nothing else has a vehicle to record. */
@@ -595,7 +605,7 @@ interface DoseEventFields {
    fields a dose has is decided by its route and nothing else: an oral dose
    has no site to be null, and no screen should have to remember that. */
 export type DoseEvent =
-  | (DoseEventFields & { route: 'oral' | 'sublingual' })
+  | (DoseEventFields & { route: 'oral' | 'sublingual' | 'rectal' | 'implant' })
   | (DoseEventFields & {
       route: 'im' | 'sc';
       /** Normally a key from INJECTION_SITES (doseSchedule.ts): the rotation

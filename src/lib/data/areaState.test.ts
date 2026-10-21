@@ -124,6 +124,7 @@ test('cycle tracking keeps its own gate: no row here changes what it answers', (
   const testosterone: RegimenEpisode = {
     id: 'ep',
     drug: 'Testosterone cypionate',
+    drugClass: 'hrt',
     ester: 'cypionate',
     dose: 100,
     doseUnit: 'mg',

@@ -49,8 +49,10 @@ export const isTopicalDose = <T extends { route: DoseRoute }>(dose: T): dose is 
 const ROUTE_ALIASES: Record<DoseRoute, readonly string[]> = {
   oral: ['oral'],
   sublingual: ['sublingual', 'sl'],
+  rectal: ['rectal'],
   im: ['im', 'intramuscular'],
   sc: ['sc', 'subcutaneous', 'subcut'],
+  implant: ['implant', 'pellet'],
   patch: ['patch'],
   gel: ['gel']
 };

@@ -1,55 +1,45 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { startOfDayTimestamp } from './epochDay.ts';
 import { hairAnchorEpochDay } from './hairAnchor.ts';
-import type { DoseEvent } from './types.ts';
+import { hrtAnchor } from './personalEffectWindow.ts';
+import type { RegimenEpisode } from './types.ts';
 
-const dose = (id: string, epochDay: number, status: DoseEvent['status'] = 'taken'): DoseEvent => ({
+const episode = (id: string, drug: string, drugClass: RegimenEpisode['drugClass'], startEpochDay: number): RegimenEpisode => ({
   id,
-  timestamp: startOfDayTimestamp(epochDay),
+  drug,
+  drugClass,
+  ester: null,
   dose: 1,
   doseUnit: 'mg',
-  status,
-  source: 'person',
-  scheduled: null,
-  drug: null,
-  route: 'oral'
+  route: 'oral',
+  interval: 'daily',
+  startEpochDay,
+  endEpochDay: null,
+  endReason: null
 });
 
-test('a date the person set is the anchor', () => {
-  assert.equal(hairAnchorEpochDay(300, []), 300);
+const ssri = episode('s', 'sertraline', 'other', 100);
+const estradiol = episode('e', 'estradiol', 'hrt', 400);
+
+test('a date the person set on the hair screen wins over HRT, earlier or later', () => {
+  const hrt = hrtAnchor([ssri, estradiol], null);
+  assert.equal(hairAnchorEpochDay(300, hrt), 300);
+  assert.equal(hairAnchorEpochDay(500, hrt), 500);
 });
 
-test('a date the person set wins over the dose log, earlier or later', () => {
-  const doses = [dose('d1', 100)];
-
-  assert.equal(hairAnchorEpochDay(300, doses), 300);
-  assert.equal(hairAnchorEpochDay(50, doses), 50);
+test('with no hair date set, an SSRI started first does not anchor; the earliest HRT episode does', () => {
+  assert.equal(hairAnchorEpochDay(null, hrtAnchor([ssri, estradiol], null)), 400);
 });
 
-test('with no date set, the earliest dose of any drug anchors', () => {
-  // No drug is named here at all: an estradiol dose anchors exactly as a
-  // finasteride one would, which is the whole point of ticket 33.
-  const doses = [dose('d1', 160), dose('d2', 120)];
-
-  assert.equal(hairAnchorEpochDay(null, doses), 120);
+test('with no hair date set, the HRT start date set on the regimen screen anchors', () => {
+  assert.equal(hairAnchorEpochDay(null, hrtAnchor([ssri, estradiol], 380)), 380);
 });
 
-test('a skipped dose is not the anchor - nothing was taken', () => {
-  const doses = [dose('d1', 120, 'skipped'), dose('d2', 140, 'taken')];
-
-  assert.equal(hairAnchorEpochDay(null, doses), 140);
-});
-
-test('a changed dose still counts - it was taken, just not as scheduled', () => {
-  assert.equal(hairAnchorEpochDay(null, [dose('d1', 120, 'changed')]), 120);
-});
-
-test('null with nothing set and nothing logged', () => {
-  assert.equal(hairAnchorEpochDay(null, []), null);
-  assert.equal(hairAnchorEpochDay(null, [dose('d1', 120, 'skipped')]), null);
+test('null with nothing set and no HRT logged', () => {
+  assert.equal(hairAnchorEpochDay(null, hrtAnchor([ssri], null)), null);
+  assert.equal(hairAnchorEpochDay(null, null), null);
 });
 
 test('day zero is a date, not an absent one', () => {
-  assert.equal(hairAnchorEpochDay(0, [dose('d1', 120)]), 0);
+  assert.equal(hairAnchorEpochDay(0, hrtAnchor([estradiol], null)), 0);
 });

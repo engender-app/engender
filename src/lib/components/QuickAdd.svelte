@@ -59,6 +59,7 @@
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { isHrtOnsetWindowCurrent } from '$lib/data/personalEffectWindow';
   import { journal } from '$lib/data/live/journal.svelte';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
   import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
   import { crossfade } from '$lib/motion/reveal';
@@ -348,8 +349,8 @@
   /* The personal effects onset nudge (phase 5 ticket 49).
      Read once each time the fan opens, the same running-style pattern
      wearSessions uses above: active only while at least one tier-1
-     literature onset window for the earliest regimen episode's drug is
-     current, gone once every onset window has passed. Tapping navigates to
+     literature onset window counted from the HRT start is current
+     (functional audit ticket 18), gone once every onset window has passed. Tapping navigates to
      /care/changes. */
   let showEffects = $state(false);
 
@@ -403,7 +404,7 @@
     void journal.regimen
       .getEpisodes()
       .then((episodes) => {
-        if (!stale) showEffects = isHrtOnsetWindowCurrent(episodes, todayEpochDay());
+        if (!stale) showEffects = isHrtOnsetWindowCurrent(episodes, todayEpochDay(), prefs.hrtStartEpochDay);
       })
       .catch((error) => {
         console.error('quick add: could not read regimen episodes', error);

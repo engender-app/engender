@@ -190,7 +190,12 @@ test('every regimen template carries a lean matching the hormone it starts', () 
     estradiol_oral: 'femme',
     estradiol_gel: 'femme',
     testosterone_cypionate_im: 'masc',
-    testosterone_gel: 'masc'
+    testosterone_gel: 'masc',
+    spironolactone_oral: 'femme',
+    cyproterone_oral: 'femme',
+    bicalutamide_oral: 'femme',
+    progesterone_oral: 'femme',
+    gnrh_agonist_im: 'neutral'
   });
 
   const rows = regimenTemplateRows();

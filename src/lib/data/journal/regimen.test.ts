@@ -26,6 +26,7 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
     {
       id,
       drug: 'estradiol valerate',
+      drugClass: 'hrt',
       ester: 'valerate',
       dose: 4,
       doseUnit: 'mg',

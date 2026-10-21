@@ -60,7 +60,7 @@ test('schema 92 keeps live reads on day indexes and trash reads on the trash ind
       ...noopFileOps(),
       copyDatabaseFile() { copies += 1; },
       cleanupPreMigrationCopy() { assert.fail('migration must retain its recovery copy'); }
-    }, migrations);
+    }, migrations.filter((migration) => migration.version <= 92));
     assert.equal(db.getUserVersion(), 92);
     assert.equal(copies, 1);
     assert.equal(dumpRows(db.raw), beforeRows);

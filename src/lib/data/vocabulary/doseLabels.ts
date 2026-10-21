@@ -48,8 +48,10 @@ const APPLICATION_SITE_LABELS: Record<ApplicationSiteKey, () => string> = {
 const ROUTE_LABELS: Record<DoseRoute, () => string> = {
   oral: m.dose_route_oral,
   sublingual: m.dose_route_sublingual,
+  rectal: m.dose_route_rectal,
   im: m.dose_route_im,
   sc: m.dose_route_sc,
+  implant: m.dose_route_implant,
   patch: m.dose_route_patch,
   gel: m.dose_route_gel
 };
@@ -89,7 +91,12 @@ const REGIMEN_TEMPLATE_NAME: Record<RegimenTemplateKey, () => string> = {
   estradiol_oral: m.tpl_regimen_estradiol_oral,
   estradiol_gel: m.tpl_regimen_estradiol_gel,
   testosterone_cypionate_im: m.tpl_regimen_testosterone_cypionate_im,
-  testosterone_gel: m.tpl_regimen_testosterone_gel
+  testosterone_gel: m.tpl_regimen_testosterone_gel,
+  spironolactone_oral: m.tpl_regimen_spironolactone_oral,
+  cyproterone_oral: m.tpl_regimen_cyproterone_oral,
+  bicalutamide_oral: m.tpl_regimen_bicalutamide_oral,
+  progesterone_oral: m.tpl_regimen_progesterone_oral,
+  gnrh_agonist_im: m.tpl_regimen_gnrh_agonist_im
 };
 
 const REGIMEN_TEMPLATE_DRUG: Record<RegimenTemplateKey, () => string> = {
@@ -97,12 +104,18 @@ const REGIMEN_TEMPLATE_DRUG: Record<RegimenTemplateKey, () => string> = {
   estradiol_oral: m.tpl_regimen_drug_estradiol,
   estradiol_gel: m.tpl_regimen_drug_estradiol,
   testosterone_cypionate_im: m.tpl_regimen_drug_testosterone,
-  testosterone_gel: m.tpl_regimen_drug_testosterone
+  testosterone_gel: m.tpl_regimen_drug_testosterone,
+  spironolactone_oral: m.tpl_regimen_drug_spironolactone,
+  cyproterone_oral: m.tpl_regimen_drug_cyproterone,
+  bicalutamide_oral: m.tpl_regimen_drug_bicalutamide,
+  progesterone_oral: m.tpl_regimen_drug_progesterone,
+  gnrh_agonist_im: m.tpl_regimen_drug_triptorelin
 };
 
 const REGIMEN_TEMPLATE_ESTER: Partial<Record<RegimenTemplateKey, () => string>> = {
   estradiol_valerate_im: m.tpl_regimen_ester_valerate,
-  testosterone_cypionate_im: m.tpl_regimen_ester_cypionate
+  testosterone_cypionate_im: m.tpl_regimen_ester_cypionate,
+  cyproterone_oral: m.tpl_regimen_ester_acetate
 };
 
 const REGIMEN_TEMPLATE_ROUTE: Record<RegimenTemplateKey, DoseRoute> = {
@@ -110,7 +123,12 @@ const REGIMEN_TEMPLATE_ROUTE: Record<RegimenTemplateKey, DoseRoute> = {
   estradiol_oral: 'oral',
   estradiol_gel: 'gel',
   testosterone_cypionate_im: 'im',
-  testosterone_gel: 'gel'
+  testosterone_gel: 'gel',
+  spironolactone_oral: 'oral',
+  cyproterone_oral: 'oral',
+  bicalutamide_oral: 'oral',
+  progesterone_oral: 'oral',
+  gnrh_agonist_im: 'im'
 };
 
 /* Both take a plain string, not the key union: a site read back from an
@@ -171,9 +189,10 @@ export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | 
     : m.regimen_period_range({ from: month(startEpochDay), to: month(endEpochDay) });
 };
 
-/** Route options for a picker, in the order the ticket names them: the two
-    oral-ish routes, the two injections, then the two topical ones. */
-export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'im', 'sc', 'patch', 'gel'] as const).map(
+/** Route options for a picker: the three taken by mouth or absorbed
+    through a mucosa, the two injections and the implant, then the two
+    topical ones (rectal and implant added by functional audit ticket 18). */
+export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'rectal', 'im', 'sc', 'implant', 'patch', 'gel'] as const).map(
   (route) => ({ value: route, label: routeLabel(route) })
 );
 

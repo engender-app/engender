@@ -16,6 +16,7 @@ function episode(over: Partial<RegimenEpisode> = {}): RegimenEpisode {
   return {
     id: 'ep',
     drug: 'estradiol',
+    drugClass: 'hrt',
     ester: null,
     dose: 2,
     doseUnit: 'mg',
@@ -28,7 +29,7 @@ function episode(over: Partial<RegimenEpisode> = {}): RegimenEpisode {
   };
 }
 
-function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'oral' | 'sublingual' }>> = {}): DoseEvent {
+function dose(epochDay: number, over: Partial<Extract<DoseEvent, { route: 'oral' | 'sublingual' | 'rectal' | 'implant' }>> = {}): DoseEvent {
   return {
     id: `d${epochDay}`,
     timestamp: startOfDayTimestamp(epochDay) + 8 * 3600000,

@@ -198,7 +198,10 @@ export function doseInputOfDraft(draft: DoseDraft): DoseEventInput | null {
   }
   /* Spelled out rather than left as a bare fallthrough: the draft is a plain
      record, not the union, so nothing subtracts the other four routes from
-     it here. The three branches cover all six between them. */
-  if (draft.route === 'oral' || draft.route === 'sublingual') return { ...common, route: draft.route };
+     it here. The three branches cover all eight between them; rectal and
+     an implant carry no site, like oral. */
+  if (draft.route === 'oral' || draft.route === 'sublingual' || draft.route === 'rectal' || draft.route === 'implant') {
+    return { ...common, route: draft.route };
+  }
   return null;
 }

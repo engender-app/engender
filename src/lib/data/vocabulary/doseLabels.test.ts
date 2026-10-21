@@ -32,7 +32,7 @@ const day = (value: string) => epochDayFromDateInputValue(value) as number;
 
 const resolved: DoseAttribution = {
   episode: {
-    id: 'ep-1', drug: 'Estradiol valerate', ester: null, dose: 4, doseUnit: 'mg', route: 'im',
+    id: 'ep-1', drug: 'Estradiol valerate', drugClass: 'hrt', ester: null, dose: 4, doseUnit: 'mg', route: 'im',
     interval: 'P2W', startEpochDay: 0, endEpochDay: null, endReason: null
   },
   ambiguous: false

@@ -7,6 +7,7 @@ function episode(drug: string, ester: string | null): RegimenEpisode {
   return {
     id: 'e',
     drug,
+    drugClass: 'hrt',
     ester,
     dose: 5,
     doseUnit: 'mg',

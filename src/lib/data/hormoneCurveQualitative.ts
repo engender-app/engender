@@ -139,6 +139,8 @@ export function resolveQualitativeKey(
     return resolveTestosteroneEster(episode) ? 'testosterone:injected' : null;
   }
 
+  // No published shape for a rectal dose or an implant, so no curve.
+  if (route === 'rectal' || route === 'implant') return null;
   if (drug === 'estradiol') return `estradiol:${route}`;
   return route === 'gel' || route === 'patch' ? `testosterone:${route}` : null;
 }

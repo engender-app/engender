@@ -131,7 +131,7 @@ const LAB_COLUMNS = `uuid, epoch_day, analyte, value, unit, note, draw_time, pro
 function toLabTiming(row: LabRow): LabTiming | null {
   const route = row.timing_route as DoseRoute | null;
   if (route === null) return null;
-  if (route === 'im' || route === 'sc') {
+  if (route === 'im' || route === 'sc' || route === 'implant') {
     return row.timing_day_of_interval === null ? null : { route, dayOfInterval: row.timing_day_of_interval };
   }
   return row.timing_hours === null ? null : { route, hoursSinceDose: row.timing_hours };

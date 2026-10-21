@@ -28,6 +28,7 @@ const editor = readFileSync(root + '/src/lib/components/EntryEditor.svelte', 'ut
 const testosterone: RegimenEpisode = {
   id: 'ep-t',
   drug: 'Testosterone cypionate',
+  drugClass: 'hrt',
   ester: null,
   dose: 50,
   doseUnit: 'mg',

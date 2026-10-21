@@ -26,6 +26,7 @@
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
+  import { hrtAnchor } from '$lib/data/personalEffectWindow';
   import { isHairPhotoDue } from '$lib/data/hairPhotoSchedule';
   import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
   import { HAIR_SCALES, gradesOfScale, isGradedScale, stagesByScale } from '$lib/data/hairStageScales';
@@ -64,17 +65,13 @@
 
   const today = $derived(currentDay());
 
-  /* Bounded from epoch day 0 rather than from the anchor itself: getDoses
-     needs a range (doses.ts has no unbounded read). No dose can predate
-     1970-01-01, so this is unbounded in practice. */
-  let dosesQuery = liveList((j) => j.doses.getDoses(0, today));
-  let doses = $derived(dosesQuery.rows);
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
 
-  /* The day this screen counts weeks from: whatever the person set, else
-     their earliest logged dose of anything, else nothing (hairAnchor.ts,
-     ticket 33). No drug is named - ticket 09's finasteride/dutasteride/
-     minoxidil list is gone. */
-  let anchorEpochDay = $derived(hairAnchorEpochDay(prefs.hairAnchorEpochDay, doses));
+  /* The day this screen counts weeks from: whatever the person set here,
+     else the HRT start, else nothing (hairAnchor.ts, functional audit
+     ticket 18). An SSRI or finasteride logged before HRT no longer starts
+     the count. */
+  let anchorEpochDay = $derived(hairAnchorEpochDay(prefs.hairAnchorEpochDay, hrtAnchor(episodesQuery.rows, prefs.hrtStartEpochDay)));
   let anchorIsUserSet = $derived(prefs.hairAnchorEpochDay !== null);
 
   let stagesQuery = liveList((j) => j.hairProgress.getStages());
@@ -91,7 +88,7 @@
   /* Latched: a reserve must not put its placeholder back over the body. */
   let bodyRevealed = $state(false);
   $effect.pre(() => {
-    if (!bodyRevealed && !dosesQuery.loading && !stagesQuery.loading && !photosQuery.loading) bodyRevealed = true;
+    if (!bodyRevealed && !episodesQuery.loading && !stagesQuery.loading && !photosQuery.loading) bodyRevealed = true;
   });
   const bodyEstimate = readReserve('hair-progress');
   const rememberBody = (px: number) => rememberReserve('hair-progress', px);
@@ -238,7 +235,7 @@
 
   $effect(() => {
     if (typeof window === 'undefined') return;
-    if (dosesQuery.loading) return;
+    if (episodesQuery.loading) return;
     if (!restoredComparison && window.location.hash === '#hair-photos') {
       jumper?.jump('photos');
     }
@@ -254,7 +251,7 @@
     <SectionJump bind:this={jumper} name={m.hair_jump_label()} sections={jumpSections} key="hair-sections" />
   </div>
 
-  <!-- The body waits for the doses (the anchor line), the stages and the
+  <!-- The body waits for the regimen (the anchor line), the stages and the
        photos together, held at last visit's height and faded in (ux-carpet
        ticket 205). It used to swap from a page-level skeleton: cut in at
        full opacity, with nothing to travel its height, and a stages gate
@@ -268,7 +265,7 @@
           ? m.hair_unanchored_note()
           : anchorIsUserSet
             ? m.hair_anchor_from_set({ date: dayLabel(anchorEpochDay) })
-            : m.hair_anchor_from_dose({ date: dayLabel(anchorEpochDay) })}
+            : m.hair_anchor_from_hrt({ date: dayLabel(anchorEpochDay) })}
         action={{
           label: anchorIsUserSet ? m.hair_anchor_change_action() : m.hair_anchor_set_action(),
           onclick: openAnchorEditor

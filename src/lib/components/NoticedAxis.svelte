@@ -77,8 +77,8 @@
         catalogue entry by the screen: an axis of what somebody noticed has
         nothing to say about what they have not. */
     changes: NoticedChange[];
-    /** The day the earliest regimen episode began, or null where there is
-        none - which the axis draws rather than refuses. */
+    /** The HRT start (personalEffectWindow.ts's hrtAnchor), or null where
+        there is none - which the axis draws rather than refuses. */
     anchorEpochDay: number | null;
     todayEpochDay: number;
     onOpen: (key: string, kind: NoticedChangeKind) => void;
