@@ -382,7 +382,6 @@ erDiagram
   tryout ||--o{ milestone : tryout_id
   tryout ||--o{ tryout_photo : has
   tryout ||--o{ felt_sense : tryout_id
-  milestone ||--o{ felt_sense : milestone_id
   checklist ||--o{ checklist_item : has
   hair_removal_session ||--o{ hair_removal_photo : has
   effect_category ||--o{ personal_effect_type : category
