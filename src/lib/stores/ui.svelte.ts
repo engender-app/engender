@@ -19,10 +19,7 @@ export const ui = $state({
   appOpening: false,
   /** The Android tab field is moving; nested month entrances ride it. */
   tabMoving: false,
-  /** A view transition between two screens is running (ticket 09). A read
-      too heavy to run under one waits for it to end: the hormone curve's
-      model is about 100 ms of arithmetic on the phone, and run while its
-      screen arrived it stalled the transition for as long. */
+  /** A view transition between two screens is running (ticket 09). */
   screenMoving: false,
   /* Whether the pointer that opened the fan is still down. The add control
      sets it and quick add clears it, because the press-and-slide gesture

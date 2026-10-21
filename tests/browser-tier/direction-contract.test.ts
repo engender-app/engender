@@ -307,14 +307,11 @@ export async function directionContracts(): Promise<Result[]> {
   const samples = mountInto(DirectionSamples, {}, target);
   flushSync();
   await until(() => target.querySelector('.cn-trail line'), 'constellation trail');
-  await check('Constellation trail and curve marker draw one-pixel secondary ink', () =>
-    ['.cn-trail line', '.curve-marker'].every((selector) => {
-      const n = node(target, selector);
-      return (
-        css(selector).strokeWidth === '1px' && css(selector).stroke === resolved(n, 'var(--text-2)')
-      );
-    })
-  );
+  await check('Constellation trail draws one-pixel secondary ink', () => {
+    const trail = node(target, '.cn-trail line');
+    return css('.cn-trail line').strokeWidth === '1px' &&
+      css('.cn-trail line').stroke === resolved(trail, 'var(--text-2)');
+  });
   await check(
     'Breathing exercise renders without old card container',
     () => !target.querySelector('.card,.breathing-card')

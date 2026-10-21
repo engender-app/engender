@@ -981,12 +981,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
         'appointment',
         'era',
         'areaState'
-      ],
-      /* The hormone curve's own markers (phase 8 features ticket 15), which
-         are a separate read for the reason the header there gives. 'entry'
-         is the body-region readings and 'tally' the counters, both judged
-         against the person's own recent spread. */
-      getCurveMarkers: ['sideEffect', 'dose', 'regimen', 'tally', 'entry']
+      ]
     }
   }),
   // Read-only, like stats below: exposure counters never write (phase 4
@@ -994,13 +989,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   exposure: classify<Journal['exposure']>()({
     writes: {},
     reads: { getCounters: ['dose', 'regimen'] }
-  }),
-  // Read-only too: every hormone curve, band and shape alike, is recomputed
-  // from the dose log on every read and stored nowhere (phase 4 tickets 10
-  // and 11, ADR-0010).
-  hormoneCurve: classify<Journal['hormoneCurve']>()({
-    writes: {},
-    reads: { getCurves: ['dose', 'regimen', 'lab'], getCurveDirection: ['dose', 'regimen'] }
   }),
   /* Read-only, the same reason exposure is: a clinician summary assembles
      rows other areas own and stores nothing of its own (phase 4 ticket 12).
@@ -1074,7 +1062,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       bodyRegionBreakdown: ['entry', 'measurement', 'photo', 'hairRemoval', 'hairProgress'],
       wearTimeTrend: ['wearSession'],
       tallyTrend: ['tally'],
-      bodyRegionReadings: ['entry'],
       bodyRegionMap: ['entry'],
       entryCountsByDay: ['entry'],
       // Filters entry.presentation_id directly, the same reason

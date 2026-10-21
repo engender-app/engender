@@ -203,7 +203,7 @@ describe('every row the hub carries', () => {
      Written out here rather than derived, so this is an independent statement
      of the hub and not a restatement of the module's own filter. It was 23
      rows in 5 + 9 + 4 + 5 until deepening ticket 07 put labs, regimen,
-     hormone-curve and doses behind the care row - the four surfaces /care
+     and doses behind the care row - the three surfaces /care
      opens on. Phase 5 deepening ticket 17 added `presentations` and phase 6
      ticket 01 `eras`; phase 6 ticket 07 added `entry-templates`; phase 8
      features ticket 09 split the old voice row in two, ticket 14 added

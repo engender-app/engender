@@ -600,11 +600,8 @@ export async function generateLongJournal(
     summary.additionalDoseEvents++;
   }
 
-  // A third episode, injectable, confined to the fixture's final ~150 days
-  // (phase 5 ticket 36) - the hormone curve reads doses within
-  // CURVE_LOOKBACK_DAYS (~63 days) of wherever it is asked to draw, so a
-  // decade-long weekly schedule would spend nine and a half years of writes
-  // on doses no curve ever reads. Named distinctly from the first episode's
+  // A third injectable episode, confined to the fixture's final ~150 days
+  // (phase 5 ticket 36). Named distinctly from the first episode's
   // "Estradiol" so the two read as a route switch rather than one typo.
   const thirdEpisodeStartEpochDay = lastEpochDay - historicalOffset(150);
   const thirdEpisodeId = await journal.regimen.upsertEpisode({

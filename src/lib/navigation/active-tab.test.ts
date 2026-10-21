@@ -93,7 +93,6 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/doses')).toBe('settings');
     expect(activeTabKey('/care/doses')).toBe('settings');
     expect(activeTabKey('/care/labs')).toBe('settings');
-    expect(activeTabKey('/care/curve')).toBe('settings');
   });
 
   /* Features ticket 33: the 23 hub-row screens moved off /settings/<slug>

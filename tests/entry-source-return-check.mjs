@@ -49,11 +49,11 @@ try {
     await journal.regimen.upsertEpisode({ drug: 'estradiol', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'every day', startEpochDay: day - 60, endEpochDay: null, endReason: null });
     await journal.doses.upsertDose({ timestamp: startOfDayTimestamp(day - 1) + 8 * 3600000, route: 'oral', drug: 'estradiol', dose: 2, doseUnit: 'mg' });
     const ids = {};
-    for (const source of ['Voice', 'Search', 'Margin', 'Question', 'Today', 'Chart', 'Day']) {
+    for (const source of ['Voice', 'Search', 'Margin', 'Question', 'Today', 'Day']) {
       for (const action of ['Save', 'Delete']) {
         const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4, starred: true,
           note: `Source fixture ${source} ${action}`, attachRecordings: source === 'Voice' ? [wav] : [],
-          bodyRegions: source === 'Chart' ? { chest: 5 } : {} });
+          bodyRegions: {} });
         ids[`${source}${action}`] = id;
         if (['Margin', 'Question'].includes(source)) await journal.marginNotes.add({ entryId: id, epochDay: day, text: `privateorchid ${source} ${action}` });
       }
@@ -62,7 +62,7 @@ try {
     const question = await journal.savedQuestions.upsertSavedQuestion({ name: 'Source fixture', queryText: 'privateorchid Question', tagIds: [], moods: [], startEpochDay: null, endEpochDay: null, hasNote: false, hasPhoto: false, starred: false });
     return { ids, question, day };
   });
-  for (const source of ['Voice', 'Search', 'Margin', 'Question', 'Today', 'Chart', 'Day'].filter(source => !process.env.ENTRY_SOURCE || source === process.env.ENTRY_SOURCE)) {
+  for (const source of ['Voice', 'Search', 'Margin', 'Question', 'Today', 'Day'].filter(source => !process.env.ENTRY_SOURCE || source === process.env.ENTRY_SOURCE)) {
     for (const action of ['Save', 'Delete']) {
       await go('/more');
       const id = fixture.ids[`${source}${action}`];
@@ -93,12 +93,6 @@ try {
         route = '/';
         await go(route);
         link = page.locator('[data-revisit-tile]');
-      } else if (source === 'Chart') {
-        await go('/care/curve');
-        await page.locator('[data-segment="30"]').click();
-        route = '/care/curve?days=30';
-        await page.locator('[data-curve-markers-toggle]').first().click();
-        link = page.locator(`[data-curve-markers-list] a[href^="/entry/${id}?"]`).first();
       } else {
         route = `/day/${fixture.day}`;
         await go(route);
@@ -113,7 +107,6 @@ try {
       assert.equal(new URL(page.url()).pathname + new URL(page.url()).search, route, `${source} ${action} returns to source`);
       if (source === 'Question') await page.locator('[data-search-hit="marginNotes"]').first().waitFor();
       if (source === 'Voice') await page.locator('[data-open-entry]').first().waitFor();
-      if (source === 'Chart') assert.equal(await page.locator('[data-segment="30"]').getAttribute('aria-checked'), 'true');
       if (source === 'Search' || source === 'Margin') {
         assert.equal(await page.locator('#q').inputValue(), source === 'Search' ? `Source fixture Search ${action}` : `privateorchid Margin ${action}`);
         await page.locator('[data-filter-toggle]').click();

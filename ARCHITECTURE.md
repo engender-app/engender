@@ -196,7 +196,7 @@ Naming conventions you'll meet everywhere:
 
 | `src/lib/...` | Holds |
 |---|---|
-| [data/](src/lib/data) | The model: SQLite drivers and schema ([sqlite/](src/lib/data/sqlite)), the journal facade and its areas ([journal/](src/lib/data/journal)), the reactive layer ([live/](src/lib/data/live)), preferences ([prefs/](src/lib/data/prefs)), vocabulary labels ([vocabulary/](src/lib/data/vocabulary)), the archive and importers ([archive/](src/lib/data/archive)), media ([photos/](src/lib/data/photos), [voiceRecordings/](src/lib/data/voiceRecordings), [videoNotes/](src/lib/data/videoNotes), [documents/](src/lib/data/documents)), the demo persona ([demo/](src/lib/data/demo)), plus about 100 pure domain modules (stock projection, hormone curves, agenda, wrapped...) |
+| [data/](src/lib/data) | The model: SQLite drivers and schema ([sqlite/](src/lib/data/sqlite)), the journal facade and its areas ([journal/](src/lib/data/journal)), the reactive layer ([live/](src/lib/data/live)), preferences ([prefs/](src/lib/data/prefs)), vocabulary labels ([vocabulary/](src/lib/data/vocabulary)), the archive and importers ([archive/](src/lib/data/archive)), media ([photos/](src/lib/data/photos), [voiceRecordings/](src/lib/data/voiceRecordings), [videoNotes/](src/lib/data/videoNotes), [documents/](src/lib/data/documents)), the demo persona ([demo/](src/lib/data/demo)), plus about 100 pure domain modules (stock projection, agenda, wrapped...) |
 | [crypto/](src/lib/crypto) | AES-GCM, Argon2id and its worker, KDF profiles, keystore wrap format, recovery key |
 | [lock/](src/lib/lock) | Lock timing, PIN throttle, Keystore, lock-timing and screen-capture bridges |
 | [stores/](src/lib/stores) | App-level state in runes: the boot adapter and machine, lock, UI, toasts, media capture |
@@ -415,15 +415,15 @@ Count the ordinary tables with `rg -c '^CREATE TABLE' src/lib/data/sqlite/schema
 ```mermaid
 flowchart LR
   subgraph journal.ts
-    O[openJournal driver, files] --> E[61 facade members]
+    O[openJournal driver, files] --> E[60 facade members]
     E --> Eager[entries, tags, doses,<br/>regimen, labs, photos...]
-    E --> Def[14 deferred members<br/>archive, hormoneCurve,<br/>clinicianSummary, roadmap...]
+    E --> Def[13 deferred members<br/>archive, clinicianSummary,<br/>roadmap...]
     E --> Views[views over other areas<br/>day, lastWrite, dayAhead,<br/>textSearch, photoLibrary]
   end
   Def -. "import() on first call" .-> Mod[area module chunk]
 ```
 
-The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes 61 facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Fourteen heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks each deferred member's method list against the eager interface.
+The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes 60 facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Thirteen heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks the archive facade's method list against the eager interface.
 
 Facade-wide rules:
 
@@ -1154,7 +1154,7 @@ flowchart LR
     Boot[boot machine, drivers]
   end
   subgraph Later[on demand]
-    Def[deferred areas:<br/>archive, hormone curve,<br/>roadmap, clinician summary...]
+    Def[deferred areas:<br/>archive, roadmap,<br/>clinician summary...]
     Mig[migrations.ts]
     OCR[tesseract]
     PDF[pdf.js]

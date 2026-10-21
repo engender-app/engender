@@ -66,7 +66,7 @@
    tier anywhere, on the catalogue row or off it (ADR-0010). */
 
 import { epochDayMonthsAgo } from './epochDay';
-import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
+import { resolveHormoneDrug, type HormoneDrug } from './hormoneDrug';
 import type { EffectDirection, PersonalEffectType, RegimenEpisode } from './types';
 
 export type { EffectDirection };
@@ -151,7 +151,7 @@ const EFFECT_LITERATURE_WINDOW: Partial<Record<PersonalEffectType, EffectLiterat
     is a description of estradiol therapy and the masculinizing one of
     testosterone therapy, so this is the tables' own claim rather than a
     mapping chosen here. */
-const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
+const DIRECTION_DRUG: Record<EffectDirection, HormoneDrug> = {
   feminizing: 'estradiol',
   masculinizing: 'testosterone'
 };
@@ -159,7 +159,7 @@ const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
 /** Whether the literature's window for `effect` is a claim about someone on
     `drug` at all - the gate on every band this file produces.
 
-    Fails closed, the way the hormone curve does. `resolveCurveDrug` answers
+    Fails closed. `resolveHormoneDrug` answers
     null for a free-text drug this app cannot classify, for an antiandrogen
     and for progesterone alone, and null matches neither direction, so those
     episodes get no band rather than a hedged one. That is the whole point:
@@ -167,10 +167,8 @@ const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
     sourced on screen to the Endocrine Society, when to expect their breast
     development to be complete.
 
-    Built on hormoneDrug.ts rather than on a second list of drug names, for
-    the reason hormoneEster.ts gives about sharing a matcher: one place
-    deciding what "E2-val" or "testosteron" names means the effects timeline
-    and the curve cannot disagree about the same typed text.
+    Built on hormoneDrug.ts so the effects timeline and labs use the same
+    drug names.
 
     Also answers false for any key with no tier-1 window at all - a tier 2
     or tier 3 effect, or a custom one - which is the ordinary case once
@@ -179,7 +177,7 @@ const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
    review). */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
   const window = EFFECT_LITERATURE_WINDOW[effect];
-  return window !== undefined && resolveCurveDrug(drug) === DIRECTION_DRUG[window.direction];
+  return window !== undefined && resolveHormoneDrug(drug) === DIRECTION_DRUG[window.direction];
 }
 
 /** Undefined for any key with no tier-1 window - see `literatureCovers`. */
@@ -242,7 +240,7 @@ export type HrtAnchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpoc
 export function hrtAnchor(episodes: readonly RegimenEpisode[], hrtStartEpochDay: number | null): HrtAnchor | null {
   const hrt = episodes.filter((episode) => episode.drugClass === 'hrt');
   if (hrt.length === 0 && hrtStartEpochDay === null) return null;
-  const drug = (hrt.find((episode) => resolveCurveDrug(episode.drug) !== null) ?? hrt[0])?.drug ?? '';
+  const drug = (hrt.find((episode) => resolveHormoneDrug(episode.drug) !== null) ?? hrt[0])?.drug ?? '';
   const ends = hrt.map((episode) => episode.endEpochDay);
   return {
     drug,
@@ -263,7 +261,7 @@ export function hrtAnchor(episodes: readonly RegimenEpisode[], hrtStartEpochDay:
     Nothing is drawn past `endEpochDay` (phase 8 features ticket 49). Every
     window here is a claim about a body on the drug the table describes, so
     it says nothing about the days after that drug stopped, and the gate
-    fails closed the same way `resolveCurveDrug`'s does rather than hedging:
+    fails closed the same way `resolveHormoneDrug`'s does rather than hedging:
 
     - an episode that ended before the onset could even begin gets null, not
       a band whose every day is unreachable,

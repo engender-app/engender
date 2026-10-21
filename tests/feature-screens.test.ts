@@ -44,14 +44,13 @@ const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {};
 /** Every screen reached only from inside another one, or from the shell -
     the part of this list the hub cannot supply. */
 const REACHED_FROM_INSIDE = [
-  /* Four screens stopped being hub rows in phase 5 deepening ticket 07 -
-     labs, regimen, hormone-curve and doses sit behind the `/care` row now,
+  /* Three screens stopped being hub rows in phase 5 deepening ticket 07 -
+     labs, regimen and doses sit behind the `/care` row now,
      and ticket 09 (ADR-0084) moved their own addresses under `/care/*` too -
      and they are still feature screens, still built on the kit, so they stay
      on this list. */
   'care/labs',
   'care/regimen',
-  'care/curve',
   'care/doses',
   'transition/tryouts/[id]',
   /* The metric reference (phase 8 features ticket 27) held this place
@@ -187,7 +186,7 @@ describe('every feature screen', () => {
        its route for this file to read (feature-screens.test.ts's own
        NOT_A_FEATURE_SCREEN equivalent for a non-hub route is simply not
        listing it at all). */
-    expect(REACHED_FROM_INSIDE.length).toBe(17);
+    expect(REACHED_FROM_INSIDE.length).toBe(16);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 
@@ -465,17 +464,6 @@ describe('the two print surfaces', () => {
 });
 
 describe('no medical framing and no interpreted values', () => {
-  it('keeps the hormone curve saying it is modelled or illustrative', () => {
-    /* Three places say it, and the screen renders all three: the lead
-       paragraph, the band's own legend, and the pill on the heading of
-       every curve the research does not support a fit for. The scope line
-       is explicit that this screen must keep saying so. */
-    const source = sourceOf.get('care/curve')!;
-    for (const key of ['curve_intro', 'curve_legend_band', 'curve_qual_notice']) {
-      expect(source, key).toContain(`m.${key}()`);
-    }
-  });
-
   it('gives no chart card a place to say what a reading means', () => {
     /* ChartCard has no prop for a finding, which is enforced in
        kit-surfaces.test.ts. What this holds is the other half: a screen

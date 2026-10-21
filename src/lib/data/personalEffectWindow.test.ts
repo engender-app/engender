@@ -229,7 +229,7 @@ test('a drug the app cannot classify gets no band at all, rather than a hedged o
   }
 });
 
-test('the gate reads the same drug names the hormone curve does, in both catalogues', () => {
+test('the gate reads hormone drug names in both catalogue languages', () => {
   // Not a second matching scheme: these are hormoneDrug.ts's lists, which is
   // why the Polish spellings and the abbreviations work here for free.
   for (const drug of ['estradiol', 'E2 valerate', 'walerianian estradiolu']) {

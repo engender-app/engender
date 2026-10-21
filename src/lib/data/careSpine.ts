@@ -23,7 +23,6 @@
 import { adherence, expectedSlots, slotToleranceDays, type DoseSlot } from './doseSchedule';
 import { pairDoseSchedule } from './journal/doses';
 import { epochDayFromTimestamp } from './epochDay';
-import { resolveCurveDrug } from './hormoneDrug';
 import { attributeDose, attributeDrug, sameDrug } from './regimenEpisode';
 import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
 
@@ -380,24 +379,17 @@ export function careSpine(
     `chooseRailEpisode`. That function picked one episode for the rail and
     handed the rest back as `others`, because a single-lane rail's captions
     carried no episode: two marks of the same kind would have been two
-    unlabelled dates with no way to tell them apart, so with two curve
-    episodes running it drew neither. A lane per drug, each labelled with its
+    unlabelled dates with no way to tell them apart. A lane per drug, each labelled with its
     drug's name, answers that ambiguity in the drawing instead of by dropping
     regimens out of it. One stripe per drug and no drug primary: colour here
     is categorical the way it is everywhere else in this app, which is
     ADR-0012's line - a scale with a better end is the judgement it forbids,
     and three drugs somebody takes have no better end.
 
-    Curve drugs first, so the lane the hormone curve reads sits nearest the
-    labs row under the rail, then by start day, oldest first - the order the
-    regimen list already reads in. Neither is a ranking: the order exists so
-    the lanes do not reshuffle under somebody between two visits. */
+    Start day, oldest first, matches the regimen list. The order exists so
+    lanes do not reshuffle under somebody between two visits. */
 export function railEpisodes(activeEpisodes: readonly RegimenEpisode[]): RegimenEpisode[] {
-  return [...activeEpisodes].sort((a, b) => {
-    const curveA = resolveCurveDrug(a.drug) === null ? 1 : 0;
-    const curveB = resolveCurveDrug(b.drug) === null ? 1 : 0;
-    return curveA === curveB ? a.startEpochDay - b.startEpochDay : curveA - curveB;
-  });
+  return [...activeEpisodes].sort((a, b) => a.startEpochDay - b.startEpochDay);
 }
 
 /** One episode's own last and next dose, scoped so a second, unrelated

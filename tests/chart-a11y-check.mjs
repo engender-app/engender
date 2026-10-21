@@ -1,5 +1,5 @@
 /* Charts as a screen reader and a finger meet them (phase 14 ticket 29,
-   accessibility audit findings A04, A05 and A12).
+   accessibility audit findings A04 and A12).
 
    What the audit found, and what this checks for each:
 
@@ -10,10 +10,6 @@
      (its size, or a 24px circle that touches no other target), and one
      that stays under the 48px floor must have its fact in a list on the
      same screen at the floor.
-   - A05, controls inside an image. The hormone curve was role="img" with
-     focusable marker buttons inside it (nested-interactive). The image has
-     no focusable descendants now, and each logged thing the markers stand
-     for is a named link in a list beside the chart that opens its record.
    - A12, headings. ChartCard always wrote an h3, often straight after the
      screen's h1. On every screen that places one, no heading may skip a
      level on the way down.
@@ -46,7 +42,6 @@ const RULES = new Set(['target-size', 'nested-interactive', 'heading-order']);
 const SCREENS = [
   '/care/changes',
   '/stats',
-  '/care/curve',
   '/care',
   '/care/labs',
   '/body/measurements',
@@ -230,82 +225,6 @@ for (const width of widths) {
     report(`/stats the rail's ${drawn} marks are ${facts} rows in the list`, facts >= drawn && drawn > 0 ? [] : [`${drawn} drawn, ${facts} rows`]);
   }
 
-  /* A05: the hormone curve. */
-  await open('/care/curve');
-  {
-    const nested = await page.evaluate(() =>
-      [...document.querySelectorAll('svg[role="img"]')].flatMap((svg) =>
-        [...svg.querySelectorAll('[tabindex], [role="button"], a')].filter((el) => el.getAttribute('tabindex') !== '-1').map(() => svg.getAttribute('aria-label')?.slice(0, 60))
-      )
-    );
-    report('/care/curve no image holds a control', nested.slice(0, 3).map((name) => `"${name}" has a focusable descendant`));
-    const labTargets = await page.locator('svg[role="group"] [role="button"]').evaluateAll(es => es.map(e => ({ name: e.getAttribute('aria-label') })));
-    const labProblems = labTargets.length ? [] : ['the fixture has no lab result targets'];
-    const labToggles = page.locator('[data-curve-results-toggle]');
-    if ((await labToggles.count()) === 0) labProblems.push('lab result targets have no list equivalent');
-    for (let i = 0; i < (await labToggles.count()); i++) {
-      await labToggles.nth(i).focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(400);
-    }
-    const labRows = await page.locator('[data-curve-result]').evaluateAll(es => es.map(e => {
-      const b = e.getBoundingClientRect();
-      return { name: e.textContent.trim(), width: b.width, height: b.height };
-    }));
-    for (const target of labTargets)
-      if (!labRows.some(row => row.name === target.name && row.width >= FLOOR && row.height >= FLOOR))
-        labProblems.push(`"${target.name}" has no ${FLOOR}px lab selection row`);
-    if (labRows.length) {
-      const first = page.locator('[data-curve-result]').first();
-      await first.focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(400);
-      const selected = await page.locator('svg[role="group"] [role="button"][aria-pressed="true"]').getAttribute('aria-label');
-      if (selected !== labRows[0].name) labProblems.push(`the lab row selected "${selected}", not "${labRows[0].name}"`);
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(400);
-      if ((await page.locator('svg[role="group"] [role="button"][aria-pressed="true"]').count()) !== 0)
-        labProblems.push('pressing the selected lab row does not clear it');
-    }
-    report('/care/curve lab results have named 48px selection equivalents', labProblems);
-    for (let i = 0; i < (await labToggles.count()); i++) {
-      await labToggles.nth(i).focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(400);
-    }
-    const toggles = page.locator('[data-curve-markers-toggle]');
-    const count = await toggles.count();
-    const problems = count ? [] : ['no list of the marked days beside any curve'];
-    if (count) {
-      const toggle = toggles.first();
-      const chart = await toggle.getAttribute('data-curve-markers-toggle');
-      await toggle.focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(600);
-      const legend = page.locator(`[data-curve-markers-list="${chart}"]`);
-      const links = await legend.locator('a[href]').evaluateAll((els) =>
-        els.map((el) => {
-          const b = el.getBoundingClientRect();
-          return { name: el.textContent.trim(), href: el.getAttribute('href'), h: b.height };
-        })
-      );
-      if (!links.length) problems.push('the list opened with no links');
-      for (const l of links.filter((l) => !l.name || l.h < FLOOR - 0.01).slice(0, 3)) problems.push(`"${l.name}" is ${l.h.toFixed(1)}px tall or unnamed`);
-      /* By keyboard, the way a TalkBack double tap lands: Tab from the
-         toggle reaches the first link and Enter opens its record. */
-      if (links.length) {
-        await page.keyboard.press('Tab');
-        const focused = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-        if (focused !== links[0].href) problems.push(`Tab from the toggle reached ${focused}, not ${links[0].href}`);
-        await page.keyboard.press('Enter');
-        await page.waitForTimeout(1500);
-        const at = new URL(page.url());
-        if (`${at.pathname}${at.search}` !== links[0].href && at.pathname !== links[0].href.split('?')[0])
-          problems.push(`Enter opened ${at.pathname}${at.search}, not ${links[0].href}`);
-      }
-    }
-    report(`/care/curve each marked day is a named control that opens its record (${count} lists)`, problems);
-  }
   await context.close();
 }
 

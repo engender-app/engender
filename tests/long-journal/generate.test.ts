@@ -189,7 +189,7 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
 
   // Regimen: the ten-year episode above plus two ticket 36 adds - the
   // second overlaps it for a stretch, the third is the injectable one the
-  // hormone curve reads.
+  // regimen and dose screens read.
   const episodes = await journal.regimen.getEpisodes();
   expect(episodes).toHaveLength(3);
   expect(await journal.doses.getSchedules()).toHaveLength(3);

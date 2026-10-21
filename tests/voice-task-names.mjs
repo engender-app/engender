@@ -116,7 +116,7 @@ try {
      choice a screen makes and nothing collects them. */
   const COMPACT_ROUTES = [
     '/stats', '/tally', '/voice', '/body/hair-progress', '/body/measurements', '/body/wear',
-    '/care/curve', '/media/photos', '/settings', '/transition/roadmap', '/compare'
+    '/media/photos', '/settings', '/transition/roadmap', '/compare'
   ];
   let swept = 0;
   for (const width of [320, 390]) {

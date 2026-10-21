@@ -30,25 +30,6 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
     ]
   },
   {
-    read: ['hormoneCurve', 'getCurves'],
-    composes: [
-      ['doses', 'getDoses'],
-      ['regimen', 'getEpisodes'],
-      ['labs', 'getUsedAnalytes'],
-      ['labs', 'getResults']
-    ]
-  },
-  {
-    // The same two models over one day, for the one word Care's curve row
-    // states (phase 11 ticket 10). No lab read at all: a direction needs no
-    // fit, and a scale factor cannot turn a rise into a fall.
-    read: ['hormoneCurve', 'getCurveDirection'],
-    composes: [
-      ['doses', 'getDoses'],
-      ['regimen', 'getEpisodes']
-    ]
-  },
-  {
     read: ['chartAnnotations', 'getAnnotations'],
     composes: [
       ['milestones', 'getMilestones'],
@@ -64,20 +45,6 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       photo: 'an annotation is a name and a day: the milestone read it comes through carries photos it never draws',
       roadmapGoal: "the same read carries a linked custom goal's text, and an annotation draws the milestone's own name"
     }
-  },
-  {
-    // The hormone curve's own markers (phase 8 features ticket 15). Two of
-    // the four are records with a day on them and two are days that stood
-    // out against the person's own recent spread, which is why the tally and
-    // entry reads are here at all.
-    read: ['chartAnnotations', 'getCurveMarkers'],
-    composes: [
-      ['sideEffects', 'getSideEffectsInRange'],
-      ['doses', 'getDoses'],
-      ['regimen', 'getEpisodes'],
-      ['stats', 'tallyTrend'],
-      ['stats', 'bodyRegionReadings']
-    ]
   },
   {
     // Its declaration is the union of the section registry's tables

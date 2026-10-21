@@ -405,7 +405,7 @@
      nobody tapped would store an empty site and quietly break the rotation
      it exists for. Nor can a new dose while several episodes are active
      and none has been picked - that is exactly the ambiguity this ticket
-     exists to stop from being drawn into the wrong drug's curve. */
+     keeps the saved dose attributed to the drug the person chose. */
   let editorCanSave = $derived(
     editor !== null &&
       editorHasAmount &&
@@ -430,7 +430,7 @@
   <!-- The one screen of the twenty-six with two real ways in. It is a hub
        row (SCREENS.md's Health group), so the rule this ticket set - a
        feature screen goes back to /more, not to /settings - applies to it;
-       it is also opened from inside regimen and from the hormone curve,
+       it is also opened from inside regimen,
        and throwing someone from there to the hub is the NAV-005 complaint
        exactly. The header goes back where there is something to go back to
        and takes the hub where there is not, which is the answer for a

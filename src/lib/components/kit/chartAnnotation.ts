@@ -12,10 +12,9 @@
    ticket rules out, written by the label rather than by the data. */
 
 import { m } from '$lib/paraglide/messages';
-import { fmtNumber, fmtDay } from '$lib/data/dates';
+import { fmtDay } from '$lib/data/dates';
 import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
-import { episodeEndReasonLabel, injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
-import { severityName } from '$lib/data/vocabulary/labels';
+import { episodeEndReasonLabel } from '$lib/data/vocabulary/doseLabels';
 import type { ChartAnnotation, ChartAnnotationKind } from '$lib/charts/annotations';
 
 /** What each kind of thing is called, for a record that carries no name of
@@ -36,18 +35,6 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   /* Phase 8 features ticket 59, ADR-0066: what a past appointment is called
      when the person typed no kind of their own. */
   appointment: m.chart_annotation_appointment,
-  /* Ticket 15's six. The four that stand for a day rather than for a record
-     say so in the word itself, because a mark that read "misgendering" would
-     claim there was misgendering that day and nothing else - which is true of
-     most days somebody keeps that counter. What the mark means is that the
-     count was above the person's own recent range, and the word is the only
-     place a reader is told so (data/ownSpread.ts holds the rule). */
-  sideEffect: m.chart_annotation_side_effect,
-  injection: m.chart_annotation_injection,
-  tallyMisgendered: m.chart_annotation_tally_misgendered,
-  tallyCorrectlyGendered: m.chart_annotation_tally_correctly_gendered,
-  bodyRegionDysphoria: m.chart_annotation_region_dysphoria,
-  bodyRegionEuphoria: m.chart_annotation_region_euphoria,
   /* Phase 8 features ticket 04. "finished", never "completed" or "done" -
      nothing here is an achievement and a stream that restarts was not
      completed (CONTEXT: "Finished"). */
@@ -80,7 +67,7 @@ function annotationName(annotation: ChartAnnotation): string {
     rather than a name resolved here (phase 8 features ticket 04).
 
     A finished area's `name` is its group key, because journal/chartAnnotations.ts
-    is Node-tier and cannot reach paraglide (ADR-0016). The hormone curve
+    is Node-tier and cannot reach paraglide (ADR-0016). The chart
     resolves its body-region keys on the screen instead; that works there
     because exactly one screen draws those markers, and this kind reaches
     every chart that opted into annotations at all. Five screens each keeping
@@ -142,10 +129,8 @@ const READOUT_LABELS = 2;
     actually says, in the record's own words (phase 11 UI/UX ticket 49).
 
     Undefined rather than an empty string where there is nothing to print.
-    A milestone nobody wrote a description for, an ungraded side effect and
-    every derived mark all reach here, and an added line that is present and
-    blank reads as the app having lost the text rather than as there never
-    having been any.
+    A milestone nobody wrote a description for reaches here without an
+    added line, since there was no text to lose.
 
     An era is the one kind whose line is not something written behind the
     tick: the tick is the boundary and the boundary is the fact, so the
@@ -159,18 +144,7 @@ function annotationNote(annotation: ChartAnnotation): string | undefined {
 
   const detail = annotation.detail;
   if (!detail) return undefined;
-  switch (detail.type) {
-    case 'note':
-      return detail.text;
-    case 'severity':
-      return severityName(detail.severity) ?? undefined;
-    case 'dose': {
-      const amount = fmtNumber(detail.amount);
-      return detail.site
-        ? m.chart_annotation_dose_site({ amount, unit: detail.unit, site: injectionSiteLabel(detail.site) })
-        : m.chart_annotation_dose({ amount, unit: detail.unit });
-    }
-  }
+  return detail.text;
 }
 
 /** One tick as the readout writes it. */

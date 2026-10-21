@@ -16,7 +16,7 @@
    to know, without the advice. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
-import { resolveCurveDrug } from './hormoneDrug';
+import { resolveHormoneDrug } from './hormoneDrug';
 import { attributeDrug } from './regimenEpisode';
 import type { DoseRoute, LabResult, LabTiming, RegimenEpisode } from './types';
 
@@ -111,13 +111,13 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
 export type CandidateDose = TimingDose & { drug: string | null };
 
 /** The candidate that supplies `analyte`'s timing, or null when none does.
-    `analyte` must itself resolve to one of the two curve drugs
+    `analyte` must itself resolve to estradiol or testosterone
     (hormoneDrug.ts) - prolactin and any custom analyte resolve to none and
     always get null here, exactly as when there is no dose at all.
 
     Otherwise a candidate is skipped over, as if it weren't there, only when
     `attributeDrug` (regimenEpisode.ts) resolves it to a drug and that drug
-    is not this analyte's curve drug - a concurrent dose for an unrelated
+    is not this analyte's hormone - a concurrent dose for an unrelated
     drug, the case this exists for. A dose `attributeDrug` has nothing to
     resolve at all (`drug: null, ambiguous: false` - no episode covers it and
     it names no drug of its own) is not the same as one resolved to a
@@ -137,14 +137,14 @@ export function selectTimingDose(
   doses: readonly CandidateDose[],
   episodes: readonly RegimenEpisode[]
 ): CandidateDose | null {
-  const curveDrug = resolveCurveDrug(analyte);
-  if (curveDrug === null) return null;
+  const hormoneDrug = resolveHormoneDrug(analyte);
+  if (hormoneDrug === null) return null;
 
   return (
     doses.find((dose) => {
       const attribution = attributeDrug(episodes, dose);
       if (attribution.drug === null) return !attribution.ambiguous;
-      return resolveCurveDrug(attribution.drug) === curveDrug;
+      return resolveHormoneDrug(attribution.drug) === hormoneDrug;
     }) ?? null
   );
 }

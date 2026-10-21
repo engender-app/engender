@@ -6,7 +6,7 @@
      rule about how many days a position stands for: the day grain's
      positions are days and the readout already names them, the week and
      month grains' are buckets and a tick inside one has to say which day it
-     was. Every chart carries the same six ticks so the three readouts can
+     was. Every chart carries the same eight ticks so the three readouts can
      be read against each other.
 
      Real everything: `annotationsInRange` places them, `AreaChart` draws
@@ -22,7 +22,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
 
   /** Any settled day: nothing here reads a clock, and the marks are placed
-      by offset from it so the three grains carry the same six ticks. */
+      by offset from it so the three grains carry the same eight ticks. */
   const BASE = 20100;
   const POSITIONS = 30;
 
@@ -87,20 +87,20 @@
       /* One day carrying three, which is where the two-annotation cap and
          the count for the rest are read. */
       {
-        id: 'gathered-effect',
-        kind: 'sideEffect',
-        name: 'headaches',
+        id: 'gathered-surgery',
+        kind: 'surgery',
+        name: 'Follow-up procedure',
         startEpochDay: dayIn(AT.gathered, step),
         endEpochDay: null,
-        detail: { type: 'severity', severity: 3 }
+        detail: { type: 'note', text: 'follow-up booked' }
       },
       {
-        id: 'gathered-injection',
-        kind: 'injection',
-        name: 'estradiol valerate',
+        id: 'gathered-appointment',
+        kind: 'appointment',
+        name: 'endocrinologist',
         startEpochDay: dayIn(AT.gathered, step),
         endEpochDay: null,
-        detail: { type: 'dose', amount: 4, unit: 'mg', site: 'thigh-left' }
+        detail: { type: 'note', text: 'bring the lab sheets' }
       },
       {
         id: 'gathered-milestone',

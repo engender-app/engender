@@ -266,9 +266,8 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* Deepening ticket 07 put labs, the regimen, the hormone curve and the
-       dose log behind this one row, and what earned that tap is that /care
-       opens on a live read of each. It fronts no area of its own, so there is
+    /* Deepening ticket 07 put labs, the regimen and the dose log behind
+       this one row. /care opens on their live reads. It fronts no area of its own, so there is
        nothing here for a hidden-area rule to act on and nothing whose last
        write would not already be on the screen behind it.
 

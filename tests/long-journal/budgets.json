@@ -146,12 +146,6 @@
       "budgetMs": 200,
       "targetMs": 300
     },
-    "hormone-curve": {
-      "what": "hormone curve, injectable plus qualitative models, 180 days",
-      "baselineMs": 61,
-      "budgetMs": 305,
-      "targetMs": 400
-    },
     "labs-series": {
       "what": "labs screen, one analyte across every query the screen runs",
       "baselineMs": 3,
