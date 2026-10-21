@@ -15,7 +15,7 @@
    departs from Hembree in nine cells without a stated reason (voice onset
    1-6 months, the 1-2 year maximum for cessation of menses, the unknown
    maximum for decreased libido among them). ADR
-   draft-onset-bands-follow-soc8-table-1 names all nine, and
+   ADR-0096 names all nine, and
    docs/research/onset-bands-soc8.md has the sources and the independence
    check.
 
