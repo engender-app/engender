@@ -435,11 +435,13 @@
 
            The pack's rows travel as one block when the switch turns them
            on or off, so the list grows and shrinks once rather than 23
-           times; a single row hidden or put back still discloses on its
-           own. `rows-divide` keeps the hairline between the block and the
+           times, and only the part the screen shows travels (`onScreen`:
+           the block is about 3000px, and travelled whole its edge crossed
+           the screen in one frame). A single row hidden or put back still
+           discloses on its own. `rows-divide` keeps the hairline between the block and the
            first custom goal under it. -->
       {#if list.goals.length > 0}
-        <div class="rows-divide" data-roadmap-pack-goals transition:disclose>
+        <div class="rows-divide" data-roadmap-pack-goals transition:disclose={{ onScreen: true }}>
           {#each list.goals as goal (goal.key)}
             {@const status = statuses[goal.key] ?? 'unchecked'}
             <div class="kit-row is-split" data-goal={goal.key} data-status={status} transition:disclose>
