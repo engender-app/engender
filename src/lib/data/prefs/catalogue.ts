@@ -86,9 +86,8 @@ export interface PreferenceValues {
       ADR-0003's rule alone would have made it device-local. */
   checkInAffirmationsEnabled: boolean;
   /** Whether the rotating reflection prompt shows on the entry-creation
-      screen (phase 4 features ticket 17). Device-local for the same reason
-      `guidedPromptsEnabled` is: a yes/no about one installation's entry screen, not
-      anything the journal itself carries. */
+      screen (phase 4 features ticket 17). Device-local because this controls
+      one installation's entry screen, not anything the journal carries. */
   guidedPromptsEnabled: boolean;
   /** Whether active tryouts show a felt-sense quick prompt in the entry editor. */
   entryTryoutPromptEnabled: boolean;
