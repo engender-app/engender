@@ -31,3 +31,7 @@ test('in GitHub Actions each warning is an annotation on the run', () => {
 test('nothing warns on the day of the latest review pass', () => {
   expect(run('2026-10-21')).not.toContain('warning');
 });
+
+test('a --today that is not a real day is refused rather than compared as text', () => {
+  expect(() => run('2026-02-30')).toThrow();
+});

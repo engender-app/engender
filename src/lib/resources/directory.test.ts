@@ -50,7 +50,7 @@ test('an adult in Poland has a free line that answers at night and at weekends',
   expect(polishLines).toEqual(expect.arrayContaining(['116 123', '800 70 2222']));
 });
 
-test('the English-language group holds no line for under-25s only', () => {
+test('the UK and US group holds no line for under-25s only', () => {
   // The Trevor Project serves under-25s in the US. The person holding this
   // phone is in Poland, and under-25s only is not who the group is for.
   expect(RESOURCES.map((r) => r.key)).not.toContain('int-trevor');

@@ -37,7 +37,8 @@ export function warningLine(entry, limits) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const today = args.includes('--today') ? args[args.indexOf('--today') + 1] : new Date().toISOString().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(today ?? '')) {
+  const real = /^\d{4}-\d{2}-\d{2}$/.test(today ?? '') && new Date(`${today}T00:00:00Z`).toJSON()?.slice(0, 10) === today;
+  if (!real) {
     console.error('Usage: node scripts/check-reviewed-content.mjs [--today YYYY-MM-DD]');
     process.exit(1);
   }
