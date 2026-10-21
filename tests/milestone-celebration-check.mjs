@@ -100,6 +100,14 @@ try {
     }, MODULES);
   }
 
+  /* Each block starts on a fresh copy of the screen, so a sheet an earlier
+     block left open on the old code does not fail the next one for it. */
+  async function freshMilestones() {
+    await page.goto(new URL('/transition/milestones', server.resolvedUrls.local[0]).href, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
+    await page.locator('[data-add]').waitFor();
+  }
+
   await page.goto(server.resolvedUrls.local[0], { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
@@ -125,6 +133,7 @@ try {
   });
 
   await block('creating a milestone asks for no felt-sense reading, and saving says so', async () => {
+    await freshMilestones();
     await page.locator('[data-add]').click();
     await page.locator('[data-own]').click();
     await page.locator('#ms-name').fill('Moved out');
@@ -136,6 +145,7 @@ try {
   });
 
   await block('the celebrate switch is on for a new milestone, and off is saved with it', async () => {
+    await freshMilestones();
     await page.locator('[data-add]').click();
     await page.locator('[data-own]').click();
     await page.locator('#ms-name').fill('The hard one');
