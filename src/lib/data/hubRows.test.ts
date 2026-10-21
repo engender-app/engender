@@ -77,6 +77,7 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
     owns the screen at all. `rowIcon.ts` is the one call both files share
     for reading or declaring that icon, rather than each restating it. */
 const REGISTRY_SURFACES = [
+  'src/lib/components/FeatureVisibilityList.svelte',
   'src/lib/components/HostedRows.svelte',
   'src/lib/components/TodayEditor.svelte',
   'src/lib/components/dayRows.ts',
@@ -84,7 +85,10 @@ const REGISTRY_SURFACES = [
   'src/lib/components/searchHitRows.ts',
   'src/lib/data/pinnedRows.ts',
   'src/lib/data/vocabulary/hubLabels.ts',
-  'src/routes/more/+page.svelte'
+  'src/lib/onboarding/features.ts',
+  'src/routes/more/+page.svelte',
+  'src/routes/onboarding/+page.svelte',
+  'src/routes/settings/+page.svelte'
 ].sort();
 
 /** Every file under `src` whose source imports `hubRows`, minus this file's

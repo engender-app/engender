@@ -2338,6 +2338,22 @@ try {
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
   await page.locator('[data-next]').click(); // scales -> features
+  const modules = page.locator('[data-feature-module]');
+  if (await modules.count() < 12) throw new Error('setup did not list the available tracking areas');
+  for (const key of ['care', 'milestones', 'tryouts', 'voice-benchmark']) {
+    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'false') {
+      throw new Error(`${key} started on instead of keeping the first run to journal basics`);
+    }
+  }
+  await page.locator('[data-feature-module="care"]').click();
+  await page.locator('[data-feature-module="voice-benchmark"]').click();
+  await page.locator('[data-back]').click(); // features -> scales
+  await page.locator('[data-next]').click(); // scales -> features
+  for (const key of ['care', 'voice-benchmark']) {
+    if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== 'true') {
+      throw new Error(`${key} choice was lost after Back`);
+    }
+  }
   await page.locator('[data-next]').click(); // features -> lock
   await page.waitForSelector('[data-lock-after-choice="immediately"]');
   if (await page.locator('[data-list-row^="area-"]').count()) {
@@ -2406,9 +2422,36 @@ try {
   if (await page.evaluate(() => document.documentElement.dataset.palette) !== 'nonbinary') {
     throw new Error('the flag picked during onboarding did not survive into the app');
   }
+  await page.reload({ waitUntil: 'networkidle' });
+  await booted();
+  for (const key of ['milestones', 'tryouts']) {
+    if (await page.locator(`[data-pinned-row="${key}"]`).count()) {
+      throw new Error(`${key} was shown as a module because it is a default Home pin`);
+    }
+  }
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await booted();
+  for (const key of ['care', 'voice-benchmark']) {
+    await page.locator(`[data-list-row="${key}"]`).waitFor();
+  }
+  for (const key of ['milestones', 'tryouts']) {
+    if (await page.locator(`[data-list-row="${key}"]`).count()) {
+      throw new Error(`${key} stayed in navigation after first-run opt-out`);
+    }
+  }
+  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
+  await booted();
+  await openFeatures();
+  await page.locator('[data-feature-module="milestones"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-feature-module="milestones"]')?.getAttribute('aria-checked') === 'true');
+  await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-list-row="milestones"]').waitFor();
 
   /* Held on Home rather than asserted and left (32.1), which is what this
      flow used to do inside the window the bounce lived in. */
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await booted();
   await heldOnHome('onboarding came back after finishing it');
   ok('onboarding end-to-end');
 } catch (e) { fail('onboarding', e); }
@@ -4505,6 +4548,11 @@ try {
 await flow('concurrent regimen episodes and dose attribution', async () => {
 try {
   await fresh('/care/regimen');
+  const localDateInput = (daysAgo = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   const addOwnEpisode = async (drug, dose, unit) => {
     await page.click('[data-add]');
@@ -4514,6 +4562,7 @@ try {
     await page.fill('#regimen-dose-unit', unit);
     await page.fill('#regimen-route', 'oral');
     await page.fill('#regimen-interval', 'daily');
+    await fillDate(page, '#regimen-start', localDateInput(2));
     await page.click('[data-save-regimen]');
   };
 
@@ -4580,12 +4629,6 @@ try {
   // Ending one episode drops it out of today's active set, so the next new
   // dose is unchanged from a single-episode journal - no prompt at all.
   await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
-  const localDateInput = (daysAgo = 0) => {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-
   await estradiolRow().click();
   await page.click('[data-end-episode]');
   // endEpisode() writes to the DB asynchronously and only then updates the
@@ -6898,6 +6941,11 @@ try {
 
 await flow('cycle tracking opt-in', async () => {
 try {
+  const daysAgoIso = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
   /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
      phase 5 deepening ticket 05). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one
@@ -7053,6 +7101,7 @@ try {
   await page.fill('#regimen-dose-unit', 'mg');
   await page.fill('#regimen-route', 'im');
   await page.fill('#regimen-interval', 'weekly');
+  await fillDate(page, '#regimen-start', daysAgoIso(2));
   await page.click('[data-save-regimen]');
   await page.waitForFunction(() => !document.querySelector('[data-cycle-events-link]'), null, { timeout: 8000 });
   await checkCycleOffers(false, 'en');
@@ -7088,11 +7137,6 @@ try {
 
   // End the episode the way the concurrent-episodes flow does: an end date
   // of yesterday, so it stops being active today, saved from the editor.
-  const daysAgoIso = (n) => {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
   await page.goto(BASE + '/care/regimen', { waitUntil: 'networkidle' });
   await page.locator('[data-episode]', { hasText: 'Testosterone' }).first().click(); // text-under-test: the drug I just typed
   await page.waitForSelector('#regimen-end');

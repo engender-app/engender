@@ -101,6 +101,10 @@ export function hubRowTitle(key: HubRowKey): string {
   return ROW_TITLE[key]();
 }
 
+export function hubRowDescription(key: HubRowKey): string {
+  return ROW_LINE[key]();
+}
+
 /** What a group's heading says. */
 export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
   return GROUP_HEADING[key]();
@@ -221,7 +225,7 @@ export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number,
       return nextLine(line.what, line.epochDay, todayEpochDay);
     case 'no-stream':
     case 'not-yet':
-      return ROW_LINE[key]();
+      return hubRowDescription(key);
     case 'last':
       return line.daysAgo === 0
         ? m.hub_line_today()

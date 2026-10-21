@@ -361,16 +361,6 @@ export interface PreferenceValues {
       page to be on. A stale key resolves to nothing rather than to a
       guess. */
   pinnedRows: string[] | null;
-  /** Which of ADR-0067's five mark kinds the agenda draws, by kind (phase 10
-      redesign ticket 05). Null while the person has switched none of them
-      off, which is every kind; a list is exactly the kinds left on.
-
-      A switch rather than a dismissal, which is the whole of why it is
-      stored: a kind somebody does not want is one they would otherwise
-      dismiss every week for the life of the journal. A stored kind
-      `DAY_AHEAD_MARK_KINDS` does not name resolves to nothing, the same way
-      a stale pin does. */
-  agendaKinds: string[] | null;
   /** Saved area choices from older onboarding flows (phase 10 redesign
       ticket 05). `hubRows.ts` row keys.
 

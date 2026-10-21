@@ -74,10 +74,13 @@
   import { wipe } from '$lib/motion/reveal';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { featureAreas, type HubRow, type HubRowKey } from '$lib/data/hubRows';
+  import { firstRunModuleWrites } from '$lib/onboarding/features';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
+  import FeatureVisibilityList from '$lib/components/FeatureVisibilityList.svelte';
   import { firstRunScales } from '$lib/onboarding/firstRunScales';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -136,11 +139,27 @@
 
   let genitalEffectsChoice = $state<boolean | null>(null);
   let cycleChoice = $state<boolean | null>(null);
+  let restoring = $state(restoreOnEntry);
+  let moduleChoices = $state<HubRowKey[] | null>(null);
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
-  let cycleShown = $derived(cycleChoice ?? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
+  let cycleShown = $derived(cycleChoice ?? (restoring || prefs.onboarded
+    ? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
+    : false));
   let genitalEffectsShown = $derived(
-    genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+    genitalEffectsChoice ?? (restoring || prefs.onboarded
+      ? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+      : false)
   );
+
+  function moduleEnabled(row: HubRow): boolean {
+    return (moduleChoices ?? []).includes(row.key);
+  }
+
+  function chooseModule(row: HubRow, enabled: boolean) {
+    moduleChoices = enabled
+      ? [...(moduleChoices ?? []), row.key]
+      : (moduleChoices ?? []).filter((key) => key !== row.key);
+  }
 
   /* The lock step's own answer once a mode is set up: when that mode's
      secret is asked for again (lock-timing ticket 01). A minute is offered
@@ -204,7 +223,6 @@
      this device is touched, and the way out of them is the way in reversed.
      This flag is what says the file on screen is the one that was proved:
      picking another file or editing the password puts it back to false. */
-  let restoring = $state(restoreOnEntry);
   let picked = $state.raw<PickedArchive | null>(null);
   let archivePass = $state('');
   let archiveReady = $state(false);
@@ -426,6 +444,7 @@
     restoring = true;
     genitalEffectsChoice = null;
     cycleChoice = null;
+    moduleChoices = null;
     archiveError = '';
     archiveErrorKind = '';
     go('restore');
@@ -507,8 +526,9 @@
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
     else if (step === 'features') {
-        genitalEffectsChoice = null;
+      genitalEffectsChoice = null;
       cycleChoice = null;
+      moduleChoices = null;
     } else if (step === 'lock') lockAfter = null;
     /* The permissions step is not in this list, and that is the whole of
        what skipping it does (ticket 31). Its answers live in the OS rather
@@ -561,8 +581,14 @@
       /* All answers must land before disguise can close the Android process. */
       await completeSetup({
         async writeAnswers() {
-          if (genitalEffectsChoice !== null) {
-            await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice);
+          const firstRun = !restoring && !wasOnboarded;
+          const modules = firstRunModuleWrites(restoring, wasOnboarded, moduleChoices);
+          if (modules.length > 0) {
+            await journal.areaStates.setAreasHidden(modules.filter(({ hidden }) => hidden).flatMap(({ row }) => featureAreas(row)), true);
+            await journal.areaStates.setAreasHidden(modules.filter(({ hidden }) => !hidden).flatMap(({ row }) => featureAreas(row)), false);
+          }
+          if (firstRun || genitalEffectsChoice !== null) {
+            await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice ?? false);
           }
           if (!restoring && !wasOnboarded) prefs.cycleTrackingChoice = cycleChoice ?? false;
           else if (cycleChoice !== null) prefs.cycleTrackingChoice = cycleChoice;
@@ -768,7 +794,7 @@
               {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
               <p class="setup-def">{m.ob_welcome_def()}</p>
               <p class="setup-line is-pitch">{m.ob_welcome_body()}</p>
-            {:else if line}
+            {:else if line && step !== 'features'}
               <p class="setup-line">{line}</p>
             {/if}
 
@@ -776,7 +802,7 @@
                  has for what it is: a row in a flush list, a block, a
                  typed answer on a rule, or a key. This region is the only
                  thing on a step that scrolls. -->
-            <div class="setup-answers" data-setup-answers>
+            <div class="setup-answers" class:has-feature-line={step === 'features'} data-setup-answers>
               {#if step === 'restore'}
                 <!-- The file is a block (rule 13): an outline while there is
                      nothing in it, solid once there is, and the change
@@ -883,11 +909,17 @@
                   offered={vocabulary.ready ? undefined : firstRunScales()}
                 />
               {:else if step === 'features'}
-                <!-- Their own step since after-release 17 (UX-09). -->
+                <p class="setup-line setup-feature-line">{line}</p>
+                <FeatureVisibilityList
+                  {moduleEnabled}
+                  onModuleChange={chooseModule}
+                />
+                <h2 class="setup-feature-heading">{m.feature_filters_title()}</h2>
                 <ListCard>
                   <ListRow
                     key="feature-genital-effects"
                     title={m.feature_genital_effects()}
+                    subtitle={m.feature_genital_effects_sub()}
                     checked={genitalEffectsShown}
                     chevron={false}
                     onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
@@ -895,6 +927,7 @@
                   <ListRow
                     key="feature-cycle-tracking"
                     title={m.cycle_tracking_toggle_title()}
+                    subtitle={m.feature_cycle_tracking_sub()}
                     checked={cycleShown}
                     chevron={false}
                     onclick={() => (cycleChoice = !cycleShown)}
@@ -1362,6 +1395,17 @@
      `.screen`'s child and so is outside that rule's reach. */
   .setup-answers > * + * {
     margin-top: var(--space-5);
+  }
+  .setup-answers.has-feature-line {
+    margin-top: var(--space-3);
+    padding-top: 0;
+  }
+  .setup-feature-line {
+    margin-top: 0;
+  }
+  .setup-feature-heading {
+    margin-bottom: 0;
+    font-size: var(--text-md);
   }
 
   /* Every answer that carries a block arrives as one: it clips open from
