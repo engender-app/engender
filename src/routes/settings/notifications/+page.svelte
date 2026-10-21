@@ -59,6 +59,9 @@
   import { UNPROMPTED_ROWS, type BooleanPrefKey, type UnpromptedRow } from '$lib/unprompted/registry';
   import { isLiveTileKind } from '$lib/data/liveTiles';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import { fmtDay } from '$lib/data/dates';
+  import { currentDay } from '$lib/stores/today.svelte';
 
   /** Every kind Today's editor does not arrange. */
   const ROWS = UNPROMPTED_ROWS.filter((row) => !isLiveTileKind(row.key));
@@ -118,6 +121,19 @@
     if (v && row.surface) prefs[row.surface.prefKey] = true;
   }
 
+  /* The check-in's switch lives on the reminders screen, beside its time and
+     its pause (functional audit ticket 08); a second one here wrote the same
+     preference from a screen that could show neither. Its row here is a way
+     there that says where it stands. */
+  let checkInState = $derived.by(() => {
+    if (!prefs.checkInEnabled) return m.checkin_state_off();
+    const through = prefs.checkInPausedThrough;
+    if (through !== null && through >= currentDay()) {
+      return m.checkin_state_paused({ date: fmtDay(through + 1, { day: 'numeric', month: 'long' }) });
+    }
+    return m.checkin_state_on({ time: prefs.checkInTime });
+  });
+
   let anyNotifyOn = $derived(ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
 
   /* The four prompts, in the order Settings drew them. A list rather than
@@ -170,26 +186,30 @@
 
   <ListCard>
     {#each visibleRows as row (row.key)}
-      <RegistryRow
-        key={row.key}
-        notifyColumn={!isWeb}
-        title={row.title()}
-        subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
-        surface={row.surface
-          ? {
-              label: m.notif_show_toggle_aria({ name: row.title() }),
-              checked: prefs[row.surface.prefKey],
-              onChange: (v) => setKind(row, v)
-            }
-          : undefined}
-        notify={!isWeb && row.notify
-          ? {
-              label: m.notif_notify_toggle_aria({ name: row.title() }),
-              checked: prefs[row.notify.prefKey],
-              onChange: (v) => setNotify(row, v)
-            }
-          : undefined}
-      />
+      {#if row.key === 'check-in'}
+        <ListRow key="check-in" title={row.title()} subtitle={checkInState} href="/settings/reminders" />
+      {:else}
+        <RegistryRow
+          key={row.key}
+          notifyColumn={!isWeb}
+          title={row.title()}
+          subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
+          surface={row.surface
+            ? {
+                label: m.notif_show_toggle_aria({ name: row.title() }),
+                checked: prefs[row.surface.prefKey],
+                onChange: (v) => setKind(row, v)
+              }
+            : undefined}
+          notify={!isWeb && row.notify
+            ? {
+                label: m.notif_notify_toggle_aria({ name: row.title() }),
+                checked: prefs[row.notify.prefKey],
+                onChange: (v) => setNotify(row, v)
+              }
+            : undefined}
+        />
+      {/if}
     {/each}
   </ListCard>
 
