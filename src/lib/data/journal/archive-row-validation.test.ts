@@ -105,12 +105,84 @@ for (const mode of ['merge', 'replace'] as const) {
       await refusesWithoutChanges(mode, incoming);
     }
   });
+
+  test(`${mode} refuses missing reference data before storage access`, async () => {
+    const mutations: ((journal: ArchiveJournal) => void)[] = [
+      (j) => { j.presets[0].dims[0] = 'missing_dimension'; },
+      (j) => { j.entryTemplates[0].dims = { missing_dimension: 30 }; },
+      (j) => { j.entries[0].dims = { missing_dimension: 30 }; },
+      (j) => { j.entryTemplates[0].tags[0] = '__proto__'; },
+      (j) => { j.entries[0].tags = ['missing_tag']; },
+      (j) => { j.personalEffectTypes[0].categoryKey = 'missing_category'; },
+      (j) => { j.milestones[0].procedureId = 'missing_procedure'; },
+      (j) => { j.entries[0].presentationId = 'missing_presentation'; }
+    ];
+    for (const mutate of mutations) {
+      const incoming = golden(); mutate(incoming);
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+
+  test(`${mode} refuses constrained values before storage access`, async () => {
+    const mutations: ((journal: ArchiveJournal) => void)[] = [
+      (j) => { j.sizeRecords[0].category = 'missing' as never; },
+      (j) => { j.personalEffectTypes[0].direction = 'sideways' as never; },
+      (j) => { j.documents[0].targetKind = 'missing' as never; },
+      (j) => { j.hairRemovalSessions[0].area = 'missing' as never; },
+      (j) => { j.hairStages[0].stage = 'missing'; },
+      (j) => { j.reminders[0].recurrence = null; },
+      (j) => { j.doseSchedules[0].recurrenceKind = 'missing' as never; },
+      (j) => { j.doseSchedules[0].weekdays = [8]; },
+      (j) => { j.doseSchedules[0].recurrenceKind = 'weekdays'; },
+      (j) => { j.entries[0].bodyRegions = { head: 50 }; },
+      (j) => { j.sideEffects[0].severity = 6; },
+      (j) => { j.affirmations[0].language = 'fr' as never; },
+      (j) => { j.checklists[0].ownerKind = 'appointment'; j.checklists[0].ownerId = null; }
+    ];
+    for (const mutate of mutations) {
+      const incoming = golden(); mutate(incoming);
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+
+  test(`${mode} refuses duplicate identities and composite keys before storage access`, async () => {
+    const mutations: ((journal: ArchiveJournal) => void)[] = [
+      (j) => { j.counterevidenceSnapshots.push({ ...j.counterevidenceSnapshots[0] }); },
+      (j) => { j.presets[0].dims.push(j.presets[0].dims[0]); },
+      (j) => { j.dimensions.push({ ...j.dimensions[0] }); },
+      (j) => { j.dimensions.push({ ...j.dimensions[0], id: 'decoy' } as never); },
+      (j) => { j.areaStates.push({ ...j.areaStates[0] }); },
+      (j) => { j.entries[1].photos.push({ ...j.entries[0].photos[0] }); },
+      (j) => {
+        delete (j as Partial<ArchiveJournal>).appointments;
+        j.procedures[0].consults = [
+          { id: 'same_consult', epochDay: 20000 }, { id: 'same_consult', epochDay: 20001 }
+        ];
+      }
+    ];
+    for (const mutate of mutations) {
+      const incoming = golden(); mutate(incoming);
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
 }
 
 
 test('the backup drill refuses a validly encrypted null-identity body as corrupt', async () => {
   const journal = golden();
   journal.affirmations[1].id = null as unknown as string;
+  const packed = await collect(packArchive({ journal, files: [], preferences: portablePreferences(PREFERENCE_DEFAULTS),
+    readFile: async () => { throw new Error('the fixture has no files'); } }, GOLDEN_PASSWORD, CHEAP_KDF));
+  await assert.rejects(verifyArchive(oneShot(packed), GOLDEN_PASSWORD), (error: unknown) => {
+    assert.ok(error instanceof CorruptArchiveError);
+    assert.equal(archiveFailureKind(error), 'corrupt');
+    return true;
+  });
+});
+
+test('the backup drill refuses a validly encrypted broken template reference as corrupt', async () => {
+  const journal = golden();
+  journal.entryTemplates[0].tags[0] = '__proto__';
   const packed = await collect(packArchive({ journal, files: [], preferences: portablePreferences(PREFERENCE_DEFAULTS),
     readFile: async () => { throw new Error('the fixture has no files'); } }, GOLDEN_PASSWORD, CHEAP_KDF));
   await assert.rejects(verifyArchive(oneShot(packed), GOLDEN_PASSWORD), (error: unknown) => {

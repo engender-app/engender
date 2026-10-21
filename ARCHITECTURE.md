@@ -588,16 +588,18 @@ flowchart TD
 ```
 
 [journal/archiveRowValidation.ts](src/lib/data/journal/archiveRowValidation.ts)
-checks every wire row's identity, scalar types and finite numeric values before
-file-store access or transaction admission. Integers must stay within the safe
-JavaScript range. Nested rows are checked too. The contracts are checked against
-all `ArchiveJournal` sections and fields at compile time; a new wire field needs
-a validator. Flat descriptors supply their existing natural identities and
-absent-field defaults. Legacy procedure consults are validated before becoming
-appointments. Malformed rows raise `CorruptArchiveError` in both restore modes
-and the backup verification drill. Two revisits for one entry are refused here
-before restore can choose between them. Other relational and domain constraints
-remain inside the database transaction.
+checks wire rows and nested rows before destination file access or transaction
+admission. Checks cover identities, scalar types, safe finite numbers, selected
+stored values and cross-field rules. They also reject repeated identities,
+including legacy consult IDs, and resolve references to Archive rows or built-ins
+before SQLite or template lookup. Full Archives may reference built-in tags or
+tags they carry; row-only imports may also reuse destination tags. The contracts
+cover all `ArchiveJournal` sections and fields at compile time. Flat descriptors
+supply natural identities and absent-field defaults. Two revisits for one entry are
+refused before restore picks one. These known malformed rows raise
+`CorruptArchiveError` during verification, Merge and Replace. SQLite still
+enforces remaining constraints inside the transaction; unexpected storage and
+driver failures keep their original errors.
 
 [journal/fileOwnership.ts](src/lib/data/journal/fileOwnership.ts) supplies one
 ownership rule for Archive reads, cleanup and restore admission. Verification,

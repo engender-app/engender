@@ -58,10 +58,9 @@
    including the PIN, app-lock flags and disguise. Row-only imports omit
    preferences, and Merge keeps the destination's preferences.
 
-   Row identities, scalar types and safe numeric values are checked before
-   the file stream or transaction starts. The schema still enforces relational
-   and domain constraints inside the transaction, so a refused write rolls the
-   import back rather than leaving a partial journal. */
+   Row identities, scalar types, references and stored values are checked before
+   the file stream or transaction starts. SQLite still enforces its constraints
+   inside the transaction as a second line of defense. */
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
@@ -77,7 +76,7 @@ import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS } from './archiveSections';
-import { assertArchiveRows } from './archiveRowValidation';
+import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -274,7 +273,7 @@ async function restoreWithin(
   onProgress?: OnRestoreProgress,
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
-  assertRestorable(contents.journal);
+  assertRestorable(contents.journal, commit !== undefined);
   const original = aliasLegacyConsults(contents.journal);
   const existing = new Set(await files.list());
   const replacements = new Map<string, string>();
@@ -382,7 +381,7 @@ export async function verifyArchive(
     archive declares a known format version. Ignoring a section would silently
     lose the data it carries. Known sections must be arrays before their apply
     functions can read them; each row must satisfy its wire contract. */
-function assertRestorable(journal: ArchiveJournal): void {
+function assertRestorable(journal: ArchiveJournal, externalImport = false): void {
   for (const section of Object.keys(journal ?? {})) {
     // ADR-0037 retired this known pre-release section and deliberately drops it.
     if (section !== 'doubtEntries' && !(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
@@ -398,6 +397,7 @@ function assertRestorable(journal: ArchiveJournal): void {
     }
     assertArchiveRows(section, journal[section], flatTable);
   }
+  assertArchiveReferences(journal, externalImport);
   assertArchiveFileOwnership(journal);
 }
 
