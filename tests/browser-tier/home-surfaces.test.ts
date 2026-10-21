@@ -253,6 +253,22 @@ export async function homeContracts(): Promise<Result[]> {
     return !root().querySelector('[data-quick-log-dims],[data-sheet] [data-qld-input]');
   });
   await screen.remove();
+  const quickAddEpisode = await f.journal.regimen.upsertEpisode({
+    drug: 'Contract estradiol',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: today - 10,
+    endEpochDay: null,
+    endReason: null
+  });
+  await f.journal.wearSessions.upsertSession({
+    kind: 'binder',
+    startTimestamp: Date.now() - 3600000,
+    durationMs: null
+  });
   const fanTarget = document.createElement('div');
   document.querySelector('#screens')!.replaceChildren(fanTarget);
   const fan = mountInto(QuickAdd, {}, fanTarget);
@@ -267,11 +283,7 @@ export async function homeContracts(): Promise<Result[]> {
   });
   ui.chooserOpen = false;
   await fan.remove();
-  await f.journal.wearSessions.upsertSession({
-    kind: 'binder',
-    startTimestamp: Date.now() - 3600000,
-    durationMs: null
-  });
+  await f.journal.regimen.setEpisodeHidden(quickAddEpisode, true);
   await f.journal.procedures.upsertProcedure({
     name: 'Contract surgery',
     surgeryEpochDay: today - 10
@@ -372,7 +384,6 @@ export async function homeContracts(): Promise<Result[]> {
     'regimen.getEpisodes',
     'procedures.getProcedures',
     'letters.getLetterSeals',
-    'revisits.getDueRevisits',
     'entries.latestBadMomentEntryId',
     'doses.getSchedules',
     'doses.getPauses',
