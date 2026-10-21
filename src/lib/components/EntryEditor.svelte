@@ -119,11 +119,6 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
-  // A mood-only quick log offers the dimension follow-up instead of Home.
-  function offersDims(moodOnly: boolean) {
-    return seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
-  }
-
   // Route keys mount a new session for each entry or day.
   // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
   // svelte-ignore state_referenced_locally
@@ -133,10 +128,9 @@
     draftStore: localStorageEntryDraft(journalDataKey),
     preparing: () => loaded.loading || mediaPreparing,
     creation: () => ({ debriefForAppointment }),
-    destination: (moodOnly) => {
+    destination: () => {
       const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
-      const offerDims = offersDims(moodOnly);
-      return (id) => target ?? (offerDims ? `/?quickLogDims=${id}` : '/');
+      return () => target ?? '/';
     },
     navigate: async (destination) => {
       const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
@@ -830,7 +824,6 @@
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    const offerDims = offersDims(entryDraft.hasMoodOnlyContent);
     let result;
     try { result = await session.save(); }
     catch (error) {
@@ -845,7 +838,7 @@
     }
     if (!result?.navigated) return;
     const { id, moodOnly } = result;
-    if (!offerDims && prefs.entryNudges && moodOnly) {
+    if (prefs.entryNudges && moodOnly) {
       toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
     } else toast(m.saved(), { kind: 'saved' });
   }

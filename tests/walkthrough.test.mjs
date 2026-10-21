@@ -4571,63 +4571,29 @@ try {
 } catch (e) { fail('same-process background/resume', e); }
 });
 
-/* 24. quick log offers to fill in the active preset's scales too (phase 4
-   features ticket 13, beta B2), unconditionally - unlike the "Add details"
-   toast (flow 2b), this prompt does not depend on the entry-nudges
-   preference. The prompt's inputs carry only placeholder text, never a
-   real prefilled value, so there is nothing to delete before typing - and
-   filling them in writes onto the entry the quick log already saved. */
-await flow('quick log dims prompt (save)', async () => {
+/* 24. a mood-only quick log saves and lands back on Today with no
+   follow-up sheet (functional-audit ticket 14 cut the scales prompt that
+   used to open here), and the saved entry carries no scale value. */
+await flow('quick log saves without a follow-up sheet', async () => {
 try {
   await fresh('/');
   await page.locator('[data-mood="4"]').click();
   await page.waitForSelector('#ed-note');
   await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-quick-log-dims]');
-
-  const firstInput = page.locator('[data-qld-input]').first();
-  if (!(await firstInput.getAttribute('placeholder'))) throw new Error('dimension input has no placeholder text');
-  if ((await firstInput.inputValue()) !== '') {
-    throw new Error('dimension input starts with a real value instead of just a placeholder');
+  await page.waitForSelector('[data-home-log]');
+  if (new URL(page.url()).search !== '') throw new Error('the save landed on ' + page.url());
+  if (await page.locator('[data-sheet], [data-quick-log-dims]').count()) {
+    throw new Error('a sheet opened after a mood-only save');
   }
-
-  for (const input of await page.locator('[data-qld-input]').all()) await input.fill('7');
-  await page.locator('[data-qld-add]').click();
-  await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
-
-  await openNewestEntry();
-  await page.waitForSelector('[data-dim-value]');
-  // Asserted as "is this a number", not against the unset marker's wording:
-  // that marker is ordinary UI copy and changed once already (ticket 31).
-  const values = await page.locator('[data-dim-value]').allTextContents();
-  if (values.some((v) => !Number.isFinite(Number(v.trim())))) {
-    throw new Error('a scale value from the prompt did not save: ' + JSON.stringify(values));
-  }
-  ok('quick log dims prompt saves typed scale values onto the just-saved entry');
-} catch (e) { fail('quick log dims prompt (save)', e); }
-});
-
-/* 24b. declining the prompt must never block or delay the quick log itself
-   - the entry is already saved by the time the prompt appears, so skipping
-   it leaves that entry exactly as it was. */
-await flow('quick log dims prompt (decline)', async () => {
-try {
-  await fresh('/');
-  await page.locator('[data-mood="3"]').click();
-  await page.waitForSelector('#ed-note');
-  await page.locator('[data-save]').click();
-  await page.waitForSelector('[data-quick-log-dims]');
-  await page.locator('[data-qld-skip]').click();
-  await page.waitForSelector('[data-quick-log-dims]', { state: 'detached' });
 
   await openNewestEntry();
   await page.waitForSelector('[data-dim-value]');
   const values = await page.locator('[data-dim-value]').allTextContents();
   if (values.some((v) => Number.isFinite(Number(v.trim())))) {
-    throw new Error('declining the prompt still wrote a scale value: ' + JSON.stringify(values));
+    throw new Error('a mood-only quick log wrote a scale value: ' + JSON.stringify(values));
   }
-  ok('declining the quick log dims prompt leaves the saved entry untouched');
-} catch (e) { fail('quick log dims prompt (decline)', e); }
+  ok('a mood-only quick log lands on Today with no follow-up sheet and no scale value');
+} catch (e) { fail('quick log saves without a follow-up sheet', e); }
 });
 
 /* 25. ticket 18's compare-two-periods stats screen (phase 4 features): two

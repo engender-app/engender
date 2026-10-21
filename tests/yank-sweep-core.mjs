@@ -2199,10 +2199,7 @@ const HYDRATION_SCENES = [
      the eight swatches render inline on the settings screen itself, so
      that scene's cold mount is the whole of the surface, and picking one
      re-themes in place with no layout consequence, which both detectors
-     are right to ignore. The quick-log dims sheet is a query param, so it
-     opens over Home's own cold mount - the after-save state a real quick
-     log lands in. */
-  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', coldOutcome: { consumedQuery: 'quickLogDims', selector: '[data-sheet] [data-quick-log-dims]' }, needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
+     are right to ignore. */
   { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },

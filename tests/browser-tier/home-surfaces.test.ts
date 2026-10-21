@@ -243,13 +243,12 @@ export async function homeContracts(): Promise<Result[]> {
   const promptEntry = (await f.journal.entries.entriesForDay(today))[0];
   screen = await mountScreen(`/?quickLogDims=${promptEntry.id}`, f);
   await until(() => root().querySelector('[data-home-log] [data-mood="4"]'), 'quick mood');
-  await check('Quick mood opens dimension prompt with add and skip handles', async () => {
-    await until(() => root().querySelector('[data-quick-log-dims]'), 'dimension prompt');
-    return (
-      root().querySelector('[data-qld-input]') &&
-      root().querySelector('[data-qld-add]') &&
-      root().querySelector('[data-qld-skip]')
-    );
+  /* Functional-audit ticket 14: a mood-only save opens no follow-up sheet.
+     The address the editor used to land on after one is the old way in, so
+     it is the one that has to open nothing now. */
+  await check('A mood-only save opens no scales follow-up sheet', async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return !root().querySelector('[data-quick-log-dims],[data-sheet] [data-qld-input]');
   });
   await screen.remove();
   const fanTarget = document.createElement('div');
