@@ -404,8 +404,8 @@ const ROWS = [
     home: 'support',
     /* ADR-0037/0040: a Safe Space artefact is not a diary record with a day
        to report a gap about, which is the registry's own wording for why
-       neither of these has a last write. */
-    areas: ['counterevidenceSnapshots', 'comfortItems'],
+       the comfort list has no last write. */
+    areas: ['comfortItems'],
     finishes: null,
     line: 'written'
   },

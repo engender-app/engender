@@ -303,7 +303,6 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
 
   // ADR-0037/0040: a Safe Space artefact, not a diary record with a day to
   // report a gap about.
-  counterevidenceSnapshots: 'a Safe Space artefact, not a diary record',
   comfortItems: 'a Safe Space artefact with no date of its own',
   // A letter is met on its unlock day (letterStatus.ts); asking when it was
   // last written is a second way to meet it before the seal does.

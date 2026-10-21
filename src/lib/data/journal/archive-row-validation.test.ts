@@ -152,7 +152,7 @@ for (const mode of ['merge', 'replace'] as const) {
 
   test(`${mode} refuses duplicate identities and composite keys before storage access`, async () => {
     const mutations: ((journal: ArchiveJournal) => void)[] = [
-      (j) => { j.counterevidenceSnapshots.push({ ...j.counterevidenceSnapshots[0] }); },
+      (j) => { j.letters.push({ ...j.letters[0] }); },
       (j) => { j.presets[0].dims.push(j.presets[0].dims[0]); },
       (j) => { j.dimensions.push({ ...j.dimensions[0] }); },
       (j) => { j.dimensions.push({ ...j.dimensions[0], id: 'decoy' } as never); },

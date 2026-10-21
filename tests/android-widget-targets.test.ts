@@ -81,8 +81,29 @@ const WIDGETS = [
   { layout: 'widget_doubt', info: 'doubt_widget_info', buttons: 1 }
 ];
 
+/* FA 09: the widget said "Log a doubt / Open a space to write" for a screen
+   with no composer since ADR-0037. It names the screen it opens, in the
+   screen's own words, and its picker line says what is there. */
+it('names Safe space the way the screen does, with no writing promised', () => {
+  const messages = (locale: string) =>
+    JSON.parse(readFileSync(new URL(`../messages/${locale}.json`, import.meta.url), 'utf8')) as Record<string, string>;
+  const string = (xml: string, name: string) => new RegExp(`<string name="${name}">([^<]*)</string>`).exec(xml)?.[1];
+  for (const [folder, locale] of [['values', 'en'], ['values-pl', 'pl']] as const) {
+    const xml = read(`${folder}/strings.xml`);
+    expect(string(xml, 'widget_doubt_title')).toBe(messages(locale).safe_space_title);
+    const description = string(xml, 'widget_doubt_description') ?? '';
+    expect(description).not.toMatch(/write|doubt|pisa|wątpliw/i);
+    expect(description.length).toBeGreaterThan(0);
+  }
+  const provider = readFileSync(
+    new URL('../android/app/src/main/java/dev/engender/app/widgets/DoubtWidgetProvider.java', import.meta.url),
+    'utf8'
+  );
+  expect(provider).not.toMatch(/composer/i);
+});
+
 /* The doubt widget asked Android 12 and later for one cell, 57 dp at the
-   default portrait size. At that width "Log a doubt" wraps to four lines and
+   default portrait size. At that width the old label wrapped to four lines and
    pushes the button almost out of the cell, so its default is two cells. */
 it('places the doubt widget two cells wide by default', () => {
   const provider = attrsOf(/<appwidget-provider\b[^>]*>/.exec(read('xml/doubt_widget_info.xml'))![0]);

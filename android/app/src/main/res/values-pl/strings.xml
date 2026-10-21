@@ -16,8 +16,8 @@
         <item>Misgenderowanie</item>
         <item>Poprawne genderowanie</item>
     </string-array>
-    <string name="widget_doubt_title">Zapisz wątpliwość</string>
-    <string name="widget_doubt_description">Otwiera miejsce do pisania.</string>
+    <string name="widget_doubt_title">Bezpieczna przestrzeń</string>
+    <string name="widget_doubt_description">Oddech, dobre chwile, co pomaga i gdzie szukać wsparcia.</string>
     <string name="backup_failure_channel">Kopie zapasowe</string>
     <string name="backup_failure_description">Gdy zaplanowana kopia się nie uda i trzeba wybrać inny folder albo spróbować ponownie.</string>
     <string name="backup_failure_title">Zaplanowana kopia się nie udała</string>

@@ -1,8 +1,7 @@
 /* Time-capsule letters (phase 4 ticket 19, CONTEXT: "Milestone",
    "Countdown", "Anniversary"): a free-write note sealed until a chosen
-   unlock day. This area owns the text and its unlock day and nothing else
-   - the same "own record type" reasoning doubtJournal.ts gives for a
-   doubt entry - and stores no seal state of its own; letterStatus.ts
+   unlock day. This area owns the text and its unlock day and nothing else,
+   and stores no seal state of its own; letterStatus.ts
    derives sealed/unlocked from `unlockEpochDay` against today
    (ADR-0010). No second cryptographic layer: the row is protected
    exactly as every other journal row already is, by the journal's

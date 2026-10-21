@@ -449,24 +449,6 @@ export interface ArchiveAppointment {
   note: string | null;
 }
 
-/** One counterevidence entry as it read at the moment its snapshot was
-    saved (phase 4 ticket 11) - copied fields, not a reference to the
-    source entry's id, the same reasoning the snapshot table itself argues
-    (schema.ts). */
-interface ArchiveCounterevidenceEntry {
-  epochDay: number;
-  mood: number | null;
-  note: string;
-}
-
-export interface ArchiveCounterevidenceSnapshot {
-  id: string;
-  epochDay: number;
-  timestamp: number;
-  /** In the order the composer showed them. */
-  items: ArchiveCounterevidenceEntry[];
-}
-
 /** A "first noticed" marker against the open effect catalogue (phase 4
     ticket 07, widened phase 5 ticket 41). `effect` was already loosened
     from PersonalEffectType to a plain string before that type itself
@@ -851,7 +833,6 @@ export interface ArchiveJournal {
   appointments: ArchiveAppointment[];
   reminders: ArchiveReminder[];
   tallyEvents: ArchiveTallyEvent[];
-  counterevidenceSnapshots: ArchiveCounterevidenceSnapshot[];
   letters: ArchiveLetter[];
   voicePracticeTakes: ArchiveVoicePracticeTake[];
   roadmapChecks: ArchiveRoadmapCheck[];
@@ -1067,7 +1048,6 @@ const postAlphaSections = [
   'procedures',
   'appointments',
   'tallyEvents',
-  'counterevidenceSnapshots',
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',

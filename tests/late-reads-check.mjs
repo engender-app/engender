@@ -1,6 +1,6 @@
 /* The late-reads block of the browser tier on its own (last-audit UI
-   ticket 20): Good moments and Tryouts with their second read held, then
-   a save and deletes, every animation frame sampled. Prints each check,
+   ticket 20): Good moments with its pool read held and Tryouts with its
+   second read held, every animation frame sampled. Prints each check,
    then each run's tracked elements: the frame each first and last
    appeared on and the painted share (opacity times unclipped height) it
    had there, so a pass can be read as numbers rather than taken on
@@ -31,7 +31,7 @@ try {
         console.log(`  frames ${t.first}-${t.last} of ${t.end}: ${first} on the first, ${last} on the last, ${t.ramp} between`);
       }
     }
-    assert.equal(result.lateReads?.length, 12, JSON.stringify(result));
+    assert.equal(result.lateReads?.length, 6, JSON.stringify(result));
     for (const check of result.lateReads) {
       console.log(`${check.passed ? 'PASS' : 'FAIL'} ${theme}: ${check.name}`);
       assert.ok(check.passed, check.error);

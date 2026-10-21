@@ -21,11 +21,11 @@ public class DoubtWidgetProviderTest {
 
     @Test
     public void buttonLabelIsTheRealLabelWhenNotDisguised() {
-        assertEquals("Log a doubt", DoubtWidgetProvider.buttonLabel(false, "Log a doubt"));
+        assertEquals("Safe space", DoubtWidgetProvider.buttonLabel(false, "Safe space"));
     }
 
     @Test
     public void buttonLabelDropsTheLabelWhenDisguised() {
-        assertNull(DoubtWidgetProvider.buttonLabel(true, "Log a doubt"));
+        assertNull(DoubtWidgetProvider.buttonLabel(true, "Safe space"));
     }
 }

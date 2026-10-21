@@ -17,7 +17,7 @@
      after     the sections whose rows must already be in the tables before
                this one's can be written, because this one resolves a rowid
                against them. Not "children go last" as a general rule -
-               a hair photo and a counterevidence snapshot both own child
+               a hair photo and a hair-removal session both own child
                rows and depend on no other section, because they insert
                those children themselves
      travels   what of this area may leave in a structure file handed to
@@ -689,8 +689,8 @@ const SECTIONS = [
     read: read.readHairPhotos,
     apply: apply.applyHairPhotos
   }),
-  // Inserts its own photo children, the same reasoning `hairPhotos` and
-  // `counterevidenceSnapshots` give - it depends on no other section.
+  // Inserts its own photo children, the same reasoning `hairPhotos` gives -
+  // it depends on no other section.
   section({
     name: 'hairRemovalSessions',
     discard: ['DELETE FROM hair_removal_photo', 'DELETE FROM hair_removal_session'],
@@ -751,13 +751,6 @@ const SECTIONS = [
     identity: 'uuid',
     orderBy: 'epoch_day, id',
     columns: { uuid: 'id', epoch_day: 'epochDay', kind: 'kind' }
-  }),
-  section({
-    name: 'counterevidenceSnapshots',
-    discard: ['DELETE FROM doubt_snapshot_entry', 'DELETE FROM doubt_snapshot'],
-    travels: 'none',
-    read: read.readCounterevidenceSnapshots,
-    apply: apply.applyCounterevidenceSnapshots
   }),
 
   flat({
@@ -1128,7 +1121,7 @@ export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
 
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
-export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions'];
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions', 'counterevidenceSnapshots'];
 
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */
@@ -1186,13 +1179,12 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
     resolves a rowid against another's rows says so with `after`, so it
     inserts second and therefore clears first, before the rows it points at
     are gone; children inside one section are that section's own business and
-    are declared children-first. Today the reversal is what keeps the six
+    are declared children-first. Today the reversal is what keeps the five
     foreign keys that do not cascade (entry.presentation_id,
     milestone.procedure_id and tryout_id, personal_effect_type.category_key,
-    doubt_snapshot_entry.snapshot_id, revisit.entry_id) from firing: each
-    child's section (or, for doubt_snapshot_entry, its own statements) inserts
-    after its parent's, so it clears first, by
-    `after` for milestones and by declaration order for the rest. A seventh,
+    revisit.entry_id) from firing: each child's section inserts after its
+    parent's, so it clears first, by
+    `after` for milestones and by declaration order for the rest. A sixth,
     checklist.debrief_entry_id, sets null. The rest cascade, and every child
     table is emptied wholesale anyway. The one ordering a statement does
     depend on is inside a section: `presets` filters preset_dimension by a

@@ -396,8 +396,7 @@ public final class ReminderScheduler {
             String kind = route.substring("/?tally=".length());
             return "misgendered".equals(kind) || "correctly_gendered".equals(kind) ? route : null;
         }
-        // The doubt-entry widget: the existing /doubt route
-        // itself, already the composer plus counterevidence in one screen -
+        // The Safe space widget: the existing /doubt route itself -
         // no query parameter to carry, unlike the tally widget above.
         if (route.equals("/doubt")) return route;
         if (!route.startsWith("/entry/new/")) return null;

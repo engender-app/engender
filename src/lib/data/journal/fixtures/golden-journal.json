@@ -1747,20 +1747,6 @@
       "kind": "misgendered"
     }
   ],
-  "counterevidenceSnapshots": [
-    {
-      "id": "3850a53c-85a4-4691-ad8c-a9d6c6a981f2",
-      "epochDay": 20000,
-      "timestamp": 1792602847809,
-      "items": [
-        {
-          "epochDay": 19500,
-          "mood": 5,
-          "note": "euphoric at the appointment"
-        }
-      ]
-    }
-  ],
   "letters": [
     {
       "id": "e79b5f7f-7a48-4ae9-bc1a-9db7d2c9c60d",

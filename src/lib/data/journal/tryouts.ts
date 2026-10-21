@@ -1,6 +1,5 @@
 /* Tryouts (phase 4 ticket 16, widened past name/pronoun by phase 5 ticket
-   13, CONTEXT: "Tryout"). Two tables, one area - the same shape
-   doubtJournal.ts uses for its snapshots - since a tryout's own fields and
+   13, CONTEXT: "Tryout"). Two tables, one area, since a tryout's own fields and
    its photos belong to the same screen and nothing reads one without the
    other.
 

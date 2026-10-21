@@ -265,7 +265,7 @@ Journal writes reject inverted bounds independently, including episode ending
 and tryout adoption. Equal dates remain inclusive and null ends stay open.
 Reads and archive handling leave existing records unchanged.
 
-**Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Unrelated calls wait until the reserved transaction or snapshot ends. Transactions don't nest. Entry trash and restore, tryout adoption, procedure deletion and doubt-snapshot deletion commit their related writes together. A failed file cleanup after commit logs a warning and leaves reclamation to the boot sweep; the committed write still succeeds.
+**Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Unrelated calls wait until the reserved transaction or snapshot ends. Transactions don't nest. Entry trash and restore, tryout adoption and procedure deletion commit their related writes together. A failed file cleanup after commit logs a warning and leaves reclamation to the boot sweep; the committed write still succeeds.
 
 Ordinary `SELECT` calls with identical SQL and scalar bindings share an answer within a driver read generation. The connection keeps at most 128 answers and returns separate row objects to each caller. Writes and transaction or snapshot boundaries discard those answers; scoped reads always reach SQLite, and rejected reads can retry. This saves repeated worker and Android bridge calls when several Home readers ask for the same rows.
 
@@ -386,7 +386,6 @@ erDiagram
   checklist ||--o{ checklist_item : has
   hair_removal_session ||--o{ hair_removal_photo : has
   effect_category ||--o{ personal_effect_type : category
-  doubt_snapshot ||--o{ doubt_snapshot_entry : has
 ```
 
 The rest, without SQL edges:
@@ -540,7 +539,7 @@ flowchart TB
   end
   H --> C1 --> C2 --> Cn
   subgraph Body[decrypted body, codec v2]
-    PJ[payload JSON<br/>54 sections]
+    PJ[payload JSON<br/>56 sections]
     F1[file bytes, one by one]
   end
   Cn -.-> PJ
@@ -549,7 +548,7 @@ flowchart TB
 - **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before key derivation. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
 - **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2. New payloads carry `writer.app` from the build version and `writer.schema` from `LATEST_SCHEMA_VERSION`. The stamp is informational; rc.1 payloads without it still read.
 - **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](tests/released-formats.test.ts) opens Archives and migrates populated SQLite journals from released versions in [fixtures/released/](fixtures/released). It requires a fixture directory for every non-alpha `v*` tag and rejects an empty fixture set. CI fetches the release tags before running it.
-- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 54 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list starts with `doubtEntries`.
+- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 56 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list holds `doubtEntries` and `counterevidenceSnapshots`.
 
 Archive import admits at most 65,536 KiB of Argon2id memory, six iterations,
 one lane and a 32-byte output (ADR-0013). The released export profile remains
@@ -1011,7 +1010,7 @@ flowchart LR
 Motion follows mechanical rules that tests and frame sweeps can check:
 
 - **A state change moves** unless its ticket says why not (ADR-0078). Nothing should paint at its destination before it has travelled there, and no frame should have an element in neither place. In this codebase both of those count as a "yank".
-- **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight`, `disclose` and `collapse` in [motion/reveal.ts](src/lib/motion/reveal.ts), never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and [ReadGate.svelte](src/lib/components/kit/ReadGate.svelte), then crossfade. A screen whose rows need two reads gates on both, and a block that opens or closes its own height after arriving sits in a reserve below the gate rather than inside it, because the gate's `resize` clips growth it is still catching up with (Good moments' snapshot history).
+- **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight`, `disclose` and `collapse` in [motion/reveal.ts](src/lib/motion/reveal.ts), never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and [ReadGate.svelte](src/lib/components/kit/ReadGate.svelte), then crossfade. A screen whose rows need two reads gates on both, and a block that opens or closes its own height after arriving sits in a reserve below the gate rather than inside it, because the gate's `resize` clips growth it is still catching up with.
 - **One easing and one set of durations.** [motion/tokens.ts](src/lib/motion/tokens.ts) mirrors `--ease-out` and the `--dur-*` tokens for Svelte and WAAPI transitions, which CSS cannot reach.
 - **Android door changes** fade the live outgoing content over `--dur-fast` before the route swaps. [navigation/androidTabMotion.ts](src/lib/navigation/androidTabMotion.ts) leaves the field background in place for the incoming bridge and releases superseded routes just before their successor swaps. Sun rings close outermost first on the ring stagger. It retains no copy of journal content across a gate. Web and deep navigation use view transitions.
 - **Reduced motion.** [theme/base.css](src/lib/theme/base.css) clamps durations to 1ms under reduced motion or `html[data-a11y-motion]`. [tests/motion-system.test.ts](tests/motion-system.test.ts) requires every animation's end state to equal its element's resting state, so a clamped animation never strands an element.

@@ -5788,28 +5788,19 @@ try {
 }
 });
 
-/* Phase 8 features ticket 21, rewalked for phase 11 ticket 15: Safe Space's
-   way down to what a person put aside for themselves lands on the letters
-   screen's Open section, and that section holds the open letters and the
-   starred photographs both. The two halves that matter are the tap - a way
-   down that lands anywhere but the Open section is the failure this catches
-   and no unit test can - and the photographs actually being drawn there,
-   which is the half that moved.
+/* Phase 8 features ticket 21, rewalked for phase 11 ticket 15: the letters
+   screen's Open section holds the open letters and the starred photographs
+   both. Safe Space's row down to it went with functional audit ticket 09
+   (it switched the lit tab mid-crisis), so this walks to the section
+   directly and checks the half that moved here: the photographs actually
+   being drawn there.
 
    After "fill every feature", which is what puts unlocked letters and
    starred photos in the journal at all - the persona alone writes no
    letters, and the section is absent then on purpose. */
-await flow('safe space letters', async () => {
+await flow('letters open section', async () => {
 try {
-  /* Through the row rather than straight to the route (redesign ticket 47,
-     repointed by ticket 15): the tap is the half of this that could break
-     without any unit test noticing. */
-  await fresh('/doubt');
-  await page.locator('[data-list-row="moments"]').click();
-  await page.waitForURL('**/transition/letters**');
-  if (!page.url().includes('#opened')) {
-    throw new Error(`Safe Space's way down landed on ${page.url()}, not the Open section`);
-  }
+  await fresh('/transition/letters#opened');
 
   const openSection = page.locator('#opened');
   await openSection.waitFor({ timeout: 10000 });
@@ -5839,10 +5830,10 @@ try {
   }
 
   ok(
-    `Safe Space's way down lands on the Open section, which holds ${shown} unlocked letter(s) and ${photoCount} starred photo(s), and a card opens the whole letter`
+    `the letters screen's Open section holds ${shown} unlocked letter(s) and ${photoCount} starred photo(s), and a card opens the whole letter`
   );
 } catch (e) {
-  fail('safe space letters', e);
+  fail('letters open section', e);
 }
 });
 

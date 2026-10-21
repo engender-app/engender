@@ -13,18 +13,17 @@
      distressed reader arrived at, and it asked them to scroll past their
      own charts to reach the breathing exercise.
 
-     Nothing was cut. The screen keeps the breath, full bleed, and
-     everything it held is one tap down, in the order safeSpaceWays.ts
+     Nothing was cut then. The screen kept the breath, full bleed, and
+     everything it held went one tap down, in the order safeSpaceWays.ts
      states and explains. The sections themselves moved wholesale into
      /doubt/moments, /doubt/comfort, /doubt/evidence and /doubt/readings
      with their bounds, their handovers and their reasons intact.
 
-     Phase 11 ticket 15 folds two of those four away again, and the rows
-     stay: "Letters and photos" was a second copy of what /transition/letters
-     already showed in its Open section, and the readings were a Look back
-     page on this door. Both rows now point where the thing actually lives.
-     The five ways and their order do not move - what a person taps here is
-     what they tapped before.
+     Phase 11 ticket 15 folded two of those four into other screens, and
+     functional audit ticket 09 took their rows away too: "Letters and
+     photos" went to /transition/letters and the readings row to Look back,
+     so each tap switched the lit tab mid-crisis. Safe space keeps the
+     breath, good moments, the comfort list and the resources.
 
      Personal support is now linked above the breath, so it is reachable
      on a short screen without starting the exercise (UI/UX ticket 14). It
@@ -38,7 +37,7 @@
      whole point for a person who is not in a state to read. Same screen
      every time.
 
-     The breath paints without waiting for SQLite. Bounded pool and snapshot reads
+     The breath paints without waiting for SQLite. A bounded pool read
      decides whether Good moments has anything to open; until it answers,
      that optional row stays absent. Each way down owns its full reads. */
   import { m } from '$lib/paraglide/messages';
@@ -55,23 +54,13 @@
   import { navigating } from '$app/state';
 
   const evidenceQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 1));
-  const snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(1));
 
   /* The words for each way, beside the list rather than in it: the order is
      a fact about the product and lives in the module (ADR-0016 keeps
-     paraglide out of the node tier), and three of these four titles are the
-     section headings the person already read on the screen this replaces -
-     the same names, one tap further in.
-
-     The readings row is the one that no longer matches its destination's
-     own title, and deliberately: it lands on the Look back door, where the
-     good days are one reading among nine, so the row names the reading
-     rather than the door (ticket 15). */
+     paraglide out of the node tier). */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub?: () => string }> = {
     resources: { title: m.resources_title, sub: m.resources_row_sub },
-    moments: { title: m.safe_space_moments_title, sub: m.safe_space_moments_sub },
-    evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub },
-    readings: { title: m.safe_space_readings_row_title, sub: m.safe_space_readings_sub }
+    evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub }
   };
 </script>
 
@@ -86,7 +75,7 @@
 
   <ListCard role={roleAt(activeFlag.roles, 1)}>
     {#each SAFE_SPACE_WAYS as way, i (way.key)}
-      {#if way.key !== 'evidence' || evidenceQuery.rows.length || snapshotsQuery.rows.length}
+      {#if way.key !== 'evidence' || evidenceQuery.rows.length}
         <div class="rows-divide" transition:disclose={{ skip: way.key !== 'evidence' || navigating.to !== null }}>
           <ListRow
             key={way.key}

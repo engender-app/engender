@@ -3,7 +3,7 @@
    Phase 10 redesign ticket 47 split the screen these were written against.
    `/doubt` offers personal support before the breathing exercise; the statistics,
    the charts, the counterevidence pool, the snapshots, the letters, the
-   photos and the comfort list are each one tap down, on their own route.
+   photos and the comfort list were each one tap down, on their own route.
 
    So every assertion below still asks the same question and asks it of
    whichever file now holds the answer - which is the point of keeping them
@@ -20,7 +20,13 @@
    assertions about a tile grid and two charts are gone rather than
    repointed: that is a section that went from here, and this file's job is
    to say which. Both addresses still answer, as redirect stubs, and
-   tests/settings-route-redirects.test.ts is what holds them. */
+   tests/settings-route-redirects.test.ts is what holds them.
+
+   Functional audit ticket 09 is a cut, and says so here: the snapshots
+   went (their copy of an entry's note outlived the entry), and so did the
+   rows to the letters and to Look back, which switched the lit tab
+   mid-crisis. Safe space is the breath, good moments, the comfort list and
+   the resources. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -55,10 +61,8 @@ describe('what Safe Space is built from', () => {
     expect(safeSpace).not.toContain("from '$lib/components/EmptyState.svelte'");
     expect(safeSpace).not.toMatch(/<SectionTitle/);
     expect(safeSpace).not.toMatch(/<EmptyState/);
-    expect(evidence).toContain("from '$lib/components/kit/SectionHeading.svelte'");
     expect(safeSpace).toContain("from '$lib/components/kit/Notice.svelte'");
     expect(evidence).toContain("from '$lib/components/kit/ReadGate.svelte'");
-    expect(evidence).toContain("from '$lib/components/kit/ConfirmDeleteSheet.svelte'");
     expect(doubt).toContain("from '$lib/components/BreathingExercise.svelte'");
   });
 
@@ -92,36 +96,32 @@ describe('what Safe Space is built from', () => {
     expect(markup).toContain('<BreathingExercise');
   });
 
-  it('preserves the counterevidence pool and snapshot save/delete actions', () => {
+  it('reads the counterevidence pool live and keeps no copy of it (FA 09)', () => {
     expect(evidence).toContain('j.entries.counterevidencePool');
-    expect(evidence).toContain('j.doubtJournal.getSnapshots');
-    expect(evidence).toContain('journal.doubtJournal.saveSnapshot');
-    expect(evidence).toContain('journal.doubtJournal.deleteSnapshot');
-    expect(evidenceMarkup).toContain("confirmAttrs={{ 'data-confirm-delete-doubt-snapshot': '' }}");
+    expect(safeSpace).not.toMatch(/doubtJournal|saveSnapshot|getSnapshots/);
+    expect(evidenceMarkup).not.toContain('data-confirm-delete-doubt-snapshot');
+  });
+
+  it('offers no row that leaves for another door (FA 09)', () => {
+    expect(doubt).not.toMatch(/safe_space_moments|safe_space_readings/);
+    expect(SAFE_SPACE_WAYS.map((w) => w.key)).toEqual(['resources', 'evidence']);
   });
 
   it('reads section colors from activeFlag shell roles', () => {
-    for (const source of [doubt, comfort, evidence]) {
+    for (const source of [doubt, comfort]) {
       expect(source).toContain("from '$lib/theme/activeFlag.svelte'");
       expect(source).toContain("from '$lib/theme/roles'");
     }
   });
 
-  /* Ticket 15's bound. Twenty entry cards ran this screen to 3990px and
-     put the save control at the bottom of it, so the one thing a person
-     came here to do was twenty cards away. Six is what fits above it. */
-  it('opens on six of the pool with the save under them, and holds the rest behind one control', () => {
+  /* Ticket 15's bound. Twenty entry cards ran this screen to 3990px. Six
+     is what fits in a viewport. */
+  it('opens on six of the pool and holds the rest behind one control', () => {
     // Split by whole days since phase 14 ticket 18 (previewWholeDays has
     // its own test in counterevidence.test.ts).
     expect(evidence).toContain('previewWholeDays(entryDayGroups(counterevidence))');
     expect(COUNTEREVIDENCE_PREVIEW).toBeLessThan(COUNTEREVIDENCE_LIMIT);
-    // The save sits between the six and the control, which is the whole
-    // point of the bound - not under all twenty, as it was.
-    expect(evidenceMarkup).toMatch(
-      /<EntryDays groups={shown} level=\{2\} \/>[\s\S]*?onclick={saveSnapshot}[\s\S]*?data-evidence-see-all/
-    );
-    // And it still saves the whole pool, not the six that are showing.
-    expect(evidence).toContain('counterevidence.map((e) => ({');
+    expect(evidenceMarkup).toMatch(/<EntryDays groups={shown} level=\{2\} \/>[\s\S]*?data-evidence-see-all/);
   });
 
   it('discloses the rest in place rather than sending anyone to a second screen', () => {

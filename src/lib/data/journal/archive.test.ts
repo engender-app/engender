@@ -126,10 +126,6 @@ async function populated() {
     recordedEpochDay: 19000
   });
 
-  const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
-    { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
-  ]);
-
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
     label: 'Alex',
@@ -177,7 +173,6 @@ async function populated() {
     cycleEvent,
     journalingPause,
     personalEffect,
-    counterevidenceSnapshot,
     tryout,
     feltSense,
     milestoneFeltSense,
@@ -378,21 +373,6 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       endEpochDay: null,
       endReason: null,
       hidden: false
-    }
-  ]);
-});
-
-test('a counterevidence snapshot travels with its items copied in rather than referenced', async () => {
-  const { journal, counterevidenceSnapshot } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
-
-  assert.deepEqual(snapshot.journal.counterevidenceSnapshots, [
-    {
-      id: counterevidenceSnapshot,
-      epochDay: 20000,
-      timestamp: snapshot.journal.counterevidenceSnapshots[0].timestamp,
-      items: [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]
     }
   ]);
 });
@@ -941,9 +921,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Read once for the file manifest, the same reason hair_photo above is
   // hand-written.
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
-  // Owns a child (doubt_snapshot_entry) below.
-  doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
-  doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
   // Identified by a pack/goal pair (applyRoadmapChecks), not by one column
   // - a compound identity a descriptor's single `identity` field cannot
   // name. No uuid: a tick is named by its pack and goal keys, which mean

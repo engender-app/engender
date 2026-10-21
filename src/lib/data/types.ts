@@ -387,29 +387,6 @@ export interface TallyEvent {
   kind: TallyKind;
 }
 
-/** One of the user's own euphoria-tagged entries, copied into a
-    CounterevidenceSnapshot rather than referenced by id - see the
-    ADR-0010 exception argued in schema.ts. Deliberately thinner
-    than Entry: a snapshot exists to be reread, not re-edited, so it
-    carries only what makes the counterevidence legible - the day and what
-    was written - not its tags or photos. */
-export interface CounterevidenceEntry {
-  epochDay: number;
-  mood: number | null;
-  note: string;
-}
-
-/** A one-tap capture of the counterevidence a doubt entry's composer was
-    showing at the moment it was saved (CONTEXT: "Counterevidence
-    snapshot"), so rereading it later shows exactly what convinced someone
-    then rather than whatever their history looks like now. */
-export interface CounterevidenceSnapshot {
-  id: string;
-  epochDay: number;
-  timestamp: number;
-  items: CounterevidenceEntry[];
-}
-
 /** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
     "Comfort list"): who to text, which walk, which playlist - entirely
     their own words, with nothing shipped by the app behind it, the same
@@ -468,9 +445,7 @@ export interface TryoutPhoto {
     "Felt-sense entry"). Watching that feeling change over the tryout's
     lifespan is the point of tracking it, so this is its own addressable
     row rather than a single rating fixed on the tryout at creation - the
-    same reasoning that gives DosePause its own uuid where
-    doubt_snapshot_entry, a frozen detail row nobody addresses alone, has
-    none. `mood` reuses the app's one five-level mood scale (CONTEXT:
+    same reasoning that gives DosePause its own uuid. `mood` reuses the app's one five-level mood scale (CONTEXT:
     "Mood") rather than inventing a second one for the same kind of
     judgement.
 

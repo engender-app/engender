@@ -46,7 +46,7 @@ public class DoubtWidgetProviderRenderTest {
         View widget = inflate();
 
         assertEquals(View.VISIBLE, widget.findViewById(R.id.widget_doubt_header).getVisibility());
-        assertEquals("Log a doubt", widget.findViewById(R.id.widget_doubt_button).getContentDescription());
+        assertEquals("Safe space", widget.findViewById(R.id.widget_doubt_button).getContentDescription());
     }
 
     @Test

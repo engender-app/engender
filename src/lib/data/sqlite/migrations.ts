@@ -56,5 +56,15 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
   { version: 94, sql: CLOSED_LISTS_REBUILD },
   /* Functional audit ticket 10: saved questions are cut. Rows are dropped,
      not converted, and restore skips the archive section by name. */
-  { version: 95, sql: 'DROP TABLE saved_question;' }
+  { version: 95, sql: 'DROP TABLE saved_question;' },
+  /* Functional audit ticket 09: counterevidence snapshots are cut. They
+     copied a good-moment entry's note with no link back, so the text
+     outlived the entry once it was deleted. Rows are dropped, not
+     converted; archives that still carry the section skip it on restore
+     (DROPPED_ARCHIVE_SECTION_NAMES). The child goes first so no foreign key
+     points at a dropped parent. */
+  { version: 96, sql: `
+DROP TABLE doubt_snapshot_entry;
+DROP TABLE doubt_snapshot;
+` }
 ];

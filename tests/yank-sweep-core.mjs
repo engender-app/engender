@@ -269,8 +269,10 @@ const SCENES = [
   { name: 'notice-dismiss', at: '/', act: '[data-backup-notice] [data-notice-dismiss]', when: 'persona', reseed: true, after: {"selector": "[data-backup-notice]", "absent": true}, is: 'a notice dismissed, its height closing' },
   /* Redesign ticket 47: Safe space opens on the breath and everything else
      is one tap down, so the tap off that screen is the gesture the ticket
-     added and the one place a person mid-crisis meets a navigation. */
-  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, after: {"route": "/transition/letters"}, is: 'a way down from the breath' },
+     added and the one place a person mid-crisis meets a navigation. The
+     letters row it used to tap went with FA 09; the resources row is the
+     way down every journal has. */
+  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="resources"]', nav: true, after: {"route": "/support/resources"}, is: 'a way down from the breath' },
 
   /* Transition screens (ticket 108): buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the milestone template picker sheet rising' },
@@ -2085,7 +2087,7 @@ const HYDRATION_SCENES = [
      screen it points at under the wrong name - and both of those screens
      are already swept, as `letters` and `stats` below. */
   { name: 'doubt-comfort', at: '/doubt/comfort', is: "Safe space's comfort list" },
-  { name: 'doubt-evidence', at: '/doubt/evidence', is: 'the counterevidence check and its snapshots' },
+  { name: 'doubt-evidence', at: '/doubt/evidence', is: 'Good moments, the counterevidence pool' },
   { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
   /* Calendar tab */
   { name: 'calendar', at: '/calendar', is: 'the heat map month' },
