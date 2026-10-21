@@ -50,6 +50,7 @@
   import { RETIRED_PERSONAL_EFFECT_KEYS } from '$lib/data/vocabulary/retiredEffects';
   import { fmtDay } from '$lib/data/dates';
   import {
+    crossesCalendarYear,
     todayEpochDay,
     epochDayFromDateInputValue,
     epochDayFromDateInputValueOrToday,
@@ -269,7 +270,11 @@
   function sideEffectSpan(effect: SideEffect): string {
     if (effect.resolvedEpochDay === null) return m.side_effect_since({ date: longDay(effect.epochDay) });
     if (effect.resolvedEpochDay === effect.epochDay) return longDay(effect.epochDay);
-    return m.side_effect_span({ from: longDay(effect.epochDay), to: longDay(effect.resolvedEpochDay) });
+    /* The year once when both ends share it, so a span fits on one line. */
+    const from = crossesCalendarYear(effect.epochDay, effect.resolvedEpochDay)
+      ? longDay(effect.epochDay)
+      : fmtDay(effect.epochDay, { day: 'numeric', month: 'long' });
+    return m.side_effect_span({ from, to: longDay(effect.resolvedEpochDay) });
   }
 
   /* Ticket 11's second entry point into the appointment prep list: a
