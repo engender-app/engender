@@ -804,7 +804,8 @@
       "id": "67ee9f7b-27f6-4184-8136-c001df398d46",
       "name": "hot flashes",
       "severity": 3,
-      "epochDay": 20000
+      "epochDay": 20000,
+      "resolvedEpochDay": 20030
     }
   ],
   "cycleEvents": [
@@ -1451,22 +1452,16 @@
     {
       "id": "a5d1339d-d5b6-4316-8453-a24c7fae9aa1",
       "epochDay": 19200,
-      "scale": "norwood_hamilton",
-      "stage": "2a",
-      "description": ""
+      "description": "Norwood-Hamilton 2A"
     },
     {
       "id": "2421db7c-c6cc-437e-b23d-4dd08dabf907",
       "epochDay": 19230,
-      "scale": "sinclair",
-      "stage": "2",
-      "description": ""
+      "description": "Sinclair 2"
     },
     {
       "id": "b84ef27c-8350-4cfa-a3d4-9ab4eb3446b7",
       "epochDay": 19260,
-      "scale": "other",
-      "stage": "",
       "description": "thinner all over the top"
     }
   ],

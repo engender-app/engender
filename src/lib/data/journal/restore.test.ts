@@ -103,7 +103,7 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.reminders.upsertReminder({
@@ -435,7 +435,7 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
 
 test('a side effect left blank survives an export/import round trip as null, not zero or three', async () => {
   const source = await device();
-  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000 });
+  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000, resolvedEpochDay: null });
 
   const target = await device();
   await target.journal.archive.merge(await exported(source.journal));
@@ -1080,7 +1080,33 @@ test('a staging from an archive written before there were two scales restores as
   });
 
   assert.deepEqual(await target.journal.hairProgress.getStages(), [
-    { id: 'legacy-staging', epochDay: 19200, scale: 'norwood_hamilton', stage: '3a', description: '' }
+    { id: 'legacy-staging', epochDay: 19200, description: 'Norwood-Hamilton 3A' }
+  ]);
+});
+
+/* FA 23: staging is free text now. An archive written before that still
+   restores, every graded row as the text the migration would give it. */
+test('a graded staging from an older archive restores as the text it read as', async () => {
+  const target = await device();
+
+  await target.journal.archive.replace({
+    journal: {
+      ...emptyArchiveJournal(),
+      hairStages: [
+        { id: 'nh', epochDay: 19200, scale: 'norwood_hamilton', stage: '3v', description: '' },
+        { id: 'si', epochDay: 19201, scale: 'sinclair', stage: '2', description: '' },
+        { id: 'ot', epochDay: 19202, scale: 'other', stage: '', description: 'thinner on top' },
+        { id: 'ft', epochDay: 19203, description: 'my own words' }
+      ]
+    },
+    files: (async function* () {})()
+  });
+
+  assert.deepEqual(await target.journal.hairProgress.getStages(), [
+    { id: 'nh', epochDay: 19200, description: 'Norwood-Hamilton 3V' },
+    { id: 'si', epochDay: 19201, description: 'Sinclair 2' },
+    { id: 'ot', epochDay: 19202, description: 'thinner on top' },
+    { id: 'ft', epochDay: 19203, description: 'my own words' }
   ]);
 });
 

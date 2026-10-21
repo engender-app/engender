@@ -233,6 +233,9 @@ interface ArchiveSideEffect {
   name: string;
   severity: number | null;
   epochDay: number;
+  /** Absent in an archive written before functional audit ticket 23, which
+      reads as ongoing. */
+  resolvedEpochDay?: number | null;
 }
 
 interface ArchiveCycleEvent {
@@ -438,11 +441,14 @@ export interface ArchivePersonalEffectType {
     Norwood-Hamilton stagings and nothing else, since that was the only
     vocabulary there was, and applyHairStages reads a missing `scale` as
     exactly that rather than dropping the row. */
+/** `scale` and `stage` come only from an archive written before functional
+    audit ticket 23, when staging was a grade on a published scale; restore
+    turns such a row into text (hairStageScales.ts). */
 interface ArchiveHairStage {
   id: string;
   epochDay: number;
   scale?: string;
-  stage: string;
+  stage?: string;
   description?: string;
 }
 

@@ -66,6 +66,7 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
+  import { offeredEffectTypes } from '$lib/data/effectPicker';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
@@ -1453,7 +1454,7 @@
   <EffectPickerSheet
     bind:open={effectSheetOpen}
     {role}
-    effects={vocabulary.visiblePersonalEffectTypes}
+    effects={offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(recordedEffects.keys()))}
     categoryOrder={vocabulary.effectCategories.map((category) => category.key)}
     drugs={activeEpisodes.map((episode) => episode.drug)}
     chosen={entryDraft.effectMarkers.map((marker) => marker.effect)}

@@ -151,7 +151,7 @@ export async function seedCompleteArchiveJournal(
   });
   await journal.taper.upsertSession({ epochDay: 19955, note: 'first one, went fine' });
   await journal.taper.upsertSession({ epochDay: 19956, note: '' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: 20030 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
 
@@ -184,16 +184,12 @@ export async function seedCompleteArchiveJournal(
   await journal.personalEffects.setEffectTypeHidden('improved_smell_feminizing', true);
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.personalEffects.upsertMarker({ effect: customEffect.key, firstNoticedEpochDay: 19190 });
-  // One staging per scale, including the escape hatch: the scale column is
-  // what keeps two published classifications from being read as one series
-  // (ticket 33), and a fixture with only one scale in it could not notice a
-  // restore that lost it.
-  await journal.hairProgress.upsertStage({ epochDay: 19200, scale: 'norwood_hamilton', stage: '2a' });
-  await journal.hairProgress.upsertStage({ epochDay: 19230, scale: 'sinclair', stage: '2' });
+  // Free text since functional audit ticket 23, including the text a staging
+  // migrated from each published scale reads as.
+  await journal.hairProgress.upsertStage({ epochDay: 19200, description: 'Norwood-Hamilton 2A' });
+  await journal.hairProgress.upsertStage({ epochDay: 19230, description: 'Sinclair 2' });
   await journal.hairProgress.upsertStage({
     epochDay: 19260,
-    scale: 'other',
-    stage: '',
     description: 'thinner all over the top'
   });
   await journal.hairProgress.addPhoto(19200, { full: bytes('hairline'), thumb: bytes('ht') });

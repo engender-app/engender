@@ -183,7 +183,7 @@
       }
     ],
     taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],
-    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY }],
+    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY, resolvedEpochDay: null }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
     cycleEvents: [{ id: 'c1', kind: 'spotting', epochDay: DAY }],
     tallyEvents: [
@@ -198,7 +198,7 @@
     feltSense: [
       { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { kind: 'tryout', id: 'ty1', name: 'Robin' } }
     ],
-    hairStages: [{ id: 'hs1', epochDay: DAY, scale: 'norwood_hamilton', stage: '3', description: '' }],
+    hairStages: [{ id: 'hs1', epochDay: DAY, description: 'Crown a little thinner' }],
     hairPhotos: [
       { id: 'hp1', epochDay: DAY, fileName: noFile() },
       { id: 'hp2', epochDay: DAY, fileName: noFile() },

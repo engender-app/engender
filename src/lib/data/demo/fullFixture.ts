@@ -156,10 +156,19 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   }
 
   const trackingStart = today - 365;
-  const hairStages = ['1', '2', '2a', '3', '3v', '3a', '4', '4a'];
+  const hairStages = [
+    'Hairline where it was',
+    'Temples a little further back',
+    'Temples the same, crown fuller',
+    'Thinner at the crown in bright light',
+    'Crown about the same',
+    'Parting looks narrower',
+    'Temples filling in',
+    'No change I can see'
+  ];
   let hairPhotoCount = 0;
   for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
-    await journal.hairProgress.upsertStage({ epochDay: day, scale: 'norwood_hamilton', stage: hairStages[i % hairStages.length] });
+    await journal.hairProgress.upsertStage({ epochDay: day, description: hairStages[i % hairStages.length] });
     /* One photograph per staging, not a 40% roll. The roll was seeded, so
        it came up the same way every time and that way was never: the demo
        journal had stagings and no fixed-position photographs at all, which
@@ -315,10 +324,19 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     await journal.cycleEvents.upsertCycleEvent({ kind: pick(['period_occurred', 'spotting', 'nothing_this_month'] as const), epochDay: day });
   }
 
-  // Side effects: a handful spread over the last two years.
+  // Side effects: a handful spread over the last two years. The older ones
+  // resolved a few weeks in, the two newest still going on (functional
+  // audit ticket 23), so both states show. No extra rolls: the seeded
+  // sequence after this stays where it was.
   const sideEffectNames = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
   for (let i = 0; i < 8; i++) {
-    await journal.sideEffects.upsertSideEffect({ name: pick(sideEffectNames), severity: between(1, 5), epochDay: today - 730 + Math.floor((i / 8) * 730) });
+    const epochDay = today - 730 + Math.floor((i / 8) * 730);
+    await journal.sideEffects.upsertSideEffect({
+      name: pick(sideEffectNames),
+      severity: between(1, 5),
+      epochDay,
+      resolvedEpochDay: i < 6 ? epochDay + 14 + i * 3 : null
+    });
   }
 
   // Surgery: one procedure, dated in the past, with consults, notes and a

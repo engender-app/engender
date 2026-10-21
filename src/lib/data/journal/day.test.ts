@@ -53,7 +53,7 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
     snrDb: null
   });
   await journal.taper.upsertSession({ epochDay });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay, resolvedEpochDay: null });
   await journal.personalEffects.upsertMarker({ effect: 'skin_softening', firstNoticedEpochDay: epochDay });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay });
   await journal.tally.log({ kind: 'correctly_gendered', epochDay });
@@ -68,7 +68,7 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
   await journal.feltSense.add({ tryoutId }, { epochDay, mood: 5, note: 'it fit' });
   await journal.tryouts.addPhoto(tryoutId, epochDay, photo());
 
-  await journal.hairProgress.upsertStage({ epochDay, scale: 'other', stage: '', description: 'thinner at the front' });
+  await journal.hairProgress.upsertStage({ epochDay, description: 'thinner at the front' });
   await journal.hairProgress.addPhoto(epochDay, photo());
   await journal.hairRemoval.upsertSession({ epochDay, area: 'chin', method: 'laser', painRating: 3 });
 

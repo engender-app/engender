@@ -365,10 +365,8 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note']
   }),
-  /* Only the free-written description, which is what the 'other' scale
-     records. A graded stage is a published scale's own grade and its wording
-     comes from the message catalogue above this seam, like a built-in tag's
-     label (ADR-0016). */
+  /* The staging's own words (functional audit ticket 23), including the
+     scale-and-grade text an older staging was migrated to. */
   area({
     key: 'hairStages',
     covers: ['hairStages'],

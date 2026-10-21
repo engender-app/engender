@@ -86,7 +86,8 @@ for (const mode of ['merge', 'replace'] as const) {
       // The snapshot below reads with this build's sections. The legacy shape
       // under test is the stock table's, so the columns later migrations add
       // to other archived tables are added here (v93: drug_class; v100: the
-      // appointment's referred-on day and its status updates).
+      // appointment's referred-on day and its status updates; v101: a side
+      // effect's resolved day).
       await sourceDb.exec("ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other'");
       // And ticket 47's two stock columns (v99), for the same reason.
       await sourceDb.exec('ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER');
@@ -94,6 +95,7 @@ for (const mode of ['merge', 'replace'] as const) {
       await sourceDb.exec('ALTER TABLE appointment ADD COLUMN referred_epoch_day INTEGER');
       await sourceDb.exec(`CREATE TABLE appointment_status (id INTEGER PRIMARY KEY, uuid TEXT NOT NULL UNIQUE,
         appointment_id INTEGER NOT NULL, epoch_day INTEGER NOT NULL, status TEXT NOT NULL, updated_at INTEGER NOT NULL)`);
+      await sourceDb.exec('ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER');
       await source.reconcileBuiltIns();
       for (const [id, drug, quantity, day, updated] of [
         ['first', firstDrug, 7, 20010, 200], ['last', lastDrug, 59, 20000, 100]

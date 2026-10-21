@@ -516,27 +516,27 @@ test('a provider is stored as typed, with no list and no normalization', async (
 
 test('a side effect round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200 });
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200, resolvedEpochDay: null });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100, resolvedEpochDay: null });
 
   const effects = await journal.sideEffects.getSideEffects();
   assert.deepEqual(effects.map((e) => e.epochDay), [100, 200]);
-  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100 });
+  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100, resolvedEpochDay: null });
 });
 
 test('severity round-trips as null when left blank, sorting and reading like any other side effect', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100, resolvedEpochDay: null });
 
   const [effect] = await journal.sideEffects.getSideEffects();
-  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100 });
+  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100, resolvedEpochDay: null });
 });
 
 test('a range read returns only the days it was asked for', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150 });
-  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200 });
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200, resolvedEpochDay: null });
 
   const inRange = await journal.sideEffects.getSideEffectsInRange(120, 180);
   assert.deepEqual(inRange.map((e) => e.name), ['headache']);
@@ -544,13 +544,13 @@ test('a range read returns only the days it was asked for', async () => {
 
 test('side effects update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
 
-  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100, resolvedEpochDay: null });
   assert.equal((await journal.sideEffects.getSideEffects())[0].severity, 3);
 
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1 }),
+    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1, resolvedEpochDay: null }),
     /unknown side effect/
   );
 
@@ -562,17 +562,40 @@ test('side effects update by id, throw on unknown ids and delete idempotently', 
 test('a severity outside the 1-5 scale is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
+});
+
+/* Functional audit ticket 23: a side effect is ongoing until the person
+   says it resolved, and the resolution can be taken back. */
+test('a side effect starts ongoing, can be marked resolved and back', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, null);
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: 130 });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, 130);
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, null);
+});
+
+test('a side effect cannot resolve before it began', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 99 }),
+    /resolved before it began/
+  );
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 100 });
 });
 
 /* cycle events (phase 5 ticket 03) */
@@ -727,126 +750,39 @@ test('clearing a marker is the undo for a mistaken date, and is idempotent', asy
   assert.deepEqual(await journal.personalEffects.getMarkers(), []);
 });
 
-/* hair progress (phase 4 ticket 09) */
+/* hair progress (phase 4 ticket 09). Staging is the person's own words
+   since functional audit ticket 23: no published scale and no grade. */
 
-const nh = (epochDay: number, stage: string) => ({ epochDay, scale: 'norwood_hamilton', stage });
-
-test('a staging round-trips with no anchor reference, ordered by day', async () => {
+test('a staging round-trips as free text with no anchor reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage(nh(200, '3v'));
-  const id = await journal.hairProgress.upsertStage(nh(100, '2'));
+  await journal.hairProgress.upsertStage({ epochDay: 200, description: 'crown thinner' });
+  const id = await journal.hairProgress.upsertStage({ epochDay: 100, description: 'hairline the same' });
 
   const stages = await journal.hairProgress.getStages();
   assert.deepEqual(stages.map((s) => s.epochDay), [100, 200]);
-  assert.deepEqual(stages[0], { id, epochDay: 100, scale: 'norwood_hamilton', stage: '2', description: '' });
+  assert.deepEqual(stages[0], { id, epochDay: 100, description: 'hairline the same' });
 });
 
 test('re-staging adds a row rather than replacing the last one - it is a series', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage(nh(100, '2'));
-  await journal.hairProgress.upsertStage(nh(200, '3'));
+  await journal.hairProgress.upsertStage({ epochDay: 100, description: 'a' });
+  await journal.hairProgress.upsertStage({ epochDay: 200, description: 'b' });
 
   assert.equal((await journal.hairProgress.getStages()).length, 2);
 });
 
 test('stagings update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage(nh(100, '2'));
+  const id = await journal.hairProgress.upsertStage({ epochDay: 100, description: 'thin at the temples' });
 
-  await journal.hairProgress.upsertStage({ id, ...nh(100, '2a') });
-  assert.equal((await journal.hairProgress.getStages())[0].stage, '2a');
+  await journal.hairProgress.upsertStage({ id, epochDay: 100, description: 'thin at the temples, crown fine' });
+  assert.equal((await journal.hairProgress.getStages())[0].description, 'thin at the temples, crown fine');
 
-  await assert.rejects(journal.hairProgress.upsertStage({ id: 'nope', ...nh(1, '1') }), /unknown hair stage/);
+  await assert.rejects(journal.hairProgress.upsertStage({ id: 'nope', epochDay: 1, description: 'x' }), /unknown hair stage/);
 
   await journal.hairProgress.deleteStage(id);
   await journal.hairProgress.deleteStage(id); // idempotent
   assert.deepEqual(await journal.hairProgress.getStages(), []);
-});
-
-test('an unrecognized stage is refused before it reaches the schema', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await assert.rejects(journal.hairProgress.upsertStage(nh(100, 'not_a_real_stage')));
-});
-
-/* ticket 33: a second scale, and a pattern neither describes */
-
-test('a staging keeps the scale it was recorded against', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage(nh(100, '3'));
-  await journal.hairProgress.upsertStage({ epochDay: 200, scale: 'sinclair', stage: '3' });
-
-  const stages = await journal.hairProgress.getStages();
-  // Both say '3' and neither means what the other means.
-  assert.deepEqual(
-    stages.map((s) => [s.scale, s.stage]),
-    [
-      ['norwood_hamilton', '3'],
-      ['sinclair', '3']
-    ]
-  );
-});
-
-test('a grade from the wrong scale is refused, though it is a grade somewhere', async () => {
-  const { journal } = await journalWithBuiltIns();
-
-  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'sinclair', stage: '3v' }), /sinclair/);
-  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'ludwig', stage: 'ii' }), /ludwig/);
-});
-
-test("a pattern neither scale describes is recorded in the person's own words", async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage({
-    epochDay: 100,
-    scale: 'other',
-    stage: '',
-    description: 'thinner all over the top, parting unchanged'
-  });
-
-  assert.deepEqual((await journal.hairProgress.getStages())[0], {
-    id,
-    epochDay: 100,
-    scale: 'other',
-    stage: '',
-    description: 'thinner all over the top, parting unchanged'
-  });
-});
-
-test('neither of these, with nothing written down, is still a record', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: 100, scale: 'other', stage: '' });
-
-  assert.equal((await journal.hairProgress.getStages())[0].description, '');
-});
-
-test("changing a staging's scale keeps the stagings recorded under the other one", async () => {
-  const { journal } = await journalWithBuiltIns();
-  const kept = await journal.hairProgress.upsertStage(nh(100, '3'));
-  const moving = await journal.hairProgress.upsertStage(nh(200, '4'));
-
-  await journal.hairProgress.upsertStage({ id: moving, epochDay: 200, scale: 'sinclair', stage: '2' });
-
-  const stages = await journal.hairProgress.getStages();
-  assert.deepEqual(
-    stages.map((s) => [s.id, s.scale, s.stage]),
-    [
-      [kept, 'norwood_hamilton', '3'],
-      [moving, 'sinclair', '2']
-    ]
-  );
-});
-
-test('prose does not survive a move back onto a graded scale', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage({
-    epochDay: 100,
-    scale: 'other',
-    stage: '',
-    description: 'thinner all over'
-  });
-
-  await journal.hairProgress.upsertStage({ id, ...nh(100, '3'), description: 'thinner all over' });
-
-  assert.equal((await journal.hairProgress.getStages())[0].description, '');
 });
 
 test('a hair photo writes both files and its own row, distinct from the shared photo table', async () => {

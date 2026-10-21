@@ -98,7 +98,7 @@ const seed = (what, arg) => page.evaluate(async ({ what, arg }) => {
   const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
   const { todayEpochDay } = await import('/src/lib/data/epochDay.ts');
   const today = todayEpochDay();
-  if (what === 'side effect') return journal.sideEffects.upsertSideEffect({ name: 'Probe side effect', severity: null, epochDay: today });
+  if (what === 'side effect') return journal.sideEffects.upsertSideEffect({ name: 'Probe side effect', severity: null, epochDay: today, resolvedEpochDay: null });
   if (what === 'lab result') return journal.labs.upsertResult({ epochDay: today, analyte: 'Probe analyte', value: 1.5, unit: 'nmol/L' });
   if (what === 'procedure') return journal.procedures.upsertProcedure({ name: 'Probe dilation procedure', surgeryEpochDay: today - 30, kind: 'vaginoplasty' });
   if (what === 'no procedure') return journal.procedures.deleteProcedure(arg);

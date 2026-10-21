@@ -49,7 +49,7 @@ async function populated() {
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
   const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   const journalingPause = await journal.journalingPauses.upsertPause({ startEpochDay: 19500, endEpochDay: 19510 });
   const personalEffect = await journal.personalEffects.upsertMarker({
@@ -313,7 +313,7 @@ test('milestones, lab results, tally events, side effects, cycle events, journal
   ]);
   assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
-    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
+    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null }
   ]);
   assert.deepEqual(snapshot.journal.cycleEvents, [{ id: cycleEvent, kind: 'spotting', epochDay: 20000 }]);
   assert.deepEqual(snapshot.journal.journalingPauses, [
@@ -552,6 +552,29 @@ test('a lead time and doses per unit travel, and a restore keeps them', async ()
   const restored = (await target.stock.getEntries()).find((s) => s.id === stock);
   assert.equal(restored?.leadTimeDays, 21);
   assert.equal(restored?.dosesPerUnit, 5);
+});
+
+test('a side effect travels ongoing or resolved, and an older archive reads as ongoing', async () => {
+  const { journal } = await populated();
+  const resolved = await journal.sideEffects.upsertSideEffect({ name: 'acne', severity: 2, epochDay: 19000, resolvedEpochDay: 19090 });
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.sideEffects.find((e) => e.id === resolved)?.resolvedEpochDay, 19090);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const days = async (j: typeof target) => Object.fromEntries((await j.sideEffects.getSideEffects()).map((e) => [e.name, e.resolvedEpochDay]));
+  assert.deepEqual(await days(target), { 'hot flashes': null, acne: 19090 });
+
+  const older = {
+    ...snapshot.journal,
+    sideEffects: snapshot.journal.sideEffects.map(({ resolvedEpochDay: _resolved, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await days(fromOlder), { 'hot flashes': null, acne: null });
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {

@@ -672,6 +672,9 @@ export interface SideEffect {
       grade and does not require one (phase 8 features ticket 23). */
   severity: number | null;
   epochDay: number;
+  /** The day it resolved, or null while it is ongoing (functional audit
+      ticket 23). Never before `epochDay`. */
+  resolvedEpochDay: number | null;
 }
 
 /** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,
@@ -846,33 +849,19 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/* A dated series like Measurement (ticket 08), not a single replaced value
-   like PersonalEffect: a person re-stages over time to track progression,
-   never answering "what is it now" in place of what it was before. No
-   episode or anchor reference: what this is read against is resolved above
-   this seam (hairAnchor.ts), the same reason Measurement and PersonalEffect
-   carry none either.
+/* A dated series, not a single replaced value like PersonalEffect: a person
+   re-stages over time to track progression, never answering "what is it
+   now" in place of what it was before. No episode or anchor reference: what
+   this is read against is resolved above this seam (hairAnchor.ts).
 
-   `scale` and `stage` are plain strings rather than literal unions here,
-   the same treatment HairRemovalSession.area gets: the pair is validated
-   against hairStageScales.ts's closed vocabularies above the schema seam
-   (journal/hairProgress.ts), and the schema's own CHECK refuses a
-   mismatched pair on a write or a restore alike (schema.ts). The
-   two are never separated - '1' through '5' are grade codes on both
-   published scales and mean different things on each, so a stage without
-   its scale says nothing (phase 5 ticket 33). */
+   The person's own words since functional audit ticket 23. A staging made
+   against Norwood-Hamilton or Sinclair before that reads as the scale and
+   grade it named (hairStageScales.ts). */
 export interface HairStage {
   id: string;
   epochDay: number;
-  /** Which published scale `stage` is a grade of, or 'other' for a pattern
-      neither describes. */
-  scale: string;
-  /** The grade, empty exactly when `scale` is 'other' - that one publishes
-      no grades. */
-  stage: string;
-  /** What the person wrote about a pattern neither scale describes. Empty
-      unless `scale` is 'other', and it may be empty then too: "neither of
-      these", with nothing more said, is a record. */
+  /** What the person wrote. Empty only on a row from before ticket 23 that
+      named neither scale and said nothing more. */
   description: string;
 }
 
