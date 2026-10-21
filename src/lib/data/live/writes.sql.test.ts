@@ -689,10 +689,10 @@ beforeAll(async () => {
 
   // --- hairProgress -------------------------------------------------------
   const hairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19200, scale: 'norwood_hamilton', stage: '2a' })
+    journal.hairProgress.upsertStage({ epochDay: 19200, description: 'temples back a little' })
   )) as string;
   const secondHairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19230, scale: 'sinclair', stage: '2' })
+    journal.hairProgress.upsertStage({ epochDay: 19230, description: 'parting wider' })
   )) as string;
   await drive('hairProgress', 'deleteStage', () => journal.hairProgress.deleteStage(secondHairStageId));
   const hairPhotoId = (await drive('hairProgress', 'addPhoto', () =>

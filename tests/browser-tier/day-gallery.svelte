@@ -197,7 +197,7 @@
     feltSense: [
       { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { kind: 'tryout', id: 'ty1', name: 'Robin' } }
     ],
-    hairStages: [{ id: 'hs1', epochDay: DAY, scale: 'norwood_hamilton', stage: '3', description: '' }],
+    hairStages: [{ id: 'hs1', epochDay: DAY, description: 'Crown a little thinner' }],
     hairPhotos: [
       { id: 'hp1', epochDay: DAY, fileName: noFile() },
       { id: 'hp2', epochDay: DAY, fileName: noFile() },

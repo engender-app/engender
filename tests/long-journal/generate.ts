@@ -247,8 +247,7 @@ const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face
 
 /* Hair tracking (phase 5 ticket 33): a staging every ~200 days, the real
    cadence a self-staging screen sees - nobody re-stages weekly. */
-const HAIR_STAGE_SCALE = 'norwood_hamilton';
-const HAIR_STAGES = ['1', '2', '2a', '3', '3v', '3a', '4', '4a', '5', '5a', '6', '7'];
+const HAIR_STAGES = ['temples back a little', 'crown thinner', 'about the same', 'parting wider'];
 const HAIR_STAGE_STEP_DAYS = 200;
 
 /* The dose schedule (schema v38, ADR-0027, phase 5 ticket 40): one episode
@@ -495,8 +494,7 @@ export async function generateLongJournal(
   for (let day = firstEpochDay, i = 0; day <= lastEpochDay; day += HAIR_STAGE_STEP_DAYS, i++) {
     await journal.hairProgress.upsertStage({
       epochDay: day,
-      scale: HAIR_STAGE_SCALE,
-      stage: HAIR_STAGES[i % HAIR_STAGES.length]
+      description: HAIR_STAGES[i % HAIR_STAGES.length]
     });
     summary.hairStagings++;
 

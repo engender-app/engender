@@ -68,7 +68,7 @@ async function fillDay(journal: Journal, epochDay = DAY): Promise<void> {
   await journal.feltSense.add({ tryoutId }, { epochDay, mood: 5, note: 'it fit' });
   await journal.tryouts.addPhoto(tryoutId, epochDay, photo());
 
-  await journal.hairProgress.upsertStage({ epochDay, scale: 'other', stage: '', description: 'thinner at the front' });
+  await journal.hairProgress.upsertStage({ epochDay, description: 'thinner at the front' });
   await journal.hairProgress.addPhoto(epochDay, photo());
   await journal.hairRemoval.upsertSession({ epochDay, area: 'chin', method: 'laser', painRating: 3 });
 

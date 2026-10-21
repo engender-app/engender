@@ -10,16 +10,16 @@
   import { timelapseSupported } from '$lib/data/photos/journey-render';
   import { scrollBehavior } from '$lib/motion/tokens';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  import { rovingRadio } from '$lib/components/rovingRadio';
-  /* Staging against a published scale, and fixed-position photos, on the
+  /* Staging in the person's own words, and fixed-position photos, on the
      surface kit (phase 5 UX ticket 25).
 
-     Three of this screen's four cards were saying something rather than
-     holding something - where the week count is measured from, that a
-     photo is due, and how to take one so two of them compare. All three
-     are notices now, which is the surface for a remark with at most one
-     action on it, and the protocol's dismiss is the notice's own rather
-     than an icon button wired into a header row. */
+     Staging was a grade on Norwood-Hamilton or Sinclair until functional
+     audit ticket 23 made it free text; an older grade reads as the scale
+     and code it named (hairStageScales.ts). The same ticket took out the
+     28-day "time for a photo" notice. The two cards that say something
+     rather than hold something - where the week count is measured from,
+     and how to take a photo so two of them compare - are notices, and the
+     protocol's dismiss is the notice's own. */
   import { m } from '$lib/paraglide/messages';
   import { toast } from '$lib/stores/toasts.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -27,9 +27,7 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { hairAnchorEpochDay } from '$lib/data/hairAnchor';
   import { hrtAnchor } from '$lib/data/personalEffectWindow';
-  import { isHairPhotoDue } from '$lib/data/hairPhotoSchedule';
-  import { hairScaleName, hairScaleSub, hairStageName } from '$lib/data/vocabulary/labels';
-  import { HAIR_SCALES, gradesOfScale, isGradedScale, stagesByScale } from '$lib/data/hairStageScales';
+  import { hairStagingText } from '$lib/data/vocabulary/labels';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -77,10 +75,8 @@
   let stagesQuery = liveList((j) => j.hairProgress.getStages());
   let stages = $derived(stagesQuery.rows);
 
-  /* Grouped so that no list, and no run of subtitles, ever reads as one
-     series across two scales (ticket 33, hairStageScales.ts). Newest first
-     within each scale, which is the order the single list used to be in. */
-  let stageGroups = $derived(stagesByScale([...stages].reverse()));
+  /* Newest first. */
+  let newestStages = $derived([...stages].reverse());
 
   let photosQuery = liveList((j) => j.hairProgress.getPhotos());
   let photos = $derived(photosQuery.rows);
@@ -95,9 +91,6 @@
   let sourceId = $derived(page.url.searchParams.get('photo'));
   let sourcePhoto = $derived(photos.find((photo) => photo.id === sourceId));
   let viewing = $state<HairPhoto | null>(null);
-
-  let lastPhotoEpochDay = $derived(photos[photos.length - 1]?.epochDay ?? null);
-  let photoDue = $derived(isHairPhotoDue(anchorEpochDay, lastPhotoEpochDay, today));
 
   /** Null with no anchor, or for a record dated before it - "since
       starting" has no honest answer for either. */
@@ -139,48 +132,29 @@
     anchorEditor = null;
   }
 
-  /* `scale` starts null on a new staging and the save button stays disabled
-     until it is picked. No scale is preselected on purpose: defaulting to
-     either one would be the app guessing which pattern the person has, which
-     is the assumption ticket 33 exists to remove. */
-  type StageDraft = { id?: string; date: string; scale: string | null; stage: string; description: string };
+  /* Save stays disabled until something is written: a staging is what the
+     person says they see, so an empty one says nothing. */
+  type StageDraft = { id?: string; date: string; description: string };
 
   const stageRecord = recordEditor<HairStage, StageDraft>({
-    blank: () => ({ date: dateInputValueFromEpochDay(today), scale: null, stage: '', description: '' }),
+    blank: () => ({ date: dateInputValueFromEpochDay(today), description: '' }),
     fromRecord: (existing) => ({
       id: existing.id,
       date: dateInputValueFromEpochDay(existing.epochDay),
-      scale: existing.scale,
-      stage: existing.stage,
       description: existing.description
     }),
     async upsert(draft) {
-      if (!draft.scale) return false;
+      const description = draft.description.trim();
+      if (!description) return false;
       await journal.hairProgress.upsertStage({
         id: draft.id,
         epochDay: epochDayFromDateInputValueOrToday(draft.date),
-        scale: draft.scale,
-        stage: draft.stage,
-        description: draft.description
+        description
       });
     },
     remove: (id) => journal.hairProgress.deleteStage(id),
     findById: (id) => stages.find((s) => s.id === id)
   });
-
-  /** Picking a scale clears both the grade and the prose rather than
-      carrying either over. The two scales share codes and mean different
-      things by them, so a kept '3' would silently become a different claim
-      (hairStageScales.ts) - and prose has nowhere to live on a graded scale,
-      so clearing it here is what stops a person's own words disappearing
-      between the sheet and the save (hairProgress.ts's checkedStaging drops
-      it either way). */
-  function pickScale(draft: StageDraft, scale: string) {
-    if (draft.scale === scale) return;
-    draft.scale = scale;
-    draft.stage = gradesOfScale(scale)[0] ?? '';
-    draft.description = '';
-  }
 
   async function storePhoto(photo: NormalizedPhoto): Promise<void> {
     await journal.hairProgress.addPhoto(todayEpochDay(), photo);
@@ -283,26 +257,19 @@
 
     <ReadGate read={stagesQuery} variant="line" count={2}>
       {#snippet rows()}
-        {#each stageGroups as group (group.scale)}
-          <!-- Each scale keeps its own card and its own name above it. A run
-               of subtitles across two scales reads as one series, which is
-               the thing ticket 33 split these groups apart to stop. -->
-          <p class="hair-scale-name" data-scale-group={group.scale}>{hairScaleName(group.scale)}</p>
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
-            {#each group.stages as s (s.id)}
-              {@const graded = isGradedScale(s.scale)}
-              <ListRow
-                key={s.id}
-                data-hair-stage={s.id}
-                icon="comb"
-                title={graded ? hairStageName(s.scale, s.stage) : s.description || m.hair_other_unwritten()}
-                subtitle={stageSubtitle(s.epochDay)}
-                chevron={false}
-                onclick={() => stageRecord.openEditor(s)}
-              />
-            {/each}
-          </ListCard>
-        {/each}
+        <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
+          {#each newestStages as s (s.id)}
+            <ListRow
+              key={s.id}
+              data-hair-stage={s.id}
+              icon="comb"
+              title={hairStagingText(s)}
+              subtitle={stageSubtitle(s.epochDay)}
+              chevron={false}
+              onclick={() => stageRecord.openEditor(s)}
+            />
+          {/each}
+        </ListCard>
       {/snippet}
       {#snippet empty()}
         <Notice
@@ -315,8 +282,6 @@
         />
       {/snippet}
     </ReadGate>
-
-    <p class="muted small">{m.hair_scale_source()}</p>
 
     <SectionHeading id="hair-photos" text={m.hair_photo_section_title()}>
       {#snippet action()}
@@ -346,17 +311,6 @@
       {#if !canRecord}
         <p class="muted small">{m.pj_timelapse_unavailable()}</p>
       {/if}
-    {/if}
-
-    {#if photoDue}
-      <div data-photo-due>
-        <Notice
-          icon="camera"
-          key="hair-photo-due"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-          title={m.hair_photo_time_title()}
-        />
-      </div>
     {/if}
 
     {#if !prefs.hairPhotoProtocolDismissed}
@@ -450,7 +404,7 @@
     editTitle={m.hair_stage_edit_sheet()}
     saveLabel={m.hair_stage_save()}
     deleteLabel={m.hair_stage_delete()}
-    canSave={(draft) => draft.scale !== null}
+    canSave={(draft) => draft.description.trim() !== ''}
     confirm={{
       title: m.hair_stage_delete_sheet(),
       question: () => m.hair_stage_delete_q(),
@@ -460,57 +414,17 @@
     }}
   >
     {#snippet fields(stageEditor)}
-      <Field label={m.hair_scale_label()} legend>
+      <Field label={m.hair_other_label()} id="hair-stage-text">
         {#snippet children(id)}
-          <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.stages)}>
-            <div role="radiogroup" use:rovingRadio aria-labelledby={id}>
-              {#each HAIR_SCALES as scale (scale)}
-                <ListRow
-                  role="radio"
-                  aria-checked={stageEditor.scale === scale}
-                  data-pick-scale={scale}
-                  onclick={() => pickScale(stageEditor, scale)}
-                  chevron={false}
-                  title={hairScaleName(scale)}
-                  subtitle={hairScaleSub(scale)}
-                >
-                  {#snippet trailing()}
-                    {#if stageEditor.scale === scale}<Icon name="check" size={20} />{/if}
-                  {/snippet}
-                </ListRow>
-              {/each}
-            </div>
-          </ListCard>
+          <input autocomplete={journalTextAutocomplete()}
+            class="input"
+            {id}
+            name="hair-stage-text"
+            placeholder={m.hair_other_placeholder()}
+            bind:value={stageEditor.description}
+          />
         {/snippet}
       </Field>
-      {#if stageEditor.scale}
-        {@const scale = stageEditor.scale}
-        <div class="disclosed" transition:disclose>
-          {#if isGradedScale(scale)}
-            <Field label={m.hair_stage_label()} id="hair-stage-value">
-              {#snippet children(id)}
-                <select class="input" {id} bind:value={stageEditor.stage}>
-                  {#each gradesOfScale(scale) as grade (grade)}
-                    <option value={grade}>{hairStageName(scale, grade)}</option>
-                  {/each}
-                </select>
-              {/snippet}
-            </Field>
-          {:else}
-            <Field label={m.hair_other_label()} id="hair-other-value">
-              {#snippet children(id)}
-                <input autocomplete={journalTextAutocomplete()}
-                  class="input"
-                  {id}
-                  name="hair-other-value"
-                  placeholder={m.hair_other_placeholder()}
-                  bind:value={stageEditor.description}
-                />
-              {/snippet}
-            </Field>
-          {/if}
-        </div>
-      {/if}
       <Field label={m.hair_stage_date_label()} id="hair-stage-date">
         {#snippet children(id)}
           <DatePicker name="hair-stage-date" bind:value={stageEditor.date} {id} />
@@ -521,17 +435,6 @@
 </div>
 
 <style>
-  /* The scale's own name over its card. Not a SectionHeading: the area is
-     already named ("Staging") and these are the two scales inside it, so
-     giving each the screen-title size would make the area's own heading
-     the smaller of the two. */
-  .hair-scale-name {
-    margin: var(--space-4) 0 var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
-  }
-
   .hair-photo-actions {
     display: flex;
     flex-wrap: wrap;

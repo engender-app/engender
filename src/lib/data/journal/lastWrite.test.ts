@@ -170,7 +170,7 @@ test('a timestamp-stored area is bounded by the start of the day after today', a
 
 test("hair progress' two entries read their own table and never the other's", async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: TODAY - 1, scale: 'other', stage: '', description: 'softer' });
+  await journal.hairProgress.upsertStage({ epochDay: TODAY - 1, description: 'softer' });
   await journal.hairProgress.addPhoto(TODAY - 9, photo());
 
   const lastWrites = await journal.lastWrite.getLastWrites(TODAY);

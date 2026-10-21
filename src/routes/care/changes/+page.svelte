@@ -684,11 +684,6 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.side_effect_date_label()} id="side-effect-date">
-        {#snippet children(id)}
-          <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
-        {/snippet}
-      </Field>
       <Field label={m.side_effect_status_label()} legend>
         {#snippet children()}
           <div data-side-effect-status>
@@ -702,6 +697,11 @@
               onChange={(v) => setResolved(editor, v === 'resolved')}
             />
           </div>
+        {/snippet}
+      </Field>
+      <Field label={m.side_effect_date_label()} id="side-effect-date">
+        {#snippet children(id)}
+          <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
       {#if editor.resolved !== ''}

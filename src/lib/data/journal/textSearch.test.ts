@@ -434,7 +434,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     snrDb: null,
     note: `benchmark ${word}`
   });
-  await journal.hairProgress.upsertStage({ epochDay: DAY, scale: 'other', stage: '', description: `hair ${word}` });
+  await journal.hairProgress.upsertStage({ epochDay: DAY, description: `hair ${word}` });
   await journal.hairRemoval.upsertSession({
     epochDay: DAY,
     area: 'chin',

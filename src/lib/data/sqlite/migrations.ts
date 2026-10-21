@@ -77,5 +77,33 @@ DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'm
   /* Functional audit ticket 23: a side effect is ongoing (NULL) until the
      person marks the day it resolved. sideEffects.ts refuses a day before
      the start; no CHECK, so an archive row is judged by the same code. */
-  { version: 98, sql: 'ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER;' }
+  { version: 98, sql: 'ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER;' },
+  /* Functional audit ticket 23: hair staging is free text. A grade becomes
+     the text hairStageScales.ts's legacyHairStagingText gives it, so a
+     migrated row and a restored one read alike; scale and stage go, and so
+     does the CHECK that tied them. A rebuild, since SQLite cannot drop a
+     column a CHECK names. */
+  { version: 99, sql: `
+CREATE TABLE hair_stage_new (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid        TEXT NOT NULL UNIQUE,
+  epoch_day   INTEGER NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  updated_at  INTEGER NOT NULL
+);
+INSERT INTO hair_stage_new (id, uuid, epoch_day, description, updated_at)
+  SELECT id, uuid, epoch_day,
+    CASE scale
+      WHEN 'norwood_hamilton' THEN 'Norwood-Hamilton ' || upper(stage)
+      WHEN 'sinclair' THEN 'Sinclair ' || upper(stage)
+      ELSE description
+    END,
+    updated_at
+  FROM hair_stage;
+DELETE FROM sqlite_sequence WHERE name = 'hair_stage_new';
+INSERT INTO sqlite_sequence (name, seq) SELECT 'hair_stage_new', seq FROM sqlite_sequence WHERE name = 'hair_stage';
+DROP TABLE hair_stage;
+ALTER TABLE hair_stage_new RENAME TO hair_stage;
+CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
+` }
 ];

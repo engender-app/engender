@@ -75,8 +75,7 @@ import type { CycleEventKind, DoseRoute, DoseStatus, InjectionVehicle, PersonalE
 import type { ApplicationSiteKey, InjectionSiteKey } from '../doseSchedule';
 
 /** How long a trashed entry survives before purgeExpiredTrash reclaims it
-    (phase 5 ticket 19). Fixed, like the hair-photo schedule's 28 days
-    (hairPhotoSchedule.ts) - no per-user setting. */
+    (phase 5 ticket 19). Fixed - no per-user setting. */
 export const TRASH_WINDOW_DAYS = 30;
 const TRASH_WINDOW_MS = TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 

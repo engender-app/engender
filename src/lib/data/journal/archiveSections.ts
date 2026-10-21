@@ -50,6 +50,7 @@
 
 import type { ArchiveJournal } from '../archive/payload';
 import { inferDrugClass } from '../drugClass';
+import { legacyHairStagingText } from '../hairStageScales';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
 import type { SectionRead } from './archiveRead';
@@ -146,6 +147,22 @@ function flat<
     apply: (restoring: Restoring) => apply.applyFlatTable(table, restoring.journal[declared.name], restoring),
     flatTable: table as FlatTable<unknown>
   };
+}
+
+const HAIR_STAGES = flat({
+  name: 'hairStages',
+  travels: 'none',
+  table: 'hair_stage',
+  identity: 'uuid',
+  orderBy: 'epoch_day, id',
+  columns: { uuid: 'id', epoch_day: 'epochDay', description: { field: 'description', whenAbsent: '' } }
+});
+
+type ArchiveHairStage = ArchiveJournal['hairStages'][number];
+
+function asFreeTextStaging({ id, epochDay, scale, stage, description }: ArchiveHairStage): ArchiveHairStage {
+  if (stage === undefined) return { id, epochDay, description };
+  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? '') };
 }
 
 const MEDICATION_STOCK = {
@@ -627,27 +644,16 @@ const SECTIONS = [
     orderBy: 'effect',
     columns: { uuid: 'id', effect: 'effect', first_noticed_epoch_day: 'firstNoticedEpochDay' }
   }),
-  /* A row with no `scale` came out of an archive written before phase 5
-     ticket 33, when Norwood-Hamilton was the only vocabulary there was, so
-     it is one - the same reading schema.ts gives the rows it holds
-     across. Defaulting rather than dropping is what keeps an old backup
-     whole; a scale this build does not know is left as it is and the
-     schema's CHECK refuses it, which is the honest failure for an archive
-     from a future build. */
-  flat({
-    name: 'hairStages',
-    travels: 'none',
-    table: 'hair_stage',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: {
-      uuid: 'id',
-      epoch_day: 'epochDay',
-      scale: { field: 'scale', whenAbsent: 'norwood_hamilton' },
-      stage: 'stage',
-      description: { field: 'description', whenAbsent: '' }
-    }
-  }),
+  /* Staging is free text since functional audit ticket 23. A row from an
+     older archive still names a scale and a grade, and is written as the
+     text migration 99 gives a stored one (legacyHairStagingText). A row
+     with a stage and no scale predates phase 5 ticket 33, when
+     Norwood-Hamilton was the only scale there was. */
+  {
+    ...HAIR_STAGES,
+    apply: (restoring: Restoring) =>
+      apply.applyFlatTable(HAIR_STAGES.flatTable, restoring.journal.hairStages.map(asFreeTextStaging), restoring)
+  },
   section({
     name: 'hairPhotos',
     discard: ['DELETE FROM hair_photo'],

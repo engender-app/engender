@@ -1,6 +1,6 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
-import { isHairStaging } from '../hairStageScales';
+import { isLegacyHairStaging } from '../hairStageScales';
 import {
   AFFIRMATION_LANGUAGES, CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
@@ -217,7 +217,7 @@ const ROWS = {
     id: identity,
     epochDay: numeric,
     scale: optional(text),
-    stage: text,
+    stage: optional(text),
     description: optional(text)
   },
   hairPhotos: {
@@ -512,9 +512,11 @@ export function assertArchiveRows(
         ((row.dims as string[] | undefined) ?? []).length) {
       throw new CorruptArchiveError('the archive has a repeated preset dimension');
     }
-    if (name === 'hairStages') {
+    // Only an archive from before functional audit ticket 23 carries a
+    // stage; one carrying a scale without a stage is damaged.
+    if (name === 'hairStages' && (row.stage !== undefined || row.scale !== undefined)) {
       const scale = (row.scale as string | undefined) ?? 'norwood_hamilton';
-      if (!isHairStaging(scale, row.stage as string) ||
+      if (row.stage === undefined || !isLegacyHairStaging(scale, row.stage as string) ||
           (scale !== 'other' && row.description !== undefined && row.description !== '')) {
         throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
       }
