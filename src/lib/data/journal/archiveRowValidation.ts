@@ -1,8 +1,8 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
-import { isHairStaging } from '../hairStageScales';
+import { isLegacyHairStaging } from '../hairStageScales';
 import {
-  AFFIRMATION_LANGUAGES, CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
+  CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
   REMINDER_TYPES, TALLY_KINDS, TRYOUT_KINDS
 } from '../rowValues';
@@ -13,7 +13,8 @@ import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
 
 type Check = (value: unknown) => boolean;
 const text: Check = (value) => typeof value === 'string';
-const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0;
+// A lone surrogate is not text SQLite can round-trip, so an id holding one is unreadable.
+const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0 && value.isWellFormed();
 const bool: Check = (value) => typeof value === 'boolean';
 const numeric: Check = (value) => typeof value === 'number' && Number.isFinite(value) &&
   (!Number.isInteger(value) || Number.isSafeInteger(value));
@@ -69,6 +70,12 @@ const procedurePhoto = object({
   fileName: text
 });
 
+const appointmentStatus = object({
+  id: identity,
+  epochDay: numeric,
+  status: text
+});
+
 const tryoutPhoto = object({
   id: identity,
   epochDay: numeric,
@@ -105,13 +112,6 @@ const ROWS = {
     enabled: optional(bool),
     builtIn: optional(bool),
     tags: optional(list(tag))
-  },
-  affirmations: {
-    id: identity,
-    language: nullable(oneOf(AFFIRMATION_LANGUAGES)),
-    text: text,
-    builtIn: optional(bool),
-    hidden: optional(bool)
   },
   bodyRegions: {
     id: identity,
@@ -173,7 +173,8 @@ const ROWS = {
     id: identity,
     name: text,
     severity: nullable(integerBetween(1, 5)),
-    epochDay: numeric
+    epochDay: numeric,
+    resolvedEpochDay: optional(nullable(numeric))
   },
   cycleEvents: {
     id: identity,
@@ -216,7 +217,7 @@ const ROWS = {
     id: identity,
     epochDay: numeric,
     scale: optional(text),
-    stage: text,
+    stage: optional(text),
     description: optional(text)
   },
   hairPhotos: {
@@ -246,11 +247,13 @@ const ROWS = {
   },
   appointments: {
     id: identity,
-    epochDay: numeric,
+    epochDay: nullable(numeric),
     procedureId: nullable(text),
     kind: nullable(text),
     place: nullable(text),
-    note: nullable(text)
+    note: nullable(text),
+    referredEpochDay: optional(nullable(numeric)),
+    statuses: optional(list(appointmentStatus))
   },
   reminders: {
     id: identity,
@@ -360,7 +363,9 @@ const ROWS = {
     inUseWindowDays: nullable(numeric),
     inUseEndEpochDay: nullable(numeric),
     leadTimeDays: nullable(numeric),
-    dosesPerUnit: nullable(numeric)
+    dosesPerUnit: nullable(numeric),
+    expiryEpochDay: optional(nullable(numeric)),
+    pharmacyNote: optional(nullable(text))
   },
   tryouts: {
     id: identity,
@@ -446,13 +451,6 @@ const ROWS = {
     finishedEpochDay: nullable(numeric),
     suspendedEpochDay: nullable(numeric)
   },
-  revisits: {
-    id: identity,
-    entryId: text,
-    entryEpochDay: numeric,
-    createdEpochDay: numeric,
-    targetEpochDay: numeric
-  },
   marginNotes: {
     id: identity,
     entryId: text,
@@ -491,7 +489,6 @@ export function assertArchiveRows(
   const defaults = new Set(flatTable ? columnsOf(flatTable)
     .filter((column) => column.bool || column.whenAbsent !== undefined).map((column) => column.field) : []);
   const naturalIdentity = flatTable ? identityFieldOf(flatTable) : undefined;
-  const revisitOwners = new Set<unknown>();
   const identities = new Set<string>();
   for (const [index, row] of rows.entries()) {
     if (!record(row) || (naturalIdentity && !identity(row[naturalIdentity])) ||
@@ -511,12 +508,17 @@ export function assertArchiveRows(
         ((row.dims as string[] | undefined) ?? []).length) {
       throw new CorruptArchiveError('the archive has a repeated preset dimension');
     }
-    if (name === 'hairStages') {
+    // Only an archive from before functional audit ticket 23 carries a
+    // stage; one carrying a scale without a stage is damaged.
+    if (name === 'hairStages' && (row.stage !== undefined || row.scale !== undefined)) {
       const scale = (row.scale as string | undefined) ?? 'norwood_hamilton';
-      if (!isHairStaging(scale, row.stage as string) ||
+      if (row.stage === undefined || !isLegacyHairStaging(scale, row.stage as string) ||
           (scale !== 'other' && row.description !== undefined && row.description !== '')) {
         throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
       }
+    }
+    if (name === 'sideEffects' && typeof row.resolvedEpochDay === 'number' && row.resolvedEpochDay < (row.epochDay as number)) {
+      throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'reminders') {
       const oneOff = row.recurrence === null && row.epochDay !== null && row.interval === null && row.anchorEpochDay === null;
@@ -528,17 +530,20 @@ export function assertArchiveRows(
     if (name === 'doseSchedules' && (row.recurrenceKind === 'everyNDays') !== (row.everyNDays !== null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
+    if (name === 'doseEvents') {
+      // Mirrors the dose_event auto-log CHECK: all three absent, or a schedule row with all three set.
+      const { autoLogEpisodeId: episode, autoLogEpochDay: day, autoLogIndex: slot } = row;
+      const none = episode == null && day == null && slot == null;
+      const slotted = row.source === 'schedule' && typeof episode === 'string' && episode.trim().length > 0 &&
+        typeof day === 'number' && Number.isInteger(day) && typeof slot === 'number' &&
+        Number.isInteger(slot) && slot >= 0;
+      if (!none && !slotted) throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
     if (name === 'documents' && (row.targetKind == null) !== (row.targetId == null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'checklists' && (row.ownerKind === null) !== (row.ownerId === null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
-    }
-    if (name === 'revisits') {
-      if (revisitOwners.has(row.entryId)) {
-        throw new CorruptArchiveError('the archive has more than one revisit for an entry');
-      }
-      revisitOwners.add(row.entryId);
     }
   }
 }

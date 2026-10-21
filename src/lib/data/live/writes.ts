@@ -51,7 +51,6 @@ export const CLINICIAN_SUMMARY_TABLES: TableName[] = [
 export const RECONCILE_TABLES: TableName[] = [
   'tag',
   'dimension',
-  'affirmation',
   'bodyRegion',
   'effectCategory',
   'personalEffectType',
@@ -190,8 +189,6 @@ export const TABLE_NAMES = [
   'checklist',
   /* The binder/tucking wear log (phase 5 ticket 04). */
   'wearSession',
-  /* The check-in's affirmation pool (phase 5 ticket 15). */
-  'affirmation',
   /* The body-region reference-data area (phase 5 ticket 30). An entry's
      own body-region intensities are still announced under 'entry' - this
      is only the region rows themselves: built-in hide/unhide and a custom
@@ -228,11 +225,6 @@ export const TABLE_NAMES = [
      re-run on a write to any of nineteen tables, and hiding an area has not
      touched a single record in it. */
   'areaState',
-  /* A revisit (phase 8 features ticket 08, ADR-0045). Its own name rather
-     than folded into 'entry': setting or cancelling one changes nothing an
-     entry read returns, and the live tile's own read would otherwise
-     re-run on every entry write in the journal. */
-  'revisit',
   /* A margin note (phase 8 features ticket 07). Its own name and not
      folded into 'entry': the whole point of the feature is that a margin
      note and the entry it annotates are read and written apart, so an
@@ -382,15 +374,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // gender_dimension, and a template's tag link goes by cascade when the
     // tag is deleted.
     reads: { getEntryTemplates: ['entryTemplate', 'tag', 'dimension'] }
-  }),
-  affirmations: classify<Journal['affirmations']>()({
-    writes: {
-      addLine: ['affirmation'],
-      editLine: ['affirmation'],
-      setHidden: ['affirmation'],
-      deleteLine: ['affirmation']
-    },
-    reads: { getAffirmations: ['affirmation'] }
   }),
   bodyRegions: classify<Journal['bodyRegions']>()({
     writes: {
@@ -603,11 +586,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
     reads: { getPauses: ['journalingPause'] }
   }),
-  revisits: classify<Journal['revisits']>()({
-    writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },
-    // Both join the entry, for the rowid a revisit hands back.
-    reads: { getRevisitForEntry: ['revisit', 'entry'], getDueRevisits: ['revisit', 'entry'] }
-  }),
   marginNotes: classify<Journal['marginNotes']>()({
     writes: { add: ['marginNote'], edit: ['marginNote'], remove: ['marginNote'] },
     reads: { forEntries: ['marginNote'] }
@@ -668,7 +646,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     reads: {
       getSessions: ['hairRemoval'],
       getSessionsOnDay: ['hairRemoval'],
-      latestSession: ['hairRemoval'],
       getPhotos: ['hairRemoval'],
       lastWriteEpochDay: ['hairRemoval']
     }
@@ -713,13 +690,19 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   appointments: classify<Journal['appointments']>()({
     writes: {
       upsertAppointment: ['appointment'],
-      deleteAppointment: ['appointment']
+      deleteAppointment: ['appointment'],
+      // A status update is its own table under the same coarse name: nothing
+      // reads one without the appointment it belongs to (sqlTables.ts).
+      addStatusUpdate: ['appointment'],
+      deleteStatusUpdate: ['appointment']
     },
     // consultsByProcedure and getDayRecords join `procedure` for its name,
     // so a renamed journey redraws them.
     reads: {
       getAppointments: ['appointment', 'procedure'],
       getAppointment: ['appointment', 'procedure'],
+      getWaiting: ['appointment', 'procedure'],
+      getStatusUpdates: ['appointment'],
       getKinds: ['appointment'],
       getDayRecords: ['appointment', 'procedure'],
       lastWriteEpochDay: ['appointment'],
@@ -779,7 +762,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       forTryout: ['feltSense', 'tryout'],
       // Keyed by the tryout's own uuid, so the owner table is joined the way
       // `forTryout` joins it.
-      latestDaysForTryouts: ['feltSense', 'tryout'],
       // The same join, every tryout at once (ticket 53).
       byTryout: ['feltSense', 'tryout'],
       forMilestone: ['feltSense', 'milestone'],
@@ -1021,17 +1003,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   correlationCards: classify<Journal['correlationCards']>()({
     writes: {},
     reads: { getCards: ['entry', 'dimension', 'tag', 'dose'] }
-  }),
-  // Read-only, the same reason correlationCards is: a pattern is
-  // recomputed from stats and the dose log on every read (phase 5 ticket 09).
-  intervalMoodPattern: classify<Journal['intervalMoodPattern']>()({
-    writes: {},
-    // The custom fold reads no dose log: it folds by the epoch day itself,
-    // which is the whole of its "no claim that a cycle exists".
-    reads: {
-      dayOfInterval: ['entry', 'dimension', 'dose'],
-      byCustomInterval: ['entry', 'dimension']
-    }
   }),
   /* An import rewrites the journal (ticket 14), so it invalidates all of it -
      every query and every mirrored slice. Naming the tables one at a time

@@ -22,7 +22,6 @@ async function verifyEmptyTimeline(page, { gallery, out }) {
   for (const key of ['labs', 'stock', 'clinician-summary']) {
     assert.equal(await page.locator(`[data-list-row="${key}"]`).isVisible(), true, `${key} remains reachable`);
   }
-  assert.equal(await page.locator('[data-care-fold="interval"]').count(), 1);
   assert.equal(await page.locator('[data-hub-host="care"]').count(), 1);
   if (gallery) await page.screenshot({ path: `${out}/empty-en-no-regimen.png`, fullPage: true });
 

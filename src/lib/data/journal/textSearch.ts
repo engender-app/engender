@@ -4,7 +4,7 @@
    `/search` searched entries. That was right when the entry note was most of
    the text in the app, and it is not any more: the journal now holds letters
    to a future self, milestone names, procedure notes, appointment questions,
-   felt-sense reflections, roadmap goals, affirmations, size fit notes and a
+   felt-sense reflections, roadmap goals, size fit notes and a
    dozen other things somebody wrote in their own words. None of it was
    findable. Somebody who remembers writing something and not where they
    wrote it had nowhere to type it.
@@ -95,7 +95,7 @@ import type { ArchiveSectionName } from './archiveSections';
     converted to a day on the way out.
 
     `null` is for an area whose text belongs to no day at all: a roadmap
-    goal, an affirmation, a checklist nobody dated. Those are never narrowed
+    goal, a checklist nobody dated. Those are never narrowed
     by a range and sort after everything that has a date. */
 type SearchDate =
   | { kind: 'epochDay'; column: string }
@@ -319,19 +319,6 @@ const AREAS = [
     date: null,
     columns: ['name']
   }),
-  /* The lines somebody wrote themselves. A built-in's row holds an empty
-     `text` and its wording comes from the message catalogue (reconcile.ts),
-     so what is matched here is the custom pool - the same division of labour
-     tag labels have. */
-  area({
-    key: 'affirmations',
-    covers: ['affirmations'],
-    tables: ['affirmation'],
-    from: 'affirmation',
-    uuid: 'uuid',
-    date: null,
-    columns: ['text']
-  }),
   /* The analyte in the person's own words, their own note and who drew it
      (ADR-0026). No value and no unit: a number is not text somebody wrote,
      and searching for "4.2" finding a lab result is not what this feature
@@ -378,10 +365,8 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note']
   }),
-  /* Only the free-written description, which is what the 'other' scale
-     records. A graded stage is a published scale's own grade and its wording
-     comes from the message catalogue above this seam, like a built-in tag's
-     label (ADR-0016). */
+  /* The staging's own words (functional audit ticket 23), including the
+     scale-and-grade text an older staging was migrated to. */
   area({
     key: 'hairStages',
     covers: ['hairStages'],
@@ -576,7 +561,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // everything is what makes it trustworthy, and the row itself is an area
   // key and a day (phase 8 deepening ticket 13).
   areaStates: 'no text of its own: an area key, a flag and a day',
-  revisits: 'no text of its own: an entry link and two days',
   // The word itself is already searchable where it was actually written -
   // the entry's own note, matched through the FTS index (ADR-0005) - so
   // matching it here too would show the same word twice.

@@ -30,7 +30,7 @@ const flows = [
   { handle: 'side-effect', path: 'care/changes', date: 'side-effect-date', area: 'sideEffects', operation: 'upsertSideEffect',
     add: '[data-add]', row: '[data-side-effect]', text: 'Fixture headache',
     values: { 'side-effect-name': 'Fixture headache', 'side-effect-date': '2024-03-12' },
-    change: 'side-effect-name', controls: () => [page.locator('#side-effect-name'), radio(), page.locator('#side-effect-date')],
+    change: 'side-effect-name', controls: () => [page.locator('#side-effect-name'), radio().first(), radio().nth(1), page.locator('#side-effect-date')],
     labels: { 'side-effect-name': 'side_effect_name_label', 'side-effect-date': 'side_effect_date_label' }, group: 'side_effect_severity_label' },
   { handle: 'cycle-event', path: 'health/cycle-events', date: 'cycle-event-date', area: 'cycleEvents', operation: 'upsertCycleEvent',
     add: '[data-add]', row: '[data-cycle-event]',
@@ -39,9 +39,9 @@ const flows = [
     labels: { 'cycle-event-date': 'cycle_event_date_label' }, group: 'cycle_event_kind_label' },
   { handle: 'hair-stage', path: 'body/hair-progress', date: 'hair-stage-date', area: 'hairProgress', operation: 'upsertStage',
     add: '[data-add-stage]', row: '[data-hair-stage]', text: 'Fixture description',
-    values: { 'hair-other-value': 'Fixture description', 'hair-stage-date': '2024-03-12' },
-    change: 'hair-other-value', controls: () => [radio(), page.locator('#hair-other-value, #hair-stage-value'), page.locator('#hair-stage-date')],
-    labels: { 'hair-other-value': 'hair_other_label', 'hair-stage-date': 'hair_stage_date_label' }, group: 'hair_scale_label' }
+    values: { 'hair-stage-text': 'Fixture description', 'hair-stage-date': '2024-03-12' },
+    change: 'hair-stage-text', controls: () => [page.locator('#hair-stage-text'), page.locator('#hair-stage-date')],
+    labels: { 'hair-stage-text': 'hair_other_label', 'hair-stage-date': 'hair_stage_date_label' } }
 ];
 
 async function close() {
@@ -86,9 +86,8 @@ async function valuesMatch(flow) {
   for (const [id, value] of Object.entries(flow.values)) {
     assert.equal(await fieldValue(page.locator(`#${id}`)), value, id);
   }
-  if (flow.handle === 'side-effect') assert.equal(await radio().getAttribute('data-segment'), '3');
+  if (flow.handle === 'side-effect') assert.equal(await radio().first().getAttribute('data-segment'), '3');
   if (flow.handle === 'cycle-event') assert.equal(await radio().getAttribute('data-segment'), 'spotting');
-  if (flow.handle === 'hair-stage') assert.equal(await radio().getAttribute('data-pick-scale'), 'other');
     if (flow.handle === 'milestone') {
       await sheet().locator('.photo-wrap img').waitFor();
       assert.equal(await sheet().getByRole('switch').getAttribute('aria-checked'), 'true');
@@ -142,14 +141,7 @@ try {
     const today = await page.evaluate(() => new Date().toLocaleDateString('sv-SE'));
     assert.equal(await dateValue(page.locator(`#${flow.date}`)), today, 'Existing today default');
     if (flow.handle === 'hair-stage') {
-      assert.equal(await sheet().getByRole('radio', { checked: true }).count(), 0, 'No guessed hair scale');
-      assert.equal(await page.locator('[data-save-hair-stage]').isDisabled(), true);
-      await page.locator('[data-pick-scale="norwood_hamilton"]').click();
-      assert.equal(await page.locator('#hair-stage-value').inputValue(), '1');
-      await page.locator('#hair-stage-value').selectOption('3v');
-      await page.locator('[data-pick-scale="sinclair"]').click();
-      assert.equal(await page.locator('#hair-stage-value').inputValue(), '1', 'Switching scale resets grade');
-      await page.locator('[data-pick-scale="other"]').click();
+      assert.equal(await page.locator('[data-save-hair-stage]').isDisabled(), true, 'An empty staging cannot be saved');
     }
     await order(flow);
     for (const [id, value] of Object.entries(flow.values)) {
@@ -256,7 +248,7 @@ try {
   await page.locator(`[data-side-effect=\"${side.id}\"]`).click();
   await page.locator('[data-add-to-appointment-prep]').click();
   await close();
-  await settlePage(page, server.resolvedUrls.local[0], 'health/appointment-prep', 'light');
+  await settlePage(page, server.resolvedUrls.local[0], 'health/appointments', 'light');
   await page.getByText('Fixture headache', { exact: false }).waitFor();
   console.log('PASS side effect remains owned by Changes; appointment preparation receives its name');
 
@@ -296,14 +288,6 @@ try {
         }, zoom);
         await order(flow);
         await capture(`${locale}-${flow.handle}-${zoom}x`, zoom, flow);
-        if (flow.handle === 'hair-stage') {
-          await page.locator('[data-pick-scale="sinclair"]').click();
-          await order(flow);
-          await capture(`${locale}-${flow.handle}-${zoom}x-graded`, zoom, flow);
-          await page.locator('[data-pick-scale="other"]').click();
-          assert.equal(await page.locator('#hair-other-value').inputValue(), '', 'Switching scale clears prose');
-          await page.locator('#hair-other-value').fill(flow.values['hair-other-value']);
-        }
       }
       await page.evaluate(() => { document.documentElement.style.zoom = '1'; });
       if (gallery) for (const palette of PALETTES) for (const theme of ['light', 'dark']) {

@@ -120,6 +120,7 @@
   const maximal: DayRecords = {
     entries: typical.entries,
     milestones: [
+      { id: 'ms1', name: 'One year on HRT', epochDay: DAY, description: '', templateKey: null, photo: { id: 'p0', fileName: null, starred: false } }
     ],
     doses: [
       typical.doses[0],
@@ -182,7 +183,7 @@
       }
     ],
     taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],
-    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY }],
+    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY, resolvedEpochDay: null }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
     cycleEvents: [{ id: 'c1', kind: 'spotting', epochDay: DAY }],
     tallyEvents: [
@@ -197,7 +198,7 @@
     feltSense: [
       { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { kind: 'tryout', id: 'ty1', name: 'Robin' } }
     ],
-    hairStages: [{ id: 'hs1', epochDay: DAY, scale: 'norwood_hamilton', stage: '3', description: '' }],
+    hairStages: [{ id: 'hs1', epochDay: DAY, description: 'Crown a little thinner' }],
     hairPhotos: [
       { id: 'hp1', epochDay: DAY, fileName: noFile() },
       { id: 'hp2', epochDay: DAY, fileName: noFile() },
@@ -207,8 +208,8 @@
       { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, cost: '250 zł', provider: 'Klinika' }
     ],
     appointments: [
-      { id: 'ap1', kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null },
-      { id: 'ap2', kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy' }
+      { id: 'ap1', event: 'visit', status: null, kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null },
+      { id: 'ap2', event: 'visit', status: null, kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy' }
     ],
     procedureRecords: [
       { id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() },

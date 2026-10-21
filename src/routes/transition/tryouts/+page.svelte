@@ -11,8 +11,7 @@
 
      What ticket 53 changed is which records get that row. The screen is
      entirely about tryouts and said nothing about which of them is
-     happening now, while Home has had an `active-tryout-tile` since phase
-     8 - and the felt-sense readings that answer the second half of this
+     happening now - and the felt-sense readings that answer the second half of this
      screen's own subtitle were reachable from the database and drawn
      nowhere on it. So the screen opens on what is true now (DIRECTION.md
      rule 16): a running tryout is a card with its length and the shape its

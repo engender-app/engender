@@ -274,10 +274,9 @@ export function flagRoles(
 }
 
 /** What a chart can paint under one of its lines, on top of the surface
-    itself: a wash of the line's own stripe, at most 18% (PitchFigure's
-    reference bands; an area chart's fill is 16%), and the 7% of --text an
-    annotation band lays across the plot. tests/palette-contrast.test.ts
-    reads both out of the CSS and measures the edge against them. */
+    itself: a wash of the line's own stripe, at most 18% (an area chart's
+    fill is 16%), and the 7% of --text an annotation band lays across the
+    plot. tests/palette-contrast.test.ts measures the edge against both. */
 const CHART_WASH_PCT = 18;
 const ANNOTATION_PCT = 7;
 

@@ -245,10 +245,10 @@ try {
   assert.equal(reduced.movingContent, 0);
   await page.evaluate(() => { delete document.documentElement.dataset.a11yMotion; });
 
-  await home();
-  await home();
+  /* Home's own departed sheet was the scales follow-up, which
+     functional-audit ticket 14 cut; Calendar's month picker is the sheet
+     this checks now. */
   await door('calendar');
-  await overlayReleased('Home');
   await page.locator(`${activeRetained} [data-cal-month-btn]`).click();
   await page.waitForSelector('[role="dialog"]');
   await page.waitForTimeout(600);

@@ -135,7 +135,7 @@
       /** Whether this line is placed against the first one's scale rather
           than its own. False for two metrics, which is what the two ranges
           above are for; true where the pair is one range with two ends -
-          the top and the bottom of a pitch band, say (charts/ownSeries.ts).
+          the lower and upper ends of a pitch span (charts/ownSeries.ts).
 
           What it changes is the value gutter. The gutter goes when two
           lines are placed against two ranges, because printing one of the

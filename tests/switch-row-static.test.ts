@@ -70,7 +70,7 @@ describe('a ListRow holding a switch', () => {
     const holding = svelteFiles().flatMap((f) => listRows(f, readFileSync(f, 'utf8'))).filter((r) => r.holdsSwitch);
     /* Disguise, Settings and Today still write these rows. A lower count
        means the parser stopped seeing them. */
-    expect(holding.length).toBeGreaterThanOrEqual(6);
+    expect(holding.length).toBeGreaterThanOrEqual(5);
   });
 
   it('is static everywhere, so the switch is the row\'s only control', () => {

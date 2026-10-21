@@ -49,7 +49,7 @@ async function populated() {
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
   const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   const journalingPause = await journal.journalingPauses.upsertPause({ startEpochDay: 19500, endEpochDay: 19510 });
   const personalEffect = await journal.personalEffects.upsertMarker({
@@ -313,7 +313,7 @@ test('milestones, lab results, tally events, side effects, cycle events, journal
   ]);
   assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
-    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
+    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null }
   ]);
   assert.deepEqual(snapshot.journal.cycleEvents, [{ id: cycleEvent, kind: 'spotting', epochDay: 20000 }]);
   assert.deepEqual(snapshot.journal.journalingPauses, [
@@ -475,9 +475,54 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null
     }
   ]);
+});
+
+/* Functional audit ticket 47: typed by a person and not derivable, so they
+   travel, and a restore keeps them. */
+test('a stock expiry day and pharmacy note travel, and a restore keeps them', async () => {
+  const { journal, stock } = await populated();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    expiryEpochDay: 19400,
+    pharmacyNote: 'Batch 7, second pharmacy'
+  });
+
+  const snapshot = await journal.archive.snapshot();
+  const row = snapshot.journal.medicationStock.find((s) => s.id === stock);
+  assert.equal(row?.expiryEpochDay, 19400);
+  assert.equal(row?.pharmacyNote, 'Batch 7, second pharmacy');
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const [restored] = await target.stock.getEntries();
+  assert.equal(restored.expiryEpochDay, 19400);
+  assert.equal(restored.pharmacyNote, 'Batch 7, second pharmacy');
+});
+
+test('an archive written before the stock expiry fields restores them as null', async () => {
+  const { journal } = await populated();
+  const snapshot = await journal.archive.snapshot();
+  const older = structuredClone(snapshot.journal) as unknown as { medicationStock: Record<string, unknown>[] };
+  for (const row of older.medicationStock) {
+    delete row.expiryEpochDay;
+    delete row.pharmacyNote;
+  }
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: older as unknown as typeof snapshot.journal, files: (async function* () {})() });
+  const [restored] = await target.stock.getEntries();
+  assert.equal(restored.expiryEpochDay, null);
+  assert.equal(restored.pharmacyNote, null);
 });
 
 /* Redesign phase 10 ticket 01: a lead time is a person's own typed figure,
@@ -507,6 +552,29 @@ test('a lead time and doses per unit travel, and a restore keeps them', async ()
   const restored = (await target.stock.getEntries()).find((s) => s.id === stock);
   assert.equal(restored?.leadTimeDays, 21);
   assert.equal(restored?.dosesPerUnit, 5);
+});
+
+test('a side effect travels ongoing or resolved, and an older archive reads as ongoing', async () => {
+  const { journal } = await populated();
+  const resolved = await journal.sideEffects.upsertSideEffect({ name: 'acne', severity: 2, epochDay: 19000, resolvedEpochDay: 19090 });
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.sideEffects.find((e) => e.id === resolved)?.resolvedEpochDay, 19090);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const days = async (j: typeof target) => Object.fromEntries((await j.sideEffects.getSideEffects()).map((e) => [e.name, e.resolvedEpochDay]));
+  assert.deepEqual(await days(target), { 'hot flashes': null, acne: 19090 });
+
+  const older = {
+    ...snapshot.journal,
+    sideEffects: snapshot.journal.sideEffects.map(({ resolvedEpochDay: _resolved, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await days(fromOlder), { 'hot flashes': null, acne: null });
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
@@ -850,7 +918,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // (applyTagGroups) - a rename or a hide reaches an already-present tag.
   tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
   // Same update branch as gender_dimension.
-  affirmation: ['uuid', 'key', 'language', 'text', 'hidden'],
   // Same update branch as gender_dimension.
   body_region: ['uuid', 'key', 'name', 'hidden'],
   // Same update branch as gender_dimension.
@@ -890,7 +957,10 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
-  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],
+  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day'],
+  // appointment_id travels as nesting under its appointment (ticket 26), the
+  // way procedure_photo travels under its procedure.
+  appointment_status: ['uuid', 'appointment_id', 'epoch_day', 'status'],
   // procedure_id for the same reason, since schema v83 gave the taper the
   // procedure it dilates for in place of a surgery day of its own.
   taper: ['uuid', 'procedure_id', 'start_epoch_day', 'stages'],
@@ -913,7 +983,6 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // belongs to an entry (phase 8 features ticket 07), and entry_id is a
   // rowid resolved against the entries section.
   margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
-  revisit: ['uuid', 'entry_id', 'entry_epoch_day', 'created_epoch_day', 'target_epoch_day'],
   // Read once for the file manifest, the same reason hair_photo above is
   // hand-written.
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],

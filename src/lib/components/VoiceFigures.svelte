@@ -7,12 +7,10 @@
      false - it said the seven are the same kind of fact, and CONTEXT.md
      says they are two.
 
-     **Pitch is the one figure that can be read against the world**, so it
-     is the one that looks different: a block of the area's stripe with its
-     value on it (rule 3), which is the tier split made visible in surface
-     rather than explained in prose afterwards. Its own note sits in a foot
-     of page colour along the bottom edge, because small text is what no
-     band can carry.
+     **Pitch keeps an absolute hertz axis across takes**, so it is the one
+     that looks different: a block of the area's stripe with its value on
+     it (rule 3). Its own note sits in a foot of page colour along the
+     bottom edge, where small text has room to breathe.
 
      **The other six mean nothing on their own.** "+1.4 semitones" is not a
      fact about anybody until it is a fact about the same person's earlier
@@ -254,8 +252,7 @@
 </script>
 
 <div class="vf" data-vb-figures {...roleAttrs(role)}>
-  <!-- The one figure with a published range behind it, and so the one
-       figure that gets a block (rule 3). Its note is the musical note of
+  <!-- Pitch gets a block (rule 3). Its note is the musical note of
        the median, which is a readout and not a second reading, so it sits
        in the foot rather than on the stripe. -->
   <div class="vf-pitch" data-figure="pitch">

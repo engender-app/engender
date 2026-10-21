@@ -27,15 +27,10 @@ describe('the unprompted registry', () => {
       'surgeryCountdownEnabled',
       'safeSpaceNudgeEnabled',
       'stockNoticeEnabled',
-      'activeTryoutTileEnabled',
       'patchScheduleTileEnabled',
-      'voiceBenchmarkNudgeEnabled',
       'pauseActiveBannerEnabled',
-      'hairRemovalRecoveryEnabled',
-      'appointmentTodayEnabled',
       'wrappedEnabled',
-      'onThisDayEnabled',
-      'revisitEnabled'
+      'onThisDayEnabled'
     ]);
   });
 
@@ -89,7 +84,7 @@ describe('the notifications view (ticket 04)', () => {
 
   it('reuses the check-in preference rather than stacking a second switch on it', () => {
     /* `checkInEnabled` is the check-in, and it already carried its time and
-       its affirmation pool. A `checkInNotificationsEnabled` beside it would
+       its prompt. A `checkInNotificationsEnabled` beside it would
        be a switch that can only ever contradict the one next to it. */
     expect(NOTIFICATION_ROWS.find((row) => row.key === 'check-in')?.notify?.prefKey).toBe('checkInEnabled');
   });
@@ -146,14 +141,11 @@ describe('the notifications view (ticket 04)', () => {
      finished takes its tiles and its notifications with it, and this is the
      list that says which are whose. */
 
-  it('names an area for the six kinds that belong to one, and none for the rest', () => {
+  it('names an area for the two kinds that belong to one, and none for the rest', () => {
     const withArea = UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [row.key, row.area]);
 
     expect(withArea).toEqual([
       ['wear-timer', 'wearSessions'],
-      ['voice-benchmark-nudge', 'voiceBenchmarks'],
-      ['hair-removal-recovery', 'hairRemovalSessions'],
-      ['appointment-today', 'appointments'],
       ['wear-elapsed', 'wearSessions']
     ]);
   });

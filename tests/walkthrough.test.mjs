@@ -983,14 +983,17 @@ try {
     return keys[keys.length - 2] === 'doubt';
   }, null, { timeout: 8000 });
 
-  /* A kind switched off stays off, which is the whole reason it is a switch
-     rather than a dismissal. */
-  await page.locator('[data-edit-kind="doseSlot"] [role="switch"]').click();
-  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
+  /* The agenda has no kind switches since functional-audit ticket 14. */
+  if (
+    (await page.locator('[data-today-editor] [role="switch"]').count()) !==
+    (await page.locator('[data-edit-tile] [role="switch"]').count())
+  ) {
+    throw new Error('the editor offers a switch that is not a tile switch');
+  }
 
   /* The tiles, here since phase 11 ticket 04 rather than two taps away
      under Settings. Whichever tile the persona is actually being shown,
-     rather than a named one: which of the thirteen qualifies is the
+     rather than a named one: which of the tiles qualifies is the
      persona's business and changes with the fixture, and what this flow is
      about is that the switch beside the pins takes it off the page it is
      on. In place, with the editor still open - that is the acceptance. */
@@ -1003,7 +1006,7 @@ try {
 
   /* And back on by the same switch, which is the other half of the
      acceptance and not the same path as the reset below: one is a write to
-     one preference, the other is thirteen written from the catalogue. */
+     one preference, the other is every tile written from the catalogue. */
   await tileSwitch.click();
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
   await page.waitForSelector(`[data-live-tile="${tileOnToday}"]`, { timeout: 8000 });
@@ -1033,10 +1036,8 @@ try {
      set and the switches back - one edit mode, one reset. */
   await page.locator('[data-edit-today]').click();
   await page.waitForSelector('[data-today-editor]');
-  /* The switch is still off after the reload, which is the difference
-     between a switch and a dismissal. */
-  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="false"]');
-  /* And so is the tile, for the same reason. */
+  /* The tile switch is still off after the reload, which is the
+     difference between a switch and a dismissal. */
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="false"]`);
   await page.locator('[data-edit-unpin="doubt"]').click();
   await page.waitForSelector('[data-edit-pinned-row="doubt"]', { state: 'detached', timeout: 8000 });
@@ -1045,8 +1046,7 @@ try {
      the one that throws away work somebody did. */
   await page.waitForSelector('[data-confirm-edit-reset]');
   await page.locator('[data-confirm-edit-reset]').click();
-  await page.waitForSelector('[data-edit-kind="doseSlot"] [role="switch"][aria-checked="true"]');
-  /* One reset, every switch: the tile comes back with the agenda kind. */
+  /* One reset, every switch: the tile comes back. */
   await page.waitForSelector(`[data-edit-tile="${tileOnToday}"] [role="switch"][aria-checked="true"]`);
   await page.locator('[data-edit-done]').click();
   await page.waitForSelector('[data-pinned-row]');
@@ -1576,36 +1576,6 @@ try {
   await page.waitForSelector('#ed-note');
   ok('a tag insight opens its entries, and one of them opens the editor');
 } catch (e) { fail('tag insight entries', e); }
-});
-
-/* 6c. the custom-interval card's length field waits for the typist (phase 8
-   audit ticket 16, the same debounce ticket 15 gave /search's query).
-
-   Three digits firing one read rather than three is proved by counting
-   closure runs (tests/browser-tier/live-reads-probe.svelte.ts's own
-   ticket-16 section, alongside ticket 15's) - nothing a walkthrough drives
-   from outside the page can count that. What
-   this proves instead is what a person actually sees: a length typed digit
-   by digit still lands once typing stops, `pressSequentially` rather than
-   `fill` because `fill` sets the whole value in one event and would
-   exercise no wait at all. 182 is a three-digit length the demo persona's
-   own history draws a pattern for - chosen by checking the rendered card
-   rather than assumed, since a length past the persona's span draws nothing
-   to wait for. */
-await flow('custom interval length waits for the typist', async () => {
-try {
-  /* On Care since redesign ticket 05, as the merged interval card's own
-     control. */
-  await fresh('/care');
-  const card = page.locator('[data-chart-card="interval-mood"]');
-  const field = page.locator('#custom-interval-length');
-
-  await field.fill('');
-  await field.pressSequentially('182', { delay: 30 });
-  await card.locator('[aria-label*="182-day interval"]').first().waitFor();
-
-  ok('the custom interval length typed digit by digit still lands once typing stops');
-} catch (e) { fail('custom interval length waits for the typist', e); }
 });
 
 /* 6b. ticket 18's three view-only screens: chronological milestones with
@@ -4223,6 +4193,31 @@ try {
 } catch (e) { fail('same-process background/resume', e); }
 });
 
+/* 24. a mood-only quick log saves and lands back on Today with no
+   follow-up sheet (functional-audit ticket 14 cut the scales prompt that
+   used to open here), and the saved entry carries no scale value. */
+await flow('quick log saves without a follow-up sheet', async () => {
+try {
+  await fresh('/');
+  await page.locator('[data-mood="4"]').click();
+  await page.waitForSelector('#ed-note');
+  await page.locator('[data-save]').click();
+  await page.waitForSelector('[data-home-log]');
+  if (new URL(page.url()).search !== '') throw new Error('the save landed on ' + page.url());
+  if (await page.locator('[data-sheet]').count()) {
+    throw new Error('a sheet opened after a mood-only save');
+  }
+
+  await openNewestEntry();
+  await page.waitForSelector('[data-dim-value]');
+  const values = await page.locator('[data-dim-value]').allTextContents();
+  if (values.some((v) => Number.isFinite(Number(v.trim())))) {
+    throw new Error('a mood-only quick log wrote a scale value: ' + JSON.stringify(values));
+  }
+  ok('a mood-only quick log lands on Today with no follow-up sheet and no scale value');
+} catch (e) { fail('quick log saves without a follow-up sheet', e); }
+});
+
 /* 25. Compare two periods on the same screen. */
 await flow('compare two periods', async () => {
 try {
@@ -4631,7 +4626,7 @@ try {
   const SETTINGS_AREA_ROUTES = [
     '/settings', '/settings/dimension', '/settings/export', '/settings/journal-book',
     '/settings/security', '/settings/permissions', '/settings/tags', '/settings/trash', '/settings/reminders',
-    '/settings/affirmations', '/settings/body-regions',
+    '/settings/body-regions',
     '/settings/journaling-pause', '/media/photos',
     '/body/hair-progress',
     '/body/hair-removal', '/care/labs', '/care/regimen',
@@ -4923,12 +4918,6 @@ try {
   const fields = await page.locator('[data-metric="room"] [data-metric-field]').count();
   if (fields !== 7) {
     throw new Error(`an own-series figure carries ${fields} fields, not seven`);
-  }
-  if ((await page.locator('[data-metric="pitch"] [data-metric-bands]').count()) !== 2) {
-    throw new Error('the pitch section does not state a published range per passage language');
-  }
-  if ((await page.locator('[data-metric="spread"] [data-metric-bands]').count()) !== 0) {
-    throw new Error('an own-series figure draws a band (ADR-0060)');
   }
   if ((await page.locator('[data-metrics-reviewed]').count()) === 0) {
     throw new Error('the metric table shows no reviewed-on date');

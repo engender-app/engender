@@ -8,10 +8,6 @@
    of a repeating interval each day fell on, or how many days each day sits
    from one dated event.
 
-   This started as the injection-interval fold in intervalMoodPattern.ts and
-   answered one question. The arithmetic never had anything to do with
-   injections or with mood, so it is here, and that file's two functions are
-   callers rather than a second copy.
 
    Two rules, and they have different origins on purpose:
 
@@ -30,6 +26,8 @@
    only rearranged. */
 
 import type { DayAverage } from './journal/stats';
+import type { DoseEvent } from './types';
+import { epochDayFromTimestamp } from './epochDay';
 
 export interface PatternPoint {
   /** Where the day landed on the re-keyed axis. Under the repeating rule
@@ -46,6 +44,33 @@ export interface PatternPoint {
       entries. Always 1 under the anchored rule, where a position *is* one
       calendar day. */
   count: number;
+}
+
+/** The injectable regimen's own completed intervals, one per gap between
+    consecutive IM/SC doses - a skipped dose never happened, the same rule
+    doseDaysFromEvents (correlationCards.ts) applies. The span from the
+    latest injection to today is left out: it has no length yet, so bucketing
+    its days would mean picking an arbitrary cutoff rather than reporting one.
+
+    Derived from the dose log alone, the same reasoning labTimingFor
+    (labTiming.ts) gives for day of interval generally: a regimen episode's
+    `interval` is free text and cannot be computed from, and a dose schedule
+    is optional and would go silently missing for anyone who has not set
+    one. */
+export function completedInjectionIntervals(doseEvents: readonly DoseEvent[]): CompletedInterval[] {
+  const injectionDays = [
+    ...new Set(
+      doseEvents
+        .filter((d) => d.status !== 'skipped' && (d.route === 'im' || d.route === 'sc'))
+        .map((d) => epochDayFromTimestamp(d.timestamp))
+    )
+  ].sort((a, b) => a - b);
+
+  const intervals: CompletedInterval[] = [];
+  for (let i = 0; i < injectionDays.length - 1; i++) {
+    intervals.push({ startEpochDay: injectionDays[i], length: injectionDays[i + 1] - injectionDays[i] });
+  }
+  return intervals;
 }
 
 export interface CompletedInterval {
@@ -76,7 +101,7 @@ export type Keying =
           would draw a mark past the end of the axis. The repeating rule
           takes no such field - what it excludes is decided by the
           intervals it was handed, and capping those by the clock would
-          change what the injection-interval chart has always answered. */
+          change what the repeating-axis chart answers. */
       todayEpochDay: number;
     };
 

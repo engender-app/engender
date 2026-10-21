@@ -40,7 +40,6 @@ import java.security.KeyStore;
 public class ReminderPayloadStoreTest {
 
     private static final String TITLE = "Estradiol patch";
-    private static final String AFFIRMATION = "Your body is your own to describe";
 
     private Context context;
 
@@ -56,12 +55,11 @@ public class ReminderPayloadStoreTest {
     }
 
     @Test
-    public void theStoredPayloadHoldsNoTitleAndNoAffirmationInItsBytes() throws Exception {
+    public void theStoredPayloadHoldsNoTitleInItsBytes() throws Exception {
         ReminderScheduler.saveAndSchedule(context, payload());
 
         String onDisk = preferenceBytes();
         assertFalse("the reminder title is readable on disk", onDisk.contains(TITLE));
-        assertFalse("the affirmation is readable on disk", onDisk.contains(AFFIRMATION));
         assertFalse("the check-in prompt is readable on disk", onDisk.contains("How are you today?"));
         assertTrue("nothing was written at all", onDisk.contains(ReminderPayloadStore.KEY_CIPHERTEXT));
 
@@ -200,7 +198,6 @@ public class ReminderPayloadStoreTest {
                 .put("enabled", true)))
             .put("checkInEnabled", true)
             .put("checkInTime", "21:00")
-            .put("checkInAffirmations", new JSONArray().put(AFFIRMATION))
             .put("hideNotificationTitles", false)
             .put("latestEntryEpochDay", 20313)
             .put("texts", new JSONObject()

@@ -28,7 +28,6 @@ for (const [name, extra, selector, expected] of [
   ['equal take span', { span: equalSpan }, '[data-pitch-span]', 2],
   ['equal density span', { span: equalSpan, density: [{ hz: 185, weight: 1 }] }, '[data-density-span]', 2],
   ['equal comfort band', { comfort: equalSpan }, '[data-pitch-comfort] line', 3],
-  ['equal clipped middle-band edges', { axis: { lowHz: 1000, highHz: 2000 }, language: 'en' }, '[data-pitch-middle] line', 2],
   ['repeated caller ticks', { ticks: [185, 185] }, '.pf-tick', 2]
 ] as const) {
   await check(name, async (target) => {

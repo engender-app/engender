@@ -260,14 +260,6 @@ beforeAll(async () => {
     journal.presentations.setPresentationHidden(femme.id, true)
   );
 
-  // --- affirmations -------------------------------------------------------
-  const line = (await drive('affirmations', 'addLine', () =>
-    journal.affirmations.addLine('en', 'You get to take up space, today too.')
-  )) as { id: string };
-  await drive('affirmations', 'editLine', () => journal.affirmations.editLine(line.id, 'You get to take up space.'));
-  await drive('affirmations', 'setHidden', () => journal.affirmations.setHidden(line.id, true));
-  await drive('affirmations', 'deleteLine', () => journal.affirmations.deleteLine(line.id));
-
   // --- bodyRegions --------------------------------------------------------
   const region = (await drive('bodyRegions', 'addCustomRegion', () =>
     journal.bodyRegions.addCustomRegion('scar tissue')
@@ -569,10 +561,10 @@ beforeAll(async () => {
 
   // --- sideEffects --------------------------------------------------------
   const sideEffectId = (await drive('sideEffects', 'upsertSideEffect', () =>
-    journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 })
+    journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null })
   )) as string;
   const secondSideEffectId = (await drive('sideEffects', 'upsertSideEffect', () =>
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 20001 })
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 20001, resolvedEpochDay: null })
   )) as string;
   await drive('sideEffects', 'deleteSideEffect', () => journal.sideEffects.deleteSideEffect(secondSideEffectId));
 
@@ -610,15 +602,6 @@ beforeAll(async () => {
   await drive('journalingPauses', 'deletePause', () =>
     journal.journalingPauses.deletePause(secondJournalingPauseId)
   );
-
-  // --- revisits -----------------------------------------------------------
-  await drive('revisits', 'setRevisit', () =>
-    journal.revisits.setRevisit({ entryId, createdEpochDay: 20000, targetEpochDay: 20100 })
-  );
-  const revisitForEntry = await driveRead('revisits', 'getRevisitForEntry', () =>
-    journal.revisits.getRevisitForEntry(entryId)
-  );
-  await drive('revisits', 'deleteRevisit', () => journal.revisits.deleteRevisit(revisitForEntry!.id));
 
   // --- marginNotes ------------------------------------------------------
   const marginNoteId = (await drive('marginNotes', 'add', () =>
@@ -689,10 +672,10 @@ beforeAll(async () => {
 
   // --- hairProgress -------------------------------------------------------
   const hairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19200, scale: 'norwood_hamilton', stage: '2a' })
+    journal.hairProgress.upsertStage({ epochDay: 19200, description: 'temples back a little' })
   )) as string;
   const secondHairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19230, scale: 'sinclair', stage: '2' })
+    journal.hairProgress.upsertStage({ epochDay: 19230, description: 'parting wider' })
   )) as string;
   await drive('hairProgress', 'deleteStage', () => journal.hairProgress.deleteStage(secondHairStageId));
   const hairPhotoId = (await drive('hairProgress', 'addPhoto', () =>
@@ -801,6 +784,17 @@ beforeAll(async () => {
     journal.appointments.upsertAppointment({ epochDay: 20042, procedureId: null, kind: null, place: null, note: null })
   )) as string;
   await drive('appointments', 'deleteAppointment', () => journal.appointments.deleteAppointment(secondAppointmentId));
+  // A wait and its updates (ticket 26): one kept, one deleted.
+  const waitingId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: null, referredEpochDay: 19900, procedureId: null, kind: 'Gender clinic', place: null, note: null })
+  )) as string;
+  await drive('appointments', 'addStatusUpdate', () =>
+    journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19950, status: 'Letter came' })
+  );
+  const droppedStatusId = (await drive('appointments', 'addStatusUpdate', () =>
+    journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19960, status: 'typo' })
+  )) as string;
+  await drive('appointments', 'deleteStatusUpdate', () => journal.appointments.deleteStatusUpdate(droppedStatusId));
   const secondProcedureId = (await drive('procedures', 'upsertProcedure', () =>
     journal.procedures.upsertProcedure({ name: 'a second procedure', surgeryEpochDay: 20100, notes: '' })
   )) as string;
@@ -931,7 +925,6 @@ beforeAll(async () => {
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
   await driveRead('entryTemplates', 'getEntryTemplates', () => journal.entryTemplates.getEntryTemplates());
-  await driveRead('affirmations', 'getAffirmations', () => journal.affirmations.getAffirmations());
   await driveRead('bodyRegions', 'getBodyRegions', () => journal.bodyRegions.getBodyRegions());
   await driveRead('dimensions', 'getDimensions', () => journal.dimensions.getDimensions());
   await driveRead('dimensions', 'getPresets', () => journal.dimensions.getPresets());
@@ -1001,7 +994,6 @@ beforeAll(async () => {
   await driveRead('cycleEvents', 'getCycleEventsInRange', () => journal.cycleEvents.getCycleEventsInRange(0, 30000));
   await driveRead('cycleEvents', 'lastWriteEpochDay', () => journal.cycleEvents.lastWriteEpochDay(20000));
   await driveRead('journalingPauses', 'getPauses', () => journal.journalingPauses.getPauses());
-  await driveRead('revisits', 'getDueRevisits', () => journal.revisits.getDueRevisits(20200));
   await driveRead('marginNotes', 'forEntries', () => journal.marginNotes.forEntries([entryId]));
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
@@ -1056,7 +1048,6 @@ beforeAll(async () => {
   await driveRead('hairRemoval', 'getSessions', () => journal.hairRemoval.getSessions());
   await driveRead('hairRemoval', 'getSessionsOnDay', () => journal.hairRemoval.getSessionsOnDay(20000));
   await driveRead('hairRemoval', 'lastWriteEpochDay', () => journal.hairRemoval.lastWriteEpochDay(20000));
-  await driveRead('hairRemoval', 'latestSession', () => journal.hairRemoval.latestSession(20000));
   await driveRead('hairRemoval', 'getPhotos', () => journal.hairRemoval.getPhotos(hairRemovalId));
   await driveRead('procedures', 'getProcedures', () => journal.procedures.getProcedures());
   await driveRead('procedures', 'getSurgeryDaysInRange', () => journal.procedures.getSurgeryDaysInRange(19000, 20000));
@@ -1068,6 +1059,8 @@ beforeAll(async () => {
   await driveRead('procedures', 'getMilestone', () => journal.procedures.getMilestone(procedureId));
   await driveRead('appointments', 'getAppointments', () => journal.appointments.getAppointments());
   await driveRead('appointments', 'getAppointment', () => journal.appointments.getAppointment(appointmentId));
+  await driveRead('appointments', 'getWaiting', () => journal.appointments.getWaiting());
+  await driveRead('appointments', 'getStatusUpdates', () => journal.appointments.getStatusUpdates());
   await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
   await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
   await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));
@@ -1088,7 +1081,6 @@ beforeAll(async () => {
   await driveRead('feltSense', 'onDay', () => journal.feltSense.onDay(19910));
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.
-  await driveRead('feltSense', 'latestDaysForTryouts', () => journal.feltSense.latestDaysForTryouts([tryoutId]));
   await driveRead('feltSense', 'byTryout', () => journal.feltSense.byTryout());
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
@@ -1118,12 +1110,6 @@ beforeAll(async () => {
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));
   await driveRead('correlationCards', 'getCards', () => journal.correlationCards.getCards(19000, 21000));
-  await driveRead('intervalMoodPattern', 'dayOfInterval', () =>
-    journal.intervalMoodPattern.dayOfInterval(19000, 21000)
-  );
-  await driveRead('intervalMoodPattern', 'byCustomInterval', () =>
-    journal.intervalMoodPattern.byCustomInterval(28, 19000, 21000)
-  );
   await driveRead('archive', 'snapshot', () => journal.archive.snapshot());
   await driveRead('archive', 'importLog', () => journal.archive.importLog());
 

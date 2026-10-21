@@ -50,6 +50,7 @@
 
 import type { ArchiveJournal } from '../archive/payload';
 import { inferDrugClass } from '../drugClass';
+import { legacyHairStagingText } from '../hairStageScales';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
 import type { SectionRead } from './archiveRead';
@@ -148,6 +149,22 @@ function flat<
   };
 }
 
+const HAIR_STAGES = flat({
+  name: 'hairStages',
+  travels: 'none',
+  table: 'hair_stage',
+  identity: 'uuid',
+  orderBy: 'epoch_day, id',
+  columns: { uuid: 'id', epoch_day: 'epochDay', description: { field: 'description', whenAbsent: '' } }
+});
+
+type ArchiveHairStage = ArchiveJournal['hairStages'][number];
+
+function asFreeTextStaging({ id, epochDay, scale, stage, description }: ArchiveHairStage): ArchiveHairStage {
+  if (stage === undefined) return { id, epochDay, description };
+  return { id, epochDay, description: legacyHairStagingText(scale ?? 'norwood_hamilton', stage, description ?? '') };
+}
+
 const MEDICATION_STOCK = {
   table: 'medication_stock',
   identity: 'drug',
@@ -164,7 +181,9 @@ const MEDICATION_STOCK = {
     in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
     in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
     lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
-    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
+    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null },
+    expiry_epoch_day: { field: 'expiryEpochDay', whenAbsent: null },
+    pharmacy_note: { field: 'pharmacyNote', whenAbsent: null }
   }
 } as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
 
@@ -237,7 +256,6 @@ const SECTIONS = [
   }),
   /* The fluidity engine's presentations (phase 5 deepening ticket 17,
      ADR-0048). Flat: one table, no children, no built-ins to preserve -
-     every row is a custom, so unlike dimensions/tagGroups/affirmations
      there is no "only the customs" discard statement. No `after`: an
      entry's own `presentation_id` is plain text (entries' own section
      resolves no rowid against it), the same reason milestones needs none
@@ -280,24 +298,13 @@ const SECTIONS = [
     read: read.readEntryTemplates,
     apply: apply.applyEntryTemplates
   }),
-  section({
-    name: 'affirmations',
-    // Only the customs, the same reasoning dimensions' own statement gives: a
-    // built-in line the archive does not carry keeps the wording reconciling
-    // gave it rather than losing its row entirely.
-    discard: ['DELETE FROM affirmation WHERE key IS NULL'],
-    // Custom vocabulary, the same reasoning `dimensions` above gives.
-    travels: 'whole',
-    read: read.readAffirmations,
-    apply: apply.applyAffirmations
-  }),
   // No `after`: entry_body_region.region stores a region's domain id
   // directly (a plain string, not a rowid FK), so applyEntries never
   // resolves a body region against this section's rows the way it does
   // dimensions and tags.
   section({
     name: 'bodyRegions',
-    // Same reasoning as affirmations' own statement: only the customs.
+    // Same reasoning as dimensions' own statement: only the customs.
     discard: ['DELETE FROM body_region WHERE key IS NULL'],
     // Custom vocabulary, the same reasoning `dimensions` above gives.
     travels: 'whole',
@@ -485,7 +492,13 @@ const SECTIONS = [
     table: 'side_effect',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', name: 'name', severity: 'severity', epoch_day: 'epochDay' }
+    columns: {
+      uuid: 'id',
+      name: 'name',
+      severity: 'severity',
+      epoch_day: 'epochDay',
+      resolved_epoch_day: { field: 'resolvedEpochDay', whenAbsent: null }
+    }
   }),
   flat({
     name: 'cycleEvents',
@@ -502,19 +515,6 @@ const SECTIONS = [
     identity: 'uuid',
     orderBy: 'start_epoch_day, id',
     columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
-  }),
-  section({
-    name: 'revisits',
-    // A day chosen once to read an entry again is scheduling metadata about
-    // this device, not something the person would hand to a clinician in a
-    // structure file - the same judgement letters and reminders above
-    // already made. Older archives may carry a revisit without its trashed
-    // entry, so restore checks the owner before inserting it.
-    travels: 'none',
-    after: ['entries'],
-    discard: ['DELETE FROM revisit'],
-    read: read.readRevisits,
-    apply: apply.applyRevisits
   }),
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
      no children, no built-ins - nothing ships seeded, so every row is the
@@ -621,27 +621,16 @@ const SECTIONS = [
     orderBy: 'effect',
     columns: { uuid: 'id', effect: 'effect', first_noticed_epoch_day: 'firstNoticedEpochDay' }
   }),
-  /* A row with no `scale` came out of an archive written before phase 5
-     ticket 33, when Norwood-Hamilton was the only vocabulary there was, so
-     it is one - the same reading schema.ts gives the rows it holds
-     across. Defaulting rather than dropping is what keeps an old backup
-     whole; a scale this build does not know is left as it is and the
-     schema's CHECK refuses it, which is the honest failure for an archive
-     from a future build. */
-  flat({
-    name: 'hairStages',
-    travels: 'none',
-    table: 'hair_stage',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: {
-      uuid: 'id',
-      epoch_day: 'epochDay',
-      scale: { field: 'scale', whenAbsent: 'norwood_hamilton' },
-      stage: 'stage',
-      description: { field: 'description', whenAbsent: '' }
-    }
-  }),
+  /* Staging is free text since functional audit ticket 23. A row from an
+     older archive still names a scale and a grade, and is written as the
+     text migration 99 gives a stored one (legacyHairStagingText). A row
+     with a stage and no scale predates phase 5 ticket 33, when
+     Norwood-Hamilton was the only scale there was. */
+  {
+    ...HAIR_STAGES,
+    apply: (restoring: Restoring) =>
+      apply.applyFlatTable(HAIR_STAGES.flatTable, restoring.journal.hairStages.map(asFreeTextStaging), restoring)
+  },
   section({
     name: 'hairPhotos',
     discard: ['DELETE FROM hair_photo'],
@@ -678,11 +667,13 @@ const SECTIONS = [
      Not `flat`: a descriptor maps columns, and this one's procedure link is
      a rowid on this device and a uuid on the wire.
 
-     Archives without this section restore with an empty appointment list. */
+     Archives without this section restore with an empty appointment list.
+     A wait's status updates (ticket 26) travel nested in their appointment
+     and are discarded with it. */
   section({
     name: 'appointments',
     after: ['procedures'],
-    discard: ['DELETE FROM appointment'],
+    discard: ['DELETE FROM appointment_status', 'DELETE FROM appointment'],
     // Where somebody's medical appointments were and what they were about.
     travels: 'none',
     read: read.readAppointments,
@@ -1016,8 +1007,7 @@ const SECTIONS = [
      stable rather than silently reshuffled on every read. */
   flat({
     name: 'comfortItems',
-    // Authored text with no chronology, the same reasoning `affirmations`
-    // above gives - not a record of what happened to you.
+    // Authored text with no chronology, not a record of what happened to you.
     travels: 'whole',
     table: 'comfort_item',
     identity: 'uuid',
@@ -1083,7 +1073,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
-  'measurementTypes', 'measurements', 'sizeRecords'
+  'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits'
 ];
 
 /** A journal with every section present and empty - what an importer builds
@@ -1143,15 +1133,13 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
     inserts second and therefore clears first, before the rows it points at
     are gone; children inside one section are that section's own business and
     are declared children-first. Today the reversal is what keeps the five
-    foreign keys that do not cascade (entry.presentation_id,
-    milestone.procedure_id and tryout_id, personal_effect_type.category_key,
-    revisit.entry_id) from firing: each child's section inserts after its
-    parent's, so it clears first, by
-    `after` for milestones and by declaration order for the rest. A sixth,
-    checklist.debrief_entry_id, sets null. The rest cascade, and every child
-    table is emptied wholesale anyway. The one ordering a statement does
-    depend on is inside a section: `presets` filters preset_dimension by a
-    subselect over gender_preset, and has to run before it empties that.
+    foreign keys that do not cascade from firing: each child's section
+    inserts after its parent's, so it clears first, by `after` for milestones
+    and by declaration order for the rest. checklist.debrief_entry_id sets
+    null. The rest cascade, and every child table is emptied wholesale anyway.
+    The one ordering a statement depends on is inside a section: `presets`
+    filters preset_dimension by a subselect over gender_preset, and has to
+    run before it empties that.
 
     Not a caller's list to compose: restore.ts runs it inside its Replace
     transaction and `Journal.discardEverything` runs it on its own (journal.ts,

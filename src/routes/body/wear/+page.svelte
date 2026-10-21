@@ -646,7 +646,7 @@
            card names the area. -->
       <!-- The axis first, because it decides whether there is a range to
            pick, and absent for a journal that can answer only the calendar. -->
-      <div class="kit-reading-controls">
+      <div class="wear-reading-controls">
         {#if readAxis.axes.length > 1}
           <div class="kit-filter">
             <label class="kit-filter-label" for="wear-axis">{m.chart_axis_label()}</label>
@@ -663,10 +663,10 @@
 
       <!-- One slot for the range control and the whole-journal note that
            replaces it, travelling between the two rather than snapping
-           (kit.css's .kit-reading-slot). -->
-        <div class="kit-reading-slot" use:resize>
+           (the positioned slot below). -->
+        <div class="wear-reading-slot" use:resize>
           {#if readAxis.keying}
-            <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
+            <p class="muted small wear-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
           {:else}
             <div out:crossfade>
               <Segmented
@@ -817,8 +817,7 @@
 
       <!-- The facts (ticket 50 section 4). Always here, for every kind, and
            never gated by the duration cue's toggle: these are about method
-           rather than duration, and each block names where it comes from
-           the way the voice screen's pitch bands do (ADR-0059). -->
+           rather than duration, and each block names its source. -->
       <!-- One slot that travels between the three sets rather than snapping
            to a new height, the same pairing the range control above uses:
            `resize` on the box, `crossfade` on the block leaving it. -->
@@ -885,6 +884,26 @@
 </div>
 
 <style>
+  .wear-reading-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .wear-reading-controls > .kit-filter {
+    padding-bottom: 0;
+  }
+
+  /* Crossfade leaves the slot's flow; position keeps its fading control here. */
+  .wear-reading-slot {
+    position: relative;
+  }
+
+  .wear-reading-note {
+    margin: 0;
+    padding: var(--space-2) 0;
+  }
+
   /* The running session had an accent outline drawn around the row to say
      it was live. The card it now sits in has an outline of its own and the
      two would have been a line inside a line; what says it is running is

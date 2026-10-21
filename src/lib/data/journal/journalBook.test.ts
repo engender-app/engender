@@ -50,8 +50,8 @@ async function seeded(): Promise<Journal> {
   await journal.entries.upsertEntry({ epochDay: 19_000, mood: 2, note: 'before the range' });
   await journal.milestones.upsertMilestone({ name: 'first appointment', epochDay: 20_002 });
   await journal.milestones.upsertMilestone({ name: 'long before', epochDay: 19_001 });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 20_004 });
-  await journal.sideEffects.upsertSideEffect({ name: 'older headache', severity: 2, epochDay: 19_003 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 20_004, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'older headache', severity: 2, epochDay: 19_003, resolvedEpochDay: null });
   return journal;
 }
 

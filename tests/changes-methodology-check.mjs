@@ -60,7 +60,7 @@ try {
     await page.screenshot({ path: '.claude/changes-shots/changes-unanchored.png', fullPage: true });
   });
 
-  await block('Methodology disclosure is accessible by keyboard with active regimen', 5, async () => {
+  await block('Literature disclosure holds every band, opened by keyboard', 9, async () => {
     // Add active regimen to get anchorEpochDay !== null
     await goto(page, '/care/regimen');
     await page.click('[data-add]');
@@ -76,51 +76,64 @@ try {
 
     // Return to changes
     await goto(page, '/care/changes');
-    /* The bands' explanation and its disclosure show only while an open
-       group draws a literature band (69c09fb6), and every group starts
-       collapsed. Open groups in order until one draws a band. */
-    await page.locator('[data-effect-group]').first().waitFor({ state: 'visible', timeout: 15000 });
-    for (const group of await page.locator('[data-effect-group]').all()) {
-      if (await page.locator('[data-methodology-toggle]').count()) break;
-      await group.locator('[aria-expanded]').first().click();
-    }
-    await page.waitForSelector('[data-methodology-toggle]', { timeout: 15000 });
-
-    // Verify short limitation is visible outside disclosure
+    /* Functional audit ticket 22: the bands sit behind "What the literature
+       says". Open the body-shape group, whose breast development row has an
+       estradiol band, and check that nothing of the literature shows until
+       the disclosure opens. */
+    const group = page.locator('[data-effect-group="feminizing::body_shape"]');
+    await group.waitFor({ state: 'visible', timeout: 15000 });
+    await group.locator('[aria-expanded]').first().click();
+    await group.locator('.effects-timeline').waitFor({ timeout: 8000 });
+    const bands = page.locator('.band-onset, .band-completion');
+    check((await bands.count()) === 0, 'no band is drawn before the disclosure opens');
     const limitation = page.locator('.muted.small', { hasText: 'Shaded bands describe the literature' });
-    check(await limitation.isVisible(), 'short limitation is visible before disclosure');
+    check((await limitation.count()) === 0, 'the limitation arrives with the bands, not before');
 
-    const toggle = page.locator('[data-methodology-toggle]');
-    const expandedBefore = await toggle.getAttribute('aria-expanded');
-    check(expandedBefore === 'false', 'disclosure initially collapsed');
+    const toggle = page.locator('[data-bands-context] [data-literature-toggle]');
+    check((await toggle.getAttribute('aria-expanded')) === 'false', 'disclosure initially collapsed');
 
     // Open disclosure with keyboard Enter
     await toggle.focus();
     await page.keyboard.press('Enter');
     await page.waitForFunction(
-      () => document.querySelector('[data-methodology-toggle]')?.getAttribute('aria-expanded') === 'true',
+      () => document.querySelector('[data-bands-context] [data-literature-toggle]')?.getAttribute('aria-expanded') === 'true',
       null,
       { timeout: 5000 }
     );
-    check(true, 'disclosure opened with Enter key');
+    await page.waitForFunction(() => document.querySelectorAll('.band-onset').length > 0, null, { timeout: 5000 });
+    check(true, 'bands drawn once the disclosure opened with Enter');
+    const body = await page.locator('[data-bands-context] [data-literature-body]').textContent();
+    check(
+      body.includes('Shaded bands describe the literature') && body.includes('published tables') && body.includes('No evidence'),
+      'limitation, timing and variability context visible'
+    );
+    check(body.includes('WPATH') && /Checked \d+ October 2026/.test(body), `source and reviewed-on date shown: ${body}`);
 
-    // Check that methodology content is displayed
-    const disclosed = page.locator('.effects-methodology .disclosed');
-    await disclosed.waitFor({ state: 'visible', timeout: 5000 });
-    const content = await disclosed.textContent();
-    check(content.includes('published tables') && content.includes('No evidence'), 'timing and variability context visible');
-
-    await page.screenshot({ path: '.claude/changes-shots/changes-disclosed.png', fullPage: true });
+    // The sheet's sentence follows the same disclosure.
+    await page.locator('[data-list-row="breast_development"]').click();
+    const sheetBody = page.locator('[data-sheet-literature] [data-literature-body]');
+    await sheetBody.waitFor({ state: 'visible', timeout: 8000 });
+    const sentence = await sheetBody.textContent();
+    check(sentence.includes('24 to 60 months') && sentence.includes('WPATH'), `sheet shows the SOC8 sentence and its source: ${sentence}`);
+    await page.keyboard.press('Escape');
+    await page.locator('[data-sheet-literature]').waitFor({ state: 'detached', timeout: 8000 });
 
     // Close disclosure with Space key
     await toggle.focus();
     await page.keyboard.press('Space');
     await page.waitForFunction(
-      () => document.querySelector('[data-methodology-toggle]')?.getAttribute('aria-expanded') === 'false',
+      () => document.querySelector('[data-bands-context] [data-literature-toggle]')?.getAttribute('aria-expanded') === 'false',
       null,
       { timeout: 5000 }
     );
-    check(true, 'disclosure closed with Space key');
+    await page.waitForFunction(() => document.querySelectorAll('.band-onset, .band-completion').length === 0, null, { timeout: 5000 });
+    check(true, 'bands gone once the disclosure closed with Space');
+
+    await page.locator('[data-list-row="breast_development"]').click();
+    await page.locator('[data-sheet-literature] [data-literature-toggle]').waitFor({ timeout: 8000 });
+    check((await page.locator('[data-sheet-literature] [data-literature-body]').count()) === 0, 'sheet keeps the sentence closed too');
+    await page.keyboard.press('Escape');
+    await page.locator('[data-sheet-literature]').waitFor({ state: 'detached', timeout: 8000 });
   });
 
   await block('Change groups remain available and interactive', 2, async () => {

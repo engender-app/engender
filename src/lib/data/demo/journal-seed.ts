@@ -69,7 +69,7 @@ export async function writePersonaJournal(
   source: ReturnType<typeof persona>,
   makePhoto: typeof demoPhoto = demoPhoto
 ): Promise<void> {
-  const { customTag, presentations, entries, milestones, eras, reminders, appointments, documents, labResults, tallyEvents } =
+  const { customTag, presentations, entries, milestones, eras, reminders, appointments, waiting, documents, labResults, tallyEvents } =
     source;
 
   /* What the journal held before this ran, so the check at the end reads a
@@ -123,6 +123,11 @@ export async function writePersonaJournal(
       written++;
       await journal.checklists.recordDebriefEntry(entryId, appointmentId);
     }
+  }
+
+  for (const { appointment, updates } of waiting) {
+    const appointmentId = await journal.appointments.upsertAppointment(appointment);
+    for (const update of updates) await journal.appointments.addStatusUpdate({ appointmentId, ...update });
   }
 
   for (const document of documents) await journal.documents.addDocument(document, await makePhoto(document.epochDay));

@@ -119,9 +119,7 @@ const TILE_TITLES: Record<WearKind, () => string> = {
 
    Every claim traces to a source named in
    `.scratch/phase-8/features/binder-tucking-safety-guidance-research.md`,
-   and `source` says which on screen - the same rule ADR-0059 put on the
-   voice screen's pitch bands, which is the app's other exception to "no
-   medical framing" (docs/ui-copy.md). Binding's three are the research
+   and `source` says which on screen. Binding's three are the research
    file's own "solid enough to state as fact" list, stated independently by
    Point of Pride, Desert AIDS Project, the Rainbow Project and UVM
    Children's Hospital; tucking's come from Trans Lifeline's guide and

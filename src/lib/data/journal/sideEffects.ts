@@ -8,7 +8,10 @@
    toEpochDay reads do.
 
    Flat, so its three writes come from flatArea.ts, with the severity check
-   passed in as that factory's pre-write guard. */
+   passed in as that factory's pre-write guard.
+
+   Ongoing or resolved since functional audit ticket 23: `epochDay` is when
+   it began and `resolvedEpochDay` when it ended, null while it goes on. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { SideEffect } from '../types';
@@ -43,11 +46,22 @@ function assertValidSeverity(severity: number | null): void {
   }
 }
 
+/** A side effect resolves on or after the day it began (functional audit
+    ticket 23); null is ongoing. */
+export function assertResolvedAfterStart(epochDay: number, resolvedEpochDay: number | null): void {
+  if (resolvedEpochDay !== null && resolvedEpochDay < epochDay) {
+    throw new Error(`side effect resolved before it began: ${resolvedEpochDay} < ${epochDay}`);
+  }
+}
+
 export function makeSideEffectsArea(driver: SqliteDriver): SideEffectsArea {
   const effects = flatArea<SideEffect>(driver, {
     table: 'side_effect',
-    columns: { name: 'name', severity: 'severity', epochDay: 'epoch_day' },
-    guard: (input) => assertValidSeverity(input.severity)
+    columns: { name: 'name', severity: 'severity', epochDay: 'epoch_day', resolvedEpochDay: 'resolved_epoch_day' },
+    guard: (input) => {
+      assertValidSeverity(input.severity);
+      assertResolvedAfterStart(input.epochDay, input.resolvedEpochDay);
+    }
   });
 
   return {

@@ -1,6 +1,7 @@
-/* What a person put on the front page, and which of the agenda's kinds they
-   left switched on (phase 10 redesign ticket 05, ADR-0073, CONTEXT: "Pinned
-   row").
+/* What a person put on the front page (phase 10 redesign ticket 05,
+   ADR-0073, CONTEXT: "Pinned row"). The agenda's five kind switches that
+   used to live here went in functional-audit ticket 14: the agenda draws
+   every kind ADR-0067 admits.
 
    The front page used to be a list the app decided. It pictured one reader -
    on HRT, under a clinician, logging most days, with a history that begins
@@ -31,7 +32,6 @@
 import { HUB_ROWS, rowHidden, rowLine, rowReads, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
 import { ROW_FORWARD_KEYS } from './rowForward';
 import { AREA_STATES_BEFORE_READ } from './areaState';
-import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from './journal/dayAhead';
 import type { PreferenceValues } from './prefs/catalogue';
 
 /** Default pins for a new journal and an older journal without an areas answer.
@@ -54,13 +54,6 @@ const LEGACY_UNANSWERED_AREAS = DEFAULT_ONBOARDING_AREAS;
     wrong way round would otherwise compile, and a rename in the catalogue
     would leave this reading a key nobody writes. */
 export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAreas'>;
-
-/** The switch list, the same way and for the same reason. All three of the
-    front page's preferences are nullable lists of strings, so a function
-    taking one of them raw would accept any of the other two: passing the
-    pins to the agenda would have compiled and quietly switched every kind
-    off. */
-export type AgendaSwitches = Pick<PreferenceValues, 'agendaKinds'>;
 
 /** One row as the front page draws it - `hubRows.ts`'s `DrawnRow` under the
     name `CONTEXT.md` gives it, because a pinned row is the domain object
@@ -180,28 +173,6 @@ export function pinnedRows(
   }
 
   return drawn;
-}
-
-/** Which of the agenda's kinds to draw: the ones left switched on, or all
-    five while nobody has switched any off.
-
-    A switch and not a dismissal, which is the whole of why it is stored -
-    a kind somebody does not want is otherwise one they dismiss every week
-    for the life of the journal.
-
-    Filtered against `DAY_AHEAD_MARK_KINDS` and returned in its order, which
-    is ADR-0067's. Both halves matter and neither is bookkeeping. The order
-    is the ADR's rather than the order somebody switched things back on in,
-    so the agenda reads the same way for everybody who has the same kinds on.
-    The filter is what stops the switch list being a back door: ADR-0067
-    refuses six kinds a mark - a run-out day, a reminder, a daily dose slot,
-    a taper session, the next hair photo, a revisit - and a stored list is a
-    person's answer about the five that earn one, never a way to register a
-    sixth. Amending that list means amending the ADR. */
-export function shownAgendaKinds(switches: AgendaSwitches): DayAheadMarkKind[] {
-  if (switches.agendaKinds === null) return [...DAY_AHEAD_MARK_KINDS];
-  const on = new Set(switches.agendaKinds);
-  return DAY_AHEAD_MARK_KINDS.filter((kind) => on.has(kind));
 }
 
 /* ---------- editing it (ticket 14) ----------
@@ -329,24 +300,4 @@ export function addablePins(
     .filter((spec) => !rowHidden(spec, reading.states))
     .filter((spec) => spec.key !== 'cycle-events' || gate.cycleVisible)
     .map((spec) => ({ spec, line: rowLine(spec, reading) }));
-}
-
-/** The switch list after one kind was switched on or off.
-
-    Materialised the same way an arrangement is, and for the same reason:
-    null is "nobody has switched anything off", so the first switch has to
-    write the other four down. The result is `DAY_AHEAD_MARK_KINDS`'s order
-    rather than the order somebody switched things back on in, which is the
-    order `shownAgendaKinds` reads it in anyway. Switching the last one off
-    stores the empty list - the agenda goes quiet, which is what they
-    asked for. */
-export function withAgendaKind(
-  switches: AgendaSwitches,
-  kind: DayAheadMarkKind,
-  on: boolean
-): DayAheadMarkKind[] {
-  const next = new Set(shownAgendaKinds(switches));
-  if (on) next.add(kind);
-  else next.delete(kind);
-  return DAY_AHEAD_MARK_KINDS.filter((each) => next.has(each));
 }

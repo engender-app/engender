@@ -27,24 +27,16 @@ function take(epochDay: number, over: Partial<BenchmarkForMetricFigure> = {}): B
   };
 }
 
-test('pitch draws an axis around the last take with its passage-language bands', () => {
+test('pitch draws an axis around the last take', () => {
   const figure = voiceMetricFigure([take(1), take(2)], 'pitch', 'en');
   assert.ok(figure);
   assert.equal(figure!.value, 162);
   assert.ok(figure!.low < 162 && figure!.high > 162);
-  assert.ok(figure!.bands.length > 0);
 });
 
-test('a custom passage guesses the app locale for pitch bands rather than drawing none', () => {
-  const figure = voiceMetricFigure([take(1, { passageKey: 'a passage nobody built in' })], 'pitch', 'pl');
-  assert.ok(figure);
-  assert.ok(figure!.bands.length > 0);
-});
-
-test('an own-series figure draws no band and axis bounds from its own trend', () => {
+test('an own-series figure draws axis bounds from its own trend', () => {
   const figure = voiceMetricFigure([take(1), take(2), take(3)], 'rate', 'en');
   assert.ok(figure);
-  assert.deepEqual(figure!.bands, []);
   assert.equal(figure!.value, 143);
 });
 

@@ -57,7 +57,7 @@ test('assembles regimen episodes, doses, lab results, exposure counters and side
   await episode(journal, 19000);
   await journal.doses.upsertDose({ timestamp: at(19001), route: 'im', dose: 4, doseUnit: 'mg', injectionSite: 'thigh-left', vehicle: 'oil' });
   await journal.labs.upsertResult({ epochDay: 19005, analyte: 'estradiol', value: 150, unit: 'pg/mL', provider: 'Quest' });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006, resolvedEpochDay: null });
   await journal.checklists.addToStandaloneChecklist('ask about spironolactone dose');
 
   const summary = await journal.clinicianSummary.getSummary(19000, 19020);
@@ -182,7 +182,7 @@ test('getSummary depends on the tables the registered sections read, and no othe
 test('a section switched off comes back as null and reads nothing', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.labs.upsertResult({ epochDay: 19005, analyte: 'estradiol', value: 150, unit: 'pg/mL', provider: '' });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006, resolvedEpochDay: null });
 
   let labReads = 0;
   const areas = areasOf(journal);
@@ -247,7 +247,7 @@ test("carries each dose's source, so the print can mark the ones a schedule wrot
 
 test('registering a section is enough for it to reach a generated summary, with no change to the assembly', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006, resolvedEpochDay: null });
 
   const throwaway: ClinicianSummarySection = {
     key: 'throwaway',
@@ -399,7 +399,7 @@ test('excluding a drug leaves labs and side effects untouched - neither is keyed
   const { journal } = await journalWithBuiltIns();
   await episode(journal, 19000, { drug: 'estradiol valerate' });
   await journal.labs.upsertResult({ epochDay: 19005, analyte: 'estradiol', value: 150, unit: 'pg/mL', provider: 'Quest' });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 19006, resolvedEpochDay: null });
 
   const summary = await journal.clinicianSummary.getSummary(19000, 19020, { excludedDrugs: new Set(['estradiol valerate']) });
 

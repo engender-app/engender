@@ -22,17 +22,32 @@
 
    Not a `flatArea` (flatArea.ts): the procedure link is a rowid resolved
    from a travelling uuid, which is exactly the join that factory says it
-   does not do. */
+   does not do.
+
+   A WAIT IS THE SAME RECORD BEFORE ITS DAY (functional-audit ticket 26). A
+   referral to a gender clinic, an NFZ queue or a surgery list is an
+   appointment with no day yet: the kind is the service, plus the day it was
+   referred on, dated status updates and the note. Giving it a day later
+   edits the same row. `getAppointments` reads visits only (rows with a day),
+   because every reader of it - the next visit, the debrief, the room, the
+   clinician summary, the day-ahead marks - is asking about a day;
+   `getWaiting` reads the rest. How long somebody has waited is stated as
+   elapsed time and never as an estimate of what is left (`waitingSince`). */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { Appointment } from '../types';
+import { calendarDuration, type CalendarDuration } from '../epochDay';
+import type { Appointment, AppointmentStatusUpdate, WaitingAppointment } from '../types';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface AppointmentInput {
   /** Absent to create, present to update. Updating an unknown id throws
       (ADR-0053). */
   id?: string;
-  epochDay: number;
+  /** Null while it waits for a day (ticket 26). */
+  epochDay: number | null;
+  /** The day it was referred on, or null. Absent is null, on an update as
+      on a create: the one screen that edits a wait always passes it. */
+  referredEpochDay?: number | null;
   /** The procedure this belongs to, or null. Throws if the procedure is
       unknown - the caller acted on something stale. */
   procedureId: string | null;
@@ -45,7 +60,14 @@ export interface AppointmentInput {
     procedure named where there is one, so the row can say which surgery
     journey a consult belongs to without a second read. */
 export interface AppointmentDayRecord {
+  /** The appointment's id for a visit or a referral, the update's own for a
+      status update. */
   id: string;
+  /** What happened on the day: the visit itself, the referral, or one
+      update on the wait (ticket 26). */
+  event: 'visit' | 'referred' | 'status';
+  /** The update's text, on a status update only. */
+  status: string | null;
   kind: string | null;
   place: string | null;
   procedureId: string | null;
@@ -53,10 +75,22 @@ export interface AppointmentDayRecord {
 }
 
 export interface AppointmentsArea {
-  /** Every appointment, oldest first. Past and future alike - which end of
-      today a row falls on is the screen's question, not this one's. */
+  /** Every appointment that has a day, oldest first. Past and future alike -
+      which end of today a row falls on is the screen's question, not this
+      one's. A wait with no day yet is `getWaiting`'s. */
   getAppointments(): Promise<Appointment[]>;
-  /** One appointment by id, or undefined - the debrief deep link's own read
+  /** Every appointment still waiting for a day (ticket 26), the longest wait
+      first and an unknown referred-on day last. */
+  getWaiting(): Promise<WaitingAppointment[]>;
+  /** Every status update on every appointment, oldest first. A small table
+      read whole, the way `getAppointments` reads its own. */
+  getStatusUpdates(): Promise<AppointmentStatusUpdate[]>;
+  /** Returns the update's id. Blank text, or an appointment this journal does
+      not hold, throws (ADR-0053). */
+  addStatusUpdate(input: { appointmentId: string; epochDay: number; status: string }): Promise<string>;
+  /** Idempotent (ADR-0053). */
+  deleteStatusUpdate(id: string): Promise<void>;
+  /** One appointment with a day by id, or undefined - the debrief deep link's own read
       (EntryEditor.svelte, ticket 58), which arrives with only an id and
       needs the day it was on to scope its "since then" reads. */
   getAppointment(id: string): Promise<Appointment | undefined>;
@@ -69,9 +103,11 @@ export interface AppointmentsArea {
       Empty on the first appointment, and empty forever if nobody ever names
       one: nothing ships (ADR-0066). */
   getKinds(): Promise<string[]>;
-  /** The appointments on one day (day.ts). */
+  /** What the appointments hold on one day (day.ts): visits on it,
+      referrals made on it, status updates dated on it. */
   getDayRecords(epochDay: number): Promise<AppointmentDayRecord[]>;
-  /** The most recent appointment at or before `todayEpochDay`, or null
+  /** The most recent appointment, referral or status update at or before
+      `todayEpochDay`, or null
       (lastWrite.ts). One still ahead is a plan rather than a write, which is
       also why this area joins `comingBack.ts`'s planned areas: without that,
       booking a future appointment would close the person's own return gap. */
@@ -118,6 +154,15 @@ export function mostRecentPastAppointment(appointments: Appointment[], todayEpoc
   return appointments[firstNotYetHappened(appointments, todayEpochDay) - 1] ?? null;
 }
 
+/** How long somebody has waited: the calendar time from the referred-on day
+    to today, or null when that day is unknown or still ahead. Elapsed time
+    only, by design (ticket 26): the app has nothing to predict a queue from,
+    and a guess at the rest of a wait is the kind of claim it never makes. */
+export function waitingSince(referredEpochDay: number | null, todayEpochDay: number): CalendarDuration | null {
+  if (referredEpochDay === null || referredEpochDay > todayEpochDay) return null;
+  return calendarDuration(referredEpochDay, todayEpochDay);
+}
+
 /** All visits on this day, in the journal's order. */
 export function appointmentsOnDay(appointments: Appointment[], epochDay: number): Appointment[] {
   return appointments.filter((appointment) => appointment.epochDay === epochDay);
@@ -142,7 +187,8 @@ export function chosenAppointmentOnDay(
     means. */
 type AppointmentRow = {
   uuid: string;
-  epoch_day: number;
+  epoch_day: number | null;
+  referred_epoch_day: number | null;
   procedure_uuid: string | null;
   kind: string | null;
   place: string | null;
@@ -150,17 +196,22 @@ type AppointmentRow = {
 };
 
 const APPOINTMENT_SELECT = `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
-                a.kind AS kind, a.place AS place, a.note AS note
+                a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day
            FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id`;
 
-const toAppointment = (row: AppointmentRow): Appointment => ({
+const fieldsOf = (row: AppointmentRow) => ({
   id: row.uuid,
-  epochDay: row.epoch_day,
   procedureId: row.procedure_uuid,
   kind: row.kind,
   place: row.place,
-  note: row.note
+  note: row.note,
+  referredEpochDay: row.referred_epoch_day
 });
+
+/* Each read below filters on whether the day is there, so the casts state
+   what the WHERE already made true. */
+const toAppointment = (row: AppointmentRow): Appointment => ({ ...fieldsOf(row), epochDay: row.epoch_day as number });
+const toWaiting = (row: AppointmentRow): WaitingAppointment => ({ ...fieldsOf(row), epochDay: null });
 
 export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
   const procedureRowid = async (procedureId: string | null): Promise<number | null> => {
@@ -172,12 +223,56 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
 
   return {
     async getAppointments() {
-      const rows = await driver.query<AppointmentRow>(`${APPOINTMENT_SELECT} ORDER BY a.epoch_day, a.id`);
+      const rows = await driver.query<AppointmentRow>(
+        `${APPOINTMENT_SELECT} WHERE a.epoch_day IS NOT NULL ORDER BY a.epoch_day, a.id`
+      );
       return rows.map(toAppointment);
     },
 
+    async getWaiting() {
+      const rows = await driver.query<AppointmentRow>(
+        `${APPOINTMENT_SELECT} WHERE a.epoch_day IS NULL
+          ORDER BY a.referred_epoch_day IS NULL, a.referred_epoch_day, a.id`
+      );
+      return rows.map(toWaiting);
+    },
+
+    async getStatusUpdates() {
+      const rows = await driver.query<{ uuid: string; appointment_uuid: string; epoch_day: number; status: string }>(
+        `SELECT s.uuid AS uuid, a.uuid AS appointment_uuid, s.epoch_day AS epoch_day, s.status AS status
+           FROM appointment_status s JOIN appointment a ON a.id = s.appointment_id
+          ORDER BY s.epoch_day, s.id`
+      );
+      return rows.map((row) => ({
+        id: row.uuid,
+        appointmentId: row.appointment_uuid,
+        epochDay: row.epoch_day,
+        status: row.status
+      }));
+    },
+
+    async addStatusUpdate({ appointmentId, epochDay, status }) {
+      const text = trimmed(status);
+      if (text === null) throw new Error('a status update needs text');
+      const rows = await driver.query<{ id: number }>('SELECT id FROM appointment WHERE uuid = ?', [appointmentId]);
+      if (rows.length === 0) throw new Error(`unknown appointment: ${appointmentId}`);
+      const uuid = mintUuid();
+      await driver.run(
+        `INSERT INTO appointment_status (uuid, appointment_id, epoch_day, status, updated_at) VALUES (?, ?, ?, ?, ?)`,
+        [uuid, rows[0].id, epochDay, text, now()]
+      );
+      return uuid;
+    },
+
+    async deleteStatusUpdate(id) {
+      await driver.run('DELETE FROM appointment_status WHERE uuid = ?', [id]);
+    },
+
     async getAppointment(id) {
-      const rows = await driver.query<AppointmentRow>(`${APPOINTMENT_SELECT} WHERE a.uuid = ?`, [id]);
+      const rows = await driver.query<AppointmentRow>(
+        `${APPOINTMENT_SELECT} WHERE a.uuid = ? AND a.epoch_day IS NOT NULL`,
+        [id]
+      );
       const row = rows[0];
       return row ? toAppointment(row) : undefined;
     },
@@ -186,11 +281,19 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
       // Resolved before either branch writes, so an unknown procedure fails
       // without having changed a day or a note first.
       const rowid = await procedureRowid(input.procedureId);
-      const values = [rowid, input.epochDay, trimmed(input.kind), trimmed(input.place), trimmed(input.note)];
+      const values = [
+        rowid,
+        input.epochDay,
+        trimmed(input.kind),
+        trimmed(input.place),
+        trimmed(input.note),
+        input.referredEpochDay ?? null
+      ];
 
       if (input.id) {
         const result = await driver.run(
-          `UPDATE appointment SET procedure_id = ?, epoch_day = ?, kind = ?, place = ?, note = ?, updated_at = ?
+          `UPDATE appointment SET procedure_id = ?, epoch_day = ?, kind = ?, place = ?, note = ?,
+                  referred_epoch_day = ?, updated_at = ?
             WHERE uuid = ?`,
           [...values, now(), input.id]
         );
@@ -200,8 +303,8 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
 
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO appointment (uuid, procedure_id, epoch_day, kind, place, note, referred_epoch_day, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, ...values, now()]
       );
       return uuid;
@@ -222,23 +325,38 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
     },
 
     async getDayRecords(epochDay) {
+      /* One query for the three ways an appointment reaches a day, so the
+         day view's one-read-per-section budget holds: the visit on its day,
+         the referral on its referred-on day, each update on its own. */
       const rows = await driver.query<{
-        uuid: string;
+        id: string;
+        event: AppointmentDayRecord['event'];
+        status: string | null;
         kind: string | null;
         place: string | null;
         procedure_uuid: string | null;
         procedure_name: string | null;
       }>(
-        `SELECT a.uuid AS uuid, a.kind AS kind, a.place AS place,
+        `SELECT x.id AS id, x.event AS event, x.status AS status, a.kind AS kind, a.place AS place,
                 r.uuid AS procedure_uuid, r.name AS procedure_name
-           FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
-          WHERE a.epoch_day = ?
-          ORDER BY a.id`,
-        [epochDay]
+           FROM (
+             SELECT id AS appointment_id, uuid AS id, 'visit' AS event, NULL AS status, 0 AS rank, id AS seq
+               FROM appointment WHERE epoch_day = ?
+             UNION ALL
+             SELECT id, uuid, 'referred', NULL, 1, id FROM appointment WHERE referred_epoch_day = ?
+             UNION ALL
+             SELECT appointment_id, uuid, 'status', status, 2, id FROM appointment_status WHERE epoch_day = ?
+           ) x
+           JOIN appointment a ON a.id = x.appointment_id
+           LEFT JOIN procedure r ON r.id = a.procedure_id
+          ORDER BY x.rank, x.seq`,
+        [epochDay, epochDay, epochDay]
       );
       return rows.map(
         (row): AppointmentDayRecord => ({
-          id: row.uuid,
+          id: row.id,
+          event: row.event,
+          status: row.status,
           kind: row.kind,
           place: row.place,
           procedureId: row.procedure_uuid,
@@ -249,7 +367,13 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
 
     async lastWriteEpochDay(todayEpochDay) {
       const rows = await driver.query<{ day: number | null }>(
-        'SELECT MAX(epoch_day) AS day FROM appointment WHERE epoch_day <= ?',
+        `SELECT MAX(day) AS day FROM (
+           SELECT epoch_day AS day FROM appointment
+           UNION ALL
+           SELECT referred_epoch_day FROM appointment
+           UNION ALL
+           SELECT epoch_day FROM appointment_status
+         ) WHERE day <= ?`,
         [todayEpochDay]
       );
       return rows[0]?.day ?? null;
@@ -259,6 +383,7 @@ export function makeAppointmentsArea(driver: SqliteDriver): AppointmentsArea {
       const rows = await driver.query<{ uuid: string; procedure_uuid: string; epoch_day: number }>(
         `SELECT a.uuid AS uuid, r.uuid AS procedure_uuid, a.epoch_day AS epoch_day
            FROM appointment a JOIN procedure r ON r.id = a.procedure_id
+          WHERE a.epoch_day IS NOT NULL
           ORDER BY a.epoch_day, a.id`
       );
       const byProcedure = new Map<string, { id: string; epochDay: number }[]>();

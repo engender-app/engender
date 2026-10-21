@@ -672,6 +672,9 @@ export interface SideEffect {
       grade and does not require one (phase 8 features ticket 23). */
   severity: number | null;
   epochDay: number;
+  /** The day it resolved, or null while it is ongoing (functional audit
+      ticket 23). Never before `epochDay`. */
+  resolvedEpochDay: number | null;
 }
 
 /** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,
@@ -846,33 +849,19 @@ export interface PersonalEffect {
   firstNoticedEpochDay: number;
 }
 
-/* A dated series like Measurement (ticket 08), not a single replaced value
-   like PersonalEffect: a person re-stages over time to track progression,
-   never answering "what is it now" in place of what it was before. No
-   episode or anchor reference: what this is read against is resolved above
-   this seam (hairAnchor.ts), the same reason Measurement and PersonalEffect
-   carry none either.
+/* A dated series, not a single replaced value like PersonalEffect: a person
+   re-stages over time to track progression, never answering "what is it
+   now" in place of what it was before. No episode or anchor reference: what
+   this is read against is resolved above this seam (hairAnchor.ts).
 
-   `scale` and `stage` are plain strings rather than literal unions here,
-   the same treatment HairRemovalSession.area gets: the pair is validated
-   against hairStageScales.ts's closed vocabularies above the schema seam
-   (journal/hairProgress.ts), and the schema's own CHECK refuses a
-   mismatched pair on a write or a restore alike (schema.ts). The
-   two are never separated - '1' through '5' are grade codes on both
-   published scales and mean different things on each, so a stage without
-   its scale says nothing (phase 5 ticket 33). */
+   The person's own words since functional audit ticket 23. A staging made
+   against Norwood-Hamilton or Sinclair before that reads as the scale and
+   grade it named (hairStageScales.ts). */
 export interface HairStage {
   id: string;
   epochDay: number;
-  /** Which published scale `stage` is a grade of, or 'other' for a pattern
-      neither describes. */
-  scale: string;
-  /** The grade, empty exactly when `scale` is 'other' - that one publishes
-      no grades. */
-  stage: string;
-  /** What the person wrote about a pattern neither scale describes. Empty
-      unless `scale` is 'other', and it may be empty then too: "neither of
-      these", with nothing more said, is a record. */
+  /** What the person wrote. Empty only on a row from before ticket 23 that
+      named neither scale and said nothing more. */
   description: string;
 }
 
@@ -921,23 +910,6 @@ export interface Letter {
   unlockEpochDay: number;
 }
 
-/* A day chosen to see one entry again (phase 8 features ticket 08, ADR-0045:
-   "the arrival offers and never mints"). `entryId` is the entry's ordinary
-   numeric id - the way every other screen already addresses an entry - not
-   its uuid; the row's own portable identity lives only in the schema
-   (revisits.ts), the same split milestone.procedureId's plain-text FK
-   already draws between an app-facing id and a storage-level one. One row
-   per entry: choosing a new day replaces the old one rather than piling up
-   a second offer for the same entry (ticket's own "keyed by entry and
-   day"). */
-export interface Revisit {
-  id: string;
-  entryId: number;
-  entryEpochDay: number;
-  createdEpochDay: number;
-  targetEpochDay: number;
-}
-
 /** What a person last reported having of one drug (phase 4 ticket 04,
     CONTEXT: pending). One per drug, matched by `sameDrug` (`RegimenEpisode.drug`'s
     own convention) rather than per episode - see schema.ts. Neither
@@ -978,6 +950,13 @@ export interface MedicationStock {
   /** How many doses one unit holds - five to a vial, say (after-release
       ticket 01). Null means one dose per unit (stockProjection.ts). */
   dosesPerUnit: number | null;
+  /** The day the supply held now expires (functional audit ticket 47).
+      Logged and shown, never advised on: nothing reads it to warn. Null
+      until a person types one. */
+  expiryEpochDay: number | null;
+  /** Where the supply came from, in the person's words - a pharmacy, a
+      batch. Null when empty. */
+  pharmacyNote: string | null;
 }
 
 /** A checklist's owner reference (phase 5 ticket 05): `kind` names what kind
@@ -1128,32 +1107,28 @@ export interface Appointment {
   kind: string | null;
   place: string | null;
   note: string | null;
+  /** The day somebody was referred on, where this began as a wait
+      (functional-audit ticket 26), or null. Kept once the day is given, so
+      the referral stays on its own day in the day view. */
+  referredEpochDay: number | null;
 }
 
-/** One line in the pool the check-in draws its affirming line from (phase 5
-    ticket 15, CONTEXT: "Affirmation"). A built-in carries a stable key and
-    empty text - its wording lives in the message catalogue and applies
-    whatever language is active - the same split BUILT_IN_TAG_GROUPS gives
-    Tag (ADR-0002, CONTEXT: "Built-in"). A custom line carries a minted uuid,
-    the text the person actually wrote, and the one language it was written
-    in: it is never translated to the other (CONTEXT: "Custom"). Hiding a
-    built-in takes it out of the pool without touching a check-in already
-    sent with it (CONTEXT: "Hidden"); a custom line has no bundled
-    counterpart to preserve, so it deletes outright instead - the same
-    asymmetry Tag draws between the two. */
-export interface Affirmation {
+/** An appointment still waiting for its day: a referral to a clinic, an NFZ
+    queue, a surgery list (functional-audit ticket 26). The same record as
+    `Appointment`, before it has a day. */
+export type WaitingAppointment = Omit<Appointment, 'epochDay'> & { epochDay: null };
+
+/** One dated update on an appointment's wait: "letter came", "phoned, still
+    on the list". Free text; nothing ships a list of what a queue says. */
+export interface AppointmentStatusUpdate {
   id: string;
-  /** Null for a built-in; 'en' or 'pl' for a custom. */
-  language: 'en' | 'pl' | null;
-  /** '' for a built-in - the message catalogue holds its wording, looked up
-      by id - the written line for a custom. */
-  text: string;
-  builtIn: boolean;
-  hidden: boolean;
+  appointmentId: string;
+  epochDay: number;
+  status: string;
 }
 
 /** One row of the body-region reference-data area (phase 5 ticket 30,
-    CONTEXT: "Reference data" - amended). Flat, like Affirmation: a
+    CONTEXT: "Reference data" - amended). Flat: a
     built-in's `name` is '' and its wording comes from the message
     catalogue by `id`; a custom region carries the name the person typed
     and is never translated. No location on the body-map illustration -

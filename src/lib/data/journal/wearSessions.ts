@@ -161,6 +161,13 @@ export function wearTrendRegion(
    review). */
 export const BINDER_CUE_HOURS = 8;
 
+/** The day the wear screen's safety facts (wearLabels.ts) and the figure
+    above were written against binder-tucking-safety-guidance-research.md,
+    as an ISO day. A claim, not a build stamp: bump it only after reading
+    the sources again. The release-time guard in reviewedContent.ts warns
+    24 months after it. */
+export const WEAR_SAFETY_REVIEWED_ON = '2026-09-05';
+
 /** Whether this session is showing the duration cue right now. Running
     binder sessions only: a stopped session is a record of something already
     over, and there is nothing non-blocking to say about it after the fact.

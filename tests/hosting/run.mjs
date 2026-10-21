@@ -158,7 +158,7 @@ try {
   }
 
   const ocr = JSON.parse(readFileSync('build/tesseract/assets.json', 'utf8'));
-  const ocrResponse = await fetch(`${origin}/tesseract/${ocr.generation}/tesseract-core.wasm`);
+  const ocrResponse = await fetch(`${origin}/tesseract/${ocr.generation}/tesseract-core.wasm.js`);
   const ocrCache = ocrResponse.headers.get('cache-control') ?? '';
   if (ocrResponse.status === 200 && ocrCache.includes('max-age=31536000') && ocrCache.includes('immutable')) {
     ok('content-addressed OCR generations are immutable');

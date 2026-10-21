@@ -167,7 +167,9 @@
      schedule expects. */
   let namedByRecords = $derived(
     new Set([
-      ...((day?.appointments.length ?? 0) > 0 ? ['appointment'] : []),
+      // A visit only: a referral or an update on this day is not the visit
+      // the mark stands for (ticket 26).
+      ...(day?.appointments.some((a) => a.event === 'visit') ? ['appointment'] : []),
       ...((day?.milestones.length ?? 0) > 0 ? ['milestone'] : [])
     ])
   );

@@ -867,7 +867,7 @@ recovery proof workflow uploads both attempts for seven days, including on succe
 
 `lookback-span-content-motion` (`tests/lookback-span-content-motion.mjs`) captures a one-day span changing to a populated history band in light and dark. Timestamped compositor frames and computed layout styles check reading tiles, summary facts, the thin-span explanation, Wrapped link, naming offer and resurfacing cards for overlap. The check accounts for inset clipping and bottom-navigation occlusion. Recorded transition keyframes reject height animation on the reading grid. Run after a demo build: `node tests/lookback-span-content-motion.mjs [output-directory] [built-root]`. Add `--matrix` for Polish, reduced motion, disguise, 195px layout and all 16 palettes.
 
-`stock-sheet-motion` (`tests/stock-sheet-motion.mjs`) checks Add stock against a demo build. Light and dark casts retain frame numbers, milliseconds, sheet and background geometry, scroll position and theme proof. It checks continuous size changes, reduced motion, keyboard focus, creation, editing and deletion confirmation. Run `node tests/stock-sheet-motion.mjs [output-directory]`; `--baseline` records the unfixed path without requiring smooth travel.
+`stock-sheet-motion` (`tests/stock-sheet-motion.mjs`) checks Add stock against a demo build. Light and dark casts retain frame numbers, milliseconds, sheet and background geometry, scroll position and theme proof. It checks continuous size changes, reduced motion, keyboard focus, creation, editing (the expiry day and pharmacy note included, shown on the row and read back by the editor) and deletion confirmation. Run `node tests/stock-sheet-motion.mjs [output-directory]`; `--baseline` records the unfixed path without requiring smooth travel.
 
 `procedure-collapse-motion` (`tests/procedure-collapse-motion.mjs`) records procedure logs closing in light and dark, with descendant paint bounds beside timestamped compositor frames. It checks shared clipping and fading, reopening, rapid selection changes, saved data, unsaved notes, disclosure state and both reduced-motion settings. Run after a demo build: `node tests/procedure-collapse-motion.mjs [output-directory]`; `--baseline` records the unfixed behavior.
 
@@ -925,13 +925,6 @@ replays that revision's operator and nginx rules against the same release pair;
 the old behavior fails the positive first-render assertion. Browsers, container
 and temporary server roots close in `finally`; the caller removes prepared
 release roots after use.
-
-`src/lib/data/journal/archive-revisit-merge.test.ts` uses real SQLite and
-encrypted Archives to cover dismissing and setting a revisit again, and two
-devices choosing revisits for the same entry. Merge preserves the destination
-row while restoring unrelated entries and media. Duplicate incoming revisit
-owners fail verification and both restore modes before transaction admission
-or file-store access. Healthy distinct owners round-trip in both modes.
 
 `src/lib/data/journal/stock-identity.test.ts` checks refills and edits across
 ASCII and Unicode drug-name case variants, one projection and one automatic
@@ -1169,7 +1162,7 @@ lock cleanup through the shared content-forgetting boundary.
 
 `entry-source-return-check.mjs` drives the real router and editor through
 Save and Delete from Voice recordings, ordinary and margin-note Search
-results, Today's revisit tile and an ordinary day list. It checks the
+results and an ordinary day list. It checks the
 selected Voice tab, Search query and starred filter on return. It also
 checks that Search spends
 its in-memory snapshot and that typed queries stay out of return URLs,

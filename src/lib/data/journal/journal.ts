@@ -15,7 +15,6 @@ import type { PhotoFileStore } from '../photos/photo-file-store';
 import { builtInsStamp } from './builtInsStamp';
 import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
 export type { PhotoFileStore } from '../photos/photo-file-store';
-import { makeAffirmationsArea, type AffirmationsArea } from './affirmations';
 import type { ArchiveArea } from './archive';
 import { makeBodyRegionsArea, type BodyRegionsArea } from './bodyRegions';
 import type { ChartAnnotationsArea } from './chartAnnotations';
@@ -37,14 +36,12 @@ import { makeExposureArea, type ExposureArea } from './exposure';
 import { makeFeltSenseArea, type FeltSenseArea } from './feltSense';
 import { makeHairProgressArea, type HairProgressArea } from './hairProgress';
 import { makeHairRemovalArea, type HairRemovalArea } from './hairRemoval';
-import type { IntervalMoodPatternArea } from './intervalMoodPattern';
 import { makeErasArea, type ErasArea } from './eras';
 import { makeEraMutesArea, type EraMutesArea } from './eraMutes';
 import { makeJournalingPausesArea, type JournalingPausesArea } from './journalingPauses';
 import { makeLabsArea, type LabsArea } from './labs';
 import { makeLastWriteArea, type LastWriteArea } from './lastWrite';
 import { makeLettersArea, type LettersArea } from './letters';
-import { makeRevisitsArea, type RevisitsArea } from './revisits';
 import { makeMilestonesArea, type MilestonesArea } from './milestones';
 import { makePersonalEffectsArea, type PersonalEffectsArea } from './personalEffects';
 import { makePhotosArea, type PhotosArea } from './photos';
@@ -84,11 +81,6 @@ import { deferredArea } from './deferredArea';
 export interface Journal {
   entries: EntriesArea;
   tags: TagsArea;
-  /** The check-in's affirmation pool (phase 5 ticket 15, CONTEXT:
-      "Affirmation"). Built-in lines are seeded by key, the same as tags;
-      custom lines are additive to the pool the check-in draws from
-      (reminders/affirmations.ts), never a replacement for it. */
-  affirmations: AffirmationsArea;
   /** Every body region an entry can log an intensity against (phase 5
       ticket 30, CONTEXT: "Reference data" - amended): built-in rows seeded
       by key the same way tags and dimensions are, and a custom row a
@@ -312,7 +304,6 @@ export interface Journal {
       unlock day and nothing else - letterStatus.ts derives sealed/
       unlocked against today (ADR-0010) above this seam. */
   letters: LettersArea;
-  revisits: RevisitsArea;
   /** Which goals of which country pack someone has ticked off on the
       transition roadmap (phase 4 ticket 23). Holds ticks only: what the
       goals say is a bundled content module, not a table, so this area
@@ -346,12 +337,6 @@ export interface Journal {
       not scope drift. A view over rows `stats`, `doses` and `dimensions`
       own, not a fourth owner for any of them. */
   correlationCards: CorrelationCardsArea;
-  /** Day-average mood bucketed by a cyclical position - day of interval
-      across completed injectable regimen intervals, or a person-chosen
-      interval length (phase 5 ticket 09) - descriptive throughout, the same
-      as correlationCards and the comparability flag. A view over rows
-      `stats` and `doses` own, not a third owner for either. */
-  intervalMoodPattern: IntervalMoodPatternArea;
   /** Everything above at once, in the shape an export carries it
       (ADR-0007), and one archive read back in - Replace or Merge, each a
       single operation whose order of writes is nobody else's business
@@ -418,7 +403,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
   return {
     entries,
     tags,
-    affirmations: makeAffirmationsArea(driver),
     bodyRegions: makeBodyRegionsArea(driver),
     dimensions,
     milestones,
@@ -544,7 +528,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     feltSense,
     tryouts,
     letters,
-    revisits: makeRevisitsArea(driver),
     roadmap: deferredArea<RoadmapArea>(async () =>
       (await import('./roadmap')).makeRoadmapArea(driver)
     )([
@@ -565,9 +548,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     correlationCards: deferredArea<CorrelationCardsArea>(async () =>
       (await import('./correlationCards')).makeCorrelationCardsArea(driver, doses, dimensions)
     )(['getCards']),
-    intervalMoodPattern: deferredArea<IntervalMoodPatternArea>(async () =>
-      (await import('./intervalMoodPattern')).makeIntervalMoodPatternArea(stats, doses)
-    )(['dayOfInterval', 'byCustomInterval']),
     /* Deferred (ticket 03), and the larger of the two: the pack, read, apply
        and section machinery plus five importers, none of which a screen
        reaches before somebody opens settings and asks to export or import. */

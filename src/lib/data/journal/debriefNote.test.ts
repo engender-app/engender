@@ -17,7 +17,7 @@ function lab(epochDay: number, analyte: string, value: number, unit: string): La
 }
 
 function effect(epochDay: number, name: string, severity: number | null): SideEffect {
-  return { id: `se-${epochDay}-${name}`, epochDay, name, severity };
+  return { id: `se-${epochDay}-${name}`, epochDay, name, severity, resolvedEpochDay: null };
 }
 
 describe('debriefListItems', () => {

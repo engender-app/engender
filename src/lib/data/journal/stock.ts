@@ -50,6 +50,12 @@ interface StockEntryInput {
   /** Doses one unit holds (after-release ticket 01). Optional and defaulted
       to null, one dose per unit. */
   dosesPerUnit?: number | null;
+  /** The supply held now: when it expires and where it came from (functional
+      audit ticket 47). Optional and defaulted to null; like the opened date
+      they are what the editor resubmits, so a count that leaves them out
+      clears them. Blank text is stored as null. */
+  expiryEpochDay?: number | null;
+  pharmacyNote?: string | null;
 }
 
 export interface StockProjectionRow {
@@ -109,6 +115,8 @@ type StockRow = {
   in_use_end_epoch_day: number | null;
   lead_time_days: number | null;
   doses_per_unit: number | null;
+  expiry_epoch_day: number | null;
+  pharmacy_note: string | null;
 };
 
 const toStock = (row: StockRow): MedicationStock => ({
@@ -123,12 +131,15 @@ const toStock = (row: StockRow): MedicationStock => ({
   inUseWindowDays: row.in_use_window_days,
   inUseEndEpochDay: row.in_use_end_epoch_day,
   leadTimeDays: row.lead_time_days,
-  dosesPerUnit: row.doses_per_unit
+  dosesPerUnit: row.doses_per_unit,
+  expiryEpochDay: row.expiry_epoch_day,
+  pharmacyNote: row.pharmacy_note
 });
 
 const STOCK_COLUMNS =
   'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, ' +
-  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit';
+  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, ' +
+  'expiry_epoch_day, pharmacy_note';
 
 /** Where box 4's reminder marks which drug it belongs to
     (stockReminder.ts). The marker itself lives in autoSource.ts, which is
@@ -223,6 +234,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
           input.inUseEndEpochDay ?? null,
           input.leadTimeDays ?? null,
           input.dosesPerUnit ?? null,
+          input.expiryEpochDay ?? null,
+          input.pharmacyNote?.trim() || null,
           now()
         ];
 
@@ -230,7 +243,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
           await scope.run(
             `UPDATE medication_stock
                 SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                    opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?, updated_at = ?,
+                    opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?,
+                    expiry_epoch_day = ?, pharmacy_note = ?, updated_at = ?,
                     drug = ?, drug_key = ?
               WHERE uuid = ?`,
             [...values, drug, drugKey, existing[0].uuid]
@@ -242,8 +256,9 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         await scope.run(
           `INSERT INTO medication_stock
              (uuid, drug, drug_key, quantity, unit, recorded_epoch_day, reminder_ever_created,
-              opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit,
+              expiry_epoch_day, pharmacy_note, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [uuid, drug, drugKey, ...values]
         );
         return uuid;

@@ -141,19 +141,6 @@ export interface ArchiveTagGroup {
   tags: ArchiveTag[];
 }
 
-/** One line of the check-in's affirmation pool (phase 5 ticket 15). `id` is
-    the built-in's key or the custom's uuid, matching ArchiveTag's own
-    convention. `language` is null for a built-in - its wording is looked
-    up fresh on the importing device - and 'en' or 'pl' for a custom, which
-    travels verbatim since it is never translated (CONTEXT: "Custom"). */
-export interface ArchiveAffirmation {
-  id: string;
-  language: 'en' | 'pl' | null;
-  text: string;
-  builtIn: boolean;
-  hidden: boolean;
-}
-
 export interface ArchiveBodyRegion {
   id: string;
   name: string;
@@ -246,6 +233,9 @@ interface ArchiveSideEffect {
   name: string;
   severity: number | null;
   epochDay: number;
+  /** Absent in an archive written before functional audit ticket 23, which
+      reads as ongoing. */
+  resolvedEpochDay?: number | null;
 }
 
 interface ArchiveCycleEvent {
@@ -281,22 +271,6 @@ interface ArchiveVoicePracticeTake {
   maxHz: number;
   medianHz: number;
   feltSense: number | null;
-}
-
-/** A day chosen to see one entry again (phase 8 features ticket 08,
-    ADR-0045). `entryId` is the owning entry's own uuid here, not its local
-    row id: a raw integer FK would need resolving against a rowid that can
-    differ after a restore or merge, and a uuid already survives that trip
-    unresolved - the same plain-text FK shape ArchiveMilestone's
-    `procedureId` already carries. The live-schema `Revisit` type (types.ts)
-    resolves this back to the app-facing numeric entry id; that resolution
-    is revisits.ts's job, not this wire shape's. */
-interface ArchiveRevisit {
-  id: string;
-  entryId: string;
-  entryEpochDay: number;
-  createdEpochDay: number;
-  targetEpochDay: number;
 }
 
 /** One bundled transition-roadmap goal with a status recorded at all
@@ -404,14 +378,30 @@ export interface ArchiveProcedure {
     rather than nested under a procedure the way a consult was: most
     appointments belong to no procedure at all, and `procedureId` is the
     link, carried as the procedure's travelling uuid so the applying device
-    resolves it against its own rowids. */
+    resolves it against its own rowids.
+
+    Waiting lists (functional-audit ticket 26): `epochDay` is null while the
+    appointment waits for a day, `referredEpochDay` is the day it was
+    referred on, and `statuses` are its dated updates, nested the way a
+    procedure's photos are because each belongs to exactly one appointment.
+    Both are optional only so an archive written before the ticket parses;
+    applying one reads them as null and none. */
 export interface ArchiveAppointment {
   id: string;
-  epochDay: number;
+  epochDay: number | null;
   procedureId: string | null;
   kind: string | null;
   place: string | null;
   note: string | null;
+  referredEpochDay?: number | null;
+  statuses?: ArchiveAppointmentStatus[];
+}
+
+/** One dated update on an appointment's wait (ticket 26). */
+export interface ArchiveAppointmentStatus {
+  id: string;
+  epochDay: number;
+  status: string;
 }
 
 /** A "first noticed" marker against the open effect catalogue (phase 4
@@ -451,11 +441,14 @@ export interface ArchivePersonalEffectType {
     Norwood-Hamilton stagings and nothing else, since that was the only
     vocabulary there was, and applyHairStages reads a missing `scale` as
     exactly that rather than dropping the row. */
+/** `scale` and `stage` come only from an archive written before functional
+    audit ticket 23, when staging was a grade on a published scale; restore
+    turns such a row into text (hairStageScales.ts). */
 interface ArchiveHairStage {
   id: string;
   epochDay: number;
   scale?: string;
-  stage: string;
+  stage?: string;
   description?: string;
 }
 
@@ -721,6 +714,10 @@ interface ArchiveMedicationStock {
   /** Doses one unit holds (after-release ticket 01). Absent on an archive
       written before it, read as null the same way. */
   dosesPerUnit: number | null;
+  /** Functional audit ticket 47. Absent on an archive written before it,
+      read as null the same way. */
+  expiryEpochDay: number | null;
+  pharmacyNote: string | null;
 }
 
 /** A wear session as it travels (phase 5 ticket 04). No reminder-handoff
@@ -773,7 +770,6 @@ export interface ArchiveJournal {
   dimensions: ArchiveDimension[];
   presets: ArchivePreset[];
   tagGroups: ArchiveTagGroup[];
-  affirmations: ArchiveAffirmation[];
   bodyRegions: ArchiveBodyRegion[];
   entries: ArchiveEntry[];
   milestones: ArchiveMilestone[];
@@ -815,7 +811,6 @@ export interface ArchiveJournal {
   comfortItems: ArchiveComfortItem[];
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
-  revisits: ArchiveRevisit[];
   marginNotes: ArchiveMarginNote[];
   wordIgnore: ArchiveWordIgnore[];
   documents: ArchiveDocument[];
@@ -985,7 +980,6 @@ const alphaSections = ['dimensions', 'presets', 'tagGroups', 'entries', 'milesto
 const postAlphaSections = [
   'presentations',
   'entryTemplates',
-  'affirmations',
   'bodyRegions',
   'marginNotes',
   'wordIgnore',
@@ -995,7 +989,6 @@ const postAlphaSections = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
-  'revisits',
   'eras',
   'eraMutes',
   'effectCategories',

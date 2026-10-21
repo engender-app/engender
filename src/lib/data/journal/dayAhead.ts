@@ -265,7 +265,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   dimensions: 'reference data, not a day still to come',
   presets: 'reference data, not a day still to come',
   tagGroups: 'reference data, not a day still to come',
-  affirmations: 'reference data, not a day still to come',
   bodyRegions: 'reference data, not a day still to come',
   presentations: 'reference data, not a day still to come',
   entryTemplates: 'reference data, not a day still to come',
@@ -302,11 +301,9 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // ADR-0067: a projection off a trailing rate, not a date - already legible
   // on the care spine, where its own nature as a moving projection is clear.
   medicationStock: 'a projection off a trailing rate, not a date - already on the care spine',
-  // ADR-0067: hairPhotoSchedule.ts computes a next due day, but refuses due
-  // framing on the hair-progress screen itself, and a calendar mark is a due
-  // date whatever the copy calls it.
-  hairPhotos:
-    'the next fixed-position photo is computed, but a calendar mark is a due date whatever the copy says (ADR-0067)',
+  // Hair photos have no schedule since functional audit ticket 23, which
+  // removed the 28-day photo-due prompt; there is no next day to mark.
+  hairPhotos: 'hair photos have no schedule, so there is no next day to mark',
   // The screen this row belongs to refuses due framing outright
   // (hairRemovalSchedule.ts's own header), so there is no due day to carry
   // forward even before the calendar-mark objection above applies.
@@ -328,7 +325,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // ADR-0067, the one most likely to be reopened: marking a sealed entry
   // forward turns an arrival into a countdown to the person's own past,
   // which is the opposite of what the resurfacing consent layer exists for.
-  revisits: "sealed until the day chosen to see the entry again - marking it forward would turn an arrival into a countdown to the person's own past",
   marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own',
   wordIgnore: 'reference data, not a day still to come'
 };
