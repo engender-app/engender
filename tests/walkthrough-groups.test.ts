@@ -15,7 +15,7 @@ describe('walkthrough group coverage', () => {
     expect(groupFlows(names, 'setup')).toContain('lock on leave and reset');
     expect(groupFlows(names, 'setup')).toContain('wrapped');
     expect(groupFlows(names, 'features')).toContain('fill every feature');
-    expect(groupFlows(names, 'features')).toContain('safe space letters');
+    expect(groupFlows(names, 'features')).toContain('letters open section');
     expect(groupFlows(names, 'actions')).toContain('the recovery key');
     expect(groupFlows(names, 'actions')).toContain('the recovery key at the gate');
   });
