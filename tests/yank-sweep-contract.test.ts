@@ -123,7 +123,12 @@ describe('shared SPA gesture preparation', () => {
     let fan = !!over.fan;
     const routes = [];
     const options = [];
-    const oldRoot = { isConnected: true };
+    /* A retained door (Android, PR #37) stays connected, hidden and inert,
+       and is shown again on a revisit; ordinary screens are replaced. */
+    const node = retained => ({ isConnected: true, matches: selector => !!retained && selector === '[data-retained-door]' });
+    const doors = {};
+    const mount = route => over.retained ? (doors[route] ??= node(true)) : node(false);
+    const oldRoot = over.retained ? mount(over.route ?? '/') : node(false);
     const main = { children: [oldRoot] };
     const product = { className: 'product-card' };
     const proofRoot = {
@@ -160,8 +165,8 @@ describe('shared SPA gesture preparation', () => {
         routes.push(select.value);
         if (over.cancelled) return;
         env.location.pathname = select.value;
-        if (!over.stale) for (const node of main.children) node.isConnected = false;
-        main.children = [{ isConnected: true }];
+        if (!over.stale && !over.retained) for (const node of main.children) node.isConnected = false;
+        main.children = [mount(select.value)];
         if (over.transition) env.document.documentElement.dataset.nav = 'fade-through';
         if (over.reload) env.performance.timeOrigin++;
       }
@@ -175,6 +180,18 @@ describe('shared SPA gesture preparation', () => {
     expect(state.routes).toEqual(['/settings/licences', '/calendar']);
     expect(state.oldRoot.isConnected).toBe(false);
     expect(state.options).toHaveLength(0);
+  });
+  it('treats a hidden retained door as gone and a re-shown one as remounted', async () => {
+    /* The screen left behind is a retained door that never disconnects, and
+       the target is a door visited before: the same node, shown again. */
+    const state = await fixture({ retained: true, route: '/' });
+    expect(await state.run('/')).toMatchObject({ requested: '/', oldRootDetached: true, targetMounted: true });
+    expect(state.routes).toEqual(['/settings/licences', '/']);
+    expect(state.oldRoot.isConnected).toBe(true);
+  });
+  it('still rejects an ordinary screen that stays mounted beside retained doors', async () => {
+    const state = await fixture({ stale: true });
+    await expect(state.run('/calendar')).rejects.toThrow('old screen remained mounted');
   });
   it('uses the expected parent for measured back navigation and supports detail URLs', async () => {
     const state = await fixture();

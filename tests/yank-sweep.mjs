@@ -86,6 +86,15 @@
    the frames of any yank land; `--themes light,dark` runs each scene under
    more than the default light theme.
 
+   `--force-inset <px>` gives the page the phone's status-bar inset (58 on
+   the Pixel 10a) and the Android platform answer, so the strip
+   `.app::before` is `inset - 9` px tall and visible to the casts; every
+   settle asserts that height and the report's runtime records
+   `forceInset`. It also makes the desktop sweep keep Android's retained
+   doors. `tests/yank-sweep-strip-check.mjs` reads the saved casts of such
+   a run. `--reduced-motion` runs the control pass (`prefers-reduced-motion:
+   reduce`), recorded as `reducedMotion` in the runtime.
+
    `--gate` exits non-zero if any style yank is found across the scenes run
    (ticket 244): CI has no other check that a sheet or other local
    transition actually plays, and 242's own regression - every ordinary
@@ -166,6 +175,31 @@ const prove = args.includes('--prove');
 /** Exits non-zero on any style yank across the scenes run (ticket 244). */
 const gate = args.includes('--gate');
 
+/** The phone's status-bar inset, forced on a desktop page (`--force-inset
+    58` is the Pixel 10a). A desktop browser has no safe area, so
+    `--inset-top` is 0px and the strip `.app::before` is 0px tall; without
+    this the sweep cannot see a defect there. Set the way
+    tests/android-tab-status-strip.mjs sets it: the two custom properties on
+    the root, and Capacitor.getPlatform answering android once boot is done
+    (answering it during boot would send the web build down the native
+    journal path). The properties are also set at document start, so a new
+    document keeps them. */
+const forceInset = Number(flag('force-inset', '0'));
+if (!Number.isFinite(forceInset) || forceInset < 0) throw new Error('--force-inset takes a number of CSS px');
+const FORCE_INSET_EXPRESSION = `(() => {
+  const root = document.documentElement;
+  root.style.setProperty('--inset-top', '${forceInset}px');
+  root.style.setProperty('--field-bleed-top', '9px');
+  if (window.Capacitor) window.Capacitor.getPlatform = () => 'android';
+  return getComputedStyle(document.querySelector('.app') ?? root, '::before').height;
+})()`;
+const FORCE_INSET_INIT = `document.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.style.setProperty('--inset-top', '${forceInset}px');
+  document.documentElement.style.setProperty('--field-bleed-top', '9px');
+});`;
+/** The control pass the header describes: `prefers-reduced-motion: reduce`. */
+const reducedMotion = args.includes('--reduced-motion');
+
 const SCENES = scenesFor({ prove, only });
 
 /** The first run, walked to `target`. The demo bar is removed by `settle`,
@@ -189,13 +223,15 @@ const browser = await launchChromium();
 const app = await previewBuild(root);
 const base = `http://localhost:${app.httpServer.address().port}`;
 const errors = [];
-const runtime = { browser: browser.version(), release: JSON.parse(await readFile(resolve(root, 'build/release.json'), 'utf8')) };
+const runtime = { forceInset, reducedMotion, browser: browser.version(), release: JSON.parse(await readFile(resolve(root, 'build/release.json'), 'utf8')) };
 const recorder = createReportRecorder(outDir, { target: 'desktop', viewport, runtime }, SCENES, profiles, themes, passes, errors);
 const report = recorder.report;
 
 let page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
 page.on('pageerror', (err) => { errors.push(String(err)); recorder.persist(); });
 await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
+if (forceInset) await page.addInitScript(FORCE_INSET_INIT);
+if (reducedMotion) await page.emulateMedia({ reducedMotion: 'reduce' });
 
 const settle = async (path, theme, predecessor = null) => {
   await page.evaluate(gestureNavigationExpression(path, predecessor));
@@ -204,6 +240,10 @@ const settle = async (path, theme, predecessor = null) => {
      and a removed bar takes the control with it. Nothing measures the bar
      either way - it is out of the frame and out of the flow. */
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
+  if (forceInset) {
+    const strip = await page.evaluate(FORCE_INSET_EXPRESSION);
+    if (strip !== `${forceInset - 9}px`) throw new Error(`forced inset did not take: strip is ${strip}, expected ${forceInset - 9}px`);
+  }
 };
 
 for (const profile of profiles) {
@@ -258,6 +298,7 @@ for (const profile of profiles) {
           }
           else await page.evaluate(prepareSceneExpression(scene));
           await page.waitForTimeout(1400);
+          if (forceInset) await page.evaluate(FORCE_INSET_EXPRESSION);
           if (scene.act === 'inject') await page.evaluate(`(${INJECT_PROOF_EXPRESSION})()`);
           const { cast, all_frames } = await screencast(page, async (cast) => {
             const all_frames = await page.evaluate(samplerExpression(scene, SCENE_MS, VT_NAMES));

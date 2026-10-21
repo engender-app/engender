@@ -20,6 +20,7 @@ import {
   PROOF,
   TELEPORT_PX,
   colorDistance,
+  deviceTargetFromArgs,
   findPixelYanks,
   findYanks,
   hydrationScreensFor,
@@ -916,5 +917,29 @@ describe('scraping a detail id off a list screen (ux-carpet 235)', () => {
 
   it('marks reminders as a list only the device can read', () => {
     expect(HYDRATION_NEEDS.reminder.androidOnly).toBe(true);
+  });
+});
+
+describe('deviceTargetFromArgs', () => {
+  /* The device runner installs, force-stops and launches whatever package
+     it is given, and dev.engender.app holds Alicja's journal. The check runs
+     before the runner's first adb call, so a refusal touches nothing. */
+  const ok = ['SERIAL', '--package', 'dev.engender.app.test.mr02'];
+  it('takes the serial, the test package and its own forward port', () => {
+    expect(deviceTargetFromArgs(ok)).toEqual({ serial: 'SERIAL', pkg: 'dev.engender.app.test.mr02', port: 9341, apk: undefined });
+    expect(deviceTargetFromArgs([...ok, '--port', '9360', 'build/app-debug.apk', '--passes', '1']))
+      .toMatchObject({ port: 9360, apk: 'build/app-debug.apk' });
+  });
+  it('refuses a missing package', () => {
+    expect(() => deviceTargetFromArgs(['SERIAL'])).toThrow('--package');
+  });
+  it('refuses the real journal and anything outside the test namespace', () => {
+    for (const pkg of ['dev.engender.app', 'dev.engender.app.test.', 'dev.engender.app.test.a.b', 'dev.engender.app.testing', 'com.example'])
+      expect(() => deviceTargetFromArgs(['SERIAL', '--package', pkg])).toThrow('never driven');
+  });
+  it('refuses a missing serial and a bad port', () => {
+    expect(() => deviceTargetFromArgs(['--package', 'dev.engender.app.test.mr02'])).toThrow('serial');
+    for (const port of ['0', 'abc', '70000'])
+      expect(() => deviceTargetFromArgs([...ok, '--port', port])).toThrow('--port');
   });
 });

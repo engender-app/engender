@@ -36,7 +36,7 @@
      npx cap sync android
      JAVA_HOME=~/.sdkman/candidates/java/21.0.12-tem \
        android/gradlew -p android :app:assembleDebug
-     node tests/yank-sweep-device.mjs <serial> [path/to/app-debug.apk]
+     node tests/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [path/to/app-debug.apk]
 
     `--scenes a,b` narrows the run, `--passes N` sets the repeats,
     `--themes light,dark` (both, by default), `--out <dir>` names the report
@@ -45,6 +45,16 @@
     fails unless the style arithmetic and the camera both catch them,
     `--dump` writes every scene's style frames as JSON, and
     `--cast-scenes a,b` saves all compositor frames for named scenes.
+    `--reduced-motion` runs the control pass (`prefers-reduced-motion:
+    reduce` emulated over CDP, recorded as `reducedMotion` in the runtime).
+
+    `--package dev.engender.app.test.<name>` is required: the runner
+    installs, force-stops and launches it, and `dev.engender.app` is
+    Alicja's real journal, so it is refused before any adb call. Build the
+    test APK in a throwaway worktree with `applicationId` in
+    android/app/build.gradle changed to that id, after `npx cap sync
+    android`. `--port N` (default 9341) is the devtools forward, the only
+    one this run removes.
 
     `--hydration` (ticket 108) swaps the gesture scene table for the full
     screen inventory and walks it cold in both database profiles: the
@@ -123,6 +133,7 @@ import {
   replySlices,
   scenesFor,
   resetSceneProfile,
+  deviceTargetFromArgs,
   sceneForTheme,
   samplerExpression,
   scrapeIdExpression,
@@ -137,13 +148,16 @@ const flag = (name, fallback) => {
   const at = args.indexOf(`--${name}`);
   return at >= 0 ? args[at + 1] : fallback;
 };
-const serial = args.find((a) => !a.startsWith('--') && !args[args.indexOf(a) - 1]?.startsWith('--'));
-if (!serial) {
-  console.error('pass the device serial, e.g. node tests/yank-sweep-device.mjs 64101JEA325797 [apk]');
+/* Refuse before the first adb call: `dev.engender.app` is Alicja's real
+   journal and this script installs, force-stops and launches its package. */
+let deviceTarget;
+try {
+  deviceTarget = deviceTargetFromArgs(args);
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
-const APK = args.find((a) => a.endsWith('.apk'));
-const PKG = 'dev.engender.app';
+const { serial, pkg: PKG, port: PORT, apk: APK } = deviceTarget;
 const outDir = resolve(flag('out', resolve(here, '../.claude/yank-sweep-device')));
 const only = flag('scenes', '')
   .split(',')
@@ -168,6 +182,9 @@ const comparePath = flag(
   resolve(outDir, '../', hydration ? 'hydration-sweep' : 'yank-sweep', 'report.json')
 );
 const prove = args.includes('--prove');
+/** The control pass the desktop sweep describes: the WebView told
+    `prefers-reduced-motion: reduce` over CDP, recorded in the report. */
+const reducedMotion = args.includes('--reduced-motion');
 const dump = args.includes('--dump');
 const castScenes = flag('cast-scenes', '').split(',').filter(Boolean);
 const SCENES = hydration ? hydrationScreensFor({ prove, only }) : scenesFor({ prove, only });
@@ -191,8 +208,8 @@ async function attach() {
     const socket = appPid && new RegExp(`webview_devtools_remote_${appPid}\\b`).exec(unix)?.[0];
     if (!socket) continue;
     try {
-      adb('forward', 'tcp:9333', `localabstract:${socket}`);
-      const list = await fetch('http://127.0.0.1:9333/json/list', {
+      adb('forward', `tcp:${PORT}`, `localabstract:${socket}`);
+      const list = await fetch(`http://127.0.0.1:${PORT}/json/list`, {
         signal: AbortSignal.timeout(3000)
       }).then((r) => r.json());
       const target = list.find((t) => t.type === 'page' && t.url.startsWith('https://localhost'));
@@ -293,6 +310,7 @@ let client = null;
 const errors = [];
 const runtime = {
   serial,
+  reducedMotion,
   model: adb('shell', 'getprop', 'ro.product.model').trim(),
   androidVersion: adb('shell', 'getprop', 'ro.build.version.release').trim(),
   sdk: adb('shell', 'getprop', 'ro.build.version.sdk').trim()
@@ -309,6 +327,7 @@ async function initClient(c) {
   await c.send('Page.addScriptToEvaluateOnNewDocument', {
     source: STUB_PERSIST_SCRIPT
   });
+  if (reducedMotion) await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   c.onEvent(onEvent);
 }
 
@@ -1134,7 +1153,7 @@ await writeFile(
   )
 );
 client.close();
-adb('forward', '--remove', 'tcp:9333');
+adb('forward', '--remove', `tcp:${PORT}`);
 
 const styleTotal = report.reduce((n, r) => n + (r.styleYanks?.length ?? 0), 0);
 const renderTotal = report.reduce((n, r) => n + (r.pixelFindings?.length ?? 0), 0);

@@ -873,15 +873,20 @@ export const gestureNavigationExpression = (path, predecessor = null) => `(${asy
   const intermediate = predecessor ?? (path === '/settings/licences' ? '/calendar' : '/settings/licences');
   if (previousRoute === intermediate) await jump(intermediate === '/calendar' ? '/settings/licences' : '/calendar');
   await jump(intermediate);
-  await wait(() => roots.every(node => !node.isConnected), 'old screen remained mounted');
+  /* Android keeps a visited door mounted, hidden and inert, so a door left
+     behind never disconnects and a revisited door is the same node shown
+     again. A retained door counts as gone at both waits; every other screen
+     still has to disconnect. */
+  const gone = node => !node.isConnected || node.matches('[data-retained-door]');
+  await wait(() => roots.every(gone), 'old screen remained mounted');
   const intermediateRoots = [...document.querySelector('#app-main').children];
   await jump(path);
-  await wait(() => intermediateRoots.every(node => !node.isConnected), 'target screen did not remount');
+  await wait(() => intermediateRoots.every(gone), 'target screen did not remount');
   await wait(() => !document.documentElement.dataset.appearanceTransition, 'appearance transition');
   if (performance.timeOrigin !== origin) throw new Error('gesture SPA navigation replaced its document');
   const proof = { kind: 'spa-mount', requested: path, previousRoute, intermediate,
     actualRoute: location.pathname + location.search, previousTimeOrigin: origin, timeOrigin: performance.timeOrigin,
-    oldRootDetached: roots.every(node => !node.isConnected), targetMounted: document.querySelector('#app-main').children.length > 0 };
+    oldRootDetached: roots.every(gone), targetMounted: document.querySelector('#app-main').children.length > 0 };
   globalThis.__sweepDocumentProof = null;
   return globalThis.__sweepNavigationProof = proof;
 }})(${JSON.stringify(path)}, ${JSON.stringify(predecessor)})`;
@@ -2707,4 +2712,26 @@ export function missingProofYanks(report, { checkArrival = true } = {}) {
     const label = [scene.scene, scene.profile, scene.theme, scene.pass && `pass ${scene.pass}`].filter(Boolean).join(' ');
     return missing.map((item) => label ? `${label}: ${item}` : item);
   });
+}
+
+/** What the device runner drives, read from its argv before any adb call.
+ *  `dev.engender.app` holds the real journal and the runner installs,
+ *  force-stops and launches its package, so only a debug build under
+ *  `dev.engender.app.test.<name>` is accepted. The forward port is the
+ *  caller's own, so the run removes only that forward. */
+export function deviceTargetFromArgs(args) {
+  const flag = (name) => {
+    const at = args.indexOf(`--${name}`);
+    return at >= 0 ? args[at + 1] : undefined;
+  };
+  const positional = args.filter((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
+  const serial = positional.find((a) => !a.endsWith('.apk'));
+  if (!serial) throw new Error('pass the device serial, e.g. node tests/yank-sweep-device.mjs 64101JEA325797 --package dev.engender.app.test.<name> [apk]');
+  const pkg = flag('package');
+  if (!pkg) throw new Error('pass --package dev.engender.app.test.<name>: the runner never drives the real app');
+  if (!/^dev\.engender\.app\.test\.[a-z0-9]+$/.test(pkg))
+    throw new Error(`refusing package "${pkg}": only dev.engender.app.test.<name> is accepted, dev.engender.app is never driven`);
+  const port = Number(flag('port') ?? '9341');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be a TCP port, got "${flag('port')}"`);
+  return { serial, pkg, port, apk: positional.find((a) => a.endsWith('.apk')) };
 }
