@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
 describe('tryout-to-milestone adoption pipeline', () => {
-  it('adopts an active name tryout, closes the date range and mints a timeline milestone with felt-sense majority rating', async () => {
+  it('adopts an active name tryout, closes the date range and mints a timeline milestone, leaving the readings on the tryout', async () => {
     const { journal } = await journalWithBuiltIns();
 
     const tryoutId = await journal.tryouts.upsertTryout({

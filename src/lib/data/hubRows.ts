@@ -293,8 +293,8 @@ const ROWS = [
     home: 'transition',
     /* The tryout photos only, which is the registry's own bound: a tryout's
        start and end are a span, and its felt-sense history is
-       `feltSenseEntries`, which belongs to a milestone just as much and is
-       fronted by no row (see `LAST_WRITE_WITHOUT_A_ROW`). */
+       `feltSenseEntries`, which is fronted by no row (see
+       `LAST_WRITE_WITHOUT_A_ROW`). */
     areas: ['tryouts'],
     finishes: null,
     line: 'read'
@@ -574,7 +574,7 @@ export const LAST_WRITE_WITHOUT_A_ROW: Record<Exclude<LastWriteKey, RowArea>, st
   doseEvents: 'behind the care row, whose own screen opens on the last dose',
   labResults: 'behind the care row, whose own screen opens on the last lab draw',
   tallyEvents: 'its own tab, not a row here',
-  feltSenseEntries: 'written on a tryout or a milestone, so it belongs to two rows and is fronted by neither'
+  feltSenseEntries: 'written on a tryout, whose row is fronted by the tryout itself rather than its readings'
 };
 
 type RowArea = (typeof ROWS)[number]['areas'][number];

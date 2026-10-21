@@ -410,10 +410,9 @@ export interface TryoutPhoto {
     "Mood") rather than inventing a second one for the same kind of
     judgement.
 
-    Belongs to exactly one Tryout or Milestone (CONTEXT: "Felt-sense
-    entry"); which owner never travels here, the same reasoning `Photo`
-    carries no `entryId`/`milestoneId` of its own - the caller already
-    knows which owner it asked for. */
+    Belongs to one Tryout (CONTEXT: "Felt-sense entry"), which never
+    travels here, the same reasoning `Photo` carries no owner id of its
+    own - the caller already knows which tryout it asked for. */
 export interface FeltSenseEntry {
   id: string;
   epochDay: number;
