@@ -7070,9 +7070,7 @@ try {
   await page.waitForURL('**/health/appointments');
   await page.waitForSelector('[data-appointment]');
 
-  /* The stale address still lands on the visit, one hop (ADR-0036). */
-  await page.goto(BASE + { waitUntil: 'networkidle' });
-  await page.waitForURL('**/health/appointments');
+  await page.goto(BASE + '/health/appointments', { waitUntil: 'networkidle' });
   await booted();
   await page.waitForSelector('[data-appointment-item]');
 
