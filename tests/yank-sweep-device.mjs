@@ -50,9 +50,11 @@
 
     `--package dev.engender.app.test.<name>` is required: the runner
     installs, force-stops and launches it, and `dev.engender.app` is
-    Alicja's real journal, so it is refused before any adb call (build the
-    test APK under that id; see `tests/PROBES.md`). `--port N` (default
-    9341) is the devtools forward, the only one this run removes.
+    Alicja's real journal, so it is refused before any adb call. Build the
+    test APK in a throwaway worktree with `applicationId` in
+    android/app/build.gradle changed to that id, after `npx cap sync
+    android`. `--port N` (default 9341) is the devtools forward, the only
+    one this run removes.
 
     `--hydration` (ticket 108) swaps the gesture scene table for the full
     screen inventory and walks it cold in both database profiles: the
