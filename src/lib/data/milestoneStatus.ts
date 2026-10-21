@@ -56,10 +56,20 @@ export function upcomingMilestones(
 
 /** The milestone Home marks today: the first one landing on today, either
     on its own day or on an anniversary of it, in `upcomingMilestones`'
-    order. */
+    order (functional audit ticket 32). A milestone the person set not to be
+    celebrated is passed over, and so is an anniversary whose day
+    `mayResurface` refuses, because an anniversary brings back a day from
+    the past and a muted era asked for that not to happen (ADR-0049). A
+    milestone landing on its own day resurfaces nothing, so a mute does not
+    hold it back. */
 export function landingMilestone(
   milestones: Milestone[],
-  todayEpochDay: number
+  todayEpochDay: number,
+  mayResurface: (epochDay: number) => boolean
 ): { m: Milestone; s: MilestoneStatus } | undefined {
-  return upcomingMilestones(milestones, todayEpochDay).find((x) => x.s.type === 'today' || x.s.isAnnivToday);
+  return upcomingMilestones(milestones, todayEpochDay).find(
+    (x) =>
+      x.m.celebrate !== false &&
+      (x.s.type === 'today' || (x.s.isAnnivToday === true && mayResurface(x.m.epochDay)))
+  );
 }

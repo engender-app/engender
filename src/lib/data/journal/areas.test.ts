@@ -80,6 +80,7 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       roadmapGoalKey: null,
       procedureId: null,
       tryoutId: null,
+      celebrate: true,
       procedureName: null,
       tryoutLabel: null,
       customRoadmapGoalText: null,
@@ -98,12 +99,19 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       roadmapGoalKey: null,
       procedureId: null,
       tryoutId: null,
+      celebrate: true,
       procedureName: null,
       tryoutLabel: null,
       customRoadmapGoalText: null,
       photo: null
     }
   ]);
+
+  /* Functional audit ticket 32: the choice not to celebrate is kept by an
+     edit that does not name it, the way a procedure resync keeps a link. */
+  await journal.milestones.upsertMilestone({ id, name: 'HRT day one', epochDay: 20001, celebrate: false });
+  await journal.milestones.upsertMilestone({ id, name: 'HRT, day one', epochDay: 20001 });
+  assert.equal((await journal.milestones.getMilestones())[0].celebrate, false);
 
   await assert.rejects(journal.milestones.upsertMilestone({ id: 'nope', name: 'x', epochDay: 1 }), /unknown milestone/);
 });

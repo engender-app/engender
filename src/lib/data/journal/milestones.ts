@@ -36,6 +36,11 @@ export interface MilestoneInput {
   roadmapGoalKey?: string | null;
   procedureId?: string | null;
   tryoutId?: string | null;
+  /** Whether Home celebrates it (functional audit ticket 32). Omitted
+      keeps what is stored, so a caller that does not know about it, such
+      as a procedure resync, never turns a celebration back on. A new
+      milestone with it omitted is celebrated. */
+  celebrate?: boolean;
   /** The final photo intent for this save. Omitted means preserve, which
       keeps existing callers and non-photo edits from touching photo rows. */
   photo?: MilestonePhotoChange;
@@ -69,6 +74,7 @@ type MilestoneRow = {
   roadmap_goal_key: string | null;
   procedure_id: string | null;
   tryout_id: string | null;
+  celebrate: number;
   procedure_name: string | null;
   tryout_label: string | null;
   custom_goal_text: string | null;
@@ -82,7 +88,7 @@ type MilestoneRow = {
    title isn't joined - it's a compiled string, resolved by key in code
    instead, so roadmap_goal only ever matches a custom one. */
 const MILESTONE_SELECT = `
-  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id,
+  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id, ms.celebrate,
          p.name AS procedure_name, t.label AS tryout_label, rg.text AS custom_goal_text
     FROM milestone ms
     LEFT JOIN procedure p ON p.uuid = ms.procedure_id
@@ -110,6 +116,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       roadmapGoalKey: r.roadmap_goal_key,
       procedureId: r.procedure_id ?? null,
       tryoutId: r.tryout_id ?? null,
+      celebrate: r.celebrate !== 0,
       procedureName: r.procedure_name ?? null,
       tryoutLabel: r.tryout_label ?? null,
       customRoadmapGoalText: r.custom_goal_text ?? null,
@@ -165,17 +172,20 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       const hasProc = input.procedureId !== undefined;
       const hasTryout = input.tryoutId !== undefined;
       const hasDescription = input.description !== undefined;
+      const hasCelebrate = input.celebrate !== undefined;
       const extraColumns = [
         ...(hasRoadmap ? ['roadmap_goal_key'] : []),
         ...(hasProc ? ['procedure_id'] : []),
         ...(hasTryout ? ['tryout_id'] : []),
-        ...(hasDescription ? ['description'] : [])
+        ...(hasDescription ? ['description'] : []),
+        ...(hasCelebrate ? ['celebrate'] : [])
       ];
       const extraValues = [
         ...(hasRoadmap ? [input.roadmapGoalKey ?? null] : []),
         ...(hasProc ? [input.procedureId ?? null] : []),
         ...(hasTryout ? [input.tryoutId ?? null] : []),
-        ...(hasDescription ? [input.description] : [])
+        ...(hasDescription ? [input.description] : []),
+        ...(hasCelebrate ? [input.celebrate ? 1 : 0] : [])
       ];
       const updateSql = `UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?${extraColumns.map((c) => `, ${c} = ?`).join('')}, updated_at = ? WHERE uuid = ?`;
       const updateParams = [input.name, input.epochDay, input.templateKey ?? null, ...extraValues, now(), input.id];
@@ -198,7 +208,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         return input.id;
       }
       const uuid = mintUuid();
-      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, celebrate, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       const insertParams = [
         uuid,
         input.name,
@@ -208,6 +218,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         input.roadmapGoalKey ?? null,
         input.procedureId ?? null,
         input.tryoutId ?? null,
+        input.celebrate === false ? 0 : 1,
         now()
       ];
       if (!staged) {

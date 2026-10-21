@@ -174,6 +174,10 @@ export interface ArchiveMilestone {
   roadmapGoalKey: string | null;
   procedureId: string | null;
   tryoutId: string | null;
+  /** Present, and false, only on a milestone the person set not to be
+      celebrated (functional audit ticket 32). Absent reads as true, which
+      is also what every milestone in an older archive was. */
+  celebrate?: false;
   photo: ArchivePhoto | null;
 }
 

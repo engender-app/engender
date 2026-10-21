@@ -56,6 +56,7 @@
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { landingMilestone } from '$lib/data/milestoneStatus';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -508,8 +509,18 @@
      read. The list itself no longer draws here - a milestone still ahead is
      an agenda row - but the day one lands is the one authored moment below,
      and this is the read that knows it. */
-  let landing = $derived(landingMilestone(vocabulary.milestones, today));
-  let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
+  /* An anniversary brings back a day from the past, so it asks the same
+     consent every resurfacing surface asks (ADR-0049, functional audit
+     ticket 32), and nothing is marked until that read has answered.
+     `?celebrate=1` forces the moment for review, in development and demo
+     builds only: a production build folds the branch away. */
+  let anniversaryConsent = liveQuery((j) => resurfacing('milestone-anniversary', j));
+  let landing = $derived.by(() => {
+    const consent = anniversaryConsent.value;
+    if (!consent) return undefined;
+    return landingMilestone(vocabulary.milestones, today, (day) => consent.mayResurface({ start: day, end: day }));
+  });
+  let celebrate = $derived((__DEMO__ && page.url.searchParams.get('celebrate') === '1') || !!landing);
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
   /* Held back while the app is opening, and only then (redesign ticket 34).

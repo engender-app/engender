@@ -249,6 +249,10 @@ export interface Milestone {
       ADR-0045). Nulled out the same way procedureId is when the tryout it
       names is deleted. */
   tryoutId?: string | null;
+  /** False when the person asked for no celebration on Home, on the day
+      and on every anniversary (functional audit ticket 32). Absent reads as
+      true, the resting state of every milestone. */
+  celebrate?: boolean;
   photo: Photo | null;
   /** Resolved alongside the row for the provenance line (phase 5 deepening
       ticket 22): a linked procedure's or tryout's own name, and a custom

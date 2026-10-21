@@ -143,6 +143,7 @@ const ROWS = {
     roadmapGoalKey: optional(nullable(text)),
     procedureId: optional(nullable(text)),
     tryoutId: optional(nullable(text)),
+    celebrate: optional((value) => value === false),
     photo: optional(nullable(photo))
   },
   labResults: {

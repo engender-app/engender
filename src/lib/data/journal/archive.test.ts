@@ -717,6 +717,35 @@ test('a hidden regimen episode travels hidden, and a restore keeps it hidden', a
   assert.equal((await fromOlder.regimen.getEpisodes()).some((e) => e.id === episode), true);
 });
 
+/* Functional audit ticket 32: a milestone set not to be celebrated travels
+   that way, and only that way - a celebrated one carries no field, so an
+   archive written before the field existed restores every milestone
+   celebrated, which is what it was. */
+test("a milestone's celebration choice travels, and an older archive restores it celebrated", async () => {
+  const { journal, milestone } = await populated();
+  const quiet = await journal.milestones.upsertMilestone({ name: 'The hard one', epochDay: 19100, celebrate: false });
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.milestones.find((mi) => mi.id === quiet)?.celebrate, false);
+  assert.equal('celebrate' in snapshot.journal.milestones.find((mi) => mi.id === milestone)!, false);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const celebrated = async (j: typeof target) =>
+    Object.fromEntries((await j.milestones.getMilestones()).map((mi) => [mi.id, mi.celebrate]));
+  assert.deepEqual(await celebrated(target), { [milestone]: true, [quiet]: false });
+
+  const older = {
+    ...snapshot.journal,
+    milestones: snapshot.journal.milestones.map(({ celebrate: _celebrate, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await celebrated(fromOlder), { [milestone]: true, [quiet]: true });
+});
+
 /* Functional audit ticket 18: the drug class is the person's to change, so
    it travels as stored. An archive from before the field existed carries no
    class, and a restore infers it from the drug by the migration's rule. */
@@ -837,7 +866,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // own table - a descriptor names one table for one section.
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred', 'epoch_day_override'],
   // Owns a child (photo), the same reason `entry` above is hand-written.
-  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id'],
+  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id', 'celebrate'],
   // A matched built-in row is UPDATEd in place (applyDimensions), which a
   // descriptor's insert-if-absent has no branch for.
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],

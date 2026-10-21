@@ -73,5 +73,10 @@ DROP TABLE measurement_type;
 DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
-` }
+` },
+  /* Functional audit ticket 32: a milestone can be set not to be
+     celebrated on Home. Every milestone already recorded keeps its
+     celebration. No CHECK, like roadmap_check.hidden: 0 is off and
+     anything else reads as on. */
+  { version: 98, sql: 'ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1;' }
 ];
