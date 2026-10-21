@@ -416,13 +416,13 @@
     {#snippet fields(stageEditor)}
       <Field label={m.hair_other_label()} id="hair-stage-text">
         {#snippet children(id)}
-          <input autocomplete={journalTextAutocomplete()}
+          <textarea autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="hair-stage-text"
             placeholder={m.hair_other_placeholder()}
             bind:value={stageEditor.description}
-          />
+          ></textarea>
         {/snippet}
       </Field>
       <Field label={m.hair_stage_date_label()} id="hair-stage-date">
