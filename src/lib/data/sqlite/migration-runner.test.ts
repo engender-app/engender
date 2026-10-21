@@ -277,6 +277,16 @@ test('assertFts5Available fails loudly with a distinct error when FTS5 is missin
   await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb()), Fts5UnavailableError);
 });
 
+test('assertFts5Available recognizes a direct FTS5 error without a space after the colon', async () => {
+  const cause = new Error('no such module:fts5');
+  await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb(cause)), (error: unknown) => {
+    assert.ok(error instanceof Fts5UnavailableError);
+    assert.equal(error.cause, cause);
+    assert.match(error.message, /no such module:fts5/);
+    return true;
+  });
+});
+
 test.each(['no such module: fts5', 'no such module:fts5'])(
   'assertFts5Available recognizes a driver cause saying %s', async (message) => {
     const cause = new Error('native query failed', { cause: new Error(message) });
