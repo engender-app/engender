@@ -520,6 +520,7 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
         labs,
         exposure,
         sideEffects,
+        cycleEvents,
         checklists,
         procedures
       })

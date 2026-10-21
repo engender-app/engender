@@ -32,14 +32,19 @@ import { DAY_AHEAD_TABLES } from '../journal/dayAhead';
 import { LAST_WRITE_TABLES } from '../journal/lastWrite';
 import { SEARCH_TABLES } from '../journal/textSearch';
 
+/* The union of the clinician summary registry's per-section tables
+   (clinicianSummary.ts), written out here because that module is loaded on
+   demand and importing it would put it on the first screen's path.
+   clinicianSummary.test.ts holds the two equal. */
 export const CLINICIAN_SUMMARY_TABLES: TableName[] = [
   'regimen',
   'dose',
   'lab',
   'sideEffect',
+  'cycleEvent',
+  'checklist',
   'procedure',
   'appointment',
-  'checklist',
   'areaState'
 ];
 
@@ -999,11 +1004,10 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   /* Read-only, the same reason exposure is: a clinician summary assembles
      rows other areas own and stores nothing of its own (phase 4 ticket 12).
-     Its table list is the section registry's own rather than a copy taken
-     from it (clinicianSummary.ts's CLINICIAN_SUMMARY_TABLES), for the reason
-     day's is: a section registered there brings its tables with it, so a
-     summary cannot go stale on a write to an area registered after this line
-     was written. */
+     Its table list is the union of the section registry's own
+     (CLINICIAN_SUMMARY_TABLES above), and a test fails when a section's
+     tables leave it, so a summary cannot go stale on a write to an area
+     registered after this line was written. */
   clinicianSummary: classify<Journal['clinicianSummary']>()({
     writes: {},
     reads: { getSummary: CLINICIAN_SUMMARY_TABLES }

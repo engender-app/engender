@@ -1080,5 +1080,5 @@ test('merged standalone prep questions reach both checklist reads and clinician 
   await journal.checklists.addItem(checklist.id, 'Local question');
   await applyChecklists(restoring(driver, { checklists: [{ id: 'other-device', ownerKind: null, ownerId: null, appointmentEpochDay: null, items: [{id: 'remote', content: 'Remote question', checked: false, carriedForward: false}]}] }, 'merge'));
   assert.deepEqual((await journal.checklists.getStandaloneChecklist())!.items.map(item => item.content), ['Local question', 'Remote question']);
-  assert.deepEqual((await journal.clinicianSummary.getSummary(19000, 20000)).appointmentPrepItems.map(item => item.content), ['Local question', 'Remote question']);
+  assert.deepEqual((await journal.clinicianSummary.getSummary(19000, 20000)).sections.appointmentPrep!.map(item => item.content), ['Local question', 'Remote question']);
 });

@@ -74,7 +74,7 @@
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
   import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
-  import { CLINICIAN_DOSSIER_INCLUSION_KEYS } from '$lib/data/export/clinicianSummaryData';
+  import { CLINICIAN_SUMMARY_SECTION_KEYS } from '$lib/data/journal/clinicianSummary';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
@@ -507,15 +507,15 @@
 
   /* What the clinician summary would print if it were opened now: its own
      default range and the sections it has (the screen's own
-     `ongoingWindowRange(today, 90)` and every inclusion key, which is what
-     `DEFAULT_CLINICIAN_DOSSIER_INCLUSION` turns them all on for). Read from
+     `ongoingWindowRange(today, 90)` and every registered section, which is
+     what `EVERY_CLINICIAN_SUMMARY_SECTION` turns them all on for). Read from
      the same two modules the summary screen reads, so the row cannot drift
      from what tapping it opens. */
   let summaryRange = $derived(ongoingWindowRange(today, 90));
   let summaryReading = $derived(
     m.care_row_summary({
       start: fmtDay(summaryRange.start, { day: 'numeric', month: 'long' }),
-      sections: m.clinician_summary_settings_sections({ n: CLINICIAN_DOSSIER_INCLUSION_KEYS.length })
+      sections: m.clinician_summary_settings_sections({ n: CLINICIAN_SUMMARY_SECTION_KEYS.length })
     })
   );
 

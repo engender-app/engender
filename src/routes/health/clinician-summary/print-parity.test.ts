@@ -84,7 +84,7 @@ describe('the print foot (ticket 34)', () => {
     expect(page).toContain('let scopeText = $derived.by(');
     expect(page).toContain('m.clinician_summary_scope({');
     expect(page).toContain('m.clinician_summary_scope_no_drugs(');
-    expect(page).toContain('includedSections.map(clinicianDossierPartName).join');
+    expect(page).toContain('includedSections.map(clinicianSummarySectionName).join');
     expect(page).toContain('includedDrugNames.join');
     expect(page).toContain('m.clinician_summary_settings_row({ scope: settingsScope })');
     expect(page).toContain('drugNames.length > 0 ? `${sectionsScope}. ${drugsScope}` : sectionsScope');

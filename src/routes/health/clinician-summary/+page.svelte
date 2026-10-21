@@ -1,12 +1,9 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Overhauled Clinician Summary / Clinical Dossier Generator (phase 5 ticket 09).
-     Synthesizes patient demographics, current regimen, dose history, cumulative
-     exposure, lab timeline with post-dose context, side effects, cycle events,
-     and appointment prep consultation questions.
-
-     Provides toggle switches to selectively include or redact sections before
-     printing or saving to PDF. */
+  /* The clinician summary (phase 5 ticket 09): a range, the registered
+     sections (clinicianSummary.ts, ADR-0031) and the drugs to print, set in
+     the sheet, over a preview that is the printed page. Each section has a
+     switch, so a part can be left off before printing or saving to PDF. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -25,16 +22,15 @@
   import { fmtDay } from '$lib/data/dates';
   import { printCurrentPage } from '$lib/print/print';
   import {
-    assembleClinicianDossier,
-    CLINICIAN_DOSSIER_INCLUSION_KEYS,
-    DEFAULT_CLINICIAN_DOSSIER_INCLUSION,
+    CLINICIAN_SUMMARY_SECTION_KEYS,
+    EVERY_CLINICIAN_SUMMARY_SECTION,
     excludedClinicianDrugs,
     regimenDrugNames,
     withClinicianDrugIncluded,
-    type ClinicianDossierInclusion,
-    type ClinicianDossierInclusionKey
-  } from '$lib/data/export/clinicianSummaryData';
-  import { clinicianDossierPartName } from '$lib/data/vocabulary/clinicianSummaryLabels';
+    type ClinicianSummaryInclusion,
+    type ClinicianSummarySectionKey
+  } from '$lib/data/journal/clinicianSummary';
+  import { clinicianSummarySectionName } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import ClinicianSummaryDossier from '$lib/components/ClinicianSummaryDossier.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PrintLetterhead from '$lib/components/PrintLetterhead.svelte';
@@ -61,7 +57,7 @@
   /* Transient like the date of birth: typed for this summary, never kept as
      a preference (after-release 22, confirmed in pre-release-human 03). */
   let pronounsInput = $state('');
-  let inclusion = $state<ClinicianDossierInclusion>({ ...DEFAULT_CLINICIAN_DOSSIER_INCLUSION });
+  let inclusion = $state<ClinicianSummaryInclusion>({ ...EVERY_CLINICIAN_SUMMARY_SECTION });
 
   /* Ticket 08: the range, the sections and the drugs are all still set on
      this same screen - the sheet below just holds the controls now instead
@@ -96,7 +92,7 @@
   /* A shortcut for the two fields below, nothing else: it fills the same
      start/end inputs any other pair of dates fills, so it changes no read
      downstream. Two of clinicianSummary.ts's sections (procedures,
-     appointmentPrepItems) are already unfiltered by design (ADR-0031) -
+     appointmentPrep) are already unfiltered by design (ADR-0031) -
      this range does not change that, and does not special-case it either,
      which is the "written decision" ticket 19 asks for: applying it
      uniformly would change what those two sections mean, exactly what
@@ -111,11 +107,9 @@
     customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput))
   );
 
-  let dossierQuery = liveQuery((j) =>
+  let summaryQuery = liveQuery((j) =>
     range
-      ? assembleClinicianDossier(j, {
-          fromEpochDay: range.start,
-          toEpochDay: range.end,
+      ? j.clinicianSummary.getSummary(range.start, range.end, {
           demographics: {
             name: prefs.name,
             pronouns: pronounsInput.trim() || null,
@@ -126,7 +120,7 @@
         })
       : Promise.resolve(null)
   );
-  let dossier = $derived(dossierQuery.value);
+  let summary = $derived(summaryQuery.value);
 
   const dayLong = (epochDay: number) =>
     fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -134,16 +128,16 @@
   /* Both summaries read the selected sections and drugs. Only the print
      foot states the range, so the screen does not repeat its sentence. */
   let includedSections = $derived(
-    CLINICIAN_DOSSIER_INCLUSION_KEYS.filter((key) => inclusion[key])
+    CLINICIAN_SUMMARY_SECTION_KEYS.filter((key) => inclusion[key])
   );
   let includedDrugNames = $derived(drugNames.filter((drug) => !excludedDrugs.has(drug)));
   let sectionsScope = $derived(
     includedSections.length === 0
       ? m.clinician_summary_scope_sections_none()
-      : includedSections.length === CLINICIAN_DOSSIER_INCLUSION_KEYS.length
+      : includedSections.length === CLINICIAN_SUMMARY_SECTION_KEYS.length
         ? m.clinician_summary_scope_sections_all()
         : m.clinician_summary_scope_sections({
-            sections: includedSections.map(clinicianDossierPartName).join(', ')
+            sections: includedSections.map(clinicianSummarySectionName).join(', ')
           })
   );
   let drugsScope = $derived(
@@ -172,7 +166,7 @@
     drugNames.length > 0 ? `${sectionsScope}. ${drugsScope}` : sectionsScope
   );
 
-  function include(key: ClinicianDossierInclusionKey, value: boolean) {
+  function include(key: ClinicianSummarySectionKey, value: boolean) {
     inclusion = { ...inclusion, [key]: value };
   }
 
@@ -211,21 +205,21 @@
     <div class="no-print"><SectionHeading text={m.clinician_summary_preview_title()} /></div>
     <!-- The document title stays visible while its sections load. -->
     <div class="summary-page" data-summary-page>
-      <div class="summary-heading" class:has-demographics={Boolean(dossier?.demographics)}>
+      <div class="summary-heading" class:has-demographics={Boolean(summary?.sections.demographics)}>
         <div class="print-heading"><PrintLetterhead /></div>
         <h1>{m.clinician_summary_title()}</h1>
         <p>{m.clinician_summary_period_range({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
       </div>
-      {#if dossierQuery.loading || !dossier}
+      {#if summaryQuery.loading || !summary}
         <div out:crossfade><Skeleton variant="block" count={4} /></div>
       {:else}
         <div class="dossier-output">
-          <ClinicianSummaryDossier {dossier} />
+          <ClinicianSummaryDossier {summary} />
         </div>
       {/if}
     </div>
-    {#if dossier}
+    {#if summary}
       <!-- Ticket 34: the act of sending the page lives in the frame's foot
            (SaveBar), beside the scope it would send - the preview runs for
            many sections, and an action at its end is one every scroll has
@@ -313,12 +307,12 @@
     <p class="muted small" style="margin-bottom:var(--space-2)">{m.clinician_summary_include_note()}</p>
     <ListCard>
       <div class="inclusion-container" data-dossier-inclusion>
-        {#each CLINICIAN_DOSSIER_INCLUSION_KEYS as key (key)}
+        {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
           <div class="spread inclusion-row" data-inclusion={key}>
-            <span>{clinicianDossierPartName(key)}</span>
+            <span>{clinicianSummarySectionName(key)}</span>
             <Switch
               checked={inclusion[key]}
-              label={clinicianDossierPartName(key)}
+              label={clinicianSummarySectionName(key)}
               onChange={(v) => include(key, v)}
             />
           </div>

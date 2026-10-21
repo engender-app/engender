@@ -15,15 +15,38 @@ const printCss = readFileSync(
   root + '/src/lib/styles/clinician-print.css',
   'utf8'
 );
+const labels = readFileSync(root + '/src/lib/data/vocabulary/clinicianSummaryLabels.ts', 'utf8');
+const messages = ['en', 'pl'].map((locale) => readFileSync(`${root}/messages/${locale}.json`, 'utf8'));
 
-describe('ClinicianSummaryDossier component contract', () => {
-  it('defines Props interface with ClinicianDossier', () => {
+/* Functional-audit ticket 38: one section mechanism and one label set. The
+   page draws the registry's sections by walking its keys, one snippet per
+   key, and names each one from the same record the include switches use. */
+describe('one layer, one label set (functional-audit ticket 38)', () => {
+  it('takes the registry\'s own summary, not a second dossier shape', () => {
     expect(dossierComponent).toContain('interface Props');
-    expect(dossierComponent).toContain('dossier: ClinicianDossier');
+    expect(dossierComponent).toContain('summary: ClinicianSummary');
+    expect(dossierComponent).not.toMatch(/ClinicianDossier\b/);
   });
 
+  it('draws the sections by walking the registry\'s keys, through a snippet per key', () => {
+    expect(dossierComponent).toContain('{#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}');
+    expect(dossierComponent).toContain('{@render sectionSnippet(key)(content)}');
+    expect(dossierComponent).toContain(
+      'const SECTION_SNIPPETS: { [Key in ClinicianSummarySectionKey]: Snippet<[Section<Key>]> } = {'
+    );
+    expect(dossierComponent).not.toMatch(/\{#if dossier\./);
+  });
+
+  it('names every section from the one label set, on paper and on its switch', () => {
+    expect(labels).toContain('Record<ClinicianSummarySectionKey, () => string>');
+    expect(dossierComponent).not.toMatch(/m\.clinician_summary_section_(?!truncated)[a-z_]+\(\)/);
+    expect(summaryPage).toContain('clinicianSummarySectionName(key)');
+    for (const catalogue of messages) expect(catalogue).not.toContain('"clinician_summary_part_');
+  });
+});
+
+describe('ClinicianSummaryDossier component contract', () => {
   it('renders patient demographics section when present', () => {
-    expect(dossierComponent).toContain('{#if dossier.demographics}');
     expect(dossierComponent).toContain('data-dossier-section="demographics"');
     expect(dossierComponent).toContain('m.clinician_summary_name_label()');
     expect(dossierComponent).toContain('m.clinician_summary_pronouns_label()');
@@ -31,7 +54,7 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders regimen and dosage history section with tables', () => {
-    expect(dossierComponent).toContain('{#if dossier.regimen}');
+    expect(dossierComponent).toContain("{#snippet regimenSection(regimen: Section<'regimen'>)}");
     expect(dossierComponent).toContain('data-dossier-section="regimen"');
     expect(dossierComponent).toContain('m.clinician_summary_current_regimen()');
     expect(dossierComponent).toContain('m.clinician_summary_past_regimen()');
@@ -70,7 +93,7 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders cumulative exposure section', () => {
-    expect(dossierComponent).toContain('{#if dossier.exposure}');
+    expect(dossierComponent).toContain("{#snippet exposureSection(exposure: Section<'exposure'>)}");
     expect(dossierComponent).toContain('data-dossier-section="exposure"');
     expect(dossierComponent).toContain('m.exposure_dose_totals_title()');
     expect(dossierComponent).toContain('m.exposure_route_days_title()');
@@ -86,16 +109,16 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders lab results with post-dose timing badge', () => {
-    expect(dossierComponent).toContain('{#if dossier.labs}');
+    expect(dossierComponent).toContain("{#snippet labsSection(labs: Section<'labs'>)}");
     expect(dossierComponent).toContain('data-dossier-section="labs"');
     expect(dossierComponent).toContain('m.clinician_summary_timing_header()');
     expect(dossierComponent).toContain('class="dossier-timing-badge"');
   });
 
   it('renders side effects and cycle events sections', () => {
-    expect(dossierComponent).toContain('{#if dossier.sideEffects}');
+    expect(dossierComponent).toContain("{#snippet sideEffectsSection(sideEffects: Section<'sideEffects'>)}");
     expect(dossierComponent).toContain('data-dossier-section="sideEffects"');
-    expect(dossierComponent).toContain('{#if dossier.cycleEvents}');
+    expect(dossierComponent).toContain("{#snippet cycleEventsSection(cycleEvents: Section<'cycleEvents'>)}");
     expect(dossierComponent).toContain('data-dossier-section="cycleEvents"');
     expect(dossierComponent).toContain('cycleEventKindName(event.kind)');
   });
@@ -106,7 +129,7 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders appointment prep consultation questions', () => {
-    expect(dossierComponent).toContain('{#if dossier.appointmentPrep}');
+    expect(dossierComponent).toContain("{#snippet appointmentPrepSection(appointmentPrep: Section<'appointmentPrep'>)}");
     expect(dossierComponent).toContain('data-dossier-section="appointmentPrep"');
   });
 
@@ -185,7 +208,7 @@ describe('ClinicianSummaryDossier says only what the person told it (after-relea
   /* L04-02: every summary printed "Pronouns: Not specified", and nothing
      in the app could change it. */
   it('draws the pronouns row only when pronouns were given', () => {
-    expect(dossierComponent).toMatch(/{#if dossier\.demographics\.pronouns\?\.trim\(\)}/);
+    expect(dossierComponent).toMatch(/{#if demographics\.pronouns\?\.trim\(\)}/);
     expect(dossierComponent).not.toContain('pronouns?.trim() || m.clinician_summary_not_set()');
   });
 
