@@ -299,6 +299,7 @@
   let running = $state<WearSession | null>(null);
   let doseAvailable = $state(false);
   let wearAvailable = $state(false);
+  let availabilityPending = $state(true);
   /* A start repeats the last kind. No kind means wear has not been used, so
      there is no quick start row. */
   let lastKind = $state<WearKind | null>(null);
@@ -309,6 +310,7 @@
   let availabilityRead = 0;
   async function refreshAvailability() {
     const read = ++availabilityRead;
+    availabilityPending = true;
     try {
       const [session, kind, states, episodes] = await Promise.all([
         journal.wearSessions.getRunningSession(),
@@ -321,7 +323,12 @@
       if (kind) lastKind = kind;
       wearAvailable = kind !== null && !areaHidden('wearSessions', states);
       doseAvailable = activeEpisodesAt(episodes, Date.now()).length > 0;
+      availabilityPending = false;
     } catch (error) {
+      if (read !== availabilityRead) return;
+      wearAvailable = false;
+      doseAvailable = false;
+      availabilityPending = false;
       console.error('quick add: could not read available actions', error);
     }
   }
@@ -352,7 +359,7 @@
   async function toggleWear() {
     /* Never start from a stale target after the area was hidden. */
     const kind = lastKind;
-    if (!wearAvailable || !kind) return;
+    if (availabilityPending || !wearAvailable || !kind) return;
     const session = running;
     const from = flightFrom('wear');
     close();
@@ -374,6 +381,7 @@
   }
 
   function logDose() {
+    if (availabilityPending || !doseAvailable) return;
     close();
     goto('/care/doses?add=1');
   }
@@ -688,9 +696,10 @@
       {#if doseAvailable}
       <button
         class="fan-item"
-        class:is-armed={armed === 'dose'}
+        class:is-armed={armed === 'dose' && !availabilityPending}
         data-fan-target="dose"
         data-choose="dose"
+        disabled={availabilityPending}
         transition:disclose={{ skip: !wearAvailable }}
         onclick={ACTIONS.dose}
       >
@@ -708,9 +717,10 @@
       {#if wearAvailable}
       <button
         class="fan-item"
-        class:is-armed={armed === 'wear'}
+        class:is-armed={armed === 'wear' && !availabilityPending}
         data-fan-target="wear"
         data-choose="wear"
+        disabled={availabilityPending}
         data-wear-running={running ? '' : undefined}
         transition:disclose={{ skip: !doseAvailable }}
         onclick={ACTIONS.wear}

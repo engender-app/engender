@@ -2003,24 +2003,25 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   font: inherit; font-weight: var(--weight-medium);
   text-align: left;
   cursor: pointer;
-  transition-property: background-color, color;
+  transition-property: background-color, color, opacity;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
 .fan-item + .fan-item { border-top: 1px solid var(--hairline); }
+.fan-item:disabled { cursor: default; opacity: 0.55; }
 .fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
 .fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Armed: what happens if the finger comes up here. The same state a hover
    or a keyboard focus shows, because it answers the same question. */
 .fan-item.is-armed,
-.fan-item:hover,
+.fan-item:hover:not(:disabled),
 .fan-item:focus-visible {
   background: var(--accent);
   color: var(--on-accent);
 }
 .fan-item.is-armed .fan-icon,
-.fan-item:hover .fan-icon,
+.fan-item:hover:not(:disabled) .fan-icon,
 .fan-item:focus-visible .fan-icon { color: var(--on-accent); }
 
 /* A pair's halves stack their icon over the label, so the longer of two

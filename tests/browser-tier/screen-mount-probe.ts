@@ -11,6 +11,7 @@ publishFixture('screen-mount', async () => {
   if (location.search.includes('safe-space')) return { safeSpace: await safeSpaceContracts() };
   if (location.search.includes('late-reads'))
     return { lateReads: await lateReadsContracts(location.search.includes('theme=dark') ? 'dark' : 'light') };
+  if (location.search.includes('home')) return { home: await homeContracts() };
   if (location.search.includes('narrow')) return { narrow: await directionNarrowContracts() };
   const result: Record<string, unknown> = {};
   for (const [name, run] of Object.entries({
