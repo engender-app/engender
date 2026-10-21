@@ -705,10 +705,6 @@ To run one on its own, use
 
 ### Written as a guard, not in CI yet
 
-`resurfacing-consent-check` requires a demo build. It checks that muting an
-era removes retrospective offers and sharing controls, direct Wrapped share
-URLs show the muted notice, and unmuting restores the offers and sharing.
-
 | Probe | Why not |
 | --- | --- |
 | `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |

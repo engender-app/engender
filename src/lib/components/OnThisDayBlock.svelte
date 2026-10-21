@@ -1,23 +1,7 @@
 <script lang="ts">
-  /* On this day, as a block (phase 11 ticket 07): however many of the three
-     lookbacks - a month, six months, a year - clear the good-day bar today,
-     each as its heading, the whole day one tap away, the day's entries, its
-     letters and its photos. It was the whole of `/on-this-day`; it draws in
-     two places now - opened in place under the Look back door's tile, and
-     on that route, which stays because a notification deep-links to it
-     with `?lookback=` (ADR-0028).
-
-     A lookback that does not clear the bar is left out entirely rather than
-     shown with a caveat (CONTEXT: Good day is an absolute rule, not a
-     suggestion). It shows what was written: the screen this grew out of
-     used to show three stat tiles and a mood chart and never a word anyone
-     wrote. The photos come off the entries, so what is shown is every photo
-     from that day.
-
-     The preference is read inside the query, before the first await, so
-     that turning on-this-day off stops the reads themselves. Up to three
-     good-day checks, up to three per-day entry reads, and the one letters
-     read, all bounded by the day or by the letters read's own limit. */
+  /* On this day draws qualifying days, letters and photos on Look back and
+     its own route. Journal bounds limit annual checks; resurfacing consent
+     removes muted days before any good-day or entry read. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -47,16 +31,12 @@
   let {
     scrollTo = null
   }: {
-    /** The lookback a notification named (`?lookback=`), scrolled to once
-        the days have landed. Scrolled to rather than the only thing shown:
-        the other qualifying lookbacks stay on the page. */
+    /** Optional section named by a pinned launch route. */
     scrollTo?: string | null;
   } = $props();
 
   const today = $derived(currentDay());
-  const candidates = $derived(onThisDayCandidates(today));
-
-  const LOOKBACK_TITLE: Record<OnThisDayLookback, () => string> = {
+  const LOOKBACK_TITLE: Record<'year' | 'sixMonths' | 'month', () => string> = {
     year: () => m.on_this_day_year_title(),
     sixMonths: () => m.on_this_day_six_months_title(),
     month: () => m.on_this_day_month_title()
@@ -71,18 +51,18 @@
     letters: RetrospectiveLetter[];
   }
 
-  /* Seeded with the two reads made after an await (the good-day check and
-     the day's entries), so the first run does not discover them late and
-     start again from the top, the same round trip OnThisDayHomeCard saves. */
+  /* Seed reads made after the first await to avoid a duplicate query. */
   let daysQuery = liveList(async (j) => {
     if (!prefs.onThisDayEnabled) return [];
     // Read before the first await, so the query re-runs when the day changes.
     const asOf = today;
-    const lookbacks = candidates;
-    const [letters, consent] = await Promise.all([
+    const [letters, consent, bounds] = await Promise.all([
       j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
-      resurfacing('on-this-day', j)
+      resurfacing('on-this-day', j),
+      j.eras.getJournalBounds()
     ]);
+    const earliest = Math.min(bounds?.firstEpochDay ?? asOf, ...letters.map((letter) => letter.epochDay));
+    const lookbacks = onThisDayCandidates(asOf, earliest);
     const results = await Promise.all(
       consent.allowedDays(lookbacks).map(async (c): Promise<QualifyingDay | null> => {
         const dayLetters = onThisDayLetters(letters, c.epochDay, asOf);
@@ -102,7 +82,7 @@
   let days = $derived(
     daysQuery.rows.map((d) => ({
       ...d,
-      title: LOOKBACK_TITLE[d.key](),
+      title: d.key.startsWith('year-') ? m.on_this_day_years_title({ years: m.n_years({ n: Number(d.key.slice(5)) }) }) : LOOKBACK_TITLE[d.key as 'year' | 'sixMonths' | 'month'](),
       date: fmtDayBar(d.epochDay, today),
       photos: d.entries.flatMap((entry) => entry.photos)
     }))

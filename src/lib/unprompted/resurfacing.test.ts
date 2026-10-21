@@ -9,7 +9,7 @@ import { RESURFACING_SURFACE_ROWS, RESURFACING_SURFACES, unregisteredSurfaces, r
 
 describe('the resurfacing surface registry', () => {
   it('registers routes, Home tiles, notifications and sharing', () => {
-    expect(RESURFACING_SURFACES).toEqual(['on-this-day', 'on-this-day-home-card', 'wrapped', 'wrapped-home-card', 'on-this-day-notification', 'wrapped-notification', 'wrapped-share']);
+    expect(RESURFACING_SURFACES).toEqual(['on-this-day', 'on-this-day-home-card', 'wrapped', 'wrapped-home-card']);
   });
 
   it('gives every row a key of its own', () => {

@@ -101,8 +101,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
                below applies unconditionally: it does not know whether the
                screen is locked, so it hides the title whether it is or not.
                This call is kept anyway, for the phones that do have
-               concealment configured, and RetrospectiveNotificationsPlugin
-               and AutoExportPlugin already make the same call. */
+               concealment configured. AutoExportPlugin makes the same call. */
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1))
             .build();

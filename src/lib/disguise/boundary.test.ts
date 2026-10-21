@@ -148,7 +148,6 @@ describe('disguise boundary', () => {
       'src/routes/+layout.svelte',
       'src/routes/+layout.svelte',
       'src/routes/media/photos/export/+page.svelte',
-      'src/routes/wrapped/[cadence]/share/+page.svelte'
     ].sort());
   });
 
@@ -160,7 +159,6 @@ describe('disguise boundary', () => {
     expect(layout).toContain('const disguise = outsideDisguise(prefs);');
     expect(layout).not.toMatch(/class:disguised|refreshActiveFlag\(document,|if \(disguise\) untrack/);
     expect(read('routes/media/photos/export/+page.svelte')).toContain('journeyFileName(prefs.name, output, undefined, outsideDisguise(prefs))');
-    expect(read('routes/wrapped/[cadence]/share/+page.svelte')).toContain('wrappedShareFileName(prefs.name, undefined, outsideDisguise(prefs))');
   });
 
   it('does not neutralize unlocked surfaces through CSS or flag publication', () => {

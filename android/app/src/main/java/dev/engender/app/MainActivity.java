@@ -1,9 +1,11 @@
 package dev.engender.app;
 
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.ViewGroup;
 import android.webkit.RenderProcessGoneDetail;
@@ -55,6 +57,14 @@ public class MainActivity extends BridgeActivity {
         // with no saved choice allows capture by default. SharedPreferences
         // needs no bridge or WebView, so this runs before super.onCreate.
         ScreenCapturePlugin.applyWindowFlags(this, ScreenCapturePlugin.isAllowed(this));
+        // Old retrospective channels can survive an app update after their plugin is removed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notifications = getSystemService(NotificationManager.class);
+            if (notifications != null) {
+                notifications.deleteNotificationChannel("gd-wrapped");
+                notifications.deleteNotificationChannel("gd-on-this-day");
+            }
+        }
         // Before super.onCreate: the bridge is built there, and a plugin
         // registered afterwards is not in the bridge the WebView gets.
         AndroidPluginRegistry.assertRequiredPluginClassesExposeExpectedIds();

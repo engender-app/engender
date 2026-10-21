@@ -182,15 +182,12 @@ describe('what Settings is built from', () => {
   });
 
   it('keeps no switch for a prompt the notifications screen now carries', () => {
-    /* Phase 11 ticket 04. Entry nudges, guided prompts, the binder duration
-       cue and roadmap milestone prompts floated here under no heading of
-       their own; all four are the app speaking up unasked, which is what
-       /settings/notifications is about. Left behind, each would be a second
-       switch writing the same preference. */
+    /* Phase 11 ticket 04 moved these prompts to notifications settings.
+       Entry nudges have since been removed. */
     for (const gone of ['data-entry-nudges', 'data-guided-prompts', 'data-wear-duration-cue-toggle', 'data-roadmap-milestone-sync']) {
       expect(settings).not.toContain(gone);
     }
-    for (const pref of ['entryNudges', 'guidedPromptsEnabled', 'wearDurationCueEnabled', 'roadmapMilestoneSyncEnabled']) {
+    for (const pref of ['guidedPromptsEnabled', 'wearDurationCueEnabled', 'roadmapMilestoneSyncEnabled']) {
       expect(settings).not.toContain(`prefs.${pref}`);
     }
   });

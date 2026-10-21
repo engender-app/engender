@@ -106,11 +106,10 @@ describe('phase 2 accessibility seams', () => {
        on every cold start with this green. */
   });
 
-  it('keeps the wrapped range picker naming its cadence group', () => {
+  it('keeps the Wrapped cadence group', () => {
     const wrapped = read('src/routes/wrapped/[cadence]/+page.svelte');
-    expect(wrapped).toContain('m.recap_custom_start_label()');
-    expect(wrapped).toContain('m.recap_custom_end_label()');
-    expect(wrapped).toContain('title={m.wrapped_cadence_group()}');
+    expect(wrapped).toContain('name={m.wrapped_cadence_group()}');
+    expect(wrapped).not.toContain('range-picker');
   });
 
   /* This used to be the one place label association got checked at all - a

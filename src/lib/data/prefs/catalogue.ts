@@ -85,12 +85,9 @@ export interface PreferenceValues {
       by restoring on a new device. Weighed rather than defaulted -
       ADR-0003's rule alone would have made it device-local. */
   checkInAffirmationsEnabled: boolean;
-  /** Optional entry nudges that suggest adding detail after a mood-only save. */
-  entryNudges: boolean;
   /** Whether the rotating reflection prompt shows on the entry-creation
-      screen (phase 4 features ticket 17). Device-local for the same reason
-      `entryNudges` is: a yes/no about one installation's entry screen, not
-      anything the journal itself carries. */
+      screen (phase 4 features ticket 17). Device-local because this controls
+      one installation's entry screen, not anything the journal carries. */
   guidedPromptsEnabled: boolean;
   /** Whether active tryouts show a felt-sense quick prompt in the entry editor. */
   entryTryoutPromptEnabled: boolean;
@@ -111,7 +108,7 @@ export interface PreferenceValues {
       household tape), and a person turning off an eight-hour marker is not
       asking to be told less about tape.
 
-      Device-local for the same reason `entryNudges` and
+      Device-local for the same reason `guidedPromptsEnabled` and
       `roadmapMilestoneSyncEnabled` are: a yes/no about what this
       installation's screens say. */
   wearDurationCueEnabled: boolean;
@@ -200,18 +197,6 @@ export interface PreferenceValues {
       for the same reason `wrappedEnabled` is - a yes/no about one
       installation's Home screen. */
   onThisDayEnabled: boolean;
-  /** Whether wrapped also fires a local notification when a fresh period is
-      ready (phase 4 features ticket 04). Its own switch, independent of
-      `wrappedEnabled`'s Home-card toggle - wanting the card is not the same
-      as wanting to be pinged about it. Off by default, since notifications
-      are opt-in, and forced back to false whenever `wrappedEnabled` is
-      turned off, so there is no second toggle to remember to also find.
-      Device-local for the same reason `wrappedEnabled` is. */
-  wrappedNotificationsEnabled: boolean;
-  /** Whether on-this-day also fires a local notification for a qualifying
-      day (phase 4 features ticket 04). Same shape as
-      `wrappedNotificationsEnabled`, and for the same reasons. */
-  onThisDayNotificationsEnabled: boolean;
   /** Whether reminder alarms are scheduled at all (phase 6 ticket 04). The
       kind-level switch the notifications view draws, one level above each
       Reminder row's own `enabled`: off means no reminder reaches the phone,
@@ -230,17 +215,14 @@ export interface PreferenceValues {
   wearElapsedEnabled: boolean;
   /** Whether a scheduled backup that failed says so on the phone (phase 6
       ticket 04). The notice has fired since phase 4 with no settings home at
-      all; this is that home. On by default, unlike the two retrospective
-      notifications: a backup that saved nothing is the one thing in here
-      that is worth interrupting somebody for, and it is the half of the
-      admission rule that says "something failed". */
+      all; this is that home. On by default because a backup that saved
+      nothing meets the notification rule for a failed action. */
   exportFailureNoticeEnabled: boolean;
   /** An export failure notice that came due inside quiet hours and is
       waiting for them to end (phase 6 ticket 04). Held, not dropped - the
       auto-export scheduler's next check outside the window posts it and
-      clears this. The three other producers need no such flag: reminders
-      shift their own alarm, and the two retrospective checks re-run every
-      fifteen minutes anyway, so skipping one is already a hold. */
+      clears this. Reminders shift their own alarm, so they need no such
+      flag. */
   heldExportFailureNotice: boolean;
   /** Native backup failure timestamp last posted, held or declined by the
       notice switch. Device-local notification history survives scheduler
@@ -262,16 +244,6 @@ export interface PreferenceValues {
       empty window rather than a whole silent day - quietHours.ts owns that
       rule. */
   quietHoursEnd: string;
-  /** The wrapped period (`cadence:start`) last notified about, so the
-      scheduler does not repeat itself on every check while the same period
-      is still fresh (phase 4 features ticket 04). Device-local: it
-      describes this installation's notification history, not the journal. */
-  lastWrappedNotifiedPeriodKey: string | null;
-  /** The epoch day on-this-day last notified about (phase 4 features ticket
-      04) - at most one on-this-day notification per day, even when more
-      than one lookback qualifies. Device-local for the same reason
-      `lastWrappedNotifiedPeriodKey` is. */
-  lastOnThisDayNotifiedEpochDay: number | null;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone', string>>;
   /** The unit body measurements chart in (phase 5, "units should be
@@ -398,7 +370,7 @@ export interface PreferenceValues {
       Device-local, unlike `areaFinishOfferDeclined` beside it, and the
       difference is what each one records. That one holds an answer the
       person gave and would be the app forgetting it. This holds what this
-      installation has drawn, like `lastOnThisDayNotifiedEpochDay` - and a
+      installation has drawn, like `lastExportFailureNotifiedAt` - and a
       journal restored onto a new phone after a long gap should meet what is
       waiting rather than inherit a note saying it was already shown. */
   comingBackSeenSince: number | null;
@@ -494,7 +466,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   checkInEnabled: false,
   checkInTime: '21:00',
   checkInAffirmationsEnabled: true,
-  entryNudges: true,
   guidedPromptsEnabled: true,
   entryTryoutPromptEnabled: true,
   entryDoseQuickLogEnabled: true,
@@ -521,8 +492,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   appointmentTodayEnabled: true,
   wrappedEnabled: true,
   onThisDayEnabled: true,
-  wrappedNotificationsEnabled: false,
-  onThisDayNotificationsEnabled: false,
   remindersEnabled: true,
   wearElapsedEnabled: true,
   exportFailureNoticeEnabled: true,
@@ -531,8 +500,6 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
-  lastWrappedNotifiedPeriodKey: null,
-  lastOnThisDayNotifiedEpochDay: null,
   preferredLabUnits: {},
   measurementUnit: 'cm',
   measurementProtocolDismissed: false,
@@ -608,7 +575,6 @@ export const DEVICE_LOCAL_KEYS = [
   'disguise',
   'allowScreenCapture',
   'hideNotificationTitles',
-  'entryNudges',
   'guidedPromptsEnabled',
   'entryTryoutPromptEnabled',
   'entryDoseQuickLogEnabled',
@@ -633,8 +599,6 @@ export const DEVICE_LOCAL_KEYS = [
   'appointmentTodayEnabled',
   'wrappedEnabled',
   'onThisDayEnabled',
-  'wrappedNotificationsEnabled',
-  'onThisDayNotificationsEnabled',
   'remindersEnabled',
   'wearElapsedEnabled',
   'exportFailureNoticeEnabled',
@@ -643,8 +607,6 @@ export const DEVICE_LOCAL_KEYS = [
   'quietHoursEnabled',
   'quietHoursStart',
   'quietHoursEnd',
-  'lastWrappedNotifiedPeriodKey',
-  'lastOnThisDayNotifiedEpochDay',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',

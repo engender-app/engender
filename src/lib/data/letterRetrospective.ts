@@ -3,7 +3,7 @@
 
    A letter reaches a retrospective twice: the annual wrapped names the
    letters written during its year, and on-this-day resurfaces the letters
-   written or unlocked on one of its three lookback days. Both are
+   written or unlocked on a lookback day. Both are
    selections over the letters the caller already read - the same shape as
    wrappedSections.ts, where the conditional lives in a tested function and
    the screen only writes `{#if}`.

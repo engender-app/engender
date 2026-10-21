@@ -4,12 +4,10 @@
    cross-class rules the registry applies to every producer.
 
    Quiet hours are the awkward one here, and this module exists for that.
-   Reminders shift their own alarm out of the window and the two
-   retrospective checks re-run every fifteen minutes, so both hold a
-   notification without needing to remember anything. A backup failure is a
-   single moment on a weekly schedule: skipping it would be a drop, not a
-   hold. So a failure inside the window sets `heldExportFailureNotice`, and
-   the auto-export scheduler's next check outside the window posts it.
+   Reminders shift their own alarm out of the window. A backup failure is a
+   single moment on a weekly schedule: skipping it would drop the notice.
+   A failure inside the window sets `heldExportFailureNotice`, and the
+   auto-export scheduler's next check outside the window posts it.
 
    One function for both halves - the failure moment and the flush on a later
    tick - because they are the same decision with `failedNow` and `held`

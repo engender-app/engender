@@ -23,7 +23,6 @@ import dev.engender.app.print.PrintPlugin;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.RemindersPlugin;
 import dev.engender.app.reset.DeviceResetPlugin;
-import dev.engender.app.retrospective.RetrospectiveNotificationsPlugin;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 import dev.engender.app.sqlite.SqlitePlugin;
 
@@ -42,7 +41,6 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Reminders", RemindersPlugin.class),
         new PluginEntry("AutoExport", AutoExportPlugin.class),
         new PluginEntry("FileDelivery", FileDeliveryPlugin.class),
-        new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
         new PluginEntry("LockTiming", LockTimingPlugin.class),
         new PluginEntry("ScreenCapture", ScreenCapturePlugin.class),

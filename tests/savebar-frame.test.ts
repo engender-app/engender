@@ -48,7 +48,7 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
     expect(offenders, 'the sticky footer retired with carpet 26').toEqual([]);
 
     /* Twelve feet over ten files: the entry editor, two settings screens,
-       wrapped's share screen, the photo export, the compare tab, the two
+       the photo export, the compare tab, the two
        print surfaces' scoped print actions (ticket 34), and two each in
        the two voice components, whose branches are exclusive. A thirteenth
        is a screen that has to be measured, which is why the number
@@ -65,9 +65,8 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
       'src/routes/settings/journal-book/+page.svelte',
       'src/routes/settings/reminders/[id]/+page.svelte',
       'src/routes/voice/+page.svelte',
-      'src/routes/wrapped/[cadence]/share/+page.svelte'
     ]);
-    expect(count).toBe(12);
+    expect(count).toBe(11);
     for (const { path, text } of feet) {
       expect(text, `${path} draws a foot without importing one`).toContain(
         "import SaveBar from '$lib/components/SaveBar.svelte';"

@@ -74,7 +74,7 @@ async function run() {
     name: 'Alicja',
     theme: 'dark',
     // Device-local, so its presence in a portable file would be the bug.
-    lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-VALUE'
+    lastExportFailureNotifiedAt: 1706000000000
   });
 
   const snapshot = await journal.archive.snapshot();

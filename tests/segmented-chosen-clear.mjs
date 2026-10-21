@@ -30,9 +30,9 @@ import { createServer } from 'vite';
 import { launchChromium, settlePage, setAppLanguage } from './browser-harness.mjs';
 
 const TRACK = '[data-segmented="wrapped-cadences"]';
-const CADENCES = ['week', 'month', 'year', 'range'];
+const CADENCES = ['week', 'month', 'year'];
 const WIDTHS = [390, 195];
-/* The 200%-zoom width: the one where the track is narrower than its four
+/* The 200%-zoom width: the one where the track is narrower than its three
    segments, so choosing one can move it. */
 const NARROW = 195;
 
@@ -210,10 +210,10 @@ try {
   if (hintJump > 0.5) failures.push(`a chevron changed opacity by ${hintJump.toFixed(2)} in one frame while the track scrolled`);
 
   // Enter on a focused tab is the keyboard's selection, and lands the same way.
-  await page.locator(`${TRACK} [data-segment="range"]`).focus();
+  await page.locator(`${TRACK} [data-segment="year"]`).focus();
   await page.keyboard.press('Enter');
-  await page.waitForURL('**/wrapped/range');
-  failures.push(...problems(await readTrack(page), `en ${NARROW}px, Enter on Range`));
+  await page.waitForURL('**/wrapped/year');
+  failures.push(...problems(await readTrack(page), `en ${NARROW}px, Enter on Year`));
   await page.locator(`${TRACK} [data-segment="week"]`).focus();
   await page.keyboard.press('Enter');
   await page.waitForURL('**/wrapped/week');

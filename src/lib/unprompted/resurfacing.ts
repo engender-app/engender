@@ -6,9 +6,7 @@ export type ResurfacingSurface =
   | 'on-this-day-home-card'
   | 'wrapped'
   | 'wrapped-home-card'
-  | 'on-this-day-notification'
-  | 'wrapped-notification'
-  | 'wrapped-share';
+;
 
 interface ResurfacingSurfaceRow {
   key: ResurfacingSurface;
@@ -32,10 +30,7 @@ const ROWS = [
   { key: 'on-this-day', honoursMutes: true, photos: true },
   { key: 'on-this-day-home-card', honoursMutes: true },
   { key: 'wrapped', honoursMutes: true, photos: true },
-  { key: 'wrapped-home-card', honoursMutes: true },
-  { key: 'on-this-day-notification', honoursMutes: true },
-  { key: 'wrapped-notification', honoursMutes: true },
-  { key: 'wrapped-share', honoursMutes: true }
+  { key: 'wrapped-home-card', honoursMutes: true }
 ] as const;
 
 /* A kind in `ResurfacingSurface` with no entry above is a compile error

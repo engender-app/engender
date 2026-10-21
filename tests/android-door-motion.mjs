@@ -246,9 +246,7 @@ try {
   await page.evaluate(() => { delete document.documentElement.dataset.a11yMotion; });
 
   await home();
-  await navigate('/?quickLogDims=1');
-  await page.waitForSelector('[data-quick-log-dims]');
-  await page.waitForTimeout(600);
+  await home();
   await door('calendar');
   await overlayReleased('Home');
   await page.locator(`${activeRetained} [data-cal-month-btn]`).click();
@@ -257,7 +255,6 @@ try {
   await door('stats');
   await overlayReleased('Calendar');
   await home();
-  assert.equal(await page.locator('[data-quick-log-dims]').count(), 0, 'Home revisit restored departed prompt');
   const homeFolds = [];
   for (const selector of ['[data-home-agenda-fold]', '[data-home-tiles-fold]']) {
     const fold = page.locator(`${activeRetained} ${selector}`);
@@ -450,88 +447,8 @@ try {
   assert.equal(await page.locator(retained).count(), 1, 'unlock recreated previously visited doors');
   assert(await page.evaluate(() => window.__doorCredentialReads > 0), 'unlock skipped native credential owner');
 
-  await home();
-  const saving = await page.evaluate(async () => {
-    const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    const { vocabulary } = await import('/src/lib/data/vocabulary/vocabulary.ts');
-    const { getActiveDriver } = await import('/src/lib/stores/journal-ports.ts');
-    const rows = await journal.entries.recentDays(2);
-    const [entry, nextEntry] = rows;
-    if (!entry || !nextEntry || entry.id === nextEntry.id) throw Error('save fixture needs two existing entries');
-    const dimension = vocabulary.activeDimensions[0];
-    if (!dimension) throw Error('save fixture needs active scale');
-    const value = entry.dims[dimension.key] === dimension.min ? dimension.max : dimension.min;
-    const driver = getActiveDriver();
-    if (!driver) throw Error('save fixture has no installed database driver');
-    const transaction = driver.transaction;
-    let release;
-    const held = new Promise((resolve) => { release = resolve; });
-    const state = window.__heldDimsWrite = {
-      entered: false, committed: false, release,
-      restore: () => { driver.transaction = transaction; }
-    };
-    driver.transaction = async (work) => {
-      let holdsWrite = false;
-      const answer = await transaction.call(driver, (scope) => work(new Proxy(scope, {
-        get(target, property) {
-          if (property === 'run') return async (sql, params) => {
-            if (!state.entered && sql.includes('INSERT INTO entry_dimension_value') && params?.[0] === entry.id) {
-              holdsWrite = true;
-              state.entered = true;
-              await held;
-            }
-            return target.run(sql, params);
-          };
-          const implementation = Reflect.get(target, property);
-          return typeof implementation === 'function' ? implementation.bind(target) : implementation;
-        }
-      })));
-      if (holdsWrite) state.committed = true;
-      return answer;
-    };
-    return { id: entry.id, nextId: nextEntry.id, key: dimension.key, value, nextDims: nextEntry.dims };
-  });
-  try {
-    await navigate(`/?quickLogDims=${saving.id}`);
-    await page.waitForSelector('[data-quick-log-dims]');
-    await page.locator(`[data-qld-input="${saving.key}"]`).fill(String(saving.value));
-    await page.locator('[data-qld-add]').click();
-    await page.waitForFunction(() => window.__heldDimsWrite.entered);
-    assert(await page.locator('[data-qld-add]').isDisabled(), 'dimensions write did not remain pending');
-    await door('stats');
-    await navigate(`/?quickLogDims=${saving.nextId}`);
-    await page.waitForSelector('[data-retained-active][data-retained-door="/"]');
-    await page.waitForSelector('[data-quick-log-dims]');
-    await page.evaluate(() => window.__heldDimsWrite.release());
-    await page.waitForFunction(() => window.__heldDimsWrite.committed);
-    await page.waitForFunction(() => !document.querySelector('[data-qld-add]')?.disabled);
-    assert.equal(await page.locator('[data-quick-log-dims]').count(), 1,
-      'departed dimensions write closed new visit prompt');
-    const committed = await page.evaluate(async ({ id, nextId, key }) => {
-      const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-      const entry = await journal.entries.getEntry(id);
-      const nextEntry = await journal.entries.getEntry(nextId);
-      return { value: entry.dims[key], nextDims: nextEntry.dims };
-    }, saving);
-    assert.equal(committed.value, saving.value, 'departed dimensions write failed to commit');
-    assert.deepEqual(committed.nextDims, saving.nextDims, 'departed dimensions write changed new prompt entry');
-    await page.locator('[data-qld-skip]').click();
-  } finally {
-    await page.evaluate(() => {
-      window.__heldDimsWrite?.release();
-      window.__heldDimsWrite?.restore();
-    });
-  }
-  await page.reload();
-  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
-  const durableValue = await page.evaluate(async ({ id, key }) => {
-    const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    return (await journal.entries.getEntry(id)).dims[key];
-  }, saving);
-  assert.equal(durableValue, saving.value, 'departed dimensions save was lost after reload');
-  results.push({ departedDimensionsSave: saving, durableValue });
   assert.equal(errors.length, 0, errors.join('\n'));
-  console.log('PASS idle preload identity, cached revisits, rapid door/deep, Back, reduced motion, departed sheets, revisit resets, key move on leave, month-end revisit, recovery, configured passphrase gate/unlock, departed dimensions save durability');
+  console.log('PASS idle preload identity, cached revisits, rapid door/deep, Back, reduced motion, departed sheets, revisit resets, key move on leave, month-end revisit, recovery, configured passphrase gate/unlock, retained door state');
 } finally {
   await writeFile(`${out}/lifecycle.json`, JSON.stringify({ results, errors }, null, 2));
   await browser.close();

@@ -39,7 +39,7 @@
      (SpanTimeline, lookBackSpan.ts), two handles bound a span, and that
      span is what every tile and every screen behind it is read over - and
      the retrospective the "wrapped for this span" link opens, which is
-     /wrapped/range at the same query the range picker writes. */
+     the same dates as its readings. */
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -54,7 +54,6 @@
     historyStart,
     railFacts,
     setLastLookBackSpan,
-    spanRangeQuery,
     surgeryMarks,
     type Span
   } from '$lib/data/lookBackSpan';
@@ -679,32 +678,6 @@
       key="lookback-quick"
     />
 
-    <!-- The way into the span's retrospective: the same range read wrapped
-         already makes, at the URL the range picker itself would write for
-         these two days. Under the floor the line says why there is nothing
-         to open, in the words the range view uses for the same case. -->
-    <div class="lookback-line">
-      {#if factsQuery.loading}
-        <span class="lookback-thin" aria-hidden="true"></span>
-      {:else if enoughEntries}
-        <!-- Reveal the link at its full height so its centred text stays
-             clear of the outgoing explanation. -->
-        <div transition:disclose>
-          <a class="lookback-read"
-            data-lookback-read
-            data-span-keep
-            href={`/wrapped/range${spanRangeQuery(span)}`}
-          >
-            {m.lookback_read_span()}
-          </a>
-        </div>
-      {:else}
-        <span class="lookback-thin" transition:disclose data-lookback-thin>
-          {m.wrapped_thin_body({ count: entryCount, floor: String(WRAPPED_ENTRY_FLOOR) })}
-        </span>
-      {/if}
-    </div>
-
     {#if !factsQuery.loading && !factsQuery.failed && !enoughEntries}
       <div transition:disclose>
         <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
@@ -806,37 +779,6 @@
   .lookback-rail {
     display: grid;
     gap: var(--space-3);
-  }
-
-  /* The way into the span's wrapped, at the secondary size. The link is
-     the underlined ink a heading's action takes (kit.css,
-     `.kit-heading-action`): on a page whose colour is spent as blocks, an
-     accent-coloured word is a fourth voice. */
-  .lookback-line {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    min-height: var(--touch-target);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
-  }
-
-  .lookback-read {
-    display: flex;
-    align-items: center;
-    min-height: var(--touch-target);
-    color: var(--text);
-    font-weight: var(--weight-bold);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-thickness: 2px;
-  }
-
-  .lookback-thin {
-    min-width: 0;
   }
 
   /* The opened day under the pair: its own stack, the screen's rhythm. */

@@ -1,30 +1,9 @@
-/* The span the Look back door's timeline selects (phase 10 redesign ticket
-   11), and the rail it is selected on.
-
-   The door opens on the person's own history: a rail from the earliest day
-   they authored anything dated to today, with their eras as bands and their
-   milestones as marks, and two handles that bound the stretch the
-   retrospectives read. Everything about that rail that is arithmetic lives
-   here, where it can be checked without a browser - where the rail starts,
-   how far a handle moves per step, what a pointed-at day snaps to, and the
-   URL a span is read at. The component draws; it decides nothing.
-
-   Nothing here reads the clock or the journal, the same rule wrappedRange.ts
-   and epochDay.ts follow: today and the journal's own facts arrive as
-   arguments and the answers are epoch days.
-
-   The span is handed to /wrapped/range through `wrappedRangeQuery`, the
-   same function the range picker's own form writes its URL with. That is
-   what makes "pointing at a span" and "typing the two dates into the
-   picker" one read rather than two: the picker and the timeline produce
-   the same query string for the same two days, and the test beside this
-   file parses it back through `parseWrappedRangeParams` to prove it. */
+/* Look back span arithmetic and shared reading query. */
 
 import type { ChartAnnotation } from '../charts/annotations';
 import { dateInputValueFromEpochDay, localDateFromEpochDay, epochDayFromLocalDate } from './epochDay';
 import type { EraSpan, JournalBounds } from './eras';
 import { spanOverlapsRange } from './span';
-import { wrappedRangeQuery } from './wrappedRange';
 
 /** Both ends inclusive, the way `recap(from, to)` takes a range. */
 export interface Span {
@@ -338,13 +317,9 @@ export function railLegendKinds(
   return [...(hasEras ? (['era'] as const) : []), ...historyKindsPresent(bands), ...(markKey ? [markKey] : [])];
 }
 
-/** The query string a span is read at on /wrapped/range: the same one the
-    range picker's own two date fields write, so the two are one read. */
+/** Query shared by span readings. */
 export function spanRangeQuery(span: Span): string {
-  return wrappedRangeQuery('custom', {
-    start: dateInputValueFromEpochDay(span.start),
-    end: dateInputValueFromEpochDay(span.end)
-  });
+  return `?from=${dateInputValueFromEpochDay(span.start)}&to=${dateInputValueFromEpochDay(span.end)}`;
 }
 
 /** Whether a settled span (redesign ticket 48) is due the "name this

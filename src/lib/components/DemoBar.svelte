@@ -17,7 +17,6 @@
     ['/day/today', 'Day detail (today)'],
     ['/search', 'Search'],
     ['/stats', 'Stats'],
-    ['/wrapped/range', 'Wrapped range'],
     ['/settings', 'Settings'],
     ['/settings/tags', 'Manage tags'],
     ['/settings/reminders', 'Reminders'],

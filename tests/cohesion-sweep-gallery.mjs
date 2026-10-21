@@ -222,7 +222,6 @@ const ROUTES = [
   { path: '/transition/tryouts' },
   { path: '/settings/words', name: 'words-ignored' },
   { path: '/wrapped/year', name: 'wrapped' },
-  { path: '/wrapped/year/share', name: 'wrapped-share' }
 ];
 
 /* The routes whose address needs an id the demo journal only invents at
