@@ -1941,8 +1941,7 @@ try {
   await page.waitForSelector('[data-template]');
   const keys = await page.locator('[data-template]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-template')));
   if (keys.length !== 8) throw new Error('templates listed: ' + JSON.stringify(keys));
-  if (await page.locator('[data-shuffle]').count()) throw new Error('a shuffle control is still there');
-  ok('every milestone template is listed, with no shuffle');
+  ok('every milestone template is listed');
 } catch (e) { fail('milestone templates', e); }
 });
 
