@@ -13,6 +13,7 @@ publishFixture('screen-mount', async () => {
   if (location.search.includes('look-back')) return { lookBack: await lookBackContracts() };
   if (location.search.includes('late-reads'))
     return { lateReads: await lateReadsContracts(location.search.includes('theme=dark') ? 'dark' : 'light') };
+  if (location.search.includes('home')) return { home: await homeContracts() };
   if (location.search.includes('narrow')) return { narrow: await directionNarrowContracts() };
   const result: Record<string, unknown> = {};
   for (const [name, run] of Object.entries({

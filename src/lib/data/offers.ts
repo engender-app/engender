@@ -4,12 +4,7 @@
    Several places in the app are the same sentence: something the person
    just did implies a record they might want, so the app asks. Ticking a
    transition goal on the roadmap. Reaching surgery day in the procedure
-   hub. Adopting a tryout. Deciding an area is finished. And, since ticket
-   05, the two the return surface makes: one dose slot that passed
-   unlogged, and a wear session left running through a gap. Creating a
-   milestone, and meeting one again on its anniversary, used to offer a
-   felt-sense reading too, until functional audit ticket 32 cut milestone
-   readings: they were asked for and never shown.
+   hub. Adopting a tryout. Deciding an area is finished or suspended.
 
    ADR-0045 governs all of them: an automatic trigger never mints a record
    without confirmation. Before ticket 22 that rule lived in five
@@ -89,16 +84,12 @@
    exists (see vitest.config.ts). Every area arrives as a type. */
 
 import { m } from '../paraglide/messages';
-import { startOfDayTimestamp } from './epochDay';
 import type { FinishableArea, SuspendableArea } from './areaState';
 import type { AreaStatesArea } from './journal/areaStates';
-import type { DoseEventInput, DosesArea } from './journal/doses';
 import type { MilestonesArea } from './journal/milestones';
 import type { NormalizedPhoto } from './journal/photos';
 import type { ProceduresArea } from './journal/procedures';
 import type { TryoutsArea } from './journal/tryouts';
-import type { WearSessionsArea } from './journal/wearSessions';
-import type { WearKind } from './types';
 
 /** Every offer this registry knows about. A key here with no entry in
     `OFFERS` does not compile, because `OFFERS` is a total `Record` over
@@ -109,14 +100,12 @@ export type OfferKey =
   | 'surgery-day-milestone'
   | 'tryout-adoption-milestone'
   | 'area-finished'
-  | 'area-suspended'
-  | 'returning-dose'
-  | 'returning-wear-session';
+  | 'area-suspended';
 
 /** What the person is being offered. One record, named by the archive
     section that holds it, so an offer cannot claim to write something the
     journal has no home for. */
-type OfferedRecord = 'milestones' | 'areaStates' | 'doseEvents' | 'wearSessions';
+type OfferedRecord = 'milestones' | 'areaStates';
 
 /** How the person answered. `'decline'` is a real answer and not the
     absence of one: it closes the offer and writes nothing. */
@@ -142,8 +131,6 @@ export interface OfferJournal {
   milestones: MilestonesArea;
   procedures: ProceduresArea;
   tryouts: TryoutsArea;
-  doses: DosesArea;
-  wearSessions: WearSessionsArea;
 }
 
 /** One offer's declaration, generic over what its trigger produces. The
@@ -197,37 +184,6 @@ export interface TryoutAdoption {
   milestoneEpochDay: number;
 }
 
-/** What backfilling one missed dose slot writes. The whole `DoseEventInput`
-    rather than a slot plus a couple of fields: the site an injection went
-    into and the vehicle it was in are things only the person knows, the
-    write path already refuses a dose without them, and narrowing this to
-    "the slot, and the bits the sheet collected" would have been a second,
-    looser dose input beside the real one. What the return surface does is
-    fix the timestamp to the slot's day and pre-fill the figure the schedule
-    was expecting; everything else is the sheet's, and the sheet is the
-    confirmation. */
-export type ReturningDose = DoseEventInput;
-
-/** What closing a forgotten wear session writes: the session, and the day
-    it actually ended.
-
-    Deliberately not a duration the app worked out. A timer left running
-    through a five-week gap has no honest end time in it - the app knows
-    when it started and nothing at all about when it came off - so the
-    person names the day and the write turns that into a duration. Assuming
-    today would put a five-week wear session into a year of wear data, which
-    is the one failure this offer exists to prevent. */
-export interface ReturningWearSession {
-  sessionId: string;
-  /** Carried rather than re-read: `upsertSession` writes every column of
-      the row it is given (wearSessions.ts), so closing a session has to
-      hand back the kind it was started as. Named around
-      `WaitingItem.kind`, which is already the discriminant of the list this
-      subject is built from. */
-  wearKind: WearKind;
-  startTimestamp: number;
-  endEpochDay: number;
-}
 
 /** Every offer, keyed by itself. A `Record` over `OfferKey` rather than an
     array, so an offer added to the union with no entry here is a
@@ -341,72 +297,6 @@ export const OFFERS = {
     },
     write: async ({ areaStates }: OfferJournal, subject: SuspendedArea) => {
       await areaStates.setAreasSuspended(subject.areas, subject.epochDay);
-    }
-  },
-  /* Phase 8 features ticket 05, ADR-0062. The two the return surface makes,
-     and the first two whose trigger is neither a write nor the absence of
-     one but a person opening the app after three weeks away.
-
-     Both are backfill, and both are narrowed hard for the reason the
-     ticket gives: an offer here asks about exactly one item and queues
-     nothing about any other. Logging the dose from one slot says nothing
-     about the eleven slots around it, and closing one wear session asks
-     about no other session. That is not a rule this file could enforce -
-     it is a property of the subject each one takes, which names one record
-     and carries no list.
-
-     Neither keeps a no. ADR-0062 makes the surface a moment rather than a
-     place: it is shown once per gap and linked from nowhere, so a decline
-     lives exactly as long as the screen it was made on, and a preference
-     recording it would be storing an answer nothing will ever ask for
-     again. That is the difference from `area-finished` above, which is
-     offered on a screen somebody can walk back onto tomorrow. */
-  'returning-dose': {
-    key: 'returning-dose',
-    trigger:
-      'the return surface, for the most recent slot the schedule expected that passed with nothing logged against it - never a slot on today, which has not passed yet and which Home\'s own dose panel asks about',
-    offers: 'doseEvents',
-    copy: {
-      title: () => m.coming_back_dose_title(),
-      confirm: () => m.dose_save(),
-      decline: () => m.coming_back_leave_it()
-    },
-    /* The dose log's own write path, timestamped to the slot's day. One
-       dose: nothing here loops, and there is no bulk arm to reach for. */
-    write: async ({ doses }: OfferJournal, subject: ReturningDose) => {
-      await doses.upsertDose(subject);
-    }
-  },
-
-  'returning-wear-session': {
-    key: 'returning-wear-session',
-    trigger: 'the return surface, when a wear session was still running through the gap',
-    offers: 'wearSessions',
-    copy: {
-      title: () => m.coming_back_wear_title(),
-      confirm: () => m.coming_back_wear_confirm(),
-      decline: () => m.coming_back_wear_decline()
-    },
-    /* The whole of the chosen day, since a day is all the person is being
-       asked for: "it came off on the 14th" becomes a session running to the
-       end of the 14th, and the sheet says so in as many words rather than
-       leaving the reader to work out which end of the day it took. A
-       midpoint would be the app guessing, which is the one thing this offer
-       is written not to do. `upsertSession` reconciles this session's own reminder
-       on the way through (wearSessions.ts), which is what stops a
-       five-week-old timer's reminder outliving the session it was for.
-
-       `reminderHoursAfterStart` is left off rather than passed as null:
-       omitting the field is how that area says "leave the reminder alone",
-       and clearing one the person set by hand is not part of closing a
-       session. */
-    write: async ({ wearSessions }: OfferJournal, subject: ReturningWearSession) => {
-      await wearSessions.upsertSession({
-        id: subject.sessionId,
-        kind: subject.wearKind,
-        startTimestamp: subject.startTimestamp,
-        durationMs: startOfDayTimestamp(subject.endEpochDay + 1) - subject.startTimestamp
-      });
     }
   }
 } satisfies { [K in OfferKey]: OfferRow<never> & { key: K } };

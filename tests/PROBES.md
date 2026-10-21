@@ -709,6 +709,7 @@ To run one on its own, use
 
 | Probe | Why not |
 | --- | --- |
+| `fa16-quick-add-return` | Demo-build check of empty and running-regimen quick actions, five linked return row kinds, and dose editor handoff. Run after `VITE_DEMO=1 npm run build`. |
 | `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |
 | `roadmap-goal-visibility` | Demo-build hide, reload, goal source link and restore guard. `--polish --zoom` checks Polish at 195px width; `--gallery` captures hidden goals across all palettes and both themes. |
 | `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |

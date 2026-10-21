@@ -2,6 +2,7 @@ import { flushSync } from 'svelte';
 import { mountScreen, until } from './mount-screen';
 import { setScreenRoute } from './screen-router.svelte';
 import { mountInto } from './mount';
+import { prepareScreenJournal } from './screen-journal';
 import {
   fixture,
   assertions,
@@ -253,6 +254,22 @@ export async function homeContracts(): Promise<Result[]> {
     return !root().querySelector('[data-quick-log-dims],[data-sheet] [data-qld-input]');
   });
   await screen.remove();
+  const quickAddEpisode = await f.journal.regimen.upsertEpisode({
+    drug: 'Contract estradiol',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: today - 10,
+    endEpochDay: null,
+    endReason: null
+  });
+  await f.journal.wearSessions.upsertSession({
+    kind: 'binder',
+    startTimestamp: Date.now() - 3600000,
+    durationMs: null
+  });
   const fanTarget = document.createElement('div');
   document.querySelector('#screens')!.replaceChildren(fanTarget);
   const fan = mountInto(QuickAdd, {}, fanTarget);
@@ -267,11 +284,101 @@ export async function homeContracts(): Promise<Result[]> {
   });
   ui.chooserOpen = false;
   await fan.remove();
-  await f.journal.wearSessions.upsertSession({
-    kind: 'binder',
-    startTimestamp: Date.now() - 3600000,
-    durationMs: null
+  const availabilityFixture = await fixture('quick-availability', 0);
+  const episodeId = await availabilityFixture.journal.regimen.upsertEpisode({
+    drug: 'Contract estradiol', ester: null, dose: 4, doseUnit: 'mg', route: 'oral',
+    interval: 'daily', startEpochDay: today - 10, endEpochDay: null, endReason: null
   });
+  await availabilityFixture.journal.wearSessions.upsertSession({
+    kind: 'binder', startTimestamp: Date.now() - 3600000, durationMs: 60000
+  });
+  let holdAvailability = false;
+  let failAvailability = false;
+  const delayed = heldReads(
+    availabilityFixture,
+    ['wearSessions', 'areaStates', 'regimen'],
+    (method) => {
+      if (failAvailability && method === 'getAreaStates') throw new Error('injected availability failure');
+      return holdAvailability && ['getRunningSession', 'latestKind', 'getAreaStates', 'getEpisodes'].includes(method);
+    }
+  );
+  const observed = countedReads(delayed.fixture);
+  await prepareScreenJournal(observed.fixture.journal);
+  const availabilityTarget = document.createElement('div');
+  document.querySelector('#screens')!.replaceChildren(availabilityTarget);
+  const availabilityFan = mountInto(QuickAdd, {}, availabilityTarget);
+  ui.chooserOpen = true;
+  await until(() => availabilityTarget.querySelector('[data-choose="dose"]'), 'initial quick dose');
+  await until(() => availabilityTarget.querySelector('[data-choose="wear"]'), 'initial quick wear');
+  ui.chooserOpen = false;
+  flushSync();
+  await availabilityFixture.journal.areaStates.setAreasHidden(['wearSessions'], true);
+  await availabilityFixture.journal.regimen.endEpisode(episodeId, today - 1);
+  holdAvailability = true;
+  ui.chooserOpen = true;
+  flushSync();
+  const staleDose = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="dose"]');
+  const staleWear = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]');
+  await check('Quick add disables cached actions during reopen reads', () =>
+    staleDose?.disabled && staleWear?.disabled
+  );
+  staleDose?.click();
+  staleWear?.click();
+  flushSync();
+  await check('Quick add tap cannot activate cached actions', () =>
+    ui.chooserOpen && !observed.calls.has('wearSessions.upsertSession')
+  );
+  if (staleDose) {
+    const rect = staleDose.getBoundingClientRect();
+    ui.chooserPressing = true;
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, bubbles: true
+    }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    flushSync();
+  }
+  await check('Quick add slide cannot activate cached dose', () => ui.chooserOpen);
+  delayed.release();
+  await until(() => !availabilityTarget.querySelector('[data-choose="dose"],[data-choose="wear"]') || null, 'unavailable quick actions');
+  await check('Quick add refresh removes unavailable actions without a wear write', () =>
+    ui.chooserOpen && !observed.calls.has('wearSessions.upsertSession')
+  );
+  ui.chooserOpen = false;
+  flushSync();
+  await availabilityFixture.journal.areaStates.setAreasHidden(['wearSessions'], false);
+  await availabilityFixture.journal.regimen.upsertEpisode({
+    id: episodeId, drug: 'Contract estradiol', ester: null, dose: 4, doseUnit: 'mg',
+    route: 'oral', interval: 'daily', startEpochDay: today - 10,
+    endEpochDay: null, endReason: null
+  });
+  holdAvailability = false;
+  ui.chooserOpen = true;
+  await until(() => {
+    const dose = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="dose"]');
+    const wear = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]');
+    return dose && wear && !dose.disabled && !wear.disabled;
+  }, 'restored quick actions');
+  const runningBefore = await availabilityFixture.journal.wearSessions.getRunningSession();
+  availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]')!.click();
+  let validWearWorked = false;
+  const wearDeadline = performance.now() + 4000;
+  while (performance.now() < wearDeadline) {
+    const runningAfter = await availabilityFixture.journal.wearSessions.getRunningSession();
+    if (!!runningAfter !== !!runningBefore) {
+      validWearWorked = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  failAvailability = true;
+  ui.chooserOpen = true;
+  await check('Quick add valid wear works and failed refresh removes cached actions', async () => {
+    await until(() => !availabilityTarget.querySelector('[data-choose="dose"],[data-choose="wear"]') || null, 'failed availability actions');
+    return validWearWorked && ui.chooserOpen;
+  });
+  ui.chooserOpen = false;
+  await availabilityFan.remove();
+  await f.journal.regimen.setEpisodeHidden(quickAddEpisode, true);
   await f.journal.procedures.upsertProcedure({
     name: 'Contract surgery',
     surgeryEpochDay: today - 10
@@ -372,7 +479,6 @@ export async function homeContracts(): Promise<Result[]> {
     'regimen.getEpisodes',
     'procedures.getProcedures',
     'letters.getLetterSeals',
-    'revisits.getDueRevisits',
     'entries.latestBadMomentEntryId',
     'doses.getSchedules',
     'doses.getPauses',
