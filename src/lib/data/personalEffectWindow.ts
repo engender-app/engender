@@ -14,8 +14,8 @@
    SOC8, and both tables call their figures clinical observation. SOC8
    departs from Hembree in nine cells without a stated reason (voice onset
    1-6 months, the 1-2 year maximum for cessation of menses, the unknown
-   maximum for decreased libido among them). ADR
-   ADR-0096 names all nine, and
+   maximum for decreased libido among them). ADR-0096
+   names all nine, and
    docs/research/onset-bands-soc8.md has the sources and the independence
    check.
 

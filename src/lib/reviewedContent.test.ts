@@ -39,7 +39,7 @@ test('a reviewed-on value that is not an ISO day is always flagged', () => {
 });
 
 test('every shipped area is registered, with a real ISO day', () => {
-  expect(new Set(REVIEWED_CONTENT.map((entry) => entry.area))).toEqual(new Set(['Resources', 'Roadmap', 'Voice', 'Wear']));
+  expect(new Set(REVIEWED_CONTENT.map((entry) => entry.area))).toEqual(new Set(['Onset bands', 'Resources', 'Roadmap', 'Voice', 'Wear']));
   for (const entry of REVIEWED_CONTENT) expect(reviewDueOn(entry), `${entry.area}: ${entry.item}`).not.toBeNull();
 });
 
