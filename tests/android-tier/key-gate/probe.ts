@@ -30,7 +30,7 @@ const probe = {
   seeded: false,
   theme(theme: string) {
     document.documentElement.dataset.theme = theme;
-    refreshActiveFlag(document, false);
+    refreshActiveFlag(document);
   },
   // The production boot, gate and native bridge run unchanged. Only mount
   // timing is controlled so the saved-state race has a repeatable boundary.

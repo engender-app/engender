@@ -233,15 +233,14 @@
        title stays in the document for a screen reader and stops being a
        second visible label - and since ticket 08 the tab and this title no
        longer even say the same word: the tab now names the whole subject
-       (Transition, or More disguised) and the title names the five groups
+       (Transition) and the title names the five groups
        actually behind it.
 
        So what the field holds is the search box, and nothing else (rule 7).
        It is a block of the page's own colour on the flag's, which is what
        makes 16px legal there: the type in it is page ink on the page's
        ground, not small text on a stripe (rule 3, and the measured pairs in
-       DIRECTION.md's "Contrast"). Under disguise the field falls to
-       --surface-2 and the box is unremarkable on it. -->
+       DIRECTION.md's "Contrast"). -->
   <ScreenHeader title={m.hub_screen_title()} titleHidden>
     {#snippet field()}
       <div class="search-box">

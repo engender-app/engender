@@ -60,12 +60,7 @@
     positionDays,
     type ChartAnnotation
   } from '$lib/charts/annotations';
-  /* The one app-level read this component makes, and it is about what may
-     be drawn rather than about how (phase 11 UI/UX ticket 49): a tick's
-     free text is the person's own paragraph, and a disguised app draws
-     none of it. `lockState` reaches ReadGate in this same directory for
-     the same sort of reason. */
-  import { prefs } from '$lib/data/prefs/store.svelte';
+  /* Unlocked chart annotations retain their written detail. */
   import ChartAnnotations, { type HoveredAnnotations } from './ChartAnnotations.svelte';
   import ChartEmpty from './ChartEmpty.svelte';
   import { annotationCaption, annotationLine, annotationReadout } from './chartAnnotation';
@@ -386,7 +381,7 @@
       scrub === null || hovered || overlaid
         ? []
         : annotationsAtPoint(shownAnnotations, points, scrub),
-      { dated: scrubSpansDays, disguised: prefs.disguise }
+      { dated: scrubSpansDays }
     )
   );
   let caption = $derived(annotationCaption(shownAnnotations));
@@ -400,7 +395,7 @@
      names no position at all, and the pill that does is quiet while a mark
      is hovered. */
   let hoveredLabels = $derived(
-    annotationReadout(hovered?.annotations ?? [], { dated: true, disguised: prefs.disguise })
+    annotationReadout(hovered?.annotations ?? [], { dated: true })
   );
   let hoveredRest = $derived(m.chart_annotations_and_more({ count: String(hoveredLabels.rest) }));
   /* Centred on the mark, then held inside the plot: a mark near either end

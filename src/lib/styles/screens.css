@@ -181,8 +181,7 @@
 /* The flag itself under the year, turned a quarter so the bands run across
    it - the same treatment the kit's tile gives a number that matters, and
    the same rule: every colour drawn as the flag is the flag's own hex.
-   --flag-fill arrives from $lib/theme/roles, which hands out nothing at all
-   under disguise (ADR-0035), so the bar is simply absent there. */
+   --flag-fill arrives from $lib/theme/roles on the unlocked screen. */
 .wrapped-cover-flag {
   display: block;
   width: 96px;

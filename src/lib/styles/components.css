@@ -20,7 +20,7 @@
 }
 /* The field. `--field` and `--field-ink` are published on <html> by
    activeFlag (the flag's second colour and black or white, whichever
-   measures higher; `--surface-2` and `--text` under disguise), so this rule
+   measures higher), so this rule
    never reads a stripe and never decides anything per screen. Its height
    is its content plus 40 above and 16 below, never fixed, so a Polish
    title that wraps grows it rather than clipping. The bottom corners are
@@ -447,12 +447,12 @@
   color: var(--text-2);
   /* The box's own boundary, in the field's ink. --outline is a mix of
      --text and it measured 1.07:1 to 1.58:1 against the lighter fields
-     (pansexual's yellow, agender's green, and --surface-2 under disguise),
+     (pansexual's yellow and agender's green),
      so on those the box had no edge a person could see and its fill is
      1.21:1 to 1.75:1 against the field - a control whose boundary is what
      says it is a control owes 3:1 against what is beside it. --field-ink is
      the one ink measured against every field: 4.41:1 at worst
-     (DIRECTION.md's own table), 12.72:1 under disguise. */
+     (DIRECTION.md's own table). */
   border-color: var(--field-ink);
 }
 /* Focus is a ring inside the box, not a colour on its edge. The edge is

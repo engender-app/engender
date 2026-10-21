@@ -38,7 +38,7 @@ function check(ok, what) {
   if (!ok) failures.push(what);
 }
 
-await mkdir(outDir, { recursive: true });
+if (gallery) await mkdir(outDir, { recursive: true });
 
 const server = await createServer({
   configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
@@ -160,24 +160,10 @@ for (const locale of ['en', 'pl']) {
           check(plate !== null, `${where} ${grain}: no readout under the finger`);
           if (!plate) continue;
 
-          if (disguised) {
-            check(plate.notes.length === 0, `${where} ${grain}: drew free text under disguise`);
-            check(plate.names.length === 1, `${where} ${grain}: lost the name and kind under disguise`);
-          } else {
-            check(plate.notes.length === 1, `${where} ${grain}: the milestone drew no line of its own`);
-            check(
-              /hands shook/.test(plate.notes[0] ?? ''),
-              `${where} ${grain}: the milestone's line is not its own words`
-            );
-            /* Where a position stands for more than a day, the line carries
-               the tick's own date; at the day grain the readout has already
-               named that day. */
-            const dated = /^\d/.test(plate.notes[0] ?? '');
-            check(
-              grain === 'day' ? !dated : dated,
-              `${where} ${grain}: the line ${dated ? 'dated' : 'did not date'} itself when it should not have`
-            );
-          }
+          check(plate.notes.length === 1, `${where} ${grain}: the milestone drew no line of its own`);
+          check(/hands shook/.test(plate.notes[0] ?? ''), `${where} ${grain}: the milestone's line is not its own words`);
+          const dated = /^\d/.test(plate.notes[0] ?? '');
+          check(grain === 'day' ? !dated : dated, `${where} ${grain}: the line's date is wrong`);
           /* Carpet ticket 08's cap, which this ticket keeps: the plate may
              not grow back across the midline it took a corner to clear. */
           check(
@@ -194,16 +180,15 @@ for (const locale of ['en', 'pl']) {
         check(bare?.names.length === 1, `${where}: a milestone with no description lost its name`);
         await releaseScrub(page, 'day');
 
-        /* An era states its boundary instead of naming itself and its kind,
-           and goes back to the pair under disguise. */
+        /* An era states its boundary instead of naming itself and its kind. */
         await scrubTo(page, 'day', AT.era);
         const era = await readPlate(page);
         check(
-          disguised ? era?.notes.length === 0 : era?.notes.length === 1,
+          era?.notes.length === 1,
           `${where}: the era's own line is wrong`
         );
         check(
-          disguised ? era?.names.length === 1 : era?.names.length === 0,
+          era?.names.length === 0,
           `${where}: the era drew ${era?.names.length} name-and-kind pairs`
         );
         await releaseScrub(page, 'day');

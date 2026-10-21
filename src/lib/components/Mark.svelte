@@ -16,11 +16,8 @@
      start and silently draw the previous flag (activeFlag.svelte.ts says
      why at length).
 
-     The disguise. Every surface that carries the mark falls back to type
-     when disguise is on (ADR-0014, ticket 38's own constraint), so the
-     component draws nothing at all rather than drawing something neutral.
-     Read off the preference, the same belt-and-braces check Home makes on
-     the sun.
+     The mark follows the active flag on unlocked screens. A print letterhead
+     decides whether to include it before this component mounts.
 
      The crop. `tile` is the app's mark; `launcher-round` previews the
      Android round choice in Settings. Both keep a black edge. `mono`
@@ -31,7 +28,6 @@
      that way. */
   import { markSvg, type MarkCrop } from './mark';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { prefs } from '$lib/data/prefs/store.svelte';
 
   let {
     size = 48,
@@ -57,7 +53,7 @@
   );
 </script>
 
-{#if !prefs.disguise && (mono || activeFlag.stripes.length > 0)}
+{#if mono || activeFlag.stripes.length > 0}
   <span class="mark" style={`--mark-size: ${size}px`}>{@html svg}</span>
 {/if}
 

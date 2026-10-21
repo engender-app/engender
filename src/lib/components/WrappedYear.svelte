@@ -184,8 +184,7 @@
   ]);
 
   /* The flag itself under the year, in its own hex values and its own
-     proportions, nudged for nothing (DIRECTION.md decision 1). Absent under
-     disguise, where the publisher hands out no flag at all (ADR-0035). */
+     proportions, nudged for nothing (DIRECTION.md decision 1). */
   let flagFill = $derived(activeFlag.fill === 'none' ? undefined : activeFlag.fill);
 </script>
 

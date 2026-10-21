@@ -121,8 +121,7 @@
          navigation machinery this surface deliberately does not join - the
          edge never walks, because there is only ever one state to be in.
          `--field` and `--field-ink` are published on <html> by activeFlag,
-         which already answers disguise with --surface-2 and --text, so this
-         needs no disguised variant of its own to get wrong. -->
+         so the letter keeps the same field as the unlocked app. -->
     <div class="letter-arrival-field">
       <h1 class="letter-arrival-title" id="letter-arrival-title">{m.letters_arrival_title()}</h1>
     </div>

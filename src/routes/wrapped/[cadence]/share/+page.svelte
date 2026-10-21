@@ -15,6 +15,7 @@
      was made from. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
+  import { outsideDisguise } from '$lib/disguise/identity';
   import { liveQuery } from '$lib/data/live/journal.svelte';
   import { resurfacing } from '$lib/unprompted/resurfacing';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -111,7 +112,7 @@
   async function share() {
     if (!ready || !showing) return;
     try {
-      const delivery = await deliverBlob(wrappedShareFileName(prefs.name, undefined, prefs.disguise), showing.blob);
+      const delivery = await deliverBlob(wrappedShareFileName(prefs.name, undefined, outsideDisguise(prefs)), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
         return;

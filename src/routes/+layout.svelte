@@ -19,7 +19,7 @@
 
   import { navigating, page } from '$app/state';
   import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
@@ -32,10 +32,10 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
-  import { tabIdentity } from '$lib/disguise/identity';
+  import { outsideDisguise, tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
-  import { announce, speech } from '$lib/stores/announcer.svelte';
-  import { clearToasts, toast } from '$lib/stores/toasts.svelte';
+  import { speech } from '$lib/stores/announcer.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { bootState, browserSession, closeJournalForLock, recoveryUnlock, startBoot, watchBrowserSession } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -105,9 +105,6 @@
      not where the app navigates to, or the first paint of a cold start
      shows the journal for as long as the redirect takes. */
   let locked = $derived(midSessionLockApplies(bootState) && isLocked(bootState.accessMode));
-  $effect(() => {
-    if (prefs.disguise) untrack(() => { announce.clear(); clearToasts(); });
-  });
   $effect(() => {
     const stopLock = watchLock(closeJournalForLock);
     const stopSession = watchBrowserSession();
@@ -360,14 +357,14 @@
        reads (disguise/identity.ts) - the rule and its reasons are there,
        and this is the wiring. */
     const tab = tabIdentity({
-      disguised: prefs.disguise,
+      disguised: outsideDisguise(prefs),
       appName: m.app_name(),
       decoyName: m.disguise_name(),
       icon: chrome.icon
     });
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
-    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', `${assets}/apple-touch-icon${prefs.disguise ? '-notes' : ''}.png`);
+    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', `${assets}/apple-touch-icon${outsideDisguise(prefs) ? '-notes' : ''}.png`);
     /* The installed app's identity follows the disguise preference. */
     const manifest = getLocale() === 'pl' ? chrome.manifest.replace('.webmanifest', '-pl.webmanifest') : chrome.manifest;
     document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${manifest}`);
@@ -386,7 +383,7 @@
        and the section colours derived from them are read off the palette and
        the theme this block has just stamped, and anything that read them for
        itself would be racing that stamp (activeFlag.svelte.ts). */
-    refreshActiveFlag(document, prefs.disguise);
+    refreshActiveFlag(document);
   });
 
   /* Document language (pre-production audit U1). app.html ships `lang="en"`
@@ -505,7 +502,7 @@
     const quietHoursEnabled = prefs.quietHoursEnabled;
     const quietHoursStart = prefs.quietHoursStart;
     const quietHoursEnd = prefs.quietHoursEnd;
-    const disguise = prefs.disguise;
+    const disguise = outsideDisguise(prefs);
     /* Read here for the same reason, and it is the one preference on this
        list that reaches the native side purely to be looked at: the
        launcher icon follows the flag (ticket 50). */
@@ -635,7 +632,6 @@
     class="app"
     data-app-root
     {@attach (node) => hoverHints(node)?.destroy}
-    class:disguised={prefs.disguise}
     class:is-chromeless={chromeless}
     data-boot={bootState.status}
     inert={browserSession.recovering}

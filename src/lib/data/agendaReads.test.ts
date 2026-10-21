@@ -1,6 +1,6 @@
 /* The agenda's reads (phase 10 redesign ticket 04, ADR-0074): which windows
    reach which area, that the forward read is `dayAhead` and nothing else,
-   and that a disguised screen asks the journal nothing at all. */
+   and that both reads start before the first await. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -11,11 +11,10 @@ import { DAY_AHEAD_MARK_KINDS, type DayAheadMark, type DayAheadMarkKind } from '
 async function readAgenda(
   areas: AgendaAreas,
   today: number,
-  disguised: boolean,
   kinds: readonly DayAheadMarkKind[] = DAY_AHEAD_MARK_KINDS,
   covered = false
 ) {
-  return projectAgenda(await readFacts(areas, today, disguised), kinds, covered);
+  return projectAgenda(await readFacts(areas, today), kinds, covered);
 }
 
 const TODAY = 20000;
@@ -50,7 +49,7 @@ function recordingAreas(marks: DayAheadMark[] = []) {
 test('the forward read is dayAhead, asked for the thirty days from today', async () => {
   const { areas, asked, dayAheadCalls } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
 
-  const projection = await readAgenda(areas, TODAY, false);
+  const projection = await readAgenda(areas, TODAY);
 
   assert.equal(projection?.shown.length, 1);
   assert.equal(asked.filter((call) => call === 'dayAhead').length, 1);
@@ -69,13 +68,13 @@ test('a kind switched off never reaches the projection, and the cap counts only 
     { kind: 'letterUnlock', epochDay: TODAY + 3 },
     { kind: 'surgery', epochDay: TODAY + 4 }
   ]);
-  const projection = await readAgenda(areas, TODAY, false, ['surgery', 'milestone', 'letterUnlock', 'doseSlot']);
+  const projection = await readAgenda(areas, TODAY, ['surgery', 'milestone', 'letterUnlock', 'doseSlot']);
   assert.deepEqual(
     projection?.shown.map((item) => item.kind),
     ['milestone', 'letterUnlock', 'surgery']
   );
   assert.deepEqual(projection?.folded, []);
-  const none = await readAgenda(areas, TODAY, false, []);
+  const none = await readAgenda(areas, TODAY, []);
   assert.equal(none, null);
 });
 
@@ -94,13 +93,13 @@ test('the dose kind is withheld while the panel accounts for every dose', async 
     { kind: 'appointment', epochDay: TODAY + 12 }
   ];
 
-  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true);
+  const withPanel = await readAgenda(recordingAreas(marks).areas, TODAY, DAY_AHEAD_MARK_KINDS, true);
   assert.deepEqual(
     withPanel?.shown.map((item) => item.kind),
     ['appointment']
   );
 
-  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, false);
+  const withoutPanel = await readAgenda(recordingAreas(marks).areas, TODAY, DAY_AHEAD_MARK_KINDS, false);
   assert.deepEqual(
     withoutPanel?.shown.map((item) => item.kind),
     ['doseSlot', 'appointment']
@@ -109,22 +108,15 @@ test('the dose kind is withheld while the panel accounts for every dose', async 
 
 test('a month whose only mark is a dose the panel states is absent, not empty', async () => {
   const marks: DayAheadMark[] = [{ kind: 'doseSlot', epochDay: TODAY + 6 }];
-  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, false, DAY_AHEAD_MARK_KINDS, true), null);
+  assert.equal(await readAgenda(recordingAreas(marks).areas, TODAY, DAY_AHEAD_MARK_KINDS, true), null);
 });
 
 test('the schedule is asked about the week behind, ending yesterday', async () => {
   const { areas, doseWindows } = recordingAreas();
 
-  await readAgenda(areas, TODAY, false);
+  await readAgenda(areas, TODAY);
 
   assert.deepEqual(doseWindows, [{ fromEpochDay: TODAY - AGENDA_PASSED_DAYS, toEpochDay: TODAY - 1 }]);
-});
-
-test('a disguised screen reads nothing at all', async () => {
-  const { areas, asked } = recordingAreas([{ kind: 'appointment', epochDay: TODAY + 2 }]);
-
-  assert.equal(await readAgenda(areas, TODAY, true), null);
-  assert.deepEqual(asked, []);
 });
 
 test('both reads are issued before the first await, so a live query sees both', async () => {
@@ -133,7 +125,7 @@ test('both reads are issued before the first await, so a live query sees both', 
   // past an earlier `await` is discovered a re-run late (WAITING_TABLES's
   // own reason for existing). Both of these are in flight in the same tick.
   const { areas, asked } = recordingAreas();
-  const pending = readAgenda(areas, TODAY, false);
+  const pending = readAgenda(areas, TODAY);
   assert.deepEqual(asked, ['dayAhead', 'doses']);
   await pending;
 });
@@ -146,7 +138,7 @@ test('dose-panel coverage changes project the same facts without another read', 
     { kind: 'milestone', epochDay: TODAY + 3 },
     { kind: 'letterUnlock', epochDay: TODAY + 4 }
   ]);
-  const facts = await readFacts(areas, TODAY, false);
+  const facts = await readFacts(areas, TODAY);
   assert.equal(projectAgenda(facts, DAY_AHEAD_MARK_KINDS, false)?.folded.length, 1);
   const covered = projectAgenda(facts, DAY_AHEAD_MARK_KINDS, true);
   assert.deepEqual(covered?.shown.map((row) => row.kind), ['appointment', 'milestone', 'letterUnlock']);

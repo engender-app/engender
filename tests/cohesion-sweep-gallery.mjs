@@ -588,9 +588,8 @@ const read = () =>
          whatever carries --field as its ground. */
       const header = root.querySelector('[data-screen-header], [data-home-header]');
       /* The field is the blind ScreenHeader (and Today's own header) draws:
-         a block hanging from the top edge whose ground is --field. Read as
-         the element, not as a colour match, because under disguise --field
-         is --surface-2 and a colour match would call that no field. */
+         a block hanging from the top edge whose ground is --field. Read the
+         element rather than assuming one colour across palettes. */
       const blind = root.querySelector('[data-field-blind]');
       const field = !!blind && blind.getBoundingClientRect().width > root.clientWidth * 0.9;
       const back = !!root.querySelector('[data-screen-back]');

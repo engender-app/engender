@@ -90,7 +90,7 @@ function launcher(initial: boolean) {
 }
 
 describe('the Settings disguise switch', () => {
-  const settings = readFileSync(root + 'src/routes/settings/+page.svelte', 'utf8');
+  const settings = readFileSync(root + 'src/lib/components/DisguiseSetting.svelte', 'utf8');
 
   it('writes through the durable preference write onboarding uses, never a plain assignment', () => {
     const handler = /label=\{m\.disguise_app_title\(\)\}\s*onChange=\{([\s\S]*?)\}\s*\/>/.exec(settings)?.[1] ?? '';

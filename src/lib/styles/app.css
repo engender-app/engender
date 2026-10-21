@@ -1572,9 +1572,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
    baseline, but the word's ink (x-height 0.49em, ascender 0.73em, one
    descender) is centred 0.25em above it, so a plain align-items:center
    leaves the word 0.12em low against the mark. The word's bottom padding
-   lifts it by half its own size. Under disguise Mark draws nothing and the
-   word is the only child, so it takes no lift and sits as plain type
-   (ADR-0014). */
+   lifts it by half its own size. */
 .lockup {
   display: flex; align-items: center; gap: 0.5em;
   font-family: var(--font-display); font-weight: var(--weight-display);

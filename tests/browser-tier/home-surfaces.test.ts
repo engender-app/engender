@@ -84,7 +84,7 @@ export async function homeContracts(): Promise<Result[]> {
     await check(`Home log and pins use current ${palette} roles`, () => {
       prefs.palette = palette;
       document.documentElement.dataset.palette = palette;
-      refreshActiveFlag(document, false);
+      refreshActiveFlag(document);
       flushSync();
       const log = style(root(), '[data-home-log]').getPropertyValue('--role').trim();
       const pins = style(root(), '[data-home-pinned] .kit-list').getPropertyValue('--role').trim();
@@ -95,14 +95,14 @@ export async function homeContracts(): Promise<Result[]> {
       );
     });
   }
-  await check('Disguise removes flag and roles and changes Home name', () => {
+  await check('Disguise keeps flag, roles and Home name after unlock', () => {
     prefs.disguise = true;
-    refreshActiveFlag(document, true);
+    refreshActiveFlag(document);
     flushSync();
     return (
-      !root().querySelector('[data-flag-sun]') &&
-      activeFlag.roles.length === 0 &&
-      node(root(), '[data-home-hero]').textContent === m.disguise_name()
+      !!root().querySelector('[data-flag-sun]') &&
+      activeFlag.roles.length > 0 &&
+      node(root(), '[data-home-hero]').textContent === m.app_name()
     );
   });
   await screen.remove();

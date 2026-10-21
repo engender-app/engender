@@ -8,9 +8,8 @@
      the ordinary header and button kit rather than markup of its own.
 
      Says nothing about the address or the error: not the path, not
-     `page.error.message`. The address bar already shows the path, and
-     under disguise a screen that echoed it would be a second place for it
-     to be read from. The status only picks between two fixed sentences.
+     `page.error.message`. The address bar already shows the path. The
+     status only picks between two fixed sentences.
 
      No back arrow: a stale bookmark has no entry behind it to go back to,
      and the button is the way out. It goes to Today as a plain link, so it

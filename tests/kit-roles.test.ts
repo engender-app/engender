@@ -180,7 +180,7 @@ describe("a tile's role", () => {
     expect(tileRoleAt(roles, 2)!.stripe).toBe('#FCF434');
   });
 
-  it('has nothing to give under disguise, where there is no flag at all', () => {
+  it('has nothing to give before flag data arrives', () => {
     expect(tileRoleAt([], 1)).toBeUndefined();
   });
 

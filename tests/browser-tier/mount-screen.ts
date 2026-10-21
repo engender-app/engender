@@ -68,7 +68,7 @@ export async function mountScreen(route: string, fixture: ScreenFixture) {
   document.documentElement.dataset.moodPreset = prefs.moodPreset;
   document.documentElement.dataset.theme = prefs.theme === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.a11yMotion = prefs.a11yMotionReduce ? 'reduce' : 'full';
-  refreshActiveFlag(document, prefs.disguise);
+  refreshActiveFlag(document);
   localStorage.setItem('engender-has-entries', fixture.hasEntries === false ? '0' : '1');
   setScreenRoute(route);
   const target = document.createElement('div');

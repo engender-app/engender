@@ -27,9 +27,8 @@
      tier-0 budget and it is spent on the one element that carries identity,
      which is the same argument the sun already made on Home.
 
-     Under disguise there is no sun at all, the same answer ADR-0035 gives
-     everywhere else: a crisp flag is not deniable at a glance, and this
-     screen is not an exception to that just because it comes first. */
+     This screen appears before unlock. Under disguise it keeps the neutral
+     field and no sun, as the other pre-unlock screens do. */
 
   import { afterNavigate, pushState } from '$app/navigation';
   import { page } from '$app/state';

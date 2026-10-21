@@ -2,8 +2,8 @@
    level a screen's source can be held to - mirrors home-surfaces.test.ts and
    more-surfaces.test.ts.
 
-   Sheets are not a surface (home-surfaces.test.ts's own note): the metric,
-   disguise and about sheets keep the old `.list-group`/`.list-row`/`.card`
+   Sheets are not a surface (home-surfaces.test.ts's own note): the metric
+   and about sheets keep the old `.list-group`/`.list-row`/`.card`
    vocabulary inside <Sheet>, so this file's "no card of its own" check
    strips every <Sheet>...</Sheet> block first, the same way the script
    block is stripped. The scales sheet is the exception and is on the kit
@@ -25,6 +25,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const settings = read('src/routes/settings/+page.svelte');
+const disguiseSetting = read('src/lib/components/DisguiseSetting.svelte');
 const withoutScript = settings.replace(/<script[\s\S]*?<\/script>/g, '');
 const outsideSheets = withoutScript.replace(/<Sheet\b[\s\S]*?<\/Sheet>/g, '');
 
@@ -93,7 +94,8 @@ describe('what Settings is built from', () => {
     const lockRow = /<ListRow\s+key="security"[^>]*>/s.exec(outsideSheets)?.[0] ?? '';
     expect(lockRow).toContain('icon="lock"');
     expect(lockRow).toContain('title={m.settings_lock_row()}');
-    const disguiseRow = /<ListRow\s+key="disguise"[\s\S]*?>/.exec(outsideSheets)?.[0] ?? '';
+    expect(outsideSheets).toContain('<DisguiseSetting />');
+    const disguiseRow = /<ListRow\s+key="disguise"[\s\S]*?>/.exec(disguiseSetting)?.[0] ?? '';
     expect(disguiseRow).toContain('icon="eyeOff"');
     expect(read('messages/en.json')).toMatch(/"settings_lock_row": "Lock\b/);
   });
@@ -102,7 +104,7 @@ describe('what Settings is built from', () => {
     const privacy = outsideSheets.slice(
       outsideSheets.indexOf('<SectionHeading text={m.settings_privacy()} />')
     ).match(/<ListCard>[\s\S]*?<\/ListCard>/)?.[0] ?? '';
-    const order = ['key="security"', 'key="disguise"', 'key="export"', 'key="journal-book"', 'key="permissions"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
+    const order = ['key="security"', '<DisguiseSetting />', 'key="export"', 'key="journal-book"', 'key="permissions"', 'key="trash"', 'key="erase"'].map((k) => privacy.indexOf(k));
     expect(order.every((at) => at > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(privacy.lastIndexOf('<ListRow')).toBeLessThan(order[6]);

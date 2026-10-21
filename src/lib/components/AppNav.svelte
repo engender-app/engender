@@ -20,8 +20,6 @@
   import { m } from '$lib/paraglide/messages';
   import { litTabKey, RAIL_SETTINGS, railTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin } from '$lib/navigation/chrome-tab-origin';
-  import { appWordmark, hubTabLabel } from '$lib/disguise/identity';
-  import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import {
     boxesMatch,
@@ -53,17 +51,13 @@
     { href: '/', key: 'home', icon: 'home', label: () => m.today() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_journal() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_lookback() },
-    /* ADR-0036: the tab opens the More hub, not Settings directly, but
-       `key` stays 'settings' - it is what the walkthrough's data-nav-item
-       selector and active-tab.ts's own table already key off, and Settings
-       is still what this tab leads to, one hop further in. Disguised, the
-       label reverts to the existing `nav_more` string rather than staying
-       `nav_transition` - see hubTabLabel. */
+    /* ADR-0036: the tab opens More while its internal key stays settings.
+       Disguise changes the launcher and tab, not this unlocked label. */
     {
       href: '/more',
       key: 'settings',
       icon: 'grid',
-      label: () => hubTabLabel(prefs.disguise, m.nav_more(), m.nav_transition())
+      label: () => m.nav_transition()
     }
   ];
 
@@ -406,13 +400,10 @@
 {/snippet}
 
 <nav bind:this={navs.rail} class="app-rail" data-app-rail aria-label={m.nav_main()}>
-  <!-- The disguised name, same as the tab title and the launcher entry
-       (F24): the rail is the one piece of chrome that says the app's name
-       out loud, so it follows the preference like every other surface that
-       does - through the module all of them read (disguise/identity.ts). -->
+  <!-- The unlocked rail keeps the app name and chosen flag. -->
   <div class="rail-brand lockup">
     <Mark size={32} /><span class="lockup-word" translate="no"
-      >{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span
+      >{m.app_name()}</span
     >
   </div>
   <button
@@ -462,8 +453,7 @@
        `data-rail-item`, but it takes the pill on every /settings route
        (after-release 17, L04-07): it lit nothing there before, while the
        rail lit Today, so the one row naming the page was the one row that
-       never said so. Plain text, since "Settings" says nothing about what
-       the app is under disguise either. -->
+       never said so. -->
   <a
     bind:this={tabs.rail[RAIL_SETTINGS]}
     class="rail-item rail-settings press"

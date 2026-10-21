@@ -1,6 +1,5 @@
 /* The agenda projection (phase 10 redesign ticket 04, ADR-0074): the
-   window, the ordering, the fold, the absence rule, the passed slot and the
-   disguise rule. Every one of them is decided in `agenda.ts` and asserted
+   window, the ordering, the fold, the absence rule, the passed slot. Every one of them is decided in `agenda.ts` and asserted
    here, because ticket 13 draws what this returns and can only be as
    truthful as the projection under it. */
 
@@ -61,7 +60,6 @@ function input(over: Partial<AgendaInput> = {}): AgendaInput {
     todayEpochDay: TODAY,
     marks: [],
     doses: { reason: 'noEpisode' },
-    disguised: false,
     ...over
   };
 }
@@ -228,8 +226,3 @@ for (const file of ['messages/en.json', 'messages/pl.json']) {
     assert.doesNotMatch(sentence, FAILURE_WORDS);
   });
 }
-
-test('disguise returns an empty projection for every input', () => {
-  const marks = Array.from({ length: AGENDA_CAP + 2 }, (_, index) => mark('appointment', TODAY + index));
-  assert.equal(agenda(input({ marks, doses: comparison([TODAY - 1]), disguised: true })), null);
-});
