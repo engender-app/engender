@@ -45,3 +45,11 @@ test('a full native PIN admission retains its storage cause', async () => {
   const error = await androidPinAttempts.begin().catch((failure: unknown) => failure);
   expect(spaceShortage(error)).toBe('device');
 });
+
+test('a failed settlement cannot invite a retry while admission is pending', async () => {
+  const { androidPinAttempts } = await import('./lock-timing-bridge');
+  const { spaceShortage } = await import('../data/spaceShortage');
+  native.finishPinAttempt.mockRejectedValue(new Error('ENOSPC (No space left on device)'));
+  const error = await androidPinAttempts.finish('token', false).catch((failure: unknown) => failure);
+  expect(spaceShortage(error)).toBe(null);
+});

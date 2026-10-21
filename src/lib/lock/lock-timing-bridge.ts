@@ -47,6 +47,8 @@ export const androidPinAttempts = {
   },
   async finish(token: string, successful: boolean): Promise<void> {
     try { await androidLockTiming.finishPinAttempt({ owner: owner(), token, successful }); }
-    catch (error) { throw new KeystoreUnreadableError('PIN accounting could not be settled', { cause: error }); }
+    // Admission has already counted this guess. A failed settlement leaves its
+    // token pending, so asking for another PIN attempt would be misleading.
+    catch { throw new KeystoreUnreadableError('PIN accounting could not be settled'); }
   }
 };
