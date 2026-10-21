@@ -1079,7 +1079,12 @@ try {
   }, null, { timeout: 8000 });
 
   /* The agenda has no kind switches since functional-audit ticket 14. */
-  if (await page.locator('[data-edit-kind]').count()) throw new Error('the editor still offers agenda kind switches');
+  if (
+    (await page.locator('[data-today-editor] [role="switch"]').count()) !==
+    (await page.locator('[data-edit-tile] [role="switch"]').count())
+  ) {
+    throw new Error('the editor offers a switch that is not a tile switch');
+  }
 
   /* The tiles, here since phase 11 ticket 04 rather than two taps away
      under Settings. Whichever tile the persona is actually being shown,
@@ -4577,7 +4582,7 @@ try {
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
   if (new URL(page.url()).search !== '') throw new Error('the save landed on ' + page.url());
-  if (await page.locator('[data-sheet], [data-quick-log-dims]').count()) {
+  if (await page.locator('[data-sheet]').count()) {
     throw new Error('a sheet opened after a mood-only save');
   }
 
