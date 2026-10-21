@@ -13,7 +13,8 @@ import { columnsOf, identityFieldOf, type FlatTable } from './archiveTable';
 
 type Check = (value: unknown) => boolean;
 const text: Check = (value) => typeof value === 'string';
-const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0;
+// A lone surrogate is not text SQLite can round-trip, so an id holding one is unreadable.
+const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0 && value.isWellFormed();
 const bool: Check = (value) => typeof value === 'boolean';
 const numeric: Check = (value) => typeof value === 'number' && Number.isFinite(value) &&
   (!Number.isInteger(value) || Number.isSafeInteger(value));
@@ -514,6 +515,15 @@ export function assertArchiveRows(
     }
     if (name === 'doseSchedules' && (row.recurrenceKind === 'everyNDays') !== (row.everyNDays !== null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
+    }
+    if (name === 'doseEvents') {
+      // Mirrors the dose_event auto-log CHECK: all three absent, or a schedule row with all three set.
+      const { autoLogEpisodeId: episode, autoLogEpochDay: day, autoLogIndex: slot } = row;
+      const none = episode == null && day == null && slot == null;
+      const slotted = row.source === 'schedule' && typeof episode === 'string' && episode.trim().length > 0 &&
+        typeof day === 'number' && Number.isInteger(day) && typeof slot === 'number' &&
+        Number.isInteger(slot) && slot >= 0;
+      if (!none && !slotted) throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'documents' && (row.targetKind == null) !== (row.targetId == null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);

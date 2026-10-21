@@ -178,3 +178,32 @@ test('the backup drill refuses a validly encrypted broken template reference as 
     return true;
   });
 });
+
+for (const mode of ['merge', 'replace'] as const) {
+  test(`${mode} refuses an id holding a lone surrogate in every section`, async () => {
+    for (const section of ['entries', 'doseEvents', 'tagGroups'] as const) {
+      const incoming = golden();
+      const row = incoming[section][0] as unknown as Record<string, unknown>;
+      const field = section === 'entries' ? 'uuid' : section === 'tagGroups' ? 'key' : 'id';
+      row[field] = '\ud800';
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+
+  test(`${mode} refuses auto-log fields the dose_event CHECK would reject`, async () => {
+    const shapes: Record<string, unknown>[] = [
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: null, autoLogIndex: null },
+      { autoLogEpisodeId: null, autoLogEpochDay: 20000, autoLogIndex: 0 },
+      { autoLogEpisodeId: ' ', autoLogEpochDay: 20000, autoLogIndex: 0 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000, autoLogIndex: -1 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000.5, autoLogIndex: 0 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000, autoLogIndex: 0.5 },
+      { autoLogEpisodeId: 'ep', autoLogEpochDay: 20000, autoLogIndex: 0, source: 'manual' }
+    ];
+    for (const shape of shapes) {
+      const incoming = golden();
+      Object.assign(incoming.doseEvents[0], shape);
+      await refusesWithoutChanges(mode, incoming);
+    }
+  });
+}
