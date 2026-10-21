@@ -95,9 +95,14 @@
         : m.regimen_hrt_start_none()
   );
   let hrtStartEditor = $state<string | null>(null);
+  /* What the sheet opened on. Save stays dead until the date moves off it,
+     so opening the sheet and pressing Save cannot turn the date read off an
+     episode, or an empty field, into one "set by you". */
+  let hrtStartOpenedOn = $state('');
 
   function openHrtStart() {
-    hrtStartEditor = dateInputValueFromEpochDay(hrt?.startEpochDay ?? todayEpochDay());
+    hrtStartOpenedOn = hrt ? dateInputValueFromEpochDay(hrt.startEpochDay) : '';
+    hrtStartEditor = hrtStartOpenedOn;
   }
 
   function saveHrtStart() {
@@ -554,7 +559,7 @@
                 id={episode.id}
                 icon="pill"
                 title={episode.drug}
-                subtitle={m.regimen_episode_sub({ class: episodeClassLabel(episode.drugClass), dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: regimenIntervalLabel(episode.interval), period: regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay) })}
+                subtitle={(episode.drugClass === 'hrt' ? m.regimen_episode_sub : m.regimen_episode_sub_other)({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: regimenIntervalLabel(episode.interval), period: regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay) })}
                 chevron={false}
                 onclick={() => openEditor(episode)}
               >
@@ -1080,7 +1085,7 @@
         {/snippet}
       </Field>
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-hrt-start onclick={saveHrtStart}><span>{m.regimen_hrt_start_save()}</span></button>
+        <button class="btn btn-primary" data-save-hrt-start disabled={hrtStartEditor === hrtStartOpenedOn} onclick={saveHrtStart}><span>{m.regimen_hrt_start_save()}</span></button>
         {#if prefs.hrtStartEpochDay !== null}
           <button class="btn btn-ghost" data-clear-hrt-start onclick={clearHrtStart}><span>{m.regimen_hrt_start_clear()}</span></button>
         {/if}

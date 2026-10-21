@@ -1516,7 +1516,7 @@
   "hair_stage_new_sheet": "New staging",
   "hair_stage_save": "Save",
   "hair_stage_section_title": "Staging",
-  "hair_unanchored_note": "Set a start date to count weeks. Without one, counting starts at your HRT start once the regimen has one.",
+  "hair_unanchored_note": "Set a start date to count weeks, or add an HRT episode to the regimen.",
   "heat_cell_coming_up": "{date}, something coming up",
   "heat_cell_entries": [
     {
@@ -2629,7 +2629,7 @@
   "regimen_auto_log_off_saved": "Schedule saved. Automatic logging is off.",
   "regimen_auto_log_on_saved": "Schedule saved. Automatic logging is on.",
   "regimen_auto_log_save_hint": "Changing this switch immediately saves the current schedule and this instruction.",
-  "regimen_class_hint": "Only HRT episodes count towards your HRT start.",
+  "regimen_class_hint": "Starts from the drug name. Only HRT episodes count towards your HRT start.",
   "regimen_class_hrt": "HRT",
   "regimen_class_label": "Drug class",
   "regimen_class_other": "Other",
@@ -2658,7 +2658,8 @@
   "regimen_episode_save_failed": "Drug could not be saved. Try again.",
   "regimen_episode_saved_drafts_pending": "Regimen saved. Other draft changes are still unsaved.",
   "regimen_episode_saved_schedule_pending": "Regimen saved. Schedule changes are still unsaved.",
-  "regimen_episode_sub": "{class} · {dose} {unit} · {route} · {interval} · {period}",
+  "regimen_episode_sub": "{dose} {unit} · {route} · {interval} · {period}",
+  "regimen_episode_sub_other": "Not HRT · {dose} {unit} · {route} · {interval} · {period}",
   "regimen_episode_unchanged": "Regimen details have no unsaved changes.",
   "regimen_episode_unsaved": "Regimen details have unsaved changes.",
   "regimen_ester_label": "Ester (optional)",
