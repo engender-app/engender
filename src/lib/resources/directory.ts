@@ -145,7 +145,10 @@ const ENTRIES = [
     name: 'Mindline Trans+',
     phone: '+44 300 330 5468',
     /* Under Mind in Somerset, not mindlinetrans.org.uk. That domain lapsed
-       and now serves casino spam. */
+       and now serves casino spam. The Mind in Somerset page refuses
+       headless browsers, so on 2026-10-21 the Friday 20:00 to 23:00 hours
+       came from Frome Town Council's directory (updated 21 May 2026). Open
+       it in a real browser at the next review. */
     url: 'https://www.mindinsomerset.org.uk/our-services/mindline-trans/'
   },
   {
