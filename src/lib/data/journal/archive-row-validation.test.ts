@@ -64,6 +64,12 @@ async function refusesWithoutChanges(mode: 'merge' | 'replace', incoming: Archiv
 }
 
 for (const mode of ['merge', 'replace'] as const) {
+  test(`${mode} refuses a document missing targetId before storage access`, async () => {
+    const incoming = golden();
+    delete (incoming.documents[0] as Partial<typeof incoming.documents[number]>).targetId;
+    await refusesWithoutChanges(mode, incoming);
+  });
+
   test(`${mode} refuses the original null-affirmation identity without changing counts or content`, async () => {
     const contents = await goldenContents();
     contents.journal.affirmations[1].id = null as unknown as string;

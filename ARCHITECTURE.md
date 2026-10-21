@@ -547,9 +547,9 @@ flowchart TB
 ```
 
 - **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before key derivation. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
-- **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2.
+- **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2. New payloads carry `writer.app` from the build version and `writer.schema` from `LATEST_SCHEMA_VERSION`. The stamp is informational; rc.1 payloads without it still read.
 - **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](tests/released-formats.test.ts) opens Archives and migrates populated SQLite journals from released versions in [fixtures/released/](fixtures/released). It requires a fixture directory for every non-alpha `v*` tag and rejects an empty fixture set. CI fetches the release tags before running it.
-- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 54 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that.
+- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 54 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list starts with `doubtEntries`.
 
 Archive import admits at most 65,536 KiB of Argon2id memory, six iterations,
 one lane and a 32-byte output (ADR-0013). The released export profile remains
@@ -597,7 +597,8 @@ tags they carry; row-only imports may also reuse destination tags. The contracts
 cover all `ArchiveJournal` sections and fields at compile time. Flat descriptors
 supply natural identities and absent-field defaults. Two revisits for one entry are
 refused before restore picks one. These known malformed rows raise
-`CorruptArchiveError` during verification, Merge and Replace. SQLite still
+`CorruptArchiveError` during verification, Merge and Replace. A document link
+with one missing half gets that typed refusal before SQLite. SQLite still
 enforces remaining constraints inside the transaction; unexpected storage and
 driver failures keep their original errors.
 

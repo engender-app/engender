@@ -75,7 +75,7 @@ import { assertArchiveFileOwnership, readFileOwnership } from './fileOwnership';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
 import { aliasLegacyConsults, recordImport } from './archiveApply';
-import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS } from './archiveSections';
+import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
 import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
 
 export type RestoreMode = 'replace' | 'merge';
@@ -273,8 +273,7 @@ async function restoreWithin(
   onProgress?: OnRestoreProgress,
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
-  assertRestorable(contents.journal, commit !== undefined);
-  const original = aliasLegacyConsults(contents.journal);
+  const original = restorableJournal(contents.journal, commit !== undefined);
   const existing = new Set(await files.list());
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
@@ -367,7 +366,7 @@ export async function verifyArchive(
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const { payload, files } = await openArchive(source, password);
-  assertRestorable(payload.journal);
+  restorableJournal(payload.journal);
 
   /* One stage, so a pair rather than a RestoreProgress: the whole drill is
      the drain, and the manifest already says how many files that is. */
@@ -377,28 +376,38 @@ export async function verifyArchive(
   while (!(await iterator.next()).done) onProgress?.((done += 1), total);
 }
 
-/** Reject unknown sections before writing any files or rows, even when the
-    archive declares a known format version. Ignoring a section would silently
-    lose the data it carries. Known sections must be arrays before their apply
-    functions can read them; each row must satisfy its wire contract. */
-function assertRestorable(journal: ArchiveJournal, externalImport = false): void {
+/** Reject unknown sections before writing any files or rows. A removed section
+    has no owner and its rows are discarded. Absent known sections read empty. */
+function restorableJournal(journal: ArchiveJournal, externalImport = false): ArchiveJournal {
+  if (!journal || typeof journal !== 'object' || Array.isArray(journal)) {
+    throw new CorruptArchiveError("the archive's journal is not readable");
+  }
   for (const section of Object.keys(journal ?? {})) {
-    // ADR-0037 retired this known pre-release section and deliberately drops it.
-    if (section !== 'doubtEntries' && !(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
+    if (!DROPPED_ARCHIVE_SECTION_NAMES.includes(section) && !(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
       throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
     }
   }
-  for (const { name, flatTable } of ARCHIVE_SECTIONS) {
+  // Check shapes and rows before lifting legacy procedure consults. The lift
+  // reads procedures, so invalid rows must receive a typed refusal first.
+  for (const { name } of ARCHIVE_SECTIONS) {
     const section = name as keyof ArchiveJournal;
-    // Older archives lift validated procedure consults into this absent section.
-    if (section === 'appointments' && journal?.appointments === undefined) continue;
-    if (!Array.isArray(journal?.[section])) {
+    if (journal?.[section] !== undefined && !Array.isArray(journal[section])) {
       throw new CorruptArchiveError(`the archive's ${section} are not readable`);
     }
-    assertArchiveRows(section, journal[section], flatTable);
   }
-  assertArchiveReferences(journal, externalImport);
-  assertArchiveFileOwnership(journal);
+  const complete = emptyArchiveJournal();
+  for (const section of ARCHIVE_SECTION_NAMES) (complete as unknown as Record<string, unknown[]>)[section] = journal[section] ?? [];
+  for (const { name, flatTable } of ARCHIVE_SECTIONS) {
+    const section = name as keyof ArchiveJournal;
+    assertArchiveRows(section, complete[section], flatTable);
+  }
+  if (journal.appointments === undefined) {
+    complete.appointments = aliasLegacyConsults({ ...journal, procedures: complete.procedures }).appointments;
+    assertArchiveRows('appointments', complete.appointments);
+  }
+  assertArchiveReferences(complete, externalImport);
+  assertArchiveFileOwnership(complete);
+  return complete;
 }
 
 /** Every journal row this device has, gone: one operation, ordered by the

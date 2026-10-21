@@ -17,8 +17,34 @@ import { migrations } from '../src/lib/data/sqlite/migrations.ts';
 import { LATEST_SCHEMA_VERSION } from '../src/lib/data/sqlite/schema-version.ts';
 import { noopFileOps } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../src/lib/data/sqlite/test-support/node-sqlite-driver.ts';
+import { restoreArchive, verifyArchive } from '../src/lib/data/journal/restore.ts';
+import { emptyArchiveJournal } from '../src/lib/data/journal/archiveSections.ts';
+import { fakeFileStore } from '../src/lib/data/photos/test-support/fake-file-store.ts';
+import { migratedDb } from '../src/lib/data/sqlite/test-support/migrated-db.ts';
 
 const releasedRoot = fileURLToPath(new URL('../fixtures/released/', import.meta.url));
+
+test('rc.1 archive without a writer stamp still verifies and restores', async () => {
+  const fresh = await openArchive((async function* () {
+    yield await collect(packArchive({
+      journal: emptyArchiveJournal(), preferences: portablePreferences(PREFERENCE_DEFAULTS), files: [],
+      readFile: async () => new Uint8Array()
+    }, GOLDEN_PASSWORD, { memorySize: 256, iterations: 1, parallelism: 1, hashLength: 32 }));
+  })(), GOLDEN_PASSWORD);
+  assert.ok(fresh.payload.writer);
+  const bytes = new Uint8Array(readFileSync(join(releasedRoot, '1.0.0-rc.1', 'archive.ttbackup')));
+  const opened = await openArchive((async function* () { yield bytes; })(), GOLDEN_PASSWORD);
+  assert.equal(opened.payload.writer, undefined);
+  await verifyArchive((async function* () { yield bytes; })(), GOLDEN_PASSWORD);
+  const driver = await migratedDb();
+  try {
+    await restoreArchive(driver, fakeFileStore(), 'replace', {
+      journal: opened.payload.journal, files: opened.files
+    });
+  } finally {
+    await driver.close();
+  }
+});
 interface ReleasedCounts {
   archiveSections: Record<string, number>;
   sqliteTables: Record<string, number>;

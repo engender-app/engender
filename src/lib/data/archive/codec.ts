@@ -7,6 +7,7 @@ import {
 } from './payload';
 import type { ArchiveContents, OpenedArchive } from './pack';
 import { CorruptArchiveError, u32 } from './wire';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
 
 const JSON_LENGTH_PREFIX = 4;
 
@@ -27,6 +28,7 @@ const archiveCodecV1: ArchiveCodec = {
 
   async encode(contents) {
     const payload: ArchivePayload = {
+      writer: { app: __APP_VERSION__, schema: LATEST_SCHEMA_VERSION },
       journal: contents.journal,
       preferences: contents.preferences,
       files: contents.files
