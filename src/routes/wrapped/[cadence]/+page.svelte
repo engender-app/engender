@@ -65,7 +65,7 @@
   {/if}
   {#if !on}
     <Notice icon="info" key="wrapped-off" title={m.wrapped_off_title()} text={m.wrapped_off_body()}
-      action={{ label: m.nav_settings(), href: '/settings' }} aria-live="polite" />
+      action={{ label: m.notif_title(), href: '/settings/notifications' }} aria-live="polite" />
   {:else if loading}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if muted}

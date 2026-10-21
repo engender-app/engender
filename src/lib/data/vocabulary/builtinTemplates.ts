@@ -67,23 +67,6 @@ export const MILESTONE_TEMPLATE_KEYS = [
 
 export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
 
-/** CONTEXT: "Lean" (phase 5 ticket 43). All eight are neutral: a milestone
-    type (starting HRT, coming out, a name change, surgery) names a kind of
-    event, not a direction - the same eight apply whichever way a person is
-    transitioning. */
-/* MILESTONE_TEMPLATE_LEAN stays exported only for its own test (AU-09
-   test-only review). */
-export const MILESTONE_TEMPLATE_LEAN: Record<MilestoneTemplateKey, Lean> = {
-  hrt_start: 'neutral',
-  transition_start: 'neutral',
-  coming_out: 'neutral',
-  first_appointment: 'neutral',
-  name_change: 'neutral',
-  marker_change: 'neutral',
-  surgery: 'neutral',
-  first_public: 'neutral'
-};
-
 /* Starting points across estradiol, testosterone and more than one route
    (phase 5 ticket 42, CONTEXT: "Regimen template"), widened by functional
    audit ticket 18 to the antiandrogens, progesterone and a GnRH agonist, the
@@ -171,7 +154,7 @@ export const ENTRY_TEMPLATES = [
 export type EntryTemplateKey = (typeof ENTRY_TEMPLATES)[number]['key'];
 
 export function milestoneTemplateRows(): MilestoneTemplate[] {
-  return MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '', lean: MILESTONE_TEMPLATE_LEAN[key] }));
+  return MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' }));
 }
 
 export function regimenTemplateRows(): RegimenTemplate[] {

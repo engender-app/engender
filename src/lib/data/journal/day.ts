@@ -255,9 +255,9 @@ const SECTIONS = [
   section({
     key: 'feltSense',
     covers: ['feltSenseEntries'],
-    // Its owners' tables as well as its own: a row says which tryout or
-    // milestone it belongs to, so renaming either changes what it reads.
-    tables: ['feltSense', 'tryout', 'milestone'],
+    // Its tryout's table as well as its own: a row says which tryout it
+    // belongs to, so renaming one changes what it reads.
+    tables: ['feltSense', 'tryout'],
     read: ({ feltSense, epochDay }) => feltSense.onDay(epochDay)
   }),
   section({
@@ -421,11 +421,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // ticket). Keyed by the day it was written on, a margin note would need a
   // second section here just to point back at its entry; keyed by the day
   // it belongs to, it already is one - the entry's own row.
-  marginNotes: 'drawn beside the entry it annotates, not as a section of its own',
-  // A word someone has told the words screen to stop counting is not a
-  // thing that happened on a day - the same reference-data reason
-  // dimensions/tagGroups get above (phase 8 features ticket 48).
-  wordIgnore: 'reference data'
+  marginNotes: 'drawn beside the entry it annotates, not as a section of its own'
 };
 
 /* DAY_SECTIONS stays exported only for its own test (AU-09 test-only review). */

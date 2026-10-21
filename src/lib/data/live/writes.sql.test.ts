@@ -623,9 +623,6 @@ beforeAll(async () => {
   await drive('eraMutes', 'setEraMuted', () => journal.eraMutes.setEraMuted(beforeIKnew, true));
   await drive('eras', 'deleteEra', () => journal.eras.deleteEra(firstYear));
 
-  // --- wordIgnore -----------------------------------------------------------
-  await drive('wordIgnore', 'setWordIgnored', () => journal.wordIgnore.setWordIgnored('marta', true));
-
   // --- documents ------------------------------------------------------------
   const documentId = (await drive('documents', 'addDocument', () =>
     journal.documents.addDocument(
@@ -866,10 +863,10 @@ beforeAll(async () => {
   await drive('tryouts', 'deletePhoto', () => journal.tryouts.deletePhoto(tryoutPhotoId));
   await drive('tryouts', 'addPhoto', () => journal.tryouts.addPhoto(tryoutId, 19906, photo('presenting again')));
   await drive('feltSense', 'add', () => journal.feltSense.add({ tryoutId }, { epochDay: 19910, mood: 4, note: 'felt right' }));
-  const milestoneFeltSense = (await drive('feltSense', 'add', () =>
-    journal.feltSense.add({ milestoneId }, { epochDay: 19911, mood: 5, note: 'a year on' })
+  const secondFeltSense = (await drive('feltSense', 'add', () =>
+    journal.feltSense.add({ tryoutId }, { epochDay: 19911, mood: 5, note: 'still right' })
   )) as string;
-  await drive('feltSense', 'remove', () => journal.feltSense.remove(milestoneFeltSense));
+  await drive('feltSense', 'remove', () => journal.feltSense.remove(secondFeltSense));
   await drive('tryouts', 'adoptTryout', () =>
     journal.tryouts.adoptTryout(tryoutId, { createMilestone: true, milestoneTitle: 'adopted: layered look' })
   );
@@ -921,7 +918,6 @@ beforeAll(async () => {
   await driveRead('entries', 'lastWriteEpochDay', () => journal.entries.lastWriteEpochDay(20000));
   await driveRead('entries', 'countAll', () => journal.entries.countAll());
   await driveRead('entries', 'countDistinctDays', () => journal.entries.countDistinctDays());
-  await driveRead('entries', 'noteEntries', () => journal.entries.noteEntries());
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
   await driveRead('entryTemplates', 'getEntryTemplates', () => journal.entryTemplates.getEntryTemplates());
@@ -998,7 +994,6 @@ beforeAll(async () => {
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
   await driveRead('eraMutes', 'getMutedEraUuids', () => journal.eraMutes.getMutedEraUuids());
-  await driveRead('wordIgnore', 'getIgnoredWords', () => journal.wordIgnore.getIgnoredWords());
   await driveRead('documents', 'getDocuments', () => journal.documents.getDocuments());
   await driveRead('documents', 'getDocument', () => journal.documents.getDocument(documentId));
   await driveRead('documents', 'getDocumentsOnDay', () => journal.documents.getDocumentsOnDay(19999));
@@ -1077,7 +1072,6 @@ beforeAll(async () => {
   await driveRead('tryouts', 'getPhotosOnDay', () => journal.tryouts.getPhotosOnDay(19906));
   await driveRead('tryouts', 'lastWriteEpochDay', () => journal.tryouts.lastWriteEpochDay(19906));
   await driveRead('feltSense', 'forTryout', () => journal.feltSense.forTryout(tryoutId));
-  await driveRead('feltSense', 'forMilestone', () => journal.feltSense.forMilestone(milestoneId));
   await driveRead('feltSense', 'onDay', () => journal.feltSense.onDay(19910));
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.
@@ -1107,6 +1101,7 @@ beforeAll(async () => {
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
   await driveRead('stats', 'tagInsights', () => journal.stats.tagInsights('mood', 19000, 21000));
   await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000));
+  await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000, { goodDays: true }));
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));
   await driveRead('correlationCards', 'getCards', () => journal.correlationCards.getCards(19000, 21000));

@@ -30,7 +30,6 @@ const ROUTES = [
   '/calendar',
   '/tally',
   '/settings/tags',
-  '/settings/words',
   '/settings/eras',
   '/transition/letters',
   '/transition/tryouts',

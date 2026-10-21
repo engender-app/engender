@@ -54,9 +54,9 @@
     return Math.max(1, currentDay() - tryout.startEpochDay + 1);
   });
 
-  /* The same step the adoption will write onto the milestone, and through
-     the same function, so the sheet never promises one reading and stores
-     another. `feltSense` arrives newest first, as forTryout reads it. */
+  /* How the tryout mostly felt, as a line about the tryout: adoption
+     writes no reading onto the milestone (functional audit ticket 32).
+     `feltSense` arrives newest first, as forTryout reads it. */
   let majorityMood = $derived(adoptionMood(feltSense));
 
   $effect(() => {

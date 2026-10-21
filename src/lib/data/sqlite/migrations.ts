@@ -117,5 +117,49 @@ INSERT INTO sqlite_sequence (name, seq) SELECT 'hair_stage_new', seq FROM sqlite
 DROP TABLE hair_stage;
 ALTER TABLE hair_stage_new RENAME TO hair_stage;
 CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
+` },
+  /* Functional audit ticket 12: the Words reading is cut, and with it the
+     list of words it was told to skip. Rows are dropped, not converted;
+     archives that still carry the wordIgnore section skip it on restore
+     (DROPPED_ARCHIVE_SECTION_NAMES). */
+  { version: 103, sql: 'DROP TABLE word_frequency_ignore;' },
+  /* Functional audit ticket 32. A milestone can be set not to be
+     celebrated on Home; every milestone already recorded keeps its
+     celebration. No CHECK, like roadmap_check.hidden: 0 is off and
+     anything else reads as on.
+
+     And a milestone no longer holds felt-sense readings: they were asked
+     for and never shown. A cut removes rather than converts, so the
+     milestone rows are dropped and felt_sense is rebuilt with the tryout
+     as its one owner. Its AUTOINCREMENT counter is carried over, the way
+     CLOSED_LISTS_REBUILD carries its tables'. */
+  { version: 104, sql: `
+ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE felt_sense_new (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid       TEXT NOT NULL UNIQUE,
+  tryout_id  INTEGER NOT NULL REFERENCES tryout(id) ON DELETE CASCADE,
+  epoch_day  INTEGER NOT NULL,
+  mood       INTEGER NOT NULL CHECK (mood BETWEEN 1 AND 5),
+  note       TEXT,
+  updated_at INTEGER NOT NULL
+);
+INSERT INTO felt_sense_new (id, uuid, tryout_id, epoch_day, mood, note, updated_at)
+  SELECT id, uuid, tryout_id, epoch_day, mood, note, updated_at FROM felt_sense WHERE tryout_id IS NOT NULL;
+DELETE FROM sqlite_sequence WHERE name = 'felt_sense_new';
+INSERT INTO sqlite_sequence (name, seq) SELECT 'felt_sense_new', seq FROM sqlite_sequence WHERE name = 'felt_sense';
+DROP TABLE felt_sense;
+ALTER TABLE felt_sense_new RENAME TO felt_sense;
+CREATE INDEX idx_felt_sense_tryout ON felt_sense(tryout_id);
+CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
+` },
+  { version: 105, sql: `
+UPDATE milestone SET tryout_id = NULL
+  WHERE tryout_id IN (SELECT uuid FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM felt_sense WHERE tryout_id IN
+  (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM tryout_photo WHERE tryout_id IN
+  (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
+DELETE FROM tryout WHERE kind IN ('garment', 'presentation_step');
 ` }
 ];

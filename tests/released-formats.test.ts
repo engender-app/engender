@@ -48,7 +48,7 @@ test('rc.1 archive without a writer stamp still verifies and restores', async ()
 /* Tables the functional audit's cuts drop before 1.0 (spec: "cut means
    removed"). Their rows go with the migration, so a released fixture's count
    for them is checked as gone rather than kept. */
-const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit']);
+const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit', 'word_frequency_ignore']);
 
 interface ReleasedCounts {
   archiveSections: Record<string, number>;
@@ -86,10 +86,16 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
         continue;
       }
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
-      const droppedAreaRows = table === 'area_state'
+      /* Rows a cut dropped from a table it kept: area states naming a
+         dropped section, and the felt-sense readings that hung off a
+         milestone (functional audit ticket 32, migration 98). The archive
+         is the same journal, so it says how many those were. */
+      const droppedRows = table === 'area_state'
         ? opened.payload.journal.areaStates.filter((state) => DROPPED_ARCHIVE_SECTION_NAMES.includes(state.area)).length
-        : 0;
-      assert.equal(row.n, expected - droppedAreaRows, `released SQLite table ${table}`);
+        : table === 'felt_sense'
+          ? opened.payload.journal.feltSenseEntries.filter((entry) => (entry as { milestoneId?: string | null }).milestoneId != null).length
+          : 0;
+      assert.equal(row.n, expected - droppedRows, `released SQLite table ${table}`);
     }
     assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
     assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);

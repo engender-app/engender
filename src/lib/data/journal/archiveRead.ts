@@ -293,8 +293,9 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     roadmap_goal_key: string | null;
     procedure_id: string | null;
     tryout_id: string | null;
+    celebrate: number;
   }>(
-    'SELECT id, uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id FROM milestone ORDER BY epoch_day, id'
+    'SELECT id, uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, celebrate FROM milestone ORDER BY epoch_day, id'
   );
   const byMilestone = groupBy(photos.filter((p) => p.milestone_id !== null), (p) => p.milestone_id!, toArchivePhoto);
   return rows.map((r) => ({
@@ -306,6 +307,7 @@ export async function readMilestones({ driver, photos }: SectionRead): Promise<A
     roadmapGoalKey: r.roadmap_goal_key,
     procedureId: r.procedure_id,
     tryoutId: r.tryout_id,
+    ...(r.celebrate === 0 ? { celebrate: false as const } : {}),
     // A milestone shows one photo; a second row for the same one would
     // be a bug elsewhere, and the earliest wins rather than throwing -
     // the same rule the milestones area reads by.
@@ -382,22 +384,19 @@ export async function readTryouts({ driver, tryoutPhotos }: SectionRead): Promis
 export async function readFeltSenseEntries({ driver }: SectionRead): Promise<ArchiveFeltSenseEntry[]> {
   const rows = await driver.query<{
     uuid: string;
-    tryout_uuid: string | null;
-    milestone_uuid: string | null;
+    tryout_uuid: string;
     epoch_day: number;
     mood: number;
     note: string | null;
   }>(
-    `SELECT f.uuid, t.uuid AS tryout_uuid, ms.uuid AS milestone_uuid, f.epoch_day, f.mood, f.note
+    `SELECT f.uuid, t.uuid AS tryout_uuid, f.epoch_day, f.mood, f.note
        FROM felt_sense f
-       LEFT JOIN tryout t ON t.id = f.tryout_id
-       LEFT JOIN milestone ms ON ms.id = f.milestone_id
+       JOIN tryout t ON t.id = f.tryout_id
       ORDER BY f.epoch_day, f.id`
   );
   return rows.map((r) => ({
     id: r.uuid,
     tryoutId: r.tryout_uuid,
-    milestoneId: r.milestone_uuid,
     epochDay: r.epoch_day,
     mood: r.mood,
     note: r.note

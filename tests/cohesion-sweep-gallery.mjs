@@ -206,7 +206,6 @@ const ROUTES = [
   { path: '/transition/milestones' },
   { path: '/transition/roadmap' },
   { path: '/transition/tryouts' },
-  { path: '/settings/words', name: 'words-ignored' },
   { path: '/wrapped/year', name: 'wrapped' },
 ];
 

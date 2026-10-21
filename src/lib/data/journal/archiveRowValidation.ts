@@ -4,7 +4,7 @@ import { isLegacyHairStaging } from '../hairStageScales';
 import {
   CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
   EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
-  REMINDER_TYPES, TALLY_KINDS, TRYOUT_KINDS
+  REMINDER_TYPES, TALLY_KINDS, DROPPED_TRYOUT_KINDS, TRYOUT_KINDS
 } from '../rowValues';
 import {
   BUILT_IN_DIMENSIONS, BUILT_IN_EFFECT_CATEGORIES, BUILT_IN_TAG_GROUPS
@@ -143,6 +143,7 @@ const ROWS = {
     roadmapGoalKey: optional(nullable(text)),
     procedureId: optional(nullable(text)),
     tryoutId: optional(nullable(text)),
+    celebrate: optional((value) => value === false),
     photo: optional(nullable(photo))
   },
   labResults: {
@@ -369,7 +370,7 @@ const ROWS = {
   },
   tryouts: {
     id: identity,
-    kind: oneOf(TRYOUT_KINDS),
+    kind: oneOf([...TRYOUT_KINDS, ...DROPPED_TRYOUT_KINDS]),
     label: text,
     description: nullable(text),
     startEpochDay: numeric,
@@ -378,8 +379,7 @@ const ROWS = {
   },
   feltSenseEntries: {
     id: identity,
-    tryoutId: nullable(text),
-    milestoneId: nullable(text),
+    tryoutId: text,
     epochDay: numeric,
     mood: integerBetween(1, 5),
     note: nullable(text)
@@ -456,9 +456,6 @@ const ROWS = {
     entryId: text,
     epochDay: numeric,
     text: text
-  },
-  wordIgnore: {
-    word: text
   },
   documents: {
     id: identity,

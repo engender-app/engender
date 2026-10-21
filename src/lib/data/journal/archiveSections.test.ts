@@ -91,7 +91,7 @@ test('the tryouts constraint is what keeps felt-sense rows from being dropped', 
     tryouts: [
       { id: 't-1', kind: 'name', label: 'Alex', description: null, startEpochDay: 19900, endEpochDay: null, photos: [] }
     ],
-    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', milestoneId: null, epochDay: 19910, mood: 4, note: null }]
+    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', epochDay: 19910, mood: 4, note: null }]
   };
   const tryouts = ARCHIVE_SECTIONS.find((s) => s.name === 'tryouts')!;
   const milestones = ARCHIVE_SECTIONS.find((s) => s.name === 'milestones')!;

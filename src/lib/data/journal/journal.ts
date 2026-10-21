@@ -67,7 +67,6 @@ import { makeVoiceArea, type VoiceArea } from './voiceRecordings';
 import { makeVoiceBenchmarksArea, type VoiceBenchmarksArea } from './voiceBenchmarks';
 import type { VoicePracticeTakesArea } from './voicePracticeTakes';
 import { makeWearSessionsArea, type WearSessionsArea } from './wearSessions';
-import type { WordIgnoreArea } from './wordIgnore';
 import { deferredArea } from './deferredArea';
 
 /** Every write below that addresses a row by id answers the unknown-id
@@ -190,12 +189,6 @@ export interface Journal {
       rows here outlive the era they name, and resurfacingConsent.ts is the
       one place that reads the two areas together. */
   eraMutes: EraMutesArea;
-  /** Which words the words screen has been told to stop counting (phase 8
-      features ticket 48, ADR-0003). Rows only, keyed by the word itself -
-      wordFrequency.ts's pure fold is what actually drops them from a
-      count, taking this area's read as a parameter rather than reading the
-      driver. */
-  wordIgnore: WordIgnoreArea;
   /** What was happening around the numbers a time chart draws (phase 5
       deepening ticket 23): milestones, regimen episodes, dose and journaling
       pauses, tryouts, and a procedure's surgery day and recovery window, for
@@ -293,11 +286,9 @@ export interface Journal {
       (ADR-0010) - this area owns only what it alone writes. Its
       felt-sense history lives in `feltSense` instead (phase 5 ticket 24). */
   tryouts: TryoutsArea;
-  /** One table for a tryout's felt-sense history and a milestone's alike
-      (phase 5 ticket 24, CONTEXT: "Felt-sense entry"), the same shape
-      `photos` already has for an entry's and a milestone's photos. Never
-      required - offering one is `tryouts`' and `milestones`' screens'
-      business, not this area's. */
+  /** A tryout's felt-sense history (phase 5 ticket 24, CONTEXT:
+      "Felt-sense entry"). Never required - offering one is the tryout
+      screens' and the entry editor's business, not this area's. */
   feltSense: FeltSenseArea;
   /** Free-write letters to the person's future self, sealed until a
       chosen unlock day (phase 4 ticket 19). Stores the text and the
@@ -433,9 +424,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     marginNotes,
     eras,
     eraMutes,
-    wordIgnore: deferredArea<WordIgnoreArea>(async () =>
-      (await import('./wordIgnore')).makeWordIgnoreArea(driver)
-    )(['getIgnoredWords', 'setWordIgnored']),
     chartAnnotations: deferredArea<ChartAnnotationsArea>(async () =>
       (await import('./chartAnnotations')).makeChartAnnotationsArea({
         appointments,

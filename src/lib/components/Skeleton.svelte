@@ -39,3 +39,7 @@
     </div>
   {/each}
 </div>
+
+<style>
+  .skeleton-dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
+</style>

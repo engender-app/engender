@@ -363,7 +363,7 @@ test('decade fixture retains its regimen, letter and tryout dates', async () => 
   expect((await journal.letters.getLetters(100)).map((l) => l.epochDay).sort((a, b) => a - b))
     .toEqual([first + 200, first + 900, last - 400, last - 30]);
   expect((await journal.tryouts.getTryouts()).map((t) => t.startEpochDay).sort((a, b) => a - b))
-    .toEqual([400, 490, 580, 670, 760, 850].map((offset) => first + offset));
+    .toEqual([400, 490, 580, 670].map((offset) => first + offset));
   expect(summary.entries).toBe(3300);
   expect(summary.photos).toBe(391);
   expect(summary.doseEvents).toBe(1466);

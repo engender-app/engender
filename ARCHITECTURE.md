@@ -382,7 +382,6 @@ erDiagram
   tryout ||--o{ milestone : tryout_id
   tryout ||--o{ tryout_photo : has
   tryout ||--o{ felt_sense : tryout_id
-  milestone ||--o{ felt_sense : milestone_id
   checklist ||--o{ checklist_item : has
   hair_removal_session ||--o{ hair_removal_photo : has
   effect_category ||--o{ personal_effect_type : category
@@ -397,7 +396,7 @@ The rest, without SQL edges:
 | Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064), `journaling_pause` |
 | Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal`, `roadmap_track` (ADR-0068) |
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
-| Housekeeping | `reminder`, `pref`, `word_frequency_ignore`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |
+| Housekeeping | `reminder`, `pref`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |
 
 [unprompted/resurfacing.ts](src/lib/unprompted/resurfacing.ts) loads eras
 and mutes for each registered resurfacing surface. On this day filters out

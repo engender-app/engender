@@ -1,32 +1,8 @@
-/* Frame-by-frame captures of the return moment's five movements (redesign
-   ticket 35, DIRECTION.md rules 10 and 15, ADR-0078).
+/* Frame captures of the return moment arriving from Home. The five linked
+   rows use the same block entrance in either motion setting.
 
-   The screen is nothing but arriving things, so every one of them is
-   recorded rather than a signature moment: a still cannot review a
-   transition, and Alicja reviews motion frame by frame, naming frames.
-
-   - the items arriving, each row's block clipping open from its own left
-     edge a stagger step after the row above;
-   - an offer opening, the sheet rising from the bottom edge;
-   - an answer landing, the sheet leaving as the write goes through;
-   - an answered row leaving, giving its own height back with the rows
-     under it closing up;
-   - the empty state, which is what the space the last row gave back turns
-     into.
-
-   Then the same five with reduced motion set, which is the ticket's own
-   acceptance box: everything clamps and the flipbook shows the cut.
-
-   Frames land as JPEGs plus a manifest.json naming each scene, its frames
-   and the millisecond each was painted at, in the shape
-   tests/panel-motion-flipbook.mjs reads. Where a scene has something to
-   measure rather than only to watch, the page samples it on every
-   animation frame and the manifest carries the samples beside the frames.
-
-   Run: node tests/return-motion-gallery.mjs [outDir] [--only a,b,c]
-   Needs a demo build on disk (VITE_DEMO=1 npm run build); it serves the
-   cwd's `build/`, so the same scenes can be recorded off another checkout
-   by running it with that checkout as cwd. */
+   Run: node tests/return-motion-gallery.mjs [outDir] [--only arrive,reduce-arrive]
+   Needs a demo build on disk. */
 import { preview } from 'vite';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -160,18 +136,6 @@ const READ_ROWS = `
     line: document.querySelector('[data-screen-subtitle]')?.textContent.trim() ?? null
   };`;
 
-/* The sheet's own travel, which is the offer opening and the answer
-   landing: where its top edge is and how far the scrim has come up. */
-const READ_SHEET = `
-  const sheet = document.querySelector('.sheet');
-  const scrim = document.querySelector('[data-sheet-scrim]') ?? sheet?.parentElement;
-  return {
-    open: !!sheet,
-    sheetTop: sheet ? Math.round(sheet.getBoundingClientRect().top) : null,
-    sheetTransform: sheet ? getComputedStyle(sheet).transform : null,
-    scrimOpacity: scrim ? getComputedStyle(scrim).opacity : null
-  };`;
-
 /** Records everything the page paints for SCENE_MS, with `act` fired one
     frame in, so the first frame is the resting state the motion starts
     from. `read`, if given, is sampled per animation frame across the same
@@ -240,103 +204,27 @@ async function record(page, cdp, name, note, act, read, options = {}) {
   console.log(`${name}: ${written.length} frames over ${written.at(-1)?.at ?? 0}ms`);
 }
 
-/** Everything the two contexts record, so the reduced-motion pass is the
-    same five scenes rather than a second script's guess at them. */
-async function scenesFor(page, cdp, tag, notes) {
+async function scenesFor(page, cdp, tag, note) {
   await seedGap(page);
-
-  /* ---- the items arriving. Recorded from Home, because the arrival is a
-     navigation: the field's blind carries the screen in and the rows'
-     blocks clip open under it. ---- */
   await settle(page, '/');
-  await page.waitForTimeout(600);
-  await record(page, cdp, `${tag}arrive`, notes.arrive, () => enterStep(page), READ_ROWS);
+  await record(page, cdp, `${tag}arrive`, note, () => enterStep(page), READ_ROWS);
   await page.waitForSelector('[data-coming-back-item="dose"]');
-
-  /* ---- an offer opening. ---- */
-  await page.waitForSelector('[data-coming-back-yes="dose"]');
-  await record(
-    page,
-    cdp,
-    `${tag}offer-open`,
-    notes.offerOpen,
-    () => page.locator('[data-coming-back-yes="dose"]').click(),
-    READ_SHEET
-  );
-
-  /* ---- an answer landing: the site is tapped first, since the confirm is
-     refused until one is, and the scene is the confirm itself. ---- */
-  await page.locator('[data-site="thigh-left"]').first().click();
-  await page.waitForTimeout(300);
-  await record(
-    page,
-    cdp,
-    `${tag}answer-lands`,
-    notes.answerLands,
-    () => page.locator('[data-coming-back-dose-confirm]').click(),
-    READ_SHEET
-  );
-
-  /* ---- a row leaving. A decline rather than a write, so what the frames
-     show is the row's own height and nothing else: the confirm above
-     already recorded the write. ---- */
-  await page.waitForSelector('[data-coming-back-yes="wear-session"]');
-  await page.waitForTimeout(400);
-  await record(
-    page,
-    cdp,
-    `${tag}row-leaves`,
-    notes.rowLeaves,
-    () => page.locator('[data-coming-back-no="wear-session"]').click(),
-    READ_ROWS,
-    { cropOf: '[data-list-card]' }
-  );
-
-  /* ---- the empty state, arriving. Recorded as a navigation rather than
-     as the last row leaving, because that is how it is actually reached:
-     an arrival is a link to the screen that owns it and not an offer, so a
-     list holding one cannot be answered down to nothing. What a person
-     meets is the route opened with the journal holding nothing for them -
-     which ADR-0062 says must draw rather than redirect - and what moves is
-     the field's blind coming down to a step with no list under it.
-
-     The gap is marked met by the visit above, so Home no longer opens the
-     surface and the offers are answered; a plain navigation to the route
-     is now the honest way in. ---- */
-  await settle(page, '/');
-  await page.waitForTimeout(600);
-  await record(page, cdp, `${tag}empty`, notes.empty, () => enterStep(page), READ_ROWS);
 }
 
 try {
   {
     const { context, page, cdp } = await open('no-preference');
     await dress(page, 'trans', 'light');
-    await scenesFor(page, cdp, '', {
-      arrive:
-        "The return moment arriving from Home: the field's blind comes down to the step's own height and each row's block clips open from its left edge, one --stagger-step after the row above. The words beside a block cut, as words do.",
-      offerOpen: 'An offer opened: the sheet rises from the bottom edge and the withdrawal settles behind it.',
-      answerLands:
-        'The answer landed: the sheet leaves on the frame of the tap, the write goes through underneath it, and the row it was about is on its way out behind it.',
-      rowLeaves:
-        'A row answered with "Leave it running": it gives its own height back and the rows under it close up with it rather than jumping.',
-      empty:
-        "The route opened with nothing waiting: the blind comes down to a step that has no list under it, and the line says the true sentence. Reached this way rather than by answering the last row, because an arrival is a link and not an offer - a gap holding one cannot be answered down to nothing."
-    });
+    await scenesFor(page, cdp, '',
+      'The field arrives from Home and each linked row icon clips open from its left edge.');
     await context.close();
   }
 
   {
     const { context, page, cdp } = await open('reduce');
     await dress(page, 'trans', 'light');
-    await scenesFor(page, cdp, 'reduce-', {
-      arrive:
-        'The same arrival with reduce-motion set: every block is whole in the first frame it is drawn, and the field crossfades rather than travelling.',
-      offerOpen: 'The same offer with reduce-motion set: the sheet fades in where it stands.',
-      answerLands: 'The same confirm with reduce-motion set: the sheet cuts.',
-      rowLeaves: 'The same decline with reduce-motion set: the row cuts and the rows under it are already closed up in the next frame.',
-      empty: 'The same arrival with reduce-motion set: the field crossfades and the line is in place in the first frame.'
-    });
+    await scenesFor(page, cdp, 'reduce-',
+      'The same arrival with reduced motion: each row arrives without travel.');
     await context.close();
   }
 } finally {

@@ -1452,15 +1452,15 @@ try {
   }
   /* How the days fell: five mood steps, always - a step nothing landed on
      holds its place at zero width rather than sliding the rest under the
-     wrong part of the scale. */
+     wrong part of the scale. Drawn on the door itself since functional
+     audit ticket 12's sign-off, with no tile of its own. */
   await fresh('/stats');
-  await page.locator('[data-reading="days"]').click();
-  await page.waitForURL('**/stats/days?**');
-  await page.waitForSelector('[data-strip-step]', { state: 'attached' });
-  if ((await page.locator('[data-strip-step]').count()) !== 5) {
+  await page.waitForSelector('[data-chart-card="mood-days"] [data-strip-step]', { state: 'attached' });
+  if ((await page.locator('[data-chart-card="mood-days"] [data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
-  ok('stats: the span drives every tile, day by day and the days open at the span');
+  if (await page.locator('[data-reading="days"]').count()) throw new Error('the mood strip still has a tile of its own');
+  ok('stats: the span drives every tile, day by day opens at the span, the mood strip draws on the door');
 } catch (e) { fail('stats', e); }
 });
 
@@ -1900,24 +1900,19 @@ try {
 } catch (e) { fail('accessibility tuning', e); }
 });
 
-/* 9. milestone shuffle */
-await flow('shuffle', async () => {
+/* 9. milestone templates */
+await flow('milestone templates', async () => {
 try {
   await fresh('/transition/milestones');
-  /* The templates are a sheet off the header now (phase 5 UX ticket 25):
-     the screen opened on a picker for a fifteenth milestone rather than on
-     the milestones. The shuffle went with them. */
+  /* The templates are a sheet off the header (phase 5 UX ticket 25). It
+     lists all eight in one order, with no shuffle (functional audit ticket
+     32): three at a time behind a dice hid five of them. */
   await page.locator('[data-add]').click();
-  await page.waitForSelector('[data-shuffle]');
-  const first = await page.locator('[data-template]').allTextContents();
-  let changed = false;
-  for (let i = 0; i < 6 && !changed; i++) {
-    await page.locator('[data-shuffle]').click();
-    changed = JSON.stringify(await page.locator('[data-template]').allTextContents()) !== JSON.stringify(first);
-  }
-  if (!changed) throw new Error('shuffle never changed');
-  ok('milestone template shuffle');
-} catch (e) { fail('shuffle', e); }
+  await page.waitForSelector('[data-template]');
+  const keys = await page.locator('[data-template]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-template')));
+  if (keys.length !== 8) throw new Error('templates listed: ' + JSON.stringify(keys));
+  ok('every milestone template is listed');
+} catch (e) { fail('milestone templates', e); }
 });
 
 /* 10. custom scale: the live preview, then saving it, then finding it in the
@@ -3943,11 +3938,16 @@ try {
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
   await fresh('/stats');
   if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
+  /* Functional audit ticket 12: with Wrapped off, Look back names it nowhere,
+     and the off notice opens the screen the switch is on. */
+  if (await page.locator('a[href^="/wrapped"]').count()) throw new Error('Look back kept a Wrapped link with Wrapped off');
   await fresh('/wrapped/week');
   if (await page.locator('[data-wrapped-stats], [data-wrapped-cover]').count()) {
     throw new Error('a wrapped still rendered with the feature turned off');
   }
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
+  const offAction = await page.locator('[data-notice="wrapped-off"] [data-notice-action]').getAttribute('href');
+  if (offAction !== '/settings/notifications') throw new Error('the off notice opens ' + offAction);
 
   await fresh('/settings');
   await page.locator('[data-list-row="notifications"]').click();
@@ -5403,16 +5403,8 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Modes, entry templates and the words the reading skips are Settings
-  // rows now (redesign tickets 51 and 62, ADR-0084), never on the hub at
-  // all. Words has no row anywhere any more - the reading draws on Look
-  // back itself.
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
-
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await page.locator('[data-list-row="words"]').click();
-  await page.waitForURL('**/settings/words');
-
+  // Modes and entry templates are Settings rows now (redesign ticket 51,
+  // ADR-0084), never on the hub at all.
   // Modes and entry templates stopped being screens of their own (audit
   // item 6): each row now raises a sheet over Settings rather than
   // navigating, so the URL settles back on /settings and the manager's own
@@ -5579,35 +5571,23 @@ try {
     throw new Error('the return surface asks about more than one dose slot');
   }
 
-  /* Closing the running wear session: the end day is picked, never assumed,
-     so the confirm is refused until the field has one. */
-  await page.locator('[data-coming-back-yes="wear-session"]').click();
-  await page.waitForSelector('[data-coming-back-wear-confirm]');
-  if (!(await page.locator('[data-coming-back-wear-confirm]').isDisabled())) {
-    throw new Error('the wear session could be closed without naming the day it ended');
+  for (const kind of ['letter', 'milestone', 'era', 'wear-session', 'dose']) {
+    for (const row of await page.locator(`[data-coming-back-item="${kind}"]`).all()) {
+      if (!(await row.getAttribute('href'))) throw new Error(`the ${kind} return row does not link to its screen`);
+    }
   }
-  const endedOn = await page.evaluate(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 20);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
-  await fillDate(page, '#coming-back-wear-end', endedOn);
-  await page.locator('[data-coming-back-wear-confirm]').click();
-  /* The row goes because the session stopped running, not because the screen
-     hid it: the read re-runs on the write and getRunningSession answers with
-     nothing. Asserted on the state after the write rather than on the sheet
-     closing, which is transient. */
-  await page.waitForSelector('[data-coming-back-item="wear-session"]', { state: 'detached' });
-
-  /* Backfilling one item asks nothing about any other: the dose row is still
-     exactly where it was, unanswered, after a wear session was closed. */
-  if ((await page.locator('[data-coming-back-item="dose"]').count()) !== 1) {
-    throw new Error('closing the wear session changed what the surface asks about doses');
+  if ((await page.locator('[data-coming-back-item] button, [data-sheet]').count()) !== 0) {
+    throw new Error('the return screen still offers an inline editor');
   }
-
-  // And a no takes the row away without writing anything.
-  await page.locator('[data-coming-back-no="dose"]').click();
-  await page.waitForSelector('[data-coming-back-item="dose"]', { state: 'detached' });
+  await page.locator('[data-coming-back-item="wear-session"]').click();
+  await page.waitForURL('**/body/wear');
+  await page.goto(BASE + '/coming-back', { waitUntil: 'networkidle' });
+  await booted();
+  await page.waitForSelector('[data-coming-back-item="dose"]');
+  await page.locator('[data-coming-back-item="dose"]').click();
+  await page.waitForURL('**/care/doses*');
+  await page.waitForSelector('[data-sheet]');
+  await page.locator('[data-close-record]').click();
 
   /* The moment is over. Home is where a return is noticed, so this is the
      navigation that would open it again if the gap had not been marked met -
@@ -6111,7 +6091,7 @@ try {
    own first and last entry: on an empty journal there is nothing to clamp to
    and the line is correctly absent. The persona seeds eras of its own
    (redesign ticket 48, "Before HRT"; ticket 62 added two more that cover
-   entries, so the words reading has something to weigh) - checked for, then
+   entries) - checked for, then
    cleared, all of them, so the rest of this flow keeps testing "all of it"
    and "earlier still" against the empty slate they were written against:
    "all of it" is both bounds left open, which is the one era that would

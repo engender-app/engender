@@ -97,9 +97,6 @@ export async function seedCompleteArchiveJournal(
   const trashedEntry = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
   await journal.marginNotes.add({ entryId: trashedEntry, epochDay: 20051, text: 'A note on a trashed entry' });
   await journal.entries.deleteEntry(trashedEntry);
-  // Mixed case, so the fixture pins that the write folds it (phase 8
-  // features ticket 48).
-  await journal.wordIgnore.setWordIgnored('Kraków', true);
 
   /* One document, dated years before this journal's own entries (phase 8
      features ticket 52): the fixture is where the archive's file manifest
@@ -114,10 +111,12 @@ export async function seedCompleteArchiveJournal(
     name: 'HRT start',
     epochDay: 19000,
     description: 'the pharmacist barely looked up',
-    templateKey: 'hrt_start'
+    templateKey: 'hrt_start',
+    // Not celebrated, so the one field a celebrated milestone leaves out is
+    // in the fixture (functional audit ticket 32).
+    celebrate: false
   });
   await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
-  await journal.feltSense.add({ milestoneId: milestone }, { epochDay: 19365, mood: 5, note: 'a year on' });
 
   // Filed under the milestone above (phase 8 features ticket 56), so the
   // fixture pins that the link travels and not just the two columns being

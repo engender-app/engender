@@ -26,7 +26,7 @@ The custom-scale Save/Back assertion fails on the old code by reopening
 `/settings/dimension`. No history or navigation function is mocked.
 
 `browser-tier/focus-swaps.mjs` presses Enter through Today editing, access-mode
-steps, recovery-key creation/replacement/revocation, Trash, Words and Notice
+steps, recovery-key creation/replacement/revocation, Trash and Notice
 removals. It checks named active elements, empty-list fallbacks and preserved
 Tab stops with full and reduced motion. `browser-tier/focus-arrival.mjs` drives
 first run and a cold unlock through the complete production shell. Both run in
@@ -640,7 +640,8 @@ To run one on its own, use
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
 | `breathing-frames` | Safe space's breathing tide: nothing jumps, pops in or goes backwards across a cycle, pause, resume, a mid-breath reduced-motion switch and a trip to the background, and the Polish hold word fits the vessel |
 | `tryout-save-check` | tryout label guidance, retained drafts, pending writes, discard, saved outcomes, navigation retry and photo ownership against real routes |
-| `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes |
+| `tryout-milestone-felt-check` | tryout felt-sense rows name their mood, and adoption sets the app name to the stored tryout name |
+| `milestone-celebration-check` | the milestone add sheet lists every template with no shuffle, a new milestone asks for no felt sense, the celebrate switch saves, and Today throws no confetti for a milestone set not to be celebrated or an anniversary in a muted era |
 | `dose-amount-check` | taken and changed doses refuse non-positive or non-finite amounts; fractions, skipped zero and animated EN/PL feedback survive |
 | `range-editors-check` | regimen, dose-pause, journaling-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops |
 | `regimen-editor-check` | independent episode and schedule edits, retained drafts, failed writes, pending saves, pause and end actions, route discard and lock concealment |
@@ -684,7 +685,6 @@ To run one on its own, use
 | `chart-a11y-check` | every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws at 320 and 390px |
 | `tally-chip-row-yank` | Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after |
 | `changes-methodology-check` | the changes screen's methodology disclosure and record action |
-| `words-reading-scope-check` | the words reading's scope and baseline on stats, stats/words and settings/words |
 | `entry-pending-save` | delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish |
 | `radio-groups-gallery` | radio groups select by keyboard and the mood faces have full targets (a guard despite its name) |
 | `roadmap-track-summary` | the selected track travels with the goal list it shows |
@@ -709,13 +709,14 @@ To run one on its own, use
 
 | Probe | Why not |
 | --- | --- |
+| `fa16-quick-add-return` | Demo-build check of empty and running-regimen quick actions, five linked return row kinds, and dose editor handoff. Run after `VITE_DEMO=1 npm run build`. |
 | `session-device-credential` | Android session gate credential fallback after refusal, feedback, keyboard focus and concurrent prompts; light/dark screenshots. Uses a native bridge fixture; Android instrumentation proves platform behavior. |
 | `roadmap-goal-visibility` | Demo-build hide, reload, goal source link and restore guard. `--polish --zoom` checks Polish at 195px width; `--gallery` captures hidden goals across all palettes and both themes. |
 | `roadmap-dismiss-motion` | Focused demo-build motion probe retained for ticket 104. Dismissal and restoration preserve row travel, keyboard focus, persisted dismissal, step counts and reduced motion. |
 | `roadmap-track-switch-motion` | Track changes retain outgoing and incoming opacity frames, row state, switcher focus and reduced-motion behavior. |
 | `locale-25` | Polish weekdays, decimal values and translated joins at 390 px; a real 30 MiB PNG imports while the document ceiling stays 25 MiB (run after a build) |
 | `return-floor-check` (`npm run test:return-floor`) | Red on main. At 195px, the width 200% zoom leaves of a 390px phone, the English milestone subtitle "Its day was 4 September 2026." is wider than its row, and `.kit-row-sub` cannot break the word. Promote it once that is fixed. |
-| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed, plus opened letters' rows and the Words cloud (12 October U38/U39), reaches 48px at 320 and 390px with text at 100% and 200% (letters and Words also at 195px), Journal, Lab results, a saved question and In the room do the same and at 195px in English and Polish too, where Journal's month and In the room's question show whole (not cut by the viewport or an ancestor that clips sideways) and no two of their listed controls overlap (12 October U51, U52, U54; red on the base with 36 failures), and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. A target's size is its layout box joined with any `::before`/`::after` extension, and a walk with `elementFromPoint` from its centre cuts a side short only where something covers it; the walk alone is up to a pixel off and had passed a 47px control. The run stops unless planted 47px and 48px buttons read under and at the floor. It ran in about two and a half minutes over 14 screens on 15 October; after-release 18 measured six minutes and kept it out of CI shards for that reason (after-release 18, last-audit UI 25, 48). |
+| `a11y-targets-large-text` | Every control the 30 September and 5 October accessibility audits listed, plus opened letters' rows (12 October U38/U39), reaches 48px at 320 and 390px with text at 100% and 200% (letters also at 195px), Journal, Lab results, a saved question and In the room do the same and at 195px in English and Polish too, where Journal's month and In the room's question show whole (not cut by the viewport or an ancestor that clips sideways) and no two of their listed controls overlap (12 October U51, U52, U54; red on the base with 36 failures), and every bottom-navigation name is whole in English and Polish at 100%, 130% and 200%; the calendar's date links at 320 are printed only. A target's size is its layout box joined with any `::before`/`::after` extension, and a walk with `elementFromPoint` from its centre cuts a side short only where something covers it; the walk alone is up to a pixel off and had passed a 47px control. The run stops unless planted 47px and 48px buttons read under and at the floor. It ran in about two and a half minutes over 14 screens on 15 October; after-release 18 measured six minutes and kept it out of CI shards for that reason (after-release 18, last-audit UI 25, 48). |
 
 `browser-tier/run.mjs` also imports seven probes (`care-read`,
 `care-spine-links`, `read-failures`, `source-record-links`,
@@ -850,7 +851,6 @@ available for the surface or device it measures.
 | `journal-book-summary-signoff-page` | assemble the journal book crops into a review page |
 | `settings-features-check` | checks the Features to Show manager's keyboard access, focus and scroll return, saved choices, reduced motion, palette/theme layouts, Polish disguise at 230px and actual 200% browser zoom; run after a demo build |
 | `lock-timing-gallery` | capture access mode, security, setup and unlock changes against a demo build |
-| `milestone-shuffle-motion` | sample each frame of milestone suggestion shuffles against a dev server |
 | `onboarding-scales-cold` | check that scales appear on a cold first run against a demo build |
 | `regimen-editor-gallery` | capture regimen editors against a demo build (`gallery:regimen`) |
 | `locale-build` | built production locale selection, isolated startup requests, both offline graphs, and online/offline language switches through Settings with localized passphrase gates |

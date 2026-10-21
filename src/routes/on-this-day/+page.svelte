@@ -19,7 +19,7 @@
       key="on-this-day-off"
       title={m.on_this_day_off_title()}
       text={m.on_this_day_off_body()}
-      action={{ label: m.nav_settings(), href: '/settings' }}
+      action={{ label: m.notif_title(), href: '/settings/notifications' }}
       aria-live="polite"
     />
   {:else}

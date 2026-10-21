@@ -252,14 +252,13 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['name']
   }),
-  /* A felt sense hangs off a tryout or off a milestone (feltSense.ts), and
-     the hit has to go back to whichever one - so the tryout's travelling id
-     is the context, and a null one means the owner is a milestone. */
+  /* A felt sense hangs off a tryout (feltSense.ts), and the hit goes back
+     to it, so the tryout's travelling id is the context. */
   area({
     key: 'feltSense',
     covers: ['feltSenseEntries'],
     tables: ['feltSense', 'tryout'],
-    from: 'felt_sense fs LEFT JOIN tryout t ON t.id = fs.tryout_id',
+    from: 'felt_sense fs JOIN tryout t ON t.id = fs.tryout_id',
     uuid: 'fs.uuid',
     date: { kind: 'epochDay', column: 'fs.epoch_day' },
     columns: ['fs.note'],
@@ -560,11 +559,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // finished area's own records stay searchable, because search finding
   // everything is what makes it trustworthy, and the row itself is an area
   // key and a day (phase 8 deepening ticket 13).
-  areaStates: 'no text of its own: an area key, a flag and a day',
-  // The word itself is already searchable where it was actually written -
-  // the entry's own note, matched through the FTS index (ADR-0005) - so
-  // matching it here too would show the same word twice.
-  wordIgnore: 'a word already searchable in the note it came from, not new text of its own'
+  areaStates: 'no text of its own: an area key, a flag and a day'
 };
 
 /* SEARCH_AREAS stays exported only for its own test (AU-09 test-only review). */

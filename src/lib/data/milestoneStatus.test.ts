@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';
-import { milestoneStatus, upcomingMilestones } from './milestoneStatus.ts';
+import { landingMilestone, milestoneStatus, upcomingMilestones } from './milestoneStatus.ts';
 import type { Milestone } from './types.ts';
 
 const day = (year: number, month: number, date: number) => epochDayFromLocalDate(new Date(year, month - 1, date));
@@ -80,4 +80,33 @@ test('a milestone landing today sorts to the front, ahead of everything counting
     today
   );
   assert.deepEqual(ordered.map((x) => x.m.name), ['today', 'tomorrow']);
+});
+
+test('Home marks the milestone landing today, on its own day or on an anniversary', () => {
+  const today = day(2026, 8, 11);
+  assert.equal(landingMilestone([milestone('tomorrow', today + 1), milestone('today', today)], today, () => true)?.m.name, 'today');
+  assert.equal(landingMilestone([milestone('three years on', day(2023, 8, 11))], today, () => true)?.m.name, 'three years on');
+  assert.equal(landingMilestone([milestone('last week', today - 7), milestone('next week', today + 7)], today, () => true), undefined);
+});
+
+test('a milestone set not to be celebrated is never marked, and the next one landing today is', () => {
+  const today = day(2026, 8, 11);
+  const quiet = { ...milestone('the hard one', day(2023, 8, 11)), celebrate: false };
+  assert.equal(landingMilestone([quiet], today, () => true), undefined);
+  assert.equal(landingMilestone([{ ...milestone('today, quietly', today), celebrate: false }], today, () => true), undefined);
+  assert.equal(landingMilestone([quiet, milestone('also today', today)], today, () => true)?.m.name, 'also today');
+});
+
+test('an anniversary inside a muted era is not marked; one outside it still is', () => {
+  const today = day(2026, 8, 11);
+  const muted = day(2023, 8, 11);
+  const mayResurface = (epochDay: number) => epochDay !== muted;
+  assert.equal(landingMilestone([milestone('in the muted year', muted)], today, mayResurface), undefined);
+  assert.equal(
+    landingMilestone([milestone('in the muted year', muted), milestone('another year', day(2021, 8, 11))], today, mayResurface)?.m.name,
+    'another year'
+  );
+  // Landing on its own day is not resurfacing anything, so a mute that
+  // reaches today does not hold it back.
+  assert.equal(landingMilestone([milestone('today', today)], today, () => false)?.m.name, 'today');
 });

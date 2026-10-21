@@ -249,6 +249,10 @@ export interface Milestone {
       ADR-0045). Nulled out the same way procedureId is when the tryout it
       names is deleted. */
   tryoutId?: string | null;
+  /** False when the person asked for no celebration on Home, on the day
+      and on every anniversary (functional audit ticket 32). Absent reads as
+      true, the resting state of every milestone. */
+  celebrate?: boolean;
   photo: Photo | null;
   /** Resolved alongside the row for the provenance line (phase 5 deepening
       ticket 22): a linked procedure's or tryout's own name, and a custom
@@ -355,8 +359,7 @@ export interface ComfortItem {
 
 /** What someone is trying out (phase 4 ticket 16, widened past name/pronoun
     by phase 5 ticket 13, CONTEXT: "Tryout"): a name or pronoun set, a
-    style, a garment, makeup, or a presentation step - one record type
-    covering whatever is being tried, rather than a second type forked
+    style or makeup - one record type covering whatever is being tried, rather than a second type forked
     alongside this one for everything that is not a name or pronoun set. */
 export type TryoutKind = (typeof TRYOUT_KINDS)[number];
 
@@ -368,8 +371,8 @@ export type TryoutKind = (typeof TRYOUT_KINDS)[number];
     past with no rule that exactly one of them is current.
 
     `description` is free text alongside `label`, for a kind whose label
-    does not carry enough on its own - a style or garment tryout usually
-    needs more said about it than a name or pronoun set does. Null for any
+    does not carry enough on its own - a style tryout usually needs more said
+    about it than a name or pronoun set does. Null for any
     kind that has no use for it.
 
     Which entries fall inside a tryout's range is never stored (ADR-0010):
@@ -406,10 +409,9 @@ export interface TryoutPhoto {
     "Mood") rather than inventing a second one for the same kind of
     judgement.
 
-    Belongs to exactly one Tryout or Milestone (CONTEXT: "Felt-sense
-    entry"); which owner never travels here, the same reasoning `Photo`
-    carries no `entryId`/`milestoneId` of its own - the caller already
-    knows which owner it asked for. */
+    Belongs to one Tryout (CONTEXT: "Felt-sense entry"), which never
+    travels here, the same reasoning `Photo` carries no owner id of its
+    own - the caller already knows which tryout it asked for. */
 export interface FeltSenseEntry {
   id: string;
   epochDay: number;
@@ -733,10 +735,12 @@ export interface WearSession {
     orders a picker so whichever matches the active preset sorts first. */
 export type Lean = 'femme' | 'masc' | 'neutral';
 
+/** A milestone the app suggests by name. No lean (functional audit ticket
+    32): every milestone template names a kind of event rather than a
+    direction, so all eight were neutral and ranking them did nothing. */
 export interface MilestoneTemplate {
   key: string;
   name: string;
-  lean: Lean;
 }
 
 /** A person's own suggestion for an entry (phase 4 features ticket 17,

@@ -5,7 +5,6 @@ import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/rec
 import { setLastLookBackSpan } from '../../src/lib/data/lookBackSpan';
 import { prepareScreenJournal } from '../browser-tier/screen-journal';
 import { setLookBackDay } from './today-stub';
-import { assertLookBackWordsRead } from './look-back-ownership';
 import type { installWorkerReadRecorder } from './worker-reads';
 
 /** Attach and hydrate before the cold read window, as Home's mount does. */
@@ -15,22 +14,8 @@ export async function prepareMountedLookBack(
   recorder: RecordingDriver,
   workerReads?: ReturnType<typeof installWorkerReadRecorder>
 ): Promise<() => Promise<{ result: number; detail: string; crossings?: { statements: number; bytes: number } }>> {
-  const noteEntries = journal.entries.noteEntries;
-  let calls = 0;
-  let rows = 0;
-  journal.entries.noteEntries = async () => {
-    calls++;
-    const notes = await noteEntries();
-    rows += notes.length;
-    return notes;
-  };
-  try {
-    await prepareScreenJournal(journal);
-    await recorder.driver.readSnapshot(async () => {});
-  } catch (error) {
-    journal.entries.noteEntries = noteEntries;
-    throw error;
-  }
+  await prepareScreenJournal(journal);
+  await recorder.driver.readSnapshot(async () => {});
   return async () => {
     const target = document.createElement('div');
     document.body.appendChild(target);
@@ -50,9 +35,8 @@ export async function prepareMountedLookBack(
           await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
         }
         await tick();
-        assertLookBackWordsRead(calls, rows);
         return { result: target.querySelectorAll('*').length,
-          detail: `Real Look back mounted at fixture day ${today}; Words read ${rows} notes once; all read groups released` };
+          detail: `Real Look back mounted at fixture day ${today}; all read groups released` };
       } finally {
         await unmount(screen);
       }
@@ -63,7 +47,6 @@ export async function prepareMountedLookBack(
       if (crossings.duplicates) throw new Error(`Mounted Look back sent ${crossings.duplicates} duplicate SQL statements`);
       return { ...result, crossings };
     } finally {
-      journal.entries.noteEntries = noteEntries;
       setLookBackDay(null);
       setLastLookBackSpan(null);
       target.remove();

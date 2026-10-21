@@ -26,7 +26,7 @@ test.each(['adoption', 'procedure', 'trash', 'restore', 'wear'] as const)(
     if (operation === 'adoption') {
       const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Robin', startEpochDay: 20000, endEpochDay: null });
       await journal.feltSense.add({ tryoutId: id }, { epochDay: 20001, mood: 4, note: 'comfortable' });
-      refused = /INSERT INTO felt_sense/;
+      refused = /INSERT INTO milestone/;
       act = (target) => target.tryouts.adoptTryout(id, { endEpochDay: 20002, createMilestone: true });
     } else if (operation === 'procedure') {
       const id = await journal.procedures.upsertProcedure({ name: 'consultation' });

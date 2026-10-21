@@ -124,9 +124,9 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     reference area (ADR-0084) is managed there rather than hosted, so its row
     left this map the way modes left the Transition group outright, onto a
     plain row Settings writes out itself. Redesign ticket 62 took the words
-    row off outright - the reading draws on the Look back door itself now
-    (`WordsReading.svelte`), so there is no second screen for a row to open,
-    and `stats` stopped being a host with it.
+    row off outright - the reading drew on the Look back door itself, until
+    functional audit ticket 12 cut it - so there is no second screen for a
+    row to open, and `stats` stopped being a host with it.
 
     A third route took a fourth off, and it is the one that shrank the host
     map itself rather than just a row in it. Phase 11 all-four-doors ticket
@@ -297,8 +297,8 @@ const ROWS = [
     home: 'transition',
     /* The tryout photos only, which is the registry's own bound: a tryout's
        start and end are a span, and its felt-sense history is
-       `feltSenseEntries`, which belongs to a milestone just as much and is
-       fronted by no row (see `LAST_WRITE_WITHOUT_A_ROW`). */
+       `feltSenseEntries`, which is fronted by no row (see
+       `LAST_WRITE_WITHOUT_A_ROW`). */
     areas: ['tryouts'],
     finishes: null,
     line: 'read'
@@ -586,7 +586,7 @@ export const LAST_WRITE_WITHOUT_A_ROW: Record<Exclude<LastWriteKey, RowArea>, st
   doseEvents: 'behind the care row, whose own screen opens on the last dose',
   labResults: 'behind the care row, whose own screen opens on the last lab draw',
   tallyEvents: 'its own tab, not a row here',
-  feltSenseEntries: 'written on a tryout or a milestone, so it belongs to two rows and is fronted by neither'
+  feltSenseEntries: 'written on a tryout, whose row is fronted by the tryout itself rather than its readings'
 };
 
 type RowArea = (typeof ROWS)[number]['areas'][number];

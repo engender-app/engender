@@ -55,7 +55,8 @@
   import { latestMood } from '$lib/data/latestMood';
   import type { TallyKind } from '$lib/data/types';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { upcomingMilestones } from '$lib/data/milestoneStatus';
+  import { landingMilestone } from '$lib/data/milestoneStatus';
+  import { resurfacing } from '$lib/unprompted/resurfacing';
   import { debriefOfferVisible } from '$lib/data/vocabulary/entryTemplates';
   import { mostRecentPastAppointment } from '$lib/data/journal/appointments';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -514,9 +515,18 @@
      read. The list itself no longer draws here - a milestone still ahead is
      an agenda row - but the day one lands is the one authored moment below,
      and this is the read that knows it. */
-  let upcoming = $derived(upcomingMilestones(vocabulary.milestones, today));
-  let landing = $derived(upcoming.find((x) => x.s.type === 'today' || x.s.isAnnivToday));
-  let celebrate = $derived(page.url.searchParams.get('celebrate') === '1' || !!landing);
+  /* An anniversary brings back a day from the past, so it asks the same
+     consent every resurfacing surface asks (ADR-0049, functional audit
+     ticket 32), and nothing is marked until that read has answered.
+     `?celebrate=1` forces the moment for review, in development and demo
+     builds only: a production build folds the branch away. */
+  let anniversaryConsent = liveQuery((j) => resurfacing('milestone-anniversary', j));
+  let landing = $derived.by(() => {
+    const consent = anniversaryConsent.value;
+    if (!consent) return undefined;
+    return landingMilestone(vocabulary.milestones, today, (day) => consent.mayResurface({ start: day, end: day }));
+  });
+  let celebrate = $derived((__DEMO__ && page.url.searchParams.get('celebrate') === '1') || !!landing);
 
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt, today));
   /* Held back while the app is opening, and only then (redesign ticket 34).
@@ -610,7 +620,8 @@
       !agendaQuery.loading &&
       !appointmentsQuery.loading &&
       settledFor(debriefStateQuery, (answer) => answer.appointmentId === lastAppointmentId) &&
-      !stockProjectionsQuery.loading
+      !stockProjectionsQuery.loading &&
+      !anniversaryConsent.loading
   );
   /* Latched, because the second condition is not one-way the way `loading`
      is: an appointment change can leave the debrief answer a round trip
@@ -806,34 +817,6 @@
     </div>
   </header>
 
-  <!-- The anniversary, as one line rather than a card with a confetti loop
-       falling through it. The words are the ones it always said; what went
-       is the loop, because the flag sun is the whole of the app's ambient
-       motion budget and a second one on the same screen spends it twice
-       (DIRECTION.md, tiers 0 and 4). It takes the agenda's colour, since a
-       milestone landing today is the agenda's own kind of fact. -->
-  {#if celebrate}
-    <!-- Nine pieces over the notice that says which milestone it is (Alicja,
-         2026-08-25: "we want the same confetti animation when it's a
-         milestone day"). A moment that plays once and stops costs nothing
-         after it stops, and this one fires on the day a milestone lands. -->
-    <div class="home-celebrate">
-      {@render cheer()}
-      <Notice
-        icon="sparkle"
-        key="celebration"
-        role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}
-        aria-live="polite"
-        title={landing?.s.years
-          ? m.home_anniv_years({
-              name: landing.m.name,
-              years: m.n_years({ n: landing.s.years ?? 0 })
-            })
-          : m.home_anniv_today({ name: landing?.m.name ?? m.ms_default_name() })}
-      />
-    </div>
-  {/if}
-
   <!-- One tier's worth of tiles, in `block`'s weight and shape - shared by
        the today location above and the moment location below (phase 8
        features ticket 63), so the two locations cannot read the same table
@@ -875,6 +858,37 @@
        agenda hold their room above the log strip until their reads agree,
        so the strip and everything under it stay where they painted. -->
   <ReadReserve ready={foldRevealed} estimate={reserveAbove} onrest={rememberAbove} data-home-reserve="above">
+    <!-- Inside the reserve (functional audit ticket 32): the celebration
+         waits on the anniversary consent read, one of the fold's reads, so
+         it arrives with the fold and the reserve travels its height rather
+         than the strip below jumping 90px a frame after Today painted. -->
+    <!-- The anniversary, as one line rather than a card with a confetti loop
+         falling through it. The words are the ones it always said; what went
+         is the loop, because the flag sun is the whole of the app's ambient
+         motion budget and a second one on the same screen spends it twice
+         (DIRECTION.md, tiers 0 and 4). It takes the agenda's colour, since a
+         milestone landing today is the agenda's own kind of fact. -->
+    {#if celebrate}
+      <!-- Nine pieces over the notice that says which milestone it is (Alicja,
+           2026-08-25: "we want the same confetti animation when it's a
+           milestone day"). A moment that plays once and stops costs nothing
+           after it stops, and this one fires on the day a milestone lands. -->
+      <div class="home-celebrate">
+        {@render cheer()}
+        <Notice
+          icon="sparkle"
+          key="celebration"
+          role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}
+          aria-live="polite"
+          title={landing?.s.years
+            ? m.home_anniv_years({
+                name: landing.m.name,
+                years: m.n_years({ n: landing.s.years ?? 0 })
+              })
+            : m.home_anniv_today({ name: landing?.m.name ?? m.ms_default_name() })}
+        />
+      </div>
+    {/if}
     <!-- The today tier leads Home, above the agenda (phase 8 features
          ticket 63, ADR-0067; redesign ticket 13): what is happening now - a
          wear session running, a dose the day expects, an appointment on the

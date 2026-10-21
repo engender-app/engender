@@ -94,16 +94,13 @@ const AREA_ROWS: Record<
     href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? hubRow('surgery').href : hubRow('appointments').href)
   },
   sideEffects: { ...iconOf('effects'), label: () => m.side_effects(), href: () => hubRow('effects').href },
-  /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
-     travels with the hit for exactly this (textSearch.ts): with one, the hit
-     opens that tryout, which is where its history is read; without one, the
-     owner is a milestone and the milestones screen is as close as there is.
-     The tryout is the more common of the two, so its screen is what the
-     row's own icon names. */
+  /* A felt sense hangs off a tryout, and the tryout's id travels with the
+     hit for exactly this (textSearch.ts): the hit opens that tryout, which
+     is where its history is read. */
   feltSense: {
     ...iconOf('tryouts'),
     label: () => m.search_area_felt_sense(),
-    href: (hit) => (hit.context ? `${hubRow('tryouts').href}/${hit.context}` : hubRow('milestones').href)
+    href: (hit) => `${hubRow('tryouts').href}/${hit.context}`
   },
   tryouts: {
     ...iconOf('tryouts'),

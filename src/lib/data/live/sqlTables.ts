@@ -73,7 +73,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   importLog: ['import_log'],
   areaState: ['area_state'],
   marginNote: ['margin_note'],
-  wordIgnore: ['word_frequency_ignore'],
   document: ['document']
 };
 

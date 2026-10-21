@@ -257,6 +257,12 @@ try {
   if (demoBar.length === 0) ok('production build contains no demo bar');
   else fail('production build contains no demo bar', `found ${demoBar.join(', ')}`);
 
+  /* Functional audit ticket 32: `?celebrate=1` forces Home's milestone
+     celebration for review. Behind `__DEMO__`, the read of the parameter
+     folds away, so a production build has no way to be told to celebrate. */
+  if (!/\.get\(\s*["'`]celebrate["'`]\s*\)/.test(bundle)) ok('production build ignores ?celebrate=1');
+  else fail('production build ignores ?celebrate=1', 'the bundle still reads the celebrate parameter');
+
   /* The counterpart: the vocabulary every real user needs does ship, so a
      "nothing found" pass above can't be the bundle simply not being read. */
   if (bundle.includes('euphoria_dysphoria')) ok('production build does contain the built-in vocabulary');

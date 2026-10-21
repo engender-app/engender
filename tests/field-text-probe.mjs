@@ -109,7 +109,7 @@ const COLD_ROUTES = (ALL_ROUTES ? (x) => x : (x) => x.slice(0, 4))([
     '/settings/dimension', '/settings/eras', '/settings/export', '/settings/journal-book',
     '/settings/journaling-pause', '/settings/notifications', '/settings/passphrase',
     '/settings/permissions', '/settings/recovery-key', '/settings/reminders', '/settings/security',
-    '/settings/tags', '/settings/trash', '/settings/words', '/support/resources', '/tally',
+    '/settings/tags', '/settings/trash', '/support/resources', '/tally',
     '/transition/letters', '/transition/milestones', '/transition/roadmap', '/transition/tryouts',
     '/voice'
   ].map((route) => [route.slice(1).replaceAll('/', '-'), route])

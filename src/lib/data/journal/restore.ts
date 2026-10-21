@@ -77,6 +77,7 @@ import { reconcileBuiltInsWithin } from './reconcile';
 import { recordImport } from './archiveApply';
 import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
 import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
+import { DROPPED_TRYOUT_KINDS } from '../rowValues';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -396,13 +397,28 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
   const complete = emptyArchiveJournal();
   for (const section of ARCHIVE_SECTION_NAMES) (complete as unknown as Record<string, unknown[]>)[section] = journal[section] ?? [];
   complete.areaStates = complete.areaStates.filter((row) => !DROPPED_ARCHIVE_SECTION_NAMES.includes(row.area));
+  // A felt-sense reading an older archive hung off a milestone, which no
+  // longer holds any (functional audit ticket 32): dropped, not converted.
+  complete.feltSenseEntries = complete.feltSenseEntries.filter((row) => {
+    const legacy = row as unknown as { tryoutId?: unknown; milestoneId?: unknown } | null;
+    return !(legacy && legacy.tryoutId == null && legacy.milestoneId != null);
+  });
   for (const { name, flatTable } of ARCHIVE_SECTIONS) {
     const section = name as keyof ArchiveJournal;
     assertArchiveRows(section, complete[section], flatTable);
   }
   assertArchiveReferences(complete, externalImport);
   assertArchiveFileOwnership(complete);
-  return complete;
+  const dropped = new Set(complete.tryouts
+    .filter((row) => (DROPPED_TRYOUT_KINDS as readonly string[]).includes(row.kind))
+    .map((row) => row.id));
+  if (dropped.size === 0) return complete;
+  return {
+    ...complete,
+    tryouts: complete.tryouts.filter((row) => !dropped.has(row.id)),
+    feltSenseEntries: complete.feltSenseEntries.filter((row) => !row.tryoutId || !dropped.has(row.tryoutId)),
+    milestones: complete.milestones.map((row) => dropped.has(row.tryoutId ?? '') ? { ...row, tryoutId: null } : row)
+  };
 }
 
 /** Every journal row this device has, gone: one operation, ordered by the

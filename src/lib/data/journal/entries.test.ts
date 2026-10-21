@@ -785,17 +785,6 @@ test('setEntryStarred toggles the flag and throws on an unknown id', async () =>
   await assert.rejects(journal.entries.setEntryStarred(999, true), /unknown entry/);
 });
 
-test('noteEntries reads epoch day, note and presentation, skipping blank notes and trashed entries', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'a good day' });
-  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: '' });
-  const trashed = await journal.entries.upsertEntry({ epochDay: 102, mood: 2, note: 'gone' });
-  await journal.entries.deleteEntry(trashed);
-
-  const rows = await journal.entries.noteEntries();
-  assert.deepEqual(rows, [{ epochDay: 100, note: 'a good day', presentationId: null }]);
-});
-
 test('starring alone cannot rescue an otherwise-empty entry (CONTEXT: "Entry")', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'leaving' });
@@ -827,19 +816,6 @@ test('counterevidencePool unions the tag and starred entries, newest first, with
   const pool = await journal.entries.counterevidencePool(['e-happy'], 10);
   // `both` carries two tags, so a naive join would return it twice.
   assert.deepEqual(pool.map((e) => e.id), [both, starredOnly, tagOnly]);
-});
-
-test('counterevidencePool can be read over a span, both ends inclusive (phase 11 ticket 07)', async () => {
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [100, 101, 102, 103]) {
-    const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4 });
-    await journal.entries.setEntryStarred(id, true);
-  }
-
-  const pool = await journal.entries.counterevidencePool(['e-happy'], 10, { from: 101, to: 102 });
-  assert.deepEqual(pool.map((e) => e.epochDay), [102, 101]);
-  // No span reads the whole journal, as every caller before the span did.
-  assert.equal((await journal.entries.counterevidencePool(['e-happy'], 10)).length, 4);
 });
 
 test('counterevidencePool stops at the limit it is given, keeping the newest', async () => {

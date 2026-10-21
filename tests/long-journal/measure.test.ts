@@ -17,7 +17,6 @@ import { recordingDriver } from '../../src/lib/data/sqlite/test-support/recordin
 import { generateLongJournal } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import { budgets, breaches, budgetFor, mountBudgetsFor, overTarget } from './budgets.mjs';
-import { assertLookBackWordsRead } from './look-back-ownership';
 import { bytePatternPhoto } from './test-support.ts';
 
 async function measureSmallJournal(): Promise<Measurement[]> {
@@ -254,13 +253,6 @@ test('budgetFor leaves a measurement with no recorded target on the floor alone'
   expect(budgetFor(900, null)).toBe(4500);
 });
 
-test('mounted Look back ownership rejects omitted, repeated or empty Words reads', () => {
-  expect(() => assertLookBackWordsRead(1, 322)).not.toThrow();
-  for (const [calls, rows] of [[0, 0], [2, 644], [1, 0]]) {
-    expect(() => assertLookBackWordsRead(calls, rows)).toThrow('must read Words notes once');
-  }
-});
-
 
 test('Look back measures its prepared mount after reference setup', async () => {
   const db = await migratedDb();
@@ -283,9 +275,8 @@ test('Look back measures its prepared mount after reference setup', async () => 
         return async () => {
           expect(prepared).toBe(true);
           mounted = true;
-          const notes = await ownedJournal.entries.noteEntries();
-          assertLookBackWordsRead(1, notes.length);
-          return { result: notes, detail: 'Prepared mount ownership control' };
+          const entries = await ownedJournal.entries.countAll();
+          return { result: entries, detail: 'Prepared mount ownership control' };
         };
       }
     });

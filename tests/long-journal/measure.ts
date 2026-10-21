@@ -34,7 +34,6 @@ import { hrtAnchor } from '../../src/lib/data/personalEffectWindow.ts';
 import { readReturnGap, readWhatIsWaiting } from '../../src/lib/data/comingBackReads.ts';
 import { offeredWrappedPeriod } from '../../src/lib/data/wrapped.ts';
 import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
-import { analyseNotes, countWords } from '../../src/lib/data/wordFrequency.ts';
 import { readCare } from '../../src/lib/data/careReads.ts';
 import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import type { LongJournalSummary } from './generate.ts';
@@ -129,17 +128,6 @@ const STATS_METRIC = 'mood';
     starts on. Both are what the screen mounts with rather than what a
     person can drag it to. */
 const STATS_DEFAULT_RANGE = 30;
-
-/** The two interval cards' "the whole journal", which is the convention
-    `stats.ts` already uses for it. */
-
-/** What the word list renders: `settings/words/+page.svelte`'s own
-    `WORD_LIMIT`, restated here the way every screen literal in this file is
-    (see the mount block's note on why, and what it costs). The fold counts
-    every word regardless, so this is a render limit rather than a narrower
-    fold - it is here because the screen pays for the slice on every filter
-    tap too. */
-const WORD_LIST_LIMIT = 40;
 
 /** The gap the return surface is measured over. A season, which is the
     length of absence the screen exists for - long enough that letters have
@@ -685,41 +673,6 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- phase 8 audit ticket 17 --------------------------------------------
-
-     One tap of the word list's presentation or era filter. The notes are
-     read above the timer on purpose: this is the only measurement here that
-     is not a read at all. `noteEntries()` puts the whole journal's note text
-     into JS once, and what a filter tap then re-runs is the fold over it -
-     which is the cost the screen pays again on every tap, and the one this
-     ticket is about. The read stays where it is (bounding it is a product
-     decision the ticket declines to take), so it is not what is measured.
-
-     Timed over the unfiltered "All" list, which is the widest a tap can land
-     on and the one the screen returns to when a picked presentation or era
-     is cleared. Picking a value in the picker is this same work over a
-     subset; switching the Segmented from presentation to era additionally
-     re-runs `groupByEra`, which ticket 17 did not touch and this does not
-     time.
-
-     `analyseNotes` is outside the timer for the same reason the read is: it
-     is the screen's own `$derived` on the query, which a filter tap does not
-     invalidate. What it cost is carried in the detail line rather than
-     dropped, since it is the once-per-read half of the same work. */
-  const notes = await journal.entries.noteEntries();
-  const noteCharacters = notes.reduce((total, entry) => total + entry.note.length, 0);
-  const analysedAt = performance.now();
-  const analysed = analyseNotes(notes);
-  const analyseMs = Math.round(performance.now() - analysedAt);
-  await measure('words-filter-change', 'word list, one filter tap over every note in the journal', async () => {
-    const counts = countWords(analysed).slice(0, WORD_LIST_LIMIT);
-    const polish = analysed.some((entry) => entry.language === 'pl');
-    return {
-      result: [counts, polish],
-      detail: `${notes.length} notes, ${noteCharacters} characters, ${counts.length} words shown, analysed once in ${analyseMs}ms`
-    };
-  });
-
   /* --- screen mounts, in statements and bytes (phase 8 audit ticket 01) ---
 
      What the four screens the data audit measured cost in the metric this
@@ -813,7 +766,7 @@ export async function measureLongJournal(
   });
 
   const mountedLookBack = await options.prepareLookBack?.(journal, today);
-  await mount('mount-stats', 'Look back mounted at its default range, including Words', async () => {
+  await mount('mount-stats', 'Look back mounted at its default range', async () => {
     if (mountedLookBack) return mountedLookBack();
     /* Node-only harness fallback. Browser and Android probes mount /stats.
        The default range, which is what arriving costs: 30 days for every
@@ -825,7 +778,6 @@ export async function measureLongJournal(
     const [xKey, yKey] = dimensionKeys;
 
     const reads = await together({
-      notes: journal.entries.noteEntries(),
       annotations: journal.chartAnnotations.getAnnotations(from, today, today),
       series: Promise.all(CHARTED_METRICS.map((key) => journal.stats.dayAverages(key, from, today))),
       insights: journal.stats.tagInsights(STATS_METRIC, from, today),

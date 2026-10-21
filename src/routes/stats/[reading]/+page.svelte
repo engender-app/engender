@@ -2,8 +2,8 @@
   /* One reading of the Look back door, on a screen of its own (phase 11
      ticket 07). The door is a grid of tiles, each stating one figure for
      the span; this is where the full card draws, with its controls - the
-     second scale, the metric picker, the words card's era and mode picker,
-     the constellation's scrub and play. Seven readings share the route,
+     second scale, the metric picker, the share ring's days filter, the
+     constellation's scrub and play. Three readings share the route,
      since they are one screen showing a different card and nothing about
      the header, the span or the floor differs between them.
 
@@ -12,6 +12,9 @@
      written under the title in the rail's own words, so the screen says
      what it is a reading of. A direct visit with no query, or a key no
      reading answers to, says so rather than drawing the wrong thing.
+     `words`, `highest` and `themes` are such keys since functional audit
+     ticket 12 cut those readings, and so is `days`, whose one chart, the
+     mood strip, draws on the door itself since Alicja's sign-off on it.
 
      `page.params.reading` is read as a derived value and not captured
      once: SvelteKit reuses this component across a same-route navigation
@@ -29,22 +32,14 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import ReadGroup from '$lib/components/kit/ReadGroup.svelte';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import WordsReading from '$lib/components/WordsReading.svelte';
   import DayByDayReading from '$lib/components/readings/DayByDayReading.svelte';
-  import DaysReading from '$lib/components/readings/DaysReading.svelte';
-  import HighestReading from '$lib/components/readings/HighestReading.svelte';
   import PlaneReading from '$lib/components/readings/PlaneReading.svelte';
   import TagsReading from '$lib/components/readings/TagsReading.svelte';
-  import ThemesReading from '$lib/components/readings/ThemesReading.svelte';
 
   const TITLE: Record<Reading, () => string> = {
     'day-by-day': () => m.stats_day_by_day(),
     plane: () => m.stats_constellation(),
-    days: () => m.stats_reading_days(),
-    words: () => m.words_reading_title(),
-    tags: () => m.stats_tags_moved(),
-    highest: () => m.stats_highest_days(),
-    themes: () => m.safe_space_chart_themes_title()
+    tags: () => m.stats_tags_moved()
   };
 
   let today = $derived(currentDay());
@@ -57,13 +52,12 @@
      down (WRAPPED_ENTRY_FLOOR, the bar a retrospective clears). */
   let recapQuery = liveQuery((j) => j.stats.recap(span.start, span.end));
   let enoughEntries = $derived((recapQuery.value?.entryCount ?? 0) >= WRAPPED_ENTRY_FLOOR);
-  let wordsScopeSubtitle = $state('');
 </script>
 
 <div class="screen">
   <ScreenHeader
     title={reading ? TITLE[reading]() : m.nav_lookback()}
-    subtitle={reading === 'words' ? (wordsScopeSubtitle || undefined) : (reading ? label : undefined)}
+    subtitle={reading ? label : undefined}
     screen={reading ? `stats-${reading}` : 'stats-reading'}
     back="/stats"
   />
@@ -104,16 +98,8 @@
     <DayByDayReading {span} {today} {enoughEntries} />
   {:else if reading === 'plane'}
     <PlaneReading {span} />
-  {:else if reading === 'days'}
-    <DaysReading {span} {enoughEntries} />
-  {:else if reading === 'words'}
-    <WordsReading {span} bind:scopeSubtitle={wordsScopeSubtitle} />
-  {:else if reading === 'tags'}
-    <TagsReading {span} spanLabel={label} />
-  {:else if reading === 'highest'}
-    <HighestReading {span} {today} {enoughEntries} />
   {:else}
-    <ThemesReading {span} />
+    <TagsReading {span} spanLabel={label} {enoughEntries} />
   {/if}
   </ReadGroup>
   {/key}

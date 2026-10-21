@@ -338,7 +338,7 @@ const SECTIONS = [
     apply: apply.applyEntries
   }),
   /* A margin note hangs off an entry's rowid (phase 8 features ticket 07),
-     the same reasoning `feltSenseEntries` gives for its own owners: it
+     the same reasoning `feltSenseEntries` gives for its tryout: it
      resolves a rowid against a section already applied, so `entries` has
      to be there first. `travels: 'none'`, the same call `entries` itself
      makes just above - a margin note is the person's own record of what
@@ -351,23 +351,6 @@ const SECTIONS = [
     travels: 'none',
     read: read.readMarginNotes,
     apply: apply.applyMarginNotes
-  }),
-  /* Which words the words screen has been told to stop counting (phase 8
-     features ticket 48, ADR-0003). Flat, and the same smallest kind
-     `eraMutes` above is: one column, no `after` - the word is free text
-     naming nothing else in the journal, so nothing here resolves a rowid
-     against it.
-
-     A word someone chose to stop seeing about their own note-taking is not
-     something to hand to someone else in a structure file - the same
-     reasoning `eraMutes` gives for its own `travels: 'none'`. */
-  flat({
-    name: 'wordIgnore',
-    travels: 'none',
-    table: 'word_frequency_ignore',
-    identity: 'word',
-    orderBy: 'word',
-    columns: { word: 'word' }
   }),
   /* The paper the person keeps (phase 8 features ticket 52, ADR-0065).
      Flat: one table, no children, no owner to resolve a rowid against, so
@@ -897,13 +880,13 @@ const SECTIONS = [
     read: read.readTryouts,
     apply: apply.applyTryouts
   }),
-  // A felt-sense row hangs off a tryout or a milestone rowid (phase 5
-  // ticket 24), the same way a dose schedule hangs off an episode's.
+  // A felt-sense row hangs off a tryout's rowid (phase 5 ticket 16), the
+  // same way a dose schedule hangs off an episode's.
   section({
     name: 'feltSenseEntries',
-    after: ['tryouts', 'milestones'],
-    // Clears before both tryout and milestone, which is `after` reversed
-    // again rather than anything stated here.
+    after: ['tryouts'],
+    // Clears before tryout, which is `after` reversed again rather than
+    // anything stated here.
     discard: ['DELETE FROM felt_sense'],
     travels: 'none',
     read: read.readFeltSenseEntries,
@@ -1073,7 +1056,7 @@ export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
 export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
   'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
-  'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits'
+  'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore'
 ];
 
 /** A journal with every section present and empty - what an importer builds

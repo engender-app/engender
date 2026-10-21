@@ -247,7 +247,12 @@
   {
     "name": "tryout-milestone-felt-check",
     "tier": "dev",
-    "holds": "tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes"
+    "holds": "tryout felt-sense rows name their mood, and adoption sets the app name to the stored tryout name"
+  },
+  {
+    "name": "milestone-celebration-check",
+    "tier": "dev",
+    "holds": "the milestone add sheet lists every template with no shuffle, a new milestone asks for no felt sense, the celebrate switch saves, and Today throws no confetti for a milestone set not to be celebrated or an anniversary in a muted era"
   },
   {
     "name": "dose-amount-check",
@@ -478,11 +483,6 @@
     "diagnostics": [
       ".claude/changes-shots/*"
     ]
-  },
-  {
-    "name": "words-reading-scope-check",
-    "tier": "built",
-    "holds": "the words reading's scope and baseline on stats, stats/words and settings/words"
   },
   {
     "name": "entry-pending-save",

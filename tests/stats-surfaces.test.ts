@@ -28,10 +28,7 @@ const readings = {
   dayByDay: read('src/lib/components/readings/DayByDayReading.svelte'),
   plane: read('src/lib/components/readings/PlaneReading.svelte'),
   days: read('src/lib/components/readings/DaysReading.svelte'),
-  words: read('src/lib/components/WordsReading.svelte'),
   tags: read('src/lib/components/readings/TagsReading.svelte'),
-  highest: read('src/lib/components/readings/HighestReading.svelte'),
-  themes: read('src/lib/components/readings/ThemesReading.svelte'),
   bodyMap: read('src/lib/components/readings/BodyMapTile.svelte'),
   compare: read('src/lib/components/readings/CompareTile.svelte'),
   tally: read('src/lib/components/readings/TallyTile.svelte')
@@ -52,7 +49,7 @@ describe('the summary panels wait for the floor', () => {
       expect(source).not.toMatch(/>= 5\b/);
     }
     expect(stats).toContain('let enoughEntries = $derived(entryCount >= WRAPPED_ENTRY_FLOOR);');
-    for (const key of ['dayByDay', 'days', 'highest'] as const) {
+    for (const key of ['dayByDay', 'days', 'tags'] as const) {
       expect(readings[key], key).toMatch(/enoughEntries\s*=\s*true/);
       expect(readings[key], key).not.toMatch(/import \{[^}]*WRAPPED_ENTRY_FLOOR/);
     }
@@ -63,15 +60,14 @@ describe('the summary panels wait for the floor', () => {
   });
 
   it('draws no mood strip under the floor', () => {
-    expect(readings.days).toMatch(/\{:else if enoughEntries\}\s*<OrderedStrip steps=\{moodSteps\} \/>/);
+    expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && anyDays\}\s*<ChartCard[^>]*>\s*<OrderedStrip steps=\{moodSteps\} \/>/);
   });
 
-  /* Three cards hand BarRows a position between 0 and 1 in something's own
-     range, and the primitive re-normalised all three against their own
-     longest bar until ticket 11 gave it a `scale`. */
+  /* Cards hand BarRows a position between 0 and 1 in something's own
+     range, and the primitive re-normalised them against their own longest
+     bar until ticket 11 gave it a `scale`. */
   it('asks for the track where the bar is an absolute position', () => {
     expect(readings.dayByDay).toMatch(/<BarRows\s+rows=\{scaleRows\}[^>]*measure="track"/);
-    expect(readings.highest).toMatch(/<BarRows\s+rows=\{highestRows\}[^>]*measure="track"/);
   });
 
   it('stops offering a second scale on a chart with no first one', () => {
@@ -84,16 +80,6 @@ describe('the summary panels wait for the floor', () => {
      was. tests/accessibility-audit.test.ts holds the other half. */
   it('writes the values out only where there are values', () => {
     expect(readings.dayByDay).toMatch(/\{#if valueRows\.length\}\s*<ul class="visually-hidden" data-values-list/);
-  });
-
-  /* The chooser writes the card's own state and not the stored metric
-     preference two other screens shade by, and no ranking is drawn before
-     the journal clears the entry floor (phase 9 carpet ticket 11). */
-  it('ranks by the chooser, over the floor, without touching the stored metric', () => {
-    expect(readings.highest).toMatch(/highestMetricKey\(highestKey,/);
-    expect(readings.highest).toMatch(/key="highest-metric"[\s\S]*?onPick=\{\(value\) => \(highestKey = value\)\}/);
-    expect(readings.highest).toMatch(/\{:else if enoughEntries && highestRows\.length\}\s*<BarRows\s+rows=\{highestRows\}/);
-    expect(readings.highest).not.toContain('selectMetric(');
   });
 });
 
@@ -112,31 +98,20 @@ describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
    span drives every read on it. Phase 11 ticket 07: under the facts, the
    door is a grid of readings and a resurfacing block, and nothing else. */
 describe('the Look back door leads with the rail, and the span is the range', () => {
-  it('opens on the title, the rail, the facts, the picks, the grid, then the resurfacing pair', () => {
+  it('opens on the title, the rail, the facts, the grid, then the resurfacing pair', () => {
     const body = markup(stats);
     const header = body.indexOf('<ScreenHeader title={m.nav_lookback()}');
     const rail = body.indexOf('<SpanTimeline');
     const facts = body.indexOf('data-lookback-fact');
-    const picks = body.indexOf('key="lookback-quick"');
     const grid = body.indexOf('<ReadingGrid');
     const pair = body.indexOf('<TileGrid');
     expect(header).toBeGreaterThan(-1);
     expect(rail).toBeGreaterThan(header);
     expect(facts).toBeGreaterThan(rail);
-    expect(picks).toBeGreaterThan(facts);
-    expect(grid).toBeGreaterThan(picks);
+    expect(grid).toBeGreaterThan(facts);
     expect(pair).toBeGreaterThan(grid);
   });
 
-  /* The picks sit under the facts with no heading, so "Last" is what says
-     they look back. Wrapped's own switcher has a title naming the period
-     and took one-word labels (last-audit UI 26); the picks keep theirs. */
-  it('labels the quick picks with their own keys, not the Wrapped switcher\'s', () => {
-    for (const cadence of ['week', 'month', 'year']) {
-      expect(stats).toContain(`m.lookback_quick_${cadence}()`);
-      expect(stats).not.toContain(`m.wrapped_cadence_${cadence}()`);
-    }
-  });
 
   /* Nothing else: no card drawn in full, no section heading, no list of
      deeper readings, no journey caption. Every reading is a tile. */
@@ -200,12 +175,12 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(timeline).not.toMatch(/transition:dateFade/);
   });
 
-  it('reaches the three cadence routes one tap each, as links', () => {
-    for (const cadence of ['week', 'month', 'year']) expect(stats).toContain(`href: '/wrapped/${cadence}'`);
-    expect(stats).not.toContain('key="stats-range"');
-  });
-
-  it('keeps Wrapped on its three completed cadences', () => {
+  /* Functional audit ticket 12: one way into Wrapped, the gated tile in the
+     resurfacing pair. The quick picks are gone, and no address on the door
+     names a cadence of its own. */
+  it('reaches Wrapped through the tile alone', () => {
+    expect(stats).not.toContain("'/wrapped/");
+    expect(stats).not.toContain('key="lookback-quick"');
     expect(stats).not.toContain('/wrapped/range');
   });
 
@@ -306,13 +281,10 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     const order = [
       '<DayByDayReading span={resolvedSpan}',
       '<PlaneReading span={resolvedSpan}',
-      '<DaysReading span={resolvedSpan}',
-      '<WordsReading view="tile"',
       '<TagsReading span={resolvedSpan}',
-      '<HighestReading span={resolvedSpan}',
       '<BodyMapTile span={resolvedSpan}',
       '<CompareTile span={resolvedSpan}',
-      '<ThemesReading span={resolvedSpan}'
+      '<TallyTile span={resolvedSpan}'
     ];
     let last = body.indexOf('<ReadingGrid');
     for (const tag of order) {
@@ -320,14 +292,14 @@ describe('the readings are tiles, each opening its own screen at the span', () =
       expect(at, tag).toBeGreaterThan(last);
       last = at;
     }
-    expect((body.match(/view="tile"/g) ?? []).length).toBe(7);
+    expect((body.match(/view="tile"/g) ?? []).length).toBe(3);
+    for (const gone of ['WordsReading', 'HighestReading', 'ThemesReading']) expect(stats).not.toContain(gone);
   });
 
   it('opens each reading at /stats/<reading> carrying the span, through one address rule', () => {
-    for (const key of ['dayByDay', 'plane', 'days', 'tags', 'highest', 'themes'] as const) {
+    for (const key of ['dayByDay', 'plane', 'tags'] as const) {
       expect(readings[key], key).toMatch(/href=\{readingHref\('[a-z-]+', span\)\}/);
     }
-    expect(stats).toContain("href={readingHref('words', resolvedSpan)}");
     expect(readings.bodyMap).toContain('href={`/body-map${spanRangeQuery(span)}`}');
     expect(readings.compare).toContain('href={`/compare${spanRangeQuery(span)}`}');
     expect(readings.tally).toContain('href={`/tally${spanRangeQuery(span)}`}');
@@ -349,11 +321,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('has a tile only where the span holds data for it', () => {
     expect(readings.dayByDay).toMatch(/\{#if !seriesQuery\.loading && plotted\.points\.length\}\s*<ReadingTile/);
     expect(readings.plane).toMatch(/\{#if canPlot && !constellationQuery\.loading && points\.length\}\s*<ReadingTile/);
-    expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && top\}\s*<ReadingTile/);
-    expect(readings.words).toMatch(/\{#if !entriesQuery\.loading && !erasQuery\.loading && weighted\.length\}\s*<ReadingTile/);
     expect(readings.tags).toMatch(/\{#if !correlationCardsQuery\.loading && topRow && topCard\}\s*<ReadingTile/);
-    expect(readings.highest).toMatch(/\{#if !seriesQuery\.loading && enoughEntries && topRow\}\s*<ReadingTile/);
-    expect(readings.themes).toMatch(/\{#if !poolQuery\.loading && top\}\s*<ReadingTile/);
     expect(readings.bodyMap).toMatch(/\{#if !mapQuery\.loading && region\}\s*<ReadingTile/);
     expect(readings.compare).toMatch(/\{#if !short\}\s*<ReadingTile/);
     expect(readings.tally).toMatch(/\{#if !misgenderedQuery\.loading && !correctQuery\.loading && misgendered \+ correct > 0\}\s*<ReadingTile/);
@@ -364,7 +332,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('gives the plane\'s tile no headline and every other tile one', () => {
     const planeTile = markup(readings.plane).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
     expect(planeTile).not.toContain('headline=');
-    for (const key of ['dayByDay', 'days', 'words', 'tags', 'highest', 'themes', 'bodyMap', 'compare', 'tally'] as const) {
+    for (const key of ['dayByDay', 'tags', 'bodyMap', 'compare', 'tally'] as const) {
       const tile = markup(readings[key]).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
       expect(tile, key).toContain('headline=');
     }
@@ -373,17 +341,16 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   it('reads every ranged reading over the span, not over today', () => {
     expect(readings.dayByDay).toContain('j.stats.dayAverages(key, rangeFrom, rangeTo)');
     expect(readings.dayByDay).toContain('j.stats.daySpread(shown.key, from, to)');
-    expect(readings.days).toContain('j.stats.tagShare(from, to)');
     expect(readings.days).toContain("j.stats.dayAverages('mood', from, to)");
+    expect(readings.days).not.toContain('tagShare');
     expect(readings.tags).toContain('j.correlationCards.getCards(from, to)');
-    expect(readings.highest).toContain('j.stats.dayAverages(highestMetric.key, from, to)');
-    expect(readings.themes).toContain('counterevidencePool(EUPHORIA_TAG_KEYS, COUNTEREVIDENCE_LIMIT, { from, to })');
+    expect(readings.tags).toContain("j.stats.tagShare(from, to, { goodDays: days === 'good' })");
     expect(readings.bodyMap).toContain('j.stats.bodyRegionMap(from, to)');
     expect(readings.plane).toContain('j.stats.constellationReadings(x, y, from, to)');
     for (const source of Object.values(readings)) expect(source).not.toMatch(/\(from, today\)/);
   });
 
-  it('has one route for the seven readings, which reads the span back and refuses a key it does not know', () => {
+  it('has one route for the three readings, which reads the span back and refuses a key it does not know', () => {
     // Every reading has a title on the route: quoted where the key has a
     // hyphen, bare where it does not.
     for (const key of READINGS) expect(route, key).toMatch(new RegExp(`(?:'${key}'|\\b${key}): \\(\\) =>`));
@@ -415,9 +382,13 @@ describe('the merged tag card draws as paired dots', () => {
   });
   /* After-release 27 (audit L06-06): the ranking spans every scale and
      never read a picked metric, so the picker that sat on it changed
-     nothing on the card. */
+     nothing on the card. The one picker in the file since functional audit
+     ticket 12 is the share ring's days filter, on its own card. */
   it('carries no metric picker, since the ranking spans every scale', () => {
-    expect(readings.tags).not.toContain('<ChartPicker');
+    const ranking = readings.tags.slice(readings.tags.indexOf('kind="tags-moved"'), readings.tags.indexOf('kind="tag-share"'));
+    expect(ranking).toContain('<PairedDots');
+    expect(ranking).not.toContain('<ChartPicker');
+    expect((readings.tags.match(/<ChartPicker/g) ?? []).length).toBe(1);
     expect(readings.tags).not.toContain('selectMetric');
   });
 });
@@ -435,5 +406,45 @@ describe('the resurfacing block', () => {
     const block = read('src/lib/components/OnThisDayBlock.svelte');
     expect(block).toContain('data-lookback={d.key}');
     expect(block).toContain('data-lookback-open={d.key}');
+  });
+});
+
+/* Functional audit ticket 12. The constellation's own rendered check is in
+   tests/browser-tier/look-back-surfaces.test.ts; these hold the template
+   facts beside it. */
+describe('Look back says each thing once', () => {
+  it('plots the constellation without asking for a mode', () => {
+    expect(readings.plane).not.toContain('vocabulary.presentations.length');
+    expect(readings.plane).toContain('let canPlot = $derived(xScale !== undefined && yScale !== undefined);');
+  });
+
+  it('keeps the dose-day row in the tag ranking', () => {
+    expect(readings.tags).toContain("card.occurrence.kind === 'doseDay'");
+    expect(readings.tags).toContain('m.correlation_card_dose_day()');
+  });
+
+  it('draws the share ring on Tags with its days filter, and not on the days reading', () => {
+    expect(readings.tags).toContain('kind="tag-share"');
+    expect(readings.tags).toContain('key="tag-share-days"');
+    expect(readings.days).not.toContain('<Donut');
+  });
+
+  /* Alicja's sign-off on the ticket: the mood strip was one chart behind
+     a tile of its own, and "if it's just a single chart, it should display
+     a screen before". It draws on the door over the grid, in the tiles'
+     own read group (over, since a leaving grid folds out of flow and a
+     strip under it jumped up), and has no tile, no screen and no title on the route. */
+  it('draws the mood strip on the door, with no tile and no screen of its own', () => {
+    const body = markup(stats);
+    expect(body).toMatch(/<ReadGroup[^>]*>\s*<DaysReading span=\{resolvedSpan\} \{enoughEntries\} \/>\s*<ReadingGrid/);
+    expect(readings.days).not.toContain('ReadingTile');
+    expect(readings.days).not.toContain('readingHref');
+    expect(route).not.toContain('DaysReading');
+    expect(READINGS).not.toContain('days');
+  });
+
+  it('drops the Settings row for the ignored words', () => {
+    const settings = read('src/routes/settings/+page.svelte');
+    expect(settings).not.toContain('/settings/words');
   });
 });

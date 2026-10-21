@@ -12,11 +12,19 @@
 
      The door now, top to bottom: the field and the title; the rail with
      its legend and state line (ticket 06); the span's three facts (ticket
-     05); the quick picks and the way into the span's wrapped; a grid of
-     reading tiles, each stating one headline figure for the span and
-     opening `/stats/<reading>` where the full card draws with its
-     controls; and the resurfacing block, the wrapped tile beside the
+     05); a grid of reading tiles, each stating one headline figure for
+     the span and opening `/stats/<reading>` where the full card draws with
+     its controls; and the resurfacing block, the wrapped tile beside the
      on-this-day tile, which opens in place. Nothing else.
+
+     The wrapped tile is the door's one way into Wrapped (functional audit
+     ticket 12). The door used to offer three: last week, last month and
+     last year as quick picks under the facts, a "wrapped for this span"
+     link, and the tile. The range link went with the range cadence (ticket
+     13); the quick picks went here, since the wrapped screen carries its
+     own week, month and year tabs and the tile already opens it. With
+     Wrapped off the tile is not mounted, so the door says nothing about
+     Wrapped at all.
 
      A tile is a summary of a screen rather than the screen (Revolut's
      analytics, MacroFactor's insights), flush on the page between hairlines
@@ -25,21 +33,26 @@
      never empty"), so the count varies with the span and the grid rewraps.
      Every reading component here draws itself twice - as its tile and, on
      its own route, as its card - so the figure on the door and the card
-     behind it are one read, never two.
+     behind it are one read, never two. The mood strip is the exception:
+     it has no tile, only its card, drawn on the door.
 
      Three cards left the door for good in this ticket rather than becoming
      tiles: "Each scale, this period" draws under the day-by-day chart on
      that reading's screen, since it reads the same series; "Days at each
-     mood" and "What you write about" are one tile, "How the days fell",
+     mood" and "What you write about" were one tile, "How the days fell",
      since both ask what the span was made of; and the journey anchor's
      caption is wrapped's own line now, not a fourth thing on this door.
+     Functional audit ticket 12 then took the share by tag out of that tile
+     and into Tags, which is where every other tag reading on the door
+     lives, and cut Words and Highest days. What was left behind the tile
+     was the mood strip alone, so on Alicja's sign-off the tile and its
+     screen went and the strip draws here over the grid, which leaves six
+     tiles, three rows of two.
 
      Redesign ticket 11: one span drives every read on this screen. The rail
      runs from the earliest day the person authored anything dated to today
      (SpanTimeline, lookBackSpan.ts), two handles bound a span, and that
-     span is what every tile and every screen behind it is read over - and
-     the retrospective the "wrapped for this span" link opens, which is
-     the same dates as its readings. */
+     span is what every tile and every screen behind it is read over. */
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -66,11 +79,9 @@
   import { flagBarRole, roleAt, tileRoleAt } from '$lib/theme/roles';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SpanFacts from '$lib/components/SpanFacts.svelte';
   import SpanTimeline from '$lib/components/SpanTimeline.svelte';
-  import WordsReading from '$lib/components/WordsReading.svelte';
   import WrappedHomeCard from '$lib/components/WrappedHomeCard.svelte';
   import OnThisDayHomeCard from '$lib/components/OnThisDayHomeCard.svelte';
   import OnThisDayBlock from '$lib/components/OnThisDayBlock.svelte';
@@ -85,8 +96,6 @@
   import PlaneReading from '$lib/components/readings/PlaneReading.svelte';
   import DaysReading from '$lib/components/readings/DaysReading.svelte';
   import TagsReading from '$lib/components/readings/TagsReading.svelte';
-  import HighestReading from '$lib/components/readings/HighestReading.svelte';
-  import ThemesReading from '$lib/components/readings/ThemesReading.svelte';
   import BodyMapTile from '$lib/components/readings/BodyMapTile.svelte';
   import CompareTile from '$lib/components/readings/CompareTile.svelte';
   import TallyTile from '$lib/components/readings/TallyTile.svelte';
@@ -95,7 +104,6 @@
   import { bezier, EASE_OUT_SOFT_POINTS } from '$lib/motion/blindSettle';
   import { EASE_OUT_CSS, EASE_OUT_SOFT_CSS, NIL_OPACITY, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
-  import { readingHref } from '$lib/data/lookBackReadings';
   import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { playAfterPaint, readRevealDuration } from '$lib/motion/screenArrival';
@@ -384,14 +392,6 @@
   let resolvedSpan = $derived<Span>({ start: from, end: to });
   let liveLabel = $derived(live ? spanLabel(live, today) : '');
 
-  /* Week, month and year, one tap each, to the cadence routes. Links, so
-     the group is a nav and each is its own screen. */
-  const QUICK_PICKS = [
-    { value: 'week', href: '/wrapped/week', label: () => m.lookback_quick_week() },
-    { value: 'month', href: '/wrapped/month', label: () => m.lookback_quick_month() },
-    { value: 'year', href: '/wrapped/year', label: () => m.lookback_quick_year() }
-  ];
-
   let shown = $derived(shownMetric(metricChoices()));
 
   /* ---------------------------------------------------------------------
@@ -665,19 +665,6 @@
       {/key}
     {/if}
 
-    <!-- The three completed cadences at their own routes, one tap each, in
-         the square track. None is current here. After the facts rather
-         than above the rail (ticket 07): the first thing under the title
-         is the history, and the first thing under the rail is a fact
-         about the span. -->
-    <Segmented
-      name={m.wrapped_cadence_group()}
-      options={QUICK_PICKS.map((pick) => ({ value: pick.value, label: pick.label(), href: pick.href }))}
-      value=""
-      compact
-      key="lookback-quick"
-    />
-
     {#if !factsQuery.loading && !factsQuery.failed && !enoughEntries}
       <div transition:disclose>
         <button class="btn btn-soft btn-block" onclick={() => (ui.chooserOpen = true)}>{m.new_entry()}</button>
@@ -687,18 +674,23 @@
     <!-- The readings, as tiles. Each component draws its own tile off its
          own read and stays absent where the span holds nothing for it;
          the grid draws the hairlines between whatever is there. In the
-         ticket's order: the two over the scales first, then what the span
-         was made of, then the two screens that were screens already, then
-         the one that moved here from Safe space.
+         ticket's order: the two over the scales first, then tags, then
+         the three screens that were screens already. Above the grid, in
+         the same group, the mood strip draws in full: it was one chart
+         behind a tile of its own until Alicja's sign-off on functional
+         audit ticket 12, and a single chart needs no screen. Above and
+         not below, because a span change lifts the leaving tiles out of
+         flow (gridCell), so the leaving grid folds to nothing: a strip
+         under it jumped 530px up over the fading tiles in one frame.
 
          Drawn as one group once every tile has decided whether it exists
          (ticket 190): drawn as each answered, a tile landing a tick after
-         its neighbours - "How the days fell" and "Highest days" wait on
-         the recap as well as their own read - was inserted between them
+         its neighbours - "How the days fell" waits on the recap as well
+         as its own read - was inserted between them
          and the tiles after it jumped a cell in one frame. The recap and
          the vocabulary mirror are the two reads the screen holds for them. -->
     <!-- A new span replaces the reading group in its own space. Reusing
-         its cells let the old Words and Compare tiles travel across the
+         its cells let the old tiles travel across the
          new figures while their independent reads answered. The old group
          fades before the new one appears in the same grid slot. The following
          block keeps its painted position with a transform while the reads
@@ -708,17 +700,14 @@
     {#key `${resolvedSpan.start}:${resolvedSpan.end}`}
     <div class="lookback-reading-slot" in:readingArrival out:readingFade onoutrostart={(event) => ((event.currentTarget as HTMLElement).inert = true)}>
     <ReadGroup answered={factsAnswered && factsCurrent} count={2}>
+    <DaysReading span={resolvedSpan} {enoughEntries} />
     <ReadingGrid label={m.stats_readings_group()} role={roleAt(activeFlag.roles, AREA_ROLE.charts)} data-lookback-readings>
       <DayByDayReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <PlaneReading span={resolvedSpan} view="tile" />
-      <DaysReading span={resolvedSpan} view="tile" {enoughEntries} />
-      <WordsReading view="tile" span={resolvedSpan} href={readingHref('words', resolvedSpan)} />
       <TagsReading span={resolvedSpan} view="tile" />
-      <HighestReading span={resolvedSpan} {today} view="tile" {enoughEntries} />
       <BodyMapTile span={resolvedSpan} />
       <CompareTile span={resolvedSpan} firstEntryDay={boundsQuery.value?.firstEpochDay ?? null} />
       <TallyTile span={resolvedSpan} />
-      <ThemesReading span={resolvedSpan} view="tile" />
     </ReadingGrid>
     </ReadGroup>
     </div>

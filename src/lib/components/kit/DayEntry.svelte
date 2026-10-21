@@ -172,6 +172,8 @@
 {/if}
 
 <style>
+  /* Two lines of the note, then an ellipsis. Here rather than in kit.css:
+     this component is its one reader (check-screens-classes). */
   .kit-entry-note {
     margin: 0;
     font-size: var(--text-sm);

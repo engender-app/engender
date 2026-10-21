@@ -2128,7 +2128,6 @@ const HYDRATION_SCENES = [
   { name: 'recovery-key', at: '/settings/recovery-key', is: 'the recovery key mint and revoke' },
   { name: 'security', at: '/settings/security', is: 'the security module' },
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
-  { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },

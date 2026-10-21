@@ -15,6 +15,9 @@ import Entry from '../../src/routes/entry/[id]/+page.svelte';
 import NewEntry from '../../src/routes/entry/new/[day]/+page.svelte';
 import More from '../../src/routes/more/+page.svelte';
 import Stats from '../../src/routes/stats/+page.svelte';
+import StatsReading from '../../src/routes/stats/[reading]/+page.svelte';
+import Wrapped from '../../src/routes/wrapped/[cadence]/+page.svelte';
+import OnThisDay from '../../src/routes/on-this-day/+page.svelte';
 import Care from '../../src/routes/care/+page.svelte';
 import Milestones from '../../src/routes/transition/milestones/+page.svelte';
 import Tryouts from '../../src/routes/transition/tryouts/+page.svelte';
@@ -48,12 +51,15 @@ function componentFor(route: string): Component {
     '/more': More,
     '/stats': Stats,
     '/care': Care,
+    '/on-this-day': OnThisDay,
     '/doubt': SafeSpace,
     '/doubt/evidence': GoodMoments,
     '/transition/milestones': Milestones,
     '/transition/tryouts': Tryouts
   };
   if (routes[path]) return routes[path];
+  if (path.startsWith('/stats/')) return StatsReading;
+  if (path.startsWith('/wrapped/')) return Wrapped;
   if (path.startsWith('/entry/new/')) return NewEntry;
   if (path.startsWith('/entry/')) return Entry;
   if (path.startsWith('/day/')) return Day;

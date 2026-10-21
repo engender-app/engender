@@ -88,7 +88,7 @@ async function load(path, name, timeout = 30_000) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
-await block('named focus after content swaps', 40, async () => {
+await block('named focus after content swaps', 36, async () => {
   for (const motion of ['reduce', 'full'])
     for (const result of await focusSwaps(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
 });
@@ -135,9 +135,9 @@ await block('Archive after browser installation loss', 2, async () => {
   console.log(`RECOVERY ${JSON.stringify({ revision: execFileSync('git', ['-C', resolve(here, '../..'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), runtime: browser.version(), source: 'web', destination: 'web', producer: 'manual', sourceIdentity: source.identity, destinationIdentity: destination.identity, sourceDestroyed: true, ...destination })}`);
 });
 
-await block('rendered screen contracts', 168, async () => {
+await block('rendered screen contracts', 173, async () => {
   const result = await load('/screen-mount.html', 'screen-mount');
-  for (const [suite, expected] of Object.entries({ direction: 58, home: 51, calendar: 59 })) {
+  for (const [suite, expected] of Object.entries({ direction: 58, home: 56, calendar: 59 })) {
     const cases = result[suite];
     if (!Array.isArray(cases)) throw new Error(`${suite}: ${cases?.error ?? 'missing results'}`);
     if (cases.length !== expected) throw new Error(`${suite}: expected ${expected} checks, received ${cases.length}`);
@@ -154,6 +154,15 @@ await block('Safe space optional Good moments', 10, async () => {
   for (const item of result.safeSpace) {
     if (item.passed) ok(item.name);
     else fail(item.name, item.error ?? 'rendered Safe space contract failed');
+  }
+});
+
+await block('Look back after the functional audit trim', 11, async () => {
+  const result = await load('/screen-mount.html?look-back=1', 'screen-mount');
+  if (!Array.isArray(result.lookBack)) throw new Error(result.error ?? 'missing Look back results');
+  for (const item of result.lookBack) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'rendered Look back contract failed');
   }
 });
 

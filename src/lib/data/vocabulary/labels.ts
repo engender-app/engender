@@ -257,9 +257,7 @@ const TRYOUT_KIND_NAME: Record<TryoutKind, Message> = {
   name: m.tryout_kind_name,
   pronouns: m.tryout_kind_pronouns,
   style: m.tryout_kind_style,
-  garment: m.tryout_kind_garment,
-  makeup: m.tryout_kind_makeup,
-  presentation_step: m.tryout_kind_presentation_step
+  makeup: m.tryout_kind_makeup
 };
 
 /** The name of a tryout's kind; an unknown stored kind reads as "other". */
