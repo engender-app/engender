@@ -252,3 +252,7 @@
     </span>
   {/key}
 </p>
+
+<style>
+  .pin-status-reserve { visibility: hidden; }
+</style>
