@@ -490,6 +490,7 @@
     isReadyState(bootState);
     const checkInEnabled = prefs.checkInEnabled;
     const checkInTime = prefs.checkInTime;
+    const checkInPausedThrough = prefs.checkInPausedThrough;
     const hideNotificationTitles = prefs.hideNotificationTitles;
     /* Read here rather than inside platform-sync.ts for the same reason every
        preference above is: only a .svelte file has the reactivity that
@@ -535,6 +536,7 @@
           prefs: {
             checkInEnabled,
             checkInTime,
+            checkInPausedThrough,
             hideNotificationTitles,
             remindersEnabled,
             wearElapsedEnabled,
@@ -551,7 +553,6 @@
             reminders: journal.reminders,
             entries: journal.entries,
             stock: journal.stock,
-            journalingPauses: journal.journalingPauses,
             areaStates: journal.areaStates
           },
           onTablesWritten,

@@ -41,6 +41,7 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   language: (v) => v === 'system' || v === 'en' || v === 'pl',
   checkInEnabled: (v) => typeof v === 'boolean',
   checkInTime: (v) => typeof v === 'string' && TIME_SHAPE.test(v),
+  checkInPausedThrough: (v) => v === null || Number.isInteger(v),
   preferredLabUnits: (v) => typeof v === 'object' && v !== null && !Array.isArray(v),
   journeyAnchorMilestoneId: (v) => v === null || typeof v === 'string',
   hairAnchorEpochDay: (v) => v === null || Number.isFinite(v),

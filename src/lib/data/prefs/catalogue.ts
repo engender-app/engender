@@ -76,6 +76,11 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
+  /** The last day the check-in stays silent, or null when it is not paused
+      (functional audit ticket 08, which replaced the journaling pause with
+      this one date). It fires again the day after (checkIn.ts). Portable
+      with the check-in's own two keys. */
+  checkInPausedThrough: number | null;
   /** Whether the rotating reflection prompt shows on the entry-creation
       screen (phase 4 features ticket 17). Device-local because this controls
       one installation's entry screen, not anything the journal carries. */
@@ -405,6 +410,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',
+  checkInPausedThrough: null,
   guidedPromptsEnabled: true,
   entryTryoutPromptEnabled: true,
   entryDoseQuickLogEnabled: true,
@@ -469,6 +475,7 @@ export const PORTABLE_KEYS = [
   'language',
   'checkInEnabled',
   'checkInTime',
+  'checkInPausedThrough',
   'preferredLabUnits',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
