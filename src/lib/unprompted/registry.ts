@@ -79,7 +79,6 @@ export type UnpromptedKind =
   | 'appointment-today'
   | 'wrapped'
   | 'on-this-day'
-  | 'revisit'
   | 'reminders'
   | 'check-in'
   | 'wear-elapsed'
@@ -263,17 +262,6 @@ const ROWS = [
     area: null,
     title: () => m.on_this_day(),
     surface: { subtitle: () => m.on_this_day_settings_sub(), prefKey: 'onThisDayEnabled' },
-  },
-  {
-    key: 'revisit',
-    // an entry someone already wrote, on the day they chose to see it again.
-    area: null,
-    title: () => m.tile_revisit_title(),
-    surface: { subtitle: () => m.tile_revisit_sub(), prefKey: 'revisitEnabled' }
-    // No `notify`: phase 8 features ticket 08 is explicit that this
-    // registers no new notification machinery - the arrival offers in the
-    // app and never mints anything (ADR-0045), the same reason a ready
-    // letter carries no `notify` either.
   },
   {
     key: 'reminders',

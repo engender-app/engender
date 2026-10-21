@@ -989,23 +989,6 @@ export interface Letter {
   unlockEpochDay: number;
 }
 
-/* A day chosen to see one entry again (phase 8 features ticket 08, ADR-0045:
-   "the arrival offers and never mints"). `entryId` is the entry's ordinary
-   numeric id - the way every other screen already addresses an entry - not
-   its uuid; the row's own portable identity lives only in the schema
-   (revisits.ts), the same split milestone.procedureId's plain-text FK
-   already draws between an app-facing id and a storage-level one. One row
-   per entry: choosing a new day replaces the old one rather than piling up
-   a second offer for the same entry (ticket's own "keyed by entry and
-   day"). */
-export interface Revisit {
-  id: string;
-  entryId: number;
-  entryEpochDay: number;
-  createdEpochDay: number;
-  targetEpochDay: number;
-}
-
 /** What a person last reported having of one drug (phase 4 ticket 04,
     CONTEXT: pending). One per drug, matched by `sameDrug` (`RegimenEpisode.drug`'s
     own convention) rather than per episode - see schema.ts. Neither
@@ -1198,30 +1181,8 @@ export interface Appointment {
   note: string | null;
 }
 
-/** One line in the pool the check-in draws its affirming line from (phase 5
-    ticket 15, CONTEXT: "Affirmation"). A built-in carries a stable key and
-    empty text - its wording lives in the message catalogue and applies
-    whatever language is active - the same split BUILT_IN_TAG_GROUPS gives
-    Tag (ADR-0002, CONTEXT: "Built-in"). A custom line carries a minted uuid,
-    the text the person actually wrote, and the one language it was written
-    in: it is never translated to the other (CONTEXT: "Custom"). Hiding a
-    built-in takes it out of the pool without touching a check-in already
-    sent with it (CONTEXT: "Hidden"); a custom line has no bundled
-    counterpart to preserve, so it deletes outright instead - the same
-    asymmetry Tag draws between the two. */
-export interface Affirmation {
-  id: string;
-  /** Null for a built-in; 'en' or 'pl' for a custom. */
-  language: 'en' | 'pl' | null;
-  /** '' for a built-in - the message catalogue holds its wording, looked up
-      by id - the written line for a custom. */
-  text: string;
-  builtIn: boolean;
-  hidden: boolean;
-}
-
 /** One row of the body-region reference-data area (phase 5 ticket 30,
-    CONTEXT: "Reference data" - amended). Flat, like Affirmation: a
+    CONTEXT: "Reference data" - amended). Flat: a
     built-in's `name` is '' and its wording comes from the message
     catalogue by `id`; a custom region carries the name the person typed
     and is never translated. No location on the body-map illustration -

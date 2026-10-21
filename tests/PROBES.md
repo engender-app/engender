@@ -931,13 +931,6 @@ the old behavior fails the positive first-render assertion. Browsers, container
 and temporary server roots close in `finally`; the caller removes prepared
 release roots after use.
 
-`src/lib/data/journal/archive-revisit-merge.test.ts` uses real SQLite and
-encrypted Archives to cover dismissing and setting a revisit again, and two
-devices choosing revisits for the same entry. Merge preserves the destination
-row while restoring unrelated entries and media. Duplicate incoming revisit
-owners fail verification and both restore modes before transaction admission
-or file-store access. Healthy distinct owners round-trip in both modes.
-
 `src/lib/data/journal/stock-identity.test.ts` checks refills and edits across
 ASCII and Unicode drug-name case variants, one projection and one automatic
 reminder, and Archive Merge after a local rename. Real schema-88 and schema-90
@@ -1174,7 +1167,7 @@ lock cleanup through the shared content-forgetting boundary.
 
 `entry-source-return-check.mjs` drives the real router and editor through
 Save and Delete from Voice recordings, ordinary and margin-note Search
-results, Today's revisit tile and an ordinary day list. It checks the
+results and an ordinary day list. It checks the
 selected Voice tab, Search query and starred filter on return. It also
 checks that Search spends
 its in-memory snapshot and that typed queries stay out of return URLs,

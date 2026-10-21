@@ -82,7 +82,6 @@ function everyPreferenceSet(): PreferenceValues {
     allowScreenCapture: true,
     checkInEnabled: true,
     checkInTime: '07:30',
-    checkInAffirmationsEnabled: false,
     autoExportEnabled: true,
     autoExportSchedule: 'monthly',
     lastBackupAt: 1_700_000_000_000,

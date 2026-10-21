@@ -354,7 +354,6 @@
          reminders row. -->
     <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
     <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} href="/settings/journaling-pause" />
-    <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} href="/settings/affirmations" />
   </ListCard>
 
   <SectionHeading text={m.settings_lists()} />

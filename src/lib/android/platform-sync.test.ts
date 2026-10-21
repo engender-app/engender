@@ -52,48 +52,12 @@ const REMINDER = {
 };
 
 describe('assembleReminderSyncPayload', () => {
-  test('drops in an empty affirmation list when the toggle is off, regardless of what was fetched', () => {
-    const payload = assembleReminderSyncPayload({
-      reminders: [REMINDER],
-      recentEntries: [{ epochDay: 20309 }],
-      checkInEnabled: true,
-      checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: ['You are enough.'],
-      hideNotificationTitles: false,
-      ...ALL_ON,
-      journalingPauses: [],
-      texts: TEXTS
-    });
-
-    expect(payload.checkInAffirmations).toEqual([]);
-  });
-
-  test('carries the affirmation lines through when the toggle is on', () => {
-    const payload = assembleReminderSyncPayload({
-      reminders: [REMINDER],
-      recentEntries: [{ epochDay: 20309 }],
-      checkInEnabled: true,
-      checkInTime: '21:30',
-      checkInAffirmationsEnabled: true,
-      affirmationLines: ['You are enough.', 'Your pace is the right pace.'],
-      hideNotificationTitles: false,
-      ...ALL_ON,
-      journalingPauses: [],
-      texts: TEXTS
-    });
-
-    expect(payload.checkInAffirmations).toEqual(['You are enough.', 'Your pace is the right pace.']);
-  });
-
   test('takes the latest entry day from the most recent entry', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [],
       recentEntries: [{ epochDay: 20309 }],
       checkInEnabled: false,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
       journalingPauses: [],
@@ -109,8 +73,6 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: false,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
       journalingPauses: [],
@@ -126,8 +88,6 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
       journalingPauses: [{ startEpochDay: 20309, endEpochDay: 20311 }],
@@ -144,8 +104,7 @@ describe('assembleReminderSyncPayload', () => {
       { startEpochDay: 20320, endEpochDay: null }
     ];
     const payload = assembleReminderSyncPayload({
-      reminders: [], recentEntries: [], checkInEnabled: true, checkInTime: '21:30',
-      checkInAffirmationsEnabled: false, affirmationLines: [], hideNotificationTitles: false,
+      reminders: [], recentEntries: [], checkInEnabled: true, checkInTime: '21:30', hideNotificationTitles: false,
       ...ALL_ON, journalingPauses, texts: TEXTS
     });
     expect(payload.checkInEnabled).toBe(true);
@@ -158,8 +117,6 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: false,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
       journalingPauses: [],
@@ -169,14 +126,12 @@ describe('assembleReminderSyncPayload', () => {
     expect(payload.checkInEnabled).toBe(false);
   });
 
-  test('a fresh install hides both the reminder title and the check-in affirmation', () => {
+  test('a fresh install hides reminder titles', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: true,
-      affirmationLines: ['You are enough.'],
       hideNotificationTitles: PREFERENCE_DEFAULTS.hideNotificationTitles,
       ...ALL_ON,
       journalingPauses: [],
@@ -192,8 +147,6 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: true,
-      affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
       ...ALL_ON,
       journalingPauses: [],
@@ -272,8 +225,6 @@ describe('what the payload carries about the registry', () => {
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
       journalingPauses: [],
@@ -361,7 +312,6 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
     prefs: {
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
       hideNotificationTitles: false,
       remindersEnabled: true,
       wearElapsedEnabled: true,
@@ -393,7 +343,6 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       addListener: vi.fn().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) }),
       minimizeApp: vi.fn().mockResolvedValue(undefined)
     },
-    affirmationLines: () => ['You are enough.'],
     reminderTexts: () => TEXTS,
     isValidLaunchRoute: () => true,
     currentPathname: () => '/',

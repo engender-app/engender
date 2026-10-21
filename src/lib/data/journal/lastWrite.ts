@@ -278,7 +278,6 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   dimensions: 'reference data, not a written stream',
   presets: 'reference data, not a written stream',
   tagGroups: 'reference data, not a written stream',
-  affirmations: 'reference data, not a written stream',
   bodyRegions: 'reference data, not a written stream',
   presentations: 'reference data, not a written stream',
   entryTemplates: 'reference data, not a written stream',
@@ -320,11 +319,6 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // The record of which areas are hidden or finished; asking it for its own
   // last write answers nothing a consumer of this registry could use.
   areaStates: 'the record of which areas are finished, not itself a stream to ask about',
-  // A revisit is met on its target day (ADR-0045: the arrival offers and
-  // never mints); asking when one was last set is a second way to meet it
-  // before that day does, the same risk letters' own opt-out above guards
-  // against.
-  revisits: 'sealed until the day chosen to see the entry again',
   // Mirrors day.ts's own opt-out (phase 8 features ticket 07): a margin
   // note is not a stream any of this registry's four consumers reports a
   // gap about - it is drawn wherever the entry it annotates is, and asking

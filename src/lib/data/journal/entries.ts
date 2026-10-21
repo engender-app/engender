@@ -243,7 +243,7 @@ export interface EntriesArea {
       rather than a field off the one above, because hydrating an entry costs
       six more statements pulling dimension values, tag links, photos,
       recordings, video notes and body regions - and a surface offering to
-      revisit a bad moment needs the id it would link to and nothing else
+      return to a bad moment needs the id it would link to and nothing else
       (phase 8 audit ticket 13). */
   latestBadMomentEntryId(dysphoriaTagIds?: readonly string[]): Promise<number | undefined>;
   /** The day of the most recent untrashed entry at or before `todayEpochDay`,
@@ -1356,7 +1356,6 @@ async function purgeTrashedBefore(
     await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM video_note WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM margin_note WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM revisit WHERE entry_id IN (SELECT uuid FROM entry WHERE id IN (${placeholders}))`, ids);
     await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
     await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);

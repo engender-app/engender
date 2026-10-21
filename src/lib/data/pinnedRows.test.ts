@@ -206,7 +206,7 @@ test('switching every kind off leaves no agenda at all', () => {
 
 test('a stored kind that is not one of the five cannot switch anything on', () => {
   /* ADR-0067's six refusals - a run-out day, a reminder, a daily dose slot,
-     a taper session, the next hair photo, a revisit - are refusals about
+     a taper session, the next hair photo - are refusals about
      what earns a mark. A switch list is a person's answer about the five
      that do, and cannot be the back door that adds a sixth. */
   assert.deepEqual(shownAgendaKinds({ agendaKinds: ['appointment', 'runOut', 'reminder'] }), ['appointment']);

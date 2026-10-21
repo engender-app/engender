@@ -55,7 +55,7 @@ const ROUTES = flag(
   'routes',
   '/transition/tryouts,/health/surgery,/transition/letters,/body/hair-removal,/media/photos/export,' +
     '/body/measurements,/tally,/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
-    '/more,/settings/tags,/body/hair-progress,/settings/access-mode,/settings/affirmations'
+    '/more,/settings/tags,/body/hair-progress,/settings/access-mode'
 ).split(',');
 const JUMP_PX = 24;
 /* `--step` lowers the floor a lone step is reported at (ticket 205 asks

@@ -265,7 +265,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   dimensions: 'reference data, not a day still to come',
   presets: 'reference data, not a day still to come',
   tagGroups: 'reference data, not a day still to come',
-  affirmations: 'reference data, not a day still to come',
   bodyRegions: 'reference data, not a day still to come',
   presentations: 'reference data, not a day still to come',
   entryTemplates: 'reference data, not a day still to come',
@@ -332,7 +331,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // ADR-0067, the one most likely to be reopened: marking a sealed entry
   // forward turns an arrival into a countdown to the person's own past,
   // which is the opposite of what the resurfacing consent layer exists for.
-  revisits: "sealed until the day chosen to see the entry again - marking it forward would turn an arrival into a countdown to the person's own past",
   marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own',
   wordIgnore: 'reference data, not a day still to come'
 };

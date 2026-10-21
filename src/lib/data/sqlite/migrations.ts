@@ -56,5 +56,6 @@ CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT N
   { version: 94, sql: CLOSED_LISTS_REBUILD },
   /* Functional audit ticket 10: saved questions are cut. Rows are dropped,
      not converted, and restore skips the archive section by name. */
-  { version: 95, sql: 'DROP TABLE saved_question;' }
+  { version: 95, sql: 'DROP TABLE saved_question;' },
+  { version: 96, sql: 'DROP TABLE affirmation; DROP TABLE revisit;' }
 ];

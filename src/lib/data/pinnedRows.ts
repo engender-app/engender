@@ -196,10 +196,9 @@ export function pinnedRows(
     is the ADR's rather than the order somebody switched things back on in,
     so the agenda reads the same way for everybody who has the same kinds on.
     The filter is what stops the switch list being a back door: ADR-0067
-    refuses six kinds a mark - a run-out day, a reminder, a daily dose slot,
-    a taper session, the next hair photo, a revisit - and a stored list is a
-    person's answer about the five that earn one, never a way to register a
-    sixth. Amending that list means amending the ADR. */
+    refuses five kinds a mark - a run-out day, a reminder, a daily dose slot,
+    a taper session, the next hair photo - and a stored list is a
+    person's answer about the five that earn one, never a way to register another. Amending that list means amending the ADR. */
 export function shownAgendaKinds(switches: AgendaSwitches): DayAheadMarkKind[] {
   if (switches.agendaKinds === null) return [...DAY_AHEAD_MARK_KINDS];
   const on = new Set(switches.agendaKinds);

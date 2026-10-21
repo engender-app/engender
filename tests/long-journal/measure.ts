@@ -804,7 +804,6 @@ export async function measureLongJournal(
       episodes: journal.regimen.getEpisodes(),
       procedures: journal.procedures.getProcedures(),
       letters: journal.letters.getLetterSeals(HOME_LETTER_PAGE),
-      dueRevisits: journal.revisits.getDueRevisits(today),
       latestBadEntryId: journal.entries.latestBadMomentEntryId(),
       tryouts: activeTryoutIds,
       /* Fed the ids the tryout list already answered with, which is what the

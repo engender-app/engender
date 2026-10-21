@@ -146,7 +146,7 @@ public class ReminderNotificationPrivacyTest {
     }
 
     @Test
-    public void resetRemovesPostedTitlesAndAffirmations() throws Exception {
+    public void resetRemovesPostedTitlesAndCheckIn() throws Exception {
         ReminderScheduler.saveAndSchedule(context, checkInPayload());
         fireReminderAlarm();
         fireCheckInAlarm();
@@ -155,8 +155,8 @@ public class ReminderNotificationPrivacyTest {
         assertNotNull("no reminder was posted", reminder);
         assertNotNull("no check-in was posted", checkIn);
         assertEquals(SENSITIVE_TITLE, reminder.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
-        assertTrue(checkIn.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString()
-            .contains("You are allowed to take up space"));
+        assertEquals("How are you today?", checkIn.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
+        assertNull(checkIn.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
 
         DeviceStores.wipe(context);
 
@@ -265,8 +265,7 @@ public class ReminderNotificationPrivacyTest {
 
     private JSONObject checkInPayload() throws Exception {
         return payload(false)
-            .put("checkInEnabled", true)
-            .put("checkInAffirmations", new JSONArray().put("You are allowed to take up space"));
+            .put("checkInEnabled", true);
     }
 
     private void fireCheckInAlarm() {

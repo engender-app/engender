@@ -21,7 +21,6 @@ describe('buildAndroidReminderPayload', () => {
       checkInEnabled: true,
       checkInTime: '21:30',
       journalingPauses: [],
-      checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -32,6 +31,8 @@ describe('buildAndroidReminderPayload', () => {
         checkInBody: 'How are you today?'
       }
     });
+
+    expect(payload).not.toHaveProperty('checkInAffirmations');
 
     expect(payload).toEqual({
       reminders: [
@@ -51,7 +52,6 @@ describe('buildAndroidReminderPayload', () => {
       checkInEnabled: true,
       checkInTime: '21:30',
       journalingPauses: [],
-      checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -80,14 +80,12 @@ describe('buildAndroidReminderPayload', () => {
       }
     ];
 
-    const affirmations = ['You are enough.'];
     const journalingPauses = [{ startEpochDay: 21000, endEpochDay: null }];
     const payload = buildAndroidReminderPayload({
       reminders,
       checkInEnabled: false,
       checkInTime: '21:00',
       journalingPauses,
-      checkInAffirmations: affirmations,
       latestEntryEpochDay: 21000,
       hideNotificationTitles: false,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -100,10 +98,8 @@ describe('buildAndroidReminderPayload', () => {
     });
 
     reminders[0].title = 'Changed';
-    affirmations[0] = 'Changed';
     journalingPauses[0].startEpochDay = 21001;
     expect(payload.reminders[0].title).toBe('Reminder');
-    expect(payload.checkInAffirmations[0]).toBe('You are enough.');
     expect(payload.journalingPauses[0].startEpochDay).toBe(21000);
   });
 });

@@ -225,7 +225,6 @@ test('reconciling built-ins announces the reference tables it may have filled', 
     [
       'tag',
       'dimension',
-      'affirmation',
       'bodyRegion',
       'measurementType',
       'effectCategory',

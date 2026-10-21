@@ -203,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 95);
+  assert.equal(db.getUserVersion(), 96);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -211,7 +211,6 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     .map((r) => (r as { name: string }).name);
 
   for (const expected of [
-    'affirmation',
     'appointment',
     'area_state',
     'comfort_item',
@@ -240,7 +239,6 @@ test('applies cleanly to an empty database and sets user_version', async () => {
     'preset_dimension',
     'regimen_episode',
     'reminder',
-    'revisit',
     'side_effect',
     'tag',
     'tag_group',
@@ -252,6 +250,16 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   ]) {
     assert.ok(tables.includes(expected), `expected table ${expected} to exist`);
   }
+});
+
+test('affirmation and revisit tables are removed from migrated journals', async () => {
+  const db = await migratedDb();
+  const tables = db.raw.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()
+    .map((row) => (row as { name: string }).name);
+  assert.ok(!tables.includes('affirmation'));
+  assert.ok(!tables.includes('revisit'));
+  assert.ok(tables.includes('letter'));
+  await db.close();
 });
 
 test('entry_fts is a contentless FTS5 table', async () => {

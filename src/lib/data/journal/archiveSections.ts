@@ -237,7 +237,6 @@ const SECTIONS = [
   }),
   /* The fluidity engine's presentations (phase 5 deepening ticket 17,
      ADR-0048). Flat: one table, no children, no built-ins to preserve -
-     every row is a custom, so unlike dimensions/tagGroups/affirmations
      there is no "only the customs" discard statement. No `after`: an
      entry's own `presentation_id` is plain text (entries' own section
      resolves no rowid against it), the same reason milestones needs none
@@ -280,24 +279,13 @@ const SECTIONS = [
     read: read.readEntryTemplates,
     apply: apply.applyEntryTemplates
   }),
-  section({
-    name: 'affirmations',
-    // Only the customs, the same reasoning dimensions' own statement gives: a
-    // built-in line the archive does not carry keeps the wording reconciling
-    // gave it rather than losing its row entirely.
-    discard: ['DELETE FROM affirmation WHERE key IS NULL'],
-    // Custom vocabulary, the same reasoning `dimensions` above gives.
-    travels: 'whole',
-    read: read.readAffirmations,
-    apply: apply.applyAffirmations
-  }),
   // No `after`: entry_body_region.region stores a region's domain id
   // directly (a plain string, not a rowid FK), so applyEntries never
   // resolves a body region against this section's rows the way it does
   // dimensions and tags.
   section({
     name: 'bodyRegions',
-    // Same reasoning as affirmations' own statement: only the customs.
+    // Same reasoning as dimensions' own statement: only the customs.
     discard: ['DELETE FROM body_region WHERE key IS NULL'],
     // Custom vocabulary, the same reasoning `dimensions` above gives.
     travels: 'whole',
@@ -541,19 +529,6 @@ const SECTIONS = [
     identity: 'uuid',
     orderBy: 'start_epoch_day, id',
     columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
-  }),
-  section({
-    name: 'revisits',
-    // A day chosen once to read an entry again is scheduling metadata about
-    // this device, not something the person would hand to a clinician in a
-    // structure file - the same judgement letters and reminders above
-    // already made. Older archives may carry a revisit without its trashed
-    // entry, so restore checks the owner before inserting it.
-    travels: 'none',
-    after: ['entries'],
-    discard: ['DELETE FROM revisit'],
-    read: read.readRevisits,
-    apply: apply.applyRevisits
   }),
   /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
      no children, no built-ins - nothing ships seeded, so every row is the
@@ -1063,8 +1038,7 @@ const SECTIONS = [
      stable rather than silently reshuffled on every read. */
   flat({
     name: 'comfortItems',
-    // Authored text with no chronology, the same reasoning `affirmations`
-    // above gives - not a record of what happened to you.
+    // Authored text with no chronology, not a record of what happened to you.
     travels: 'whole',
     table: 'comfort_item',
     identity: 'uuid',
@@ -1128,7 +1102,7 @@ export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
 
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
-export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions'];
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions', 'affirmations', 'revisits'];
 
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */
@@ -1186,13 +1160,13 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
     resolves a rowid against another's rows says so with `after`, so it
     inserts second and therefore clears first, before the rows it points at
     are gone; children inside one section are that section's own business and
-    are declared children-first. Today the reversal is what keeps the six
+    are declared children-first. Today the reversal is what keeps the five
     foreign keys that do not cascade (entry.presentation_id,
     milestone.procedure_id and tryout_id, personal_effect_type.category_key,
-    doubt_snapshot_entry.snapshot_id, revisit.entry_id) from firing: each
+    doubt_snapshot_entry.snapshot_id) from firing: each
     child's section (or, for doubt_snapshot_entry, its own statements) inserts
     after its parent's, so it clears first, by
-    `after` for milestones and by declaration order for the rest. A seventh,
+    `after` for milestones and by declaration order for the rest. A sixth,
     checklist.debrief_entry_id, sets null. The rest cascade, and every child
     table is emptied wholesale anyway. The one ordering a statement does
     depend on is inside a section: `presets` filters preset_dimension by a

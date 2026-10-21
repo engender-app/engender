@@ -393,7 +393,7 @@
        Each row keeps the registry's line, for the reason the add list above
        keeps its own and the pinned list drops them: a line under a row being
        dragged is in the way, and a line under a row being decided about is
-       the decision. "Revisit" and "Active tryout" are not self-evident, and
+       the decision. "Active tryout" is not self-evident, and
        the screen these switches came from stated what each one puts in front
        of you (the impeccable critique's own first finding, 2026-09-16).
 

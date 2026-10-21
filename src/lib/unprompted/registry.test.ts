@@ -35,8 +35,7 @@ describe('the unprompted registry', () => {
       'measurementsNudgeEnabled',
       'appointmentTodayEnabled',
       'wrappedEnabled',
-      'onThisDayEnabled',
-      'revisitEnabled'
+      'onThisDayEnabled'
     ]);
   });
 
@@ -90,7 +89,7 @@ describe('the notifications view (ticket 04)', () => {
 
   it('reuses the check-in preference rather than stacking a second switch on it', () => {
     /* `checkInEnabled` is the check-in, and it already carried its time and
-       its affirmation pool. A `checkInNotificationsEnabled` beside it would
+       its prompt. A `checkInNotificationsEnabled` beside it would
        be a switch that can only ever contradict the one next to it. */
     expect(NOTIFICATION_ROWS.find((row) => row.key === 'check-in')?.notify?.prefKey).toBe('checkInEnabled');
   });

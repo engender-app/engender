@@ -46,8 +46,6 @@ export async function seedCompleteArchiveJournal(
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.setGroupEnabled('activities', false);
-  await journal.affirmations.addLine('en', 'You get to take up space, today too.');
-  await journal.affirmations.setHidden('affirmation_2', true);
   const bodyRegion = await journal.bodyRegions.addCustomRegion('scar tissue');
   await journal.bodyRegions.setRegionHidden('hairline', true);
 
@@ -97,7 +95,6 @@ export async function seedCompleteArchiveJournal(
   await journal.entries.upsertEntry({ id: entry, attachVideos: [bytes('a video note')] });
   await journal.marginNotes.add({ entryId: entry, epochDay: 20050, text: 'reading this back, zażółć gęślą jaźń' });
   const trashedEntry = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
-  await journal.revisits.setRevisit({ entryId: trashedEntry, createdEpochDay: 20001, targetEpochDay: 20101 });
   await journal.marginNotes.add({ entryId: trashedEntry, epochDay: 20051, text: 'A note on a trashed entry' });
   await journal.entries.deleteEntry(trashedEntry);
   // Mixed case, so the fixture pins that the write folds it (phase 8
@@ -162,7 +159,6 @@ export async function seedCompleteArchiveJournal(
   await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null });
-  await journal.revisits.setRevisit({ entryId: entry, createdEpochDay: 20000, targetEpochDay: 20100 });
 
   /* Three eras, so both open bounds and a closed pair all travel. An absent
      bound is the case a round trip can lose silently by defaulting it to a

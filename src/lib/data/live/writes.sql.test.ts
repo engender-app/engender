@@ -261,14 +261,6 @@ beforeAll(async () => {
     journal.presentations.setPresentationHidden(femme.id, true)
   );
 
-  // --- affirmations -------------------------------------------------------
-  const line = (await drive('affirmations', 'addLine', () =>
-    journal.affirmations.addLine('en', 'You get to take up space, today too.')
-  )) as { id: string };
-  await drive('affirmations', 'editLine', () => journal.affirmations.editLine(line.id, 'You get to take up space.'));
-  await drive('affirmations', 'setHidden', () => journal.affirmations.setHidden(line.id, true));
-  await drive('affirmations', 'deleteLine', () => journal.affirmations.deleteLine(line.id));
-
   // --- bodyRegions --------------------------------------------------------
   const region = (await drive('bodyRegions', 'addCustomRegion', () =>
     journal.bodyRegions.addCustomRegion('scar tissue')
@@ -636,15 +628,6 @@ beforeAll(async () => {
     journal.journalingPauses.deletePause(secondJournalingPauseId)
   );
 
-  // --- revisits -----------------------------------------------------------
-  await drive('revisits', 'setRevisit', () =>
-    journal.revisits.setRevisit({ entryId, createdEpochDay: 20000, targetEpochDay: 20100 })
-  );
-  const revisitForEntry = await driveRead('revisits', 'getRevisitForEntry', () =>
-    journal.revisits.getRevisitForEntry(entryId)
-  );
-  await drive('revisits', 'deleteRevisit', () => journal.revisits.deleteRevisit(revisitForEntry!.id));
-
   // --- marginNotes ------------------------------------------------------
   const marginNoteId = (await drive('marginNotes', 'add', () =>
     journal.marginNotes.add({ entryId, epochDay: 20050, text: 'reading this back' })
@@ -967,7 +950,6 @@ beforeAll(async () => {
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
   await driveRead('entryTemplates', 'getEntryTemplates', () => journal.entryTemplates.getEntryTemplates());
-  await driveRead('affirmations', 'getAffirmations', () => journal.affirmations.getAffirmations());
   await driveRead('bodyRegions', 'getBodyRegions', () => journal.bodyRegions.getBodyRegions());
   await driveRead('dimensions', 'getDimensions', () => journal.dimensions.getDimensions());
   await driveRead('dimensions', 'getPresets', () => journal.dimensions.getPresets());
@@ -1050,7 +1032,6 @@ beforeAll(async () => {
   await driveRead('cycleEvents', 'getCycleEventsInRange', () => journal.cycleEvents.getCycleEventsInRange(0, 30000));
   await driveRead('cycleEvents', 'lastWriteEpochDay', () => journal.cycleEvents.lastWriteEpochDay(20000));
   await driveRead('journalingPauses', 'getPauses', () => journal.journalingPauses.getPauses());
-  await driveRead('revisits', 'getDueRevisits', () => journal.revisits.getDueRevisits(20200));
   await driveRead('marginNotes', 'forEntries', () => journal.marginNotes.forEntries([entryId]));
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());

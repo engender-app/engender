@@ -72,7 +72,7 @@ export async function builtInsOnlyDevice(): Promise<{ driver: SqliteDriver; jour
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
-    hidden affirmation, a custom body region logged on the entry alongside a
+    custom body region logged on the entry alongside a
     built-in one, a custom measurement type alongside a hidden built-in one,
     a disabled effect category, a custom effect type alongside a hidden
     built-in one, and an authored entry template carrying a custom tag, a

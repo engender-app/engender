@@ -107,7 +107,6 @@ export function homeTiles(
   const episodes = liveList((j) => j.regimen.getEpisodes());
   const procedures = liveList((j) => j.procedures.getProcedures());
   const letters = liveList((j) => j.letters.getLetterSeals(100));
-  const dueRevisits = liveList((j) => j.revisits.getDueRevisits(todayEpochDay));
   const latestBadEntryId = liveQuery((j) => j.entries.latestBadMomentEntryId());
   const tryouts = liveList((j) => j.tryouts.getTryouts());
   /* One statement for every active tryout at once, fed the list the line
@@ -175,7 +174,6 @@ export function homeTiles(
     episodes,
     procedures,
     letters,
-    dueRevisits,
     latestBadEntryId,
     tryouts,
     tryoutFeltSense,
@@ -219,7 +217,6 @@ export function homeTiles(
         episodes: episodes.rows,
         procedures: procedures.rows,
         letters: letters.rows,
-        dueRevisits: dueRevisits.rows,
         latestBadEntryId: latestBadEntryId.value,
         wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
@@ -249,7 +246,6 @@ export function homeTiles(
           prefs.safeSpaceNudgeDismissedEntryId = entryId;
         },
         openLetterDismiss: handlers.onLetterDismiss,
-        dismissRevisit: (id) => void journal.revisits.deleteRevisit(id),
         resumePause: (pauseId, startEpochDay) => void resumePause(pauseId, startEpochDay),
         snooze
       },

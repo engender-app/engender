@@ -49,7 +49,7 @@ try {
     await journal.regimen.upsertEpisode({ drug: 'estradiol', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'every day', startEpochDay: day - 60, endEpochDay: null, endReason: null });
     await journal.doses.upsertDose({ timestamp: startOfDayTimestamp(day - 1) + 8 * 3600000, route: 'oral', drug: 'estradiol', dose: 2, doseUnit: 'mg' });
     const ids = {};
-    for (const source of ['Voice', 'Search', 'Margin', 'Today', 'Day']) {
+    for (const source of ['Voice', 'Search', 'Margin', 'Day']) {
       for (const action of ['Save', 'Delete']) {
         const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4, starred: true,
           note: `Source fixture ${source} ${action}`, attachRecordings: source === 'Voice' ? [wav] : [],
@@ -61,7 +61,7 @@ try {
     for (let n = 0; n < 10; n++) await journal.entries.upsertEntry({ epochDay: day - 20 - n, mood: 3, bodyRegions: { chest: 40 } });
     return { ids, day };
   });
-  for (const source of ['Voice', 'Search', 'Margin', 'Today', 'Day'].filter(source => !process.env.ENTRY_SOURCE || source === process.env.ENTRY_SOURCE)) {
+  for (const source of ['Voice', 'Search', 'Margin', 'Day'].filter(source => !process.env.ENTRY_SOURCE || source === process.env.ENTRY_SOURCE)) {
     for (const action of ['Save', 'Delete']) {
       await go('/more');
       const id = fixture.ids[`${source}${action}`];
@@ -79,15 +79,6 @@ try {
         await go(route);
         await page.locator('#q').fill(source === 'Search' ? `Source fixture Search ${action}` : `privateorchid Margin ${action}`);
         link = source === 'Search' ? page.locator(`[data-entry-card][href^="/entry/${id}?"]`) : page.locator(`[data-search-hit="marginNotes"][href^="/entry/${id}?"]`);
-      } else if (source === 'Today') {
-        await page.evaluate(async ({ id, day }) => {
-          const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-          for (const row of await journal.revisits.getDueRevisits(day)) await journal.revisits.deleteRevisit(row.id);
-          await journal.revisits.setRevisit({ entryId: id, createdEpochDay: day, targetEpochDay: day });
-        }, { id, day: fixture.day });
-        route = '/';
-        await go(route);
-        link = page.locator('[data-revisit-tile]');
       } else {
         route = `/day/${fixture.day}`;
         await go(route);

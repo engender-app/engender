@@ -40,7 +40,7 @@
      **What it searches (phase 5 deepening ticket 24).** Entries, and every
      other area of the journal that holds text: letters, milestone names,
      procedure notes, appointment questions, felt-sense reflections, custom
-     roadmap goals, affirmations, lab notes, fit notes, wear notes, provider
+     roadmap goals, lab notes, fit notes, wear notes, provider
      names, drug names, reminder titles. Which those are is textSearch.ts's
      registry, not a list here - this screen names no area, and an area
      registered there reaches this screen without it being edited.
@@ -67,7 +67,7 @@
      print every letter in the range, which is the archive's job.
 
      *The date range narrows everything it can reach.* An area whose records
-     carry a day is narrowed by it; a roadmap goal and an affirmation belong
+     carry a day is narrowed by it; a roadmap goal and a checklist belong
      to no day and are not.
 
      *Tags, moods, has-note and has-photo are entry-only.* They are entry
@@ -903,6 +903,18 @@
 </div>
 
 <style>
+  .search-count {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 var(--space-3);
+    /* Search swaps the count's words with a crossfade (ticket 16), which
+       lifts the outgoing words out of flow; they sit over the incoming ones
+       rather than at the column's top. */
+    position: relative;
+  }
+  /* Not infinite scroll (SCREENS.md): a page is asked for, and the control
+     that asks says how many are coming. */
+  .search-more { width: 100%; margin-top: var(--space-4); }
   /* Search's own hint lines; the screen is their one reader, so they live
      here rather than in screens.css (check-screens-classes). */
   .search-hint {

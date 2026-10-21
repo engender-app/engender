@@ -28,7 +28,6 @@
 import { metricKey } from '../prefs/catalogue';
 import { prefs } from '../prefs/store.svelte';
 import type {
-  Affirmation,
   BodyRegion,
   EffectCategory,
   EntryTemplate,
@@ -48,7 +47,6 @@ const mirror = $state<{
   dimensions: GenderDimension[];
   tagGroups: TagGroup[];
   milestones: Milestone[];
-  affirmations: Affirmation[];
   bodyRegions: BodyRegion[];
   measurementTypes: MeasurementType[];
   effectCategories: EffectCategory[];
@@ -59,7 +57,6 @@ const mirror = $state<{
   dimensions: [],
   tagGroups: [],
   milestones: [],
-  affirmations: [],
   bodyRegions: [],
   measurementTypes: [],
   effectCategories: [],
@@ -72,7 +69,6 @@ type MirrorSlice =
   | 'dimensions'
   | 'tagGroups'
   | 'milestones'
-  | 'affirmations'
   | 'bodyRegions'
   | 'measurementTypes'
   | 'effectCategories'
@@ -92,7 +88,6 @@ const SLICE_READS: Record<MirrorSlice, [area: string, operation: string]> = {
   dimensions: ['dimensions', 'getDimensions'],
   tagGroups: ['tags', 'getTagGroups'],
   milestones: ['milestones', 'getMilestones'],
-  affirmations: ['affirmations', 'getAffirmations'],
   bodyRegions: ['bodyRegions', 'getBodyRegions'],
   measurementTypes: ['measurements', 'getMeasurementTypes'],
   effectCategories: ['effectCategories', 'getEffectCategories'],
@@ -124,7 +119,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     dimensions,
     tagGroups,
     milestones,
-    affirmations,
     bodyRegions,
     measurementTypes,
     effectCategories,
@@ -135,7 +129,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     journal.dimensions.getDimensions(),
     journal.tags.getTagGroups(),
     journal.milestones.getMilestones(),
-    journal.affirmations.getAffirmations(),
     journal.bodyRegions.getBodyRegions(),
     journal.measurements.getMeasurementTypes(),
     journal.effectCategories.getEffectCategories(),
@@ -147,7 +140,6 @@ export async function hydrateReference(journal: Journal, current: () => void = (
   mirror.dimensions = dimensions;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;
-  mirror.affirmations = affirmations;
   mirror.bodyRegions = bodyRegions;
   mirror.measurementTypes = measurementTypes;
   mirror.effectCategories = effectCategories;
@@ -191,7 +183,6 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('dimensions')) mirror.dimensions = await journal.dimensions.getDimensions();
     if (slices.has('tagGroups')) mirror.tagGroups = await journal.tags.getTagGroups();
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
-    if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
     if (slices.has('bodyRegions')) mirror.bodyRegions = await journal.bodyRegions.getBodyRegions();
     if (slices.has('measurementTypes')) mirror.measurementTypes = await journal.measurements.getMeasurementTypes();
     if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
@@ -226,21 +217,6 @@ export const reference = {
   },
   get milestones(): Milestone[] {
     return mirror.milestones;
-  },
-
-  /** Every affirmation line, hidden built-ins included - what the settings
-      screen manages (CONTEXT: "Hidden"). */
-  get affirmations(): Affirmation[] {
-    return mirror.affirmations;
-  },
-
-  /** The lines the check-in's pool may draw from: hidden ones removed, the
-      same "not hidden" filter `visibleTagGroups` already applies to tags.
-      Language is not filtered here - that needs the active locale, and this
-      module stays free of paraglide (ADR-0016) - vocabulary.ts narrows it
-      further. */
-  get visibleAffirmations(): Affirmation[] {
-    return mirror.affirmations.filter((a) => !a.hidden);
   },
 
   /** Every body region an entry can log an intensity against, hidden ones

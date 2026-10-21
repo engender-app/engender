@@ -1,7 +1,6 @@
 /* The body-region area (phase 5 ticket 30, CONTEXT: "Reference data" -
-   amended): id-or-key addressing, the same built-in/custom split
-   affirmations.ts draws - except a body region has no delete at all, built-in
-   or custom, so there is nothing to test there. */
+   amended): id-or-key addressing and the built-in/custom split. A body
+   region has no delete, so there is nothing to test there. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

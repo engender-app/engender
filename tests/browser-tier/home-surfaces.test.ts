@@ -273,7 +273,6 @@ export async function homeContracts(): Promise<Result[]> {
     ['regimen', 'getEpisodes'],
     ['procedures', 'getProcedures'],
     ['letters', 'getLetterSeals'],
-    ['revisits', 'getDueRevisits'],
     ['entries', 'latestBadMomentEntryId'],
     ['tryouts', 'getTryouts'],
     ['feltSense', 'latestDaysForTryouts'],

@@ -404,7 +404,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   });
   await journal.feltSense.add({ tryoutId }, { epochDay: DAY, mood: 4, note: `felt ${word}` });
   await journal.roadmap.addCustomGoal('legal', `goal ${word}`);
-  await journal.affirmations.addLine('en', `affirmation ${word}`);
   await journal.labs.upsertResult({
     epochDay: DAY,
     analyte: 'Estradiol',

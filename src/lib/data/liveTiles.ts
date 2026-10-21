@@ -27,7 +27,6 @@ import type {
   JournalingPause,
   Procedure,
   RegimenEpisode,
-  Revisit,
   Tryout,
   WearSession
 } from './types';
@@ -275,7 +274,6 @@ export type LiveTileKind =
   | 'surgery-countdown'
   | 'safe-space-nudge'
   | 'ready-letter'
-  | 'revisit'
   | 'active-tryout-tile'
   | 'patch-schedule-tile'
   | 'voice-benchmark-nudge'
@@ -297,7 +295,6 @@ export const LIVE_TILE_ORDER = [
   'surgery-countdown',
   'safe-space-nudge',
   'ready-letter',
-  'revisit',
   'active-tryout-tile',
   'patch-schedule-tile',
   'voice-benchmark-nudge',
@@ -353,7 +350,6 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'surgery-countdown': 'moment',
   'safe-space-nudge': 'moment',
   'ready-letter': 'moment',
-  'revisit': 'moment',
   'pause-active-banner': 'moment',
   'active-tryout-tile': 'dormant',
   'voice-benchmark-nudge': 'dormant',
@@ -486,7 +482,6 @@ export interface HomeTileReads {
   episodes: readonly RegimenEpisode[];
   procedures: readonly Procedure[];
   letters: LetterSeal[];
-  dueRevisits: Revisit[];
   latestBadEntryId: number | null | undefined;
   /** `prefs.safeSpaceNudgeDismissedEntryId` - a preference rather than a
       read, but it is the safe-space nudge's second input and belongs beside
@@ -518,11 +513,6 @@ export interface HomeTileActions {
   stopWear: (session: WearSession) => void;
   dismissSafeSpace: (entryId: number) => void;
   openLetterDismiss: () => void;
-  /** Deletes the revisit row outright rather than snoozing it, unlike the
-      letter tile's dismiss sheet: a revisit fires once (the ticket's own
-      "one day, chosen once"), so there is no later instance a snooze would
-      need to leave alone. */
-  dismissRevisit: (id: string) => void;
   resumePause: (pauseId: string, startEpochDay: number) => void;
   snooze: (kind: LiveTileKind) => void;
 }
@@ -790,26 +780,6 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
           label: m.tile_letter_dismiss_action(),
           attrs: { 'data-letter-dismiss': '' },
           onclick: () => actions.openLetterDismiss()
-        }
-      };
-    },
-
-    revisit: (gate) => {
-      if (!gate.enabled || gate.snoozed) return null;
-      const [revisit, ...rest] = reads.dueRevisits;
-      if (!revisit) return null;
-      return {
-        key: 'revisit',
-        tileKey: 'revisit',
-        attrs: { 'data-revisit-tile': true },
-        title: m.tile_revisit_title(),
-        value: format.fullDay(revisit.entryEpochDay),
-        note: rest.length > 0 ? m.tile_revisit_more({ count: String(rest.length) }) : m.tile_revisit_single_note(),
-        href: `/entry/${revisit.entryId}`,
-        dismiss: {
-          label: m.dismiss(),
-          attrs: { 'data-revisit-dismiss': '' },
-          onclick: () => actions.dismissRevisit(revisit.id)
         }
       };
     },

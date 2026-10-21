@@ -39,7 +39,6 @@ import type { AppointmentDayRecord } from './journal/appointments';
 import type {
   DoseSchedule,
   HairRemovalSession,
-  Revisit,
   Procedure,
   RegimenEpisode,
   Tryout,
@@ -102,10 +101,6 @@ const letters: LetterSeal[] = [
   { id: 'letter-2', epochDay: TODAY - 30, unlockEpochDay: TODAY - 1 }
 ];
 
-const dueRevisits: Revisit[] = [
-  { id: 'revisit-1', entryId: 101, entryEpochDay: TODAY - 60, createdEpochDay: TODAY - 61, targetEpochDay: TODAY }
-];
-
 const tryout: Tryout = {
   id: 'tryout-1',
   kind: 'name',
@@ -164,7 +159,6 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       episodes: [episode],
       procedures: [procedure],
       letters,
-      dueRevisits,
       latestBadEntryId: 42,
       safeSpaceDismissedEntryId: null,
       tryouts: [tryout],
@@ -183,7 +177,6 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       stopWear: vi.fn(),
       dismissSafeSpace: vi.fn(),
       openLetterDismiss: vi.fn(),
-      dismissRevisit: vi.fn(),
       resumePause: vi.fn(),
       snooze: vi.fn()
     },
@@ -225,7 +218,6 @@ const TIERED: LiveTileKind[] = [
   'surgery-countdown',
   'safe-space-nudge',
   'ready-letter',
-  'revisit',
   'pause-active-banner',
   // Dormant.
   'active-tryout-tile',
@@ -249,7 +241,6 @@ describe('which kinds the grid is for', () => {
         'patch-schedule-tile',
         'pause-active-banner',
         'ready-letter',
-        'revisit',
         'safe-space-nudge',
         'surgery-countdown',
         'voice-benchmark-nudge',
@@ -299,7 +290,6 @@ describe('the tier every kind is in', () => {
       'surgery-countdown',
       'safe-space-nudge',
       'ready-letter',
-      'revisit',
       'pause-active-banner'
     ]);
     expect(byTier.dormant).toEqual([
@@ -358,16 +348,16 @@ describe('the order, and the cap', () => {
 
   it('folds nothing while the cap is not reached', () => {
     const enabled = allOn(false);
-    for (const kind of ['revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    for (const kind of ['ready-letter', 'measurements-nudge'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
-    expect(shown.map((t) => t.key)).toEqual(['revisit', 'measurements-nudge']);
+    expect(shown.map((t) => t.key)).toEqual(['ready-letter', 'measurements-nudge']);
     expect(folded).toEqual([]);
   });
 
   it('folds nothing at exactly the cap, so three never becomes two and a row', () => {
     const enabled = allOn(false);
-    for (const kind of ['wear-timer', 'revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    for (const kind of ['wear-timer', 'ready-letter', 'measurements-nudge'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
     expect(shown).toHaveLength(HOME_TILE_CAP);
@@ -566,36 +556,6 @@ describe('what each tile says', () => {
     expect(tile.action).toBeUndefined();
   });
 
-  it('the revisit tile names the entry due and deletes the row on dismiss', () => {
-    const actions = { dismissRevisit: vi.fn() };
-    const tile = tileNamed('revisit', { actions })!;
-    expect(tile.tileKey).toBe('revisit');
-    expect(tile.attrs).toEqual({ 'data-revisit-tile': true });
-    expect(tile.href).toBe('/entry/101');
-    expect(tile.value).toBe(`full:${TODAY - 60}`);
-    // One due revisit, so the note names it rather than counting others.
-    expect(tile.note).toBe(m.tile_revisit_single_note());
-    tile.dismiss!.onclick(CLICK);
-    expect(actions.dismissRevisit).toHaveBeenCalledWith('revisit-1');
-    expect(tile.action).toBeUndefined();
-  });
-
-  it('the revisit tile counts the rest when more than one is due', () => {
-    const tile = tileNamed('revisit', {
-      reads: {
-        dueRevisits: [
-          ...dueRevisits,
-          { id: 'revisit-2', entryId: 102, entryEpochDay: TODAY - 5, createdEpochDay: TODAY - 6, targetEpochDay: TODAY }
-        ]
-      }
-    })!;
-    expect(tile.note).toBe(m.tile_revisit_more({ count: '1' }));
-  });
-
-  it('the revisit tile is absent with nothing due', () => {
-    expect(tileNamed('revisit', { reads: { dueRevisits: [] } })).toBeUndefined();
-  });
-
   it('the active tryout offers a felt-sense entry against the tryout it names', () => {
     const tile = tileNamed('active-tryout-tile')!;
     expect(tile.tileKey).toBe('active-tryout');
@@ -728,12 +688,12 @@ describe('the dismiss controls', () => {
        gone on its own tomorrow, so there is nothing a snooze would buy
        (ticket 63).
 
-       Safe space, the ready letter and the revisit left this list in phase 9
-       carpet ticket 04 (ADR-0071). All three were closable all along - each
+       Safe space and the ready letter left this list in phase 9
+       carpet ticket 04 (ADR-0071). Both were closable all along - each
        carried an `action` whose icon was an x - and only the registry field
        said otherwise, which drew one job as two controls: a corner X on six
-       tiles and a soft button on these three. What each close does is
-       unchanged: the letter opens Home's sheet, the revisit deletes its row,
+       tiles and a soft button on these two. What each close does is
+       unchanged: the letter opens Home's sheet,
        safe space forgets the entry it was about. */
     for (const kind of [
       'wear-timer',
