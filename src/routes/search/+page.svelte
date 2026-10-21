@@ -112,6 +112,7 @@
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
+  import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -146,6 +147,11 @@
      `/search/starred` redirect stub, so a stale bookmark still lands on
      the shelf it pointed at rather than on a bare, unfiltered screen. */
   let starredOnly = $state(page.url.searchParams.has('starred'));
+  /* The transition fields (functional audit ticket 10): mode, body region
+     and one scale's range, entry-only like the filters above them. */
+  let selectedPresentationIds = $state<string[]>([]);
+  let selectedRegions = $state<string[]>([]);
+  let scale = $state<{ key: string; min: number; max: number } | null>(null);
   /* What the address asks for, which is also what a stale held search
      falls back to: `?starred=1` above, and `?q=` from the Transition door's
      "finish this search" row, which linked here with the query and landed
@@ -181,9 +187,36 @@
       ? selectedMoods.filter((m) => m !== value)
       : [...selectedMoods, value];
   };
+  const togglePresentation = (id: string) => {
+    selectedPresentationIds = selectedPresentationIds.includes(id)
+      ? selectedPresentationIds.filter((p) => p !== id)
+      : [...selectedPresentationIds, id];
+  };
+  const toggleRegion = (id: string) => {
+    selectedRegions = selectedRegions.includes(id)
+      ? selectedRegions.filter((r) => r !== id)
+      : [...selectedRegions, id];
+  };
+  /* One scale at a time. Choosing one starts at its whole range, which
+     already narrows to the entries that logged it; the two sliders then
+     close the range in from either end. */
+  const chooseScale = (key: string) => {
+    const dim = vocabulary.metricDimension(key);
+    scale = scale?.key === key || !dim ? null : { key, min: dim.min, max: dim.max };
+  };
+  const setScaleMin = (value: number) => {
+    if (scale) scale = { ...scale, min: Math.min(value, scale.max) };
+  };
+  const setScaleMax = (value: number) => {
+    if (scale) scale = { ...scale, max: Math.max(value, scale.min) };
+  };
+  let scaleDim = $derived(scale ? vocabulary.metricDimension(scale.key) : null);
   const clearAllFilters = () => {
     selectedTagIds = [];
     selectedMoods = [];
+    selectedPresentationIds = [];
+    selectedRegions = [];
+    scale = null;
     startDate = '';
     endDate = '';
     hasNote = false;
@@ -202,6 +235,9 @@
     if (hasNote) out.hasNote = true;
     if (hasPhoto) out.hasPhoto = true;
     if (starredOnly) out.starred = true;
+    if (selectedPresentationIds.length) out.presentationIds = selectedPresentationIds;
+    if (selectedRegions.length) out.bodyRegions = selectedRegions;
+    if (scale) out.scale = scale;
     return out;
   });
   let hasStructuredCriteria = $derived(
@@ -211,7 +247,10 @@
       !!endDate ||
       hasNote ||
       hasPhoto ||
-      starredOnly
+      starredOnly ||
+      selectedPresentationIds.length > 0 ||
+      selectedRegions.length > 0 ||
+      scale !== null
   );
   /* The typed query, waited out (phase 8 audit ticket 15). The two
      liveQuery closures below read `debouncedQuery`, never `query` itself:
@@ -241,10 +280,14 @@
      the same filters (searchReturn.ts). Arriving any other way, the held
      snapshot was stale and the search starts empty. */
   const current = (): SearchSnapshot => ({
-    query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly
+    query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly,
+    selectedPresentationIds, selectedRegions, scale
   });
   const restore = (s: SearchSnapshot) => {
-    ({ query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly } = s);
+    ({
+      query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly,
+      selectedPresentationIds, selectedRegions, scale
+    } = s);
     debouncedQuery = s.query.trim();
   };
   const held = takeHeldSearch();
@@ -468,6 +511,21 @@
     if (hasNote) chips.push({ key: 'has-note', label: m.search_filter_has_note(), remove: () => (hasNote = false) });
     if (hasPhoto) chips.push({ key: 'has-photo', label: m.search_filter_has_photo(), remove: () => (hasPhoto = false) });
     if (starredOnly) chips.push({ key: 'starred', label: m.search_filter_starred(), remove: () => (starredOnly = false) });
+    for (const id of selectedPresentationIds) {
+      const name = vocabulary.presentation(id)?.name;
+      if (name) chips.push({ key: `mode-${id}`, label: m.search_filter_mode_chip({ mode: name }), remove: () => togglePresentation(id) });
+    }
+    for (const id of selectedRegions) {
+      const name = vocabulary.bodyRegions.find((r) => r.id === id)?.name;
+      if (name) chips.push({ key: `region-${id}`, label: m.search_filter_region_chip({ region: name }), remove: () => toggleRegion(id) });
+    }
+    if (scale && scaleDim) {
+      chips.push({
+        key: 'scale',
+        label: m.search_filter_scale_chip({ scale: scaleDim.name, min: scale.min, max: scale.max }),
+        remove: () => (scale = null)
+      });
+    }
     return chips;
   });
   let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
@@ -717,6 +775,70 @@
       {/each}
     </div>
 
+    {#if vocabulary.visiblePresentations.length}
+      <p class="search-filter-label">{m.presentation_label()}</p>
+      <div class="tag-row" role="group" aria-label={m.presentation_label()}>
+        {#each vocabulary.visiblePresentations as mode (mode.id)}
+          <button
+            class="tag-chip press"
+            class:is-selected={selectedPresentationIds.includes(mode.id)}
+            aria-pressed={selectedPresentationIds.includes(mode.id)}
+            data-filter-mode={mode.id}
+            onclick={() => togglePresentation(mode.id)}
+          >
+            {mode.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if vocabulary.visibleBodyRegions.length}
+      <p class="search-filter-label">{m.body_regions_group()}</p>
+      <div class="tag-row" role="group" aria-label={m.body_regions_group()}>
+        {#each vocabulary.visibleBodyRegions as region (region.id)}
+          <button
+            class="tag-chip press"
+            class:is-selected={selectedRegions.includes(region.id)}
+            aria-pressed={selectedRegions.includes(region.id)}
+            data-filter-region={region.id}
+            onclick={() => toggleRegion(region.id)}
+          >
+            {region.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if vocabulary.visibleDimensions.length}
+      <p class="search-filter-label">{m.search_filter_scale_label()}</p>
+      <div class="tag-row" role="group" aria-label={m.search_filter_scale_label()}>
+        {#each vocabulary.visibleDimensions as dim (dim.key)}
+          <button
+            class="tag-chip press"
+            class:is-selected={scale?.key === dim.key}
+            aria-pressed={scale?.key === dim.key}
+            data-filter-scale={dim.key}
+            onclick={() => chooseScale(dim.key)}
+          >
+            {dim.name}
+          </button>
+        {/each}
+      </div>
+      {#if scale && scaleDim}
+        <!-- Opens its own height under the chips; switching to another
+             scale fades the pair in place, since both pairs are the same
+             height and nothing below has to move. -->
+        <div class="search-filter-range" data-filter-range transition:disclose={whileStaying}>
+          {#key scale.key}
+            <div class="search-filter-range-pair" in:fadeUp out:crossfade>
+              <DimensionSlider dim={{ ...scaleDim, name: m.search_filter_scale_from() }} value={scale.min} onInput={setScaleMin} />
+              <DimensionSlider dim={{ ...scaleDim, name: m.search_filter_scale_to() }} value={scale.max} onInput={setScaleMax} />
+            </div>
+          {/key}
+        </div>
+      {/if}
+    {/if}
+
     <div class="search-filter-dates">
       <label for="search-filter-start">{m.search_filter_start_label()}</label>
       <DatePicker id="search-filter-start" max={dayRangeStartMax(endDate)} bind:value={startDate} ariaLabel={m.search_filter_start_label()} data-filter-start />
@@ -796,5 +918,15 @@
   }
   .search-controls [data-filter-toggle] {
     flex: 0 0 auto;
+  }
+  /* The crossfade lifts the leaving pair out of flow over the arriving
+     one, so the box it is lifted inside is this one. */
+  .search-filter-range {
+    position: relative;
+  }
+  .search-filter-range-pair {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-2);
   }
 </style>

@@ -61,7 +61,7 @@ async function scopeSaidOnce(where) {
 try {
   await visit('/');
   if (await page.locator('[data-leave-setup]').count()) await page.locator('[data-leave-setup]').click();
-  await page.evaluate(async () => {
+  const modeId = await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
     const { clearJournal } = await import('/src/lib/data/demo/journal-seed.ts');
     await clearJournal(journal);
@@ -74,10 +74,21 @@ try {
     const owner = await journal.entries.upsertEntry({ epochDay: 19000, mood: 4 });
     const photo = await journal.photos.attach({ entryId: owner }, { full: await jpeg(), thumb: await jpeg() });
     await journal.photos.setStarred(photo, true);
+    /* Two entries apart on every transition field (functional audit 10),
+       under a word nothing else carries. */
+    const mode = await journal.presentations.addPresentation('Probe mode', 0);
+    await journal.entries.upsertEntry({ epochDay: 20001, mood: 4, note: 'filterprobe walk', presentationId: mode.id, bodyRegions: { chest: 70 }, dims: { femininity: 80 } });
+    await journal.entries.upsertEntry({ epochDay: 20002, mood: 3, note: 'filterprobe rest', bodyRegions: { hips_waist: 30 }, dims: { femininity: 20 } });
+    return mode.id;
   });
   for (const locale of ['en', 'pl']) {
+    /* SQLite owns the language now and boot applies it over whatever the
+       locale strategy holds, so the preference is what gets set. */
     await page.evaluate(async locale => {
       const { setLocale } = await import('/src/lib/paraglide/runtime.js');
+      const { prefs, flushPreferences } = await import('/src/lib/data/prefs/store.svelte.ts');
+      prefs.language = locale;
+      await flushPreferences();
       setLocale(locale, { reload: false });
     }, locale);
     await visit('/search');
@@ -116,6 +127,49 @@ try {
     assert.equal(await page.locator('[data-search-save], [data-search-random]').count(), 0, 'a save or random action is still offered');
     await page.locator('[data-filter-clear]').click();
     await counts(1, 1);
+    /* Mode, body region and a scale's range each narrow the entries, alone
+       and with the typed word, and stay on across a trip into an entry
+       and back (functional audit 10). */
+    const filterSheet = async (body) => {
+      await toggle.click();
+      await page.locator('[data-search-scope]').waitFor({ state: 'visible' });
+      await body();
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('[data-sheet]', { state: 'detached' });
+    };
+    await page.locator('#q').fill('filterprobe');
+    await counts(2, 0);
+    await filterSheet(() => page.locator(`[data-filter-mode="${modeId}"]`).click());
+    await counts(1, 0);
+    await page.locator('[data-filter-clear]').click();
+    await counts(2, 0);
+    await filterSheet(() => page.locator('[data-filter-region="hips_waist"]').click());
+    await counts(1, 0);
+    assert.match(await page.locator('[data-entry-card]').innerText(), /filterprobe rest/);
+    await page.locator('[data-filter-clear]').click();
+    await counts(2, 0);
+    await filterSheet(async () => {
+      await page.locator('[data-filter-scale="femininity"]').click();
+      await page.locator('[data-filter-range]').waitFor({ state: 'visible' });
+      // From 0 to 50 on a step-of-5 scale: the 80 stays, the 20 goes.
+      const from = page.locator('[data-filter-range] [role="slider"]').first();
+      await from.focus();
+      for (let step = 0; step < 10; step++) await page.keyboard.press('ArrowRight');
+    });
+    await counts(1, 0);
+    assert.match(await page.locator('[data-entry-card]').innerText(), /filterprobe walk/);
+    await filterSheet(() => page.locator(`[data-filter-mode="${modeId}"]`).click());
+    await counts(1, 0);
+    await page.locator('[data-entry-card]').first().click();
+    await page.waitForURL((url) => url.pathname.startsWith('/entry/'));
+    await page.locator('[data-screen-back]').first().click();
+    await page.waitForURL((url) => url.pathname === '/search');
+    await counts(1, 0);
+    assert.equal(await page.locator('#q').inputValue(), 'filterprobe');
+    assert.equal(await page.locator('[data-active-filter-chip]').count(), 2, 'mode and scale chips survive the trip');
+    await page.locator('[data-filter-clear]').click();
+    await page.locator('#q').fill('scopeprobe');
+    await counts(1, 1);
     /* Starred answers with the starred photo too, and counts it in the one
        total (the ticket 16 follow-up). Unstarring takes the photo off the
        screen and out of the count; starred again after, for the next
@@ -129,17 +183,17 @@ try {
       for (const photo of await journal.photos.inJournal()) await journal.photos.setStarred(photo.id, true);
     });
     await counts(0, 1, 1);
-    /* The saved-question run's address shows the unknown-address screen. */
-    await visit('/search/questions/abc');
-    await page.locator('[data-error-screen="not-found"]').waitFor();
     await visit('/search');
     await page.locator('#q').fill('nothingmatchesu23');
     await page.locator('[data-notice="search-none"]').waitFor();
     await page.locator('#q').fill('');
     await page.locator('[data-search-idle]').waitFor();
   }
+  /* The saved-question run's address shows the unknown-address screen. */
+  await visit('/search/questions/abc');
+  await page.locator('[data-error-screen="not-found"]').waitFor();
   assert.deepEqual(errors, []);
-  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, Starred photos counted, no saved questions or random draw, EN/PL');
+  console.log('PASS: mixed-area filtering, scope said once, results first, one count format, mode/body-region/scale filters alone and with text and across an entry trip, Starred photos counted, no saved questions or random draw, EN/PL');
 } catch (error) {
   console.error('FAILED AT', page.url(), (await page.locator('body').innerText()).slice(0, 2500));
   throw error;

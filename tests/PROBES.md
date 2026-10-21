@@ -630,7 +630,7 @@ To run one on its own, use
 | `hair-removal-interaction-check` | saved sessions and expanded regions survive Back and interrupted navigation; recovery hides journal and editor content in both themes and motion modes, with painted captures |
 | `measurements-sizes-jump-check` | the Measurements/Sizes jump moves focus and keeps an open editor's input |
 | `roadmap-tick-motion-check` | ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in |
-| `search-filter-scope` | search says what its filter covers and what a saved question holds |
+| `search-filter-scope` | search says what its filter covers, and mode, body region and a scale range narrow it alone, with text and across a trip into an entry |
 | `mark-edge-fringe` | no pixel of the mark's corners is brighter than the ground, at every size |
 | `getting-started-cross-check` | Home's Getting started rows cross when done, frame by frame, and are static on a cold arrival |
 | `noticed-effects-picker-check` | the entry editor's effects sheet follows the regimen, searches and takes several, and no row appears or leaves in one frame |
