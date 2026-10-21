@@ -28,9 +28,12 @@
   import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { DecryptionFailedError } from '$lib/crypto/aesGcm';
   import { KeystoreUnreadableError } from '$lib/crypto/keystore';
+  import { spaceShortage } from '$lib/data/spaceShortage';
   import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import { beginSessionUnlock } from '$lib/stores/lock.svelte';
   import { announce } from '$lib/stores/announcer.svelte';
+  import { crossfadeDuration } from '$lib/motion/tokens';
+  import { fade } from 'svelte/transition';
   import type { Snippet } from 'svelte';
   import PinPad from './PinPad.svelte';
 
@@ -41,7 +44,7 @@
       (after-release ticket 10); not counted as a guess either. `cancelled`:
       a newer lock or departure superseded the attempt. Credential contention
       and unreadable access metadata are separate from a wrong guess too. */
-  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened' | 'cancelled' | 'busy' | 'access-unavailable';
+  export type PinAttempt = 'ok' | 'wrong' | 'device-gone' | 'unopened' | 'cancelled' | 'busy' | 'access-unavailable' | 'storage-full';
 
   let {
     onVerify,
@@ -145,6 +148,7 @@
         outcome = await onVerify(entered, current);
       } catch (failure) {
         outcome = failure instanceof UnlockCancelledError ? 'cancelled'
+          : spaceShortage(failure) === 'device' ? 'storage-full'
           : failure instanceof DeviceBindingUnavailableError ? 'device-gone'
           : failure instanceof CredentialsBusyError ? 'busy'
           : failure instanceof KeystoreUnreadableError ? 'access-unavailable'
@@ -170,6 +174,10 @@
       }
       if (outcome === 'access-unavailable') {
         fail(m.pin_access_unavailable());
+        return;
+      }
+      if (outcome === 'storage-full') {
+        fail(m.pin_storage_full());
         return;
       }
       if (outcome === 'unopened') {
@@ -199,7 +207,10 @@
       if (!opening) {
         if (mounted) {
           try { await throttle.refresh(); startCountdown(); }
-          catch { fail(m.pin_access_unavailable()); }
+          catch (failure) {
+            lastOutcome = spaceShortage(failure) === 'device' ? 'storage-full' : 'access-unavailable';
+            fail(lastOutcome === 'storage-full' ? m.pin_storage_full() : m.pin_access_unavailable());
+          }
         }
         busy = false;
         authenticating = false;
@@ -220,9 +231,15 @@
 {/if}
 
 <p class="pin-status small" {...{ [statusHandle]: authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle' }}>
-  {#if authenticating}
-    {m.pp_decrypting()}
-  {:else if waitMs > 0}
-    {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
-  {:else}{error}{/if}
+  <span class="pin-status-reserve" aria-hidden="true">{m.pin_access_unavailable()}</span>
+  <span class="pin-status-reserve" aria-hidden="true">{m.pin_storage_full()}</span>
+  {#key authenticating ? 'busy' : waitMs > 0 ? 'throttled' : error ? lastOutcome : 'idle'}
+    <span in:fade={{ duration: authenticating ? 0 : crossfadeDuration() }} out:fade={{ duration: crossfadeDuration() }}>
+      {#if authenticating}
+        {m.pp_decrypting()}
+      {:else if waitMs > 0}
+        {m.pin_throttled({ seconds: String(Math.ceil(waitMs / 1000)) })}
+      {:else}{error}{/if}
+    </span>
+  {/key}
 </p>

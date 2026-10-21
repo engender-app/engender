@@ -8,18 +8,19 @@ import android.system.StructStatVfs;
 import java.io.IOException;
 
 /**
- * Which storage ran out when an export failed (last-audit ui 37). Capacitor
+ * Which storage ran out when a native operation failed (last-audit ui 37). Capacitor
  * hands JavaScript a rejection's message and code and never its exception,
  * so a full disk has to become a code here or the screen can only say the
  * export failed.
  *
- * <p>{@link #DEVICE_FULL} is the app's own staging copy on the phone;
+ * <p>{@link #DEVICE_FULL} is app-private storage on the phone, including
+ * export staging and PIN attempt accounting;
  * {@link #DESTINATION_FULL} is the place picked in the save dialog, which
  * can be another volume or a cloud provider with no free space to measure.
  * Every other failure keeps no code, so it is never called a full disk.
  */
-final class StorageFailure {
-    static final String DEVICE_FULL = "storage-full";
+public final class StorageFailure {
+    public static final String DEVICE_FULL = "storage-full";
     static final String DESTINATION_FULL = "destination-full";
 
     private StorageFailure() {}
@@ -41,7 +42,7 @@ final class StorageFailure {
     }
 
     /** The rejection code for a failure while writing to {@code where}, or null when it was not a full disk. */
-    static String code(Throwable error, String where) {
+    public static String code(Throwable error, String where) {
         if (error instanceof DestinationFull) return DESTINATION_FULL;
         return isOutOfSpace(error) ? where : null;
     }

@@ -245,6 +245,11 @@ JVM halves: which native failures get a code, when the export preflight may
 refuse, and that a photo write failing after its open leaves no file. The
 gates fixture's `boot-failure-storage-full` scene is checked by
 `gates-say-what-happened` for its sentence and its retry.
+The same gates probe enters a PIN after a forced ENOSPC credential read,
+checks the free-space message and unchanged attempt count, then checks that
+unavailable credentials and a wrong PIN keep their separate messages and
+counting. `lock-timing-bridge.test.ts` checks that a native PIN admission
+failure retains the storage cause for that classification.
 
 `src/lib/data/archive/importer-refusals.test.ts` checks damaged ZIP containers,
 malformed consumed JSON fields, Daylio PIN diagnostics and deferred attachment

@@ -869,6 +869,11 @@ reconstruct counts an older build already lost. Local storage remains only a
 display mirror on Android. Unreadable metadata asks the person to
 reopen the app so boot can check the current access mode. Busy and error feedback
 use the catalogue and the existing live regions.
+An out-of-space refusal while reading the PIN credential or persisting native
+attempt accounting instead asks for free space and another try. The native
+bridge marks ENOSPC with `storage-full`; the PIN gate uses `spaceShortage` on
+that code or a wrapped read error. No guess is admitted when accounting
+cannot persist, so this refusal leaves the wrong-attempt count alone.
 
 [browserKeySlot](src/lib/data/device-bound-journal.ts) converts IndexedDB's
 absent-record `undefined` to its declared `null` result. Missing PIN bindings

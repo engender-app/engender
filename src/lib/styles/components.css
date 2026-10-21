@@ -2585,7 +2585,9 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
    wait's own rail is between them the rail takes that 20 and the line closes
    up to 12 behind it, so the pair still reads as one answer rather than as
    two things under the pad. */
-.pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
+.pin-status { display: grid; align-items: center; min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
+.pin-status > span { grid-area: 1 / 1; }
+.pin-status-reserve { visibility: hidden; }
 .pin-wait + .pin-status { margin-top: var(--space-3); }
 
 /* A failed reset, inside the sheet that asked for it (after-release ticket

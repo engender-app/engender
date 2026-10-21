@@ -273,8 +273,8 @@ export function serializeKeystore(metadata: KeystoreMetadata): string {
     not a keystore at all. Distinct from DecryptionFailedError on purpose:
     this one is not "wrong passphrase" and retyping won't fix it. */
 export class KeystoreUnreadableError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'KeystoreUnreadableError';
   }
 }

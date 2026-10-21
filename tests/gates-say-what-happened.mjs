@@ -138,6 +138,45 @@ export async function verifyGatesSayWhatHappened(report = (line) => console.log(
     assert.equal(passphraseStatus, '', `biometric's "${biometricError}" followed the person to the passphrase form`);
     report(`biometric's refusal ("${biometricError.slice(0, 40)}...") does not follow to the passphrase form`);
 
+    /* A PIN credential read can fail before any guess is admitted. Keep its
+       storage error separate from damaged metadata and a wrong PIN. */
+    await page.evaluate(async (modulePath) => {
+      const { setupJournalPin } = await import(modulePath);
+      await setupJournalPin('1234');
+    }, `/@fs${resolve('src/lib/data/journal-pin.ts')}`);
+    await scene(page, 'unlock-pin');
+    await page.locator('[data-key="1"]').waitFor();
+    await page.evaluate(() => {
+      window.realDirectory = navigator.storage.getDirectory.bind(navigator.storage);
+      navigator.storage.getDirectory = () => Promise.reject(new Error('ENOSPC (No space left on device)'));
+    });
+    for (const digit of '1234') await page.locator(`[data-key="${digit}"]`).click();
+    await page.locator('[data-pin-status="storage-full"]').waitFor();
+    await page.waitForFunction(expected => document.querySelector('[data-pin-status]')?.innerText.trim() === expected, en.pin_storage_full);
+    assert.equal((await page.locator('[data-pin-status]').innerText()).trim(), en.pin_storage_full);
+    assert.equal(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), null);
+    report('a full PIN credential read asks for free space without recording a wrong attempt');
+
+    await page.evaluate(() => {
+      navigator.storage.getDirectory = async () => ({
+        getFileHandle: async () => ({ getFile: async () => ({ text: async () => '{broken' }) })
+      });
+    });
+    for (const digit of '1234') await page.locator(`[data-key="${digit}"]`).click();
+    await page.locator('[data-pin-status="access-unavailable"]').waitFor();
+    await page.waitForFunction(expected => document.querySelector('[data-pin-status]')?.innerText.trim() === expected, en.pin_access_unavailable);
+    assert.equal((await page.locator('[data-pin-status]').innerText()).trim(), en.pin_access_unavailable);
+    assert.equal(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), null);
+    report('unavailable PIN credentials keep their message without recording a wrong attempt');
+
+    await page.evaluate(() => { navigator.storage.getDirectory = window.realDirectory; });
+    for (const digit of '9999') await page.locator(`[data-key="${digit}"]`).click();
+    await page.locator('[data-pin-status="wrong"]').waitFor();
+    await page.waitForFunction(expected => document.querySelector('[data-pin-status]')?.innerText.trim() === expected, en.pin_wrong);
+    assert.equal((await page.locator('[data-pin-status]').innerText()).trim(), en.pin_wrong);
+    assert.match(await page.evaluate(() => localStorage.getItem('engender-pin-attempts')), /"wrongAttempts":1/);
+    report('wrong PIN keeps its message and records one attempt');
+
     assert.deepEqual(errors, [], 'no page errors');
     report('no page errors');
     await page.close();
