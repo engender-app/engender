@@ -123,7 +123,8 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { flip } from 'svelte/animate';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { whileStaying } from '$lib/motion/whileStaying';
   import { fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
 
@@ -465,6 +466,8 @@
     return isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
   };
 
+  const chipTravel = () => (isReducedMotion() ? 0 : motionDuration('--dur-fast'));
+
   /* One area of colour on this screen, and it is the days. Role 0, the only
      index guaranteed to be a colour on all 8 palettes, since a screen with a
      single coloured area has no reading order to follow. */
@@ -528,6 +531,12 @@
     }
     return chips;
   });
+  /* Clear all rides in the same keyed run, last, so it slides with the
+     chips instead of jumping when one before it goes. */
+  let chipRow = $derived([
+    ...activeFilterChips.map((chip) => ({ ...chip, clear: false })),
+    { key: 'clear', label: m.search_filters_clear_all(), remove: clearAllFilters, clear: true }
+  ]);
   let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
 
   /* What the opening state offers before a character is typed (ticket 18):
@@ -595,14 +604,26 @@
     <!-- The one thing that has to stay on the screen once the filters left
          it: with the panel in a sheet, these chips are the only place the
          state of the query is visible. -->
-    <div class="search-chips" transition:disclose={whileStaying}>
-      {#each activeFilterChips as chip (chip.key)}
-        <button class="tag-chip is-selected press" data-active-filter-chip onclick={chip.remove}>
-          <Icon name="x" size={14} />
+    <!-- A chip taken off fades where it stood while the rest slide into
+         its place, Clear all with them, and the row travels to its new
+         height when that takes a line away (functional audit 10: the
+         row had cut chips out in one frame and jumped the rest). -->
+    <div class="search-chips" transition:disclose={whileStaying} use:resize>
+      {#each chipRow as chip (chip.key)}
+        <button
+          class="tag-chip press"
+          class:is-selected={!chip.clear}
+          data-active-filter-chip={chip.clear ? undefined : ''}
+          data-filter-clear={chip.clear ? '' : undefined}
+          onclick={chip.remove}
+          animate:flip={{ duration: chipTravel }}
+          in:fadeUp
+          out:crossfade
+        >
+          {#if !chip.clear}<Icon name="x" size={14} />{/if}
           {chip.label}
         </button>
       {/each}
-      <button class="tag-chip press" data-filter-clear onclick={clearAllFilters}>{m.search_filters_clear_all()}</button>
     </div>
   {/if}
 
