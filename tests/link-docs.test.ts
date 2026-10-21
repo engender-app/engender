@@ -74,7 +74,8 @@ describe('primary checkout', () => {
   });
 
   it('leaves the app repo status clean once the links exist', () => {
-    run(app);
+    expect(run(app).status).toBe(0);
+    for (const name of LINKS) expect(lstatSync(join(app, name)).isSymbolicLink()).toBe(true);
     expect(git(app, 'status', '--short')).toBe('');
   });
 });
@@ -155,24 +156,35 @@ describe('refusals', () => {
     writeFileSync(join(app, 'docs', 'keep.md'), 'precious\n');
     const r = run(app);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/CONTEXT\.md/);
+    expect(r.stderr).toMatch(/CONTEXT\.md, docs already exist here as real files or folders/);
     expect(readFileSync(join(app, 'CONTEXT.md'), 'utf8')).toBe('precious\n');
     expect(readFileSync(join(app, 'docs', 'keep.md'), 'utf8')).toBe('precious\n');
     // Nothing is half-linked: PRODUCT.md and SCREENS.md stay unlinked too.
     expect(existsSync(join(app, 'PRODUCT.md'))).toBe(false);
   });
 
+  it('creates no docs worktree or branch when it refuses on a branch worktree', () => {
+    const wt = join(base, 'wt');
+    git(app, 'worktree', 'add', '-q', '-b', 'ticket-02-blocked', wt, 'main');
+    writeFileSync(join(wt, 'SCREENS.md'), 'precious\n');
+    const r = run(wt);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/SCREENS\.md already exist here/);
+    expect(existsSync(join(docs, '.worktrees'))).toBe(false);
+    expect(git(docs, 'branch', '--list', 'ticket-02-blocked')).toBe('');
+  });
+
   it('says so when there is no docs repo next to the primary checkout', () => {
     rmSync(docs, { recursive: true, force: true });
     const r = run(app);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/engender-docs/);
+    expect(r.stderr).toMatch(/no docs repo at .*engender-docs/);
   });
 
   it('refuses when the docs repo main checkout is on another branch', () => {
     git(docs, 'checkout', '-q', '-b', 'other');
     const r = run(app);
     expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/main/);
+    expect(r.stderr).toMatch(/is on "other", not main/);
   });
 });

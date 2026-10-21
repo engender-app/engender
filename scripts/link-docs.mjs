@@ -47,6 +47,14 @@ if (branchOf(docsRepo) !== 'main') {
   fail(`the docs repo checkout at ${docsRepo} is on "${branchOf(docsRepo) || 'a detached HEAD'}", not main. Put it back on main first.`);
 }
 
+// Refuse before creating anything, so a refusal leaves no docs worktree or branch behind.
+const blocked = NAMES.filter((name) => {
+  try { return !lstatSync(join(top, name)).isSymbolicLink(); } catch { return false; }
+});
+if (blocked.length) {
+  fail(`${blocked.join(', ')} already exist here as real files or folders. Move them into the docs repo by hand first; this script never replaces them.`);
+}
+
 let source = docsRepo;
 const branch = top === primary ? '' : branchOf(top);
 if (branch) {
@@ -65,21 +73,16 @@ if (branch) {
   }
 }
 
-// Decide everything before touching anything, so a refusal leaves no half-linked checkout.
+// Work out every link first, then make them, so nothing is half-linked.
 const plan = [];
-const blocked = [];
 for (const name of NAMES) {
   const link = join(top, name);
   const want = join(source, name);
   let stat = null;
   try { stat = lstatSync(link); } catch { /* absent */ }
   if (!stat) plan.push({ link, want, replace: false });
-  else if (!stat.isSymbolicLink()) blocked.push(name);
   else if (readlinkSync(link) !== want) plan.push({ link, want, replace: true });
   else console.log(`ok ${name}`);
-}
-if (blocked.length) {
-  fail(`${blocked.join(', ')} already exist here as real files or folders. Move them into the docs repo by hand first; this script never replaces them.`);
 }
 for (const { link, want, replace } of plan) {
   if (replace) rmSync(link);
