@@ -66,6 +66,7 @@ const wearSession: WearSession = {
 const episode: RegimenEpisode = {
   id: 'ep-1',
   drug: 'Estradiol patch',
+  drugClass: 'hrt',
   ester: null,
   dose: 100,
   doseUnit: 'mcg',

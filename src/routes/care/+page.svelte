@@ -848,7 +848,7 @@
       </div>
     {/each}
 
-  <SectionHeading text={m.care_group_hormones()} />
+  <SectionHeading text={m.care_group_labs_stock()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
     <!-- Every row states its own current value (DIRECTION.md 3b, and phase
          11 ticket 10: no row on this screen is a title and a chevron

@@ -1,6 +1,6 @@
 <!-- The personal effects timeline (phase 4 ticket 07): one horizontal track
-     per fixed effect, all sharing the same day axis anchored at the
-     earliest regimen episode's start day. A track shows the literature's
+     per fixed effect, all sharing the same day axis anchored at the HRT
+     start (personalEffectWindow.ts's hrtAnchor). A track shows the literature's
      onset and completion windows as background bands and, when set, the
      person's own first-noticed day as a marker - never framed against each
      other, since the acceptance criterion this file exists to keep is that

@@ -84,8 +84,10 @@ export const MILESTONE_TEMPLATE_LEAN: Record<MilestoneTemplateKey, Lean> = {
   first_public: 'neutral'
 };
 
-/* Five starting points across both estradiol and testosterone and more than
-   one route (phase 5 ticket 42, CONTEXT: "Regimen template"), the same
+/* Starting points across estradiol, testosterone and more than one route
+   (phase 5 ticket 42, CONTEXT: "Regimen template"), widened by functional
+   audit ticket 18 to the antiandrogens, progesterone and a GnRH agonist, the
+   other drugs a feminizing or blocking regimen is built from. The same
    "keys only" shape MILESTONE_TEMPLATE_KEYS gives above - drug, ester and
    route wording lives in doseLabels.ts, which is where the rest of a
    regimen episode's own closed vocabulary already lives. No dose or
@@ -97,7 +99,12 @@ export const REGIMEN_TEMPLATE_KEYS = [
   'estradiol_oral',
   'estradiol_gel',
   'testosterone_cypionate_im',
-  'testosterone_gel'
+  'testosterone_gel',
+  'spironolactone_oral',
+  'cyproterone_oral',
+  'bicalutamide_oral',
+  'progesterone_oral',
+  'gnrh_agonist_im'
 ] as const;
 
 export type RegimenTemplateKey = (typeof REGIMEN_TEMPLATE_KEYS)[number];
@@ -113,7 +120,14 @@ export const REGIMEN_TEMPLATE_LEAN: Record<RegimenTemplateKey, Lean> = {
   estradiol_oral: 'femme',
   estradiol_gel: 'femme',
   testosterone_cypionate_im: 'masc',
-  testosterone_gel: 'masc'
+  testosterone_gel: 'masc',
+  spironolactone_oral: 'femme',
+  cyproterone_oral: 'femme',
+  bicalutamide_oral: 'femme',
+  progesterone_oral: 'femme',
+  // A GnRH agonist blocks puberty or the body's own hormones in either
+  // direction, so it speaks to neither preset first.
+  gnrh_agonist_im: 'neutral'
 };
 
 /* Entry templates (phase 4 features ticket 17): each names the tags and

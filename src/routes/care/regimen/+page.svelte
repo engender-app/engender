@@ -20,6 +20,8 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { activeEpisodesAt } from '$lib/data/regimenEpisode';
+  import { inferDrugClass } from '$lib/data/drugClass';
+  import { hrtAnchor } from '$lib/data/personalEffectWindow';
   import { cycleTrackingVisible, testosteroneActive } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { fmtNumber, fmtDay } from '$lib/data/dates';
@@ -35,7 +37,7 @@
   } from '$lib/data/vocabulary/doseLabels';
   import { canAutoLog } from '$lib/data/doseSchedule';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { DosePause, DoseRoute, DoseScheduleRecurrence, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
+  import type { DosePause, DoseRoute, DoseScheduleRecurrence, DrugClass, EpisodeEndReason, PauseReason, RegimenEpisode, RegimenTemplate } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
   import LinkedDocuments from '$lib/components/LinkedDocuments.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -78,6 +80,48 @@
      the "current" badge below. */
   let activeIds = $derived(new Set(activeEpisodesAt(episodes, Date.now()).map((e) => e.id)));
 
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* Where HRT began (functional audit ticket 18, CONTEXT: "HRT start"): the
+     date the person set, else the earliest HRT episode. Changes you've
+     noticed and hair progress count from it, so it is said and set here,
+     beside the episodes it is read from. */
+  let hrt = $derived(hrtAnchor(episodes, prefs.hrtStartEpochDay));
+  let hrtStartSub = $derived(
+    prefs.hrtStartEpochDay !== null
+      ? m.regimen_hrt_start_set({ date: longDay(prefs.hrtStartEpochDay) })
+      : hrt
+        ? m.regimen_hrt_start_from_episode({ date: longDay(hrt.startEpochDay) })
+        : m.regimen_hrt_start_none()
+  );
+  let hrtStartEditor = $state<string | null>(null);
+  /* What the sheet opened on. Save stays dead until the date moves off it,
+     so opening the sheet and pressing Save cannot turn the date read off an
+     episode, or an empty field, into one "set by you". */
+  let hrtStartOpenedOn = $state('');
+
+  function openHrtStart() {
+    hrtStartOpenedOn = hrt ? dateInputValueFromEpochDay(hrt.startEpochDay) : '';
+    hrtStartEditor = hrtStartOpenedOn;
+  }
+
+  function saveHrtStart() {
+    if (hrtStartEditor === null) return;
+    // A cleared field reads as null, the preference's own "not set".
+    prefs.hrtStartEpochDay = epochDayFromDateInputValue(hrtStartEditor);
+    hrtStartEditor = null;
+    toast(m.saved(), { kind: 'record-saved' });
+  }
+
+  function clearHrtStart() {
+    prefs.hrtStartEpochDay = null;
+    hrtStartEditor = null;
+    toast(m.saved(), { kind: 'record-saved' });
+  }
+
+  const episodeClassLabel = (drugClass: DrugClass) =>
+    drugClass === 'hrt' ? m.regimen_class_hrt() : m.regimen_class_other();
+
   /* The clinician summary links an episode across a hash (phase 8 features
      ticket 67) - read once, the same "one visit to one screen" rule
      BatchedList's own `path` follows. */
@@ -99,6 +143,7 @@
   let editor = $state<{
     id?: string;
     drug: string;
+    drugClass: DrugClass;
     ester: string;
     dose: string;
     doseUnit: string;
@@ -120,6 +165,10 @@
      below, never dose or interval. Editing an existing episode skips this
      and opens the editor directly. */
   let templatePicker = $state(false);
+  /* Whether the drug class in the editor is the person's own pick (ticket
+     18). Until it is, a new episode's class follows what its drug infers to
+     as it is typed; an episode already saved keeps its stored class. */
+  let classChosen = $state(false);
 
   function openEditor(episode: RegimenEpisode | null, template: RegimenTemplate | null = null) {
     if (saving) return;
@@ -130,10 +179,12 @@
     pendingEndReason = null;
     failure = null;
     status = null;
+    classChosen = episode !== null;
     editor = episode
       ? {
           id: episode.id,
           drug: episode.drug,
+          drugClass: episode.drugClass,
           ester: episode.ester ?? '',
           dose: String(episode.dose),
           doseUnit: episode.doseUnit,
@@ -146,6 +197,7 @@
         }
       : {
           drug: template?.drug ?? '',
+          drugClass: inferDrugClass(template?.drug ?? ''),
           ester: template?.ester ?? '',
           dose: '',
           doseUnit: '',
@@ -254,6 +306,7 @@
     if (!await write('episode', () => journal.regimen.upsertEpisode({
       id: draft.id,
       drug: draft.drug.trim(),
+      drugClass: draft.drugClass,
       ester: draft.ester.trim() || null,
       dose: parseFloat(String(draft.dose)),
       doseUnit: draft.doseUnit.trim(),
@@ -421,7 +474,6 @@
      the line arrived at full height and full ink in one frame, while the
      row above it was still closing. */
   let pauseDeleteTarget = $state<DosePause | null>(null);
-  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
   async function deletePause() {
     const target = pauseDeleteTarget;
@@ -460,6 +512,16 @@
 
 </script>
 
+<!-- Inside the read gate's two branches rather than after it, so it fades in
+     with the answer it states instead of landing a line later. -->
+{#snippet hrtStartCard()}
+  <div class="regimen-elsewhere">
+    <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.episodes)}>
+      <ListRow key="hrt-start" data-hrt-start icon="calendar" title={m.regimen_hrt_start_title()} subtitle={hrtStartSub} fadeSwap onclick={openHrtStart} />
+    </ListCard>
+  </div>
+{/snippet}
+
 {#snippet feedback(group: typeof messageGroup)}
   {#if messageGroup === group}
     {#if failure}<p class="notice notice-danger" role="alert" data-regimen-failure transition:collapse>{failure}</p>{/if}
@@ -497,7 +559,7 @@
                 id={episode.id}
                 icon="pill"
                 title={episode.drug}
-                subtitle={m.regimen_episode_sub({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: regimenIntervalLabel(episode.interval), period: regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay) })}
+                subtitle={(episode.drugClass === 'hrt' ? m.regimen_episode_sub : m.regimen_episode_sub_other)({ dose: fmtNumber(episode.dose), unit: episode.doseUnit, route: routeLabel(episode.route as DoseRoute), interval: regimenIntervalLabel(episode.interval), period: regimenPeriodLabel(episode.startEpochDay, episode.endEpochDay) })}
                 chevron={false}
                 onclick={() => openEditor(episode)}
               >
@@ -515,6 +577,7 @@
           {/each}
         {/snippet}
       </BatchedList>
+      {@render hrtStartCard()}
     {/snippet}
     {#snippet empty()}
       <Notice
@@ -525,6 +588,7 @@
         text={m.regimen_empty_body()}
         action={{ label: m.regimen_empty_action(), primary: true, onclick: () => (templatePicker = true) }}
       />
+      {@render hrtStartCard()}
     {/snippet}
   </ReadGate>
 
@@ -617,7 +681,25 @@
           <p class="muted small" data-episode-dirty>{episodeChanged ? m.regimen_episode_unsaved() : m.regimen_episode_unchanged()}</p>
           <Field label={m.regimen_drug_label()} id="regimen-drug">
             {#snippet children(id, _hint, touched)}
-              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} name="regimen-drug" placeholder={m.regimen_drug_placeholder()} aria-invalid={touched && !editor!.drug.trim()} aria-describedby="regimen-episode-requirements" bind:value={editor!.drug} oninput={() => { if (!classChosen) editor!.drugClass = inferDrugClass(editor!.drug); }} />
+            {/snippet}
+          </Field>
+          <Field label={m.regimen_class_label()} hint={m.regimen_class_hint()} legend>
+            {#snippet children(id, hint)}
+              <div class="tag-row" role="group" aria-labelledby={id} aria-describedby={hint}>
+                {#each ['hrt', 'other'] as const as drugClass (drugClass)}
+                  <button
+                    type="button"
+                    class="tag-chip"
+                    class:is-selected={editor!.drugClass === drugClass}
+                    aria-pressed={editor!.drugClass === drugClass}
+                    data-drug-class={drugClass}
+                    onclick={() => { editor!.drugClass = drugClass; classChosen = true; }}
+                  >
+                    {episodeClassLabel(drugClass)}
+                  </button>
+                {/each}
+              </div>
             {/snippet}
           </Field>
           <Field label={m.regimen_ester_label()} id="regimen-ester">
@@ -991,6 +1073,23 @@
       <button class="btn btn-ghost" data-close-regimen disabled={saving} onclick={() => requestDismiss()}>
         <span>{m.regimen_close()}</span>
       </button>
+    {/if}
+  </Sheet>
+  <Sheet open={hrtStartEditor !== null} title={m.regimen_hrt_start_title()} onClose={() => (hrtStartEditor = null)}>
+    {#if hrtStartEditor !== null}
+      <h3>{m.regimen_hrt_start_title()}</h3>
+      <p class="muted small" style="margin-bottom:var(--space-4)">{m.regimen_hrt_start_hint()}</p>
+      <Field label={m.regimen_hrt_start_date_label()} id="hrt-start-date">
+        {#snippet children(id)}
+          <DatePicker name="hrt-start-date" bind:value={hrtStartEditor!} {id} />
+        {/snippet}
+      </Field>
+      <div class="stack-3">
+        <button class="btn btn-primary" data-save-hrt-start disabled={hrtStartEditor === hrtStartOpenedOn} onclick={saveHrtStart}><span>{m.regimen_hrt_start_save()}</span></button>
+        {#if prefs.hrtStartEpochDay !== null}
+          <button class="btn btn-ghost" data-clear-hrt-start onclick={clearHrtStart}><span>{m.regimen_hrt_start_clear()}</span></button>
+        {/if}
+      </div>
     {/if}
   </Sheet>
   <DiscardSheet {guard} body={m.regimen_discard_body()} />

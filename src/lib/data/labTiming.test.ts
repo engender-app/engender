@@ -101,6 +101,7 @@ test('a draw with no dose before it has no timing context at all', () => {
 const episode = (over: Partial<RegimenEpisode> = {}): RegimenEpisode => ({
   id: 'e',
   drug: 'estradiol',
+  drugClass: 'hrt',
   ester: null,
   dose: 2,
   doseUnit: 'mg',

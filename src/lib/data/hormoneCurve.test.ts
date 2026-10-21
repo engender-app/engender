@@ -21,6 +21,7 @@ function episode(ester: string, over: Partial<RegimenEpisode> = {}): RegimenEpis
   return {
     id: 'ep',
     drug: 'estradiol',
+    drugClass: 'hrt',
     ester,
     dose: 5,
     doseUnit: 'mg',

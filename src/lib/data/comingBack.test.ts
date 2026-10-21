@@ -30,6 +30,7 @@ const SCHEDULE: DoseSchedule = {
 const EPISODE: RegimenEpisode = {
   id: 'e1',
   drug: 'estradiol valerate',
+  drugClass: 'hrt',
   ester: 'valerate',
   route: 'intramuscular',
   interval: 'every 7 days',

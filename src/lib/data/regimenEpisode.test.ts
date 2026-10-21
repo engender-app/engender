@@ -6,7 +6,6 @@ import {
   attributeDose,
   attributeDrug,
   drugSpans,
-  earliestEpisode,
   expectedDosesOnDay,
   lastDayWithin,
   nearestActiveEpisode,
@@ -23,6 +22,7 @@ const episode = (
 ): RegimenEpisode => ({
   id,
   drug,
+  drugClass: 'hrt',
   ester: null,
   dose: 4,
   doseUnit: 'mg',
@@ -65,18 +65,6 @@ test('a retroactive correction changes what an existing record resolves to, by t
 
   const corrected = [episode('a', 100, 139), episode('c', 140, 199), episode('b', 200, null)];
   assert.deepEqual(activeEpisodesAt(corrected, recordTimestamp).map((e) => e.id), ['c']);
-});
-
-test('earliestEpisode is the first episode there has ever been, not the current one', () => {
-  const episodes = [episode('a', 100, 199), episode('b', 200, 299), episode('c', 300, null)];
-  assert.equal(earliestEpisode(episodes)?.id, 'a');
-  assert.equal(earliestEpisode(episodes)?.startEpochDay, 100);
-  assert.equal(earliestEpisode([]), null);
-});
-
-test('earliestEpisode is unaffected by episodes overlapping', () => {
-  const episodes = [episode('b', 50, null, 'spironolactone'), episode('a', 100, null, 'estradiol')];
-  assert.equal(earliestEpisode(episodes)?.id, 'b');
 });
 
 test('attributeDose falls back to the sole active episode when the dose names no drug of its own', () => {

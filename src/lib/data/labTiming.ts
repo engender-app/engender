@@ -62,9 +62,10 @@ export function drawUpperBound(draw: LabDraw): number {
     skipped dose is not a dose this measures from.
 
     Two figures, because "how long since dosing" means different things by
-    pharmacokinetics. Oral, sublingual, patch and gel get hours since the
-    dose. IM and SC get day-of-interval instead, since a single-digit-hour
-    figure says nothing about a depot with a days-to-weeks half-life.
+    pharmacokinetics. Oral, sublingual, rectal, patch and gel get hours since
+    the dose. IM, SC and an implant get day-of-interval instead, since a
+    single-digit-hour figure says nothing about a depot with a days-to-weeks
+    (or, for an implant, months-long) release.
 
     Null when nothing can be said: no preceding dose, or an hours route and
     a draw nobody timed. A zero or a "since midnight" figure in either case
@@ -93,7 +94,7 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
      missing for anyone who logs injections without setting a schedule. The
      gap between consecutive dose events cannot be the source at all, since
      the interval a fresh draw falls in has no next injection yet. */
-  if (dose.route === 'im' || dose.route === 'sc') {
+  if (dose.route === 'im' || dose.route === 'sc' || dose.route === 'implant') {
     return { route: dose.route, dayOfInterval: draw.epochDay - epochDayFromTimestamp(dose.timestamp) + 1 };
   }
 

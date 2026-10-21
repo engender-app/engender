@@ -318,6 +318,12 @@ export interface PreferenceValues {
       says something about the journal's own timeline, the same way
       `journeyAnchorMilestoneId` does. */
   hairAnchorEpochDay: number | null;
+  /** The day HRT began, as the person set it, or null to count from the
+      earliest HRT episode (functional audit ticket 18, CONTEXT: "HRT
+      start"; personalEffectWindow.ts's hrtAnchor). The effects timeline,
+      its onset bands and the hair anchor count from it. Portable, for the
+      reason `hairAnchorEpochDay` is: it is a fact about the journal. */
+  hrtStartEpochDay: number | null;
   /** Whether the hormone curve is fitted to the user's own lab results
       (phase 4 ticket 10). Off by default: the published band is what the
       literature says, and moving it onto someone's own points is a thing
@@ -539,6 +545,7 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   hairPhotoProtocolDismissed: false,
   spanRailHintDismissed: false,
   hairAnchorEpochDay: null,
+  hrtStartEpochDay: null,
   hormoneCurveFitToOwnLabs: false,
   journeyAnchorMilestoneId: null,
   cycleTrackingEnabled: false,
@@ -577,6 +584,7 @@ export const PORTABLE_KEYS = [
   'measurementUnit',
   'journeyAnchorMilestoneId',
   'hairAnchorEpochDay',
+  'hrtStartEpochDay',
   'cycleTrackingEnabled',
   'cycleTrackingChoice',
   'voiceComfortLowHz',

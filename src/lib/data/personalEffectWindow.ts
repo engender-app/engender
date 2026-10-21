@@ -67,7 +67,6 @@
 
 import { epochDayMonthsAgo } from './epochDay';
 import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
-import { earliestEpisode } from './regimenEpisode';
 import type { EffectDirection, PersonalEffectType, RegimenEpisode } from './types';
 
 export type { EffectDirection };
@@ -214,17 +213,52 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
   return epochDayMonthsAgo(anchorEpochDay, -months);
 }
 
-/** `effect`'s onset and completion as concrete epoch-day ranges counted
-    forward from `anchor`, the earliest regimen episode overall
-    (regimenEpisode.ts) - what a screen draws its background bands from -
-    or null when `anchor`'s drug is not the one this effect's table
-    describes and there is no band to draw.
+/** Where HRT began, which drug its bands are read against, and where it
+    stopped (functional audit ticket 18, CONTEXT: "HRT start"). The three
+    parts of an answer `literatureWindowDays` needs, in the shape of an
+    episode so a single episode still passes as one. */
+export type HrtAnchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>;
 
-    The anchor is the whole episode because all three parts of the answer
-    come from it: its start day is where the bands are counted from, its drug
-    is what decides whether they exist, and its end day is where they stop.
-    Which episode anchors is unchanged (ticket 02) - it is still the earliest
-    overall, not the active one.
+/** What the effects timeline, its onset bands and the hair anchor count
+    from. Only episodes whose class is HRT take part: until ticket 18 the
+    earliest episode of any drug anchored, so an SSRI started before
+    estradiol moved every band to the SSRI's start and, since sertraline
+    names no literature table, took the bands away.
+
+    - The start is `hrtStartEpochDay` when the person set one (a portable
+      preference), else the earliest HRT episode's start.
+    - The drug is the first HRT episode that names a hormone with a table
+      (estradiol or testosterone), else the first HRT episode at all. An
+      antiandrogen started a month before estradiol starts the clock, and
+      estradiol's table still draws the bands.
+    - The end is the last HRT episode's end once every one has ended, and
+      null while any is still running. A switch from oral estradiol to gel
+      is two episodes and one stretch of HRT, so the first episode's end no
+      longer clips bands the second one carries on.
+
+    Null when there is neither an HRT episode nor a date. A date with no HRT
+    episode anchors with no drug: months are counted, no band is drawn.
+    `episodes` must be sorted by start day, the order getEpisodes returns. */
+export function hrtAnchor(episodes: readonly RegimenEpisode[], hrtStartEpochDay: number | null): HrtAnchor | null {
+  const hrt = episodes.filter((episode) => episode.drugClass === 'hrt');
+  if (hrt.length === 0 && hrtStartEpochDay === null) return null;
+  const drug = (hrt.find((episode) => resolveCurveDrug(episode.drug) !== null) ?? hrt[0])?.drug ?? '';
+  const ends = hrt.map((episode) => episode.endEpochDay);
+  return {
+    drug,
+    startEpochDay: hrtStartEpochDay ?? hrt[0].startEpochDay,
+    endEpochDay: ends.length > 0 && ends.every((end) => end !== null) ? Math.max(...(ends as number[])) : null
+  };
+}
+
+/** `effect`'s onset and completion as concrete epoch-day ranges counted
+    forward from `anchor` (`hrtAnchor` above) - what a screen draws its
+    background bands from - or null when `anchor`'s drug is not the one this
+    effect's table describes and there is no band to draw.
+
+    All three parts of the answer come from the anchor: its start day is
+    where the bands are counted from, its drug is what decides whether they
+    exist, and its end day is where they stop.
 
     Nothing is drawn past `endEpochDay` (phase 8 features ticket 49). Every
     window here is a claim about a body on the drug the table describes, so
@@ -317,7 +351,8 @@ export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape
 }
 
 /** Whether at least one tier-1 personal effect's literature onset window is
-    currently active for `episodes`'s earliest episode (phase 5 ticket 49).
+    currently active for the HRT anchor (phase 5 ticket 49, anchored on HRT
+    by functional audit ticket 18).
     Shows while at least one onset window for the anchor episode's drug is
     current (from the anchor's start day through the latest onset window end
     across all covered effects, e.g. 12 months for estradiol/testosterone),
@@ -325,9 +360,10 @@ export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape
     exists. */
 export function isHrtOnsetWindowCurrent(
   episodes: readonly RegimenEpisode[],
-  todayEpochDay: number
+  todayEpochDay: number,
+  hrtStartEpochDay: number | null
 ): boolean {
-  const anchor = earliestEpisode(episodes);
+  const anchor = hrtAnchor(episodes, hrtStartEpochDay);
   if (!anchor) return false;
   if (todayEpochDay < anchor.startEpochDay) return false;
 

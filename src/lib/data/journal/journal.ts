@@ -285,8 +285,8 @@ export interface Journal {
   journalBook: JournalBookArea;
   /** "First noticed" markers against an open effect catalogue (phase 4
       ticket 07, widened well past its original four/eight by phase 5
-      ticket 41), read against the earliest regimen episode's start day
-      above this seam (regimenEpisode.ts's earliestEpisode). No episode
+      ticket 41), read against the HRT start above this seam
+      (personalEffectWindow.ts's hrtAnchor). No episode
       reference of its own, the same reason sideEffects has none. Bundles
       the effect vocabulary itself too - getEffectTypes/
       addCustomEffectType/setEffectTypeHidden - the same shape

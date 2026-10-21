@@ -22,6 +22,7 @@
 
 import type { Migration } from './migration-runner.ts';
 import { BASELINE_SCHEMA } from './schema.ts';
+import { migrateDrugClass } from './drug-class-migration.ts';
 import { migrateStockIdentity } from './stock-identity-migration.ts';
 
 export const migrations: Migration[] = [
@@ -46,5 +47,9 @@ CREATE UNIQUE INDEX idx_dose_event_auto_log_slot
   { version: 92, sql: `
 DROP INDEX idx_entry_trashed_at;
 CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT NULL;
-` }
+` },
+  /* Functional audit ticket 18: HRT or another drug. No CHECK, by the audit's
+     CHECK policy (vocabularies live in code, drugClass.ts reads anything but
+     'hrt' as 'other'). */
+  { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass }
 ];

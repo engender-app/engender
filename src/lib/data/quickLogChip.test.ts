@@ -12,6 +12,7 @@ const episode = (
 ): RegimenEpisode => ({
   id,
   drug,
+  drugClass: 'hrt',
   ester: null,
   dose: 4,
   doseUnit: 'mg',

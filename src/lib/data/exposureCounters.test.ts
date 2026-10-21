@@ -10,6 +10,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
   return {
     id: 'ep-1',
     drug: 'estradiol valerate',
+    drugClass: 'hrt',
     ester: 'valerate',
     dose: 4,
     doseUnit: 'mg',

@@ -3,9 +3,8 @@
    medication_stock is matched by drug (stock.ts): a person is always
    answering "when did I first notice this", never logging a series of
    sightings, so a fresh date replaces the old one in place. No episode
-   reference: what a marker is read against - the earliest regimen
-   episode's start day - is resolved above this seam
-   (regimenEpisode.ts's earliestEpisode), not stored here.
+   reference: what a marker is read against - the HRT start - is resolved
+   above this seam (personalEffectWindow.ts's hrtAnchor), not stored here.
 
    Phase 5 ticket 41 widens the effect a marker names from a closed
    eight-key union to `personal_effect_type`, an open reference-data

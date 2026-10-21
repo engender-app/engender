@@ -176,7 +176,7 @@ function calendarTicks(fromEpochDay: number, toEpochDay: number): NoticedTick[] 
 
 /** The axis.
 
-    `anchorEpochDay` is the day the person's earliest regimen episode began,
+    `anchorEpochDay` is the HRT start (personalEffectWindow.ts's hrtAnchor),
     or null where there is none - which is a state the screen has to draw
     rather than refuse, since somebody can notice a change before they are
     on anything, and somebody restoring a journal may not have typed a

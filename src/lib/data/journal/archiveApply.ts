@@ -131,7 +131,8 @@ export async function applyFlatTable<Row>(
       ...columns.map(({ field, bool: isBool, whenAbsent }) => {
         const value = fields(row)[field];
         if (isBool) return flag(value === true);
-        return value === undefined ? whenAbsent : value;
+        if (value !== undefined) return value;
+        return typeof whenAbsent === 'function' ? whenAbsent(row) : whenAbsent;
       }),
       ts
     ])

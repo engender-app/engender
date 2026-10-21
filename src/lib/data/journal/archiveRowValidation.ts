@@ -342,6 +342,7 @@ const ROWS = {
   regimenEpisodes: {
     id: identity,
     drug: text,
+    drugClass: text,
     ester: nullable(text),
     dose: numeric,
     doseUnit: text,

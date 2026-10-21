@@ -49,6 +49,7 @@
    order they insert, never what merging one of them means. */
 
 import type { ArchiveJournal } from '../archive/payload';
+import { inferDrugClass } from '../drugClass';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
 import type { SectionRead } from './archiveRead';
@@ -863,7 +864,9 @@ const SECTIONS = [
   // `end_reason` is absent the same way on an archive from before ticket 43 -
   // read as no reason recorded, which is what every episode ended before
   // this shipped actually has. `hidden` is absent before after-release 07
-  // and reads as shown, which is all an episode could be then.
+  // and reads as shown, which is all an episode could be then. `drug_class`
+  // is absent before functional audit ticket 18 and is inferred from the
+  // drug, the same rule the v93 migration applied to every stored episode.
   flat({
     name: 'regimenEpisodes',
     travels: 'none',
@@ -873,6 +876,7 @@ const SECTIONS = [
     columns: {
       uuid: 'id',
       drug: 'drug',
+      drug_class: { field: 'drugClass', whenAbsent: (row) => inferDrugClass(row.drug) },
       ester: 'ester',
       dose: 'dose',
       dose_unit: 'doseUnit',

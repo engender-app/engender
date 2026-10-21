@@ -368,6 +368,7 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
     {
       id: episode,
       drug: 'estradiol valerate',
+      drugClass: 'hrt',
       ester: 'valerate',
       dose: 4,
       doseUnit: 'mg',
@@ -793,6 +794,39 @@ test('a hidden regimen episode travels hidden, and a restore keeps it hidden', a
   await fromOlder.reconcileBuiltIns();
   await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
   assert.equal((await fromOlder.regimen.getEpisodes()).some((e) => e.id === episode), true);
+});
+
+/* Functional audit ticket 18: the drug class is the person's to change, so
+   it travels as stored. An archive from before the field existed carries no
+   class, and a restore infers it from the drug by the migration's rule. */
+test('a drug class travels as chosen, and an older archive gets the inferred class', async () => {
+  const { journal, episode } = await populated();
+  await journal.regimen.upsertEpisode({
+    id: episode, drug: 'estradiol valerate', drugClass: 'other', ester: 'valerate', dose: 4, doseUnit: 'mg',
+    route: 'im', interval: 'every 2 weeks', startEpochDay: 19000, endEpochDay: null, endReason: null
+  });
+  const ssri = await journal.regimen.upsertEpisode({
+    drug: 'Sertraline', ester: null, dose: 50, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    startEpochDay: 18000, endEpochDay: null, endReason: null
+  });
+
+  const snapshot = await journal.archive.snapshot();
+  assert.equal(snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.drugClass, 'other');
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const classes = async (j: typeof target) => Object.fromEntries((await j.regimen.getEpisodes()).map((e) => [e.id, e.drugClass]));
+  assert.deepEqual(await classes(target), { [episode]: 'other', [ssri]: 'other' });
+
+  const older = {
+    ...snapshot.journal,
+    regimenEpisodes: snapshot.journal.regimenEpisodes.map(({ drugClass: _drugClass, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await classes(fromOlder), { [episode]: 'hrt', [ssri]: 'other' });
 });
 
 /* Ticket 56: a document's link travels as the pair it is stored as, and a

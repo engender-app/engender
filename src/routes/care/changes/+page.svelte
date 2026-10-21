@@ -38,10 +38,10 @@
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { earliestEpisode } from '$lib/data/regimenEpisode';
   import {
     effectTier,
     effectWindowShape,
+    hrtAnchor,
     literatureWindow,
     literatureWindowDays
   } from '$lib/data/personalEffectWindow';
@@ -88,11 +88,11 @@
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
   /* The anchor is HRT's own start, not whichever episode is active right
-     now (ticket 07) - activeEpisodesAt is the wrong function here, this is
-     the one place earliestEpisode is called from. Its drug decides which
-     bands may be drawn at all (ticket 27), so the whole episode is held
-     rather than only its start day. */
-  let anchor = $derived(earliestEpisode(episodes));
+     now (ticket 07) and not the first episode of any drug (functional audit
+     ticket 18): the HRT start the person set, else the earliest HRT
+     episode. Its drug decides which bands may be drawn at all (ticket 27),
+     so the whole anchor is held rather than only its start day. */
+  let anchor = $derived(hrtAnchor(episodes, prefs.hrtStartEpochDay));
   let anchorEpochDay = $derived(anchor?.startEpochDay ?? null);
 
   let markersQuery = liveList((j) => j.personalEffects.getMarkers());

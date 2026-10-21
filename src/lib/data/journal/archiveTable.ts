@@ -36,8 +36,10 @@ export type FlatColumn<Row> =
             field at all - a row written by a build from before the field
             existed. Binding `undefined` is not a soft failure: node:sqlite
             refuses it with a raw driver error, so a field added after an area
-            shipped needs this. */
-        whenAbsent?: Row[Field];
+            shipped needs this. A function is asked with the row, for a field
+            whose old value is inferred from the row's other fields (a regimen
+            episode's drug class from its drug, functional audit ticket 18). */
+        whenAbsent?: Row[Field] | ((row: Row) => Row[Field]);
         /** What a NULL in the column is read as, where the wire type is
             narrower than the column - a nullable TEXT that travels as a
             string. */

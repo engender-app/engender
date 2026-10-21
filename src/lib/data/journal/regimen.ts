@@ -13,16 +13,21 @@
    the curve, dose attribution and the clinician summary at once. The
    regimen screen asks `getHiddenEpisodes` for the way back. */
 
+import { inferDrugClass, toDrugClass } from '../drugClass';
 import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
-import type { EpisodeEndReason, RegimenEpisode } from '../types';
+import type { DrugClass, EpisodeEndReason, RegimenEpisode } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
 
-type RegimenEpisodeInput = Omit<RegimenEpisode, 'id'> & { id?: string };
+/** `drugClass` is optional on the way in (functional audit ticket 18): a new
+    episode without one starts as whatever its drug infers to, and an update
+    without one keeps the class already stored, so no writer that predates
+    the field can reset a class the person chose. */
+type RegimenEpisodeInput = Omit<RegimenEpisode, 'id' | 'drugClass'> & { id?: string; drugClass?: DrugClass };
 
 export interface RegimenArea {
   /** Ordered by start day, ties broken by insertion order - the order
-      earliestEpisode (regimenEpisode.ts) requires. Hidden episodes are left
+      hrtAnchor (personalEffectWindow.ts) requires. Hidden episodes are left
       out. */
   getEpisodes(): Promise<RegimenEpisode[]>;
   /** Only the hidden ones, in the same order: what the regimen screen
@@ -52,6 +57,7 @@ export interface RegimenArea {
 type EpisodeRow = {
   uuid: string;
   drug: string;
+  drug_class: string;
   ester: string | null;
   dose: number;
   dose_unit: string;
@@ -65,6 +71,7 @@ type EpisodeRow = {
 const toEpisode = (row: EpisodeRow): RegimenEpisode => ({
   id: row.uuid,
   drug: row.drug,
+  drugClass: toDrugClass(row.drug_class),
   ester: row.ester,
   dose: row.dose,
   doseUnit: row.dose_unit,
@@ -78,7 +85,7 @@ const toEpisode = (row: EpisodeRow): RegimenEpisode => ({
 export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
   const episodesWhere = async (hidden: boolean): Promise<RegimenEpisode[]> => {
     const rows = await driver.query<EpisodeRow>(
-      `SELECT uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason
+      `SELECT uuid, drug, drug_class, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason
        FROM regimen_episode WHERE hidden = ? ORDER BY start_epoch_day, id`,
       [hidden ? 1 : 0]
     );
@@ -107,11 +114,12 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
       if (input.id) {
         const result = await driver.run(
           `UPDATE regimen_episode
-             SET drug = ?, ester = ?, dose = ?, dose_unit = ?, route = ?, interval = ?, start_epoch_day = ?,
+             SET drug = ?, drug_class = COALESCE(?, drug_class), ester = ?, dose = ?, dose_unit = ?, route = ?, interval = ?, start_epoch_day = ?,
                  end_epoch_day = ?, end_reason = ?, updated_at = ?
            WHERE uuid = ?`,
           [
             input.drug,
+            input.drugClass ?? null,
             input.ester,
             input.dose,
             input.doseUnit,
@@ -129,11 +137,12 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
       }
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO regimen_episode (uuid, drug, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO regimen_episode (uuid, drug, drug_class, ester, dose, dose_unit, route, interval, start_epoch_day, end_epoch_day, end_reason, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.drug,
+          input.drugClass ?? inferDrugClass(input.drug),
           input.ester,
           input.dose,
           input.doseUnit,

@@ -19,7 +19,7 @@
    neither packing nor unpacking has to hold more than one photo at a time. */
 
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS, type PreferenceValues } from '../prefs/catalogue';
-import type { DocumentTargetKind, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
+import type { DocumentTargetKind, DrugClass, EpisodeEndReason, ProcedureKind, WearKind } from '../types';
 import { BUILT_IN_PRESETS } from '../vocabulary/builtins';
 
 /** The preferences that describe the journal and travel with it
@@ -603,6 +603,10 @@ interface ArchiveReminder {
 interface ArchiveRegimenEpisode {
   id: string;
   drug: string;
+  /** HRT or another drug (functional audit ticket 18). Absent on an archive
+      from before the field existed, which a restore infers from `drug` by
+      the rule the migration uses (drugClass.ts). */
+  drugClass: DrugClass;
   ester: string | null;
   dose: number;
   doseUnit: string;

@@ -12,6 +12,7 @@ import type { RegimenEpisode } from './types';
 const episode = (over: Partial<RegimenEpisode>): RegimenEpisode => ({
   id: 'ep',
   drug: 'Testosterone cypionate',
+  drugClass: 'hrt',
   ester: 'cypionate',
   dose: 100,
   doseUnit: 'mg',
