@@ -220,13 +220,6 @@ describe('the surfaces', () => {
       'SectionJump.svelte',
       'Tile.svelte',
       'TileGrid.svelte',
-      /* One mark rather than a surface (phase 10 redesign ticket 62): words
-         whose size carries their weight, drawn on a chart card the way the
-         donut and the ordered strip are. It is in the kit rather than beside
-         the one reading that draws it because the drawing is a mark with a
-         rule of its own - five steps of the type scale, heaviest in the
-         middle - and that rule is the kind of thing this directory holds. */
-      'WordCloud.svelte',
       /* The year's days as words under YearRows' picture (phase 14
          pre-release ticket 30, accessibility audit A06): a fold, a month
          stepper and a list. In the kit beside the grid it reads, because
@@ -393,27 +386,6 @@ describe('the charts', () => {
     expect(markCss).toMatch(/\.kit-dist-mark/);
     expect(markCss).toMatch(/\.kit-donut-arc/);
     expect(markCss).toMatch(/\.kit-ordered-seg/);
-  });
-
-  /* The one place the kit writes a label on top of a fill: the inline bar
-     row, where the day is drawn on the bar (phase 9 UX carpet ticket 11).
-
-     The pair matters, not either half. The ink handed in through
-     --role-fill-ink is the one the role's heat ramp carries for the step
-     whose fill is the stripe undiluted, and tests/kit-roles.test.ts holds
-     every step of that ramp to 4.5:1 against its own fill. That proof only
-     transfers here while the thing under the label really is that fill:
-     diluting it - `color-mix(--role-draw 62%, --surface)`, which is what
-     the stacked bar paints - would leave the label in an ink proven
-     against a colour nothing on the card is drawing. */
-  it('writes the label on the bar in the ink the fill under it was proven with', () => {
-    const inline = /\.kit-bars\.is-inline \.kit-bar-mark\s*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];
-    expect(inline, 'the inline bar row should still paint its own mark').toBeTruthy();
-    expect(inline).toMatch(/background:\s*var\(--role-draw\);/);
-
-    const label = /\.kit-bars\.is-inline \.kit-bar-mark \.kit-bar-inside[^{]*\{([\s\S]*?)\}/.exec(kitAllCss)?.[1];
-    expect(label, 'the clipped label copy should still take a colour').toBeTruthy();
-    expect(label).toMatch(/color:\s*var\(--role-fill-ink\);/);
   });
 
   it('draws no gridline, no axis and no tick', () => {

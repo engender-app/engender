@@ -117,5 +117,10 @@ INSERT INTO sqlite_sequence (name, seq) SELECT 'hair_stage_new', seq FROM sqlite
 DROP TABLE hair_stage;
 ALTER TABLE hair_stage_new RENAME TO hair_stage;
 CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
-` }
+` },
+  /* Functional audit ticket 12: the Words reading is cut, and with it the
+     list of words it was told to skip. Rows are dropped, not converted;
+     archives that still carry the wordIgnore section skip it on restore
+     (DROPPED_ARCHIVE_SECTION_NAMES). */
+  { version: 103, sql: 'DROP TABLE word_frequency_ignore;' }
 ];

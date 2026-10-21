@@ -232,11 +232,6 @@ export const TABLE_NAMES = [
      reverse - adding, editing or removing a note must not make every
      screen reading entries think the entry itself changed. */
   'marginNote',
-  /* The word-frequency ignore list (phase 8 features ticket 48). Its own
-     name rather than folded into anything: no read here depends on it but
-     the words screen's own count, and ignoring a word has not touched a
-     single entry's note. */
-  'wordIgnore',
   /* The documents area (phase 8 features ticket 52, ADR-0065). Its own
      name rather than folded into 'photo': a document belongs to no entry
      and no milestone, so nothing that reads a photo reads one of these,
@@ -332,10 +327,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       countAll: ['entry'],
       // A bare `COUNT(DISTINCT epoch_day)`: the Journal door's "Earlier
       // entries" control keys on it, the same as countAll above.
-      countDistinctDays: ['entry'],
-      // Note, day and presentation only - the word-frequency fold's own
-      // read (phase 8 features ticket 14), not the hydrated shape.
-      noteEntries: ['entry']
+      countDistinctDays: ['entry']
     }
   }),
   tags: classify<Journal['tags']>()({
@@ -600,10 +592,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   eraMutes: classify<Journal['eraMutes']>()({
     writes: { setEraMuted: ['eraMute'] },
     reads: { getMutedEraUuids: ['eraMute'] }
-  }),
-  wordIgnore: classify<Journal['wordIgnore']>()({
-    writes: { setWordIgnored: ['wordIgnore'] },
-    reads: { getIgnoredWords: ['wordIgnore'] }
   }),
   wearSessions: classify<Journal['wearSessions']>()({
     writes: {

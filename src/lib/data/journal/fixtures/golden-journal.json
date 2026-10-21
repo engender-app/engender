@@ -731,11 +731,6 @@
       "text": "reading this back, zażółć gęślą jaźń"
     }
   ],
-  "wordIgnore": [
-    {
-      "word": "kraków"
-    }
-  ],
   "documents": [
     {
       "id": "b4e96514-e241-43bc-a4d3-7b452e85b287",

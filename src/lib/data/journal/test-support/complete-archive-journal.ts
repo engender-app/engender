@@ -97,9 +97,6 @@ export async function seedCompleteArchiveJournal(
   const trashedEntry = await journal.entries.upsertEntry({ epochDay: 20001, mood: 2 });
   await journal.marginNotes.add({ entryId: trashedEntry, epochDay: 20051, text: 'A note on a trashed entry' });
   await journal.entries.deleteEntry(trashedEntry);
-  // Mixed case, so the fixture pins that the write folds it (phase 8
-  // features ticket 48).
-  await journal.wordIgnore.setWordIgnored('Kraków', true);
 
   /* One document, dated years before this journal's own entries (phase 8
      features ticket 52): the fixture is where the archive's file manifest

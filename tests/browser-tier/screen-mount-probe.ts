@@ -5,10 +5,12 @@ import { calendarContracts } from './calendar-surfaces.test';
 import { directionContracts, directionNarrowContracts } from './direction-contract.test';
 import { safeSpaceContracts } from './safe-space-surfaces.test';
 import { lateReadsContracts } from './late-reads-surfaces.test';
+import { lookBackContracts } from './look-back-surfaces.test';
 
 publishFixture('screen-mount', async () => {
   await freshOrigin();
   if (location.search.includes('safe-space')) return { safeSpace: await safeSpaceContracts() };
+  if (location.search.includes('look-back')) return { lookBack: await lookBackContracts() };
   if (location.search.includes('late-reads'))
     return { lateReads: await lateReadsContracts(location.search.includes('theme=dark') ? 'dark' : 'light') };
   if (location.search.includes('narrow')) return { narrow: await directionNarrowContracts() };

@@ -965,6 +965,53 @@ test('tagShare is bounded by its range at both ends', async () => {
   assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 2 }]);
 });
 
+/* Functional audit ticket 12: the share ring on Tags has an "on good days"
+   filter, and a good day here is the same bar on-this-day holds a day to
+   (CONTEXT: Good day) - checked day by day against isGoodDay so the two can
+   never disagree. */
+test('tagShare on good days counts only the days that clear the good-day bar', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // 100: mood average 4, good. 101: mood 1, not good. 102: mood 1 but a
+  // euphoria capture that day, good. 103: two entries averaging 3, good.
+  // 104: mood 2 with a body region at the euphoria floor, good.
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-calm', 'e-tired'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 1, tags: ['e-tired', 'e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 1, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 1, tags: ['g-euphoria'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 1, tags: ['e-hopeful'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 5 });
+  await journal.entries.upsertEntry({
+    epochDay: 104,
+    mood: 2,
+    tags: ['e-anxious'],
+    bodyRegions: { chest: euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR) }
+  });
+
+  const good = [100, 101, 102, 103, 104];
+  const verdicts = await Promise.all(good.map((day) => journal.stats.isGoodDay(day)));
+  assert.deepEqual(verdicts, [true, false, true, true, true]);
+
+  const share = await journal.stats.tagShare(100, 104, { goodDays: true });
+  assert.deepEqual(
+    [...share].sort((a, b) => (a.id < b.id ? -1 : 1)),
+    [
+      { id: 'e-anxious', count: 1 },
+      { id: 'e-calm', count: 1 },
+      { id: 'e-hopeful', count: 1 },
+      { id: 'e-sad', count: 1 },
+      { id: 'e-tired', count: 1 },
+      { id: 'g-euphoria', count: 1 }
+    ]
+  );
+  // Every day, the same read counts day 101 as well.
+  assert.deepEqual(
+    (await journal.stats.tagShare(100, 104)).find((t) => t.id === 'e-tired'),
+    { id: 'e-tired', count: 2 }
+  );
+  // A range with no good day in it answers nothing.
+  assert.deepEqual(await journal.stats.tagShare(101, 101, { goodDays: true }), []);
+});
+
 /* the body map's own read (phase 10 redesign ticket 40) */
 
 test('the body map reads every region at once, each on the side it mostly sat on', async () => {

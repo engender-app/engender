@@ -457,9 +457,6 @@ const ROWS = {
     epochDay: numeric,
     text: text
   },
-  wordIgnore: {
-    word: text
-  },
   documents: {
     id: identity,
     epochDay: numeric,

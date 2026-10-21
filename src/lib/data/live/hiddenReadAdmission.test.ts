@@ -7,11 +7,11 @@ afterEach(() => vi.useRealTimers());
 test('visible reads run immediately while hidden reads wait at most 75 ms', async () => {
   vi.useFakeTimers();
   const read = vi.fn().mockResolvedValue([]);
-  const journal = { entries: { noteEntries: read } } as unknown as Journal;
+  const journal = { entries: { trashedEntries: read } } as unknown as Journal;
   const visible = admitHiddenReads(journal, () => true, () => true);
   const hidden = admitHiddenReads(journal, () => false, () => true);
-  await visible.entries.noteEntries();
-  const waiting = hidden.entries.noteEntries();
+  await visible.entries.trashedEntries();
+  const waiting = hidden.entries.trashedEntries();
   expect(read).toHaveBeenCalledTimes(1);
   expect(pendingAdmissions()).toBe(1);
   await vi.advanceTimersByTimeAsync(74);
@@ -25,11 +25,11 @@ test('visible reads run immediately while hidden reads wait at most 75 ms', asyn
 test('a newly visible door releases its reads without waiting for the timer', async () => {
   vi.useFakeTimers();
   const read = vi.fn().mockResolvedValue([]);
-  const journal = { entries: { noteEntries: read } } as unknown as Journal;
+  const journal = { entries: { trashedEntries: read } } as unknown as Journal;
   let visible = false;
   const active = () => visible;
   const hidden = admitHiddenReads(journal, active, () => true);
-  const waiting = hidden.entries.noteEntries();
+  const waiting = hidden.entries.trashedEntries();
   visible = true;
   promoteDoorReads(active);
   await waiting;
@@ -41,10 +41,10 @@ test('a newly visible door releases its reads without waiting for the timer', as
 test('a superseded generation never starts delayed repository reads', async () => {
   vi.useFakeTimers();
   const read = vi.fn().mockResolvedValue([]);
-  const journal = { entries: { noteEntries: read } } as unknown as Journal;
+  const journal = { entries: { trashedEntries: read } } as unknown as Journal;
   let current = true;
   const hidden = admitHiddenReads(journal, () => false, () => current);
-  const waiting = expect(hidden.entries.noteEntries()).rejects.toThrow('superseded hidden read');
+  const waiting = expect(hidden.entries.trashedEntries()).rejects.toThrow('superseded hidden read');
   current = false;
   await vi.advanceTimersByTimeAsync(75);
   await waiting;
@@ -56,15 +56,15 @@ test('a superseded generation never starts delayed repository reads', async () =
 test('all operations in one attempt share a single admission bound', async () => {
   vi.useFakeTimers();
   const read = vi.fn().mockResolvedValue([]);
-  const journal = { entries: { noteEntries: read } } as unknown as Journal;
+  const journal = { entries: { trashedEntries: read } } as unknown as Journal;
   const hidden = admitHiddenReads(journal, () => false, () => true);
-  const first = hidden.entries.noteEntries();
+  const first = hidden.entries.trashedEntries();
   await vi.advanceTimersByTimeAsync(50);
-  const second = hidden.entries.noteEntries();
+  const second = hidden.entries.trashedEntries();
   expect(pendingAdmissions()).toBe(1);
   await vi.advanceTimersByTimeAsync(25);
   await Promise.all([first, second]);
-  await hidden.entries.noteEntries();
+  await hidden.entries.trashedEntries();
   expect(read).toHaveBeenCalledTimes(3);
   expect(vi.getTimerCount()).toBe(0);
 });
@@ -72,11 +72,11 @@ test('all operations in one attempt share a single admission bound', async () =>
 test('activation releases only the owning door', async () => {
   vi.useFakeTimers();
   const read = vi.fn().mockResolvedValue([]);
-  const journal = { entries: { noteEntries: read } } as unknown as Journal;
+  const journal = { entries: { trashedEntries: read } } as unknown as Journal;
   let visible = false;
   const active = () => visible;
-  const first = admitHiddenReads(journal, active, () => true).entries.noteEntries();
-  const other = admitHiddenReads(journal, () => false, () => true).entries.noteEntries();
+  const first = admitHiddenReads(journal, active, () => true).entries.trashedEntries();
+  const other = admitHiddenReads(journal, () => false, () => true).entries.trashedEntries();
   visible = true;
   promoteDoorReads(active);
   await first;
@@ -91,13 +91,13 @@ test('activation releases only the owning door', async () => {
 test('a later operation from a superseded attempt cannot dispatch after admission', async () => {
   vi.useFakeTimers();
   const read = vi.fn().mockResolvedValue([]);
-  const journal = { entries: { noteEntries: read } } as unknown as Journal;
+  const journal = { entries: { trashedEntries: read } } as unknown as Journal;
   let current = true;
   const hidden = admitHiddenReads(journal, () => false, () => current);
-  const first = hidden.entries.noteEntries();
+  const first = hidden.entries.trashedEntries();
   await vi.advanceTimersByTimeAsync(75);
   await first;
   current = false;
-  await expect(hidden.entries.noteEntries()).rejects.toThrow('superseded hidden read');
+  await expect(hidden.entries.trashedEntries()).rejects.toThrow('superseded hidden read');
   expect(read).toHaveBeenCalledTimes(1);
 });

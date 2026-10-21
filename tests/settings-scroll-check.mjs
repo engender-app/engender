@@ -56,7 +56,7 @@ try {
   await navigate('/settings');
   await checkPosition(0, 'direct entry starts at top');
 
-  for (const path of ['/settings/notifications', '/settings/words']) {
+  for (const path of ['/settings/notifications', '/settings/eras']) {
     for (const method of ['header', serial ? 'system Back' : 'browser Back']) {
       const row = page.locator(`a[href="${path}"]`);
       await row.scrollIntoViewIfNeeded();
@@ -92,8 +92,8 @@ try {
   }
 
   // Leave immediately after opening a detail screen, before its motion settles.
-  await page.locator('[data-list-row="words"]').click();
-  await page.waitForURL('**/settings/words');
+  await page.locator('[data-list-row="eras"]').click();
+  await page.waitForURL('**/settings/eras');
   await navigate('/');
   await navigate('/settings');
   await checkPosition(0, 'new visit after interrupted detail starts at top');

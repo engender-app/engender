@@ -48,7 +48,7 @@ test('rc.1 archive without a writer stamp still verifies and restores', async ()
 /* Tables the functional audit's cuts drop before 1.0 (spec: "cut means
    removed"). Their rows go with the migration, so a released fixture's count
    for them is checked as gone rather than kept. */
-const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit']);
+const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit', 'word_frequency_ignore']);
 
 interface ReleasedCounts {
   archiveSections: Record<string, number>;

@@ -480,11 +480,6 @@
     ]
   },
   {
-    "name": "words-reading-scope-check",
-    "tier": "built",
-    "holds": "the words reading's scope and baseline on stats, stats/words and settings/words"
-  },
-  {
     "name": "entry-pending-save",
     "tier": "built",
     "holds": "delayed encrypted attachment writes freeze every entry field, block duplicate saves and departure, retain drafts on failure, and allow correction and retry in English and Polish",

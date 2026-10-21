@@ -223,8 +223,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   presentations: 'reference data, not a series (CONTEXT: "Reference data")',
   entryTemplates: 'reference data, not a series (CONTEXT: "Reference data")',
   effectCategories: 'reference data, not a series (CONTEXT: "Reference data")',
-  personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")',
-  wordIgnore: 'reference data, not a series (CONTEXT: "Reference data")'
+  personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")'
 };
 
 /** Whether an area is out of the navigation. Nothing here hides data: a

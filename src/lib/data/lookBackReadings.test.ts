@@ -4,8 +4,7 @@ import {
   isReading,
   mostMarkedRegion,
   readingHref,
-  spanFromSearch,
-  topMoodStep
+  spanFromSearch
 } from './lookBackReadings';
 import { DEFAULT_SPAN_DAYS, spanRangeQuery } from './lookBackSpan';
 import { dateInputValueFromEpochDay } from './epochDay';
@@ -16,11 +15,13 @@ describe('a reading tile opens its screen at the door\'s span', () => {
   it('writes the span into the reading\'s address the way the body map and wrapped read it', () => {
     const span = { start: TODAY - 29, end: TODAY };
     expect(readingHref('day-by-day', span)).toBe(`/stats/day-by-day${spanRangeQuery(span)}`);
-    expect(readingHref('themes', span)).toBe(`/stats/themes${spanRangeQuery(span)}`);
+    expect(readingHref('tags', span)).toBe(`/stats/tags${spanRangeQuery(span)}`);
   });
 
-  it('knows its seven readings and refuses anything else', () => {
-    expect(READINGS).toEqual(['day-by-day', 'plane', 'days', 'words', 'tags', 'highest', 'themes']);
+  it('knows its three readings and refuses anything else', () => {
+    expect(READINGS).toEqual(['day-by-day', 'plane', 'tags']);
+    // Cut by functional audit ticket 12; the mood strip draws on the door.
+    for (const key of ['words', 'highest', 'themes', 'days']) expect(isReading(key)).toBe(false);
     for (const key of READINGS) expect(isReading(key)).toBe(true);
     expect(isReading('body-map')).toBe(false);
     expect(isReading('')).toBe(false);
@@ -50,28 +51,6 @@ describe('a reading screen reads the span back off its query', () => {
 
   it('accepts a one-day span', () => {
     expect(spanFromSearch(params(TODAY, TODAY), TODAY)).toEqual({ start: TODAY, end: TODAY });
-  });
-});
-
-describe('the days tile\'s headline is the mood most days landed on', () => {
-  it('picks the step with the most days and says what share of the days it was', () => {
-    const steps = [
-      { step: 1, count: 0 },
-      { step: 2, count: 1 },
-      { step: 3, count: 13 },
-      { step: 4, count: 10 },
-      { step: 5, count: 3 }
-    ];
-    expect(topMoodStep(steps)).toEqual({ step: 3, count: 13, share: 13 / 27 });
-  });
-
-  it('has no headline over a span with no days', () => {
-    expect(topMoodStep([1, 2, 3, 4, 5].map((step) => ({ step, count: 0 })))).toBeNull();
-    expect(topMoodStep([])).toBeNull();
-  });
-
-  it('breaks a tie towards the lower step, the way the strip is read', () => {
-    expect(topMoodStep([{ step: 2, count: 4 }, { step: 4, count: 4 }])?.step).toBe(2);
   });
 });
 

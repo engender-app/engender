@@ -1452,15 +1452,15 @@ try {
   }
   /* How the days fell: five mood steps, always - a step nothing landed on
      holds its place at zero width rather than sliding the rest under the
-     wrong part of the scale. */
+     wrong part of the scale. Drawn on the door itself since functional
+     audit ticket 12's sign-off, with no tile of its own. */
   await fresh('/stats');
-  await page.locator('[data-reading="days"]').click();
-  await page.waitForURL('**/stats/days?**');
-  await page.waitForSelector('[data-strip-step]', { state: 'attached' });
-  if ((await page.locator('[data-strip-step]').count()) !== 5) {
+  await page.waitForSelector('[data-chart-card="mood-days"] [data-strip-step]', { state: 'attached' });
+  if ((await page.locator('[data-chart-card="mood-days"] [data-strip-step]').count()) !== 5) {
     throw new Error('the mood strip should always draw its five steps');
   }
-  ok('stats: the span drives every tile, day by day and the days open at the span');
+  if (await page.locator('[data-reading="days"]').count()) throw new Error('the mood strip still has a tile of its own');
+  ok('stats: the span drives every tile, day by day opens at the span, the mood strip draws on the door');
 } catch (e) { fail('stats', e); }
 });
 
@@ -3950,11 +3950,16 @@ try {
   await page.locator('[data-live-tile="wrapped"]').getByRole('switch').click();
   await fresh('/stats');
   if (await page.locator('[data-wrapped-card]').count()) throw new Error('the card survived the toggle');
+  /* Functional audit ticket 12: with Wrapped off, Look back names it nowhere,
+     and the off notice opens the screen the switch is on. */
+  if (await page.locator('a[href^="/wrapped"]').count()) throw new Error('Look back kept a Wrapped link with Wrapped off');
   await fresh('/wrapped/week');
   if (await page.locator('[data-wrapped-stats], [data-wrapped-cover]').count()) {
     throw new Error('a wrapped still rendered with the feature turned off');
   }
   if (!(await page.locator('[data-notice-title]').count())) throw new Error('the off state explains nothing');
+  const offAction = await page.locator('[data-notice="wrapped-off"] [data-notice-action]').getAttribute('href');
+  if (offAction !== '/settings/notifications') throw new Error('the off notice opens ' + offAction);
 
   await fresh('/settings');
   await page.locator('[data-list-row="notifications"]').click();
@@ -5410,16 +5415,8 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Modes, entry templates and the words the reading skips are Settings
-  // rows now (redesign tickets 51 and 62, ADR-0084), never on the hub at
-  // all. Words has no row anywhere any more - the reading draws on Look
-  // back itself.
-  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
-
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
-  await page.locator('[data-list-row="words"]').click();
-  await page.waitForURL('**/settings/words');
-
+  // Modes and entry templates are Settings rows now (redesign ticket 51,
+  // ADR-0084), never on the hub at all.
   // Modes and entry templates stopped being screens of their own (audit
   // item 6): each row now raises a sheet over Settings rather than
   // navigating, so the URL settles back on /settings and the manager's own
@@ -6118,7 +6115,7 @@ try {
    own first and last entry: on an empty journal there is nothing to clamp to
    and the line is correctly absent. The persona seeds eras of its own
    (redesign ticket 48, "Before HRT"; ticket 62 added two more that cover
-   entries, so the words reading has something to weigh) - checked for, then
+   entries) - checked for, then
    cleared, all of them, so the rest of this flow keeps testing "all of it"
    and "earlier still" against the empty slate they were written against:
    "all of it" is both bounds left open, which is the one era that would

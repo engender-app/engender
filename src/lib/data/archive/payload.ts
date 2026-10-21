@@ -658,13 +658,6 @@ export interface ArchiveMarginNote {
   text: string;
 }
 
-/** A word the person has told the words screen to stop counting (phase 8
-    features ticket 48, ADR-0003). Named by the word itself: nothing else in
-    the journal resolves an id against it. */
-interface ArchiveWordIgnore {
-  word: string;
-}
-
 /** One piece of paper the person keeps (phase 8 features ticket 52,
     ADR-0065). Its own interface rather than a reused ArchivePhoto, for the
     reason this file's header gives: a rename on one must not silently change
@@ -812,7 +805,6 @@ export interface ArchiveJournal {
   importLog: ArchiveImportLogRecord[];
   areaStates: ArchiveAreaState[];
   marginNotes: ArchiveMarginNote[];
-  wordIgnore: ArchiveWordIgnore[];
   documents: ArchiveDocument[];
 }
 
@@ -982,7 +974,6 @@ const postAlphaSections = [
   'entryTemplates',
   'bodyRegions',
   'marginNotes',
-  'wordIgnore',
   'documents',
   'taper',
   'taperSessions',
