@@ -112,29 +112,6 @@ try {
   assert.equal(await page.locator('[data-delete-document]').count(), 0);
   console.log('PASS document delete replaces detail; Back returns to list without deleted record');
 
-  await open('/search');
-  await page.locator('#q').fill('hopeful');
-  await page.locator('[data-search-save]').click();
-  await page.locator('#saved-question-name').fill('History question');
-  await page.locator('[data-saved-question-save-confirm]').click();
-  await page.locator('[data-sheet]').waitFor({ state: 'detached' });
-  await page.locator('#q').fill('');
-  await page.locator('[data-saved-question-chip]').filter({ hasText: 'History question' }).click();
-  await page.locator('[data-saved-question-delete]').click();
-  const questionPath = new URL(page.url()).pathname;
-  await page.locator('[data-sheet] .btn-ghost').click();
-  await page.locator('[data-sheet]').waitFor({ state: 'detached' });
-  assert.equal(new URL(page.url()).pathname, questionPath);
-  await page.locator('[data-screen-back]').click();
-  await page.waitForURL(base + '/search');
-  await page.locator('[data-saved-question-chip]').filter({ hasText: 'History question' }).click();
-  await page.locator('[data-saved-question-delete]').click();
-  await page.locator('[data-confirm-delete-saved-question]').click();
-  await page.waitForURL(base + '/search');
-  await backTo('/search');
-  assert.equal(await page.locator('[data-saved-question-chip]').filter({ hasText: 'History question' }).count(), 0);
-  assert.equal(await page.locator('[data-saved-question-delete]').count(), 0);
-  console.log('PASS saved-question delete replaces detail; Back returns to Search');
   assert.deepEqual(errors, []);
 } finally {
   await browser.close();

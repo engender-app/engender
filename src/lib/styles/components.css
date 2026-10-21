@@ -382,13 +382,11 @@
 .screen-header-row.has-back-actions .screen-title { grid-column: 1 / -1; }
 /* Under 240px (200% zoom on a 390px phone, 155px of row) that line runs
    out: Lab results' back control and three actions need 208px, so the
-   back's target sat 24px deep under the gear's, and a saved question's
-   under Random's (last-audit UI 48). The actions take a line of their own
+   back's target sat 24px deep under the gear's (last-audit UI 48). The actions take a line of their own
    under the back control instead, still at the trailing edge, and wrap
    there if a screen ever brings more than that line holds. The line is
-   decided by the width alone, never by how many actions are drawn: Search
-   and a saved question add theirs as answers arrive (SearchActions), and
-   a count-driven break would move the row under them in one frame. So it
+   decided by the width alone, never by how many actions are drawn: a
+   count-driven break would move the row under them in one frame. So it
    keeps a target's height even while it is empty. */
 @container app (max-width: 239px) {
   .screen-header-row.has-back-actions .header-action {

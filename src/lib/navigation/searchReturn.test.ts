@@ -3,7 +3,8 @@ import { handOverQuery, holdSearch, takeHandedQuery, takeHeldSearch, type Search
 
 const snapshot: SearchSnapshot = {
   query: 'cold', selectedTagIds: ['a'], selectedMoods: [2], startDate: '', endDate: '',
-  hasNote: true, hasPhoto: false, starredOnly: false
+  hasNote: true, hasPhoto: false, starredOnly: false,
+  selectedPresentationIds: ['p1'], selectedRegions: ['chest'], scale: { key: 'femininity', min: 20, max: 80 }
 };
 
 function stubStorage() {
@@ -48,10 +49,17 @@ it('never writes held journal text to either Web Storage owner', () => {
 
 it('keeps the snapshot independent of subsequent edits to its filters', () => {
   stubStorage();
-  const changing = { ...snapshot, selectedTagIds: [...snapshot.selectedTagIds], selectedMoods: [...snapshot.selectedMoods] };
+  const changing = {
+    ...snapshot, selectedTagIds: [...snapshot.selectedTagIds], selectedMoods: [...snapshot.selectedMoods],
+    selectedPresentationIds: [...snapshot.selectedPresentationIds], selectedRegions: [...snapshot.selectedRegions],
+    scale: { ...snapshot.scale! }
+  };
   holdSearch(changing);
   changing.query = 'changed';
   changing.selectedTagIds.push('b');
   changing.selectedMoods.push(4);
+  changing.selectedPresentationIds.push('p2');
+  changing.selectedRegions.push('hips_waist');
+  changing.scale.max = 90;
   expect(takeHeldSearch()).toEqual(snapshot);
 });

@@ -17,11 +17,16 @@ export interface SearchSnapshot {
   hasNote: boolean;
   hasPhoto: boolean;
   starredOnly: boolean;
+  /** Mode, body-region and scale-range filters (functional audit 10). */
+  selectedPresentationIds: string[];
+  selectedRegions: string[];
+  scale: { key: string; min: number; max: number } | null;
 }
 
 export const EMPTY_SEARCH: SearchSnapshot = {
   query: '', selectedTagIds: [], selectedMoods: [], startDate: '', endDate: '',
-  hasNote: false, hasPhoto: false, starredOnly: false
+  hasNote: false, hasPhoto: false, starredOnly: false,
+  selectedPresentationIds: [], selectedRegions: [], scale: null
 };
 
 let heldSearch: SearchSnapshot | null = null;
@@ -30,7 +35,10 @@ export function holdSearch(snapshot: SearchSnapshot): void {
   heldSearch = {
     ...snapshot,
     selectedTagIds: [...snapshot.selectedTagIds],
-    selectedMoods: [...snapshot.selectedMoods]
+    selectedMoods: [...snapshot.selectedMoods],
+    selectedPresentationIds: [...snapshot.selectedPresentationIds],
+    selectedRegions: [...snapshot.selectedRegions],
+    scale: snapshot.scale && { ...snapshot.scale }
   };
 }
 

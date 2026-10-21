@@ -58,7 +58,6 @@ import { makeProceduresArea, type ProceduresArea } from './procedures';
 import { makeRegimenArea, type RegimenArea } from './regimen';
 import { makeRemindersArea, type RemindersArea } from './reminders';
 import type { RoadmapArea } from './roadmap';
-import type { SavedQuestionsArea } from './savedQuestions';
 import { makeMarginNotesArea, type MarginNotesArea } from './marginNotes';
 import { makeSideEffectsArea, type SideEffectsArea } from './sideEffects';
 import { makeSizeRecordsArea, type SizeRecordsArea } from './sizeRecords';
@@ -190,10 +189,6 @@ export interface Journal {
       has none. This area owns the rows; who reads them - Home's pause tile,
       the check-in suppression, the chart's pause band - is elsewhere. */
   journalingPauses: JournalingPausesArea;
-  /** A search somebody kept a name for (phase 8 features ticket 06, CONTEXT:
-      "Saved question"). Rows only - what a saved question is asked as lives
-      in savedQuestionQuery.ts, above this seam. */
-  savedQuestions: SavedQuestionsArea;
   /** A dated note an entry's owner added afterwards, on rereading (phase 8
       features ticket 07, CONTEXT: "Margin note"). Rows only, owned by an
       entry's rowid directly - what a margin note is rendered as (a visibly
@@ -473,9 +468,6 @@ export function openJournal(driver: SqliteDriver, files: PhotoFileStore): Journa
     sideEffects,
     cycleEvents,
     journalingPauses,
-    savedQuestions: deferredArea<SavedQuestionsArea>(async () =>
-      (await import('./savedQuestions')).makeSavedQuestionsArea(driver)
-    )(['getSavedQuestions', 'upsertSavedQuestion', 'deleteSavedQuestion']),
     marginNotes,
     eras,
     eraMutes,

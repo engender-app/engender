@@ -218,7 +218,6 @@ const ROUTES = [
 const RESOLVED = [
   { name: 'entry', prefix: '/entry/', look: ['/day/today', '/calendar'] },
   { name: 'document', prefix: '/media/documents/', look: ['/media/documents'] },
-  { name: 'question', prefix: '/search/questions/', look: ['/search'] },
   { name: 'reminder', prefix: '/settings/reminders/', look: ['/settings/reminders'] },
   { name: 'letter', prefix: '/transition/letters/', look: ['/transition/letters', '/stats'] },
   { name: 'tryout', prefix: '/transition/tryouts/', look: ['/transition/tryouts'] }

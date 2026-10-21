@@ -1724,7 +1724,7 @@ try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
 
-  const { debounce, intervalLengthDebounce, savedQuestionStability } = live;
+  const { debounce, intervalLengthDebounce } = live;
 
   if (debounce.runsAfterTenKeystrokes === debounce.runsBeforeTyping + 1)
     ok('typing ten characters fires one debounced run rather than ten');
@@ -1745,29 +1745,6 @@ try {
       'typing a three-digit interval length fires one debounced run rather than three',
       `${intervalLengthDebounce.runsBeforeTyping} run(s) before, ${intervalLengthDebounce.runsAfterThreeDigits} after`
     );
-
-  if (
-    savedQuestionStability.unstableRunsAfterUnrelatedRename > savedQuestionStability.unstableRunsBeforeUnrelatedRename
-  )
-    ok('a closure reading a saved question object directly re-runs when an unrelated saved question is renamed (the defect)');
-  else
-    fail(
-      'a closure reading a saved question object directly re-runs on an unrelated rename',
-      savedQuestionStability.unstableErrorAfterUnrelatedRename ??
-        `still ${savedQuestionStability.unstableRunsAfterUnrelatedRename} run(s)`
-    );
-
-  if (savedQuestionStability.stableRunsAfterUnrelatedRename === savedQuestionStability.stableRunsBeforeUnrelatedRename)
-    ok('the signature-memoized read ignores an unrelated saved question being renamed');
-  else
-    fail(
-      'the signature-memoized read ignores an unrelated saved question being renamed',
-      `${savedQuestionStability.stableRunsBeforeUnrelatedRename} run(s) before, ${savedQuestionStability.stableRunsAfterUnrelatedRename} after`
-    );
-
-  if (savedQuestionStability.stableErrorAfterRealChange === null)
-    ok("the signature-memoized read still re-runs when the viewed question's own queryText changes");
-  else fail("the signature-memoized read re-runs when its own queryText changes", savedQuestionStability.stableErrorAfterRealChange);
 } catch (e) {
   fail('phase 8 audit ticket 15 search waits for the typist', e.message ?? String(e));
 }

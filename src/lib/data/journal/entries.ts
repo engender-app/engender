@@ -188,6 +188,15 @@ export interface EntrySearchFilters {
   /** Starred entries only (CONTEXT: "Starred") - the starred shelf's own
       query, reached from search. */
   starred?: boolean;
+  /** Entries logged under any of these modes (CONTEXT: "Presentation"),
+      by presentation id (functional audit ticket 10). */
+  presentationIds?: string[];
+  /** Entries with a reading on any of these body regions, by domain id. */
+  bodyRegions?: string[];
+  /** Entries whose value on one scale, by its key, lies from `min` to
+      `max`, both included. An entry that never logged the scale is outside
+      every range. */
+  scale?: { key: string; min: number; max: number } | null;
 }
 
 export interface EntriesArea {
@@ -674,6 +683,24 @@ export function makeEntriesArea(
     }
     if (filters.starred) {
       clauses.push('e.starred = 1');
+    }
+    if ((filters.presentationIds ?? []).length > 0) {
+      clauses.push(`e.presentation_id IN (${filters.presentationIds!.map(() => '?').join(', ')})`);
+      params.push(...filters.presentationIds!);
+    }
+    if ((filters.bodyRegions ?? []).length > 0) {
+      clauses.push(
+        `EXISTS (SELECT 1 FROM entry_body_region ebr
+                 WHERE ebr.entry_id = e.id AND ebr.region IN (${filters.bodyRegions!.map(() => '?').join(', ')}))`
+      );
+      params.push(...filters.bodyRegions!);
+    }
+    if (filters.scale) {
+      clauses.push(
+        `EXISTS (SELECT 1 FROM entry_dimension_value edv JOIN gender_dimension gd ON gd.id = edv.dimension_id
+                 WHERE edv.entry_id = e.id AND gd.key = ? AND edv.value BETWEEN ? AND ?)`
+      );
+      params.push(filters.scale.key, filters.scale.min, filters.scale.max);
     }
 
     return clauses.length === 0 ? null : { where: clauses.join(' AND '), params };

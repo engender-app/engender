@@ -66,7 +66,6 @@ const SECTIONS = [
   'sideEffects',
   'cycleEvents',
   'journalingPauses',
-  'savedQuestions',
   'revisits',
   'eras',
   'eraMutes',

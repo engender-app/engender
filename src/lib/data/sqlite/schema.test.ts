@@ -106,7 +106,6 @@ function copySpy(copyAlreadyThere = false) {
 async function journalNumbered(version: number) {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, 'still here', 1000)");
-  db.raw.exec("INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('q1', 'asked', 1, 1000)");
   db.setUserVersion(version);
   return db;
 }
@@ -204,7 +203,7 @@ test('applies cleanly to an empty database and sets user_version', async () => {
   const db = await migratedDb();
   // Deliberate oracle: the one hardcoded version in this suite, so a runner
   // bug that stalls user_version can't hide behind the derived constant.
-  assert.equal(db.getUserVersion(), 94);
+  assert.equal(db.getUserVersion(), 95);
 
   const tables = db.raw
     .prepare("SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name")
@@ -1090,15 +1089,18 @@ test('an old weekly reminder is anchored on its local calendar day at a UTC day 
   }
 });
 
-test('a saved question is not starred unless it says so', async () => {
-  const db = await migratedDb();
-  await db.run(`INSERT INTO saved_question (uuid, name, updated_at) VALUES ('plain', 'Plain', 1)`);
-  await db.run(`INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('starred', 'Starred', 1, 2)`);
-  const rows = await db.query('SELECT uuid, starred FROM saved_question ORDER BY id');
-  assert.deepEqual(rows.map((row) => ({ ...row })), [
-    { uuid: 'plain', starred: 0 },
-    { uuid: 'starred', starred: 1 }
-  ]);
+/* Functional audit ticket 10 cut saved questions: the migration drops the
+   table and its rows with it, and leaves every other row where it was. */
+test('the saved-questions cut drops saved_question and nothing else', async () => {
+  const db = makeNodeSqliteDb();
+  await runMigrations(db, noopFileOps(), upToBaseline);
+  await db.run("INSERT INTO saved_question (uuid, name, starred, updated_at) VALUES ('q1', 'Asked', 1, 1)");
+  await db.run("INSERT INTO entry (uuid, epoch_day, timestamp, note, updated_at) VALUES ('e1', 100, 1000, 'kept', 1)");
+  await runMigrations(db, noopFileOps(), migrations);
+  const tables = (await db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'")).map((row) => row.name);
+  assert.ok(!tables.includes('saved_question'), 'saved_question is gone');
+  assert.deepEqual(await db.query('SELECT uuid, note FROM entry'), [{ uuid: 'e1', note: 'kept' }]);
+  assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 });
 
 

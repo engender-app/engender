@@ -329,7 +329,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   voicePracticeTakes: 'a past take, sealed until the day after it happened - not a day still ahead',
   importLog: 'device bookkeeping, dated by when the import ran, not a day still to come',
   areaStates: 'a statement about the practice of tracking, not a day still to come',
-  savedQuestions: 'a name for a search, not a day still to come',
   // ADR-0067, the one most likely to be reopened: marking a sealed entry
   // forward turns an arrival into a countdown to the person's own past,
   // which is the opposite of what the resurfacing consent layer exists for.

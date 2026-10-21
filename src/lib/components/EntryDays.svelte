@@ -42,17 +42,12 @@
   let {
     groups,
     role: givenRole,
-    clampNotes = true,
     marginNotesByEntry,
     arrive = false,
     level
   }: {
     groups: EntryDayGroup[];
     role?: Role;
-    /** Off for a saved question's run (phase 8 features ticket 06): the
-        whole point of a run over a hit list is enough of each entry to
-        read rather than to scan. */
-    clampNotes?: boolean;
     /** Batched by the caller, one read for the whole page rather than one
         per entry (phase 8 features ticket 07, marginNotes.ts's own
         reasoning). Omitted, every entry reads as carrying none - the
@@ -107,7 +102,6 @@
           tags={entryTags(entry)}
           marks={entryMarks(entry)}
           {presentation}
-          clampNote={clampNotes}
         >
           {#snippet marginNotes()}
             {#if marginNotesByEntry}

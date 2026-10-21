@@ -35,7 +35,7 @@ import { journalIsBusy } from '../journal-busy.ts';
 import { boot } from '../sqlite/boot.ts';
 import { noopFileOps } from '../sqlite/test-support/noop-file-ops.ts';
 import { restoreArchive } from './restore.ts';
-import { answerTotal, entrySearchFiltersOf, savedQuestionInputOf, starredPhotosAsked } from '../savedQuestionQuery.ts';
+import { answerTotal, starredPhotosAsked } from '../searchAnswer.ts';
 import type { EntrySearchFilters } from './entries.ts';
 
 interface ContractCheck {
@@ -333,16 +333,11 @@ export async function runJournalContract(
     for (const id of ids) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
-  /* Ticket 06's own acceptance criterion: a saved question is one table
-     over this same FTS index, never a second search path. Proven by running
-     the identical filters twice - once as the ad hoc call `/search` makes,
-     once read back off a row this suite just wrote - rather than by
-     inspecting savedQuestions.ts's source, which a driver-tier suite has no
-     way to do anyway. The comma-joined tag/mood columns are what a native
-     driver could bind differently than node:sqlite, so the round trip
-     belongs here rather than in a pure Node test. */
-  await r.section('a saved question answers exactly like the ad hoc search it was saved from', async () => {
-    const group = await journal.tags.addGroup('saved-question-contract-test');
+  /* The filters /search builds narrow the FTS read on the driver itself:
+     the tag and mood lists bind as IN (...) parameters, which a native
+     driver could bind differently than node:sqlite. */
+  await r.section('the search filters narrow to the one entry inside all of them', async () => {
+    const group = await journal.tags.addGroup('search-filter-contract-test');
     const tag = await journal.tags.addTag(group.key, 'therapy');
     const day = 20100;
     const matchId = await journal.entries.upsertEntry({
@@ -377,83 +372,67 @@ export async function runJournalContract(
     const adHocHits = (await journal.entries.searchEntries(queryText, [], filters)).map((e) => e.id);
     const adHocTotal = await journal.entries.countSearchMatches(queryText, [], filters);
     r.equal('the ad hoc filters narrow to the one entry inside all of them', adHocHits, [matchId]);
-
-    const savedId = await journal.savedQuestions.upsertSavedQuestion({
-      name: 'Good sessions',
-      queryText,
-      tagIds: filters.tagIds,
-      moods: filters.moods,
-      startEpochDay: filters.startEpochDay,
-      endEpochDay: filters.endEpochDay,
-      hasNote: filters.hasNote,
-      hasPhoto: filters.hasPhoto,
-      starred: false
-    });
-    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
-    r.equal('the saved row round-trips its comma-joined columns back into arrays', saved?.tagIds, filters.tagIds);
-    r.equal('and its 0/1 columns back into booleans', [saved?.hasNote, saved?.hasPhoto], [true, false]);
-
-    if (saved) {
-      const savedFilters = {
-        tagIds: saved.tagIds,
-        moods: saved.moods,
-        startEpochDay: saved.startEpochDay,
-        endEpochDay: saved.endEpochDay,
-        hasNote: saved.hasNote,
-        hasPhoto: saved.hasPhoto
-      };
-      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
-      const savedTotal = await journal.entries.countSearchMatches(saved.queryText, [], savedFilters);
-      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
-      r.equal("and its total equals the ad hoc search's total", savedTotal, adHocTotal);
-    }
+    r.equal('and the total counts the same one', adHocTotal, 1);
 
     for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
-    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
   });
 
-  /* After-release ticket 16 (audit L08-01): Starred is a filter on /search,
-     and a question saved with it on came back without it, so it answered
-     with every entry carrying the tag. This one goes through the two
-     conversions the screens use, savedQuestionInputOf on the way in and
-     entrySearchFiltersOf on the way out, because the section above builds
-     its filters by hand and so could never notice a field they drop. */
-  await r.section('a saved question keeps Starred and answers with starred entries only', async () => {
-    const group = await journal.tags.addGroup('saved-question-starred-test');
-    const tag = await journal.tags.addTag(group.key, 'binder');
-    const starredId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id], starred: true });
-    const plainId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id] });
+  /* Functional audit ticket 10: mode, body region and one scale's range,
+     each alone and each with text, through the same two reads /search
+     makes. The region and scale halves are EXISTS subqueries over their
+     own tables, and the scale's range binds two numbers, so they belong on
+     every driver rather than in a Node-only test. */
+  await r.section('mode, body region and a scale range narrow the search, alone and with text', async () => {
+    const femme = await journal.presentations.addPresentation('filterprobe femme', 0);
+    const work = await journal.presentations.addPresentation('filterprobe work', 1);
+    const day = 20400;
+    const a = await journal.entries.upsertEntry({
+      epochDay: day, mood: 4, note: 'filterprobe walk', presentationId: femme.id,
+      bodyRegions: { chest: 70 }, dims: { femininity: 80 }
+    });
+    const b = await journal.entries.upsertEntry({
+      epochDay: day, mood: 3, note: 'filterprobe walk', presentationId: work.id,
+      bodyRegions: { hips_waist: 20 }, dims: { femininity: 30 }
+    });
+    const c = await journal.entries.upsertEntry({
+      epochDay: day, mood: 3, note: 'filterprobe other', presentationId: femme.id,
+      bodyRegions: { chest: 30, hips_waist: 60 }, dims: { femininity: 75 }
+    });
+    const d = await journal.entries.upsertEntry({ epochDay: day, mood: 3, note: 'filterprobe bare' });
 
-    const filters = { tagIds: [tag.id], starred: true };
-    const adHocHits = (await journal.entries.searchEntries('', [], filters)).map((e) => e.id);
-    r.equal('the ad hoc search narrows to the starred entry', adHocHits, [starredId]);
+    const ask = async (query: string, filters: EntrySearchFilters) => {
+      const hits = (await journal.entries.searchEntries(query, [], filters)).map((e) => e.id).sort((x, y) => x - y);
+      const total = await journal.entries.countSearchMatches(query, [], filters);
+      return { hits, total };
+    };
+    const ids = (...list: number[]) => ({ hits: [...list].sort((x, y) => x - y), total: list.length });
+    const inDay = { startEpochDay: day, endEpochDay: day };
 
-    const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred binder days', '', filters));
-    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
-    r.equal('the saved row keeps Starred', saved?.starred, true);
-    if (saved) {
-      const savedFilters = entrySearchFiltersOf(saved);
-      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
-      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
-      r.equal('and its total says one', await journal.entries.countSearchMatches(saved.queryText, [], savedFilters), 1);
-    }
+    r.equal('a mode alone finds its entries', await ask('', { ...inDay, presentationIds: [femme.id] }), ids(a, c));
+    r.equal('two modes find either', await ask('', { ...inDay, presentationIds: [femme.id, work.id] }), ids(a, b, c));
+    r.equal('a mode with text', await ask('walk', { presentationIds: [femme.id] }), ids(a));
+    r.equal('a body region alone finds every entry with a reading there', await ask('', { ...inDay, bodyRegions: ['chest'] }), ids(a, c));
+    r.equal('a body region with text', await ask('walk', { bodyRegions: ['hips_waist'] }), ids(b));
+    r.equal('a scale range alone, ends included', await ask('', { ...inDay, scale: { key: 'femininity', min: 75, max: 80 } }), ids(a, c));
+    r.equal('a scale range with text', await ask('walk', { scale: { key: 'femininity', min: 0, max: 50 } }), ids(b));
+    r.equal('an entry without that scale is outside every range', await ask('filterprobe', { scale: { key: 'femininity', min: 0, max: 100 } }), ids(a, b, c));
+    r.equal('all three with text narrow to one', await ask('filterprobe', {
+      presentationIds: [femme.id], bodyRegions: ['hips_waist'], scale: { key: 'femininity', min: 70, max: 100 }
+    }), ids(c));
+    r.equal('and nothing when they disagree', await ask('filterprobe', { presentationIds: [work.id], bodyRegions: ['chest'] }), ids());
 
-    for (const id of [starredId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
-    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+    for (const id of [a, b, c, d]) await journal.entries.deleteEntry(id).catch(() => {});
+    await journal.presentations.setPresentationHidden(femme.id, true).catch(() => {});
+    await journal.presentations.setPresentationHidden(work.id, true).catch(() => {});
   });
 
-  /* The follow-up to the section above: on /search, Starred also brings
-     every starred photo and counts it in the total, and the saved question
-     screen showed the entries alone, so the same question gave two
-     different answers. Both screens now read the photos and the total
-     through starredPhotosAsked and answerTotal, which this runs once with
-     the ad hoc filters and once with the saved row's. That proves the
-     helpers and the saved row's round trip agree, not that each screen
-     calls them; tests/search-filter-scope.mjs is what checks the two
-     screens state the same total. */
-  await r.section('a saved Starred question answers with the same entries, photos and total as /search', async () => {
-    const group = await journal.tags.addGroup('saved-question-starred-photo-test');
+  /* Starred on /search brings every starred photo beside the starred
+     entries and counts it in the total, through the same helpers the
+     screen calls. */
+  await r.section('Starred answers with starred entries, every starred photo and one total', async () => {
+    const group = await journal.tags.addGroup('search-starred-photo-test');
     const tag = await journal.tags.addTag(group.key, 'voice');
+    const plainId = await journal.entries.upsertEntry({ epochDay: 20300, mood: 4, tags: [tag.id] });
     const starredId = await journal.entries.upsertEntry({ epochDay: 20300, mood: 4, tags: [tag.id], starred: true });
     const ownerId = await journal.entries.upsertEntry({ epochDay: 20301, mood: 3, note: 'photo owner' });
     const photoId = await journal.photos.attach({ entryId: ownerId }, {
@@ -475,13 +454,8 @@ export async function runJournalContract(
     r.equal('and the starred photo, counted in its total', [adHoc.photos.includes(photoId), adHoc.total], [true, 1 + adHoc.photos.length]);
     r.equal('and no photos when Starred is off', (await starredPhotosAsked(journal.photoLibrary, { tagIds: [tag.id] })).length, 0);
 
-    const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred voice days', '', filters));
-    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
-    r.equal('the saved question answers exactly as the ad hoc search', saved ? await answer(saved.queryText, entrySearchFiltersOf(saved)) : null, adHoc);
-
     await journal.photos.remove(photoId).catch(() => {});
-    for (const id of [starredId, ownerId]) await journal.entries.deleteEntry(id).catch(() => {});
-    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+    for (const id of [starredId, ownerId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
   /* A margin note's independence from its entry (phase 8 features ticket

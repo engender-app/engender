@@ -222,7 +222,7 @@
   {
     "name": "search-filter-scope",
     "tier": "dev",
-    "holds": "search says what its filter covers and what a saved question holds"
+    "holds": "search says what its filter covers, and mode, body region and a scale range narrow it alone, with text and across a trip into an entry"
   },
   {
     "name": "mark-edge-fringe",

@@ -1357,42 +1357,6 @@ try {
 } catch (e) { fail('clearing search does not wait out the debounce', e); }
 });
 
-/* 5f. a saved question runs (phase 8 audit ticket 15's "same shape" screen).
-
-   Regression cover for moving that screen's two closures off `question`
-   itself onto a signature-memoized copy of it - the run-count claim about
-   *why* is proved against the real journal in the browser tier
-   (live-reads-probe.svelte.ts); what this proves is that the run still
-   shows the entries a person searched for.
-
-   Ticket 18 retired the list screen this used to reach the saved question
-   through (`/search/questions`, now a redirect stub): the same question is
-   a chip on search's own opening state instead, so this clears the query
-   back to idle and taps the chip rather than following a link to a list. */
-await flow('saved question runs', async () => {
-try {
-  await fresh('/search');
-  await page.locator('#q').fill('hopeful');
-  await page.waitForSelector('[data-entry-card]');
-
-  await page.locator('[data-search-save]').click();
-  await page.waitForSelector('[data-saved-question-save-confirm]');
-  await page.locator('#saved-question-name').fill('ticket15 saved question');
-  await page.locator('[data-saved-question-save-confirm]').click();
-  await page.waitForSelector('[data-sheet]', { state: 'detached' });
-
-  await page.locator('#q').fill('');
-  await page.waitForSelector('[data-saved-question-chip]');
-  // text-under-test: the name is this test's own fixture data, not app copy.
-  const row = page.locator('[data-saved-question-chip]').filter({ hasText: 'ticket15 saved question' }); // text-under-test
-  await row.waitFor();
-  await row.click();
-  await page.waitForSelector('[data-entry-card]');
-
-  ok('a saved question runs and shows entries, the same read /search itself made');
-} catch (e) { fail('saved question runs', e); }
-});
-
 /* 5g. search opens with something: the opening state's tag chips and this
    device's own recent searches both run a search on a tap (ticket 18).
    `fresh()` reloads the page, which drops recentSearches.ts's history -
@@ -5006,13 +4970,12 @@ try {
        `care-stock-empty` marker either way - the check above would pass
        without the sheet ever having been opened. */
     ['/settings/reminders', 'reminders-empty'],
-    // Phase 11 ticket 01: the whole-app audit's five gaps (comfort items,
-    // starred entries, saved questions, an attached document, a second
-    // procedure) - three of the five read straight off their own empty-state
-    // markers the same way as every route above; the starred and saved-
-    // question gaps moved with ticket 18 (below - neither address renders an
-    // empty-state marker of its own any more, both being folded into
-    // /search's own opening state and filters).
+    // Phase 11 ticket 01: the whole-app audit's gaps (comfort items,
+    // starred entries, an attached document, a second procedure) - two read
+    // straight off their own empty-state markers the same way as every route
+    // above; the starred gap moved with ticket 18 (below - its address
+    // renders no empty-state marker of its own any more, being folded into
+    // /search's filters). Saved questions were cut (functional audit 10).
     ['/doubt/comfort', 'comfort-list-empty'],
     ['/media/documents', 'documents-empty']
   ];
@@ -5023,18 +4986,13 @@ try {
     }
   }
 
-  /* The starred and saved-question gaps (ticket 18): `/search/starred` and
-     `/search/questions` redirect into `/search` now, so what proves the
-     fixture closed them is real content on arrival rather than an absent
-     empty-state marker - a starred entry or photo for the first, a saved-
-     question chip for the second. */
+  /* The starred gap (ticket 18): `/search/starred` redirects into
+     `/search` now, so what proves the fixture closed it is real content on
+     arrival rather than an absent empty-state marker - a starred entry or
+     photo. */
   await page.goto(BASE + '/search?starred=1', { waitUntil: 'networkidle' });
   if (!(await page.locator('[data-entry-card], [data-starred-photos]').count())) {
     throw new Error('/search?starred=1 shows nothing starred after filling every feature');
-  }
-  await page.goto(BASE + '/search?questions=1', { waitUntil: 'networkidle' });
-  if (!(await page.locator('[data-saved-question-chip]').count())) {
-    throw new Error('/search?questions=1 shows no saved question after filling every feature');
   }
 
   /* The other two of the audit's five gaps aren't caught by an empty-state

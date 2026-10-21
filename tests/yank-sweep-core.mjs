@@ -2099,8 +2099,6 @@ const HYDRATION_SCENES = [
   { name: 'entry-edit', at: '/entry/{entry}', needs: 'entry', when: 'persona', is: 'an existing entry opened for editing' },
   { name: 'search', at: '/search', is: 'search and its filter sheet' },
   { name: 'search-starred', at: '/search?starred=1', is: 'the starred shelf' },
-  { name: 'search-questions', at: '/search?questions=1', is: 'the saved-question shelf' },
-  { name: 'search-question', at: '/search/questions/{question}', needs: 'question', when: 'persona', is: 'one saved question answered' },
   /* Stats tab */
   { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
   { name: 'stats-reading', at: '/stats/day-by-day', is: 'a look-back reading' },
@@ -2222,7 +2220,6 @@ export const HYDRATION_NEEDS = {
      that is all the journal has, which the detail route draws sealed. */
   letter: { list: '/transition/letters', cards: ['[data-letter]:not([data-letter-state="sealed"])', '[data-letter]'], attr: 'data-letter' },
   tryout: { list: '/transition/tryouts', prefix: '/transition/tryouts/' },
-  question: { list: '/search?questions=1', prefix: '/search/questions/' },
   /* On the web the list is the install-the-app empty state whatever the
      journal holds (settings/reminders: `isWeb`), so only the device can
      read an id off it. The desktop crawler skips this one by name. */

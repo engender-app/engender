@@ -245,11 +245,6 @@ export const TABLE_NAMES = [
      re-run on a write to any of nineteen tables, and hiding an area has not
      touched a single record in it. */
   'areaState',
-  /* A saved question (phase 8 features ticket 06). Its own name rather than
-     folded into any of the search-adjacent tables: no other read here
-     depends on a saved question's row, and saving or renaming one changes
-     nothing a search itself returns. */
-  'savedQuestion',
   /* A revisit (phase 8 features ticket 08, ADR-0045). Its own name rather
      than folded into 'entry': setting or cancelling one changes nothing an
      entry read returns, and the live tile's own read would otherwise
@@ -650,10 +645,6 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   journalingPauses: classify<Journal['journalingPauses']>()({
     writes: { upsertPause: ['journalingPause'], deletePause: ['journalingPause'] },
     reads: { getPauses: ['journalingPause'] }
-  }),
-  savedQuestions: classify<Journal['savedQuestions']>()({
-    writes: { upsertSavedQuestion: ['savedQuestion'], deleteSavedQuestion: ['savedQuestion'] },
-    reads: { getSavedQuestions: ['savedQuestion'] }
   }),
   revisits: classify<Journal['revisits']>()({
     writes: { setRevisit: ['revisit'], deleteRevisit: ['revisit'] },

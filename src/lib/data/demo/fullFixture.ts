@@ -569,34 +569,6 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   const milestonePhoto = journalPhotos.find((p) => p.milestoneName !== null);
   if (milestonePhoto) await journal.photos.setStarred(milestonePhoto.id, true);
 
-  // Saved questions: a query plus its filters, the shape the search
-  // screen keeps past closing (savedQuestionQuery.ts). The tag filter is
-  // guaranteed hits - g-soc-eu is written across dozens of the persona's
-  // own entries - the free-text one is a real search she might keep
-  // without needing to be guaranteed anything.
-  await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Good days',
-    queryText: '',
-    tagIds: ['g-soc-eu'],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-  await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Laser progress',
-    queryText: 'laser',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-
   // One custom entry template, alongside whatever built-ins ship.
   await journal.entryTemplates.addEntryTemplate({
     name: 'Hard day',
