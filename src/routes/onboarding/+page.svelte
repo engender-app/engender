@@ -5,7 +5,8 @@
      Five settings, one pass. What a person had to leave here and go and find
      afterwards was the flag, which is the app's whole look and something
      someone decides in the first minute and almost never revisits. So the
-     flow is welcome, name, flag, scales, areas, lock, permissions, finish,
+     flow is welcome, name, flag, scales, features, lock, permissions,
+     disguise, finish,
      and the order and the skip rules live in $lib/onboarding/steps.ts rather
      than in a run of `step === 3` comparisons here. The daily check-in used
      to be the last question and is not asked here any more (phase 10
@@ -71,16 +72,10 @@
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
   import { createProgress } from '$lib/components/progress.svelte';
   import { wipe } from '$lib/motion/reveal';
-  import { todayEpochDay } from '$lib/data/epochDay';
-  import { currentDay } from '$lib/stores/today.svelte';
-  import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
-  import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
   import { firstRunScales } from '$lib/onboarding/firstRunScales';
@@ -139,53 +134,12 @@
       : [...tickedScales, key];
   }
 
-  /* Null until touched, `scales`' own reason: Skip has to mean "leave
-     `onboardingAreas` alone" rather than "store nothing" (phase 10 redesign
-     ticket 22). Reads `prefs.onboardingAreas` rather than
-     `DEFAULT_ONBOARDING_AREAS` directly for the same reason `tickedScales`
-     reads `prefs.activeScales` - a first run reached a second time meets
-     whatever it answered last time, not the app's own default. */
-  let areas = $state<string[] | null>(null);
-  let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
   let genitalEffectsChoice = $state<boolean | null>(null);
   let cycleChoice = $state<boolean | null>(null);
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleChoice ?? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
   let genitalEffectsShown = $derived(
     genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
-  );
-
-  function toggleArea(key: string) {
-    areas = tickedAreas.includes(key)
-      ? tickedAreas.filter((k) => k !== key)
-      : [...tickedAreas, key];
-  }
-
-  /* The hub's own groups and rows, exactly as `hubRows.ts` and `hubLabels.ts`
-     hand them to the More hub - so this step is the same list under the same
-     headings, met once here and once more on the hub (the ticket's own
-     phrase). Passed a bare, empty reading rather than a real one: nobody has
-     written anything or hidden an area yet on a first run, which resolves
-     every row to its standing "what is behind it" line, `hubRowLine`'s
-     `not-yet` case - the same line the hub shows a fresh journal. Hosted rows
-     (seven of the twenty-seven) are not `hubSections`' business and so do not
-     appear here either; pinning one of them is ticket 14's screen, which
-     `pinnedRows.ts` already notes it inherits.
-
-     Support and Media are left off (Alicja, on the sign-off renders):
-     neither is something a person tracks. Support fronts Safe space and a
-     resource list, and Media fronts what an entry carries rather than a
-     practice of its own - a photo, a recording, a document, all attached to
-     something written rather than kept on their own dated stream. Filtered
-     here rather than in `hubSections` itself, which the More hub still
-     draws whole: this is a question about what to track, and the hub is
-     navigation to everything regardless. */
-  const TRACKABLE_GROUPS = new Set<HubSection['key']>(['health', 'transition']);
-  const today = $derived(currentDay());
-  let sections = $derived(
-    hubSections({ todayEpochDay: today, lastWrites: {}, states: {}, forward: {} }).filter((section) =>
-      TRACKABLE_GROUPS.has(section.key)
-    )
   );
 
   /* The lock step's own answer once a mode is set up: when that mode's
@@ -444,7 +398,6 @@
     flag: m.ob_flag_title,
     scales: m.ob_track_title,
     features: m.ob_features_title,
-    areas: m.ob_areas_title,
     lock: m.ob_lock_title,
     permissions: m.ob_perms_title,
     disguise: m.ob_disguise_title,
@@ -460,7 +413,6 @@
     flag: m.ob_flag_body,
     scales: m.ob_track_body,
     features: m.ob_features_body,
-    areas: m.ob_areas_body,
     lock: m.ob_lock_body,
     permissions: m.ob_perms_body,
     disguise: m.ob_disguise_body,
@@ -472,7 +424,6 @@
      journal already, which is the fact every later step reads. */
   function beginRestore() {
     restoring = true;
-    areas = null;
     genitalEffectsChoice = null;
     cycleChoice = null;
     archiveError = '';
@@ -558,8 +509,7 @@
     else if (step === 'features') {
         genitalEffectsChoice = null;
       cycleChoice = null;
-    } else if (step === 'areas') areas = null;
-    else if (step === 'lock') lockAfter = null;
+    } else if (step === 'lock') lockAfter = null;
     /* The permissions step is not in this list, and that is the whole of
        what skipping it does (ticket 31). Its answers live in the OS rather
        than in `prefs`, so there is no stored default for a Skip to protect:
@@ -587,8 +537,8 @@
     setupError = '';
     const wasOnboarded = prefs.onboarded;
     try {
-      /* Restore precedes setup answers. A restored archive supplies its own
-         visibility unless this setup explicitly changed the area list. */
+      /* Restore precedes setup answers. The archive supplies its own
+         journal choices; setup still applies device-local choices. */
       if (restoring && archiveReady) {
         if (archiveBusy) return;
         archiveBusy = true;
@@ -608,8 +558,7 @@
         await archiveProgress.finish();
       }
 
-      /* The area state must land before `onboarded`, and all answers before
-         disguise can close the Android process. */
+      /* All answers must land before disguise can close the Android process. */
       await completeSetup({
         async writeAnswers() {
           if (genitalEffectsChoice !== null) {
@@ -617,12 +566,8 @@
           }
           if (!restoring && !wasOnboarded) prefs.cycleTrackingChoice = cycleChoice ?? false;
           else if (cycleChoice !== null) prefs.cycleTrackingChoice = cycleChoice;
-          /* New journals store the three pre-ticked areas, preserving older
-             journals whose null answer meant four default pins. */
           if (name.trim()) prefs.name = name.trim();
           if (scales) prefs.activeScales = scales;
-          if (areas) prefs.onboardingAreas = areas;
-          else if (!wasOnboarded && !restoring) prefs.onboardingAreas = [...DEFAULT_ONBOARDING_AREAS];
           /* Only where the question was asked: a mode with no secret
              shows none, and a timing it never saw should not be waiting
              for a mode that has one. */
@@ -675,9 +620,9 @@
      scroll (rule 14). Before this ticket setup was a plain column inside
      the app's own scroll region, so a step with nine rows on it carried the
      question and the foot off the top of the window with them - measured at
-     571px of overflow on the permissions step and 964 on the areas step
-     (ticket 31). Now the screen is exactly the window, the answers have
-     their own region, and the question and the foot cannot move at all. -->
+     571px of overflow on the permissions step (ticket 31). Now the screen
+     is exactly the window, the answers have their own region, and the
+     question and the foot cannot move at all. -->
 <div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`}>
   <div class="setup step-field-host">
     <!-- The field. Its height is the sun's reach at this step plus the
@@ -938,9 +883,7 @@
                   offered={vocabulary.ready ? undefined : firstRunScales()}
                 />
               {:else if step === 'features'}
-                <!-- Their own step since after-release 17 (UX-09), and
-                     before the pins, so the pins step offers only what is
-                     switched on here. -->
+                <!-- Their own step since after-release 17 (UX-09). -->
                 <ListCard>
                   <ListRow
                     key="feature-genital-effects"
@@ -957,44 +900,6 @@
                     onclick={() => (cycleChoice = !cycleShown)}
                   />
                 </ListCard>
-              {:else if step === 'areas'}
-                <!-- The hub's own groups and rows, ticked rather than tapped
-                     through - the flag step and the scales step both already
-                     solved "a list you tick" on this screen, so this is that
-                     shape again rather than a new one.
-
-                     A group inside the list is named by a caption at 15/600
-                     and never by the 28px section rule (rule 12): a step has
-                     one heading and it is the question.
-
-                     The list is the choice and nothing stands above it
-                     (after-release 17, UX-09): a "Today preview" of the
-                     rows this would pin sat over it, with a pencil row that
-                     looked tappable and was not, and pushed the first real
-                     choice below Continue at 390px. -->
-                <div class="setup-areas" role="group" aria-label={m.ob_areas_title()}>
-                  {#each sections as section (section.key)}
-                    <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
-                    <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
-                      {#each section.rows as row (row.spec.key)}
-                        <!-- The clock handed to `hubRowLine` is inert here: these rows are
-                             drawn from an empty reading, so none of them can be counting
-                             up and the one line that reads a clock is unreachable. Same
-                             case as `HostedRows.svelte`. -->
-                        <ListRow
-                          key={`area-${row.spec.key}`}
-                          icon={row.spec.icon}
-                          title={hubRowTitle(row.spec.key)}
-                          subtitle={hubRowLine(row.spec.key, row.line, today, Date.now())}
-                          checked={tickedAreas.includes(row.spec.key)}
-                          chevron={false}
-                          onclick={() => toggleArea(row.spec.key)}
-                          data-hub-section={section.key}
-                        />
-                      {/each}
-                    </ListCard>
-                  {/each}
-                </div>
               {:else if step === 'lock'}
                 <!-- The module and the question after it cross rather than
                      swap: the module leaves on the frame the keystore is
@@ -1022,7 +927,7 @@
                              the module that four screens share, and the module's
                              own title is this step's question while it does. What
                              this screen does is give them the foot's drawing, so
-                             the eye meets the same shape it has met nine times. -->
+                             the eye meets the same shape it met on earlier steps. -->
                         <AccessModeSetup
                           bind:this={accessSetup}
                           purpose="setup"
@@ -1224,7 +1129,7 @@
      sun's reach at this step plus the question, so the edge comes down one
      step's worth per step and everything printed on it or standing under it
      rides down with it. And the foot is outside the ride, so it is in the
-     same place on all ten steps.
+     same place on all nine steps.
 
      `--blind-edge` is where the field's bottom edge is, in pixels. It is
      registered rather than left as a plain custom property for the reason
@@ -1457,24 +1362,6 @@
      `.screen`'s child and so is outside that rule's reach. */
   .setup-answers > * + * {
     margin-top: var(--space-5);
-  }
-
-  /* A group inside a list is named by a caption at 15/600, never by the
-     28px section rule, which a step may not carry at all (rule 12): a step
-     has one heading and it is the question. The permissions step names its
-     own two groups this way and this is that same drawing. */
-  .setup-caption {
-    margin: var(--space-5) 0 var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
-  }
-  .setup-caption:first-child {
-    margin-top: 0;
-  }
-  .setup-areas {
-    display: flex;
-    flex-direction: column;
   }
 
   /* Every answer that carries a block arrives as one: it clips open from

@@ -373,8 +373,7 @@ export interface PreferenceValues {
       rows - "nothing pinned means nothing shown" is the rule, so unpinning
       the last row may not read as a fresh install. **Null** is a person who
       has never arranged it, and resolves to the default set derived from
-      `onboardingAreas`. The same null-is-not-empty distinction onboarding
-      already makes for `activeScales`, for the same reason.
+      `onboardingAreas`, or the default pins when that older answer is absent.
 
       Nothing writes this except the person: the default set is *resolved*
       rather than stored, so the app never puts a pin somewhere by itself
@@ -397,18 +396,16 @@ export interface PreferenceValues {
       `DAY_AHEAD_MARK_KINDS` does not name resolves to nothing, the same way
       a stale pin does. */
   agendaKinds: string[] | null;
-  /** Which areas the person said they were keeping track of, when
-      onboarding asked (phase 10 redesign ticket 05; the step itself is its
-      own ticket). `hubRows.ts` row keys.
+  /** Saved area choices from older onboarding flows (phase 10 redesign
+      ticket 05). `hubRows.ts` row keys.
 
       Held apart from `pinnedRows` rather than written straight into it,
-      because the default has to stay computable after the front page has
-      been rearranged: ticket 14's reset is "back to what I said at the
-      start", and a default that had been flattened into the arrangement
-      would have nothing to go back to.
+      because the initial pins have to stay computable after the front page
+      has been rearranged: ticket 14's reset returns to this choice or the
+      default set.
 
-      Null is a skipped question - and a journal that predates the step -
-      which resolves to `DEFAULT_ONBOARDING_AREAS`. An empty list is
+      Null means no saved answer and resolves to `DEFAULT_ONBOARDING_AREAS`.
+      An empty list is
       somebody who unticked everything, and it means a front page with no
       pinned rows, the same way an empty `pinnedRows` does. */
   onboardingAreas: string[] | null;

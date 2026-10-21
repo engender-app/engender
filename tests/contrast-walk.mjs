@@ -12,7 +12,7 @@
    Written once and read by two walkers, which is redesign ticket 34's own
    finding: setup and the gates wear one field (rules 12 and 15), so a
    measurement that had to know how a field paints could not be two
-   measurements. tests/setup-contrast.mjs walks setup's ten steps in the app;
+   measurements. tests/setup-contrast.mjs walks setup's steps in the app;
    tests/gate-contrast.mjs walks the gates in their fixture.
 
    Large text answers to 3:1 and anything smaller to 4.5:1 (WCAG 1.4.3); the

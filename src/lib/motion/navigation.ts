@@ -136,8 +136,8 @@ export function sharedAxisX(
  * sign is the whole reason. Which way a part travels depends on which way
  * the edge went, and the edge's own direction is not known when the
  * transition starts - the field has not been measured yet, and forward is
- * not the same as taller (the areas step's three-line question makes a
- * taller field than the step after it). Written into the keyframes as a
+ * not the same as taller (a longer question can make a taller field than
+ * the step after it). Written into the keyframes as a
  * var(), the browser resolves it per frame off whatever the edge published,
  * and the first frame - where the travel is multiplied by nothing - cannot
  * be wrong.

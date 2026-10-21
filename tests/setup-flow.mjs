@@ -20,7 +20,6 @@ export const SETUP_STEPS = [
   'flag',
   'scales',
   'features',
-  'areas',
   'lock',
   'permissions',
   'disguise',

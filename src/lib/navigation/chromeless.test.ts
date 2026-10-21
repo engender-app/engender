@@ -90,7 +90,7 @@ describe('which navigations cut instead of moving', () => {
     /* Redesign ticket 33. Somebody pressed "Start writing" and the app
        opened; rule 12 already says the sun's handover to Home is one object
        at one size, and a cut made the app's largest surface change in a
-       single frame at the end of ten steps that had all moved. Both doors
+       single frame at the end of setup's moving steps. Both doors
        out of setup are the same act and complete() is one function for
        them. */
     expect(cutsInsteadOfMoving('/onboarding', '/')).toBe(false);

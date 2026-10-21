@@ -2289,9 +2289,8 @@ try {
 });
 
 
-/* 13. onboarding end-to-end via demo jump (phase 5 ticket 26, phase 10
-   redesign tickets 22, 31 and 32: nine steps - welcome, name, flag, scales,
-   areas, lock, permissions, disguise, finish) */
+/* 13. onboarding end-to-end via demo jump: welcome, name, flag, scales,
+   features, lock, permissions, disguise, finish. */
 await flow('onboarding', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -2369,47 +2368,11 @@ try {
   await page.locator('[data-list-row="scale-binary_nonbinary"]').click();
   await page.locator('[data-list-row="scale-agender_gendered"]').click();
   await page.locator('[data-next]').click(); // scales -> features
-  // Features are their own step before pins.
-  await page.locator('[data-next]').click(); // features -> areas
-
-  /* Ticket 22: the hub's own groups and rows, met once here and once more on
-     the hub - the same headings the More screen draws, in the same order. */
-  /* Support and Media are left off this step (Alicja, sign-off): neither is
-     something a person tracks. */
-  /* Steps, not Transition, since redesign ticket 15 renamed the group in the
-     one place both surfaces read it from (`hubLabels.ts`): a group called
-     Transition inside a door called Transition said nothing. */
-  /* A caption rather than a section heading since redesign ticket 33: a
-     step has one heading and it is the question (DIRECTION.md rule 12), so a
-     group inside a list is named by 15/600 in the secondary ink - the same
-     drawing the permissions step already used for its two groups. */
-  const areaHeadings = (await page.locator('[data-setup-caption]').allTextContents()).map((t) => t.trim());
-  /* Two, not three, since audit item 10: the Body group was one row and is
-     folded into Health, so this step lists what the door lists. */
-  if (areaHeadings.join() !== ['Health', 'Steps'].join()) {
-    throw new Error('onboarding areas headings: ' + JSON.stringify(areaHeadings));
+  await page.locator('[data-next]').click(); // features -> lock
+  await page.waitForSelector('[data-lock-after-choice="immediately"]');
+  if (await page.locator('[data-list-row^="area-"]').count()) {
+    throw new Error('setup still offers an areas step');
   }
-
-  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
-  if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  for (const key of ['care', 'milestones', 'tryouts']) {
-    if ((await page.locator(`[data-list-row="area-${key}"]`).getAttribute('aria-checked')) !== 'true') {
-      throw new Error(`${key} is not part of the default set on arrival`);
-    }
-  }
-
-  await expectNoHorizontalOverflow('[data-app-viewport]');
-
-  // Untick a default and tick something outside it, so what is stored is a
-  // set this screen chose rather than the one it started with (the same
-  // proof the scales step makes above).
-  /* Both dispatched rather than clicked: with the demo bar's 240px above it, the
-     areas list keeps a 41px scroll window at 390x844, so no 75px row fits
-     in view and the step's foot takes a real click. Without the bar the
-     list has about 280px. */
-  await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  await page.locator('[data-list-row="area-roadmap"]').dispatchEvent('click');
-  await page.locator('[data-next]').click(); // areas -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
 
   /* Phase 10 redesign ticket 31: where the check-in switch used to be, the
@@ -2487,7 +2450,7 @@ try {
    Rule 14's own text hands this measurement to this ticket: before it, setup
    was a plain column inside the app's one scroll region, so a step with nine
    rows on it carried the question and the foot off the top of the window -
-   571px of overflow on the permissions step and 964 on the areas step,
+   571px of overflow on the permissions step,
    measured on ticket 31. What holds it now is a fixed frame with one
    scrolling region inside it, and the only way to know that is still true
    next month is to measure it here.
@@ -2524,7 +2487,7 @@ try {
        the window rather than by opening a keyboard nothing here has. */
     { width: 390, height: 360 }
   ];
-  const STEP_TAPS = 9; // ten steps, nine Continues (features joined in after-release 17)
+  const STEP_TAPS = 8; // nine steps, eight Continues
   for (const size of STEP_SIZES) {
     await page.setViewportSize(size);
     await fresh('/');
@@ -2580,9 +2543,8 @@ try {
       /* A few pixels of tolerance, and only here: the field's height is the
          sun's reach at this step, which is `175px` times a fraction, so the
          frame's content height is fractional and `scrollHeight` is an
-         integer. Measured at 360x640 on the areas step, that rounding is
-         2px. It cannot hide a misfit - the ones this rule exists for were
-         571px on the permissions step and 964 on the areas step. */
+         integer. A few pixels of rounding cannot hide the 571px misfit
+         previously measured on the permissions step. */
       const rounding = 4;
       if (read.region > rounding) throw new Error(`the screen scrolls at ${where}: ${read.region}px`);
       if (read.screen > rounding) throw new Error(`the frame is clipped at ${where}: ${read.screen}px`);
@@ -2825,18 +2787,14 @@ try {
   }
 
   /* A setup draft from the new-journal path must not override the archive.
-     Changing another area gives the draft a value. */
-  for (let i = 0; i < 5; i++) {
-    restoreStage = `next to setup draft ${i + 1}/5`;
+     The draft flag differs from the archive's lesbian flag. */
+  for (let i = 0; i < 3; i++) {
+    restoreStage = `next to setup draft ${i + 1}/3`;
     await page.locator('[data-next]').click();
   }
-  /* Dispatched rather than clicked: with the demo bar's 240px above it, the
-     areas list keeps a 41px scroll window at 390x844, so no 75px row fits
-     in view and the step's foot takes a real click. Without the bar the
-     list has about 280px. */
-  await page.locator('[data-list-row="area-care"]').dispatchEvent('click');
-  for (let i = 0; i < 5; i++) {
-    restoreStage = `back from setup draft ${i + 1}/5`;
+  await page.locator('[data-palette-pick="agender"]').dispatchEvent('click');
+  for (let i = 0; i < 3; i++) {
+    restoreStage = `back from setup draft ${i + 1}/3`;
     await page.locator('[data-back]').click();
   }
   await page.waitForSelector('[data-restore-start]');
@@ -3073,8 +3031,7 @@ try {
   await page.locator('[data-next]').click(); // name -> flag
   await page.locator('[data-next]').click(); // flag -> scales
   await page.locator('[data-next]').click(); // scales -> features
-  await page.locator('[data-next]').click(); // features -> areas
-  await page.locator('[data-next]').click(); // areas -> lock
+  await page.locator('[data-next]').click(); // features -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
 
@@ -3274,14 +3231,7 @@ try {
   await cycleChoice.focus();
   await cycleChoice.press('Space');
   if (await cycleChoice.getAttribute('aria-checked') !== 'true') throw new Error('setup cycle choice did not answer keyboard input');
-  await page.locator('[data-skip-step]').click(); // features -> areas
-
-  /* Ticket 22's own version of the same proof: the default three arrive
-     ticked, and skipping leaves `onboardingAreas` null rather than storing
-     the default. */
-  const areasTickedOnArrival = await page.locator('[data-list-row^="area-"][aria-checked="true"]').count();
-  if (areasTickedOnArrival !== 3) throw new Error('areas ticked on arrival: ' + areasTickedOnArrival);
-  await page.locator('[data-skip-step]').click(); // areas -> lock
+  await page.locator('[data-skip-step]').click(); // features -> lock
   await page.locator('[data-next]').click(); // lock -> permissions
   await page.locator('[data-next]').click(); // permissions -> disguise
   await page.locator('[data-next]').click(); // disguise -> finish
@@ -3322,8 +3272,8 @@ try {
   await choice.focus();
   await choice.press('Space');
   if (await choice.getAttribute('aria-checked') !== 'true') throw new Error('Polish setup cycle choice ignored keyboard');
-  // features -> areas -> lock -> permissions -> disguise -> finish
-  for (let step = 0; step < 5; step++) await page.locator('[data-next]').click();
+  // features -> lock -> permissions -> disguise -> finish
+  for (let step = 0; step < 4; step++) await page.locator('[data-next]').click();
   await page.locator('[data-finish]').click();
   await page.waitForSelector('[data-home-hello]');
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });

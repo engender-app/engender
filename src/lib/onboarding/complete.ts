@@ -20,8 +20,7 @@
    Capacitor. */
 
 export interface SetupCompletion {
-  /** Every answer setup has been holding, `onboarded` among them. An area
-      visibility write must settle before setup leaves. */
+  /** Every answer setup has been holding, `onboarded` among them. */
   writeAnswers: () => void | Promise<void>;
   /** Resolves once `writeAnswers`' writes are in SQLite rather than in
       flight. On web this is a formality. On Android it is the difference
@@ -45,7 +44,7 @@ export interface SetupCompletion {
 export async function completeSetup(completion: SetupCompletion): Promise<void> {
   await completion.writeAnswers();
 
-  /* The area write has landed. Preferences need a flush before disguise can
+  /* Answers have been submitted. Preferences need a flush before disguise can
      kill the Android process; without disguise, the normal write path runs. */
   if (completion.disguise) {
     /* Whatever happens in here, the person gets out of setup. They pressed
