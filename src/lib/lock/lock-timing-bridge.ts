@@ -42,11 +42,13 @@ export const androidPinAttempts = {
       return (await androidLockTiming.beginPinAttempt({ owner: owner() })).token;
     } catch (error) {
       if (/pin-attempt-(busy|wait)/.test(String((error as Error)?.message))) throw new CredentialsBusyError();
-      throw new KeystoreUnreadableError('PIN accounting could not be persisted');
+      throw new KeystoreUnreadableError('PIN accounting could not be persisted', { cause: error });
     }
   },
   async finish(token: string, successful: boolean): Promise<void> {
     try { await androidLockTiming.finishPinAttempt({ owner: owner(), token, successful }); }
+    // Admission has already counted this guess. A failed settlement leaves its
+    // token pending, so asking for another PIN attempt would be misleading.
     catch { throw new KeystoreUnreadableError('PIN accounting could not be settled'); }
   }
 };

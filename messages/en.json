@@ -2419,6 +2419,7 @@
   "pin_forgot_key_note": "Nobody can recover a forgotten PIN. If you saved a recovery key, reopen the app to use it.",
   "pin_mismatch": "Those two did not match. Start again.",
   "pin_progress": "PIN progress: {typed} of {total} digits",
+  "pin_storage_full": "Your device is out of space. Free some space, then try your PIN again.",
   "pin_throttled": "Too many wrong tries. Try again in {seconds}s.",
   "pin_wait_over": "You can try your PIN again.",
   "pin_wrong": "That PIN is not right.",
