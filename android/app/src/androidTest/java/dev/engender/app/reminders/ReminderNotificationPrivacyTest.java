@@ -21,6 +21,9 @@ import android.os.Build;
 import dev.engender.app.reset.DeviceStores;
 import dev.engender.app.lock.LockTimingPlugin;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -167,6 +170,22 @@ public class ReminderNotificationPrivacyTest {
     }
 
     @Test
+    public void sharedCheckInFixtureKeepsLegacyAffirmationOutOfNotification() throws Exception {
+        JSONObject fixture = readCheckInFixture();
+        JSONObject expected = fixture.getJSONObject("expected");
+        assertFalse(expected.has("checkInAffirmations"));
+        ReminderScheduler.saveAndSchedule(context, fixture.getJSONObject("input"));
+
+        fireCheckInAlarm();
+
+        Notification checkIn = findCheckInNotification();
+        assertNotNull("no check-in was posted", checkIn);
+        assertEquals(expected.getJSONObject("texts").getString("checkInBody"),
+            checkIn.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
+        assertNull(checkIn.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
+    }
+
+    @Test
     public void failedReminderCleanupStillClearsOtherOwnersAndNotifications() throws Exception {
         ReminderScheduler.saveAndSchedule(context, payload(false));
         fireReminderAlarm();
@@ -261,6 +280,17 @@ public class ReminderNotificationPrivacyTest {
             Thread.sleep(50);
         }
         assertEquals("a notification survived the reset", 0, notificationManager().getActiveNotifications().length);
+    }
+
+    private JSONObject readCheckInFixture() throws Exception {
+        try (InputStream in = InstrumentationRegistry.getInstrumentation().getContext()
+                .getAssets().open("check-in-payload.json")) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = in.read(buffer)) != -1) bytes.write(buffer, 0, count);
+            return new JSONObject(new String(bytes.toByteArray(), StandardCharsets.UTF_8));
+        }
     }
 
     private JSONObject checkInPayload() throws Exception {

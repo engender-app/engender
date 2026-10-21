@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import { buildAndroidReminderPayload } from './payload';
+import checkInFixture from '../android/fixtures/check-in-payload.json';
 
 describe('buildAndroidReminderPayload', () => {
+  test('shared check-in fixture leaves legacy affirmation out of the payload', () => {
+    const payload = buildAndroidReminderPayload(checkInFixture.input);
+    expect(payload).toEqual(checkInFixture.expected);
+  });
+
   test('copies reminders and scheduler state into bridge payload', () => {
     const payload = buildAndroidReminderPayload({
       reminders: [
