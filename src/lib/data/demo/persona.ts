@@ -78,6 +78,7 @@ interface PersonaEra {
     `recordDebriefEntry`), which is also what retired the date-keyed
     mechanism this was first written against. */
 interface PersonaAppointment extends AppointmentInput {
+  epochDay: number;
   procedureId: null;
   debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };
 }
@@ -90,6 +91,9 @@ interface Persona {
   eras: PersonaEra[];
   reminders: ReminderInput[];
   appointments: PersonaAppointment[];
+  /** Waiting lists (functional-audit ticket 26): appointments with no day
+      yet, each with the dated updates the wait collected. */
+  waiting: { appointment: AppointmentInput & { epochDay: null }; updates: { epochDay: number; status: string }[] }[];
   documents: DocumentInput[];
   labResults: LabResultInput[];
   tallyEvents: TallyEventInput[];
@@ -364,6 +368,26 @@ export function persona(today: number = todayEpochDay()): Persona {
         kind: 'Endocrinologist',
         place: 'Przychodnia na Kopernika',
         note: 'ask about raising the dose'
+      }
+    ],
+    /* One wait: the surgery consultation list, a year and a bit in, with
+       the two updates such a wait usually collects. Long enough that the
+       elapsed time reads in years and months, which is the reading the
+       appointments screen states. */
+    waiting: [
+      {
+        appointment: {
+          epochDay: null,
+          referredEpochDay: today - 430,
+          procedureId: null,
+          kind: 'Surgery consultation',
+          place: 'Klinika, Warszawa',
+          note: 'NFZ list, referral from the endocrinologist'
+        },
+        updates: [
+          { epochDay: today - 400, status: 'Letter came: on the list' },
+          { epochDay: today - 60, status: 'Phoned, still waiting' }
+        ]
       }
     ],
     // One document, dated well before HRT start: the referral that started

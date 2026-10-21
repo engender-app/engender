@@ -52,7 +52,7 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   hairProgress: ['hair_stage', 'hair_photo'],
   hairRemoval: ['hair_removal_session', 'hair_removal_photo'],
   procedure: ['procedure', 'procedure_photo'],
-  appointment: ['appointment'],
+  appointment: ['appointment', 'appointment_status'],
   doubtJournal: ['doubt_snapshot', 'doubt_snapshot_entry'],
   comfortItem: ['comfort_item'],
   tryout: ['tryout', 'tryout_photo'],

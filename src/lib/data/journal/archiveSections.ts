@@ -742,11 +742,13 @@ const SECTIONS = [
      Not `flat`: a descriptor maps columns, and this one's procedure link is
      a rowid on this device and a uuid on the wire.
 
-     Archives without this section restore with an empty appointment list. */
+     Archives without this section restore with an empty appointment list.
+     A wait's status updates (ticket 26) travel nested in their appointment
+     and are discarded with it. */
   section({
     name: 'appointments',
     after: ['procedures'],
-    discard: ['DELETE FROM appointment'],
+    discard: ['DELETE FROM appointment_status', 'DELETE FROM appointment'],
     // Where somebody's medical appointments were and what they were about.
     travels: 'none',
     read: read.readAppointments,

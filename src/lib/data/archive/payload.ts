@@ -458,14 +458,30 @@ export interface ArchiveProcedure {
     rather than nested under a procedure the way a consult was: most
     appointments belong to no procedure at all, and `procedureId` is the
     link, carried as the procedure's travelling uuid so the applying device
-    resolves it against its own rowids. */
+    resolves it against its own rowids.
+
+    Waiting lists (functional-audit ticket 26): `epochDay` is null while the
+    appointment waits for a day, `referredEpochDay` is the day it was
+    referred on, and `statuses` are its dated updates, nested the way a
+    procedure's photos are because each belongs to exactly one appointment.
+    Both are optional only so an archive written before the ticket parses;
+    applying one reads them as null and none. */
 export interface ArchiveAppointment {
   id: string;
-  epochDay: number;
+  epochDay: number | null;
   procedureId: string | null;
   kind: string | null;
   place: string | null;
   note: string | null;
+  referredEpochDay?: number | null;
+  statuses?: ArchiveAppointmentStatus[];
+}
+
+/** One dated update on an appointment's wait (ticket 26). */
+export interface ArchiveAppointmentStatus {
+  id: string;
+  epochDay: number;
+  status: string;
 }
 
 /** One counterevidence entry as it read at the moment its snapshot was

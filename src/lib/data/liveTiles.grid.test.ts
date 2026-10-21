@@ -127,6 +127,8 @@ const hairRemovalSession: HairRemovalSession = {
 
 const todayAppointment: AppointmentDayRecord = {
   id: 'appt-1',
+  event: 'visit',
+  status: null,
   kind: 'Endocrinologist',
   place: 'City clinic',
   procedureId: null,

@@ -970,7 +970,10 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
-  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],
+  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day'],
+  // appointment_id travels as nesting under its appointment (ticket 26), the
+  // way procedure_photo travels under its procedure.
+  appointment_status: ['uuid', 'appointment_id', 'epoch_day', 'status'],
   // procedure_id for the same reason, since schema v83 gave the taper the
   // procedure it dilates for in place of a surgery day of its own.
   taper: ['uuid', 'procedure_id', 'start_epoch_day', 'stages'],

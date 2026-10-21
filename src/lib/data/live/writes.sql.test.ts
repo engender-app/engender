@@ -857,6 +857,17 @@ beforeAll(async () => {
     journal.appointments.upsertAppointment({ epochDay: 20042, procedureId: null, kind: null, place: null, note: null })
   )) as string;
   await drive('appointments', 'deleteAppointment', () => journal.appointments.deleteAppointment(secondAppointmentId));
+  // A wait and its updates (ticket 26): one kept, one deleted.
+  const waitingId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: null, referredEpochDay: 19900, procedureId: null, kind: 'Gender clinic', place: null, note: null })
+  )) as string;
+  await drive('appointments', 'addStatusUpdate', () =>
+    journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19950, status: 'Letter came' })
+  );
+  const droppedStatusId = (await drive('appointments', 'addStatusUpdate', () =>
+    journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19960, status: 'typo' })
+  )) as string;
+  await drive('appointments', 'deleteStatusUpdate', () => journal.appointments.deleteStatusUpdate(droppedStatusId));
   const secondProcedureId = (await drive('procedures', 'upsertProcedure', () =>
     journal.procedures.upsertProcedure({ name: 'a second procedure', surgeryEpochDay: 20100, notes: '' })
   )) as string;
@@ -1149,6 +1160,8 @@ beforeAll(async () => {
   await driveRead('procedures', 'getMilestone', () => journal.procedures.getMilestone(procedureId));
   await driveRead('appointments', 'getAppointments', () => journal.appointments.getAppointments());
   await driveRead('appointments', 'getAppointment', () => journal.appointments.getAppointment(appointmentId));
+  await driveRead('appointments', 'getWaiting', () => journal.appointments.getWaiting());
+  await driveRead('appointments', 'getStatusUpdates', () => journal.appointments.getStatusUpdates());
   await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
   await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
   await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));

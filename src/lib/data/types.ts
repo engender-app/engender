@@ -1215,6 +1215,24 @@ export interface Appointment {
   kind: string | null;
   place: string | null;
   note: string | null;
+  /** The day somebody was referred on, where this began as a wait
+      (functional-audit ticket 26), or null. Kept once the day is given, so
+      the referral stays on its own day in the day view. */
+  referredEpochDay: number | null;
+}
+
+/** An appointment still waiting for its day: a referral to a clinic, an NFZ
+    queue, a surgery list (functional-audit ticket 26). The same record as
+    `Appointment`, before it has a day. */
+export type WaitingAppointment = Omit<Appointment, 'epochDay'> & { epochDay: null };
+
+/** One dated update on an appointment's wait: "letter came", "phoned, still
+    on the list". Free text; nothing ships a list of what a queue says. */
+export interface AppointmentStatusUpdate {
+  id: string;
+  appointmentId: string;
+  epochDay: number;
+  status: string;
 }
 
 /** One line in the pool the check-in draws its affirming line from (phase 5

@@ -40,6 +40,7 @@ import type {
   ArchivePersonalEffectType,
   ArchiveProcedure,
   ArchiveAppointment,
+  ArchiveAppointmentStatus,
   ArchiveProcedurePhoto,
   ArchivePhoto,
   ArchivePreset,
@@ -584,25 +585,41 @@ export async function readProcedures({ driver, procedurePhotos }: SectionRead): 
    readDoseSchedules makes for the same reason. */
 export async function readAppointments({ driver }: SectionRead): Promise<ArchiveAppointment[]> {
   const rows = await driver.query<{
+    id: number;
     uuid: string;
-    epoch_day: number;
+    epoch_day: number | null;
     procedure_uuid: string | null;
     kind: string | null;
     place: string | null;
     note: string | null;
+    referred_epoch_day: number | null;
   }>(
-    `SELECT a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
-            a.kind AS kind, a.place AS place, a.note AS note
+    `SELECT a.id AS id, a.uuid AS uuid, a.epoch_day AS epoch_day, r.uuid AS procedure_uuid,
+            a.kind AS kind, a.place AS place, a.note AS note, a.referred_epoch_day AS referred_epoch_day
        FROM appointment a LEFT JOIN procedure r ON r.id = a.procedure_id
-      ORDER BY a.epoch_day, a.id`
+      ORDER BY a.epoch_day IS NULL, a.epoch_day, a.id`
   );
+  // A wait's dated updates (ticket 26), nested under the appointment they
+  // belong to and read in one query rather than one per appointment.
+  const statuses = await driver.query<{ appointment_id: number; uuid: string; epoch_day: number; status: string }>(
+    'SELECT appointment_id, uuid, epoch_day, status FROM appointment_status ORDER BY epoch_day, id'
+  );
+  const byAppointment = new Map<number, ArchiveAppointmentStatus[]>();
+  for (const row of statuses) {
+    const status = { id: row.uuid, epochDay: row.epoch_day, status: row.status };
+    const found = byAppointment.get(row.appointment_id);
+    if (found) found.push(status);
+    else byAppointment.set(row.appointment_id, [status]);
+  }
   return rows.map((row) => ({
     id: row.uuid,
     epochDay: row.epoch_day,
     procedureId: row.procedure_uuid,
     kind: row.kind,
     place: row.place,
-    note: row.note
+    note: row.note,
+    referredEpochDay: row.referred_epoch_day,
+    statuses: byAppointment.get(row.id) ?? []
   }));
 }
 
