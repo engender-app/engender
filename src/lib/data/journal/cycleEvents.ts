@@ -7,6 +7,7 @@
    are its own. */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { assertOneOf, CYCLE_EVENT_KINDS } from '../rowValues';
 import type { CycleEvent } from '../types';
 import { flatArea, type FlatInput } from './flatArea';
 
@@ -27,7 +28,8 @@ export interface CycleEventsArea {
 export function makeCycleEventsArea(driver: SqliteDriver): CycleEventsArea {
   const events = flatArea<CycleEvent>(driver, {
     table: 'cycle_event',
-    columns: { kind: 'kind', epochDay: 'epoch_day' }
+    columns: { kind: 'kind', epochDay: 'epoch_day' },
+    guard: ({ kind }) => assertOneOf(CYCLE_EVENT_KINDS, 'cycle event kind', kind)
   });
 
   return {

@@ -41,7 +41,7 @@ test('a tally event carries no mood, dimension values, tags or note, and writes 
   assert.equal(entries[0].n, 0, 'a tally event is its own record type, not an Entry');
 });
 
-test('an unknown kind is refused by the schema before it ever reaches a screen', async () => {
+test('an unknown kind is refused by the write path before it ever reaches a screen', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(journal.tally.log({ epochDay: 100, kind: 'confused' as never }));
 });

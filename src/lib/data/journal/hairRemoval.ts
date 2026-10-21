@@ -18,7 +18,7 @@
    delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '../hairRemovalAreas';
+import { assertOneOf, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS } from '../rowValues';
 import type { HairRemovalMethod, HairRemovalSession } from '../types';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -84,8 +84,8 @@ type HairRemovalSessionRow = {
   epoch_day: number;
   area: string;
   method: HairRemovalMethod;
-  pain_rating: number;
-  cost: string;
+  pain_rating: number | null;
+  cost: string | null;
   provider: string;
 };
 type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
@@ -96,17 +96,18 @@ const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSession =>
   area: row.area,
   method: row.method,
   painRating: row.pain_rating,
-  cost: row.cost,
+  cost: row.cost ?? '',
   provider: row.provider
 });
 
-/** The schema's CHECK is the backstop (like side_effect's severity); this is
-    what turns a bad value into a message naming the vocabulary it broke
-    instead of a raw SQLite constraint failure. */
+/** Area and method are vocabularies the code owns (rowValues.ts); SQL no
+    longer checks them (FA 04), so this is what keeps an unknown word out. */
 function assertValidArea(area: string): void {
-  if (!HAIR_REMOVAL_AREAS.includes(area as HairRemovalAreaKey)) {
-    throw new Error(`invalid hair-removal area: ${area}`);
-  }
+  assertOneOf(HAIR_REMOVAL_AREAS, 'hair-removal area', area);
+}
+
+function assertValidMethod(method: string): void {
+  assertOneOf(HAIR_REMOVAL_METHODS, 'hair-removal method', method);
 }
 
 function assertValidPainRating(painRating: number): void {
@@ -134,6 +135,7 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
 
     async upsertSession(input) {
       assertValidArea(input.area);
+      assertValidMethod(input.method);
       assertValidPainRating(input.painRating);
       const cost = input.cost ?? '';
       const provider = input.provider ?? '';

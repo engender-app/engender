@@ -1,11 +1,10 @@
 import type { ArchiveJournal } from '../archive/payload';
 import { CorruptArchiveError } from '../archive/container';
 import { GARMENT_CATEGORIES } from '../garmentCategories';
-import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
 import { isHairStaging } from '../hairStageScales';
 import {
   AFFIRMATION_LANGUAGES, CYCLE_EVENT_KINDS, DOCUMENT_TARGET_KINDS, DOSE_RECURRENCE_KINDS,
-  EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
+  EFFECT_DIRECTIONS_STORED, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS, REMINDER_RECURRENCES,
   REMINDER_TYPES, TALLY_KINDS, TRYOUT_KINDS
 } from '../rowValues';
 import {

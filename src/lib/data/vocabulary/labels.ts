@@ -317,9 +317,10 @@ const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
   bikini_line: m.hair_removal_area_bikini_line
 };
 
-/** The name of a hair-removal treatment area, or the raw key for one an
-    import carries that this build's vocabulary no longer lists. */
-export const hairRemovalAreaName = (area: string): string => lookup(HAIR_REMOVAL_AREA_NAME, area);
+/** The name of a hair-removal treatment area, or "other" for a stored key
+    this build's vocabulary does not list (FA 04). */
+export const hairRemovalAreaName = (area: string): string =>
+  (HAIR_REMOVAL_AREA_NAME as Record<string, Message | undefined>)[area]?.() ?? m.hair_removal_area_other();
 
 const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
   laser: m.hair_removal_method_laser,
@@ -327,8 +328,10 @@ const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
   other: m.hair_removal_method_other
 };
 
-/** The name of a hair-removal method. */
-export const hairRemovalMethodName = (method: HairRemovalMethod): string => HAIR_REMOVAL_METHOD_NAME[method]();
+/** The name of a hair-removal method; a stored word the code does not know
+    reads as "other". */
+export const hairRemovalMethodName = (method: string): string =>
+  (HAIR_REMOVAL_METHOD_NAME as Record<string, Message | undefined>)[method]?.() ?? m.hair_removal_method_other();
 
 /* Garment categories (phase 5 ticket 23) are a fixed set, not a built-in
    row, the same reasoning MEASUREMENT_TYPE_NAME gives - and their own
@@ -361,8 +364,9 @@ const TRYOUT_KIND_NAME: Record<TryoutKind, Message> = {
   presentation_step: m.tryout_kind_presentation_step
 };
 
-/** The name of a tryout's kind. */
-export const tryoutKindName = (kind: TryoutKind): string => TRYOUT_KIND_NAME[kind]();
+/** The name of a tryout's kind; an unknown stored kind reads as "other". */
+export const tryoutKindName = (kind: string): string =>
+  (TRYOUT_KIND_NAME as Record<string, Message | undefined>)[kind]?.() ?? m.tryout_kind_other();
 
 /* A cycle event's three kinds (phase 5 ticket 03, CONTEXT: "Cycle event")
    are a fixed set, not a built-in row, the same reasoning
@@ -373,8 +377,9 @@ const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
   nothing_this_month: m.cycle_event_kind_nothing_this_month
 };
 
-/** The name of a cycle event kind. */
-export const cycleEventKindName = (kind: CycleEventKind): string => CYCLE_EVENT_KIND_NAME[kind]();
+/** The name of a cycle event kind; an unknown stored kind reads as "other". */
+export const cycleEventKindName = (kind: string): string =>
+  (CYCLE_EVENT_KIND_NAME as Record<string, Message | undefined>)[kind]?.() ?? m.cycle_event_kind_other();
 
 /* A procedure's kind (phase 9 carpet ticket 17) is a fixed set, not a
    built-in row, the same reasoning TRYOUT_KIND_NAME gives - `custom` gets a

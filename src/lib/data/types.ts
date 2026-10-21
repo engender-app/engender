@@ -7,6 +7,14 @@
    only, and ADR-0002 keeps the FTS link and the join-heavy queries on
    integer rowids. An entry's uuid travels in archives, not here. */
 
+import {
+  CYCLE_EVENT_KINDS,
+  HAIR_REMOVAL_METHODS,
+  TALLY_KINDS,
+  TRYOUT_KINDS,
+  type ReminderType
+} from './rowValues';
+
 export interface Photo {
   id: string;
   /** The opaque `<uuid>.jpg` the file store holds, resolved against a root
@@ -259,7 +267,7 @@ export interface Milestone {
 export interface Reminder {
   id: string;
   title: string;
-  type: 'med' | 'injection' | 'appointment' | 'other';
+  type: ReminderType;
   time: string;
   recurrence: 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS' | null;
   /** EVERY_N_DAYS only. */
@@ -371,7 +379,7 @@ export interface SizeRecord {
 
 /** The two counters ticket 10 tracks. Fixed rather than user-defined, so it
     is a plain union rather than a keyed reference-data row. */
-export type TallyKind = 'misgendered' | 'correctly_gendered';
+export type TallyKind = (typeof TALLY_KINDS)[number];
 
 export interface TallyEvent {
   id: string;
@@ -416,7 +424,7 @@ export interface ComfortItem {
     style, a garment, makeup, or a presentation step - one record type
     covering whatever is being tried, rather than a second type forked
     alongside this one for everything that is not a name or pronoun set. */
-export type TryoutKind = 'name' | 'pronouns' | 'style' | 'garment' | 'makeup' | 'presentation_step';
+export type TryoutKind = (typeof TRYOUT_KINDS)[number];
 
 /** Trying something out (phase 4 ticket 16, widened by phase 5 ticket 13,
     CONTEXT: "Tryout"). `endEpochDay` is null while the tryout is still
@@ -746,7 +754,7 @@ export interface SideEffect {
 /** The three states phase 5 ticket 03 logs. Fixed rather than user-defined,
     the same reasoning TallyKind gives - 'nothing_this_month' is a real,
     loggable state here, not the absence of a row. */
-export type CycleEventKind = 'period_occurred' | 'spotting' | 'nothing_this_month';
+export type CycleEventKind = (typeof CYCLE_EVENT_KINDS)[number];
 
 /* No episode reference (CONTEXT: "Cycle event"): this record stands alone
    and has to work whether or not a regimen episode exists, the same
@@ -949,7 +957,7 @@ export interface HairStage {
     rather than free text, so `hairRemovalMethodName` can give it a
     translated label the way a hair-staging grade does - 'other' is the
     escape hatch for anything the two named methods do not cover. */
-export const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
+export { HAIR_REMOVAL_METHODS };
 export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];
 
 /** One electrolysis/laser session (phase 5 ticket 08, CONTEXT: pending). A
@@ -970,7 +978,7 @@ export interface HairRemovalSession {
   epochDay: number;
   area: string;
   method: HairRemovalMethod;
-  painRating: number;
+  painRating: number | null;
   cost: string;
   provider: string;
 }
