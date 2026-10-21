@@ -14,7 +14,7 @@
   import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { AREA_GROUPS } from '$lib/data/areaGroups';
-  import { activateLanguagePreference, prefs, selectMetric, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
+  import { activateLanguagePreference, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -57,7 +57,6 @@
      beat; with the preset gone the names are all there is to say, and they
      are also the only way to see the set without opening the sheet. */
   let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
-  let metricName = $derived(vocabulary.metricName);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
   /* The Export row's reading, which the erase sheet's backup row repeats. */
   let backupLine = $derived(
@@ -100,7 +99,6 @@
       ? prefs.activeScales.filter((k) => k !== key)
       : [...prefs.activeScales, key];
   }
-  let metricSheet = $state(false);
   let aboutSheet = $state(false);
   let moodSheet = $state(false);
   let languageSheet = $state(false);
@@ -307,16 +305,6 @@
              identical to the href rows around it. -->
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <ListRow
-        key="metric"
-        icon="palette"
-        title={m.home_cal_colour()}
-        subtitle={m.settings_coloured_by({ metric: metricName })}
-        chevron={false}
-        onclick={() => (metricSheet = true)}
-      >
-        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-      </ListRow>
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.settings_row_off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
@@ -492,37 +480,6 @@
     </div>
     <button class="btn btn-ghost" data-features-close onclick={() => (featuresSheet = false)}>{m.close()}</button>
   </Sheet>
-
-  <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
-    <h3>{m.home_cal_colour()}</h3>
-    <!-- Hand-written rather than a ListRow (ticket 18): this is a
-         mutually-exclusive pick, and ListRow's `checked` draws
-         Check.svelte's box, which that component documents as
-         deliberately never a radio's circle - the wrong shape for "one of
-         these", not the tickable "any of these" a checkbox says. -->
-    <ListCard>
-      <!-- The ticked scales, which is what Home's and the calendar's own
-           pickers offer. It listed every scale, so this was the one place a
-           metric could be set to something no other picker would show and
-           `reference.activeMetric` now resolves straight back to mood - a
-           choice that looked like it did nothing. A picker offers what the
-           app can honour (phase 5 ticket 35). -->
-      {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
-        <button
-          type="button"
-          class="kit-row"
-          onclick={() => {
-            selectMetric(d.key);
-            metricSheet = false;
-          }}
-        >
-          <span class="kit-row-text"><span class="kit-row-title">{d.name}</span></span>
-          {#if vocabulary.activeMetric === (d.key ?? 'mood')}<Icon name="check" size={20} />{/if}
-        </button>
-      {/each}
-    </ListCard>
-  </Sheet>
-
 
   <Sheet bind:open={eraseSheet} title={m.erase_row()}>
     <h3>{m.erase_row()}</h3>

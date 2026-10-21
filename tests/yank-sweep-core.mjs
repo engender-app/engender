@@ -303,7 +303,6 @@ const SCENES = [
   { name: 'settings-switch', at: '/settings', prepare: [{ act: '[data-list-row="features"]' }], act: '[data-cycle-tracking-toggle] button.switch', after: {"selector": "[data-cycle-tracking-toggle] button.switch", "attribute": "aria-checked"}, is: 'toggling a settings switch' },
   { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', after: {"selector": "[data-segmented=\"measurement-unit\"] [data-segment=\"in\"]", "attribute": "aria-checked", "value": "true"}, is: 'switching measurement unit segmented control' },
   { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', after: {"selector": "[data-sheet]"}, is: 'the gender scales checklist sheet opening' },
-  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
   { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', after: {"selector": "[data-sheet]"}, is: 'the about sheet opening' },
   { name: 'presentations-add', at: '/settings', prepare: ['[data-list-row="presentations"]'], act: '[data-sheet] [data-add]', after: { selector: '[name="presentation-name"]' }, is: 'the add presentation sheet opening' },

@@ -1351,7 +1351,6 @@
   "home_agenda_heading": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_anniv_today": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_anniv_years": {"owner":38,"sources":["src/routes/+page.svelte"]},
-  "home_cal_colour": {"owner":42,"sources":["src/routes/settings/+page.svelte"]},
   "home_count_since": {"owner":38,"sources":["src/routes/+page.svelte"]},
   "home_edit_add": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
   "home_edit_add_heading": {"owner":38,"sources":["src/lib/components/TodayEditor.svelte"]},
