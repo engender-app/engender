@@ -54,7 +54,6 @@ const SECTIONS = [
   'bodyRegions',
   'entries',
   'marginNotes',
-  'wordIgnore',
   'documents',
   'milestones',
   'labResults',

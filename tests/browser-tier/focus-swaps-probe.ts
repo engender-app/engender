@@ -5,7 +5,6 @@ import { mountInto } from './mount';
 import Notices from './focus-notices.svelte';
 import Access from '../../src/routes/settings/access-mode/+page.svelte';
 import Trash from '../../src/routes/settings/trash/+page.svelte';
-import Words from '../../src/routes/settings/words/+page.svelte';
 import Recovery from '../../src/routes/settings/recovery-key/+page.svelte';
 import { addJournalPassphrase } from '../../src/lib/data/journal-passphrase';
 import { PROBE_DATA_KEY } from './fresh-origin';
@@ -28,11 +27,7 @@ async function show(scene: string) {
       await f.journal.entries.deleteEntry(id);
     }
   }
-  if (scene === 'words') {
-    await f.journal.wordIgnore.setWordIgnored('first', true);
-    await f.journal.wordIgnore.setWordIgnored('second', true);
-  }
-  const component = { notices: Notices, access: Access, trash: Trash, words: Words, recovery: Recovery }[scene];
+  const component = { notices: Notices, access: Access, trash: Trash, recovery: Recovery }[scene];
   if (!component) throw new Error(`Unknown scene: ${scene}`);
   mounted = mountInto(component, {}, target);
   flushSync();

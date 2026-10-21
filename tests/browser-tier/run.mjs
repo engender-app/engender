@@ -88,7 +88,7 @@ async function load(path, name, timeout = 30_000) {
 }
 const reload = () => page.reload({ waitUntil: 'networkidle' });
 
-await block('named focus after content swaps', 40, async () => {
+await block('named focus after content swaps', 36, async () => {
   for (const motion of ['reduce', 'full'])
     for (const result of await focusSwaps(browser, `http://localhost:${port}`, motion)) ok(`${motion}: ${result}`);
 });
@@ -154,6 +154,15 @@ await block('Safe space optional Good moments', 12, async () => {
   for (const item of result.safeSpace) {
     if (item.passed) ok(item.name);
     else fail(item.name, item.error ?? 'rendered Safe space contract failed');
+  }
+});
+
+await block('Look back after the functional audit trim', 12, async () => {
+  const result = await load('/screen-mount.html?look-back=1', 'screen-mount');
+  if (!Array.isArray(result.lookBack)) throw new Error(result.error ?? 'missing Look back results');
+  for (const item of result.lookBack) {
+    if (item.passed) ok(item.name);
+    else fail(item.name, item.error ?? 'rendered Look back contract failed');
   }
 });
 

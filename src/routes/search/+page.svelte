@@ -903,6 +903,23 @@
 </div>
 
 <style>
+  .search-count {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 var(--space-3);
+    /* Search swaps the count's words with a crossfade (ticket 16), which
+       lifts the outgoing words out of flow; they sit over the incoming ones
+       rather than at the column's top. */
+    position: relative;
+  }
+
+  /* Not infinite scroll (SCREENS.md): a page is asked for, and the control
+     that asks says how many are coming. */
+  .search-more {
+    width: 100%;
+    margin-top: var(--space-4);
+  }
+
   /* Search's own hint lines; the screen is their one reader, so they live
      here rather than in screens.css (check-screens-classes). */
   .search-hint {

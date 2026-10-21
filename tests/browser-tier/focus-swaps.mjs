@@ -64,11 +64,6 @@ export async function focusSwaps(browser, origin, motion = 'reduce') {
     await focused(`[data-restore-entry="${restores[1]}"]`, 'Trash next row');
     await enter(`[data-restore-entry="${restores[1]}"]`);
     await focused('h1', 'Trash empty heading');
-    await show('words');
-    await enter('[data-unignore-word="first"]');
-    await focused('[data-unignore-word="second"]', 'Words next row');
-    await enter('[data-unignore-word="second"]');
-    await focused('h1', 'Words empty heading');
     await show('notices');
     await enter('[data-notice="first"] [data-notice-dismiss]');
     await focused('[data-notice="second"]', 'Notice next row');

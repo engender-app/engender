@@ -275,13 +275,60 @@ export interface StatsArea {
       uses rather than entries - which is what a share by tag is a share of.
       Hidden tags are left out, the same rule `tagInsights` follows: a hidden
       tag is out of every place a person picks things (CONTEXT: Hidden), and a
-      slice of the ring is a place it would be back. */
-  tagShare(fromEpochDay: number, toEpochDay: number): Promise<{ id: string; count: number }[]>;
+      slice of the ring is a place it would be back.
+
+      `goodDays` keeps only the days that clear the good-day bar (CONTEXT:
+      Good day), the same rule `isGoodDay` answers for one day: Tags' "on
+      good days" filter (functional audit ticket 12), which took over from
+      the affirming themes reading. */
+  tagShare(
+    fromEpochDay: number,
+    toEpochDay: number,
+    options?: { goodDays?: boolean }
+  ): Promise<{ id: string; count: number }[]>;
 }
 
 /** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
     a day's average mood has to clear for on-this-day (CONTEXT: Good day). */
 const GOOD_DAY_MOOD_FLOOR = 3;
+
+/* The days between two epoch days, both inclusive, that clear the good-day
+   bar (CONTEXT: Good day), as a subquery of `epoch_day` plus its
+   parameters. Three arms, any one enough: the day's average mood at or above
+   the midpoint, a euphoria capture logged that day, or a body region at or
+   above the euphoria floor on any one entry. One fragment for both readers
+   of the rule - `isGoodDay` asks it about a single day and `tagShare` about
+   a span - so the two cannot drift. COALESCE(key, uuid) is a tag's domain
+   id (ADR-0002); EUPHORIA_TAG_KEYS is all three built-in capture tags
+   (ticket 02/09, phase 5 ticket 32, CONTEXT: Euphoria capture). */
+function goodDaysBetween(fromEpochDay: number, toEpochDay: number): { sql: string; params: (string | number)[] } {
+  const placeholders = EUPHORIA_TAG_KEYS.map(() => '?').join(', ');
+  return {
+    sql: `SELECT epoch_day FROM entry
+          WHERE epoch_day BETWEEN ? AND ? AND mood IS NOT NULL AND trashed_at IS NULL
+          GROUP BY epoch_day HAVING AVG(mood) >= ?
+          UNION
+          SELECT e.epoch_day FROM entry e
+          JOIN entry_tag et ON et.entry_id = e.id
+          JOIN tag t ON t.id = et.tag_id
+          WHERE e.epoch_day BETWEEN ? AND ? AND COALESCE(t.key, t.uuid) IN (${placeholders}) AND e.trashed_at IS NULL
+          UNION
+          SELECT e.epoch_day FROM entry e
+          JOIN entry_body_region ebr ON ebr.entry_id = e.id
+          WHERE e.epoch_day BETWEEN ? AND ? AND ebr.value >= 50 + ? / 2 AND e.trashed_at IS NULL`,
+    params: [
+      fromEpochDay,
+      toEpochDay,
+      GOOD_DAY_MOOD_FLOOR,
+      fromEpochDay,
+      toEpochDay,
+      ...EUPHORIA_TAG_KEYS,
+      fromEpochDay,
+      toEpochDay,
+      GOOD_DAY_REGION_EUPHORIA_FLOOR
+    ]
+  };
+}
 
 /* Which rows carry "the metric", as a subquery plus its parameters. Mood
    is a column on the entry and a dimension value is a row in a join table,
@@ -554,15 +601,17 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
       return rows.map((r) => ({ day: r.day, value: r.n, count: r.n }));
     },
 
-    async tagShare(fromEpochDay, toEpochDay) {
+    async tagShare(fromEpochDay, toEpochDay, options) {
+      const good = options?.goodDays ? goodDaysBetween(fromEpochDay, toEpochDay) : null;
       const rows = await driver.query<{ id: string; entries: number }>(
         `SELECT COALESCE(t.key, t.uuid) AS id, COUNT(*) AS entries
          FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          JOIN tag t ON t.id = et.tag_id
          WHERE e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL AND t.hidden = 0
+           ${good ? `AND e.epoch_day IN (${good.sql})` : ''}
          GROUP BY t.id ORDER BY entries DESC, id`,
-        [fromEpochDay, toEpochDay]
+        [fromEpochDay, toEpochDay, ...(good?.params ?? [])]
       );
       return rows.map((r) => ({ id: r.id, count: r.entries }));
     },
@@ -795,41 +844,11 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     },
 
     async isGoodDay(epochDay) {
-      // Two independent EXISTS checks, OR'd rather than read back as two
-      // round trips: a day either clears the mood average or carries a
-      // euphoria capture, and the rule only needs to know that one of them
-      // did. COALESCE(key, uuid) is a tag's domain id (ADR-0002);
-      // EUPHORIA_TAG_KEYS is all three built-in euphoria capture tags
-      // (ticket 02/09, phase 5 ticket 32, CONTEXT: Euphoria capture) - a
-      // day carrying any one of them clears this half of the bar, not only
-      // the general tag.
-      const placeholders = EUPHORIA_TAG_KEYS.map(() => '?').join(', ');
-      const rows = await driver.query<{ good: number }>(
-        `SELECT
-           EXISTS (
-             SELECT 1 FROM entry WHERE epoch_day = ? AND mood IS NOT NULL AND trashed_at IS NULL
-             GROUP BY epoch_day HAVING AVG(mood) >= ?
-           )
-           OR EXISTS (
-             SELECT 1 FROM entry e
-             JOIN entry_tag et ON et.entry_id = e.id
-             JOIN tag t ON t.id = et.tag_id
-             WHERE e.epoch_day = ? AND COALESCE(t.key, t.uuid) IN (${placeholders}) AND e.trashed_at IS NULL
-           )
-           OR EXISTS (
-             SELECT 1 FROM entry e
-             JOIN entry_body_region ebr ON ebr.entry_id = e.id
-             WHERE e.epoch_day = ? AND ebr.value >= 50 + ? / 2 AND e.trashed_at IS NULL
-           ) AS good`,
-        [
-          epochDay,
-          GOOD_DAY_MOOD_FLOOR,
-          epochDay,
-          ...EUPHORIA_TAG_KEYS,
-          epochDay,
-          GOOD_DAY_REGION_EUPHORIA_FLOOR
-        ]
-      );
+      // The span fragment asked about one day: any of its three arms is
+      // enough (goodDaysBetween), so the rule only needs to know whether
+      // the day comes back at all.
+      const good = goodDaysBetween(epochDay, epochDay);
+      const rows = await driver.query<{ good: number }>(`SELECT EXISTS (${good.sql}) AS good`, good.params);
       return Boolean(rows[0]?.good);
     }
   };

@@ -904,17 +904,6 @@ a.kit-entry:active {
   line-height: 1.3;
 }
 
-.kit-entry-note {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 /* The fluidity engine's presentation, in its own colour (phase 5 deepening
    ticket 17, ADR-0048) - set inline per entry by the caller, since it names
    a specific presentation rather than this row's own section role. */
@@ -1073,9 +1062,8 @@ a.kit-entry:active {
   color: var(--role-fill-ink);
   text-decoration: none;
   /* A block arrives by clipping open from its own left edge (phase 10 rule
-     10, redesign ticket 25): the kit's inline bar already arrives this way
-     (kit-bar-reveal, below) and a tile is the same object at a larger size -
-     a solid thing that slides into view rather than fading up from nothing.
+     10, redesign ticket 25): a tile is a solid thing that slides into view
+     rather than fading up from nothing.
      The value inside counts up on the same clock where it is a count
      (Tile.svelte, $lib/motion/countUp), so the number lands as the block
      does. Each tile of a grid waits its turn by --stagger-step, which the
@@ -2729,97 +2717,6 @@ button.kit-strip-day .kit-strip-cell {
   background: var(--role-draw);
 }
 
-/* The inline row: the bar is the row, and the day is written on it (phase
-   9 UX carpet ticket 11).
-
-   The highest days card is what this exists for. Ten days ranked on one
-   0-to-100 scale come out within a few points of each other, so ten
-   full-width tracks under ten lines of text were ten near-identical lengths
-   costing 870px at 390px wide, which is more than a viewport for a list of
-   ten numbers. Here the bar carries the day instead of standing under it,
-   and the set reads as one stack rather than as ten drawings.
-
-   36px of bar and nothing else in the row. The set's own gap goes to zero,
-   and it was never what took the room: it was --space-2, against a row of
-   48px whose bar was ten of them. What took the room is the label needing a
-   line of its own.
-
-   The row still owes the 48dp touch floor, so what is left over is the only
-   space between one bar and the next: 12px. That is the one direction this
-   form cannot be pushed further - a shorter bar is a wider gap, because the
-   row underneath it cannot shrink (Alicja, 2026-09-07: "the bar just a
-   little smaller in terms of height please. a little tighter" - 40px was
-   the first answer and read heavy).
-
-   The bar keeps its honest `track` measure: its length is the reading's
-   place on the whole scale, not its share of the day at the top. The value
-   column beside it is fixed, so every bar starts and ends on the same two x
-   positions and two days on the same reading draw the same length. Each row
-   is its own grid - a pressable row is a button, and a button cannot be
-   `display: contents` without losing its box and its press wash - and
-   subgrid is out at the WebView 104 floor, so a shared geometry has to be a
-   fixed width rather than a shared track. 3.5em holds four tabular figures,
-   and the column gap absorbs a fifth before anything touches the bar. */
-.kit-bars.is-inline {
-  gap: 0;
-}
-
-.kit-bars.is-inline .kit-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 3.5em;
-  align-items: center;
-  column-gap: var(--space-3);
-  padding-block: 0;
-  min-height: var(--touch-target);
-  font-size: var(--text-sm);
-}
-
-.kit-bars.is-inline .kit-bar-track {
-  position: relative;
-  display: block;
-  grid-column: 1;
-  height: 36px;
-  margin-top: 0;
-}
-
-/* The mark stops being the painted thing and becomes the window: it holds
-   the width, the width transition and the entrance, and clips everything
-   drawn inside it, and it paints itself. An inner element held the paint
-   while the entrance was a scale, because a label inside something being
-   scaled is a label being stretched; a clip needs no such thing.
-
-   So the entrance is a clip and not a scale, which is the other thing this
-   form needs of it. Growing the fill inside a mark already at its full
-   width leaves the clipped label sitting over bare card for the length of
-   the animation, in an ink chosen for the stripe - on trans's dark theme,
-   near-black words on a near-black card, doubled over the card's own copy
-   of them underneath. Clipping the mark moves the paint and the words
-   together, so at every frame the label is only ever on the ground it was
-   proven against. What that looks like is the point rather than the price:
-   the words are on the card until the bar reaches them and switch ink where
-   it passes under them, left to right, once. `round` on the inset, or the
-   growing bar's leading edge is square until the last frame. */
-.kit-bars.is-inline .kit-bar-mark {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: calc(var(--bar-share) * 1%);
-  height: 100%;
-  /* 4px ends: the inline bar keeps its 36px because the day is written on
-     it, and a 2px end on a bar that tall reads as a cut. */
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--role-draw);
-  animation: kit-bar-reveal var(--dur-bar-in) var(--ease-bar-in) both;
-  animation-delay: var(--bar-delay);
-}
-
-@keyframes kit-bar-reveal {
-  from { clip-path: inset(0 100% 0 0 round 4px); }
-  to { clip-path: inset(0 round 4px); }
-}
-
-
-
 /* --- the year, a day at a time ---
 
    Month columns, names at the top and days below. February simply stops
@@ -3086,22 +2983,6 @@ button.kit-strip-day .kit-strip-cell {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-2);
-}
-
-.reading-bars {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 4px;
-  width: 100%;
-  height: 100%;
-}
-
-.reading-bar {
-  display: block;
-  flex: 0 0 8px;
-  border-radius: 2px;
-  background: var(--ink);
 }
 
 .reading-axis .kit-chart-pick {

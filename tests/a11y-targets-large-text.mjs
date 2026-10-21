@@ -19,8 +19,9 @@
 
    A scene marked `narrow` is also checked at 195px, the width a 390px
    phone leaves at 200% zoom, with text at 100%, in English and Polish:
-   opened letters' rows and the Words cloud, which the 12 October audit
-   measured at 23px tall and 29 to 47px wide, and the five screens its
+   opened letters' rows (the Words cloud was the other one the 12 October
+   audit measured at 23px tall and 29 to 47px wide, until functional audit
+   ticket 12 cut the reading), and the five screens its
    U51, U52 and U54 found losing content or stacking targets there
    (last-audit UI 48). Three more checks are theirs. A scene's `whole`
    text has to show whole: the range of its words inside the viewport
@@ -107,12 +108,11 @@ const SCENES = [
       if ((await tags.count()) && (await tags.first().getAttribute('aria-expanded')) !== 'true') await tags.first().click();
     }
   },
-  { key: 'stats', path: '/stats/days', targets: '.kit-donut-item-btn' },
+  { key: 'stats', path: '/stats/tags', targets: '.kit-donut-item-btn' },
   { key: 'journal', path: '/calendar', targets: '[data-cal-month-btn], .cal-field > a', whole: '[data-cal-month-btn]', apart: true, narrow: true },
   { key: 'labs', path: '/care/labs', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'measurements', path: '/body/measurements', targets: '[data-screen-back], .header-action > *', apart: true, narrow: true },
   { key: 'in-the-room', path: '/health/appointments/in-the-room', targets: '[data-screen-back]', whole: '[data-room-question]', narrow: true },
-  { key: 'words', path: '/stats/words', targets: '[data-cloud-word]', narrow: true },
   { key: 'voice', path: '/voice?tab=recordings', targets: '[data-transport-toggle]' },
   {
     key: 'templates',

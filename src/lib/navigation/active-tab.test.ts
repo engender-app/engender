@@ -57,7 +57,7 @@ describe('activeTabKey', () => {
      three different ways. Each of them now lights the tab the gear (or the
      link) was pressed from, and Today on a cold load, like the hub. */
   it('lets every settings subpage borrow its origin, eras and the ignore list included', () => {
-    for (const path of ['/settings/eras', '/settings/words', '/settings/tags', '/settings/affirmations', '/settings/trash']) {
+    for (const path of ['/settings/eras', '/settings/tags', '/settings/affirmations', '/settings/trash']) {
       expect(activeTabKey(path, 'calendar'), path).toBe('calendar');
       expect(activeTabKey(path, 'stats'), path).toBe('stats');
       expect(activeTabKey(path), path).toBe('home');

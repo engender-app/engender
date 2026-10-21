@@ -133,12 +133,16 @@ async function main() {
       let marker = `retaineddoorfreshness${index}`;
       let freshNotes = false;
       let notesCalls = 0;
-      const noteEntries = raw.entries.noteEntries;
-      raw.entries.noteEntries = async () => {
+      /* Look back's recap is the canary since functional audit ticket 12
+         cut Words, whose whole-journal note read this used to watch. The
+         counters reset just before each save, so any recap asked after that
+         is the hidden door refreshing; the sample keys keep their old names
+         so RESULTS.md stays comparable. */
+      const recap = raw.stats.recap;
+      raw.stats.recap = async (...args) => {
         notesCalls++;
-        const rows = await noteEntries();
-        freshNotes ||= rows.some((row) => row.note.includes(marker));
-        return rows;
+        freshNotes = true;
+        return recap(...args);
       };
       setLastLookBackSpan(null);
       await prepareScreenJournal(raw);
@@ -175,7 +179,7 @@ async function main() {
         assert(prior, 'Look back last result missing before revisit');
         const hiddenNotesCalls = notesCalls;
         const hiddenFreshNotes = freshNotes;
-        assert(hiddenNotesCalls > 0 && hiddenFreshNotes, 'bounded or current mode did not refresh retained Words');
+        assert(hiddenNotesCalls > 0 && hiddenFreshNotes, 'bounded or current mode did not refresh retained Look back');
         notesCalls = 0;
         let firstPaint = {};
         const revisitStart = performance.now();
@@ -192,8 +196,8 @@ async function main() {
           return performance.now() - revisitStart;
         });
         const revisitReadOperations = readOperations.splice(0);
-        raw.entries.noteEntries = noteEntries;
-        assert(freshNotes, 'revisit failed to read saved note');
+        raw.stats.recap = recap;
+        assert(freshNotes, 'revisit failed to re-read after the save');
         assert((firstPaint as { sameReadingNode: boolean }).sameReadingNode, 'warm revisit replaced last-result DOM');
         assert(!target.querySelector('[data-retained-active] .read-group-members.is-held, [data-retained-active] [data-read-reserve-hold]'), 'arrival hold did not release');
         await visit('/calendar');
@@ -227,7 +231,7 @@ async function main() {
           return performance.now() - immediateStart;
         });
         assert(immediateSameNode, 'immediate dirty revisit replaced retained reading DOM');
-        assert(freshNotes, 'immediate dirty revisit failed to read saved note');
+        assert(freshNotes, 'immediate dirty revisit failed to re-read after the save');
         samples.push({ ...sample, immediateDirtyRevisit: {
           writeMs: immediateWriteMs, settledMs: immediate.result, sameReadingNode: immediateSameNode,
           freshNotes, notesCalls, statements: immediate.recording?.statements.length ?? null,
@@ -240,7 +244,7 @@ async function main() {
         assert(!target.querySelector('[data-retained-door]'), 'lock cleanup retained door DOM');
         await journalIsClosing();
       } finally {
-        raw.entries.noteEntries = noteEntries;
+        raw.stats.recap = recap;
         if (mounted) await unmount(host);
         target.remove();
       }

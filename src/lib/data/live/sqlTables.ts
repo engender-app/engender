@@ -78,7 +78,6 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   areaState: ['area_state'],
   revisit: ['revisit'],
   marginNote: ['margin_note'],
-  wordIgnore: ['word_frequency_ignore'],
   document: ['document']
 };
 

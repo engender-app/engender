@@ -587,11 +587,7 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // everything is what makes it trustworthy, and the row itself is an area
   // key and a day (phase 8 deepening ticket 13).
   areaStates: 'no text of its own: an area key, a flag and a day',
-  revisits: 'no text of its own: an entry link and two days',
-  // The word itself is already searchable where it was actually written -
-  // the entry's own note, matched through the FTS index (ADR-0005) - so
-  // matching it here too would show the same word twice.
-  wordIgnore: 'a word already searchable in the note it came from, not new text of its own'
+  revisits: 'no text of its own: an entry link and two days'
 };
 
 /* SEARCH_AREAS stays exported only for its own test (AU-09 test-only review). */

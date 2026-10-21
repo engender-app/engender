@@ -10,9 +10,18 @@
      it moved on under it. No metric picker: the ranking spans every scale
      and each row names its own, so a picker here changed nothing on the
      card and only rewrote the day-by-day chart's stored metric
-     (after-release 27, audit L06-06). */
+     (after-release 27, audit L06-06).
+
+     Under it, the share by tag - "What you write about" - with one
+     control: every day, or only the good days (functional audit ticket
+     12). The ring was the days reading's second card and the good-days
+     view was the affirming themes reading; both counted tags over the span,
+     so they are one card here beside the other tag reading rather than two
+     more tiles on the door. A good day is the bar on-this-day holds a day
+     to (CONTEXT: Good day), read by the same SQL. The dose-day row stays in
+     the ranking above. */
   import { m } from '$lib/paraglide/messages';
-  import { liveList } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { nativeValue, signedValue } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
   import type { Span } from '$lib/data/lookBackSpan';
@@ -27,6 +36,12 @@
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
   import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import PairedDots from '$lib/components/kit/PairedDots.svelte';
+  import ChartPicker from '$lib/components/kit/ChartPicker.svelte';
+  import Donut from '$lib/components/kit/Donut.svelte';
+  import Skeleton from '$lib/components/Skeleton.svelte';
+  import type { Part } from '$lib/charts/parts';
+  import { crossfade, resize } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import ReadingTile from '$lib/components/kit/ReadingTile.svelte';
   import { joinReadGroup } from '$lib/components/kit/readGroup.svelte';
@@ -34,12 +49,15 @@
   let {
     span,
     spanLabel = '',
-    view = 'screen'
+    view = 'screen',
+    enoughEntries = true
   }: {
     span: Span;
     /** The span written out, for the sheet's own line. */
     spanLabel?: string;
     view?: 'tile' | 'screen';
+    /** The door's floor (WRAPPED_ENTRY_FLOOR), read once by the route. */
+    enoughEntries?: boolean;
   } = $props();
 
   let from = $derived(span.start);
@@ -110,6 +128,37 @@
   });
   let insightEntriesCapped = $derived(insightEntriesQuery.rows.length > INSIGHT_ENTRIES);
   let insightEntries = $derived(insightEntriesQuery.rows.slice(0, INSIGHT_ENTRIES));
+
+  /* Share by tag (ADR-0058). `tagShare` and not the recap's `topTags`: a
+     parts-of-a-whole form computes each share against the sum of what it
+     is handed, and a LIMIT 3 read drew three tags as a full circle. The
+     answer carries which days it counted, so the ring swaps on the answer
+     and never draws the old days' parts under the new filter's name. */
+  type ShareDays = 'all' | 'good';
+  let shareDays = $state<ShareDays>('all');
+  let shareQuery = liveQuery(async (j) => {
+    if (view === 'tile') return null;
+    const days = shareDays;
+    return { days, rows: await j.stats.tagShare(from, to, { goodDays: days === 'good' }) };
+  });
+  joinReadGroup(() => view === 'tile' || !shareQuery.loading);
+  let shared = $derived(shareQuery.value ?? null);
+  let shareParts = $derived<Part[]>(
+    (shared?.rows ?? []).map((tag) => ({
+      key: tag.id,
+      name: vocabulary.tag(tag.id)?.label ?? tag.id,
+      amount: tag.count
+    }))
+  );
+  /* The whole the ring is a ring of: tag uses, not entries. */
+  let tagUses = $derived(shareParts.reduce((sum, part) => sum + part.amount, 0));
+  const shareOptions = () => [
+    { value: 'all', label: m.stats_tag_share_days_all() },
+    { value: 'good', label: m.stats_tag_share_days_good() }
+  ];
+  /* The ring for one set of days fades out over the next one fading in,
+     and the card travels the difference in height (resize). */
+  const shareIn = (_node: Element) => fadeOnly(crossfadeDuration());
 </script>
 
 {#if view === 'tile'}
@@ -156,4 +205,35 @@
       </button>
     {/if}
   </Sheet>
+
+  <ChartCard level={2} heading={m.stats_tag_share()} kind="tag-share" role={roleAt(activeFlag.roles, CHART_ROLE)}>
+    {#snippet control()}
+      {#if enoughEntries}
+        <ChartPicker
+          key="tag-share-days"
+          label={m.stats_tag_share_days()}
+          value={shareDays}
+          options={shareOptions()}
+          onPick={(value) => (shareDays = value === 'good' ? 'good' : 'all')}
+        />
+      {/if}
+    {/snippet}
+    <div use:resize>
+    {#if !shared}
+      <div out:crossfade><Skeleton variant="block" count={1} /></div>
+    {:else}
+      {#key shared.days}
+      <div in:shareIn out:crossfade data-tag-share-days={shared.days}>
+        {#if enoughEntries && shareParts.length}
+          <Donut parts={shareParts} restName={m.stats_tag_share_rest()} total={String(tagUses)} note={m.stats_tag_share_note()} />
+        {:else if enoughEntries && shared.days === 'good'}
+          <ChartEmpty>{m.stats_tag_share_good_empty()}</ChartEmpty>
+        {:else}
+          <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
+        {/if}
+      </div>
+      {/key}
+    {/if}
+    </div>
+  </ChartCard>
 {/if}

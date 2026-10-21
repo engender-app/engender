@@ -578,10 +578,6 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     presentationId: null
   });
 
-  // One ignored word - "voice" shows up constantly (voice practice, voice
-  // workshop, the voice tag) without saying anything about a given day.
-  await journal.wordIgnore.setWordIgnored('voice', true);
-
   // One voice practice take, distinct from the benchmarks above - a
   // practice session has nothing to compare it against (voicePracticeTakes.ts).
   await journal.voicePracticeTakes.addTake({

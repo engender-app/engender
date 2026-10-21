@@ -82,7 +82,6 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   tryouts: (r) => r.id,
   feltSenseEntries: (r) => r.id,
   marginNotes: (r) => r.id,
-  wordIgnore: (r) => r.word,
   documents: (r) => r.id,
   checklists: (r) => r.id,
   wearSessions: (r) => r.id,

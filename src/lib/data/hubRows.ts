@@ -132,9 +132,9 @@ export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
     reference area (ADR-0084) is managed there rather than hosted, so its row
     left this map the way modes left the Transition group outright, onto a
     plain row Settings writes out itself. Redesign ticket 62 took the words
-    row off outright - the reading draws on the Look back door itself now
-    (`WordsReading.svelte`), so there is no second screen for a row to open,
-    and `stats` stopped being a host with it.
+    row off outright - the reading drew on the Look back door itself, until
+    functional audit ticket 12 cut it - so there is no second screen for a
+    row to open, and `stats` stopped being a host with it.
 
     A third route took a fourth off, and it is the one that shrank the host
     map itself rather than just a row in it. Phase 11 all-four-doors ticket

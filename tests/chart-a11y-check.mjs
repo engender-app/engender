@@ -53,9 +53,6 @@ const SCREENS = [
   '/stats/plane',
   '/stats/tags',
   '/stats/days',
-  '/stats/words',
-  '/stats/highest',
-  '/stats/themes',
   '/wrapped/month',
   '/wrapped/year'
 ];

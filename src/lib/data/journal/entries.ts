@@ -18,7 +18,6 @@
    with it, via the injected store. */
 
 import { BODY_REGION_MIDPOINT } from '../bodyMap';
-import type { WordFrequencySource } from '../wordFrequency';
 import {
   BAD_MOMENT_MOOD_CEILING,
   BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
@@ -227,14 +226,7 @@ export interface EntriesArea {
       just the general one). Not folded into entriesWithTag itself: that
       one is also the stats screen's tag-insight query, for an arbitrary
       tag, and starred entries have no business surfacing there. */
-  counterevidencePool(
-    tagIds: readonly string[],
-    limit: number,
-    /** Both ends inclusive. Look back's affirming-themes reading asks
-        over the door's span (phase 11 ticket 07); Safe space's own
-        surfaces still ask over the whole journal and pass nothing. */
-    span?: { from: number; to: number }
-  ): Promise<Entry[]>;
+  counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
       or body-region dysphoria intensity >= 50), newest first
       (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
@@ -305,13 +297,6 @@ export interface EntriesArea {
       its own toggle the way setTagHidden does rather than folding into a
       content save. Throws on an unknown id. */
   setEntryStarred(id: number, starred: boolean): Promise<void>;
-  /** Every untrashed entry carrying a non-empty note, in no particular
-      order - what a text fold needs (phase 8 features ticket 14's
-      word-frequency fold) and nothing `hydrate()` also fetches: no dims,
-      tags, photos, recordings or body regions, none of which a fold over
-      note text reads. A blank note contributes no words, so it is excluded
-      at the query rather than filtered by every caller. */
-  noteEntries(): Promise<WordFrequencySource[]>;
 }
 
 interface TrashedEntry extends Entry {
@@ -934,7 +919,7 @@ export function makeEntriesArea(
       return hydrate(rows);
     },
 
-    async counterevidencePool(tagIds, limit, span) {
+    async counterevidencePool(tagIds, limit) {
       // EXISTS rather than a JOIN: a starred entry carrying several other
       // tags would otherwise arrive once per tag row, since the tag match
       // itself has to live in the WHERE clause (an entry need not carry
@@ -965,7 +950,6 @@ export function makeEntriesArea(
       const rows = await driver.query<EntryRow>(
         `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
          WHERE e.trashed_at IS NULL
-           ${span ? 'AND e.epoch_day BETWEEN ? AND ?' : ''}
            AND (
              e.starred = 1
              OR EXISTS (
@@ -990,7 +974,6 @@ export function makeEntriesArea(
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
         [
-          ...(span ? [span.from, span.to] : []),
           ...tagIds,
           GOOD_DAY_REGION_EUPHORIA_FLOOR,
           ...DYSPHORIA_TAG_KEYS,
@@ -1280,18 +1263,6 @@ export function makeEntriesArea(
         [todayEpochDay]
       );
       return rows[0]?.day ?? null;
-    },
-
-    async noteEntries() {
-      const rows = await driver.query<{ epoch_day: number; note: string; presentation_id: string | null }>(
-        `SELECT epoch_day, note, presentation_id FROM entry
-         WHERE trashed_at IS NULL AND note IS NOT NULL AND note != ''`
-      );
-      return rows.map((row) => ({
-        epochDay: row.epoch_day,
-        note: row.note,
-        presentationId: row.presentation_id
-      }));
     }
   };
 }

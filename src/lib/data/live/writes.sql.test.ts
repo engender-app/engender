@@ -664,9 +664,6 @@ beforeAll(async () => {
   await drive('eraMutes', 'setEraMuted', () => journal.eraMutes.setEraMuted(beforeIKnew, true));
   await drive('eras', 'deleteEra', () => journal.eras.deleteEra(firstYear));
 
-  // --- wordIgnore -----------------------------------------------------------
-  await drive('wordIgnore', 'setWordIgnored', () => journal.wordIgnore.setWordIgnored('marta', true));
-
   // --- documents ------------------------------------------------------------
   const documentId = (await drive('documents', 'addDocument', () =>
     journal.documents.addDocument(
@@ -951,7 +948,6 @@ beforeAll(async () => {
   await driveRead('entries', 'lastWriteEpochDay', () => journal.entries.lastWriteEpochDay(20000));
   await driveRead('entries', 'countAll', () => journal.entries.countAll());
   await driveRead('entries', 'countDistinctDays', () => journal.entries.countDistinctDays());
-  await driveRead('entries', 'noteEntries', () => journal.entries.noteEntries());
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
   await driveRead('entryTemplates', 'getEntryTemplates', () => journal.entryTemplates.getEntryTemplates());
@@ -1043,7 +1039,6 @@ beforeAll(async () => {
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
   await driveRead('eraMutes', 'getMutedEraUuids', () => journal.eraMutes.getMutedEraUuids());
-  await driveRead('wordIgnore', 'getIgnoredWords', () => journal.wordIgnore.getIgnoredWords());
   await driveRead('documents', 'getDocuments', () => journal.documents.getDocuments());
   await driveRead('documents', 'getDocument', () => journal.documents.getDocument(documentId));
   await driveRead('documents', 'getDocumentsOnDay', () => journal.documents.getDocumentsOnDay(19999));
@@ -1152,6 +1147,7 @@ beforeAll(async () => {
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
   await driveRead('stats', 'tagInsights', () => journal.stats.tagInsights('mood', 19000, 21000));
   await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000));
+  await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000, { goodDays: true }));
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));
   await driveRead('correlationCards', 'getCards', () => journal.correlationCards.getCards(19000, 21000));

@@ -69,8 +69,7 @@ Before checking budgets it writes the complete result to the isolated app's
 run removes that receipt before generation. Collect it before uninstalling the
 test package.
 
-`mount-stats` mounts the shipped Look back door, including the Words tile's
-whole-journal `noteEntries` read and word analysis. Reference hydration and
+`mount-stats` mounts the shipped Look back door. Reference hydration and
 the preceding read generation finish before the measured window opens.
 The window runs from mount through the rail, facts and read groups answering,
 then unmounts. Desktop counts SQL at the worker boundary; Android counts
@@ -78,12 +77,11 @@ at the native driver seam. Neither result is an Android frame measurement.
 
 Look back's clock is fixed to each fixture's last day only while that mount
 runs. Other operations, including Home, keep their existing clock. Both
-sizes therefore open Look back on the same final 30-day span. The mount
-checks that Words calls `noteEntries` once and receives notes. Removing
-Words from the mounted screen fails this ownership check even when the
-remaining reading group finishes. Node tests also cover omitted, repeated
-and empty reads. Node's synthetic mount remains a harness count check,
-not a substitute for the browser or Android screen measurement.
+sizes therefore open Look back on the same final 30-day span. Until
+functional audit ticket 12 cut the Words reading, the mount also checked
+that Words read every note once. Node's synthetic mount remains a harness
+count check, not a substitute for the browser or Android screen
+measurement.
 
 The [15 October photo and return investigation](photo-and-return.md) records
 the Android idle-encoder regression and the evidence for the return surface’s

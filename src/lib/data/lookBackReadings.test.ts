@@ -16,11 +16,13 @@ describe('a reading tile opens its screen at the door\'s span', () => {
   it('writes the span into the reading\'s address the way the body map and wrapped read it', () => {
     const span = { start: TODAY - 29, end: TODAY };
     expect(readingHref('day-by-day', span)).toBe(`/stats/day-by-day${spanRangeQuery(span)}`);
-    expect(readingHref('themes', span)).toBe(`/stats/themes${spanRangeQuery(span)}`);
+    expect(readingHref('tags', span)).toBe(`/stats/tags${spanRangeQuery(span)}`);
   });
 
-  it('knows its seven readings and refuses anything else', () => {
-    expect(READINGS).toEqual(['day-by-day', 'plane', 'days', 'words', 'tags', 'highest', 'themes']);
+  it('knows its four readings and refuses anything else', () => {
+    expect(READINGS).toEqual(['day-by-day', 'plane', 'days', 'tags']);
+    // Cut by functional audit ticket 12.
+    for (const key of ['words', 'highest', 'themes']) expect(isReading(key)).toBe(false);
     for (const key of READINGS) expect(isReading(key)).toBe(true);
     expect(isReading('body-map')).toBe(false);
     expect(isReading('')).toBe(false);

@@ -86,13 +86,13 @@ test('an absent known section restores as empty', async () => {
     const journal = openJournal(driver, fakeFileStore());
     const snapshot = await journal.archive.snapshot();
     const incoming = { ...snapshot.journal };
-    delete (incoming as Partial<typeof incoming>).wordIgnore;
+    delete (incoming as Partial<typeof incoming>).eraMutes;
     const packed = await collect(packArchive({
       ...snapshot, journal: incoming, preferences: portablePreferences(PREFERENCE_DEFAULTS)
     }, GOLDEN_PASSWORD, CHEAP_KDF));
     await verifyArchive(oneShot(packed), GOLDEN_PASSWORD);
     await journal.archive.replace({ journal: incoming, files: (async function* () {})() });
-    assert.deepEqual((await journal.archive.snapshot()).journal.wordIgnore, []);
+    assert.deepEqual((await journal.archive.snapshot()).journal.eraMutes, []);
   } finally {
     await driver.close();
   }

@@ -10,10 +10,13 @@
      so the drawing takes the room a headline would - every point of the
      span faint, the last one solid, on a 1px cross for the two midlines.
 
-     Gated on data and on nothing else: the reading exists once the journal
-     holds a presentation, and there is no preference to turn it on. Its
-     two axes are the person's own scales, defaulting to the first two they
-     have ticked; no dimension key is written here. */
+     Gated on data and on nothing else: the reading exists once two scales
+     are ticked and the span holds an entry carrying both, and there is no
+     preference to turn it on. A mode is not one of its conditions
+     (functional audit ticket 12): an entry logged under no mode is drawn
+     uncoloured (ADR-0048), so a journal that never named a mode still has
+     a plane. Its two axes are the person's own scales, defaulting to the
+     first two they have ticked; no dimension key is written here. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -53,8 +56,7 @@
 
   let xScale = $derived(vocabulary.activeDimensions.find((d) => d.key === xKey));
   let yScale = $derived(vocabulary.activeDimensions.find((d) => d.key === yKey));
-  let hasConstellation = $derived(vocabulary.presentations.length > 0);
-  let canPlot = $derived(hasConstellation && xScale !== undefined && yScale !== undefined);
+  let canPlot = $derived(xScale !== undefined && yScale !== undefined);
 
   /* Picking a scale that is already on the other axis swaps the two. */
   const pickX = (key: string) => {
@@ -123,7 +125,7 @@
       {/snippet}
     </ReadingTile>
   {/if}
-{:else if hasConstellation}
+{:else}
   <!-- No role on the card: its marks already carry one role each, resolved
        from the mode they were logged under. -->
   <ChartCard level={2} heading={m.stats_constellation()} kind="constellation">
@@ -172,9 +174,5 @@
     {:else}
       <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
     {/if}
-  </ChartCard>
-{:else}
-  <ChartCard level={2} heading={m.stats_constellation()} kind="constellation">
-    <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
   </ChartCard>
 {/if}

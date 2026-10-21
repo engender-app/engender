@@ -3,23 +3,25 @@
    The door used to be a scroll of cards, every one drawn in full at the
    span the rail points at. It is a grid of tiles now, each stating one
    headline figure for the span and opening a screen of its own where the
-   full card draws - so the door says nine things in one viewport and a
+   full card draws - so the door says seven things in one viewport and a
    person opens the one they meant. What this module owns is the part of
    that which is not a component: which readings there are, how a tile
    addresses its screen and how a screen reads the span back, and the three
    headline picks that are arithmetic rather than a read.
 
-   Body map and compare are readings on the door too, but they were screens
-   already and keep their addresses; only the seven below are new routes,
-   which is why `READINGS` has seven entries and the door has nine tiles. */
+   Body map, compare and the counters are readings on the door too, but
+   they were screens already and keep their addresses; only the four below
+   open under `/stats/`. Functional audit ticket 12 cut three: Words,
+   Highest days, and affirming themes, which became the share ring's "on
+   good days" filter on Tags. */
 import type { RegionSideReading } from './bodyMap';
 import { epochDayFromDateInputValue } from './epochDay';
 import { DEFAULT_SPAN_DAYS, spanRangeQuery, type Span } from './lookBackSpan';
 import type { MoodDay } from './statsCharts';
 
-/** The seven readings that open under `/stats/<reading>`, in the door's
+/** The four readings that open under `/stats/<reading>`, in the door's
     own order. */
-export const READINGS = ['day-by-day', 'plane', 'days', 'words', 'tags', 'highest', 'themes'] as const;
+export const READINGS = ['day-by-day', 'plane', 'days', 'tags'] as const;
 export type Reading = (typeof READINGS)[number];
 
 export function isReading(value: string | undefined): value is Reading {
@@ -38,7 +40,7 @@ export function readingHref(reading: Reading, span: Span): string {
     direct visit with no query, one half of one, or two days the wrong way
     round all fall back to the door's own default window - the last
     `DEFAULT_SPAN_DAYS` ending today - which is the same rule the body map
-    follows (body-map/+page.svelte), written once here for the seven new
+    follows (body-map/+page.svelte), written once here for the reading
     screens. */
 export function spanFromSearch(params: URLSearchParams, todayEpochDay: number): Span {
   const from = epochDayFromDateInputValue(params.get('from') ?? '');

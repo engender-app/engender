@@ -332,8 +332,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // forward turns an arrival into a countdown to the person's own past,
   // which is the opposite of what the resurfacing consent layer exists for.
   revisits: "sealed until the day chosen to see the entry again - marking it forward would turn an arrival into a countdown to the person's own past",
-  marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own',
-  wordIgnore: 'reference data, not a day still to come'
+  marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own'
 };
 
 /* DAY_AHEAD_SECTIONS stays exported only for its own test (AU-09 test-only

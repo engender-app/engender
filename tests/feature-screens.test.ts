@@ -108,12 +108,6 @@ const REACHED_FROM_INSIDE = [
      unwatched. */
   'doubt/comfort',
   'doubt/evidence',
-  /* Redesign ticket 62 (ADR-0084): the words reading draws on the Look back
-     door itself now, and the ignore list it used to carry stayed behind as a
-     reference area - reached from a plain row on Settings and from the
-     reading's own word sheet, never from the hub. Still built on the kit, so
-     it stays on this list for the reason the note above it gives. */
-  'settings/words',
   /* Ticket 59: the summary is an export rather than an area, so it left
      `hubRows.ts` entirely rather than moving to a hosted row - reached from
      a plain row on Care and from appointment prep, never from the hub.
@@ -121,7 +115,7 @@ const REACHED_FROM_INSIDE = [
      note above it gives. */
   'health/clinician-summary',
   /* One reading of the Look back door on a screen of its own (phase 11
-     ticket 07): seven readings share the route, each reached from its
+     ticket 07): four readings share the route, each reached from its
      tile on /stats and from nowhere in the hub. Built on the kit and holds
      a loading state on the recap it reads for the floor, so it stays on
      this list for the reason the note above it gives. */
@@ -185,8 +179,9 @@ describe('every feature screen', () => {
        raised over Settings: neither has a +page.svelte of its own left at
        its route for this file to read (feature-screens.test.ts's own
        NOT_A_FEATURE_SCREEN equivalent for a non-hub route is simply not
-       listing it at all). */
-    expect(REACHED_FROM_INSIDE.length).toBe(16);
+       listing it at all) - and fifteen since functional audit ticket 12
+       cut the Words reading and its `settings/words` ignore list. */
+    expect(REACHED_FROM_INSIDE.length).toBe(15);
     expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
   });
 

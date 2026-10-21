@@ -345,23 +345,6 @@ const SECTIONS = [
     read: read.readMarginNotes,
     apply: apply.applyMarginNotes
   }),
-  /* Which words the words screen has been told to stop counting (phase 8
-     features ticket 48, ADR-0003). Flat, and the same smallest kind
-     `eraMutes` above is: one column, no `after` - the word is free text
-     naming nothing else in the journal, so nothing here resolves a rowid
-     against it.
-
-     A word someone chose to stop seeing about their own note-taking is not
-     something to hand to someone else in a structure file - the same
-     reasoning `eraMutes` gives for its own `travels: 'none'`. */
-  flat({
-    name: 'wordIgnore',
-    travels: 'none',
-    table: 'word_frequency_ignore',
-    identity: 'word',
-    orderBy: 'word',
-    columns: { word: 'word' }
-  }),
   /* The paper the person keeps (phase 8 features ticket 52, ADR-0065).
      Flat: one table, no children, no owner to resolve a rowid against, so
      it needs no `after` either.
@@ -1121,7 +1104,7 @@ export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
 
 /** Wire sections removed before 1.0. Their rows no longer have an owner here. */
-export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions', 'counterevidenceSnapshots'];
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries', 'savedQuestions', 'counterevidenceSnapshots', 'wordIgnore'];
 
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */

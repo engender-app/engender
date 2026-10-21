@@ -565,7 +565,7 @@ try {
   const metricKey = (query) => query.sql.includes('gd.key = ?') ? query.params[0] : 'mood';
   scopeCheck(!tilesSql.some(spread) && !tilesSql.some(tagShare), 'Look back tiles omit screen-only spreads and tag shares');
   const initialTileKeys = new Set(tilesSql.filter(tileAverages).map(metricKey));
-  scopeCheck(initialTileKeys.size <= 2, 'Look back tiles read mood and highest-days scale without loading every scale');
+  scopeCheck(initialTileKeys.size <= 2, 'Look back tiles read mood and the active scale without loading every scale');
   scopeCheck(tilesSql.filter((query) => query.sql.includes('FROM journaling_pause')).length === 1, 'Look back reads annotations only for its history rail');
 
   await page.goto(`${base}/stats/day-by-day`, { waitUntil: 'networkidle' });

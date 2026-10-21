@@ -14,8 +14,10 @@ probe now compares `current` and `bounded`.
 
 The native probe uses the existing ten-year generator, encrypted media and
 the actual pipelined Android SQLite driver. It retains the shipped Today,
-Calendar, Look back and More components. Words reads are observed before
+Calendar, Look back and More components. Look back's recap reads are observed before
 journal attachment because `observeWrites` binds read methods at attachment.
+They stand in for the Words reads the probe watched until functional audit
+ticket 12 cut that reading.
 
 Run the short observer control before spending time on a native fixture:
 
