@@ -238,6 +238,15 @@ test('a keystore that is not a PIN one neither needs nor gains a binding', async
   expect(reparsed.pinBinding).toBeUndefined();
 });
 
+test('a biometric keystore needs its handle before serialization', async () => {
+  const { metadata } = await createKeystore('biometric secret', CHEAP, 'biometric');
+  expect(() => serializeKeystore(metadata)).toThrow(KeystoreUnreadableError);
+
+  const biometric = { credentialId: new Uint8Array([1]), prfSalt: new Uint8Array([2]) };
+  const reparsed = parseKeystore(serializeKeystore({ ...metadata, biometric }));
+  expect(reparsed.biometric).toEqual(biometric);
+});
+
 
 test.each(['credentialId', 'prfSalt'])('malformed biometric %s reports KeystoreUnreadableError', async (field) => {
   const { metadata } = await createKeystore('biometric secret', CHEAP, 'biometric');
