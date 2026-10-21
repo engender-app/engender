@@ -1153,6 +1153,9 @@ export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 /** Every section's key, in wire order. */
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
 
+/** Wire sections removed before 1.0. Their rows no longer have an owner here. */
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = ['doubtEntries'];
+
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */
 export function emptyArchiveJournal(): ArchiveJournal {

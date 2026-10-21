@@ -7,6 +7,7 @@ import { ARCHIVE_FORMAT_VERSION, CorruptArchiveError, byteReader, type ByteReade
 import { decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
 import type { ArchivePayload } from './payload.ts';
 import type { ArchiveContents } from './pack.ts';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { u32 } from './wire.ts';
 
 const payload = (name: string): ArchivePayload =>
@@ -19,6 +20,16 @@ const emptyContents: ArchiveContents = {
   readFile: async () => new Uint8Array()
 };
 
+test('new payloads stamp current app and schema without changing archive format', async () => {
+  const encoded = await encodeArchive(emptyContents);
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of encoded.body) chunks.push(chunk);
+  const written = JSON.parse(new TextDecoder().decode(chunks[1]));
+  assert.equal(encoded.formatVersion, ARCHIVE_FORMAT_VERSION);
+  assert.equal(ARCHIVE_FORMAT_VERSION, 2);
+  assert.deepEqual(written.writer, { app: __APP_VERSION__, schema: LATEST_SCHEMA_VERSION });
+});
+
 test('codec imports first in a fresh module graph and encodes an archive', async () => {
   vi.resetModules();
   const codec = await import('./codec.ts');
@@ -29,6 +40,7 @@ test('codec imports first in a fresh module graph and encodes an archive', async
   assert.equal(encoded.formatVersion, 2);
   assert.equal(chunks.reduce((length, chunk) => length + chunk.length, 0), encoded.bodyLength);
   assert.deepEqual(JSON.parse(new TextDecoder().decode(chunks[1])), {
+    writer: { app: __APP_VERSION__, schema: LATEST_SCHEMA_VERSION },
     journal: emptyContents.journal, preferences: emptyContents.preferences, files: []
   });
 });

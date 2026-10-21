@@ -581,7 +581,7 @@ export function assertArchiveRows(
     if (name === 'doseSchedules' && (row.recurrenceKind === 'everyNDays') !== (row.everyNDays !== null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
-    if (name === 'documents' && (row.targetKind === null) !== (row.targetId === null)) {
+    if (name === 'documents' && (row.targetKind == null) !== (row.targetId == null)) {
       throw new CorruptArchiveError(`the archive's ${name} row ${index + 1} is not readable`);
     }
     if (name === 'checklists' && (row.ownerKind === null) !== (row.ownerId === null)) {

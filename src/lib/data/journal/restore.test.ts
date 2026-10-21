@@ -829,13 +829,13 @@ test('an entry naming a gender dimension the archive does not carry fails the wh
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
-test('a payload that is not a journal is refused before anything is written', async () => {
+test('an array instead of a journal is refused before anything is written', async () => {
   const target = await populated();
   const before = await target.journal.archive.snapshot();
 
   await assert.rejects(
     target.journal.archive.replace({
-      journal: { entries: [] } as never,
+      journal: [] as never,
       files: (async function* () {})()
     }),
     /not readable/

@@ -1024,6 +1024,8 @@ export interface ArchiveFile {
 }
 
 export interface ArchivePayload {
+  /** Informational provenance. Archives written before this field still read. */
+  writer?: { app: string; schema: number };
   journal: ArchiveJournal;
   preferences: PortablePreferences;
   /** In body order. */
