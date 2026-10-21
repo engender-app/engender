@@ -70,9 +70,55 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null
     }
   ]);
+});
+
+/* Functional audit ticket 47: describes the supply held now, so a fresh
+   count that says nothing about either clears it, the way the opened date
+   behaves. The app logs them and never reads them back as advice. */
+test('an expiry day and a pharmacy note round-trip, edit and clear', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    expiryEpochDay: 19400,
+    pharmacyNote: '  Apteka na Dworcowej, batch 7  '
+  });
+
+  let [entry] = await journal.stock.getEntries();
+  assert.equal(entry.expiryEpochDay, 19400);
+  assert.equal(entry.pharmacyNote, 'Apteka na Dworcowej, batch 7');
+
+  await journal.stock.upsertEntry({
+    id,
+    drug: 'estradiol valerate',
+    quantity: 8,
+    unit: 'vials',
+    recordedEpochDay: 19010,
+    expiryEpochDay: 19500,
+    pharmacyNote: 'Other pharmacy'
+  });
+  [entry] = await journal.stock.getEntries();
+  assert.equal(entry.expiryEpochDay, 19500);
+  assert.equal(entry.pharmacyNote, 'Other pharmacy');
+
+  await journal.stock.upsertEntry({
+    id,
+    drug: 'estradiol valerate',
+    quantity: 8,
+    unit: 'vials',
+    recordedEpochDay: 19010,
+    pharmacyNote: '   '
+  });
+  [entry] = await journal.stock.getEntries();
+  assert.equal(entry.expiryEpochDay, null);
+  assert.equal(entry.pharmacyNote, null);
 });
 
 test('an opened date and an in-use window round-trip, stored as typed', async () => {

@@ -360,7 +360,9 @@ const ROWS = {
     inUseWindowDays: nullable(numeric),
     inUseEndEpochDay: nullable(numeric),
     leadTimeDays: nullable(numeric),
-    dosesPerUnit: nullable(numeric)
+    dosesPerUnit: nullable(numeric),
+    expiryEpochDay: optional(nullable(numeric)),
+    pharmacyNote: optional(nullable(text))
   },
   tryouts: {
     id: identity,

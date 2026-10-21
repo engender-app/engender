@@ -73,5 +73,13 @@ DROP TABLE measurement_type;
 DROP TABLE size_record;
 DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeRecords');
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
+` },
+  /* Functional audit ticket 47: when the supply held now expires and a free
+     note about where it came from. Both describe the row's current supply
+     (there is no purchase log) and both are nullable. Ticket 30's cost
+     column joins them on this row after this one. */
+  { version: 98, sql: `
+ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER;
+ALTER TABLE medication_stock ADD COLUMN pharmacy_note TEXT;
 ` }
 ];
